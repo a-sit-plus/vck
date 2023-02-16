@@ -1,0 +1,30 @@
+name: Build iOS Framework
+on: [push]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build klibs
+        run: ./gradlew iosArm64MainKlibrary iosX64MainKlibrary
+      - name: Build XCFramework
+        run: ./gradlew assembleVcLibKMMXCFramework
+      - name: Upload klibs
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-ios-tvos-VcLibKMM-klib
+          path: |
+            build/classes/kotlin/ios*/main/klib/vclibkmm.klib
+      - name: Upload debug XCFramework
+        uses: actions/upload-artifact@v3
+        with:
+          name: VcLibKMM-debug.xcframework
+          path: |
+            build/XCFrameworks/debug/
+      - name: Upload release XCFramework
+        uses: actions/upload-artifact@v3
+        with:
+          name: VcLibKMM-release.xcframework
+          path: |
+            build/XCFrameworks/release/

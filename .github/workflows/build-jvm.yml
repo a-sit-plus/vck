@@ -1,0 +1,16 @@
+name: Build JVM artifacts
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build jar
+        run: ./gradlew assemble
+      - name: Upload jar
+        uses: actions/upload-artifact@v3
+        with:
+          name: kmmresult
+          path: |
+            build/libs/*jar
