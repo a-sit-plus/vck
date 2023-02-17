@@ -10,6 +10,8 @@ object Versions {
     const val resultlib = "1.4.0"
     const val encoding = "1.1.3"
     const val okio = "3.2.0"
+    const val dokka = "1.7.20"
+    const val nexus = "1.1.0"
 
     object Jvm {
         const val target = "11"

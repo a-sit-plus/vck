@@ -9,6 +9,8 @@ plugins {
     kotlin("plugin.serialization") version Versions.kotlin
     id("maven-publish")
     id("io.kotest.multiplatform") version Versions.kotest
+    id("signing")
+    id("org.jetbrains.dokka") version Versions.dokka
 }
 
 /* required for maven publication */
@@ -16,8 +18,20 @@ val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
 
-kotlin {
+val dokkaOutputDir = "$buildDir/dokka"
+tasks.dokkaHtml {
+    outputDirectory.set(file(dokkaOutputDir))
+}
+val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") {
+    delete(dokkaOutputDir)
+}
+val javadocJar = tasks.register<Jar>("javadocJar") {
+    dependsOn(deleteDokkaOutputDir, tasks.dokkaHtml)
+    archiveClassifier.set("javadoc")
+    from(dokkaOutputDir)
+}
 
+kotlin {
     val xcf = XCFrameworkConfig(project, "VcLibKMM")
 
     ios {
@@ -119,7 +133,7 @@ tasks.withType<Test> {
         showExceptions = true
         showStandardStreams = true
         events = setOf(
-            TestLogEvent.FAILED,
+           TestLogEvent.FAILED,
             TestLogEvent.PASSED
         )
         exceptionFormat = TestExceptionFormat.FULL
@@ -131,13 +145,88 @@ Properties().apply {
     forEach { (k, v) -> extra.set(k as String, v) }
 }
 
+val gitLabPrivateToken: String? by extra
+val gitLabProjectId: String by extra
+val gitLabGroupId: String by extra
+
 repositories {
     mavenLocal()
+    if (System.getenv("CI_JOB_TOKEN") != null || gitLabPrivateToken != null) {
+        maven {
+            name = "gitlab"
+            url = uri("https://gitlab.iaik.tugraz.at/api/v4/groups/$gitLabGroupId/-/packages/maven")
+            if (gitLabPrivateToken != null) {
+                credentials(HttpHeaderCredentials::class) {
+                    name = "Private-Token"
+                    value = gitLabPrivateToken
+                }
+            } else if (System.getenv("CI_JOB_TOKEN") != null) {
+                credentials(HttpHeaderCredentials::class) {
+                    name = "Job-Token"
+                    value = System.getenv("CI_JOB_TOKEN")
+                }
+            }
+            authentication {
+                create<HttpHeaderAuthentication>("header")
+            }
+        }
+    }
     mavenCentral()
 }
 
+
 publishing {
+    publications {
+        withType<MavenPublication> {
+            artifact(javadocJar)
+            pom {
+                name.set("KmmVcLib")
+                description.set("Functional equivalent of kotlin.Result but with KMM goodness")
+                url.set("https://github.com/a-sit-plus/kmm-vc-library")
+                licenses {
+                    license {
+                        name.set("The Apache License, Version 2.0")
+                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("JesusMcCloud")
+                        name.set("Bernd Prünster")
+                        email.set("bernd.pruenster@a-sit.at")
+                    }
+                    developer {
+                        id.set("nodh")
+                        name.set("Christian Kollmann")
+                        email.set("christian.kollmann@a-sit.at")
+                    }
+                }
+                scm {
+                    connection.set("scm:git:git@github.com:a-sit-plus/kmm-vc-library.git")
+                    developerConnection.set("scm:git:git@github.com:a-sit-plus/kmm-vc-library.git")
+                    url.set("https://github.com/a-sit-plus/kmm-vc-library")
+                }
+            }
+        }
+    }
     repositories {
         mavenLocal()
+        if (System.getenv("CI_JOB_TOKEN") != null) {
+            maven {
+                name = "gitlab"
+                url = uri("https://gitlab.iaik.tugraz.at/api/v4/projects/$gitLabProjectId/packages/maven")
+                credentials(HttpHeaderCredentials::class) {
+                    name = "Job-Token"
+                    value = System.getenv("CI_JOB_TOKEN")
+                }
+                authentication {
+                    create<HttpHeaderAuthentication>("header")
+                }
+            }
+        }
     }
+}
+
+signing {
+    sign(publishing.publications)
 }

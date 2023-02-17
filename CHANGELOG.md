@@ -1,5 +1,8 @@
 # Changelog
 
+Release 1.7.2:
+ - Refactor `LibraryInitializer.registerExtensionLibrary`, see Readme
+
 Release 1.7.1:
  - Remove references to `PupilIdCredential`, will be moved to separate library
  
