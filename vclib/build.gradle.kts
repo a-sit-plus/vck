@@ -181,7 +181,7 @@ publishing {
             artifact(javadocJar)
             pom {
                 name.set("KmmVcLib")
-                description.set("Functional equivalent of kotlin.Result but with KMM goodness")
+                description.set("Kotlin Multiplatform library implementing the W3C VC Data Model")
                 url.set("https://github.com/a-sit-plus/kmm-vc-library")
                 licenses {
                     license {
