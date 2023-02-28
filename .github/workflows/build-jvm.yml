@@ -13,4 +13,4 @@ jobs:
         with:
           name: kmmresult
           path: |
-            build/libs/*jar
+            vclib/build/libs/*jar
