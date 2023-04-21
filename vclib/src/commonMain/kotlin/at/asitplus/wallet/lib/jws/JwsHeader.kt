@@ -20,9 +20,9 @@ data class JwsHeader(
     @SerialName("kid")
     val keyId: String? = null,
     @SerialName("typ")
-    val type: JwsContentType? = null,
+    val type: String? = null,
     @SerialName("cty")
-    val contentType: JwsContentType? = null,
+    val contentType: String? = null,
     @SerialName("x5c")
     val certificateChain: Array<ByteArray>? = null,
     @SerialName("nbf")
@@ -34,7 +34,6 @@ data class JwsHeader(
 ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -51,9 +50,7 @@ data class JwsHeader(
         } else if (other.certificateChain != null) return false
         if (notBefore != other.notBefore) return false
         if (expires != other.expires) return false
-        if (jsonWebKey != other.jsonWebKey) return false
-
-        return true
+        return jsonWebKey == other.jsonWebKey
     }
 
     override fun hashCode(): Int {

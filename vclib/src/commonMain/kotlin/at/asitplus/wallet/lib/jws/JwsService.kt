@@ -19,9 +19,9 @@ import kotlin.random.Random
 interface JwsService {
 
     suspend fun createSignedJwt(
-        type: JwsContentType,
+        type: String,
         payload: ByteArray,
-        contentType: JwsContentType? = null
+        contentType: String? = null
     ): String?
 
     suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): String?
@@ -32,10 +32,10 @@ interface JwsService {
     suspend fun createSignedJwsAddingParams(header: JwsHeader, payload: ByteArray): String?
 
     fun encryptJweObject(
-        type: JwsContentType,
+        type: String,
         payload: ByteArray,
         recipientKey: JsonWebKey,
-        contentType: JwsContentType? = null,
+        contentType: String? = null,
         jweAlgorithm: JweAlgorithm,
         jweEncryption: JweEncryption
     ): String?
@@ -55,12 +55,16 @@ interface VerifierJwsService {
 class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
     override suspend fun createSignedJwt(
-        type: JwsContentType,
+        type: String,
         payload: ByteArray,
-        contentType: JwsContentType?
+        contentType: String?
     ): String? {
-        val jwsHeader =
-            JwsHeader(cryptoService.jwsAlgorithm, cryptoService.keyId, type, contentType)
+        val jwsHeader = JwsHeader(
+            algorithm = cryptoService.jwsAlgorithm,
+            keyId = cryptoService.keyId,
+            type = type,
+            contentType = contentType
+        )
         return createSignedJws(jwsHeader, payload)
     }
 
@@ -125,10 +129,10 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     }
 
     override fun encryptJweObject(
-        type: JwsContentType,
+        type: String,
         payload: ByteArray,
         recipientKey: JsonWebKey,
-        contentType: JwsContentType?,
+        contentType: String?,
         jweAlgorithm: JweAlgorithm,
         jweEncryption: JweEncryption
     ): String? {

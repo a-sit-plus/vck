@@ -19,9 +19,9 @@ data class JweHeader(
     @SerialName("kid")
     val keyId: String,
     @SerialName("typ")
-    val type: JwsContentType?,
+    val type: String?,
     @SerialName("cty")
-    val contentType: JwsContentType? = null,
+    val contentType: String? = null,
     @SerialName("epk")
     val ephemeralKeyPair: JsonWebKey? = null,
     @SerialName("apu")
@@ -32,6 +32,42 @@ data class JweHeader(
     val agreementPartyVInfo: ByteArray? = null,
 ) {
     fun serialize() = jsonSerializer.encodeToString(this)
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as JweHeader
+
+        if (algorithm != other.algorithm) return false
+        if (encryption != other.encryption) return false
+        if (keyId != other.keyId) return false
+        if (type != other.type) return false
+        if (contentType != other.contentType) return false
+        if (ephemeralKeyPair != other.ephemeralKeyPair) return false
+        if (agreementPartyUInfo != null) {
+            if (other.agreementPartyUInfo == null) return false
+            if (!agreementPartyUInfo.contentEquals(other.agreementPartyUInfo)) return false
+        } else if (other.agreementPartyUInfo != null) return false
+        if (agreementPartyVInfo != null) {
+            if (other.agreementPartyVInfo == null) return false
+            if (!agreementPartyVInfo.contentEquals(other.agreementPartyVInfo)) return false
+        } else if (other.agreementPartyVInfo != null) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = algorithm?.hashCode() ?: 0
+        result = 31 * result + (encryption?.hashCode() ?: 0)
+        result = 31 * result + keyId.hashCode()
+        result = 31 * result + (type?.hashCode() ?: 0)
+        result = 31 * result + (contentType?.hashCode() ?: 0)
+        result = 31 * result + (ephemeralKeyPair?.hashCode() ?: 0)
+        result = 31 * result + (agreementPartyUInfo?.contentHashCode() ?: 0)
+        result = 31 * result + (agreementPartyVInfo?.contentHashCode() ?: 0)
+        return result
+    }
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {

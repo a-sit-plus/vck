@@ -17,7 +17,7 @@ class JwsHeaderSerializationTest : FreeSpec({
         val second = Random.nextBytes(32)
         val algorithm = JwsAlgorithm.ES256
         val kid = uuid4().toString()
-        val type = JwsContentType.JWT
+        val type = JwsContentTypeConstants.JWT
         val header = JwsHeader(
             algorithm = algorithm,
             keyId = kid,
@@ -37,10 +37,10 @@ class JwsHeaderSerializationTest : FreeSpec({
         val second = Random.nextBytes(32)
         val algorithm = JwsAlgorithm.ES256
         val kid = uuid4().toString()
-        val type = JwsContentType.JWT
+        val type = JwsContentTypeConstants.JWT
 
         val serialized =
-            """{"alg": "${algorithm.text}", "kid": "$kid", "typ": "${type.text}", "x5c":["${first.encodeBase64()}","${second.encodeBase64()}"]}"""
+            """{"alg": "${algorithm.text}", "kid": "$kid", "typ": "$type", "x5c":["${first.encodeBase64()}","${second.encodeBase64()}"]}"""
 
         val parsed = JwsHeader.deserialize(serialized)
 

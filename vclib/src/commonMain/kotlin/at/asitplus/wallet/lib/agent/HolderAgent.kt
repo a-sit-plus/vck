@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.JwsContentType
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
@@ -151,7 +151,7 @@ class HolderAgent constructor(
         val vp = VerifiablePresentation(validCredentials.toTypedArray())
         val vpSerialized = vp.toJws(challenge, keyId, audienceId).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
-        val jws = jwsService.createSignedJwt(JwsContentType.JWT, jwsPayload)
+        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
             ?: return null
         return Holder.CreatePresentationResult.Signed(jws)
     }

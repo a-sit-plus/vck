@@ -9,7 +9,7 @@ import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.JwsContentType
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -197,7 +197,7 @@ class IssuerAgent constructor(
 
     private suspend fun wrapVcInJws(vc: VerifiableCredential): String? {
         val jwsPayload = vc.toJws().serialize().encodeToByteArray()
-        return jwsService.createSignedJwt(JwsContentType.JWT, jwsPayload)
+        return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
     }
 
     private fun getRevocationListUrlFor(timePeriod: Int) =

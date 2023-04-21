@@ -1,5 +1,8 @@
 # Changelog
 
+Release 1.8.0:
+ - Remove `JwsContentType`, replace with strings from `JwsContentTypeConstants`
+
 Release 1.7.2:
  - Refactor `LibraryInitializer.registerExtensionLibrary`, see Readme
 
