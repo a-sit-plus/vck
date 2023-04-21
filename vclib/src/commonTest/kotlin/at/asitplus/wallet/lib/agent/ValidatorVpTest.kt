@@ -4,7 +4,7 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.JwsContentType
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -130,7 +130,7 @@ class ValidatorVpTest : FreeSpec({
         val vpSerialized =
             vp.toJws(challenge, holderCryptoService.keyId, verifierCryptoService.keyId).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
-        val vpJws = holderJwsService.createSignedJwt(JwsContentType.JWT, jwsPayload)
+        val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
         vpJws.shouldNotBeNull()
 
         verifier.verifyPresentation(vpJws, challenge)
@@ -151,7 +151,7 @@ class ValidatorVpTest : FreeSpec({
                 vp.id
             ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
-        val vpJws = holderJwsService.createSignedJwt(JwsContentType.JWT, jwsPayload)
+        val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
         vpJws.shouldNotBeNull()
 
         verifier.verifyPresentation(vpJws, challenge)
@@ -171,7 +171,7 @@ class ValidatorVpTest : FreeSpec({
                 "wrong_jwtId"
             ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
-        val vpJws = holderJwsService.createSignedJwt(JwsContentType.JWT, jwsPayload)
+        val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
         vpJws.shouldNotBeNull()
 
         verifier.verifyPresentation(vpJws, challenge)
@@ -186,7 +186,7 @@ class ValidatorVpTest : FreeSpec({
         val vpSerialized =
             vp.toJws(challenge, holderCryptoService.keyId, verifierCryptoService.keyId).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
-        val vpJws = holderJwsService.createSignedJwt(JwsContentType.JWT, jwsPayload)
+        val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
         vpJws.shouldNotBeNull()
 
         verifier.verifyPresentation(vpJws, challenge)

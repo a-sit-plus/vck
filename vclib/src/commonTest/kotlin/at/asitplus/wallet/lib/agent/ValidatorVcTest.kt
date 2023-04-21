@@ -6,7 +6,7 @@ import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.JwsContentType
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.JwsSigned
@@ -328,14 +328,14 @@ class ValidatorVcTest : FreeSpec() {
     private suspend fun signJws(vcJws: VerifiableCredentialJws): String? {
         val vcSerialized = vcJws.serialize()
         val jwsPayload = vcSerialized.encodeToByteArray()
-        return issuerJwsService.createSignedJwt(JwsContentType.JWT, jwsPayload)
+        return issuerJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
     }
 
     private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String? {
         val jwsHeader = JwsHeader(
-            verifierCryptoService.jwsAlgorithm,
-            verifierCryptoService.keyId,
-            JwsContentType.JWT
+            algorithm = verifierCryptoService.jwsAlgorithm,
+            keyId = verifierCryptoService.keyId,
+            type = JwsContentTypeConstants.JWT
         )
         val jwsPayload = vcJws.serialize().encodeToByteArray()
         val signatureInput =
