@@ -2,6 +2,8 @@
 
 Release 1.8.0:
  - Remove `JwsContentType`, replace with strings from `JwsContentTypeConstants`
+ - Add `JsonWebToken` to use as payload in `JwsHeader` or others
+ - Change type of `exp` and `nbf` in `JwsHeader` from `long` to `Instant`
 
 Release 1.7.2:
  - Refactor `LibraryInitializer.registerExtensionLibrary`, see Readme
