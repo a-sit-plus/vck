@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
-import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.VerifiableCredential
@@ -11,10 +10,8 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.JwsSigned
-import at.asitplus.wallet.lib.nameHack
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.core.spec.style.scopes.ContainerScope
 import io.kotest.datatest.withData
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -99,7 +96,6 @@ class ValidatorVcTest : FreeSpec() {
 
         "Manually created and valid credential is valid" - {
             withData(
-                nameFn = ::vcNameToo,
                 dataProvider.getCredentialWithType(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
                     .getOrThrow()
             ) {
@@ -114,7 +110,6 @@ class ValidatorVcTest : FreeSpec() {
 
         "Wrong key ends in wrong signature is not valid" - {
             withData(
-                nameFn = ::vcNameToo,
                 dataProvider.getCredentialWithType(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
                     .getOrThrow()
             ) {
@@ -130,9 +125,10 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid sub in credential is not valid" - {
             withData(
-                nameFn = ::vcNameToo,
-                dataProvider.getCredentialWithType(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
-                    .getOrThrow()
+                dataProvider.getCredentialWithType(
+                    verifierCryptoService.keyId,
+                    listOf(ConstantIndex.Generic.vcType)
+                ).getOrThrow()
             ) {
                 issueCredential(it)
                     .let { wrapVcInJws(it, subject = "vc.id") }
@@ -146,7 +142,6 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid issuer in credential is not valid" - {
             withData(
-                nameFn = ::vcNameToo,
                 dataProvider.getCredentialWithType(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
                     .getOrThrow()
             ) {
@@ -161,7 +156,6 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid jwtId in credential is not valid" - {
             withData(
-                nameFn = ::vcNameToo,
                 dataProvider.getCredentialWithType(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
                     .getOrThrow()
             ) {
@@ -177,7 +171,6 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid type in credential is not valid" - {
             withData(
-                nameFn = ::vcNameToo,
                 dataProvider.getCredentialWithType(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
                     .getOrThrow()
             ) {
@@ -194,7 +187,6 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid expiration in credential is not valid" - {
             withData(
-                nameFn = ::vcNameToo,
                 dataProvider.getCredentialWithType(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
                     .getOrThrow()
             ) {
@@ -219,7 +211,6 @@ class ValidatorVcTest : FreeSpec() {
 
         "No expiration date is valid" - {
             withData(
-                nameFn = ::vcNameToo,
                 dataProvider.getCredentialWithType(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
                     .getOrThrow()
             ) {
@@ -234,7 +225,6 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid jws-expiration in credential is not valid" - {
             withData(
-                nameFn = ::vcNameToo,
                 dataProvider.getCredentialWithType(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
                     .getOrThrow()
             ) {
@@ -250,7 +240,6 @@ class ValidatorVcTest : FreeSpec() {
 
         "Expiration not matching in credential is not valid" - {
             withData(
-                nameFn = ::vcNameToo,
                 dataProvider.getCredentialWithType(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
                     .getOrThrow()
             ) {
@@ -270,7 +259,6 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid NotBefore in credential is not valid" - {
             withData(
-                nameFn = ::vcNameToo,
                 dataProvider.getCredentialWithType(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
                     .getOrThrow()
             ) {
@@ -288,7 +276,6 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid issuance date in credential is not valid" - {
             withData(
-                nameFn = ::vcNameToo,
                 dataProvider.getCredentialWithType(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
                     .getOrThrow()
             ) {
@@ -304,7 +291,6 @@ class ValidatorVcTest : FreeSpec() {
 
         "Issuance date and not before not matching is not valid" - {
             withData(
-                nameFn = ::vcNameToo,
                 dataProvider.getCredentialWithType(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
                     .getOrThrow()
             ) {
@@ -380,7 +366,3 @@ class ValidatorVcTest : FreeSpec() {
     }
 
 }
-
-private fun ContainerScope.vcNameToo(it: IssuerCredentialDataProvider.CredentialToBeIssued) = nameHack(it.attributeType)
-private fun ContainerScope.vcName(it: String) = nameHack(it.substring(it.lastIndexOf('/') + 1))
-
