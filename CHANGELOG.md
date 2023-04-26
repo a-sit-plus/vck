@@ -4,6 +4,7 @@ Release 1.8.0:
  - Remove `JwsContentType`, replace with strings from `JwsContentTypeConstants`
  - Add `JsonWebToken` to use as payload in `JwsHeader` or others
  - Change type of `exp` and `nbf` in `JwsHeader` from `long` to `Instant`
+ - Remove all references to "attribute names" in credential subjects, we'll only use types from now on, as in the [W3C VC Data Model](https://w3c.github.io/vc-data-model/#types), e.g. deprecate the usage of methods referencing attribute names
 
 Release 1.7.2:
  - Refactor `LibraryInitializer.registerExtensionLibrary`, see Readme

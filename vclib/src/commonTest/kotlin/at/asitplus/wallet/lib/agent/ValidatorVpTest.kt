@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -50,7 +50,7 @@ class ValidatorVpTest : FreeSpec({
         challenge = uuid4().toString()
         runBlocking {
             holder.storeCredentials(
-                issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+                issuer.issueCredentialWithTypes(holderCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
                     .toStoreCredentialInput()
             )
         }

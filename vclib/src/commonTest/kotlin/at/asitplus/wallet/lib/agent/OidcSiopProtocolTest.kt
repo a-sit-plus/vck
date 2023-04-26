@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -27,9 +28,9 @@ class OidcSiopProtocolTest : FreeSpec({
                 IssuerAgent.newDefaultInstance(
                     DefaultCryptoService(),
                     dataProvider = DummyCredentialDataProvider(),
-                ).issueCredentials(
+                ).issueCredentialWithTypes(
                     holderCryptoService.keyId,
-                    listOf("${SchemaIndex.ATTR_GENERIC_PREFIX}/given-name")
+                    listOf(ConstantIndex.Generic.vcType)
                 ).toStoreCredentialInput()
             )
         }

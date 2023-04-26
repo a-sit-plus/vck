@@ -95,6 +95,25 @@ class IssuerAgent constructor(
     )
 
     /**
+     * Issues credentials for some [attributeTypes] (i.e. some of
+     * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with [subjectId]
+     * (which should be a URL of the cryptographic key of the holder)
+     */
+    override suspend fun issueCredentialWithTypes(
+        subjectId: String,
+        attributeTypes: Collection<String>
+    ): Issuer.IssuedCredentialResult {
+        val result = dataProvider.getCredentialWithType(subjectId, attributeTypes)
+        result.exceptionOrNull()?.let { failure ->
+            return Issuer.IssuedCredentialResult(failed = attributeTypes.map { Issuer.FailedAttribute(it, failure) })
+        }
+        val issuedCredentials = result.getOrThrow().map { issueCredential(it) }
+        return Issuer.IssuedCredentialResult(
+            successful = issuedCredentials.flatMap { it.successful },
+            failed = issuedCredentials.flatMap { it.failed })
+    }
+
+    /**
      * Wraps [credential] into a single [VerifiableCredential],
      * returns a JWS representation of that VC.
      */

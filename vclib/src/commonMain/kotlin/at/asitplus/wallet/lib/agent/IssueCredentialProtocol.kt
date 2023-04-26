@@ -3,9 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.msg.RequestCredentialAttachment
 import at.asitplus.wallet.lib.data.SchemaIndex
-import at.asitplus.wallet.lib.msg.SchemaReference
 import at.asitplus.wallet.lib.data.dif.CredentialDefinition
 import at.asitplus.wallet.lib.data.dif.CredentialManifest
 import at.asitplus.wallet.lib.data.jsonSerializer
@@ -18,7 +16,9 @@ import at.asitplus.wallet.lib.msg.OutOfBandInvitation
 import at.asitplus.wallet.lib.msg.OutOfBandInvitationBody
 import at.asitplus.wallet.lib.msg.OutOfBandService
 import at.asitplus.wallet.lib.msg.RequestCredential
+import at.asitplus.wallet.lib.msg.RequestCredentialAttachment
 import at.asitplus.wallet.lib.msg.RequestCredentialBody
+import at.asitplus.wallet.lib.msg.SchemaReference
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.encodeToString
 
@@ -224,13 +224,10 @@ class IssueCredentialProtocol(
         val subjectKeyId = requestCredentialAttachment.credentialManifest.subject ?: senderKeyId
 
         val requestedAttributeType = AttributeIndex.getTypeOfAttributeForSchemaUri(uri)
-        val requestedAttributes = AttributeIndex.getListOfAttributesForSchemaUri(uri)
+            ?: return problemReporter.problemLastMessage(lastMessage.threadId, "requested-attributes-empty")
 
-        val issuedCredentials = when {
-            requestedAttributeType != null -> issuer?.issueCredential(subjectKeyId, requestedAttributeType)
-            requestedAttributes.isNotEmpty() -> issuer?.issueCredentials(subjectKeyId, requestedAttributes)
-            else -> return problemReporter.problemLastMessage(lastMessage.threadId, "requested-attributes-empty")
-        } ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
+        val issuedCredentials = issuer?.issueCredentialWithTypes(subjectKeyId, listOf(requestedAttributeType))
+            ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
 
         //TODO: Pack this info into `args` or `comment`
         if (issuedCredentials.failed.isNotEmpty()) {
