@@ -20,7 +20,8 @@ object ConstantIndex {
 
         /**
          * Schema URL of the credential, used in [at.asitplus.wallet.lib.agent.IssueCredentialProtocol] to map
-         * from the requested schema to the internal attribute type used in [at.asitplus.wallet.lib.agent.Issuer] when issuing credentials.
+         * from the requested schema to the internal attribute type used in [at.asitplus.wallet.lib.agent.Issuer]
+         * when issuing credentials.
          */
         val schemaUri: String
 

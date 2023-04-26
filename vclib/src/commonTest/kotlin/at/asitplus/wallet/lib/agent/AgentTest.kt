@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.Companion.ATTRIBUTE_WITH_ATTACHMENT
 import at.asitplus.wallet.lib.data.AttributeIndex
-import at.asitplus.wallet.lib.data.SchemaIndex
+import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FreeSpec
@@ -46,7 +46,7 @@ class AgentTest : FreeSpec({
 
     "simple walk-through success" {
         val vcList =
-            issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+            issuer.issueCredentialWithTypes(holderCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
         if (vcList.failed.isNotEmpty()) fail("no issued credentials")
         holder.storeCredentials(vcList.toStoreCredentialInput())
 
@@ -58,10 +58,8 @@ class AgentTest : FreeSpec({
     }
 
     "simple walk-through success with attachments" {
-        val vcList = issuer.issueCredentials(
-            holderCryptoService.keyId,
-            listOf("${SchemaIndex.ATTR_GENERIC_PREFIX}/$ATTRIBUTE_WITH_ATTACHMENT")
-        )
+        // DummyCredentialProvider issues an attachment for "picture"
+        val vcList = issuer.issueCredentialWithTypes(holderCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
         vcList.successful.shouldNotBeEmpty()
         holder.storeCredentials(vcList.toStoreCredentialInput())
         holderCredentialStore.getAttachment(ATTRIBUTE_WITH_ATTACHMENT).getOrThrow().shouldNotBeNull()
@@ -75,7 +73,7 @@ class AgentTest : FreeSpec({
 
     "wrong keyId in presentation leads to InvalidStructure" {
         val credentials =
-            issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+            issuer.issueCredentialWithTypes(holderCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
         if (credentials.failed.isNotEmpty()) fail("no issued credentials")
         holder.storeCredentials(credentials.toStoreCredentialInput())
 
@@ -88,7 +86,7 @@ class AgentTest : FreeSpec({
 
     "revoked credentials must not be validated" {
         val credentials =
-            issuer.issueCredentials(verifierCryptoService.keyId, AttributeIndex.genericAttributes)
+            issuer.issueCredentialWithTypes(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
         if (credentials.failed.isNotEmpty()) fail("no issued credentials")
         issuer.revokeCredentials(credentials.successful.map { it.vcJws }) shouldBe true
 
@@ -105,7 +103,7 @@ class AgentTest : FreeSpec({
 
         "when setting a revocation list before storing credentials" {
             val credentials =
-                issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+                issuer.issueCredentialWithTypes(holderCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
             if (credentials.failed.isNotEmpty()) fail("no issued credentials")
             issuer.revokeCredentials(credentials.successful.map { it.vcJws }) shouldBe true
             val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
@@ -122,7 +120,7 @@ class AgentTest : FreeSpec({
 
         "and when setting a revocation list after storing credentials" {
             val credentials =
-                issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+                issuer.issueCredentialWithTypes(holderCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
             if (credentials.failed.isNotEmpty()) fail("no issued credentials")
             val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
             storedCredentials.accepted shouldHaveSize credentials.successful.size
@@ -148,7 +146,7 @@ class AgentTest : FreeSpec({
 
         "when they are valid" - {
             val credentials =
-                issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+                issuer.issueCredentialWithTypes(holderCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
             if (credentials.failed.isNotEmpty()) fail("no issued credentials")
             val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
             storedCredentials.accepted shouldHaveSize credentials.successful.size
@@ -175,7 +173,7 @@ class AgentTest : FreeSpec({
 
         "when the issuer has revoked them" {
             val credentials =
-                issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+                issuer.issueCredentialWithTypes(holderCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
             if (credentials.failed.isNotEmpty()) fail("no issued credentials")
             val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
             storedCredentials.accepted shouldHaveSize credentials.successful.size
@@ -201,7 +199,7 @@ class AgentTest : FreeSpec({
 
     "valid presentation is valid" {
         val credentials =
-            issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+            issuer.issueCredentialWithTypes(holderCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
         if (credentials.failed.isNotEmpty()) fail("no issued credentials")
         holder.storeCredentials(credentials.toStoreCredentialInput())
         val vp = holder.createPresentation(challenge, verifierCryptoService.keyId)
@@ -217,7 +215,7 @@ class AgentTest : FreeSpec({
 
     "valid presentation is valid -- some other attributes revoked" {
         val credentials =
-            issuer.issueCredentials(holderCryptoService.keyId, AttributeIndex.genericAttributes)
+            issuer.issueCredentialWithTypes(holderCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
         if (credentials.failed.isNotEmpty()) fail("no issued credentials")
         holder.storeCredentials(credentials.toStoreCredentialInput())
         val vp = holder.createPresentation(challenge, verifierCryptoService.keyId)
@@ -225,7 +223,7 @@ class AgentTest : FreeSpec({
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
 
         val credentialsToRevoke =
-            issuer.issueCredentials(issuerCryptoService.keyId, AttributeIndex.genericAttributes)
+            issuer.issueCredentialWithTypes(holderCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
         if (credentialsToRevoke.failed.isNotEmpty()) fail("no issued credentials")
         issuer.revokeCredentials(credentialsToRevoke.successful.map { it.vcJws }) shouldBe true
         val revocationList = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)

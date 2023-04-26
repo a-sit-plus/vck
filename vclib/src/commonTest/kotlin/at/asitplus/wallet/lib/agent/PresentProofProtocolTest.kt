@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.msg.JwmAttachmentData
 import at.asitplus.wallet.lib.msg.JwmAttachment
 import at.asitplus.wallet.lib.msg.Presentation
@@ -39,9 +40,9 @@ class PresentProofProtocolTest : FreeSpec({
             IssuerAgent.newDefaultInstance(
                 DefaultCryptoService(),
                 dataProvider = DummyCredentialDataProvider(),
-            ).issueCredentials(
+            ).issueCredentialWithTypes(
                 holderCryptoService.keyId,
-                AttributeIndex.genericAttributes
+                listOf(ConstantIndex.Generic.vcType)
             ).toStoreCredentialInput()
         )
 
@@ -72,9 +73,9 @@ class PresentProofProtocolTest : FreeSpec({
             IssuerAgent.newDefaultInstance(
                 DefaultCryptoService(),
                 dataProvider = DummyCredentialDataProvider(),
-            ).issueCredentials(
+            ).issueCredentialWithTypes(
                 holderCryptoService.keyId,
-                AttributeIndex.genericAttributes
+                listOf(ConstantIndex.Generic.vcType)
             ).toStoreCredentialInput()
         )
 

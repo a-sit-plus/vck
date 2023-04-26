@@ -5,6 +5,7 @@ import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.Success
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.toBitSet
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.fail
@@ -56,8 +57,8 @@ class AgentRevocationTest : FreeSpec({
     }
 
     "credentials should contain status information" {
-        val result = issuer.issueCredentials(verifierCryptoService.keyId, AttributeIndex.genericAttributes)
-        if (!result.failed.isEmpty()) fail("no issued credentials")
+        val result = issuer.issueCredentialWithTypes(verifierCryptoService.keyId, listOf(ConstantIndex.Generic.vcType))
+        if (result.failed.isNotEmpty()) fail("no issued credentials")
 
         result.successful.map { it.vcJws }.forEach {
             val vcJws = verifier.verifyVcJws(it)
