@@ -17,7 +17,7 @@ class HolderAgent constructor(
     private val validator: Validator = Validator.newDefaultInstance(),
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val jwsService: JwsService,
-    private val keyId: String
+    private val holderId: String
 ) : Holder {
 
     companion object {
@@ -30,7 +30,7 @@ class HolderAgent constructor(
             validator = Validator.newDefaultInstance(verifierCryptoService, Parser()),
             subjectCredentialStore = subjectCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
-            keyId = cryptoService.keyId
+            holderId = cryptoService.keyId
         )
 
         /**
@@ -43,7 +43,7 @@ class HolderAgent constructor(
             validator = Validator.newDefaultInstance(DefaultVerifierCryptoService(), Parser()),
             subjectCredentialStore = subjectCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
-            keyId = cryptoService.keyId
+            holderId = cryptoService.keyId
         )
     }
 
@@ -67,7 +67,7 @@ class HolderAgent constructor(
         val rejected = mutableListOf<String>()
         val attachments = mutableListOf<Holder.StoredAttachmentResult>()
         credentialList.forEach { cred ->
-            when (val vc = validator.verifyVcJws(cred.vcJws, keyId)) {
+            when (val vc = validator.verifyVcJws(cred.vcJws, holderId)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Success -> accepted += vc.jws
@@ -149,7 +149,7 @@ class HolderAgent constructor(
         audienceId: String,
     ): Holder.CreatePresentationResult? {
         val vp = VerifiablePresentation(validCredentials.toTypedArray())
-        val vpSerialized = vp.toJws(challenge, keyId, audienceId).serialize()
+        val vpSerialized = vp.toJws(challenge, holderId, audienceId).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
         val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
             ?: return null

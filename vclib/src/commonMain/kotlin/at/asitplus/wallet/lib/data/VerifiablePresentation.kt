@@ -23,10 +23,10 @@ data class VerifiablePresentation(
         verifiableCredential = verifiableCredential
     )
 
-    fun toJws(challenge: String, subjectId: String, audienceId: String) = VerifiablePresentationJws(
+    fun toJws(challenge: String, issuerId: String, audienceId: String) = VerifiablePresentationJws(
         vp = this,
         challenge = challenge,
-        issuer = subjectId,
+        issuer = issuerId,
         audience = audienceId,
         jwtId = id
     )
