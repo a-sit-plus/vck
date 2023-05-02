@@ -30,7 +30,12 @@ interface JwsService {
      * Appends correct values for [JweHeader.keyId], [JwsHeader.algorithm] and [JwsHeader.jsonWebKey],
      * if the corresponding options are set
      */
-    suspend fun createSignedJwsAddingParams(header: JwsHeader, payload: ByteArray, addKeyId: Boolean = true, addJsonWebKey: Boolean = true): String?
+    suspend fun createSignedJwsAddingParams(
+        header: JwsHeader,
+        payload: ByteArray,
+        addKeyId: Boolean = true,
+        addJsonWebKey: Boolean = true
+    ): String?
 
     fun encryptJweObject(
         type: String,
@@ -84,7 +89,12 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         return JwsSigned(header, payload, rawSignature, signatureInput).serialize()
     }
 
-    override suspend fun createSignedJwsAddingParams(header: JwsHeader, payload: ByteArray, addKeyId: Boolean, addJsonWebKey: Boolean): String? {
+    override suspend fun createSignedJwsAddingParams(
+        header: JwsHeader,
+        payload: ByteArray,
+        addKeyId: Boolean,
+        addJsonWebKey: Boolean
+    ): String? {
         var copy = header.copy(algorithm = cryptoService.jwsAlgorithm)
         if (addKeyId)
             copy = copy.copy(keyId = cryptoService.keyId)
@@ -106,13 +116,12 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
                 Napier.w("No Z value from native code", it)
                 return null
             }
-        val kdfInput =
-            prependWithAdditionalInfo(
-                z,
-                header.encryption,
-                header.agreementPartyUInfo,
-                header.agreementPartyVInfo
-            )
+        val kdfInput = prependWithAdditionalInfo(
+            z,
+            header.encryption,
+            header.agreementPartyUInfo,
+            header.agreementPartyVInfo
+        )
         val key = cryptoService.messageDigest(kdfInput, Digest.SHA256).getOrElse {
             Napier.w("No digest from native code", it)
             return null

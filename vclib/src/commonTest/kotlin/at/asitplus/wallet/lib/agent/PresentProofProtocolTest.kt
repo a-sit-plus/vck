@@ -1,9 +1,8 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.msg.JwmAttachmentData
 import at.asitplus.wallet.lib.msg.JwmAttachment
+import at.asitplus.wallet.lib.msg.JwmAttachmentData
 import at.asitplus.wallet.lib.msg.Presentation
 import at.asitplus.wallet.lib.msg.RequestCredential
 import at.asitplus.wallet.lib.msg.RequestCredentialBody
@@ -27,12 +26,11 @@ class PresentProofProtocolTest : FreeSpec({
         holder = HolderAgent.newDefaultInstance(holderCryptoService)
         verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
         holderProtocol = PresentProofProtocol.newHolderInstance(
-            holder,
-            holderCryptoService.keyId,
-            "https://example.com/"
+            holder = holder,
+            keyId = holderCryptoService.keyId,
+            serviceEndpoint = "https://example.com/"
         )
-        verifierProtocol =
-            PresentProofProtocol.newVerifierInstance(verifier, verifierCryptoService.keyId)
+        verifierProtocol = PresentProofProtocol.newVerifierInstance(verifier, verifierCryptoService.keyId)
     }
 
     "presentProofGenericWithInvitation" {

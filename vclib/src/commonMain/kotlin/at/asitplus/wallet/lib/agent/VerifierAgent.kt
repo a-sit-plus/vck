@@ -9,7 +9,7 @@ import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
  */
 class VerifierAgent private constructor(
     private val validator: Validator,
-    private val keyId: String
+    private val localId: String
 ) : Verifier {
 
     companion object {
@@ -19,7 +19,7 @@ class VerifierAgent private constructor(
             validator: Validator = Validator.newDefaultInstance(cryptoService),
         ): VerifierAgent = VerifierAgent(
             validator = validator,
-            keyId = keyId
+            localId = keyId
         )
 
         /**
@@ -27,7 +27,7 @@ class VerifierAgent private constructor(
          */
         fun newDefaultInstance(keyId: String): VerifierAgent = VerifierAgent(
             validator = Validator.newDefaultInstance(),
-            keyId = keyId
+            localId = keyId
         )
     }
 
@@ -39,7 +39,7 @@ class VerifierAgent private constructor(
      * Verifies a presentation of some credentials that a holder issued with that [challenge] we sent before.
      */
     override fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
-        return validator.verifyVpJws(it, challenge, keyId)
+        return validator.verifyVpJws(it, challenge, localId)
     }
 
     /**
@@ -57,7 +57,7 @@ class VerifierAgent private constructor(
     }
 
     override fun verifyVcJws(it: String): Verifier.VerifyCredentialResult {
-        return validator.verifyVcJws(it, keyId)
+        return validator.verifyVcJws(it, localId)
     }
 
 }
