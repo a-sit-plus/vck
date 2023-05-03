@@ -161,7 +161,7 @@ class OidcSiopProtocol(
         // TODO could also contain "request_uri"
         // TODO could also contain "response_mode=post"
         stateOfRelyingParty = request.params.state
-        val audience = request.params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.keyId
+        val audience = request.params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.getIdentifier()
             ?: return null
                 .also { Napier.w("Could not parse audience") }
         if ("urn:ietf:params:oauth:jwk-thumbprint" !in request.params.clientMetadata.subjectSyntaxTypesSupported)

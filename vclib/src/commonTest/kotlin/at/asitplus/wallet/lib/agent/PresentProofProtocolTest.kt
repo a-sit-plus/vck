@@ -27,12 +27,10 @@ class PresentProofProtocolTest : FreeSpec({
         verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
         holderProtocol = PresentProofProtocol.newHolderInstance(
             holder = holder,
-            keyId = holderCryptoService.toJsonWebKey().keyId!!,
             serviceEndpoint = "https://example.com/"
         )
         verifierProtocol = PresentProofProtocol.newVerifierInstance(
-            verifier = verifier,
-            keyId = verifierCryptoService.toJsonWebKey().keyId!!
+            verifier = verifier
         )
     }
 
