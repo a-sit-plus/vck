@@ -51,7 +51,7 @@ class MessageWrapper(
             val message = JsonWebMessage.deserialize(payloadString)
                 ?: return ReceivedMessage.Error
                     .also { Napier.w("Could not parse plain message") }
-            return ReceivedMessage.Success(message, senderKey = joseObject.header.getKey())
+            return ReceivedMessage.Success(message, joseObject.header.getKey())
         }
         return ReceivedMessage.Error
             .also { Napier.w("ContentType not matching") }
@@ -67,7 +67,7 @@ class MessageWrapper(
             val message = JsonWebMessage.deserialize(payloadString)
                 ?: return ReceivedMessage.Error
                     .also { Napier.w("Could not parse plain message") }
-            return ReceivedMessage.Success(message, senderKey = joseObject.header.getKey())
+            return ReceivedMessage.Success(message, joseObject.header.getKey())
         }
         return ReceivedMessage.Error
             .also { Napier.w("ContentType not matching") }

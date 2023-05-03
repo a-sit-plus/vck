@@ -175,7 +175,7 @@ class IssueCredentialProtocol(
         val serviceEndpoint = invitation.body.services?.let {
             if (it.isNotEmpty()) it[0].serviceEndpoint else null
         }
-        return InternalNextMessage.SendAndWrap(message, senderKey = senderKey, endpoint = serviceEndpoint)
+        return InternalNextMessage.SendAndWrap(message, senderKey, serviceEndpoint)
             .also { this.threadId = message.threadId }
             .also { this.state = State.REQUEST_CREDENTIAL_SENT }
     }
@@ -223,12 +223,12 @@ class IssueCredentialProtocol(
         val uri = requestCredentialAttachment.credentialManifest.credential.schema.uri
 
         //default pupilID use case: binding key outside JWM, no subject in JWM. set subject to override
-        val subjectKeyId = requestCredentialAttachment.credentialManifest.subject ?: senderKey.getIdentifier()
+        val subjectIdentifier = requestCredentialAttachment.credentialManifest.subject ?: senderKey.getIdentifier()
 
         val requestedAttributeType = AttributeIndex.getTypeOfAttributeForSchemaUri(uri)
             ?: return problemReporter.problemLastMessage(lastMessage.threadId, "requested-attributes-empty")
 
-        val issuedCredentials = issuer?.issueCredentialWithTypes(subjectKeyId, listOf(requestedAttributeType))
+        val issuedCredentials = issuer?.issueCredentialWithTypes(subjectIdentifier, listOf(requestedAttributeType))
             ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
 
         //TODO: Pack this info into `args` or `comment`
@@ -272,7 +272,7 @@ class IssueCredentialProtocol(
             threadId = lastMessage.threadId!!, //is allowed to fail horribly
             attachments = (fulfillmentAttachments + binaryAttachments).toTypedArray()
         )
-        return InternalNextMessage.SendAndWrap(message, senderKey = senderKey)
+        return InternalNextMessage.SendAndWrap(message, senderKey)
             .also { this.threadId = message.threadId }
             .also { this.state = State.FINISHED }
     }
