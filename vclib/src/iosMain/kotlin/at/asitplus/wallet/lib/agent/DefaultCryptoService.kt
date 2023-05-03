@@ -50,7 +50,7 @@ import platform.CoreFoundation.CFDictionaryAddValue as CFDictionaryAddValue1
  */
 @Suppress("UNCHECKED_CAST")
 actual class DefaultCryptoService : CryptoService {
-    
+
     override val jwsAlgorithm = JwsAlgorithm.ES256
     private val privateKey: SecKeyRef
     private val publicKey: SecKeyRef

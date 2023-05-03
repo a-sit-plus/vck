@@ -79,7 +79,7 @@ class PresentProofMessengerTest : FreeSpec() {
         }
 
         "selectiveDisclosure" {
-            val expectedSubject = randomCredential(holderCryptoService.identifier)
+            val expectedSubject = randomCredential(holder.identifier)
             val attributeName = (expectedSubject.subject as AtomicAttributeCredential).name
             val attributeValue = (expectedSubject.subject as AtomicAttributeCredential).value
             val expectedVc = issuer.issueCredential(expectedSubject)
@@ -119,7 +119,7 @@ class PresentProofMessengerTest : FreeSpec() {
         }
 
         "selectiveDisclosure_notFulfilled" {
-            val expectedSubject = randomCredential(holderCryptoService.identifier)
+            val expectedSubject = randomCredential(holder.identifier)
             val attributeName = (expectedSubject.subject as AtomicAttributeCredential).name
             val attributeValue = (expectedSubject.subject as AtomicAttributeCredential).value
             val expectedVc = issuer.issueCredential(expectedSubject).toStoreCredentialInput()

@@ -6,6 +6,7 @@ Release 1.8.0:
  - Change type of `exp` and `nbf` in `JwsHeader` from `long` to `Instant`
  - Remove all references to "attribute names" in credential subjects, we'll only use types from now on, as in the [W3C VC Data Model](https://w3c.github.io/vc-data-model/#types), e.g. deprecate the usage of methods referencing attribute names
  - Rename `keyId` to `identifier` (calculated from the Json Web Key) in `CryptoService` to decouple identifiers in VC from keyIds
+ - Add `identifier` to `Holder`, `Verifier`, `Issuer`, which is by default the `identifier` of the `CryptoService`, i.e. typically the `keyId`
 
 Release 1.7.2:
  - Refactor `LibraryInitializer.registerExtensionLibrary`, see Readme

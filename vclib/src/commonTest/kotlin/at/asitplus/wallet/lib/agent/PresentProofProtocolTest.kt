@@ -42,7 +42,7 @@ class PresentProofProtocolTest : FreeSpec({
                 DefaultCryptoService(),
                 dataProvider = DummyCredentialDataProvider(),
             ).issueCredentialWithTypes(
-                holderCryptoService.identifier,
+                holder.identifier,
                 listOf(ConstantIndex.Generic.vcType)
             ).toStoreCredentialInput()
         )
@@ -75,7 +75,7 @@ class PresentProofProtocolTest : FreeSpec({
                 DefaultCryptoService(),
                 dataProvider = DummyCredentialDataProvider(),
             ).issueCredentialWithTypes(
-                holderCryptoService.identifier,
+                holder.identifier,
                 listOf(ConstantIndex.Generic.vcType)
             ).toStoreCredentialInput()
         )

@@ -20,21 +20,17 @@ class ValidatorVpTest : FreeSpec({
     lateinit var validator: Validator
     lateinit var issuer: Issuer
     lateinit var issuerCredentialStore: IssuerCredentialStore
-    lateinit var issuerCryptoService: CryptoService
     lateinit var holder: Holder
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var holderJwsService: JwsService
     lateinit var holderCryptoService: CryptoService
     lateinit var verifier: Verifier
-    lateinit var verifierCryptoService: CryptoService
     lateinit var challenge: String
 
     beforeEach {
         validator = Validator.newDefaultInstance(DefaultVerifierCryptoService())
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuerCryptoService = DefaultCryptoService()
         issuer = IssuerAgent.newDefaultInstance(
-            cryptoService = issuerCryptoService,
             issuerCredentialStore = issuerCredentialStore,
             dataProvider = DummyCredentialDataProvider(),
         )
@@ -45,13 +41,12 @@ class ValidatorVpTest : FreeSpec({
             subjectCredentialStore = holderCredentialStore,
         )
         holderJwsService = DefaultJwsService(holderCryptoService)
-        verifierCryptoService = DefaultCryptoService()
-        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
+        verifier = VerifierAgent.newRandomInstance()
         challenge = uuid4().toString()
         runBlocking {
             holder.storeCredentials(
                 issuer.issueCredentialWithTypes(
-                    holderCryptoService.identifier,
+                    holder.identifier,
                     listOf(ConstantIndex.Generic.vcType)
                 ).toStoreCredentialInput()
             )
@@ -59,7 +54,7 @@ class ValidatorVpTest : FreeSpec({
     }
 
     "correct challenge in VP leads to Success" {
-        val vp = holder.createPresentation(challenge, verifierCryptoService.identifier)
+        val vp = holder.createPresentation(challenge, verifier.identifier)
 
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
@@ -71,11 +66,7 @@ class ValidatorVpTest : FreeSpec({
         val holderCredentials = holder.getCredentials()
         holderCredentials.shouldNotBeNull()
         val holderVcSerialized = holderCredentials.map { it.vcSerialized }.map { it.reversed() }
-        val vp = holder.createPresentation(
-            holderVcSerialized,
-            challenge,
-            verifierCryptoService.identifier
-        )
+        val vp = holder.createPresentation(holderVcSerialized, challenge, verifier.identifier)
         vp.shouldNotBeNull()
 
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
@@ -87,7 +78,7 @@ class ValidatorVpTest : FreeSpec({
     }
 
     "wrong challenge in VP leads to InvalidStructure" {
-        val vp = holder.createPresentation("challenge", verifierCryptoService.identifier)
+        val vp = holder.createPresentation("challenge", verifier.identifier)
 
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
@@ -105,7 +96,7 @@ class ValidatorVpTest : FreeSpec({
     }
 
     "valid parsed presentation should separate revoked and valid credentials" {
-        val vp = holder.createPresentation(challenge, verifierCryptoService.identifier)
+        val vp = holder.createPresentation(challenge, verifier.identifier)
 
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
@@ -135,8 +126,8 @@ class ValidatorVpTest : FreeSpec({
         val vp = VerifiablePresentation(validCredentials.toTypedArray())
         val vpSerialized = vp.toJws(
             challenge = challenge,
-            issuerId = holderCryptoService.identifier,
-            audienceId = verifierCryptoService.identifier,
+            issuerId = holder.identifier,
+            audienceId = verifier.identifier,
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
         val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
@@ -154,8 +145,8 @@ class ValidatorVpTest : FreeSpec({
         val vpSerialized = VerifiablePresentationJws(
             vp = vp,
             challenge = challenge,
-            issuer = verifierCryptoService.identifier,
-            audience = verifierCryptoService.identifier,
+            issuer = verifier.identifier,
+            audience = verifier.identifier,
             jwtId = vp.id,
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
@@ -173,8 +164,8 @@ class ValidatorVpTest : FreeSpec({
         val vpSerialized = VerifiablePresentationJws(
             vp = vp,
             challenge = challenge,
-            issuer = holderCryptoService.identifier,
-            audience = verifierCryptoService.identifier,
+            issuer = holder.identifier,
+            audience = verifier.identifier,
             jwtId = "wrong_jwtId",
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
@@ -195,8 +186,8 @@ class ValidatorVpTest : FreeSpec({
         )
         val vpSerialized = vp.toJws(
             challenge = challenge,
-            issuerId = holderCryptoService.identifier,
-            audienceId = verifierCryptoService.identifier,
+            issuerId = holder.identifier,
+            audienceId = verifier.identifier,
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
         val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
