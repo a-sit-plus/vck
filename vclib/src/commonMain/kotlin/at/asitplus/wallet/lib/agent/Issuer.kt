@@ -25,6 +25,12 @@ interface Issuer {
     }
 
     /**
+     * The identifier for this agent, typically the `keyId` from the cryptographic key,
+     * e.g. `did:key:mAB...` or `urn:ietf:params:oauth:jwk-thumbprint:sha256:...`
+     */
+    val identifier: String
+
+    /**
      * Issues credentials for all [attributeNames] to [subjectId]
      */
     @Deprecated(message = "Use attribute types only and call `issueCredentialWithTypes`")

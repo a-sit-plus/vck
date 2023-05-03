@@ -11,6 +11,12 @@ import at.asitplus.wallet.lib.data.VerifiablePresentation
 interface Holder {
 
     /**
+     * The identifier for this agent, typically the `keyId` from the cryptographic key,
+     * e.g. `did:key:mAB...` or `urn:ietf:params:oauth:jwk-thumbprint:sha256:...`
+     */
+    val identifier: String
+
+    /**
      * Sets the revocation list ot use for further processing of Verifiable Credentials
      *
      * @return `true` if the revocation list has been validated and set, `false` otherwise
@@ -112,6 +118,5 @@ interface Holder {
          */
         data class Signed(val jws: String) : CreatePresentationResult()
     }
-
 
 }

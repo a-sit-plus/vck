@@ -30,13 +30,13 @@ class IssuerAgent constructor(
     private val revocationListLifetime: Duration = 48.hours,
     private val jwsService: JwsService,
     private val clock: Clock = Clock.System,
-    private val issuerId: String,
+    override val identifier: String,
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
 ) : Issuer {
 
     companion object {
         fun newDefaultInstance(
-            cryptoService: CryptoService,
+            cryptoService: CryptoService = DefaultCryptoService(),
             verifierCryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
             issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
             clock: Clock = Clock.System,
@@ -50,7 +50,7 @@ class IssuerAgent constructor(
             issuerCredentialStore = issuerCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
             dataProvider = dataProvider,
-            issuerId = cryptoService.identifier,
+            identifier = cryptoService.identifier,
             timePeriodProvider = timePeriodProvider,
             clock = clock,
         )
@@ -140,7 +140,7 @@ class IssuerAgent constructor(
             CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
         val vc = VerifiableCredential(
             id = vcId,
-            issuer = issuerId,
+            issuer = identifier,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             credentialStatus = credentialStatus,
@@ -168,7 +168,7 @@ class IssuerAgent constructor(
         val subject = RevocationListSubject("$revocationListUrl#list", revocationList)
         val credential = VerifiableCredential(
             id = revocationListUrl,
-            issuer = issuerId,
+            issuer = identifier,
             issuanceDate = clock.now(),
             lifetime = revocationListLifetime,
             credentialSubject = subject

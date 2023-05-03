@@ -6,7 +6,6 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Clock
 
 
 /**
@@ -17,7 +16,7 @@ class HolderAgent constructor(
     private val validator: Validator = Validator.newDefaultInstance(),
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val jwsService: JwsService,
-    private val holderId: String
+    override val identifier: String
 ) : Holder {
 
     companion object {
@@ -25,12 +24,11 @@ class HolderAgent constructor(
             cryptoService: CryptoService = DefaultCryptoService(),
             verifierCryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
             subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
-            clock: Clock = Clock.System,
         ) = HolderAgent(
             validator = Validator.newDefaultInstance(verifierCryptoService, Parser()),
             subjectCredentialStore = subjectCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
-            holderId = cryptoService.identifier,
+            identifier = cryptoService.identifier,
         )
 
         /**
@@ -43,7 +41,7 @@ class HolderAgent constructor(
             validator = Validator.newDefaultInstance(DefaultVerifierCryptoService(), Parser()),
             subjectCredentialStore = subjectCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
-            holderId = cryptoService.identifier,
+            identifier = cryptoService.identifier,
         )
     }
 
@@ -67,7 +65,7 @@ class HolderAgent constructor(
         val rejected = mutableListOf<String>()
         val attachments = mutableListOf<Holder.StoredAttachmentResult>()
         credentialList.forEach { cred ->
-            when (val vc = validator.verifyVcJws(cred.vcJws, holderId)) {
+            when (val vc = validator.verifyVcJws(cred.vcJws, identifier)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Success -> accepted += vc.jws
@@ -149,7 +147,7 @@ class HolderAgent constructor(
         audienceId: String,
     ): Holder.CreatePresentationResult? {
         val vp = VerifiablePresentation(validCredentials.toTypedArray())
-        val vpSerialized = vp.toJws(challenge, holderId, audienceId).serialize()
+        val vpSerialized = vp.toJws(challenge, identifier, audienceId).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
         val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
             ?: return null

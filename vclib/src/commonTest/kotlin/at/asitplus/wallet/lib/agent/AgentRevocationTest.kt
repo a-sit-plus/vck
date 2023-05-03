@@ -21,7 +21,6 @@ import kotlin.time.Duration.Companion.seconds
 class AgentRevocationTest : FreeSpec({
 
     lateinit var issuerCredentialStore: IssuerCredentialStore
-    lateinit var verifierCryptoService: CryptoService
     lateinit var verifier: Verifier
     lateinit var issuer: Issuer
     lateinit var expectedRevokedIndexes: List<Long>
@@ -33,10 +32,7 @@ class AgentRevocationTest : FreeSpec({
             issuerCredentialStore = issuerCredentialStore,
             dataProvider = DummyCredentialDataProvider()
         )
-        verifierCryptoService = DefaultCryptoService()
-        verifier = VerifierAgent.newDefaultInstance(
-            localId = verifierCryptoService.identifier,
-        )
+        verifier = VerifierAgent.newRandomInstance()
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
 
@@ -57,7 +53,7 @@ class AgentRevocationTest : FreeSpec({
 
     "credentials should contain status information" {
         val result = issuer.issueCredentialWithTypes(
-            verifierCryptoService.identifier,
+            verifier.identifier,
             listOf(ConstantIndex.Generic.vcType)
         )
         if (result.failed.isNotEmpty()) fail("no issued credentials")
@@ -77,8 +73,6 @@ class AgentRevocationTest : FreeSpec({
             cryptoService = DefaultCryptoService(),
             issuerCredentialStore = issuerCredentialStore,
         )
-        verifierCryptoService = DefaultCryptoService()
-        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 
@@ -98,8 +92,6 @@ class AgentRevocationTest : FreeSpec({
             cryptoService = DefaultCryptoService(),
             issuerCredentialStore = issuerCredentialStore,
         )
-        verifierCryptoService = DefaultCryptoService()
-        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 

@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import io.matthewnelson.component.base64.encodeBase64
 import at.asitplus.wallet.lib.data.jsonSerializer
 import io.github.aakira.napier.Napier
-import io.ktor.util.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
