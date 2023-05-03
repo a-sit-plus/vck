@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.msg.JsonWebMessage
 
 
@@ -14,7 +15,7 @@ interface ProtocolStateMachine<T> {
 
     fun startDirect(): InternalNextMessage
 
-    suspend fun parseMessage(body: JsonWebMessage, senderKeyId: String): InternalNextMessage
+    suspend fun parseMessage(body: JsonWebMessage, senderKey: JsonWebKey): InternalNextMessage
 
     fun getResult(): T?
 

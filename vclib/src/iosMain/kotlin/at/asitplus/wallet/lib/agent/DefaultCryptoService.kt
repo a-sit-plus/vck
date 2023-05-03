@@ -173,7 +173,12 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
         }
     }
 
-    override fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? {
+}
+
+@Suppress("UNCHECKED_CAST")
+actual object CryptoUtils {
+
+    actual fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? {
         memScoped {
             val certData = CFBridgingRetain(toData(it)) as CFDataRef
             val certificate = SecCertificateCreateWithData(null, certData)
@@ -183,6 +188,7 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
             return JsonWebKey.fromAnsiX963Bytes(JwkType.EC, EcCurve.SECP_256_R_1, data.toByteArray())
         }
     }
+
 }
 
 data class DefaultEphemeralKeyHolder(val publicKey: SecKeyRef, val privateKey: SecKeyRef? = null) : EphemeralKeyHolder {

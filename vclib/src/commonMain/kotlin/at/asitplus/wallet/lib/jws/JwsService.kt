@@ -213,9 +213,7 @@ class DefaultVerifierJwsService(
      */
     override fun verifyJwsObject(jwsObject: JwsSigned, serialized: String?): Boolean {
         val header = jwsObject.header
-        val publicKey = header.keyId?.let { JsonWebKey.fromKeyId(it) }
-            ?: header.jsonWebKey
-            ?: header.certificateChain?.first()?.let { cryptoService.extractPublicKeyFromX509Cert(it) }
+        val publicKey = header.getKey()
             ?: return false
                 .also { Napier.w("Could not extract PublicKey from header: $header") }
         val verified = cryptoService.verify(

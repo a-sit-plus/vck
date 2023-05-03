@@ -58,7 +58,7 @@ class Validator(
             return false
                 .also { Napier.w("Revocation List: Signature invalid") }
         val payload = jws.payload.decodeToString()
-        val kid = jws.header.keyId ?: return false.also { Napier.d("no kid in header") }
+        val kid = jws.header.keyId
         val vcJws = VerifiableCredentialJws.deserialize(payload)
             ?: return false
                 .also { Napier.w("Revocation List: Could not parse payload") }
@@ -133,8 +133,7 @@ class Validator(
             return Verifier.VerifyPresentationResult.InvalidStructure(it)
                 .also { Napier.w("VP: Signature invalid") }
         val payload = jws.payload.decodeToString()
-        val kid = jws.header.keyId ?: return Verifier.VerifyPresentationResult.InvalidStructure(it)
-            .also { Napier.d("no kid in header") }
+        val kid = jws.header.keyId
         val vpJws =
             kotlin.runCatching { VerifiablePresentationJws.deserialize(payload) }.getOrNull()
                 ?: return Verifier.VerifyPresentationResult.InvalidStructure(it)
@@ -192,8 +191,7 @@ class Validator(
         if (checkRevocationStatus(vcJws) == RevocationStatus.REVOKED)
             return Verifier.VerifyCredentialResult.Revoked(it, vcJws)
                 .also { Napier.d("VC: revoked") }
-        val kid = jws.header.keyId ?: return Verifier.VerifyCredentialResult.InvalidStructure(it)
-            .also { Napier.d("VC: No kid in header") }
+        val kid = jws.header.keyId
         return when (parser.parseVcJws(it, vcJws, kid)) {
             is Parser.ParseVcResult.InvalidStructure -> Verifier.VerifyCredentialResult.InvalidStructure(it)
                 .also { Napier.d("VC: Invalid structure from Parser") }

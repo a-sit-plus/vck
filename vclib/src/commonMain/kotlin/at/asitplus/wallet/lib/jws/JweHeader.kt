@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.wallet.lib.agent.CryptoUtils
 import at.asitplus.wallet.lib.data.jsonSerializer
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
@@ -17,7 +18,6 @@ data class JweHeader(
     @SerialName("enc")
     val encryption: JweEncryption?,
     @SerialName("kid")
-    // TODO Usages
     val keyId: String? = null,
     @SerialName("typ")
     val type: String?,
@@ -71,6 +71,11 @@ data class JweHeader(
         result = 31 * result + (agreementPartyUInfo?.contentHashCode() ?: 0)
         result = 31 * result + (agreementPartyVInfo?.contentHashCode() ?: 0)
         return result
+    }
+
+    fun getKey(): JsonWebKey? {
+        return jsonWebKey
+            ?: keyId?.let { JsonWebKey.fromKeyId(it) }
     }
 
     companion object {

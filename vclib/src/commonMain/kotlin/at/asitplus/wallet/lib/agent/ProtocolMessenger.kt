@@ -97,8 +97,8 @@ abstract class ProtocolMessenger<T : ProtocolStateMachine<U>, U>(
         protocolRunManager.getActiveRuns().forEach { protocol ->
             when (val next = protocol.parseMessage(
                 parsedMessage.body,
-                parsedMessage.senderKeyId ?: return NextMessage.Error("No Kid present")
-                    .also { Napier.w("No kid present") })) {
+                parsedMessage.senderKey ?: return NextMessage.Error("No sender key present")
+                    .also { Napier.w("No sender key present") })) {
                 is InternalNextMessage.Finished -> return NextMessage.Result(protocol.getResult())
                 is InternalNextMessage.SendAndWrap -> return wrapNextMessage(next)
                 is InternalNextMessage.SendProblemReport -> return wrapProblemReportMessage(next)
@@ -112,8 +112,8 @@ abstract class ProtocolMessenger<T : ProtocolStateMachine<U>, U>(
     }
 
     private suspend fun wrapNextMessage(next: InternalNextMessage.SendAndWrap): NextMessage {
-        if (signAndEncryptFollowingMessages && next.senderKeyId != null) {
-            val signedAndEncryptedJwe = messageWrapper.createSignedAndEncryptedJwe(next.message, next.senderKeyId)
+        if (signAndEncryptFollowingMessages && next.senderKey != null) {
+            val signedAndEncryptedJwe = messageWrapper.createSignedAndEncryptedJwe(next.message, next.senderKey)
                 ?: return NextMessage.SendProblemReport("Could not sign message", next.endpoint)
             return NextMessage.Send(signedAndEncryptedJwe, next.endpoint)
         }
@@ -126,8 +126,8 @@ abstract class ProtocolMessenger<T : ProtocolStateMachine<U>, U>(
     }
 
     private suspend fun wrapProblemReportMessage(next: InternalNextMessage.SendProblemReport): NextMessage {
-        if (signAndEncryptFollowingMessages && next.senderKeyId != null) {
-            val signedAndEncryptedJwe = messageWrapper.createSignedAndEncryptedJwe(next.message, next.senderKeyId)
+        if (signAndEncryptFollowingMessages && next.senderKey != null) {
+            val signedAndEncryptedJwe = messageWrapper.createSignedAndEncryptedJwe(next.message, next.senderKey)
                 ?: return NextMessage.SendProblemReport("Could not sign message", next.endpoint)
             return NextMessage.SendProblemReport(signedAndEncryptedJwe, next.endpoint)
         }

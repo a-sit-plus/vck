@@ -51,7 +51,7 @@ class MessageWrapper(
             val message = JsonWebMessage.deserialize(payloadString)
                 ?: return ReceivedMessage.Error
                     .also { Napier.w("Could not parse plain message") }
-            return ReceivedMessage.Success(message, joseObject.header.keyId)
+            return ReceivedMessage.Success(message, senderKey = joseObject.header.getKey())
         }
         return ReceivedMessage.Error
             .also { Napier.w("ContentType not matching") }
@@ -67,17 +67,14 @@ class MessageWrapper(
             val message = JsonWebMessage.deserialize(payloadString)
                 ?: return ReceivedMessage.Error
                     .also { Napier.w("Could not parse plain message") }
-            return ReceivedMessage.Success(message, joseObject.header.keyId)
+            return ReceivedMessage.Success(message, senderKey = joseObject.header.getKey())
         }
         return ReceivedMessage.Error
             .also { Napier.w("ContentType not matching") }
     }
 
-    fun createEncryptedJwe(jwm: JsonWebMessage, recipientKeyId: String): String? {
+    fun createEncryptedJwe(jwm: JsonWebMessage, recipientKey: JsonWebKey): String? {
         val jwePayload = jwm.serialize().encodeToByteArray()
-        val recipientKey = JsonWebKey.fromKeyId(recipientKeyId)
-            ?: return null
-                .also { Napier.w("Can not calc JWK from recipientKeyId: $recipientKeyId") }
         return jwsService.encryptJweObject(
             JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
             jwePayload,
@@ -88,13 +85,10 @@ class MessageWrapper(
         )
     }
 
-    suspend fun createSignedAndEncryptedJwe(jwm: JsonWebMessage, recipientKeyId: String): String? {
+    suspend fun createSignedAndEncryptedJwe(jwm: JsonWebMessage, recipientKey: JsonWebKey): String? {
         val jwePayload = createSignedJwt(jwm)?.encodeToByteArray()
             ?: return null
                 .also { Napier.w("Can not create signed JWT for encryption") }
-        val recipientKey = JsonWebKey.fromKeyId(recipientKeyId)
-            ?: return null
-                .also { Napier.w("Can not calc JWK from recipientKeyId: $recipientKeyId") }
         return jwsService.encryptJweObject(
             JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
             jwePayload,
