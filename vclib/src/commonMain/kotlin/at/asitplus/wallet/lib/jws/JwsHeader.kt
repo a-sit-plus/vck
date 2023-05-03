@@ -2,6 +2,7 @@
 
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.wallet.lib.agent.CryptoUtils
 import at.asitplus.wallet.lib.data.InstantLongSerializer
 import at.asitplus.wallet.lib.data.jsonSerializer
 import io.github.aakira.napier.Napier
@@ -73,6 +74,12 @@ data class JwsHeader(
         result = 31 * result + (expiration?.hashCode() ?: 0)
         result = 31 * result + (jsonWebKey?.hashCode() ?: 0)
         return result
+    }
+
+    fun getKey(): JsonWebKey? {
+        return jsonWebKey
+            ?: keyId?.let { JsonWebKey.fromKeyId(it) }
+            ?: certificateChain?.firstOrNull()?.let { CryptoUtils.extractPublicKeyFromX509Cert(it) }
     }
 
     companion object {

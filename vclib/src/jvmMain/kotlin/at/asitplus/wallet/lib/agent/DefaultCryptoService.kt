@@ -175,12 +175,17 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
         }
     }
 
-    override fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? = try {
+}
+
+actual object CryptoUtils {
+
+    actual fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? = try {
         val pubKey = CertificateFactory.getInstance("X.509").generateCertificate(it.inputStream()).publicKey
         if (pubKey is ECPublicKey) JsonWebKey.fromJcaKey(pubKey, EcCurve.SECP_256_R_1) else null
     } catch (e: Throwable) {
         null
     }
+
 }
 
 val JwsAlgorithm.jcaName

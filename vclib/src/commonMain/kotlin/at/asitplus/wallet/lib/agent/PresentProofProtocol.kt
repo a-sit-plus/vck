@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.jsonSerializer
+import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.msg.AttachmentFormatReference
 import at.asitplus.wallet.lib.msg.JsonWebMessage
 import at.asitplus.wallet.lib.msg.JwmAttachment
@@ -115,16 +116,13 @@ class PresentProofProtocol(
         return createRequestPresentation()
     }
 
-    override suspend fun parseMessage(
-        body: JsonWebMessage,
-        senderKeyId: String
-    ): InternalNextMessage {
+    override suspend fun parseMessage(body: JsonWebMessage, senderKey: JsonWebKey): InternalNextMessage {
         when (this.state) {
             State.START -> {
                 if (body is OutOfBandInvitation)
-                    return createRequestPresentation(body, senderKeyId)
+                    return createRequestPresentation(body, senderKey)
                 if (body is RequestPresentation)
-                    return createPresentation(body, senderKeyId)
+                    return createPresentation(body, senderKey)
                 return InternalNextMessage.IncorrectState("messageType")
                     .also { Napier.w("Unexpected messageType: ${body.type}") }
             }
@@ -136,7 +134,7 @@ class PresentProofProtocol(
                 if (body.parentThreadId != invitationId)
                     return InternalNextMessage.IncorrectState("parentThreadId")
                         .also { Napier.w("Unexpected parentThreadId: ${body.parentThreadId}") }
-                return createPresentation(body, senderKeyId)
+                return createPresentation(body, senderKey)
             }
 
             State.REQUEST_PRESENTATION_SENT -> {
@@ -184,10 +182,7 @@ class PresentProofProtocol(
             .also { this.state = State.REQUEST_PRESENTATION_SENT }
     }
 
-    private fun createRequestPresentation(
-        invitation: OutOfBandInvitation,
-        senderKeyId: String
-    ): InternalNextMessage {
+    private fun createRequestPresentation(invitation: OutOfBandInvitation, senderKey: JsonWebKey): InternalNextMessage {
         val credentialScheme = ConstantIndex.Parser.parseGoalCode(invitation.body.goalCode)
             ?: return problemReporter.problemLastMessage(invitation.threadId, "goal-code-unknown")
         val message = buildRequestPresentationMessage(credentialScheme, invitation.id)
@@ -195,7 +190,7 @@ class PresentProofProtocol(
         val serviceEndpoint = invitation.body.services?.let {
             if (it.isNotEmpty()) it[0].serviceEndpoint else null
         }
-        return InternalNextMessage.SendAndWrap(message, senderKeyId, serviceEndpoint)
+        return InternalNextMessage.SendAndWrap(message, senderKey = senderKey, endpoint = serviceEndpoint)
             .also { this.threadId = message.threadId }
             .also { this.state = State.REQUEST_PRESENTATION_SENT }
     }
@@ -256,10 +251,7 @@ class PresentProofProtocol(
         filter = ConstraintFilter(type = "string", const = attributeType)
     )
 
-    private suspend fun createPresentation(
-        lastMessage: RequestPresentation,
-        senderKeyId: String
-    ): InternalNextMessage {
+    private suspend fun createPresentation(lastMessage: RequestPresentation, senderKey: JsonWebKey): InternalNextMessage {
         val attachments = lastMessage.attachments
             ?: return problemReporter.problemLastMessage(
                 lastMessage.threadId,
@@ -285,7 +277,7 @@ class PresentProofProtocol(
             .mapNotNull { it.const }
         val vp = holder?.createPresentation(
             requestPresentationAttachment.options.challenge,
-            requestPresentationAttachment.options.verifier ?: senderKeyId,
+            requestPresentationAttachment.options.verifier ?: senderKey.getIdentifier(),
             attributeTypes = requestedTypes.ifEmpty { null },
             attributeNames = requestedFields.ifEmpty { null }
         ) ?: return problemReporter.problemInternal(lastMessage.threadId, "vp-empty")
@@ -306,7 +298,7 @@ class PresentProofProtocol(
             threadId = lastMessage.threadId!!,
             attachment = attachment
         )
-        return InternalNextMessage.SendAndWrap(message, senderKeyId)
+        return InternalNextMessage.SendAndWrap(message, senderKey = senderKey)
             .also { this.threadId = message.threadId }
             .also { this.state = State.FINISHED }
     }

@@ -58,8 +58,10 @@ interface VerifierCryptoService {
         publicKey: JsonWebKey
     ): KmmResult<Boolean>
 
-    fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey?
+}
 
+expect object CryptoUtils {
+    fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey?
 }
 
 data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteArray) {
