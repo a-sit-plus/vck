@@ -14,20 +14,20 @@ class VerifierAgent private constructor(
 
     companion object {
         fun newDefaultInstance(
-            keyId: String,
+            identifier: String,
             cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
             validator: Validator = Validator.newDefaultInstance(cryptoService),
         ): VerifierAgent = VerifierAgent(
             validator = validator,
-            identifier = keyId
+            identifier = identifier
         )
 
         /**
          * Explicitly short argument list to use it from Swift
          */
-        fun newDefaultInstance(localId: String): VerifierAgent = VerifierAgent(
+        fun newDefaultInstance(identifier: String): VerifierAgent = VerifierAgent(
             validator = Validator.newDefaultInstance(),
-            identifier = localId
+            identifier = identifier
         )
 
         /**

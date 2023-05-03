@@ -29,7 +29,7 @@ class Parser(
      *
      * @param it the JWS enclosing the VP, in compact representation
      * @param challenge the nonce sent from the verifier to the holder creating the VP
-     * @param localIdentifier the keyId of the verifier that has requested the VP from the holder
+     * @param localIdentifier the identifier (e.g. `keyId`) of the verifier that has requested the VP from the holder
      */
     fun parseVpJws(it: String, challenge: String, localIdentifier: String): ParseVpResult {
         Napier.d("Parsing VP $it")

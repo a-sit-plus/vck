@@ -190,7 +190,7 @@ class PresentProofProtocol(
         val serviceEndpoint = invitation.body.services?.let {
             if (it.isNotEmpty()) it[0].serviceEndpoint else null
         }
-        return InternalNextMessage.SendAndWrap(message, senderKey = senderKey, endpoint = serviceEndpoint)
+        return InternalNextMessage.SendAndWrap(message, senderKey, serviceEndpoint)
             .also { this.threadId = message.threadId }
             .also { this.state = State.REQUEST_PRESENTATION_SENT }
     }
@@ -298,7 +298,7 @@ class PresentProofProtocol(
             threadId = lastMessage.threadId!!,
             attachment = attachment
         )
-        return InternalNextMessage.SendAndWrap(message, senderKey = senderKey)
+        return InternalNextMessage.SendAndWrap(message, senderKey)
             .also { this.threadId = message.threadId }
             .also { this.state = State.FINISHED }
     }
