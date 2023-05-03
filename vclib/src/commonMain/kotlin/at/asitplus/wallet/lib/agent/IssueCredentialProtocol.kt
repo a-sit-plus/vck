@@ -39,7 +39,6 @@ typealias IssueCredentialProtocolResult = Holder.StoredCredentialsResult
 class IssueCredentialProtocol(
     private val issuer: Issuer? = null,
     private val holder: Holder? = null,
-    private val keyId: String,
     private val serviceEndpoint: String? = null,
     private val credentialScheme: ConstantIndex.CredentialScheme
 ) : ProtocolStateMachine<IssueCredentialProtocolResult> {
@@ -51,11 +50,9 @@ class IssueCredentialProtocol(
          */
         fun newHolderInstance(
             holder: Holder,
-            keyId: String,
             credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
         ) = IssueCredentialProtocol(
             holder = holder,
-            keyId = keyId,
             credentialScheme = credentialScheme,
         )
 
@@ -65,12 +62,10 @@ class IssueCredentialProtocol(
          */
         fun newIssuerInstance(
             issuer: Issuer,
-            keyId: String,
             serviceEndpoint: String? = null,
             credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
         ) = IssueCredentialProtocol(
             issuer = issuer,
-            keyId = keyId,
             serviceEndpoint = serviceEndpoint,
             credentialScheme = credentialScheme,
         )
@@ -142,6 +137,8 @@ class IssueCredentialProtocol(
     }
 
     private fun createOobInvitation(): InternalNextMessage {
+        val recipientKey = issuer?.identifier
+            ?: return InternalNextMessage.IncorrectState("issuer")
         val message = OutOfBandInvitation(
             body = OutOfBandInvitationBody(
                 handshakeProtocols = arrayOf(SchemaIndex.PROT_ISSUE_CRED),
@@ -150,7 +147,7 @@ class IssueCredentialProtocol(
                 services = arrayOf(
                     OutOfBandService(
                         type = "did-communication",
-                        recipientKeys = arrayOf(keyId),
+                        recipientKeys = arrayOf(recipientKey),
                         serviceEndpoint = serviceEndpoint ?: "https://example.com",
                     )
                 )
@@ -163,6 +160,7 @@ class IssueCredentialProtocol(
 
     private fun createRequestCredential(): InternalNextMessage {
         val message = buildRequestCredentialMessage(credentialScheme)
+            ?: return InternalNextMessage.IncorrectState("holder")
         return InternalNextMessage.SendAndWrap(message)
             .also { this.threadId = message.threadId }
             .also { this.state = State.REQUEST_CREDENTIAL_SENT }
@@ -172,6 +170,7 @@ class IssueCredentialProtocol(
         val credentialScheme = ConstantIndex.Parser.parseGoalCode(invitation.body.goalCode)
             ?: return problemReporter.problemLastMessage(invitation.threadId, "goal-code-unknown")
         val message = buildRequestCredentialMessage(credentialScheme, invitation.id)
+            ?: return InternalNextMessage.IncorrectState("holder")
         val serviceEndpoint = invitation.body.services?.let {
             if (it.isNotEmpty()) it[0].serviceEndpoint else null
         }
@@ -183,10 +182,12 @@ class IssueCredentialProtocol(
     private fun buildRequestCredentialMessage(
         credentialScheme: ConstantIndex.CredentialScheme,
         parentThreadId: String? = null,
-    ): RequestCredential {
+    ): RequestCredential? {
+        val subject = holder?.identifier
+            ?: return null
         val credentialManifest = CredentialManifest(
             issuer = "somebody",
-            subject = keyId,
+            subject = subject,
             credential = CredentialDefinition(
                 name = credentialScheme.credentialDefinitionName,
                 schema = SchemaReference(uri = credentialScheme.schemaUri),

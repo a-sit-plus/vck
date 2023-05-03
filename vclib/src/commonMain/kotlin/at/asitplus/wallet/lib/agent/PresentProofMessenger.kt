@@ -7,7 +7,6 @@ import com.benasher44.uuid.uuid4
 class PresentProofMessenger private constructor(
     private val holder: Holder? = null,
     private val verifier: Verifier? = null,
-    private val keyId: String,
     messageWrapper: MessageWrapper,
     private val serviceEndpoint: String? = null,
     private val challengeForPresentation: String = uuid4().toString(),
@@ -27,7 +26,6 @@ class PresentProofMessenger private constructor(
         holder = holder,
         requestedAttributeNames = requestedAttributeNames,
         credentialScheme = credentialScheme,
-        keyId = keyId,
         serviceEndpoint = serviceEndpoint,
         challengeForPresentation = challengeForPresentation,
     )
@@ -39,13 +37,11 @@ class PresentProofMessenger private constructor(
          */
         fun newHolderInstance(
             holder: Holder,
-            keyId: String,
             messageWrapper: MessageWrapper,
             serviceEndpoint: String,
             credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
         ) = PresentProofMessenger(
             holder = holder,
-            keyId = keyId,
             messageWrapper = messageWrapper,
             serviceEndpoint = serviceEndpoint,
             credentialScheme = credentialScheme,
@@ -57,14 +53,12 @@ class PresentProofMessenger private constructor(
          */
         fun newVerifierInstance(
             verifier: Verifier,
-            keyId: String,
             messageWrapper: MessageWrapper,
             credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
             requestedAttributeNames: List<String>? = null,
             challengeForPresentation: String = uuid4().toString()
         ) = PresentProofMessenger(
             verifier = verifier,
-            keyId = keyId,
             messageWrapper = messageWrapper,
             requestedAttributeNames = requestedAttributeNames,
             credentialScheme = credentialScheme,

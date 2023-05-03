@@ -16,10 +16,10 @@ import kotlinx.coroutines.launch
 
 class IssueCredentialMessengerConcurrentTest : FreeSpec() {
 
-    lateinit var issuerCryptoService: CryptoService
-    lateinit var issuer: Issuer
-    lateinit var issuerServiceEndpoint: String
-    lateinit var issuerMessenger: IssueCredentialMessenger
+    private lateinit var issuerCryptoService: CryptoService
+    private lateinit var issuer: Issuer
+    private lateinit var issuerServiceEndpoint: String
+    private lateinit var issuerMessenger: IssueCredentialMessenger
 
     init {
         beforeEach {
@@ -50,7 +50,6 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
         val cryptoService = DefaultCryptoService()
         return IssueCredentialMessenger.newHolderInstance(
             holder = HolderAgent.newDefaultInstance(cryptoService),
-            keyId = cryptoService.toJsonWebKey().keyId!!,
             messageWrapper = MessageWrapper(cryptoService),
         )
     }
@@ -58,7 +57,6 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
     private fun initIssuerMessenger(scheme: ConstantIndex.CredentialScheme) =
         IssueCredentialMessenger.newIssuerInstance(
             issuer = issuer,
-            keyId = issuerCryptoService.toJsonWebKey().keyId!!,
             messageWrapper = MessageWrapper(issuerCryptoService),
             serviceEndpoint = issuerServiceEndpoint,
             credentialScheme = scheme,

@@ -1,10 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.msg.RequestPresentationAttachment
-import at.asitplus.wallet.lib.msg.RequestPresentationAttachmentOptions
 import at.asitplus.wallet.lib.data.SchemaIndex
-import at.asitplus.wallet.lib.msg.SchemaReference
 import at.asitplus.wallet.lib.data.dif.Constraint
 import at.asitplus.wallet.lib.data.dif.ConstraintField
 import at.asitplus.wallet.lib.data.dif.ConstraintFilter
@@ -22,7 +19,10 @@ import at.asitplus.wallet.lib.msg.OutOfBandService
 import at.asitplus.wallet.lib.msg.Presentation
 import at.asitplus.wallet.lib.msg.PresentationBody
 import at.asitplus.wallet.lib.msg.RequestPresentation
+import at.asitplus.wallet.lib.msg.RequestPresentationAttachment
+import at.asitplus.wallet.lib.msg.RequestPresentationAttachmentOptions
 import at.asitplus.wallet.lib.msg.RequestPresentationBody
+import at.asitplus.wallet.lib.msg.SchemaReference
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.encodeToString
@@ -48,7 +48,6 @@ class PresentProofProtocol(
     private val verifier: Verifier? = null,
     private val requestedAttributeNames: List<String>? = null,
     private val credentialScheme: ConstantIndex.CredentialScheme,
-    private val keyId: String,
     private val serviceEndpoint: String?,
     private val challengeForPresentation: String,
 ) : ProtocolStateMachine<PresentProofProtocolResult> {
@@ -60,13 +59,11 @@ class PresentProofProtocol(
          */
         fun newHolderInstance(
             holder: Holder,
-            keyId: String,
             serviceEndpoint: String,
             credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
         ) = PresentProofProtocol(
             holder = holder,
             credentialScheme = credentialScheme,
-            keyId = keyId,
             serviceEndpoint = serviceEndpoint,
             challengeForPresentation = uuid4().toString(),
         )
@@ -77,7 +74,6 @@ class PresentProofProtocol(
          */
         fun newVerifierInstance(
             verifier: Verifier,
-            keyId: String,
             serviceEndpoint: String? = null,
             credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
             requestedAttributeNames: List<String>? = null,
@@ -85,7 +81,6 @@ class PresentProofProtocol(
             verifier = verifier,
             requestedAttributeNames = requestedAttributeNames,
             credentialScheme = credentialScheme,
-            keyId = keyId,
             serviceEndpoint = serviceEndpoint,
             challengeForPresentation = uuid4().toString()
         )
@@ -133,6 +128,7 @@ class PresentProofProtocol(
                 return InternalNextMessage.IncorrectState("messageType")
                     .also { Napier.w("Unexpected messageType: ${body.type}") }
             }
+
             State.INVITATION_SENT -> {
                 if (body !is RequestPresentation)
                     return InternalNextMessage.IncorrectState("messageType")
@@ -142,6 +138,7 @@ class PresentProofProtocol(
                         .also { Napier.w("Unexpected parentThreadId: ${body.parentThreadId}") }
                 return createPresentation(body, senderKeyId)
             }
+
             State.REQUEST_PRESENTATION_SENT -> {
                 if (body !is Presentation)
                     return InternalNextMessage.IncorrectState("messageType")
@@ -151,12 +148,15 @@ class PresentProofProtocol(
                         .also { Napier.w("Unexpected threadId: ${body.threadId}") }
                 return verifyPresentation(body)
             }
+
             else -> return InternalNextMessage.IncorrectState("state")
                 .also { Napier.w("Unexpected state: $state") }
         }
     }
 
     private fun createOobInvitation(): InternalNextMessage {
+        val recipientKey = holder?.identifier
+            ?: return InternalNextMessage.IncorrectState("holder")
         val message = OutOfBandInvitation(
             body = OutOfBandInvitationBody(
                 handshakeProtocols = arrayOf(SchemaIndex.PROT_PRESENT_PROOF),
@@ -165,7 +165,7 @@ class PresentProofProtocol(
                 services = arrayOf(
                     OutOfBandService(
                         type = "did-communication",
-                        recipientKeys = arrayOf(keyId),
+                        recipientKeys = arrayOf(recipientKey),
                         serviceEndpoint = serviceEndpoint ?: "https://example.com",
                     )
                 ),
@@ -178,6 +178,7 @@ class PresentProofProtocol(
 
     private fun createRequestPresentation(): InternalNextMessage {
         val message = buildRequestPresentationMessage(credentialScheme, null)
+            ?: return InternalNextMessage.IncorrectState("verifier")
         return InternalNextMessage.SendAndWrap(message)
             .also { this.threadId = message.threadId }
             .also { this.state = State.REQUEST_PRESENTATION_SENT }
@@ -190,6 +191,7 @@ class PresentProofProtocol(
         val credentialScheme = ConstantIndex.Parser.parseGoalCode(invitation.body.goalCode)
             ?: return problemReporter.problemLastMessage(invitation.threadId, "goal-code-unknown")
         val message = buildRequestPresentationMessage(credentialScheme, invitation.id)
+            ?: return InternalNextMessage.IncorrectState("verifier")
         val serviceEndpoint = invitation.body.services?.let {
             if (it.isNotEmpty()) it[0].serviceEndpoint else null
         }
@@ -201,7 +203,9 @@ class PresentProofProtocol(
     private fun buildRequestPresentationMessage(
         credentialScheme: ConstantIndex.CredentialScheme,
         parentThreadId: String? = null,
-    ): RequestPresentation {
+    ): RequestPresentation? {
+        val verifierIdentifier = verifier?.identifier
+            ?: return null
         val constraintsNames =
             requestedAttributeNames?.map(this::buildConstraintFieldForName) ?: listOf()
         val constraintsTypes = buildConstraintFieldForType(credentialScheme.vcType)
@@ -223,11 +227,10 @@ class PresentProofProtocol(
             presentationDefinition = presentationDefinition,
             options = RequestPresentationAttachmentOptions(
                 challenge = challengeForPresentation,
-                verifier = keyId
+                verifier = verifierIdentifier,
             )
         )
-        val attachment =
-            JwmAttachment.encodeBase64(jsonSerializer.encodeToString(requestPresentation))
+        val attachment = JwmAttachment.encodeBase64(jsonSerializer.encodeToString(requestPresentation))
         return RequestPresentation(
             body = RequestPresentationBody(
                 comment = "Please show your credentials",

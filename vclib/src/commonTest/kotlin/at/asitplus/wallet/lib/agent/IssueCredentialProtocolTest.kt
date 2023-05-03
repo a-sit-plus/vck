@@ -30,13 +30,11 @@ class IssueCredentialProtocolTest : FreeSpec({
         holder = HolderAgent.newDefaultInstance(holderCryptoService)
         issuerProtocol = IssueCredentialProtocol.newIssuerInstance(
             issuer = issuer,
-            keyId = issuerCryptoService.toJsonWebKey().keyId!!,
             serviceEndpoint = "https://example.com/issue?${uuid4()}",
             credentialScheme = ConstantIndex.Generic,
         )
         holderProtocol = IssueCredentialProtocol.newHolderInstance(
             holder = holder,
-            keyId = holderCryptoService.toJsonWebKey().keyId!!,
             credentialScheme = ConstantIndex.Generic,
         )
     }

@@ -47,13 +47,11 @@ class PresentProofMessengerTest : FreeSpec() {
         "presentProof" {
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
-                keyId = holderCryptoService.toJsonWebKey().keyId!!,
                 messageWrapper = MessageWrapper(holderCryptoService),
                 serviceEndpoint = holderServiceEndpoint
             )
             val verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
-                keyId = verifierCryptoService.toJsonWebKey().keyId!!,
                 messageWrapper = MessageWrapper(verifierCryptoService)
             )
 
@@ -87,13 +85,11 @@ class PresentProofMessengerTest : FreeSpec() {
 
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
-                keyId = holderCryptoService.toJsonWebKey().keyId!!,
                 messageWrapper = MessageWrapper(holderCryptoService),
                 serviceEndpoint = "https://example.com"
             )
             val verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
-                keyId = verifierCryptoService.toJsonWebKey().keyId!!,
                 messageWrapper = MessageWrapper(verifierCryptoService),
                 challengeForPresentation = verifierChallenge,
                 requestedAttributeNames = listOf(attributeName)
@@ -127,13 +123,11 @@ class PresentProofMessengerTest : FreeSpec() {
 
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
-                keyId = holderCryptoService.toJsonWebKey().keyId!!,
                 messageWrapper = MessageWrapper(holderCryptoService),
                 serviceEndpoint = "https://example.com/"
             )
             var verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
-                keyId = verifierCryptoService.toJsonWebKey().keyId!!,
                 messageWrapper = MessageWrapper(verifierCryptoService),
                 challengeForPresentation = verifierChallenge,
                 // subject is not expected to provide an attribute with this name
@@ -162,7 +156,6 @@ class PresentProofMessengerTest : FreeSpec() {
             // note that the subject messenger is not recreated, i.e. it expects another "requestPresentation" message
             verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
-                keyId = verifierCryptoService.toJsonWebKey().keyId!!,
                 messageWrapper = MessageWrapper(verifierCryptoService),
                 challengeForPresentation = verifierChallenge,
                 requestedAttributeNames = listOf(attributeName)
