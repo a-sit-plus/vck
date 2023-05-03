@@ -81,7 +81,7 @@ class JwsServiceTest : FreeSpec({
         val encrypted = jwsService.encryptJweObject(
             JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
             stringPayload.encodeToByteArray(),
-            JsonWebKey.fromKeyId(cryptoService.keyId)!!,
+            cryptoService.toJsonWebKey(),
             JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
             JweAlgorithm.ECDH_ES,
             JweEncryption.A256GCM,

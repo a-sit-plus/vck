@@ -50,7 +50,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
         val cryptoService = DefaultCryptoService()
         return IssueCredentialMessenger.newHolderInstance(
             holder = HolderAgent.newDefaultInstance(cryptoService),
-            keyId = cryptoService.keyId,
+            keyId = cryptoService.toJsonWebKey().keyId!!,
             messageWrapper = MessageWrapper(cryptoService),
         )
     }
@@ -58,7 +58,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
     private fun initIssuerMessenger(scheme: ConstantIndex.CredentialScheme) =
         IssueCredentialMessenger.newIssuerInstance(
             issuer = issuer,
-            keyId = issuerCryptoService.keyId,
+            keyId = issuerCryptoService.toJsonWebKey().keyId!!,
             messageWrapper = MessageWrapper(issuerCryptoService),
             serviceEndpoint = issuerServiceEndpoint,
             credentialScheme = scheme,

@@ -129,6 +129,11 @@ data class JsonWebKey(
 
     fun toJwkThumbprint() = Json.encodeToString(this).encodeToByteArray().toByteString().sha256().base64Url()
 
+    fun getIdentifier(): String {
+        return keyId
+            ?: "urn:ietf:params:oauth:jwk-thumbprint:sha256:${toJwkThumbprint()}"
+    }
+
     override fun toString(): String {
         return "JsonWebKey(type=$type, curve=$curve, keyId=$keyId, x=${x?.encodeBase64()}, y=${y?.encodeBase64()})"
     }

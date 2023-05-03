@@ -22,14 +22,14 @@ class OidcSiopProtocolTest : FreeSpec({
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
         holder = HolderAgent.newDefaultInstance(holderCryptoService)
-        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
+        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
         runBlocking {
             holder.storeCredentials(
                 IssuerAgent.newDefaultInstance(
                     DefaultCryptoService(),
                     dataProvider = DummyCredentialDataProvider(),
                 ).issueCredentialWithTypes(
-                    holderCryptoService.keyId,
+                    holderCryptoService.identifier,
                     listOf(ConstantIndex.Generic.vcType)
                 ).toStoreCredentialInput()
             )

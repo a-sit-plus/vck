@@ -45,7 +45,7 @@ class IssueCredentialMessengerTest : FreeSpec() {
         "wrongKeyId" {
             holderMessenger = IssueCredentialMessenger.newHolderInstance(
                 holder = holder,
-                keyId = issuerCryptoService.keyId,
+                keyId = issuerCryptoService.toJsonWebKey().keyId!!,
                 messageWrapper = MessageWrapper(holderCryptoService),
             )
             issuerMessenger = initIssuerMessenger(ConstantIndex.Generic)
@@ -58,14 +58,14 @@ class IssueCredentialMessengerTest : FreeSpec() {
 
     private fun initHolderMessenger() = IssueCredentialMessenger.newHolderInstance(
         holder = holder,
-        keyId = holderCryptoService.keyId,
+        keyId = holderCryptoService.toJsonWebKey().keyId!!,
         messageWrapper = MessageWrapper(holderCryptoService),
     )
 
     private fun initIssuerMessenger(scheme: ConstantIndex.CredentialScheme) =
         IssueCredentialMessenger.newIssuerInstance(
             issuer = issuer,
-            keyId = issuerCryptoService.keyId,
+            keyId = issuerCryptoService.toJsonWebKey().keyId!!,
             messageWrapper = MessageWrapper(issuerCryptoService),
             serviceEndpoint = issuerServiceEndpoint,
             credentialScheme = scheme,

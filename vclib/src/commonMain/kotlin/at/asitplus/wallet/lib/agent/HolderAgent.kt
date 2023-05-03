@@ -30,7 +30,7 @@ class HolderAgent constructor(
             validator = Validator.newDefaultInstance(verifierCryptoService, Parser()),
             subjectCredentialStore = subjectCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
-            holderId = cryptoService.keyId
+            holderId = cryptoService.identifier,
         )
 
         /**
@@ -43,7 +43,7 @@ class HolderAgent constructor(
             validator = Validator.newDefaultInstance(DefaultVerifierCryptoService(), Parser()),
             subjectCredentialStore = subjectCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
-            holderId = cryptoService.keyId
+            holderId = cryptoService.identifier,
         )
     }
 

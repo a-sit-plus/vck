@@ -50,8 +50,7 @@ import platform.CoreFoundation.CFDictionaryAddValue as CFDictionaryAddValue1
  */
 @Suppress("UNCHECKED_CAST")
 actual class DefaultCryptoService : CryptoService {
-
-    override val keyId: String
+    
     override val jwsAlgorithm = JwsAlgorithm.ES256
     private val privateKey: SecKeyRef
     private val publicKey: SecKeyRef
@@ -67,7 +66,6 @@ actual class DefaultCryptoService : CryptoService {
         val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
         this.jsonWebKey = JsonWebKey.fromAnsiX963Bytes(JwkType.EC, EcCurve.SECP_256_R_1, data.toByteArray())!!
-        this.keyId = jsonWebKey.keyId!!
     }
 
     override suspend fun sign(input: ByteArray): KmmResult<ByteArray> {

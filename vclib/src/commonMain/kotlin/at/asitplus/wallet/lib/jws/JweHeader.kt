@@ -17,11 +17,14 @@ data class JweHeader(
     @SerialName("enc")
     val encryption: JweEncryption?,
     @SerialName("kid")
-    val keyId: String,
+    // TODO Usages
+    val keyId: String? = null,
     @SerialName("typ")
     val type: String?,
     @SerialName("cty")
     val contentType: String? = null,
+    @SerialName("jwk")
+    val jsonWebKey: JsonWebKey? = null,
     @SerialName("epk")
     val ephemeralKeyPair: JsonWebKey? = null,
     @SerialName("apu")
@@ -32,7 +35,6 @@ data class JweHeader(
     val agreementPartyVInfo: ByteArray? = null,
 ) {
     fun serialize() = jsonSerializer.encodeToString(this)
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -44,6 +46,7 @@ data class JweHeader(
         if (keyId != other.keyId) return false
         if (type != other.type) return false
         if (contentType != other.contentType) return false
+        if (jsonWebKey != other.jsonWebKey) return false
         if (ephemeralKeyPair != other.ephemeralKeyPair) return false
         if (agreementPartyUInfo != null) {
             if (other.agreementPartyUInfo == null) return false
@@ -60,9 +63,10 @@ data class JweHeader(
     override fun hashCode(): Int {
         var result = algorithm?.hashCode() ?: 0
         result = 31 * result + (encryption?.hashCode() ?: 0)
-        result = 31 * result + keyId.hashCode()
+        result = 31 * result + (keyId?.hashCode() ?: 0)
         result = 31 * result + (type?.hashCode() ?: 0)
         result = 31 * result + (contentType?.hashCode() ?: 0)
+        result = 31 * result + (jsonWebKey?.hashCode() ?: 0)
         result = 31 * result + (ephemeralKeyPair?.hashCode() ?: 0)
         result = 31 * result + (agreementPartyUInfo?.contentHashCode() ?: 0)
         result = 31 * result + (agreementPartyVInfo?.contentHashCode() ?: 0)

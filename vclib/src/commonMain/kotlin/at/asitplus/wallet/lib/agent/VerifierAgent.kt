@@ -25,9 +25,9 @@ class VerifierAgent private constructor(
         /**
          * Explicitly short argument list to use it from Swift
          */
-        fun newDefaultInstance(keyId: String): VerifierAgent = VerifierAgent(
+        fun newDefaultInstance(localId: String): VerifierAgent = VerifierAgent(
             validator = Validator.newDefaultInstance(),
-            localId = keyId
+            localId = localId
         )
     }
 
