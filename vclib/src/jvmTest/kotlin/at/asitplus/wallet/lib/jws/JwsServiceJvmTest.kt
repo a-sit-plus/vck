@@ -47,8 +47,10 @@ class JwsServiceJvmTest : FreeSpec({
 
     "signed object from ext. library can be verified" {
         val stringPayload = jsonSerializer.encodeToString(randomPayload)
-        val libHeader =
-            JWSHeader.Builder(JWSAlgorithm.ES256).type(JOSEObjectType("JWT")).keyID(cryptoService.keyId).build()
+        val libHeader = JWSHeader.Builder(JWSAlgorithm.ES256)
+            .type(JOSEObjectType("JWT"))
+            .keyID(cryptoService.toJsonWebKey().keyId!!)
+            .build()
         val libObject = JWSObject(libHeader, Payload(stringPayload)).also {
             it.sign(ECDSASigner(keyPair.private as ECPrivateKey))
         }
@@ -79,7 +81,7 @@ class JwsServiceJvmTest : FreeSpec({
         val libHeader = JWEHeader.Builder(JWEAlgorithm.ECDH_ES, EncryptionMethod.A256GCM)
             .type(JOSEObjectType(JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON))
             .contentType(JwsContentTypeConstants.DIDCOMM_PLAIN_JSON)
-            .keyID(cryptoService.keyId)
+            .keyID(cryptoService.toJsonWebKey().keyId!!)
             .build()
         val libObject = JWEObject(libHeader, Payload(stringPayload)).also {
             it.encrypt(ECDHEncrypter(keyPair.public as ECPublicKey))

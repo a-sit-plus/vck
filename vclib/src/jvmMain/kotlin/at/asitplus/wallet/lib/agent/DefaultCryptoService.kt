@@ -34,7 +34,6 @@ actual open class DefaultCryptoService : CryptoService {
     private val ecCurve: EcCurve = EcCurve.SECP_256_R_1
     private val keyPair: KeyPair
     private val jsonWebKey: JsonWebKey
-    override val keyId: String
 
     actual constructor() {
         this.keyPair = KeyPairGenerator.getInstance("EC").also { it.initialize(ecCurve.keyLengthBits) }.genKeyPair()
@@ -44,7 +43,6 @@ actual open class DefaultCryptoService : CryptoService {
             (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes),
             (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         )!!
-        this.keyId = jsonWebKey.keyId!!
     }
 
     constructor(keyPair: KeyPair) {
@@ -55,7 +53,6 @@ actual open class DefaultCryptoService : CryptoService {
             (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes),
             (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         )!!
-        this.keyId = jsonWebKey.keyId!!
     }
 
     override val jwsAlgorithm = JwsAlgorithm.ES256

@@ -67,7 +67,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): String? {
         val jwsHeader = JwsHeader(
             algorithm = cryptoService.jwsAlgorithm,
-            keyId = cryptoService.keyId,
+            keyId = cryptoService.toJsonWebKey().keyId,
             type = type,
             contentType = contentType
         )
@@ -75,7 +75,10 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     }
 
     override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): String? {
-        if (header.algorithm != cryptoService.jwsAlgorithm || header.keyId?.let { it != cryptoService.keyId } == true) {
+        if (header.algorithm != cryptoService.jwsAlgorithm
+            || header.keyId?.let { it != cryptoService.toJsonWebKey().keyId } == true
+            || header.jsonWebKey?.let { it != cryptoService.toJsonWebKey() } == true
+        ) {
             return null.also { Napier.w("Algorithm or keyId not matching to cryptoService") }
         }
         val signatureInput = header.serialize().encodeToByteArray()
@@ -97,7 +100,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): String? {
         var copy = header.copy(algorithm = cryptoService.jwsAlgorithm)
         if (addKeyId)
-            copy = copy.copy(keyId = cryptoService.keyId)
+            copy = copy.copy(keyId = cryptoService.toJsonWebKey().keyId)
         if (addJsonWebKey)
             copy = copy.copy(jsonWebKey = cryptoService.toJsonWebKey())
         return createSignedJws(copy, payload)
@@ -156,7 +159,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val jweHeader = JweHeader(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
-            keyId = cryptoService.keyId,
+            jsonWebKey = cryptoService.toJsonWebKey(),
             type = type,
             contentType = contentType,
             ephemeralKeyPair = ephemeralKeyPair.toPublicJsonWebKey()

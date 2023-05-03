@@ -50,7 +50,7 @@ class IssuerAgent constructor(
             issuerCredentialStore = issuerCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
             dataProvider = dataProvider,
-            issuerId = cryptoService.keyId,
+            issuerId = cryptoService.identifier,
             timePeriodProvider = timePeriodProvider,
             clock = clock,
         )
