@@ -2,9 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.datetime.Month
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
 interface TimePeriodProvider {
 
