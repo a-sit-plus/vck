@@ -1,5 +1,13 @@
-package at.asitplus.wallet.lib.agent
+package at.asitplus.wallet.lib.aries
 
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.msg.JwmAttachment
 import at.asitplus.wallet.lib.msg.JwmAttachmentData

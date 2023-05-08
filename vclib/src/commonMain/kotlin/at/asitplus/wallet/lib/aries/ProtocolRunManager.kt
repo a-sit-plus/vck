@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.agent
+package at.asitplus.wallet.lib.aries
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

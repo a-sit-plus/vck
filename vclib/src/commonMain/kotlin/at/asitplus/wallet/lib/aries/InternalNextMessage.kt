@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.agent
+package at.asitplus.wallet.lib.aries
 
 import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.msg.JsonWebMessage

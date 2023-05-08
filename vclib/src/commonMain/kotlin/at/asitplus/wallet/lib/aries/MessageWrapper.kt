@@ -1,5 +1,6 @@
-package at.asitplus.wallet.lib.agent
+package at.asitplus.wallet.lib.aries
 
+import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JsonWebKey
@@ -12,7 +13,6 @@ import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.msg.JsonWebMessage
 import io.github.aakira.napier.Napier
-
 
 class MessageWrapper(
     private val cryptoService: CryptoService,

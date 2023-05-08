@@ -1,5 +1,7 @@
-package at.asitplus.wallet.lib.agent
+package at.asitplus.wallet.lib.aries
 
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
 import at.asitplus.wallet.lib.data.dif.Constraint

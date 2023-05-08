@@ -1,5 +1,9 @@
-package at.asitplus.wallet.lib.agent
+package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.msg.SchemaReference
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
@@ -20,14 +24,6 @@ import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
-import at.asitplus.wallet.lib.oidc.AuthenticationRequest
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
-import at.asitplus.wallet.lib.oidc.AuthenticationResponse
-import at.asitplus.wallet.lib.oidc.AuthenticationResponseParameters
-import at.asitplus.wallet.lib.oidc.IdToken
-import at.asitplus.wallet.lib.oidc.IdTokenType
-import at.asitplus.wallet.lib.oidc.JsonWebKeySet
-import at.asitplus.wallet.lib.oidc.RelyingPartyMetadata
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock

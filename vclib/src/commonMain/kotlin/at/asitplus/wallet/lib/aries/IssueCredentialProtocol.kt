@@ -1,6 +1,8 @@
-package at.asitplus.wallet.lib.agent
+package at.asitplus.wallet.lib.aries
 
 import at.asitplus.wallet.lib.DataSourceProblem
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex

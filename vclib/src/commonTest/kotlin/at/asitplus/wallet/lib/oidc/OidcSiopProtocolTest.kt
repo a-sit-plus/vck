@@ -1,7 +1,14 @@
-package at.asitplus.wallet.lib.agent
+package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.SchemaIndex
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf

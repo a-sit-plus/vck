@@ -1,6 +1,11 @@
-package at.asitplus.wallet.lib.agent
+package at.asitplus.wallet.lib.aries
 
-import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.Companion.ATTRIBUTE_WITH_ATTACHMENT
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
@@ -11,44 +16,48 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
-class IssueCredentialMessengerTest : FreeSpec() {
+class IssueCredentialMessengerConcurrentTest : FreeSpec() {
 
     private lateinit var issuerCryptoService: CryptoService
-    private lateinit var holderCryptoService: CryptoService
     private lateinit var issuer: Issuer
-    private lateinit var holder: Holder
     private lateinit var issuerServiceEndpoint: String
     private lateinit var issuerMessenger: IssueCredentialMessenger
-    private lateinit var holderMessenger: IssueCredentialMessenger
 
     init {
         beforeEach {
             issuerCryptoService = DefaultCryptoService()
-            holderCryptoService = DefaultCryptoService()
             issuer = IssuerAgent.newDefaultInstance(issuerCryptoService, dataProvider = DummyCredentialDataProvider())
-            holder = HolderAgent.newDefaultInstance(holderCryptoService)
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
-            holderMessenger = initHolderMessenger()
+            issuerMessenger = initIssuerMessenger(ConstantIndex.Generic)
         }
-
 
         "issueCredentialGeneric" {
-            issuerMessenger = initIssuerMessenger(ConstantIndex.Generic)
-
-            val issuedCredential = runProtocolFlow()
-
-            assertAtomicVc(issuedCredential, SchemaIndex.ATTR_GENERIC_PREFIX)
-            assertAttachment(issuedCredential, "${SchemaIndex.ATTR_GENERIC_PREFIX}/$ATTRIBUTE_WITH_ATTACHMENT")
+            coroutineScope {
+                repeat(100) {
+                    launch {
+                        val holderMessenger = initHolderMessenger()
+                        val issuedCredential = runProtocolFlow(holderMessenger)
+                        assertAtomicVc(issuedCredential, SchemaIndex.ATTR_GENERIC_PREFIX)
+                        assertAttachment(
+                            issuedCredential,
+                            "${SchemaIndex.ATTR_GENERIC_PREFIX}/${DummyCredentialDataProvider.ATTRIBUTE_WITH_ATTACHMENT}"
+                        )
+                    }
+                }
+            }
         }
-
-        // can't be created with a wrong keyId anymore, so that test was removed
     }
 
-    private fun initHolderMessenger() = IssueCredentialMessenger.newHolderInstance(
-        holder = holder,
-        messageWrapper = MessageWrapper(holderCryptoService),
-    )
+    private fun initHolderMessenger(): IssueCredentialMessenger {
+        val cryptoService = DefaultCryptoService()
+        return IssueCredentialMessenger.newHolderInstance(
+            holder = HolderAgent.newDefaultInstance(cryptoService),
+            messageWrapper = MessageWrapper(cryptoService),
+        )
+    }
 
     private fun initIssuerMessenger(scheme: ConstantIndex.CredentialScheme) =
         IssueCredentialMessenger.newIssuerInstance(
@@ -58,7 +67,7 @@ class IssueCredentialMessengerTest : FreeSpec() {
             credentialScheme = scheme,
         )
 
-    private suspend fun runProtocolFlow(): IssueCredentialProtocolResult {
+    private suspend fun runProtocolFlow(holderMessenger: IssueCredentialMessenger): IssueCredentialProtocolResult {
         val oobInvitation = issuerMessenger.startCreatingInvitation()
         oobInvitation.shouldBeInstanceOf<NextMessage.Send>()
         val invitationMessage = oobInvitation.message
@@ -96,11 +105,6 @@ class IssueCredentialMessengerTest : FreeSpec() {
             .filter { it.name == attributeName }
             .shouldNotBeEmpty()
         issuedCredentials.attachments.shouldNotBeEmpty()
-    }
-
-    private fun assertEmptyVc(issuedCredentials: IssueCredentialProtocolResult) {
-        issuedCredentials.accepted.shouldBeEmpty()
-        issuedCredentials.rejected.shouldNotBeEmpty()
     }
 
 }

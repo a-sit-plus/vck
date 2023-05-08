@@ -1,6 +1,10 @@
-package at.asitplus.wallet.lib.agent
+package at.asitplus.wallet.lib.aries
 
-import at.asitplus.wallet.lib.msg.*
+import at.asitplus.wallet.lib.msg.ProblemReport
+import at.asitplus.wallet.lib.msg.ProblemReportBody
+import at.asitplus.wallet.lib.msg.ProblemReportDescriptor
+import at.asitplus.wallet.lib.msg.ProblemReportScope
+import at.asitplus.wallet.lib.msg.ProblemReportSorter
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.datatest.withData
