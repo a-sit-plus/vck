@@ -8,23 +8,41 @@ jobs:
         uses: actions/checkout@v3
       - name: Build klibs
         run: ./gradlew iosArm64MainKlibrary iosX64MainKlibrary
-      - name: Build XCFramework
-        run: ./gradlew assembleVcLibKMMXCFramework
-      - name: Upload klibs
-        uses: actions/upload-artifact@v3
-        with:
-          name: macos-ios-tvos-VcLibKMM-klib
-          path: |
-            vclib/build/classes/kotlin/ios*/main/klib/*.klib
-      - name: Upload debug XCFramework
+      - name: Build XCFrameworks
+        run: ./gradlew assembleVcLibKMMXCFramework assembleVcLibAriesKmmXCFramework assembleVcLibOpenIdKmmXCFramework
+      - name: Upload debug XCFramework vclib
         uses: actions/upload-artifact@v3
         with:
           name: VcLibKMM-debug.xcframework
           path: |
             vclib/build/XCFrameworks/debug/
-      - name: Upload release XCFramework
+      - name: Upload debug XCFramework vclib-aries
+        uses: actions/upload-artifact@v3
+        with:
+          name: VcLibAriesKmm-debug.xcframework
+          path: |
+            vclib-aries/build/XCFrameworks/debug/
+      - name: Upload debug XCFramework vclib-openid
+        uses: actions/upload-artifact@v3
+        with:
+          name: VcLibOpenIdKmm-debug.xcframework
+          path: |
+            vclib-openid/build/XCFrameworks/debug/
+      - name: Upload release XCFramework vclib
         uses: actions/upload-artifact@v3
         with:
           name: VcLibKMM-release.xcframework
           path: |
             vclib/build/XCFrameworks/release/
+      - name: Upload release XCFramework vclib-aries
+        uses: actions/upload-artifact@v3
+        with:
+          name: VcLibAriesKmm-release.xcframework
+          path: |
+            vclib-aries/build/XCFrameworks/release/
+      - name: Upload release XCFramework vclib-openid
+        uses: actions/upload-artifact@v3
+        with:
+          name: VcLibOpenIdKmm-release.xcframework
+          path: |
+            vclib-openid/build/XCFrameworks/release/

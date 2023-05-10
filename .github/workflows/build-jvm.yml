@@ -8,9 +8,21 @@ jobs:
         uses: actions/checkout@v3
       - name: Build jar
         run: ./gradlew assemble
-      - name: Upload jar
+      - name: Upload jar vclib
         uses: actions/upload-artifact@v3
         with:
-          name: kmmresult
+          name: vclib
           path: |
             vclib/build/libs/*jar
+      - name: Upload jar vclib-aries
+        uses: actions/upload-artifact@v3
+        with:
+          name: vclib-aries
+          path: |
+            vclib-aries/build/libs/*jar
+      - name: Upload jar vclib-openid
+        uses: actions/upload-artifact@v3
+        with:
+          name: vclib-openid
+          path: |
+            vclib-openid/build/libs/*jar
