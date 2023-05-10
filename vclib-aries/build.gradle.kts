@@ -32,28 +32,30 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
 }
 
 kotlin {
-    val xcf = XCFrameworkConfig(project, "VcLibKMM")
+    val xcf = XCFrameworkConfig(project, "VcLibAriesKmm")
 
     ios {
         binaries.framework {
-            baseName = "VcLibKMM"
+            baseName = "VcLibAriesKmm"
             embedBitcode("bitcode")
             export("org.jetbrains.kotlinx:kotlinx-datetime:${Versions.datetime}")
             export("at.asitplus:kmmresult:${Versions.resultlib}")
             export("io.matthewnelson.kotlin-components:encoding-base16:${Versions.encoding}")
             export("io.matthewnelson.kotlin-components:encoding-base64:${Versions.encoding}")
+            export(project(":vclib"))
             xcf.add(this)
         }
     }
 
     iosSimulatorArm64 {
         binaries.framework {
-            baseName = "VcLibKMM"
+            baseName = "VcLibAriesKmm"
             embedBitcode("bitcode")
             export("org.jetbrains.kotlinx:kotlinx-datetime:${Versions.datetime}")
             export("at.asitplus:kmmresult:${Versions.resultlib}")
             export("io.matthewnelson.kotlin-components:encoding-base16:${Versions.encoding}")
             export("io.matthewnelson.kotlin-components:encoding-base64:${Versions.encoding}")
+            export(project(":vclib"))
             xcf.add(this)
         }
     }
@@ -98,6 +100,7 @@ kotlin {
                 implementation("io.github.aakira:napier:${Versions.napier}")
                 api("org.jetbrains.kotlinx:kotlinx-datetime:${Versions.datetime}")
                 api("at.asitplus:kmmresult:${Versions.resultlib}")
+                api(project(":vclib"))
                 api("io.matthewnelson.kotlin-components:encoding-base16:${Versions.encoding}")
                 api("io.matthewnelson.kotlin-components:encoding-base64:${Versions.encoding}")
             }
@@ -164,8 +167,8 @@ publishing {
         withType<MavenPublication> {
             artifact(javadocJar)
             pom {
-                name.set("KmmVcLib")
-                description.set("Kotlin Multiplatform library implementing the W3C VC Data Model")
+                name.set("KmmVcLibAries")
+                description.set("Kotlin Multiplatform library implementing the W3C VC Data Model, with ARIES protocol implementations")
                 url.set("https://github.com/a-sit-plus/kmm-vc-library")
                 licenses {
                     license {

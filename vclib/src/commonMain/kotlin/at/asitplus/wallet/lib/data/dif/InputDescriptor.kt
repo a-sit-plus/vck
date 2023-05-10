@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.data.dif
 
-import at.asitplus.wallet.lib.msg.SchemaReference
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
