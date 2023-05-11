@@ -78,9 +78,8 @@ interface Holder {
      * has been set with [setRevocationList]
      */
     suspend fun getCredentials(
-        attributeNames: List<String>? = null,
-        attributeTypes: List<String>? = null,
-    ): List<StoredCredential>?
+        attributeTypes: Collection<String>? = null,
+    ): Collection<StoredCredential>?
 
     data class StoredCredential(
         val vcSerialized: String,
@@ -90,15 +89,14 @@ interface Holder {
 
     /**
      * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,
-     * that match the [attributeNames] or [attributeTypes] (if specified).
+     * that match the [attributeTypes] (if specified).
      *
      * May return null if no valid credentials (i.e. non-revoked, matching attribute name) are available.
      */
     suspend fun createPresentation(
         challenge: String,
         audienceId: String,
-        attributeNames: List<String>? = null,
-        attributeTypes: List<String>? = null,
+        attributeTypes: Collection<String>? = null,
     ): CreatePresentationResult?
 
     /**

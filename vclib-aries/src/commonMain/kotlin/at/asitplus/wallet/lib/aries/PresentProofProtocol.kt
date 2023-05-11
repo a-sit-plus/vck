@@ -48,7 +48,7 @@ typealias PresentProofProtocolResult = Verifier.VerifyPresentationResult
 class PresentProofProtocol(
     private val holder: Holder? = null,
     private val verifier: Verifier? = null,
-    private val requestedAttributeNames: List<String>? = null,
+    private val requestedAttributeTypes: Collection<String>? = null,
     private val credentialScheme: ConstantIndex.CredentialScheme,
     private val serviceEndpoint: String?,
     private val challengeForPresentation: String,
@@ -78,10 +78,10 @@ class PresentProofProtocol(
             verifier: Verifier,
             serviceEndpoint: String? = null,
             credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
-            requestedAttributeNames: List<String>? = null,
+            requestedAttributeTypes: Collection<String>? = null,
         ) = PresentProofProtocol(
             verifier = verifier,
-            requestedAttributeNames = requestedAttributeNames,
+            requestedAttributeTypes = requestedAttributeTypes,
             credentialScheme = credentialScheme,
             serviceEndpoint = serviceEndpoint,
             challengeForPresentation = uuid4().toString()
@@ -202,8 +202,7 @@ class PresentProofProtocol(
     ): RequestPresentation? {
         val verifierIdentifier = verifier?.identifier
             ?: return null
-        val constraintsNames =
-            requestedAttributeNames?.map(this::buildConstraintFieldForName) ?: listOf()
+        val constraintsExtraTypes = requestedAttributeTypes?.map(this::buildConstraintFieldForType) ?: listOf()
         val constraintsTypes = buildConstraintFieldForType(credentialScheme.vcType)
         val presentationDefinition = PresentationDefinition(
             inputDescriptors = arrayOf(
@@ -211,7 +210,7 @@ class PresentProofProtocol(
                     name = credentialScheme.credentialDefinitionName,
                     schema = SchemaReference(uri = credentialScheme.schemaUri),
                     constraints = Constraint(
-                        fields = (constraintsNames + constraintsTypes).toTypedArray()
+                        fields = (constraintsExtraTypes + constraintsTypes).toTypedArray()
                     )
                 )
             ),
@@ -242,11 +241,6 @@ class PresentProofProtocol(
         )
     }
 
-    private fun buildConstraintFieldForName(attributeName: String) = ConstraintField(
-        path = arrayOf("\$.vc[*].credentialSubject[*].name", "\$.credentialSubject[*].name"),
-        filter = ConstraintFilter(type = "string", const = attributeName)
-    )
-
     private fun buildConstraintFieldForType(attributeType: String) = ConstraintField(
         path = arrayOf("\$.vc[*].type", "\$.type"),
         filter = ConstraintFilter(type = "string", const = attributeType)
@@ -272,18 +266,10 @@ class PresentProofProtocol(
             .mapNotNull { it.filter }
             .filter { it.type == "string" }
             .mapNotNull { it.const }
-        val requestedFields = requestPresentationAttachment.presentationDefinition.inputDescriptors
-            .mapNotNull { it.constraints }
-            .flatMap { it.fields?.toList() ?: listOf() }
-            .filter { it.path.contains("\$.vc[*].credentialSubject[*].name") }
-            .mapNotNull { it.filter }
-            .filter { it.type == "string" }
-            .mapNotNull { it.const }
         val vp = holder?.createPresentation(
             requestPresentationAttachment.options.challenge,
             requestPresentationAttachment.options.verifier ?: senderKey.identifier,
             attributeTypes = requestedTypes.ifEmpty { null },
-            attributeNames = requestedFields.ifEmpty { null }
         ) ?: return problemReporter.problemInternal(lastMessage.threadId, "vp-empty")
         if (vp !is Holder.CreatePresentationResult.Signed) {
             return problemReporter.problemInternal(lastMessage.threadId, "vp-not-signed")

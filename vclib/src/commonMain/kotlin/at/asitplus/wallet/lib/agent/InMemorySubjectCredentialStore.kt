@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 
 class InMemorySubjectCredentialStore : SubjectCredentialStore {
@@ -18,17 +17,11 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
     }
 
     override suspend fun getCredentials(
-        requiredAttributeTypes: List<String>?,
-        requiredAttributeNames: List<String>?
+        requiredAttributeTypes: Collection<String>?,
     ) = KmmResult.success(
         credentials.filter {
             requiredAttributeTypes?.let { types ->
                 it.vc.vc.type.any { it in types }
-            } ?: true
-        }.filter {
-            requiredAttributeNames?.let { names ->
-                it.vc.vc.credentialSubject is AtomicAttributeCredential
-                        && names.contains(it.vc.vc.credentialSubject.name)
             } ?: true
         }
     )

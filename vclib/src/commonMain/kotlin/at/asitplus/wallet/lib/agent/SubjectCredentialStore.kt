@@ -30,12 +30,9 @@ interface SubjectCredentialStore {
 
     /**
      * Return all stored credentials.
-     * Selective Disclosure: Specify list of attribute names in [requiredAttributeNames].
+     * Selective Disclosure: Specify list of attribute types in [requiredAttributeTypes].
      */
-    suspend fun getCredentials(
-        requiredAttributeTypes: List<String>? = null,
-        requiredAttributeNames: List<String>? = null,
-    ): KmmResult<List<StoreEntry>>
+    suspend fun getCredentials(requiredAttributeTypes: Collection<String>? = null): KmmResult<List<StoreEntry>>
 
     /**
      * Return attachments filtered by [name]

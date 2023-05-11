@@ -100,11 +100,10 @@ class HolderAgent constructor(
      * has been set with [setRevocationList]
      */
     override suspend fun getCredentials(
-        attributeNames: List<String>?,
-        attributeTypes: List<String>?,
-    ): List<Holder.StoredCredential>? {
+        attributeTypes: Collection<String>?,
+    ): Collection<Holder.StoredCredential>? {
         val credentials =
-            subjectCredentialStore.getCredentials(attributeTypes, attributeNames).getOrNull()
+            subjectCredentialStore.getCredentials(attributeTypes).getOrNull()
                 ?: return null
                     .also { Napier.w("Got no credentials from subjectCredentialStore") }
         return credentials.map {
@@ -114,18 +113,17 @@ class HolderAgent constructor(
 
     /**
      * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,
-     * that match the [attributeNames] or [attributeTypes] (if specified).
+     * that match [attributeTypes] (if specified).
      *
      * May return null if no valid credentials (i.e. non-revoked, matching attribute name) are available.
      */
     override suspend fun createPresentation(
         challenge: String,
         audienceId: String,
-        attributeNames: List<String>?,
-        attributeTypes: List<String>?,
+        attributeTypes: Collection<String>?,
     ): Holder.CreatePresentationResult? {
         val credentials =
-            subjectCredentialStore.getCredentials(attributeTypes, attributeNames).getOrNull()
+            subjectCredentialStore.getCredentials(attributeTypes).getOrNull()
                 ?: return null
                     .also { Napier.w("Got no credentials from subjectCredentialStore") }
         val validCredentials = credentials

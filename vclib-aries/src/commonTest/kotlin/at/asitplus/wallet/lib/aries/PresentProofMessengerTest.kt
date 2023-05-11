@@ -12,7 +12,6 @@ import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
-import io.kotest.common.runBlocking
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -47,13 +46,11 @@ class PresentProofMessengerTest : FreeSpec() {
             issuer = IssuerAgent.newDefaultInstance(issuerCryptoService)
             verifierChallenge = uuid4().toString()
             holderServiceEndpoint = "https://example.com/present-proof?${uuid4()}"
-            val credentialSubject = randomCredential(holderCryptoService.identifier)
-            runBlocking {
-                holder.storeCredentials(issuer.issueCredential(credentialSubject).toStoreCredentialInput())
-            }
         }
 
         "presentProof" {
+            val credentialSubject = randomCredential(holderCryptoService.identifier)
+            holder.storeCredentials(issuer.issueCredential(credentialSubject).toStoreCredentialInput())
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
                 messageWrapper = MessageWrapper(holderCryptoService),
@@ -101,7 +98,7 @@ class PresentProofMessengerTest : FreeSpec() {
                 verifier = verifier,
                 messageWrapper = MessageWrapper(verifierCryptoService),
                 challengeForPresentation = verifierChallenge,
-                requestedAttributeNames = listOf(attributeName)
+                requestedAttributeTypes = listOf(attributeName)
             )
 
             val oobInvitation = holderMessenger.startCreatingInvitation()
@@ -133,14 +130,26 @@ class PresentProofMessengerTest : FreeSpec() {
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
                 messageWrapper = MessageWrapper(holderCryptoService),
-                serviceEndpoint = "https://example.com/"
+                serviceEndpoint = "https://example.com/",
             )
             var verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
                 messageWrapper = MessageWrapper(verifierCryptoService),
                 challengeForPresentation = verifierChallenge,
-                // subject is not expected to provide an attribute with this name
-                requestedAttributeNames = listOf(uuid4().toString()),
+                // subject is not expected to provide an attribute with this type
+                requestedAttributeTypes = listOf(uuid4().toString()),
+                credentialScheme = object : ConstantIndex.CredentialScheme {
+                    override val goalCodeIssue: String
+                        get() = "issue-vc-random"
+                    override val goalCodeRequestProof: String
+                        get() = "request-proof-random"
+                    override val credentialDefinitionName: String
+                        get() = "random"
+                    override val schemaUri: String
+                        get() = "https://example.com/random"
+                    override val vcType: String
+                        get() = "random"
+                }
             )
 
             val oobInvitation = holderMessenger.startCreatingInvitation()
@@ -167,7 +176,7 @@ class PresentProofMessengerTest : FreeSpec() {
                 verifier = verifier,
                 messageWrapper = MessageWrapper(verifierCryptoService),
                 challengeForPresentation = verifierChallenge,
-                requestedAttributeNames = listOf(attributeName)
+                requestedAttributeTypes = listOf(attributeName)
             )
             val secondParsedInvitation = verifierMessenger.parseMessage(invitationMessage)
             secondParsedInvitation.shouldBeInstanceOf<NextMessage.Send>()
