@@ -1,5 +1,9 @@
 # Changelog
 
+Release 2.0.0:
+ - Add `AtomicAttribute2023` as a sample for custom credentials
+ - Remove deprecated methods for "attribute names" and credential with type `AtomicAttribute`
+
 Release 1.8.0:
  - Remove `JwsContentType`, replace with strings from `JwsContentTypeConstants`
  - Add `JsonWebToken` to use as payload in `JwsHeader` or others

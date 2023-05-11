@@ -28,9 +28,9 @@ Notable features for mulitplatform are:
 
 The main entry point for applications is an instance of `HolderAgent`, `VerifierAgent` or `IssuerAgent`, according to the nomenclature from the [W3C VC Data Model](https://w3c.github.io/vc-data-model/).
 
-One central aspect is communication between agents. We implement protocols for issuing credentials and presenting proofs from ARIES, i.e. [ARIES RFC 0453 Issue Credential V2](https://github.com/hyperledger/aries-rfcs/tree/main/features/0453-issue-credential-v2) and [ARIES RFC 0454 Present Proof V2](https://github.com/hyperledger/aries-rfcs/tree/main/features/0454-present-proof-v2). A single run of a protocol is implemented by the `*Protocol` classes, whereas the `*Messenger` classes should be used by applications to manage several runs of a protocol.
+We implement protocols for issuing credentials and presenting proofs from ARIES, i.e. [ARIES RFC 0453 Issue Credential V2](https://github.com/hyperledger/aries-rfcs/tree/main/features/0453-issue-credential-v2) and [ARIES RFC 0454 Present Proof V2](https://github.com/hyperledger/aries-rfcs/tree/main/features/0454-present-proof-v2). A single run of a protocol is implemented by the `*Protocol` classes, whereas the `*Messenger` classes should be used by applications to manage several runs of a protocol. These classes reside in the artifact `vclib-aries`.
 
-There is also a simple implementation of [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), see `OidcSiopProtocol`.
+There is also a simple implementation of [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), see `OidcSiopProtocol`. In addition, [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) has been implemented, see `at.asitplus.wallet.lib.oidvci.WalletService` in the artifact `vclib-openid`.
 
 Many classes define several constructor parameters, some of them with default values, to enable a simple form of dependency injection. Implementers are advised to specify the parameter names of arguments passed to increase readability and prepare for future extensions.
 
@@ -49,7 +49,7 @@ The `DefaultCryptoService` for iOS should not be used in production as it does n
 
 ## Credentials
 
-A single credential itself is an instance of `CredentialSubject` and has no special meaning attached to it. This library uses atomic attributes in the form of `AtomicAttributeCredential`s, containings a `name`, `value` and `mimeType` to transport generic attributes. The enclosing application needs to interpret an instance of `AtomicAttributeCredential` to display for example the first name of a subject.
+A single credential itself is an instance of `CredentialSubject` and has no special meaning attached to it. This library implements an `AtomicAttribute2023` an a sample of a custom credential.
 
 Other libraries using this library may subclass `CredentialSubject` and call `LibraryInitializer.registerExtensionLibrary()` to register that extension with this library:
 
@@ -87,10 +87,3 @@ at.asitplus.wallet.lib.LibraryInitializer.registerExtensionLibrary(
     )
 )
 ```
-
-## Further Development
-
-There are several topic worth considering to extend this library:
-
- - Support for [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- - Extending the implementation for [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html)
