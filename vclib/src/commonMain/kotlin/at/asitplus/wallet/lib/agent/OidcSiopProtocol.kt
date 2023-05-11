@@ -161,7 +161,7 @@ class OidcSiopProtocol(
         // TODO could also contain "request_uri"
         // TODO could also contain "response_mode=post"
         stateOfRelyingParty = request.params.state
-        val audience = request.params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.getIdentifier()
+        val audience = request.params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.identifier
             ?: return null
                 .also { Napier.w("Could not parse audience") }
         if ("urn:ietf:params:oauth:jwk-thumbprint" !in request.params.clientMetadata.subjectSyntaxTypesSupported)
@@ -192,8 +192,8 @@ class OidcSiopProtocol(
         val now = clock.now()
         // we'll assume jwk-thumbprint
         val idToken = IdToken(
-            issuer = agentPublicKey.toJwkThumbprint(),
-            subject = agentPublicKey.toJwkThumbprint(),
+            issuer = agentPublicKey.jwkThumbprint,
+            subject = agentPublicKey.jwkThumbprint,
             subjectJwk = agentPublicKey,
             audience = request.params.redirectUri,
             issuedAt = now,
@@ -272,7 +272,7 @@ class OidcSiopProtocol(
         if (idToken.subjectJwk == null)
             return AuthnResponseResult.Error("nonce")
                 .also { Napier.d("sub_jwk is null") }
-        if (idToken.subject != idToken.subjectJwk.toJwkThumbprint())
+        if (idToken.subject != idToken.subjectJwk.jwkThumbprint)
             return AuthnResponseResult.Error("sub")
                 .also { Napier.d("subject does not equal thumbprint of sub_jwk: ${idToken.subject}") }
         val vp = response.params.vpToken

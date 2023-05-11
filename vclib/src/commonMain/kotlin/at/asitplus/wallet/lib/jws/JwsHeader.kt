@@ -76,8 +76,8 @@ data class JwsHeader(
         return result
     }
 
-    fun getKey(): JsonWebKey? {
-        return jsonWebKey
+    val publicKey: JsonWebKey? by lazy {
+        jsonWebKey
             ?: keyId?.let { JsonWebKey.fromKeyId(it) }
             ?: certificateChain?.firstOrNull()?.let { CryptoUtils.extractPublicKeyFromX509Cert(it) }
     }

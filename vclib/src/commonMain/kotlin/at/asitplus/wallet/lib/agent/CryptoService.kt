@@ -41,7 +41,7 @@ interface CryptoService {
     fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray>
 
     val identifier: String
-        get() = toJsonWebKey().getIdentifier()
+        get() = toJsonWebKey().identifier
 
     val jwsAlgorithm: JwsAlgorithm
 

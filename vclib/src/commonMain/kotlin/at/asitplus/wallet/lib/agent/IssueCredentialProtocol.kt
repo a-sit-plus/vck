@@ -223,7 +223,7 @@ class IssueCredentialProtocol(
         val uri = requestCredentialAttachment.credentialManifest.credential.schema.uri
 
         //default pupilID use case: binding key outside JWM, no subject in JWM. set subject to override
-        val subjectIdentifier = requestCredentialAttachment.credentialManifest.subject ?: senderKey.getIdentifier()
+        val subjectIdentifier = requestCredentialAttachment.credentialManifest.subject ?: senderKey.identifier
 
         val requestedAttributeType = AttributeIndex.getTypeOfAttributeForSchemaUri(uri)
             ?: return problemReporter.problemLastMessage(lastMessage.threadId, "requested-attributes-empty")

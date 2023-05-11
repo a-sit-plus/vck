@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.jws
 
 import at.asitplus.KmmResult
-import io.matthewnelson.component.base64.encodeBase64
 import at.asitplus.wallet.lib.data.jsonSerializer
 import io.github.aakira.napier.Napier
+import io.matthewnelson.component.base64.encodeBase64
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -126,11 +126,12 @@ data class JsonWebKey(
         return KmmResult.failure(IllegalArgumentException())
     }
 
-    fun toJwkThumbprint() = Json.encodeToString(this).encodeToByteArray().toByteString().sha256().base64Url()
+    val jwkThumbprint: String by lazy {
+        Json.encodeToString(this).encodeToByteArray().toByteString().sha256().base64Url()
+    }
 
-    fun getIdentifier(): String {
-        return keyId
-            ?: "urn:ietf:params:oauth:jwk-thumbprint:sha256:${toJwkThumbprint()}"
+    val identifier: String by lazy {
+        keyId ?: "urn:ietf:params:oauth:jwk-thumbprint:sha256:${jwkThumbprint}"
     }
 
     override fun toString(): String {
