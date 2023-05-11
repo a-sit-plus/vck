@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider.Companion.ATTRIBUTE_WITH_ATTACHMENT
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
@@ -53,7 +52,7 @@ class AgentTest : FreeSpec({
         val vcList = issuer.issueCredentialWithTypes(holder.identifier, listOf(ConstantIndex.Generic.vcType))
         vcList.successful.shouldNotBeEmpty()
         holder.storeCredentials(vcList.toStoreCredentialInput())
-        holderCredentialStore.getAttachment(ATTRIBUTE_WITH_ATTACHMENT).getOrThrow().shouldNotBeNull()
+        holderCredentialStore.getAttachment("picture").getOrThrow().shouldNotBeNull()
 
         val vp = holder.createPresentation(challenge, verifier.identifier)
         vp.shouldNotBeNull()
@@ -194,7 +193,6 @@ class AgentTest : FreeSpec({
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         result.vp.revokedVerifiableCredentials.shouldBeEmpty()
         credentials.successful shouldHaveSize result.vp.verifiableCredentials.size
-        verifier.verifyPresentationContainsAttributes(result.vp, AttributeIndex.genericAttributes) shouldBe true
     }
 
     "valid presentation is valid -- some other attributes revoked" {

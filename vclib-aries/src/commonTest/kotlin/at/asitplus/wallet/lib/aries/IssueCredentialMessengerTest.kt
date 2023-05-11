@@ -8,13 +8,11 @@ import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.SchemaIndex
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 class IssueCredentialMessengerTest : FreeSpec() {
@@ -37,14 +35,13 @@ class IssueCredentialMessengerTest : FreeSpec() {
             holderMessenger = initHolderMessenger()
         }
 
-
         "issueCredentialGeneric" {
             issuerMessenger = initIssuerMessenger(ConstantIndex.Generic)
 
             val issuedCredential = runProtocolFlow()
 
-            assertAtomicVc(issuedCredential, SchemaIndex.ATTR_GENERIC_PREFIX)
-            assertAttachment(issuedCredential, "${SchemaIndex.ATTR_GENERIC_PREFIX}/${DummyCredentialDataProvider.ATTRIBUTE_WITH_ATTACHMENT}")
+            assertAtomicVc(issuedCredential)
+            assertAttachment(issuedCredential, "picture")
         }
 
         // can't be created with a wrong keyId anymore, so that test was removed
@@ -85,11 +82,10 @@ class IssueCredentialMessengerTest : FreeSpec() {
         return issuedCredential
     }
 
-    private fun assertAtomicVc(issuedCredentials: IssueCredentialProtocolResult, schema: String) {
+    private fun assertAtomicVc(issuedCredentials: IssueCredentialProtocolResult) {
         issuedCredentials.accepted.shouldNotBeEmpty()
         issuedCredentials.accepted.map { it.vc.credentialSubject }.forEach {
             it.shouldBeInstanceOf<AtomicAttributeCredential>()
-            it.name shouldStartWith schema
         }
         issuedCredentials.rejected.shouldBeEmpty()
     }

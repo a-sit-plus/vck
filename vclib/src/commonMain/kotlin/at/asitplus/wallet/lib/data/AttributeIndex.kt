@@ -19,15 +19,4 @@ object AttributeIndex {
         return schemeSet.firstOrNull { it.schemaUri == uri }?.vcType
     }
 
-    /**
-     * List of all known attributes for a "generic" credential
-     */
-    val genericAttributes = listOf(
-        "given-name",
-        "family-name",
-        "date-of-birth",
-        "identifier",
-        "picture",
-    ).map { "${SchemaIndex.ATTR_GENERIC_PREFIX}/$it" }
-
 }

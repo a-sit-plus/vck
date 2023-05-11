@@ -4,7 +4,6 @@ object SchemaIndex {
 
     const val BASE = "https://wallet.a-sit.at"
     const val CRED_GENERIC = "$BASE/schemas/1.0.0/generic.json"
-    const val ATTR_GENERIC_PREFIX = "$BASE/schemas/1.0.0/generic"
     const val PROT_ISSUE_CRED = "$BASE/issue-credential/1.0"
     const val MSG_ISSUE_CRED_REQUEST = "$PROT_ISSUE_CRED/request-credential"
     const val MSG_ISSUE_CRED_ISSUE = "$PROT_ISSUE_CRED/issue-credential"
