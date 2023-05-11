@@ -57,44 +57,6 @@ class IssuerAgent constructor(
     }
 
     /**
-     * Issues credentials for all [attributeNames] to [subjectId], calls [dataProvider]
-     */
-    override suspend fun issueCredentials(
-        subjectId: String,
-        attributeNames: List<String>
-    ): Issuer.IssuedCredentialResult {
-        val failedAttributes = mutableListOf<Issuer.FailedAttribute>()
-        val successfulAttributes = mutableListOf<CredentialToBeIssued>()
-        attributeNames.forEach {
-            dataProvider.getClaim(subjectId, it).fold(
-                onSuccess = { successfulAttributes += it },
-                onFailure = { failedAttributes += Issuer.FailedAttribute(subjectId, it) }
-            )
-        }
-        val successfulCredentials = mutableListOf<Issuer.IssuedCredential>()
-
-        successfulAttributes.forEach {
-            val result = issueCredential(it)
-            failedAttributes.addAll(result.failed)
-            successfulCredentials.addAll(result.successful)
-        }
-        return Issuer.IssuedCredentialResult(successful = successfulCredentials, failed = failedAttributes)
-    }
-
-    /**
-     * Issues credential for [attributeType] to [subjectId], calls [dataProvider]
-     */
-    override suspend fun issueCredential(
-        subjectId: String,
-        attributeType: String
-    ): Issuer.IssuedCredentialResult = dataProvider.getCredential(subjectId, attributeType).fold(
-        onSuccess = { issueCredential(it) },
-        onFailure = {
-            Issuer.IssuedCredentialResult(failed = listOf(Issuer.FailedAttribute(attributeType, it)))
-        }
-    )
-
-    /**
      * Issues credentials for some [attributeTypes] (i.e. some of
      * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with [subjectId]
      * (which should be a URL of the cryptographic key of the holder)

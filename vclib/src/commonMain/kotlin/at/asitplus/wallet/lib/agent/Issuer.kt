@@ -31,18 +31,6 @@ interface Issuer {
     val identifier: String
 
     /**
-     * Issues credentials for all [attributeNames] to [subjectId]
-     */
-    @Deprecated(message = "Use attribute types only and call `issueCredentialWithTypes`")
-    suspend fun issueCredentials(subjectId: String, attributeNames: List<String>): IssuedCredentialResult
-
-    /**
-     * Issues credential for [attributeType] to [subjectId]
-     */
-    @Deprecated(message = "Use attribute types only and call `issueCredentialWithTypes`")
-    suspend fun issueCredential(subjectId: String, attributeType: String): IssuedCredentialResult
-
-    /**
      * Issues credentials for some [attributeTypes] (i.e. some of
      * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with [subjectId]
      * (which should be a URL of the cryptographic key of the holder)

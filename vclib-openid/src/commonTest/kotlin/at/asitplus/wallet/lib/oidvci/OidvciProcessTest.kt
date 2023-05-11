@@ -5,8 +5,6 @@ import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
-import at.asitplus.wallet.lib.oidvci.IssuerService
-import at.asitplus.wallet.lib.oidvci.WalletService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.ktor.http.Url
@@ -17,20 +15,6 @@ class OidvciProcessTest : FunSpec({
     val client = WalletService(tokenType = arrayOf("SomeCredential"))
 
     val dataProvider = object : IssuerCredentialDataProvider {
-        override fun getClaim(
-            subjectId: String,
-            attributeName: String
-        ): KmmResult<IssuerCredentialDataProvider.CredentialToBeIssued> {
-            TODO("Not yet implemented")
-        }
-
-        override fun getCredential(
-            subjectId: String,
-            attributeType: String
-        ): KmmResult<IssuerCredentialDataProvider.CredentialToBeIssued> {
-            TODO("Not yet implemented")
-        }
-
         override fun getCredentialWithType(
             subjectId: String,
             attributeTypes: Collection<String>
