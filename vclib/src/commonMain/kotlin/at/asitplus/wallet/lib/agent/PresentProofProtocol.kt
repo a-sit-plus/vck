@@ -277,7 +277,7 @@ class PresentProofProtocol(
             .mapNotNull { it.const }
         val vp = holder?.createPresentation(
             requestPresentationAttachment.options.challenge,
-            requestPresentationAttachment.options.verifier ?: senderKey.getIdentifier(),
+            requestPresentationAttachment.options.verifier ?: senderKey.identifier,
             attributeTypes = requestedTypes.ifEmpty { null },
             attributeNames = requestedFields.ifEmpty { null }
         ) ?: return problemReporter.problemInternal(lastMessage.threadId, "vp-empty")

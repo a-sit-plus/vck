@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.jws
 
-import at.asitplus.wallet.lib.agent.CryptoUtils
 import at.asitplus.wallet.lib.data.jsonSerializer
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
@@ -73,9 +72,8 @@ data class JweHeader(
         return result
     }
 
-    fun getKey(): JsonWebKey? {
-        return jsonWebKey
-            ?: keyId?.let { JsonWebKey.fromKeyId(it) }
+    val publicKey: JsonWebKey? by lazy {
+        jsonWebKey ?: keyId?.let { JsonWebKey.fromKeyId(it) }
     }
 
     companion object {
