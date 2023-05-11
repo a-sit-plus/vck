@@ -36,7 +36,7 @@ class OidcSiopProtocolTest : FreeSpec({
                     dataProvider = DummyCredentialDataProvider(),
                 ).issueCredentialWithTypes(
                     holder.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).toStoreCredentialInput()
             )
         }

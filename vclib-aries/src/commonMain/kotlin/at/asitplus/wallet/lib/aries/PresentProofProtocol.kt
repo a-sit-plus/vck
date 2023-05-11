@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.data.dif.FormatContainerJwt
 import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.wallet.lib.data.dif.SchemaReference
 import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.msg.AttachmentFormatReference
 import at.asitplus.wallet.lib.msg.JsonWebMessage
@@ -24,7 +25,6 @@ import at.asitplus.wallet.lib.msg.RequestPresentation
 import at.asitplus.wallet.lib.msg.RequestPresentationAttachment
 import at.asitplus.wallet.lib.msg.RequestPresentationAttachmentOptions
 import at.asitplus.wallet.lib.msg.RequestPresentationBody
-import at.asitplus.wallet.lib.data.dif.SchemaReference
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.encodeToString
@@ -62,7 +62,7 @@ class PresentProofProtocol(
         fun newHolderInstance(
             holder: Holder,
             serviceEndpoint: String,
-            credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
+            credentialScheme: ConstantIndex.CredentialScheme,
         ) = PresentProofProtocol(
             holder = holder,
             credentialScheme = credentialScheme,
@@ -77,7 +77,7 @@ class PresentProofProtocol(
         fun newVerifierInstance(
             verifier: Verifier,
             serviceEndpoint: String? = null,
-            credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
+            credentialScheme: ConstantIndex.CredentialScheme,
             requestedAttributeTypes: Collection<String>? = null,
         ) = PresentProofProtocol(
             verifier = verifier,
@@ -160,7 +160,7 @@ class PresentProofProtocol(
             body = OutOfBandInvitationBody(
                 handshakeProtocols = arrayOf(SchemaIndex.PROT_PRESENT_PROOF),
                 acceptTypes = arrayOf("application/didcomm-encrypted+json"),
-                goalCode = credentialScheme.goalCodeRequestProof,
+                goalCode = "request-proof-${credentialScheme.credentialDefinitionName}",
                 services = arrayOf(
                     OutOfBandService(
                         type = "did-communication",

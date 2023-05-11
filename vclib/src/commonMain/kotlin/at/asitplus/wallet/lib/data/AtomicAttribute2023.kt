@@ -8,8 +8,8 @@ import kotlinx.serialization.Serializable
  * We decided to make a "generic" one, i.e. with custom [name], [value] and [mimeType].
  */
 @Serializable
-@SerialName("AtomicAttribute")
-class AtomicAttributeCredential : CredentialSubject {
+@SerialName("AtomicAttribute2023")
+class AtomicAttribute2023 : CredentialSubject {
     @SerialName("name")
     val name: String
 
@@ -28,8 +28,7 @@ class AtomicAttributeCredential : CredentialSubject {
     constructor(id: String, name: String, value: String) : this(id, name, value, "application/text")
 
     override fun toString(): String {
-        return "AtomicAttributeCredential(id='$id', name='$name', value='$value', mimeType='$mimeType')"
+        return "AtomicAttribute2023(id='$id', name='$name', value='$value', mimeType='$mimeType')"
     }
-
 
 }

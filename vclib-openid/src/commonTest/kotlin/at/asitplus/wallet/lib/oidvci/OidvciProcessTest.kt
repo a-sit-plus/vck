@@ -4,7 +4,8 @@ import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
-import at.asitplus.wallet.lib.data.AtomicAttributeCredential
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.ConstantIndex
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.ktor.http.Url
@@ -22,8 +23,9 @@ class OidvciProcessTest : FunSpec({
             return KmmResult.success(
                 listOf(
                     IssuerCredentialDataProvider.CredentialToBeIssued(
-                        subject = AtomicAttributeCredential(subjectId, "name", "value"),
-                        expiration = Clock.System.now(), attributeType = "AtomicAttributeCredential"
+                        subject = AtomicAttribute2023(subjectId, "name", "value"),
+                        expiration = Clock.System.now(),
+                        attributeType = ConstantIndex.AtomicAttribute2023.vcType,
                     )
                 )
             )

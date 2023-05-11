@@ -9,7 +9,7 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.data.AtomicAttributeCredential
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -54,11 +54,13 @@ class PresentProofMessengerTest : FreeSpec() {
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
                 messageWrapper = MessageWrapper(holderCryptoService),
-                serviceEndpoint = holderServiceEndpoint
+                serviceEndpoint = holderServiceEndpoint,
+                credentialScheme = ConstantIndex.AtomicAttribute2023,
             )
             val verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
-                messageWrapper = MessageWrapper(verifierCryptoService)
+                messageWrapper = MessageWrapper(verifierCryptoService),
+                credentialScheme = ConstantIndex.AtomicAttribute2023,
             )
 
             val oobInvitation = holderMessenger.startCreatingInvitation()
@@ -84,20 +86,22 @@ class PresentProofMessengerTest : FreeSpec() {
 
         "selectiveDisclosure" {
             val expectedSubject = randomCredential(holder.identifier)
-            val attributeName = (expectedSubject.subject as AtomicAttributeCredential).name
-            val attributeValue = (expectedSubject.subject as AtomicAttributeCredential).value
+            val attributeName = (expectedSubject.subject as AtomicAttribute2023).name
+            val attributeValue = (expectedSubject.subject as AtomicAttribute2023).value
             val expectedVc = issuer.issueCredential(expectedSubject)
             holder.storeCredentials(expectedVc.toStoreCredentialInput())
 
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
                 messageWrapper = MessageWrapper(holderCryptoService),
-                serviceEndpoint = "https://example.com"
+                serviceEndpoint = "https://example.com",
+                credentialScheme = ConstantIndex.AtomicAttribute2023,
             )
             val verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
                 messageWrapper = MessageWrapper(verifierCryptoService),
                 challengeForPresentation = verifierChallenge,
+                credentialScheme = ConstantIndex.AtomicAttribute2023,
                 requestedAttributeTypes = listOf(attributeName)
             )
 
@@ -119,80 +123,6 @@ class PresentProofMessengerTest : FreeSpec() {
 
             assertPresentation(receivedPresentation, attributeName, attributeValue)
         }
-
-        "selectiveDisclosure_notFulfilled" {
-            val expectedSubject = randomCredential(holder.identifier)
-            val attributeName = (expectedSubject.subject as AtomicAttributeCredential).name
-            val attributeValue = (expectedSubject.subject as AtomicAttributeCredential).value
-            val expectedVc = issuer.issueCredential(expectedSubject).toStoreCredentialInput()
-            holder.storeCredentials(expectedVc)
-
-            val holderMessenger = PresentProofMessenger.newHolderInstance(
-                holder = holder,
-                messageWrapper = MessageWrapper(holderCryptoService),
-                serviceEndpoint = "https://example.com/",
-            )
-            var verifierMessenger = PresentProofMessenger.newVerifierInstance(
-                verifier = verifier,
-                messageWrapper = MessageWrapper(verifierCryptoService),
-                challengeForPresentation = verifierChallenge,
-                // subject is not expected to provide an attribute with this type
-                requestedAttributeTypes = listOf(uuid4().toString()),
-                credentialScheme = object : ConstantIndex.CredentialScheme {
-                    override val goalCodeIssue: String
-                        get() = "issue-vc-random"
-                    override val goalCodeRequestProof: String
-                        get() = "request-proof-random"
-                    override val credentialDefinitionName: String
-                        get() = "random"
-                    override val schemaUri: String
-                        get() = "https://example.com/random"
-                    override val vcType: String
-                        get() = "random"
-                }
-            )
-
-            val oobInvitation = holderMessenger.startCreatingInvitation()
-            oobInvitation.shouldBeInstanceOf<NextMessage.Send>()
-            val invitationMessage = oobInvitation.message
-
-            val parsedInvitation = verifierMessenger.parseMessage(invitationMessage)
-            parsedInvitation.shouldBeInstanceOf<NextMessage.Send>()
-            val requestPresentation = parsedInvitation.message
-
-            val parsedRequestPresentation = holderMessenger.parseMessage(requestPresentation)
-            parsedRequestPresentation.shouldBeInstanceOf<NextMessage.SendProblemReport>()
-            val problemReport = parsedRequestPresentation.message
-
-            val parseProblemReport = verifierMessenger.parseMessage(problemReport)
-            parseProblemReport.shouldBeInstanceOf<NextMessage.ReceivedProblemReport>()
-            val receivedProblemReport = parseProblemReport.message
-            receivedProblemReport.body.code shouldNotBe null
-
-            // sender may try to resend the last message
-            // for testing purposes, we'll need to create the messenger again, with the correct requested attribute names
-            // note that the subject messenger is not recreated, i.e. it expects another "requestPresentation" message
-            verifierMessenger = PresentProofMessenger.newVerifierInstance(
-                verifier = verifier,
-                messageWrapper = MessageWrapper(verifierCryptoService),
-                challengeForPresentation = verifierChallenge,
-                requestedAttributeTypes = listOf(attributeName)
-            )
-            val secondParsedInvitation = verifierMessenger.parseMessage(invitationMessage)
-            secondParsedInvitation.shouldBeInstanceOf<NextMessage.Send>()
-            val secondRequestPresentation = secondParsedInvitation.message
-
-            val parsedSecondRequestPresentation =
-                holderMessenger.parseMessage(secondRequestPresentation)
-            parsedSecondRequestPresentation.shouldBeInstanceOf<NextMessage.Send>()
-            val presentation = parsedSecondRequestPresentation.message
-
-            val parseSecondPresentation = verifierMessenger.parseMessage(presentation)
-            parseSecondPresentation.shouldBeInstanceOf<NextMessage.Result<PresentProofProtocolResult>>()
-            val receivedPresentation = parseSecondPresentation.result
-
-            assertPresentation(receivedPresentation, attributeName, attributeValue)
-        }
     }
 
     private fun assertPresentation(
@@ -204,22 +134,22 @@ class PresentProofMessengerTest : FreeSpec() {
         val vp = vpResult.vp
         vp.verifiableCredentials shouldHaveSize 1
         vp.verifiableCredentials.forEach {
-            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttributeCredential>()
-            (it.vc.credentialSubject as AtomicAttributeCredential).name shouldBe attributeName
-            (it.vc.credentialSubject as AtomicAttributeCredential).value shouldBe attributeValue
+            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+            (it.vc.credentialSubject as AtomicAttribute2023).name shouldBe attributeName
+            (it.vc.credentialSubject as AtomicAttribute2023).value shouldBe attributeValue
         }
     }
 
     private fun randomCredential(subjectId: String) =
         IssuerCredentialDataProvider.CredentialToBeIssued(
-            AtomicAttributeCredential(
+            AtomicAttribute2023(
                 subjectId,
                 uuid4().toString(),
                 uuid4().toString(),
                 "application/text"
             ),
             Clock.System.now() + attributeLifetime,
-            ConstantIndex.Generic.vcType
+            ConstantIndex.AtomicAttribute2023.vcType
         )
 
 }

@@ -2,10 +2,12 @@
 
 Release 2.0.0:
  - Add `AtomicAttribute2023` as a sample for custom credentials
- - Remove deprecated methods for "attribute names" and credential with type `AtomicAttribute`
+ - Remove deprecated methods for "attribute names" and `AtomicAttributeCredential`
  - Remove list of known atomic attribute names in `AttributeIndex.genericAttributes`
  - Remove `attributeNames` in `Holder.createPresentation()`, `Holder.getCredentials()`, `SubjectCredentialStore.getCredentials()`
  - Replace `PresentProofProtocol.requestedAttributeNames` with `requestedAttributeTypes`
+ - Remove `ConstantIndex.Generic` as the default credential scheme
+ - Remove `goalCodeIssue` and `goalCodeRequestProof` from `CredentialScheme`
 
 Release 1.8.0:
  - Remove `JwsContentType`, replace with strings from `JwsContentTypeConstants`

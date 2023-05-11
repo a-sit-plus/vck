@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Base class for the subject of a [VerifiableCredential], see subclasses of this class, e.g. [AtomicAttributeCredential].
+ * Base class for the subject of a [VerifiableCredential], see subclasses of this class, e.g. [AtomicAttribute2023].
  */
 @Serializable
 open class CredentialSubject(

@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
-import at.asitplus.wallet.lib.data.AtomicAttributeCredential
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import io.matthewnelson.component.encoding.base16.encodeBase16
 import kotlinx.datetime.Clock
@@ -20,7 +20,7 @@ class DummyCredentialDataProvider(
         subjectId: String,
         attributeTypes: Collection<String>
     ): KmmResult<List<IssuerCredentialDataProvider.CredentialToBeIssued>> {
-        val attributeType = ConstantIndex.Generic.vcType
+        val attributeType = ConstantIndex.AtomicAttribute2023.vcType
         if (!attributeTypes.contains(attributeType)) {
             return KmmResult.failure(UnsupportedOperationException("no data"))
         }
@@ -28,27 +28,27 @@ class DummyCredentialDataProvider(
         return KmmResult.success(
             listOf(
                 IssuerCredentialDataProvider.CredentialToBeIssued(
-                    AtomicAttributeCredential(subjectId, "given-name", "Susanne"),
+                    AtomicAttribute2023(subjectId, "given-name", "Susanne"),
                     expiration,
                     attributeType,
                 ),
                 IssuerCredentialDataProvider.CredentialToBeIssued(
-                    AtomicAttributeCredential(subjectId, "family-name", "Meier"),
+                    AtomicAttribute2023(subjectId, "family-name", "Meier"),
                     expiration,
                     attributeType,
                 ),
                 IssuerCredentialDataProvider.CredentialToBeIssued(
-                    AtomicAttributeCredential(subjectId, "date-of-birth", "1990-01-01"),
+                    AtomicAttribute2023(subjectId, "date-of-birth", "1990-01-01"),
                     expiration,
                     attributeType,
                 ),
                 IssuerCredentialDataProvider.CredentialToBeIssued(
-                    AtomicAttributeCredential(subjectId, "identifier", randomValue()),
+                    AtomicAttribute2023(subjectId, "identifier", randomValue()),
                     expiration,
                     attributeType,
                 ),
                 IssuerCredentialDataProvider.CredentialToBeIssued(
-                    AtomicAttributeCredential(subjectId, "picture", randomValue()),
+                    AtomicAttribute2023(subjectId, "picture", randomValue()),
                     expiration,
                     attributeType,
                     listOf(Issuer.Attachment("picture", "image/webp", byteArrayOf(32)))

@@ -37,11 +37,11 @@ class IssueCredentialProtocolTest : FreeSpec({
         issuerProtocol = IssueCredentialProtocol.newIssuerInstance(
             issuer = issuer,
             serviceEndpoint = "https://example.com/issue?${uuid4()}",
-            credentialScheme = ConstantIndex.Generic,
+            credentialScheme = ConstantIndex.AtomicAttribute2023,
         )
         holderProtocol = IssueCredentialProtocol.newHolderInstance(
             holder = holder,
-            credentialScheme = ConstantIndex.Generic,
+            credentialScheme = ConstantIndex.AtomicAttribute2023,
         )
     }
 
@@ -105,7 +105,7 @@ class IssueCredentialProtocolTest : FreeSpec({
         val wrongRequestCredential = RequestCredential(
             body = RequestCredentialBody(
                 comment = "something",
-                goalCode = ConstantIndex.Generic.goalCodeIssue,
+                goalCode = "issue-vc-${ConstantIndex.AtomicAttribute2023.credentialDefinitionName}",
                 formats = arrayOf()
             ),
             parentThreadId = requestCredential.parentThreadId!!,

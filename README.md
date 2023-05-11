@@ -73,8 +73,6 @@ class YourCredential : at.asitplus.wallet.lib.data.CredentialSubject {
 at.asitplus.wallet.lib.LibraryInitializer.registerExtensionLibrary(
     at.asitplus.wallet.lib.LibraryInitializer.ExtensionLibraryInfo(
         credentialScheme = object : at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme {
-            override val goalCodeIssue: String = "issue-vc-yourcredential"
-            override val goalCodeRequestProof: String = "request-proof-yourcredential"
             override val credentialDefinitionName: String = "yourcredential"
             override val schemaUri: String = "https://example.com/schemas/1.0.0/yourcredential.json"
             override val vcType: String = "YourCredential2023"

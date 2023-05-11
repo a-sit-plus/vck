@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.Success
-import at.asitplus.wallet.lib.data.AtomicAttributeCredential
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.toBitSet
 import com.benasher44.uuid.uuid4
@@ -54,7 +54,7 @@ class AgentRevocationTest : FreeSpec({
     "credentials should contain status information" {
         val result = issuer.issueCredentialWithTypes(
             verifier.identifier,
-            listOf(ConstantIndex.Generic.vcType)
+            listOf(ConstantIndex.AtomicAttribute2023.vcType)
         )
         if (result.failed.isNotEmpty()) fail("no issued credentials")
 
@@ -123,7 +123,7 @@ private fun verifyBitSet(bitSet: KmmBitSet, expectedRevokedIndexes: List<Long>) 
 }
 
 private fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: List<Long>) {
-    val cred = AtomicAttributeCredential("sub", "name", "value", "text")
+    val cred = AtomicAttribute2023("sub", "name", "value", "text")
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..16) {
@@ -138,7 +138,7 @@ private fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: L
 
 private fun IssuerCredentialStore.revokeRandomCredentials(): MutableList<Long> {
     val expectedRevocationList = mutableListOf<Long>()
-    val cred = AtomicAttributeCredential("sub", "name", "value", "text")
+    val cred = AtomicAttribute2023("sub", "name", "value", "text")
     val issuanceDate = Clock.System.now()
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..256) {

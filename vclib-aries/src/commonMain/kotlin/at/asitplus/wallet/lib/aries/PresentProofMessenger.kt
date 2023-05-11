@@ -14,7 +14,7 @@ class PresentProofMessenger private constructor(
     private val challengeForPresentation: String = uuid4().toString(),
     createProtocolWhenNotActive: Boolean = true,
     private val requestedAttributeTypes: Collection<String>? = null,
-    private val credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic
+    private val credentialScheme: ConstantIndex.CredentialScheme,
 ) : ProtocolMessenger<PresentProofProtocol, PresentProofProtocolResult>(
     messageWrapper = messageWrapper,
     createProtocolWhenNotActive = createProtocolWhenNotActive,
@@ -41,7 +41,7 @@ class PresentProofMessenger private constructor(
             holder: Holder,
             messageWrapper: MessageWrapper,
             serviceEndpoint: String,
-            credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
+            credentialScheme: ConstantIndex.CredentialScheme,
         ) = PresentProofMessenger(
             holder = holder,
             messageWrapper = messageWrapper,
@@ -56,7 +56,7 @@ class PresentProofMessenger private constructor(
         fun newVerifierInstance(
             verifier: Verifier,
             messageWrapper: MessageWrapper,
-            credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
+            credentialScheme: ConstantIndex.CredentialScheme,
             requestedAttributeTypes: Collection<String>? = null,
             challengeForPresentation: String = uuid4().toString()
         ) = PresentProofMessenger(

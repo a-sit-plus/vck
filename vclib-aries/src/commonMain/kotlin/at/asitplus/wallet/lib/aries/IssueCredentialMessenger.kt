@@ -11,7 +11,7 @@ class IssueCredentialMessenger private constructor(
     messageWrapper: MessageWrapper,
     private val serviceEndpoint: String = "https://example.com/",
     createProtocolWhenNotActive: Boolean = true,
-    private val credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic
+    private val credentialScheme: ConstantIndex.CredentialScheme,
 ) : ProtocolMessenger<IssueCredentialProtocol, IssueCredentialProtocolResult>(
     messageWrapper = messageWrapper,
     createProtocolWhenNotActive = createProtocolWhenNotActive,
@@ -35,7 +35,7 @@ class IssueCredentialMessenger private constructor(
         fun newHolderInstance(
             holder: Holder,
             messageWrapper: MessageWrapper,
-            credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
+            credentialScheme: ConstantIndex.CredentialScheme,
         ) = IssueCredentialMessenger(
             holder = holder,
             messageWrapper = messageWrapper,
@@ -50,7 +50,7 @@ class IssueCredentialMessenger private constructor(
             issuer: Issuer,
             messageWrapper: MessageWrapper,
             serviceEndpoint: String,
-            credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
+            credentialScheme: ConstantIndex.CredentialScheme,
         ) = IssueCredentialMessenger(
             issuer = issuer,
             messageWrapper = messageWrapper,

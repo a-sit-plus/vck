@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.data.AtomicAttributeCredential
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -28,7 +28,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
             issuerCryptoService = DefaultCryptoService()
             issuer = IssuerAgent.newDefaultInstance(issuerCryptoService, dataProvider = DummyCredentialDataProvider())
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
-            issuerMessenger = initIssuerMessenger(ConstantIndex.Generic)
+            issuerMessenger = initIssuerMessenger(ConstantIndex.AtomicAttribute2023)
         }
 
         "issueCredentialGeneric" {
@@ -50,6 +50,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
         return IssueCredentialMessenger.newHolderInstance(
             holder = HolderAgent.newDefaultInstance(cryptoService),
             messageWrapper = MessageWrapper(cryptoService),
+            credentialScheme = ConstantIndex.AtomicAttribute2023,
         )
     }
 
@@ -86,7 +87,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
     private fun assertAtomicVc(issuedCredentials: IssueCredentialProtocolResult) {
         issuedCredentials.accepted.shouldNotBeEmpty()
         issuedCredentials.accepted.map { it.vc.credentialSubject }.forEach {
-            it.shouldBeInstanceOf<AtomicAttributeCredential>()
+            it.shouldBeInstanceOf<AtomicAttribute2023>()
         }
         issuedCredentials.rejected.shouldBeEmpty()
     }
@@ -94,7 +95,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
     private fun assertAttachment(issuedCredentials: IssueCredentialProtocolResult, attributeName: String) {
         issuedCredentials.accepted.shouldNotBeEmpty()
         issuedCredentials.accepted.map { it.vc.credentialSubject }
-            .filterIsInstance<AtomicAttributeCredential>()
+            .filterIsInstance<AtomicAttribute2023>()
             .filter { it.name == attributeName }
             .shouldNotBeEmpty()
         issuedCredentials.attachments.shouldNotBeEmpty()

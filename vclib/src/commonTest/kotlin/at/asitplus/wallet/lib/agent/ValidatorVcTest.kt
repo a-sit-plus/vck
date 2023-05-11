@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.wallet.lib.data.AtomicAttributeCredential
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.VerifiableCredential
@@ -50,7 +50,7 @@ class ValidatorVcTest : FreeSpec() {
         "credentials are valid for" {
             issuer.issueCredentialWithTypes(
                 verifier.identifier,
-                listOf(ConstantIndex.Generic.vcType)
+                listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).successful.map { it.vcJws }
                 .forEach {
                     verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
@@ -60,9 +60,8 @@ class ValidatorVcTest : FreeSpec() {
         "revoked credentials are not valid" {
             issuer.issueCredentialWithTypes(
                 verifier.identifier,
-                listOf(ConstantIndex.Generic.vcType)
-            )
-                .successful
+                listOf(ConstantIndex.AtomicAttribute2023.vcType)
+            ).successful
                 .map { it.vcJws }
                 .map { it to verifier.verifyVcJws(it) }.forEach {
                     val value = it.second
@@ -82,7 +81,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "wrong subject keyId is not be valid" {
-            issuer.issueCredentialWithTypes(uuid4().toString(), listOf(ConstantIndex.Generic.vcType))
+            issuer.issueCredentialWithTypes(uuid4().toString(), listOf(ConstantIndex.AtomicAttribute2023.vcType))
                 .successful.map { it.vcJws }.forEach {
                     verifier.verifyVcJws(it)
                         .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
@@ -92,9 +91,8 @@ class ValidatorVcTest : FreeSpec() {
         "credential with invalid JWS format is not valid" {
             issuer.issueCredentialWithTypes(
                 verifier.identifier,
-                listOf(ConstantIndex.Generic.vcType)
-            )
-                .successful.map { it.vcJws }
+                listOf(ConstantIndex.AtomicAttribute2023.vcType)
+            ).successful.map { it.vcJws }
                 .map { it.replaceFirstChar { "f" } }.forEach {
                     verifier.verifyVcJws(it)
                         .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
@@ -105,7 +103,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it)
@@ -121,7 +119,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it)
@@ -138,7 +136,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it)
@@ -155,7 +153,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it)
@@ -171,7 +169,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it)
@@ -188,7 +186,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it)
@@ -206,7 +204,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it, expirationDate = Clock.System.now() - 1.hours)
@@ -232,7 +230,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it, expirationDate = null)
@@ -248,7 +246,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it, expirationDate = Clock.System.now() + 1.hours)
@@ -265,7 +263,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 it.let {
@@ -286,7 +284,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 it.let { issueCredential(it) }
@@ -305,7 +303,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it, issuanceDate = Clock.System.now() + 1.hours)
@@ -322,7 +320,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
+                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it, issuanceDate = Clock.System.now() - 1.hours)
@@ -342,7 +340,7 @@ class ValidatorVcTest : FreeSpec() {
         expirationDate: Instant? = Clock.System.now() + 60.seconds
     ): VerifiableCredential {
         val sub = credential.subject
-        sub as AtomicAttributeCredential
+        sub as AtomicAttribute2023
         val vcId = "urn:uuid:${uuid4()}"
         val exp = expirationDate ?: (Clock.System.now() + 60.seconds)
         val statusListIndex =
@@ -353,6 +351,7 @@ class ValidatorVcTest : FreeSpec() {
             issuer = issuer.identifier,
             credentialStatus = credentialStatus,
             credentialSubject = sub,
+            credentialType = ConstantIndex.AtomicAttribute2023.vcType,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
         )

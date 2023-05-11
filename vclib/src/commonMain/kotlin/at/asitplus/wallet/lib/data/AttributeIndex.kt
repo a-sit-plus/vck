@@ -5,7 +5,7 @@ object AttributeIndex {
     private val schemeSet = mutableSetOf<ConstantIndex.CredentialScheme>()
 
     init {
-        schemeSet += ConstantIndex.Generic
+        schemeSet += ConstantIndex.AtomicAttribute2023
     }
 
     internal fun registerAttributeType(scheme: ConstantIndex.CredentialScheme) {

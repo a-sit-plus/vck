@@ -36,7 +36,7 @@ data class VerifiableCredential(
         lifetime: Duration,
         credentialStatus: CredentialStatus,
         credentialSubject: CredentialSubject,
-        credentialType: String = ConstantIndex.Generic.vcType,
+        credentialType: String,
         issuanceDate: Instant = Clock.System.now(),
         expirationDate: Instant? = Clock.System.now() + lifetime,
     ) : this(
@@ -56,7 +56,7 @@ data class VerifiableCredential(
         expirationDate: Instant?,
         credentialStatus: CredentialStatus,
         credentialSubject: CredentialSubject,
-        credentialType: String = ConstantIndex.Generic.vcType,
+        credentialType: String,
     ) : this(
         id = id,
         type = arrayOf("VerifiableCredential", credentialType),

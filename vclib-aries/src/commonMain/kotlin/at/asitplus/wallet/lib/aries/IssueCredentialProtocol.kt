@@ -8,6 +8,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
 import at.asitplus.wallet.lib.data.dif.CredentialDefinition
 import at.asitplus.wallet.lib.data.dif.CredentialManifest
+import at.asitplus.wallet.lib.data.dif.SchemaReference
 import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.msg.AttachmentFormatReference
 import at.asitplus.wallet.lib.msg.IssueCredential
@@ -20,7 +21,6 @@ import at.asitplus.wallet.lib.msg.OutOfBandService
 import at.asitplus.wallet.lib.msg.RequestCredential
 import at.asitplus.wallet.lib.msg.RequestCredentialAttachment
 import at.asitplus.wallet.lib.msg.RequestCredentialBody
-import at.asitplus.wallet.lib.data.dif.SchemaReference
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.encodeToString
 
@@ -52,7 +52,7 @@ class IssueCredentialProtocol(
          */
         fun newHolderInstance(
             holder: Holder,
-            credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
+            credentialScheme: ConstantIndex.CredentialScheme,
         ) = IssueCredentialProtocol(
             holder = holder,
             credentialScheme = credentialScheme,
@@ -65,7 +65,7 @@ class IssueCredentialProtocol(
         fun newIssuerInstance(
             issuer: Issuer,
             serviceEndpoint: String? = null,
-            credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
+            credentialScheme: ConstantIndex.CredentialScheme,
         ) = IssueCredentialProtocol(
             issuer = issuer,
             serviceEndpoint = serviceEndpoint,
@@ -145,7 +145,7 @@ class IssueCredentialProtocol(
             body = OutOfBandInvitationBody(
                 handshakeProtocols = arrayOf(SchemaIndex.PROT_ISSUE_CRED),
                 acceptTypes = arrayOf("application/didcomm-signed+json"),
-                goalCode = credentialScheme.goalCodeIssue,
+                goalCode = "issue-vc-${credentialScheme.credentialDefinitionName}",
                 services = arrayOf(
                     OutOfBandService(
                         type = "did-communication",
@@ -202,7 +202,7 @@ class IssueCredentialProtocol(
         return RequestCredential(
             body = RequestCredentialBody(
                 comment = "Please issue some credentials",
-                goalCode = credentialScheme.goalCodeIssue,
+                goalCode = "issue-vc-${credentialScheme.credentialDefinitionName}",
                 formats = arrayOf(
                     AttachmentFormatReference(
                         attachmentId = attachment.id,

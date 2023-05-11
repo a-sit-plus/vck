@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.wallet.lib.data.AtomicAttributeCredential
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 
 
@@ -59,7 +59,7 @@ class VerifierAgent private constructor(
     ): Boolean {
         val existingAttributeNames = it.verifiableCredentials
             .map { it.vc.credentialSubject }
-            .filterIsInstance<AtomicAttributeCredential>()
+            .filterIsInstance<AtomicAttribute2023>()
             .map { it.name }
         return attributeNames == existingAttributeNames
     }

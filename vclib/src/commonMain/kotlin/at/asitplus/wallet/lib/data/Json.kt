@@ -19,7 +19,7 @@ val jsonSerializer by lazy {
         ignoreUnknownKeys = true
         serializersModule = SerializersModule {
             polymorphic(CredentialSubject::class) {
-                subclass(AtomicAttributeCredential::class)
+                subclass(AtomicAttribute2023::class)
                 subclass(RevocationListSubject::class)
             }
             serializersModules.forEach {
