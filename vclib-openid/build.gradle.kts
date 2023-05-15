@@ -198,6 +198,11 @@ publishing {
     }
     repositories {
         mavenLocal()
+        maven {
+            url = uri(layout.projectDirectory.dir("..").dir("repo"))
+            name = "local"
+            signing.isRequired = false
+        }
     }
 }
 

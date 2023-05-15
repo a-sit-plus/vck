@@ -19,8 +19,22 @@ allprojects {
     }
 }
 
-tasks.register("clean", Delete::class) {
+tasks.register<Delete>("clean") {
+    doFirst { println("Cleaning all build files") }
+
     delete(rootProject.buildDir)
+    delete(layout.projectDirectory.dir("repo"))
+    doLast { println("Clean done") }
+}
+
+task<Exec>("purge") {
+    dependsOn("clean")
+    workingDir = layout.projectDirectory.dir("vclib").asFile
+    commandLine("./gradlew", "clean")
+    doFirst {
+        println("descending into ${workingDir.absolutePath}")
+        logger.lifecycle("Purging VcLib maven build")
+    }
 }
 
 val artifactVersion: String by extra
