@@ -32,31 +32,26 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
 }
 
 kotlin {
-    val xcf = XCFrameworkConfig(project, "VcLibAriesKmm")
+    "VcLibAriesKmm".also { name ->
+        XCFrameworkConfig(project, name).also { xcf ->
 
-    ios {
-        binaries.framework {
-            baseName = "VcLibAriesKmm"
-            embedBitcode("bitcode")
-            export("org.jetbrains.kotlinx:kotlinx-datetime:${Versions.datetime}")
-            export("at.asitplus:kmmresult:${Versions.resultlib}")
-            export("io.matthewnelson.kotlin-components:encoding-base16:${Versions.encoding}")
-            export("io.matthewnelson.kotlin-components:encoding-base64:${Versions.encoding}")
-            export(project(":vclib"))
-            xcf.add(this)
-        }
-    }
-
-    iosSimulatorArm64 {
-        binaries.framework {
-            baseName = "VcLibAriesKmm"
-            embedBitcode("bitcode")
-            export("org.jetbrains.kotlinx:kotlinx-datetime:${Versions.datetime}")
-            export("at.asitplus:kmmresult:${Versions.resultlib}")
-            export("io.matthewnelson.kotlin-components:encoding-base16:${Versions.encoding}")
-            export("io.matthewnelson.kotlin-components:encoding-base64:${Versions.encoding}")
-            export(project(":vclib"))
-            xcf.add(this)
+            ios {
+                binaries.framework {
+                    baseName = name
+                    embedBitcode("bitcode")
+                    addCommonExports()
+                    xcf.add(this)
+                }
+            }
+            iosSimulatorArm64 {
+                binaries.framework {
+                    baseName = name
+                    embedBitcode("bitcode")
+                    addCommonExports()
+                    export(project(":vclib"))
+                    xcf.add(this)
+                }
+            }
         }
     }
 
@@ -75,46 +70,20 @@ kotlin {
         }
     }
 
-    targets.all {
-        compilations.all {
-            kotlinOptions {
-                freeCompilerArgs = listOf(
-                    "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
-                    "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-                    "-opt-in=kotlin.time.ExperimentalTime",
-                    "-opt-in=kotlin.RequiresOptIn",
-                )
-            }
-        }
-    }
+    experimentalOptIns()
 
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.coroutines}")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${Versions.`serialization-json`}")
-                implementation("com.benasher44:uuid:${Versions.uuid}")
-                implementation("io.ktor:ktor-http:${Versions.ktor}")
-                implementation("io.ktor:ktor-utils:${Versions.ktor}")
-                implementation("com.squareup.okio:okio:${Versions.okio}")
-                implementation("io.github.aakira:napier:${Versions.napier}")
-                api("org.jetbrains.kotlinx:kotlinx-datetime:${Versions.datetime}")
-                api("at.asitplus:kmmresult:${Versions.resultlib}")
+                commonImplementationDependencies()
                 api(project(":vclib"))
-                api("io.matthewnelson.kotlin-components:encoding-base16:${Versions.encoding}")
-                api("io.matthewnelson.kotlin-components:encoding-base64:${Versions.encoding}")
             }
         }
         val commonTest by getting {
             dependencies {
-                implementation("io.kotest:kotest-assertions-core:${Versions.kotest}")
-                implementation("io.kotest:kotest-common:${Versions.kotest}")
-                implementation("io.kotest:kotest-property:${Versions.kotest}")
-                implementation("io.kotest:kotest-framework-engine:${Versions.kotest}")
-                implementation("io.kotest:kotest-framework-datatest:${Versions.kotest}")
+                commonTestDependencies()
             }
         }
-
 
 
         val iosMain by getting
@@ -135,7 +104,7 @@ kotlin {
 }
 
 tasks.withType<Test> {
-    if(name == "testReleaseUnitTest") return@withType
+    if (name == "testReleaseUnitTest") return@withType
     useJUnitPlatform()
     filter {
         isFailOnNoMatchingTests = false
@@ -144,7 +113,7 @@ tasks.withType<Test> {
         showExceptions = true
         showStandardStreams = true
         events = setOf(
-           TestLogEvent.FAILED,
+            TestLogEvent.FAILED,
             TestLogEvent.PASSED
         )
         exceptionFormat = TestExceptionFormat.FULL
