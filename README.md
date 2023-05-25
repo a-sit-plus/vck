@@ -49,7 +49,7 @@ The `DefaultCryptoService` for iOS should not be used in production as it does n
 
 ## Credentials
 
-A single credential itself is an instance of `CredentialSubject` and has no special meaning attached to it. This library implements an `AtomicAttribute2023` an a sample of a custom credential.
+A single credential itself is an instance of `CredentialSubject` and has no special meaning attached to it. This library implements `AtomicAttribute2023` as a sample of a custom credential.
 
 Other libraries using this library may subclass `CredentialSubject` and call `LibraryInitializer.registerExtensionLibrary()` to register that extension with this library:
 

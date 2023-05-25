@@ -8,30 +8,70 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class IssuerMetadata(
+    /**
+     * OIDC Discovery: REQUIRED. URL using the https scheme with no query or fragment component that the OP asserts as
+     * its Issuer Identifier. If Issuer discovery is supported (see Section 2), this value MUST be identical to the
+     * issuer value returned by WebFinger. This also MUST be identical to the `iss` Claim value in ID Tokens issued
+     * from this Issuer.
+     */
     @SerialName("issuer")
     val issuer: String,
 
+    /**
+     * OID4VCI: REQUIRED. The Credential Issuer's identifier.
+     */
     @SerialName("credential_issuer")
     val credentialIssuer: String,
 
+    /**
+     * OID4VCI: OPTIONAL. Identifier of the OAuth 2.0 Authorization Server (as defined in RFC8414) the Credential
+     * Issuer relies on for authorization. If this element is omitted, the entity providing the Credential Issuer is
+     * also acting as the AS, i.e. the Credential Issuer's identifier is used as the OAuth 2.0 Issuer value to obtain
+     * the Authorization Server metadata as per RFC8414.
+     */
     @SerialName("authorization_server")
     val authorizationServer: String? = null,
 
+    /**
+     * OID4VCI: REQUIRED. URL of the Credential Issuer's Credential Endpoint. This URL MUST use the https scheme and
+     * MAY contain port, path and query parameter components.
+     */
     @SerialName("credential_endpoint")
     val credentialEndpointUrl: String,
 
+    /**
+     * OIDC Discovery: URL of the OP's OAuth 2.0 Token Endpoint (OpenID.Core). This is REQUIRED unless only the
+     * Implicit Flow is used.
+     */
     @SerialName("token_endpoint")
     val tokenEndpointUrl: String,
 
+    /**
+     * OIDC Discovery: REQUIRED. URL of the OP's OAuth 2.0 Authorization Endpoint (OpenID.Core).
+     */
     @SerialName("authorization_endpoint")
     val authorizationEndpointUrl: String,
 
+    /**
+     * OID4VCI: OPTIONAL. URL of the Credential Issuer's Batch Credential Endpoint. This URL MUST use the https scheme
+     * and MAY contain port, path and query parameter components. If omitted, the Credential Issuer does not support
+     * the Batch Credential Endpoint.
+     */
     @SerialName("batch_credential_endpoint")
     val batchCredentialEndpointUrl: String? = null,
 
+    /**
+     * OID4VCI: REQUIRED. A JSON array containing a list of JSON objects, each of them representing metadata about a
+     * separate credential type that the Credential Issuer can issue. The JSON objects in the array MUST conform to the
+     * structure of the Section 10.2.3.1.
+     */
     @SerialName("credentials_supported")
     val supportedCredentialFormat: Array<SupportedCredentialFormat>,
 
+    /**
+     * OID4VCI: OPTIONAL. An array of objects, where each object contains display properties of a Credential Issuer for
+     * a certain language.
+     */
     @SerialName("display")
     val displayProperties: Array<DisplayProperties>? = null,
 ) {

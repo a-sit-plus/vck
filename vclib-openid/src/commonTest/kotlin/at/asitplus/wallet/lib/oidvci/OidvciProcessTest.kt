@@ -13,7 +13,7 @@ import kotlinx.datetime.Clock
 
 class OidvciProcessTest : FunSpec({
 
-    val client = WalletService(tokenType = arrayOf("SomeCredential"))
+    val client = WalletService(credentialScheme = ConstantIndex.AtomicAttribute2023)
 
     val dataProvider = object : IssuerCredentialDataProvider {
         override fun getCredentialWithType(
@@ -35,11 +35,12 @@ class OidvciProcessTest : FunSpec({
         issuer = IssuerAgent.newDefaultInstance(
             cryptoService = DefaultCryptoService(),
             dataProvider = dataProvider
-        )
+        ),
+        credentialSchemes = listOf(ConstantIndex.AtomicAttribute2023)
     )
 
     test("process") {
-        val metadata = issuer.metadata()
+        val metadata = issuer.metadata
         val authnRequest = client.createAuthRequest()
         val codeUrl = issuer.authorize(authnRequest)
         val code = Url(codeUrl).parameters["code"]

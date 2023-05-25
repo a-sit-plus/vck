@@ -1,51 +1,72 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.JsonWebToken
 import at.asitplus.wallet.lib.jws.JwsSigned
 import io.ktor.http.URLBuilder
 import kotlin.coroutines.cancellation.CancellationException
 
+/**
+ * Server implementation to issue credentials using
+ * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html).
+ * Implemented from Draft `openid-4-verifiable-credential-issuance-1_0-11`, 2023-02-03.
+ */
 class IssuerService(
-    val issuer: Issuer,
-    val codeService: CodeService = DefaultCodeService(),
-    val tokenService: TokenService = DefaultTokenService(),
-    val clientNonceService: NonceService = DefaultNonceService(),
-    val publicContext: String = "https://wallet.a-sit.at/"
+    private val issuer: Issuer,
+    private val credentialSchemes: Collection<ConstantIndex.CredentialScheme>,
+    private val codeService: CodeService = DefaultCodeService(),
+    private val tokenService: TokenService = DefaultTokenService(),
+    private val clientNonceService: NonceService = DefaultNonceService(),
+    private val authorizationServer: String? = null,
+    private val publicContext: String = "https://wallet.a-sit.at/",
+    private val authorizationEndpointPath: String = "/authorize",
+    private val tokenEndpointPath: String = "/token",
+    private val credentialEndpointPath: String = "/credential",
 ) {
 
-    fun metadata(): IssuerMetadata {
-        val credentialFormat = SupportedCredentialFormat(
-            format = CredentialFormatEnum.JWT_VC,
-            id = "IDAustriaCredentialJwt",
-            types = arrayOf("VerifiableCredential", "IdAustriaCredential"),
-            supportedBindingMethods = arrayOf("ida"),
-            supportedCryptographicSuites = arrayOf("ES256"),
-            credentialSubject = mapOf(
-                "firstname" to CredentialSubjectMetadataSingle(
-                    valueType = "String",
-                    display = DisplayProperties(name = "Vorname", locale = "de")
-                )
+    /**
+     * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`
+     */
+    val metadata: IssuerMetadata by lazy {
+        val credentialFormats = credentialSchemes.map {
+            SupportedCredentialFormat(
+                format = CredentialFormatEnum.JWT_VC,
+                id = it.vcType,
+                types = arrayOf("VerifiableCredential", it.vcType),
+                supportedBindingMethods = arrayOf("did:key", "jwk-thumbprint"),
+                supportedCryptographicSuites = arrayOf("ES256"),
             )
-        )
-        return IssuerMetadata(
+        }
+        IssuerMetadata(
             issuer = publicContext,
             credentialIssuer = publicContext,
-            authorizationServer = "https://eid.egiz.gv.at/",
-            authorizationEndpointUrl = "$publicContext/authorize",
-            tokenEndpointUrl = "$publicContext/token",
-            credentialEndpointUrl = "$publicContext/credential",
-            supportedCredentialFormat = arrayOf(credentialFormat),
-            displayProperties = arrayOf(DisplayProperties(name = "ID Austria Credential", locale = "de"))
+            authorizationServer = authorizationServer,
+            authorizationEndpointUrl = "$publicContext$authorizationEndpointPath",
+            tokenEndpointUrl = "$publicContext$tokenEndpointPath",
+            credentialEndpointUrl = "$publicContext$credentialEndpointPath",
+            supportedCredentialFormat = credentialFormats.toTypedArray(),
+            displayProperties = credentialSchemes
+                .map { DisplayProperties(it.credentialDefinitionName, "en") }
+                .toTypedArray()
         )
     }
 
+    /**
+     * Send this result as HTTP Header `Location` in a 302 response to the client.
+     * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
+     * code from [codeService].
+     */
     fun authorize(params: AuthorizationRequestParameters): String {
         val builder = URLBuilder(params.redirectUrl)
         builder.parameters.append("code", codeService.provideCode())
         return builder.buildString()
     }
 
+    /**
+     * Verifies the authorization code sent by the client and issues an access token.
+     * Send this value JSON-serialized back to the client.
+     */
     @Throws(OAuth2Exception::class)
     fun token(params: TokenRequestParameters): TokenResponseParameters {
         if (!codeService.verifyCode(params.code))
@@ -58,6 +79,15 @@ class IssuerService(
         )
     }
 
+    /**
+     * Verifies the [authorizationHeader] to contain a token from [tokenService],
+     * verifies the proof sent by the client (must contain a nonce from [clientNonceService]),
+     * and issues credentials to the client.
+     * Send the result JSON-serialized back to the client.
+     *
+     * @param authorizationHeader The value of HTTP header `Authorization` sent by the client
+     * @param params Parameters the client sent JSON-serialized in the HTTP body
+     */
     @Throws(OAuth2Exception::class, CancellationException::class)
     suspend fun credential(
         authorizationHeader: String,
@@ -77,7 +107,7 @@ class IssuerService(
             throw OAuth2Exception("invalid_or_missing_proof")
         if (jwsSigned.header.type != "openid4vci-proof+jwt")
             throw OAuth2Exception("invalid_or_missing_proof")
-        val subjectId = jwsSigned.header.publicKey?.jwkThumbprint
+        val subjectId = jwsSigned.header.publicKey?.identifier
             ?: throw OAuth2Exception("invalid_or_missing_proof")
         val credential = issuer.issueCredentialWithTypes(subjectId, params.types.toList())
         if (credential.successful.isEmpty()) {
