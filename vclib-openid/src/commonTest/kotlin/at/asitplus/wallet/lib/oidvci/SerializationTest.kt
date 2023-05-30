@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.wallet.lib.oidc.OpenIdConstants
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -11,7 +13,7 @@ import kotlin.random.Random
 class SerializationTest : FunSpec({
 
     fun createAuthorizationRequest() = AuthorizationRequestParameters(
-        responseType = "code",
+        responseType = OpenIdConstants.GRANT_TYPE_CODE,
         clientId = randomString(),
         authorizationDetails = AuthorizationDetails(
             type = randomString(),
@@ -26,7 +28,7 @@ class SerializationTest : FunSpec({
     )
 
     fun createTokenRequest() = TokenRequestParameters(
-        grantType = "code",
+        grantType = OpenIdConstants.GRANT_TYPE_CODE,
         code = randomString(),
         redirectUrl = "https://wallet.a-sit.at/app/${randomString()}",
         clientId = randomString(),
@@ -38,7 +40,7 @@ class SerializationTest : FunSpec({
     fun createTokenResponse() = TokenResponseParameters(
         accessToken = randomString(),
         refreshToken = randomString(),
-        tokenType = "bearer",
+        tokenType = TOKEN_TYPE_BEARER,
         expires = Random.nextInt(),
         scope = randomString(),
         clientNonce = randomString(),

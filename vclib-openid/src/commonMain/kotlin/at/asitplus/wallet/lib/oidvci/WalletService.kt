@@ -7,6 +7,9 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JsonWebToken
 import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.oidc.OpenIdConstants
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.CREDENTIAL_TYPE_OPENID
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import kotlinx.datetime.Clock
 
 /**
@@ -27,10 +30,10 @@ class WalletService(
      * [IssuerMetadata.authorizationEndpointUrl])
      */
     fun createAuthRequest() = AuthorizationRequestParameters(
-        responseType = "code",
+        responseType = OpenIdConstants.GRANT_TYPE_CODE,
         clientId = clientId,
         authorizationDetails = AuthorizationDetails(
-            type = "openid_credential",
+            type = CREDENTIAL_TYPE_OPENID,
             format = CredentialFormatEnum.JWT_VC,
             types = arrayOf("VerifiableCredential") + credentialScheme.vcType,
         ),
@@ -42,7 +45,7 @@ class WalletService(
      * [IssuerMetadata.tokenEndpointUrl])
      */
     fun createTokenRequestParameters(code: String) = TokenRequestParameters(
-        grantType = "code",
+        grantType = GRANT_TYPE_CODE,
         code = code,
         redirectUrl = redirectUrl,
         clientId = clientId,
@@ -61,11 +64,11 @@ class WalletService(
         format = CredentialFormatEnum.JWT_VC,
         types = arrayOf("VerifiableCredential") + credentialScheme.vcType,
         proof = CredentialRequestProof(
-            proofType = "jwt",
+            proofType = OpenIdConstants.ProofTypes.JWT,
             jwt = jwsService.createSignedJwsAddingParams(
                 header = JwsHeader(
                     algorithm = cryptoService.jwsAlgorithm,
-                    type = "openid4vci-proof+jwt",
+                    type = OpenIdConstants.ProofTypes.JWT_HEADER_TYPE,
                 ),
                 payload = JsonWebToken(
                     issuer = clientId,

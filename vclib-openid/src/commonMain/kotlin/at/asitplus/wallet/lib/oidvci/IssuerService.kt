@@ -5,6 +5,11 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.JsonWebToken
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsSigned
+import at.asitplus.wallet.lib.oidc.OpenIdConstants
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ProofTypes
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_PREFIX_BEARER
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
 import io.ktor.http.URLBuilder
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -60,7 +65,7 @@ class IssuerService(
      */
     fun authorize(params: AuthorizationRequestParameters): String {
         val builder = URLBuilder(params.redirectUrl)
-        builder.parameters.append("code", codeService.provideCode())
+        builder.parameters.append(OpenIdConstants.GRANT_TYPE_CODE, codeService.provideCode())
         return builder.buildString()
     }
 
@@ -71,10 +76,10 @@ class IssuerService(
     @Throws(OAuth2Exception::class)
     fun token(params: TokenRequestParameters): TokenResponseParameters {
         if (!codeService.verifyCode(params.code))
-            throw OAuth2Exception("invalid_code")
+            throw OAuth2Exception(Errors.INVALID_CODE)
         return TokenResponseParameters(
             accessToken = tokenService.provideToken(),
-            tokenType = "bearer",
+            tokenType = TOKEN_TYPE_BEARER,
             expires = 3600,
             clientNonce = clientNonceService.provideNonce()
         )
@@ -94,25 +99,25 @@ class IssuerService(
         authorizationHeader: String,
         params: CredentialRequestParameters
     ): CredentialResponseParameters {
-        if (!tokenService.verifyToken(authorizationHeader.removePrefix("Bearer ")))
-            throw OAuth2Exception("invalid_token")
+        if (!tokenService.verifyToken(authorizationHeader.removePrefix(TOKEN_PREFIX_BEARER)))
+            throw OAuth2Exception(Errors.INVALID_TOKEN)
         val proof = params.proof
-            ?: throw OAuth2Exception("invalid_request")
-        if (proof.proofType != "jwt")
-            throw OAuth2Exception("invalid_or_missing_proof")
+            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+        if (proof.proofType != ProofTypes.JWT)
+            throw OAuth2Exception(Errors.INVALID_PROOF)
         val jwsSigned = JwsSigned.parse(proof.jwt)
-            ?: throw OAuth2Exception("invalid_or_missing_proof")
+            ?: throw OAuth2Exception(Errors.INVALID_PROOF)
         val jwt = JsonWebToken.deserialize(jwsSigned.payload.decodeToString())
-            ?: throw OAuth2Exception("invalid_or_missing_proof")
+            ?: throw OAuth2Exception(Errors.INVALID_PROOF)
         if (jwt.nonce == null || !clientNonceService.verifyAndRemoveNonce(jwt.nonce!!))
-            throw OAuth2Exception("invalid_or_missing_proof")
-        if (jwsSigned.header.type != "openid4vci-proof+jwt")
-            throw OAuth2Exception("invalid_or_missing_proof")
+            throw OAuth2Exception(Errors.INVALID_PROOF)
+        if (jwsSigned.header.type != ProofTypes.JWT_HEADER_TYPE)
+            throw OAuth2Exception(Errors.INVALID_PROOF)
         val subjectId = jwsSigned.header.publicKey?.identifier
-            ?: throw OAuth2Exception("invalid_or_missing_proof")
+            ?: throw OAuth2Exception(Errors.INVALID_PROOF)
         val credential = issuer.issueCredentialWithTypes(subjectId, params.types.toList())
         if (credential.successful.isEmpty()) {
-            throw OAuth2Exception("invalid_request")
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
         return CredentialResponseParameters(
             format = CredentialFormatEnum.JWT_VC,
