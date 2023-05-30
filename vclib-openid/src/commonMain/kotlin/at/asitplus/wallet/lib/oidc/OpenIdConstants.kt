@@ -2,13 +2,17 @@ package at.asitplus.wallet.lib.oidc
 
 object OpenIdConstants {
 
-    const val ID_TOKEN = "idToken"
+    const val ID_TOKEN = "id_token"
+
+    const val VP_TOKEN = "vp_token"
 
     const val GRANT_TYPE_CODE = "code"
 
     const val TOKEN_PREFIX_BEARER = "Bearer "
 
     const val TOKEN_TYPE_BEARER = "bearer"
+
+    const val URN_TYPE_JWK_THUMBPRINT = "urn:ietf:params:oauth:jwk-thumbprint"
 
     const val PATH_WELL_KNOWN_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
 
@@ -25,7 +29,6 @@ object OpenIdConstants {
         const val JWT = "jwt"
 
         const val JWT_HEADER_TYPE = "openid4vci-proof+jwt"
-
     }
 
     /**

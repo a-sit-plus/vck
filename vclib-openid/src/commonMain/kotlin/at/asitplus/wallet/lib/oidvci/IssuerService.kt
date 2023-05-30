@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ProofTypes
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_PREFIX_BEARER
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import io.ktor.http.URLBuilder
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -41,7 +42,7 @@ class IssuerService(
                 format = CredentialFormatEnum.JWT_VC,
                 id = it.vcType,
                 types = arrayOf(VERIFIABLE_CREDENTIAL, it.vcType),
-                supportedBindingMethods = arrayOf("did:key", "jwk-thumbprint"),
+                supportedBindingMethods = arrayOf("did:key", URN_TYPE_JWK_THUMBPRINT),
                 supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
             )
         }
