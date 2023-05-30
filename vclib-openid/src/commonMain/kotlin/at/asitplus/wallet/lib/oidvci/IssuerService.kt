@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.jws.JsonWebToken
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsSigned
@@ -39,7 +40,7 @@ class IssuerService(
             SupportedCredentialFormat(
                 format = CredentialFormatEnum.JWT_VC,
                 id = it.vcType,
-                types = arrayOf("VerifiableCredential", it.vcType),
+                types = arrayOf(VERIFIABLE_CREDENTIAL, it.vcType),
                 supportedBindingMethods = arrayOf("did:key", "jwk-thumbprint"),
                 supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
             )

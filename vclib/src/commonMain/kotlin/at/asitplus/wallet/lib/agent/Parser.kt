@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.jws.JwsSigned
@@ -88,7 +89,7 @@ class Parser(
         if (vcJws.subject != vcJws.vc.credentialSubject.id)
             return ParseVcResult.InvalidStructure(it)
                 .also { Napier.d("sub invalid") }
-        if (!vcJws.vc.type.contains("VerifiableCredential"))
+        if (!vcJws.vc.type.contains(VERIFIABLE_CREDENTIAL))
             return ParseVcResult.InvalidStructure(it)
                 .also { Napier.d("type invalid") }
         if (vcJws.expiration != null && vcJws.expiration < (clock.now() - timeLeeway))

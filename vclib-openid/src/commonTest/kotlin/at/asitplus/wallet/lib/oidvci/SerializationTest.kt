@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -13,12 +15,12 @@ import kotlin.random.Random
 class SerializationTest : FunSpec({
 
     fun createAuthorizationRequest() = AuthorizationRequestParameters(
-        responseType = OpenIdConstants.GRANT_TYPE_CODE,
+        responseType = GRANT_TYPE_CODE,
         clientId = randomString(),
         authorizationDetails = AuthorizationDetails(
             type = randomString(),
             format = CredentialFormatEnum.JWT_VC,
-            types = arrayOf("VerifiableCredential", randomString()),
+            types = arrayOf(VERIFIABLE_CREDENTIAL, randomString()),
         ),
         redirectUrl = randomString(),
         scope = randomString(),
@@ -28,7 +30,7 @@ class SerializationTest : FunSpec({
     )
 
     fun createTokenRequest() = TokenRequestParameters(
-        grantType = OpenIdConstants.GRANT_TYPE_CODE,
+        grantType = GRANT_TYPE_CODE,
         code = randomString(),
         redirectUrl = "https://wallet.a-sit.at/app/${randomString()}",
         clientId = randomString(),

@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider.CredentialToBeIssued
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
+import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -143,7 +144,7 @@ class IssuerAgent constructor(
      * the entry at "revocationListIndex" (of the credential) is true iff it is revoked
      */
     override fun buildRevocationList(timePeriod: Int): String? {
-        val bitset = KmmBitSet(131072)
+        val bitset = KmmBitSet(REVOCATION_LIST_MIN_SIZE)
         issuerCredentialStore.getRevokedStatusListIndexList(timePeriod)
             .forEach { bitset[it] = true }
         val input = bitset.toByteArray()

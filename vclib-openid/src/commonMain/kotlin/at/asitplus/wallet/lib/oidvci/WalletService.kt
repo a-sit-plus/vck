@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JsonWebToken
 import at.asitplus.wallet.lib.jws.JwsHeader
@@ -35,7 +36,7 @@ class WalletService(
         authorizationDetails = AuthorizationDetails(
             type = CREDENTIAL_TYPE_OPENID,
             format = CredentialFormatEnum.JWT_VC,
-            types = arrayOf("VerifiableCredential") + credentialScheme.vcType,
+            types = arrayOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
         ),
         redirectUrl = redirectUrl,
     )
@@ -62,7 +63,7 @@ class WalletService(
         issuerMetadata: IssuerMetadata
     ) = CredentialRequestParameters(
         format = CredentialFormatEnum.JWT_VC,
-        types = arrayOf("VerifiableCredential") + credentialScheme.vcType,
+        types = arrayOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
         proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofTypes.JWT,
             jwt = jwsService.createSignedJwsAddingParams(

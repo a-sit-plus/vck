@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_2020
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Polymorphic
@@ -41,7 +43,7 @@ data class VerifiableCredential(
         expirationDate: Instant? = Clock.System.now() + lifetime,
     ) : this(
         id = id,
-        type = arrayOf("VerifiableCredential", credentialType),
+        type = arrayOf(VERIFIABLE_CREDENTIAL, credentialType),
         issuer = issuer,
         issuanceDate = issuanceDate,
         expirationDate = expirationDate,
@@ -59,7 +61,7 @@ data class VerifiableCredential(
         credentialType: String,
     ) : this(
         id = id,
-        type = arrayOf("VerifiableCredential", credentialType),
+        type = arrayOf(VERIFIABLE_CREDENTIAL, credentialType),
         issuer = issuer,
         issuanceDate = issuanceDate,
         expirationDate = expirationDate,
@@ -75,7 +77,7 @@ data class VerifiableCredential(
         credentialSubject: RevocationListSubject,
     ) : this(
         id = id,
-        type = arrayOf("VerifiableCredential", "RevocationList2020"),
+        type = arrayOf(VERIFIABLE_CREDENTIAL, REVOCATION_LIST_2020),
         issuer = issuer,
         issuanceDate = issuanceDate,
         expirationDate = issuanceDate + lifetime,

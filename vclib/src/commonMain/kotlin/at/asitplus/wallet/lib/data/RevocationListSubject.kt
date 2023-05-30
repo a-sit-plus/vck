@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
  * i.e. the [encodedList] contains a compressed bitset representing revoked credentials.
  */
 @Serializable
-@SerialName("RevocationList2020")
+@SerialName(VcDataModelConstants.REVOCATION_LIST_2020)
 class RevocationListSubject : CredentialSubject {
 
     @SerialName("encodedList")
