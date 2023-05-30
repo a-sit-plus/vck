@@ -9,11 +9,11 @@ jobs:
       - name: Build klibs
         run: ./gradlew iosArm64MainKlibrary iosX64MainKlibrary
       - name: Build XCFrameworks
-        run: ./gradlew assembleVcLibKMMXCFramework assembleVcLibAriesKmmXCFramework assembleVcLibOpenIdKmmXCFramework
+        run: ./gradlew assembleVcLibKmmXCFramework assembleVcLibAriesKmmXCFramework assembleVcLibOpenIdKmmXCFramework
       - name: Upload debug XCFramework vclib
         uses: actions/upload-artifact@v3
         with:
-          name: VcLibKMM-debug.xcframework
+          name: VcLibKmm-debug.xcframework
           path: |
             vclib/build/XCFrameworks/debug/
       - name: Upload debug XCFramework vclib-aries
@@ -31,7 +31,7 @@ jobs:
       - name: Upload release XCFramework vclib
         uses: actions/upload-artifact@v3
         with:
-          name: VcLibKMM-release.xcframework
+          name: VcLibKmm-release.xcframework
           path: |
             vclib/build/XCFrameworks/release/
       - name: Upload release XCFramework vclib-aries

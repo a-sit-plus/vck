@@ -1,9 +1,6 @@
 @file:Suppress("NOTHING_TO_INLINE")
 
-import org.gradle.api.Project
-import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.mpp.Framework
-import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFrameworkConfig
 
 
 inline fun Framework.addCommonExports() {

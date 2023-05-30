@@ -32,9 +32,8 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
 }
 
 kotlin {
-    "VcLibKMM".also { name ->
+    "VcLibKmm".also { name ->
         XCFrameworkConfig(project, name).also { xcf ->
-
             ios {
                 binaries.framework {
                     baseName = name
