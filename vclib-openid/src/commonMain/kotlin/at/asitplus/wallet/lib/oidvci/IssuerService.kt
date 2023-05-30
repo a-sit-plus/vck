@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.JsonWebToken
+import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsSigned
 import io.ktor.http.URLBuilder
 import kotlin.coroutines.cancellation.CancellationException
@@ -35,7 +36,7 @@ class IssuerService(
                 id = it.vcType,
                 types = arrayOf("VerifiableCredential", it.vcType),
                 supportedBindingMethods = arrayOf("did:key", "jwk-thumbprint"),
-                supportedCryptographicSuites = arrayOf("ES256"),
+                supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
             )
         }
         IssuerMetadata(

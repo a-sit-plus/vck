@@ -103,7 +103,7 @@ class OidcSiopProtocol(
             jsonWebKeySet = JsonWebKeySet(arrayOf(agentPublicKey)),
             subjectSyntaxTypesSupported = arrayOf("urn:ietf:params:oauth:jwk-thumbprint", "did:key"),
             vpFormats = FormatHolder(
-                jwtVp = FormatContainerJwt(algorithms = arrayOf("ES256")),
+                jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text)),
             ),
         )
         return AuthenticationRequest(
@@ -120,13 +120,13 @@ class OidcSiopProtocol(
                 presentationDefinition = PresentationDefinition(
                     id = uuid4().toString(),
                     formats = FormatHolder(
-                        jwtVp = FormatContainerJwt(algorithms = arrayOf("ES256"))
+                        jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text))
                     ),
                     inputDescriptors = arrayOf(
                         InputDescriptor(
                             id = uuid4().toString(),
                             format = FormatHolder(
-                                jwtVp = FormatContainerJwt(algorithms = arrayOf("ES256"))
+                                jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text))
                             ),
                             schema = arrayOf(SchemaReference("https://example.com")),
                             constraints = Constraint(
@@ -176,7 +176,7 @@ class OidcSiopProtocol(
         if (request.params.clientMetadata.vpFormats == null)
             return null
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
-        if (request.params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains("ES256") != true)
+        if (request.params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains(JwsAlgorithm.ES256.text) != true)
             return null
                 .also { Napier.w("Incompatible JWT algorithms") }
         val vp = holder?.createPresentation(request.params.nonce, audience)
