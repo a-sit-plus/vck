@@ -1,14 +1,8 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.encodeToJsonElement
 
 /**
  * Some possible parameters for an OIDC Authentication Request.
@@ -45,19 +39,4 @@ data class AuthenticationRequestParameters(
     val idTokenType: IdTokenType? = null,
     @SerialName("presentation_definition")
     val presentationDefinition: PresentationDefinition? = null,
-) {
-
-    fun serialize() = jsonSerializer.encodeToJsonElement(this) as JsonObject
-
-    companion object {
-        fun deserialize(it: Map<String, String>) = kotlin.runCatching {
-            jsonSerializer.decodeFromJsonElement<AuthenticationRequestParameters>(buildJsonObject {
-                it.forEach { (k, v) -> put(k, jsonSerializer.decodeFromString(v)) }
-            })
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
-    }
-
-}
+)

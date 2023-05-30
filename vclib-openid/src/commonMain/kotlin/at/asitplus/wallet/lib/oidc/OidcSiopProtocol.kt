@@ -4,7 +4,6 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.data.dif.SchemaReference
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.Constraint
@@ -16,6 +15,7 @@ import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
+import at.asitplus.wallet.lib.data.dif.SchemaReference
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JsonWebKey
@@ -46,8 +46,6 @@ class OidcSiopProtocol(
     private val jwsService: JwsService,
     private val verifierJwsService: VerifierJwsService,
     private val relyingPartyChallenge: String = uuid4().toString(),
-    private val walletUrl: String = "https://wallet.a-sit.at/mobile",
-    private val relyingPartyUrl: String = "https://wallet.a-sit.at/verifier",
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System
 ) {
@@ -62,7 +60,6 @@ class OidcSiopProtocol(
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
             jwsService: JwsService = DefaultJwsService(cryptoService),
             relyingPartyChallenge: String = uuid4().toString(),
-            relyingPartyUrl: String = "https://wallet.a-sit.at/verifier",
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System
         ) = OidcSiopProtocol(
@@ -71,7 +68,6 @@ class OidcSiopProtocol(
             jwsService = jwsService,
             verifierJwsService = verifierJwsService,
             relyingPartyChallenge = relyingPartyChallenge,
-            relyingPartyUrl = relyingPartyUrl,
             timeLeewaySeconds = timeLeewaySeconds,
             clock = clock
         )
@@ -80,7 +76,6 @@ class OidcSiopProtocol(
             holder: Holder,
             cryptoService: CryptoService,
             jwsService: JwsService = DefaultJwsService(cryptoService),
-            walletUrl: String = "https://wallet.a-sit.at/wallet",
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System
         ) = OidcSiopProtocol(
@@ -88,7 +83,6 @@ class OidcSiopProtocol(
             agentPublicKey = cryptoService.toJsonWebKey(),
             jwsService = jwsService,
             verifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-            walletUrl = walletUrl,
             timeLeewaySeconds = timeLeewaySeconds,
             clock = clock
         )
@@ -97,7 +91,18 @@ class OidcSiopProtocol(
     /**
      * Creates a OIDC [AuthenticationRequest] URL to call the Wallet Implementation (acting as SIOP V2)
      */
-    fun createAuthnRequest(): String {
+    fun createAuthnRequestUrl(walletUrl: String, relyingPartyUrl: String): String {
+        return AuthenticationRequest(
+            url = walletUrl,
+            params = createAuthnRequest(relyingPartyUrl),
+        ).toUrl()
+    }
+
+    /**
+     * Creates [AuthenticationRequestParameters], to be encoded as query params appended to the URL of the Wallet,
+     * e.g. `https://example.com?repsonse_type=...`
+     */
+    fun createAuthnRequest(relyingPartyUrl: String): AuthenticationRequestParameters {
         val metadata = RelyingPartyMetadata(
             redirectUris = arrayOf(relyingPartyUrl),
             jsonWebKeySet = JsonWebKeySet(arrayOf(agentPublicKey)),
@@ -106,45 +111,42 @@ class OidcSiopProtocol(
                 jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text)),
             ),
         )
-        return AuthenticationRequest(
-            url = walletUrl,
-            params = AuthenticationRequestParameters(
-                responseType = "id_token vp_token",
-                clientId = relyingPartyUrl,
-                redirectUri = relyingPartyUrl,
-                scope = "openid profile",
-                state = stateOfRelyingParty,
-                nonce = relyingPartyChallenge,
-                clientMetadata = metadata,
-                idTokenType = IdTokenType.ATTESTER_SIGNED,
-                presentationDefinition = PresentationDefinition(
-                    id = uuid4().toString(),
-                    formats = FormatHolder(
-                        jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text))
-                    ),
-                    inputDescriptors = arrayOf(
-                        InputDescriptor(
-                            id = uuid4().toString(),
-                            format = FormatHolder(
-                                jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text))
-                            ),
-                            schema = arrayOf(SchemaReference("https://example.com")),
-                            constraints = Constraint(
-                                fields = arrayOf(
-                                    ConstraintField(
-                                        path = arrayOf("$.type"),
-                                        filter = ConstraintFilter(
-                                            type = "string",
-                                            pattern = "IDCardCredential",
-                                        )
+        return AuthenticationRequestParameters(
+            responseType = "id_token vp_token", // TODO Extract constants
+            clientId = relyingPartyUrl,
+            redirectUri = relyingPartyUrl,
+            scope = "openid profile",
+            state = stateOfRelyingParty,
+            nonce = relyingPartyChallenge,
+            clientMetadata = metadata,
+            idTokenType = IdTokenType.ATTESTER_SIGNED,
+            presentationDefinition = PresentationDefinition(
+                id = uuid4().toString(),
+                formats = FormatHolder(
+                    jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text))
+                ),
+                inputDescriptors = arrayOf(
+                    InputDescriptor(
+                        id = uuid4().toString(),
+                        format = FormatHolder(
+                            jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text))
+                        ),
+                        schema = arrayOf(SchemaReference("https://example.com")),
+                        constraints = Constraint(
+                            fields = arrayOf(
+                                ConstraintField(
+                                    path = arrayOf("$.type"),
+                                    filter = ConstraintFilter(
+                                        type = "string",
+                                        pattern = "IDCardCredential",
                                     )
-                                ),
+                                )
                             ),
-                        )
-                    ),
+                        ),
+                    )
                 ),
             ),
-        ).toUrl()
+        )
     }
 
     /**
@@ -156,30 +158,49 @@ class OidcSiopProtocol(
                 .also { Napier.w("Could not parse authentication request") }
         // TODO could also contain "request_uri"
         // TODO could also contain "response_mode=post"
-        stateOfRelyingParty = request.params.state
-        val audience = request.params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.identifier
+        return createAuthnResponse(request.params)
+    }
+
+    /**
+     * Pass in the deserialized [AuthenticationRequestParameters], which are encoded as query params
+     */
+    suspend fun createAuthnResponse(authenticationRequestParameters: AuthenticationRequestParameters): String? {
+        val params = createAuthnResponseParams(authenticationRequestParameters)
+            ?: return null
+        return AuthenticationResponse(
+            url = authenticationRequestParameters.redirectUri,
+            params = params
+        ).toUrl()
+    }
+
+    /**
+     * Creates the authentication response from the RP's [params]
+     */
+    suspend fun createAuthnResponseParams(params: AuthenticationRequestParameters): AuthenticationResponseParameters? {
+        stateOfRelyingParty = params.state
+        val audience = params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.identifier
             ?: return null
                 .also { Napier.w("Could not parse audience") }
-        if ("urn:ietf:params:oauth:jwk-thumbprint" !in request.params.clientMetadata.subjectSyntaxTypesSupported)
+        if ("urn:ietf:params:oauth:jwk-thumbprint" !in params.clientMetadata.subjectSyntaxTypesSupported)
             return null
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
-        if (request.params.clientId != request.params.redirectUri)
+        if (params.clientId != params.redirectUri)
             return null
                 .also { Napier.w("client_id does not match redirect_uri") }
-        if ("id_token" !in request.params.responseType)
+        if ("id_token" !in params.responseType)
             return null
                 .also { Napier.w("response_type is not \"id_token\"") }
         // TODO "claims" may be set by the RP to tell OP which attributes to release
-        if ("vp_token" !in request.params.responseType && request.params.presentationDefinition == null)
+        if ("vp_token" !in params.responseType && params.presentationDefinition == null)
             return null
                 .also { Napier.w("vp_token not requested") }
-        if (request.params.clientMetadata.vpFormats == null)
+        if (params.clientMetadata.vpFormats == null)
             return null
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
-        if (request.params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains(JwsAlgorithm.ES256.text) != true)
+        if (params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains(JwsAlgorithm.ES256.text) != true)
             return null
                 .also { Napier.w("Incompatible JWT algorithms") }
-        val vp = holder?.createPresentation(request.params.nonce, audience)
+        val vp = holder?.createPresentation(params.nonce, audience)
             ?: return null
                 .also { Napier.w("Could not create presentation") }
         if (vp !is Holder.CreatePresentationResult.Signed)
@@ -191,10 +212,10 @@ class OidcSiopProtocol(
             issuer = agentPublicKey.jwkThumbprint,
             subject = agentPublicKey.jwkThumbprint,
             subjectJwk = agentPublicKey,
-            audience = request.params.redirectUri,
+            audience = params.redirectUri,
             issuedAt = now,
             expiration = now + 60.seconds,
-            nonce = request.params.nonce,
+            nonce = params.nonce,
         )
         val jwsPayload = idToken.serialize().encodeToByteArray()
         val jwsHeader = JwsHeader(JwsAlgorithm.ES256)
@@ -203,8 +224,8 @@ class OidcSiopProtocol(
                 .also { Napier.w("Could not sign id_token") }
         val presentationSubmission = PresentationSubmission(
             id = uuid4().toString(),
-            definitionId = request.params.presentationDefinition?.id ?: uuid4().toString(),
-            descriptorMap = request.params.presentationDefinition?.inputDescriptors?.map {
+            definitionId = params.presentationDefinition?.id ?: uuid4().toString(),
+            descriptorMap = params.presentationDefinition?.inputDescriptors?.map {
                 PresentationSubmissionDescriptor(
                     id = it.id,
                     format = ClaimFormatEnum.JWT_VP,
@@ -217,15 +238,12 @@ class OidcSiopProtocol(
                 )
             }?.toTypedArray()
         )
-        return AuthenticationResponse(
-            url = request.params.redirectUri,
-            params = AuthenticationResponseParameters(
-                idToken = signedIdToken,
-                state = request.params.state,
-                vpToken = vp.jws,
-                presentationSubmission = presentationSubmission,
-            )
-        ).toUrl()
+        return AuthenticationResponseParameters(
+            idToken = signedIdToken,
+            state = params.state,
+            vpToken = vp.jws,
+            presentationSubmission = presentationSubmission,
+        )
     }
 
     sealed class AuthnResponseResult {
@@ -234,13 +252,22 @@ class OidcSiopProtocol(
     }
 
     /**
-     * Validates the [AuthenticationResponse] from the wallet
+     * Validates the [AuthenticationResponse] from the Wallet, where [it] is the whole URL,
+     * e.g. "https://example.com#id_token=..."
      */
-    fun validateAuthnResponse(it: String): AuthnResponseResult {
+    fun validateAuthnResponse(it: String, relyingPartyUrl: String): AuthnResponseResult {
         val response = AuthenticationResponse.parseUrl(it)
             ?: return AuthnResponseResult.Error("url")
                 .also { Napier.w("Could not parse authentication response: $it") }
-        val idTokenJws = response.params.idToken
+        val params = response.params
+        return validateAuthnResponse(params, relyingPartyUrl)
+    }
+
+    /**
+     * Validates [AuthenticationResponseParameters] from the Wallet, where [relyingPartyUrl] is "our" (=the RP) URL
+     */
+    fun validateAuthnResponse(params: AuthenticationResponseParameters, relyingPartyUrl: String): AuthnResponseResult {
+        val idTokenJws = params.idToken
         val jwsSigned = JwsSigned.parse(idTokenJws)
             ?: return AuthnResponseResult.Error("idToken")
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
@@ -271,7 +298,7 @@ class OidcSiopProtocol(
         if (idToken.subject != idToken.subjectJwk.jwkThumbprint)
             return AuthnResponseResult.Error("sub")
                 .also { Napier.d("subject does not equal thumbprint of sub_jwk: ${idToken.subject}") }
-        val vp = response.params.vpToken
+        val vp = params.vpToken
             ?: return AuthnResponseResult.Error("vpToken is null")
                 .also { Napier.w("No VP in response") }
         val verificationResult = verifier?.verifyPresentation(vp, relyingPartyChallenge)
