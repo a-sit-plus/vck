@@ -18,6 +18,26 @@ data class JwsSigned(
         return "${plainSignatureInput}.${signature.encodeBase64(Base64.UrlSafe(pad = false))}"
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as JwsSigned
+
+        if (header != other.header) return false
+        if (!payload.contentEquals(other.payload)) return false
+        if (!signature.contentEquals(other.signature)) return false
+        return plainSignatureInput == other.plainSignatureInput
+    }
+
+    override fun hashCode(): Int {
+        var result = header.hashCode()
+        result = 31 * result + payload.contentHashCode()
+        result = 31 * result + signature.contentHashCode()
+        result = 31 * result + plainSignatureInput.hashCode()
+        return result
+    }
+
     companion object {
         fun parse(it: String): JwsSigned? {
             val stringList = it.replace("[^A-Za-z0-9-_.]".toRegex(), "").split(".")
