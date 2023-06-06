@@ -9,13 +9,13 @@ buildscript {
         mavenCentral()
     }
 }*/
-/*
+
 allprojects {
     repositories {
         google()
         mavenCentral()
     }
-}*/
+}
 
 tasks.register<Delete>("clean") {
     doFirst { println("Cleaning all build files") }

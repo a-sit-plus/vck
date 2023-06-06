@@ -1,6 +1,4 @@
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFrameworkConfig
-import java.io.FileInputStream
-import java.util.*
 
 
 plugins {
@@ -53,19 +51,6 @@ kotlin {
         }
     }
 
-    jvm {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = Versions.Jvm.target
-                freeCompilerArgs = listOf(
-                    "-Xjsr305=strict"
-                )
-            }
-        }
-    }
-
-    experimentalOptIns()
-
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -74,9 +59,6 @@ kotlin {
             }
         }
         val commonTest by getting {
-            dependencies {
-
-            }
         }
 
 
@@ -94,13 +76,6 @@ kotlin {
             }
         }
     }
-}
-
-
-
-Properties().apply {
-    kotlin.runCatching { load(FileInputStream(project.rootProject.file("local.properties"))) }
-    forEach { (k, v) -> extra.set(k as String, v) }
 }
 
 repositories {
