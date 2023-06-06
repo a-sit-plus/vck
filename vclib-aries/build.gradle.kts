@@ -32,28 +32,7 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
 }
 
 kotlin {
-    "VcLibAriesKmm".also { name ->
-        XCFrameworkConfig(project, name).also { xcf ->
-            ios {
-                binaries.framework {
-                    baseName = name
-                    embedBitcode("bitcode")
-                    addCommonExports()
-                    export(project(":vclib"))
-                    xcf.add(this)
-                }
-            }
-            iosSimulatorArm64 {
-                binaries.framework {
-                    baseName = name
-                    embedBitcode("bitcode")
-                    addCommonExports()
-                    export(project(":vclib"))
-                    xcf.add(this)
-                }
-            }
-        }
-    }
+    iosFramework("VcLibAriesKmm",project(":vclib")) from project
 
     sourceSets {
         val commonMain by getting {
