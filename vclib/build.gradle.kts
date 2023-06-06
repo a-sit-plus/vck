@@ -5,6 +5,7 @@ import java.io.FileInputStream
 import java.util.*
 
 plugins {
+    id("at.asitplus.gradle.conventions")
     kotlin("multiplatform")
     kotlin("plugin.serialization") version Versions.kotlin
     id("maven-publish")
