@@ -13,7 +13,7 @@ inline fun KotlinDependencyHandler.commonImplementationDependencies() {
     implementation("io.github.aakira:napier:${Versions.napier}")
 }
 
-inline fun KotlinDependencyHandler.commonTestDependencies() {
+internal inline fun KotlinDependencyHandler.commonTestDependencies() {
     implementation("io.kotest:kotest-assertions-core:${Versions.kotest}")
     implementation("io.kotest:kotest-common:${Versions.kotest}")
     implementation("io.kotest:kotest-property:${Versions.kotest}")

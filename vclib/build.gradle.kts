@@ -5,13 +5,11 @@ import java.io.FileInputStream
 import java.util.*
 
 plugins {
-    id("at.asitplus.gradle.conventions")
     kotlin("multiplatform")
     kotlin("plugin.serialization")
-    id("maven-publish")
-    id("io.kotest.multiplatform")
-    id("signing")
+    id("at.asitplus.gradle.conventions")
     id("org.jetbrains.dokka")
+    id("signing")
 }
 
 /* required for maven publication */
@@ -63,10 +61,6 @@ kotlin {
                 )
             }
         }
-
-        testRuns["test"].executionTask.configure {
-            useJUnitPlatform()
-        }
     }
 
     experimentalOptIns()
@@ -82,9 +76,6 @@ kotlin {
             }
         }
         val commonTest by getting {
-            dependencies {
-                commonTestDependencies()
-            }
         }
 
 
@@ -98,29 +89,13 @@ kotlin {
         val jvmTest by getting {
             dependencies {
                 implementation("com.nimbusds:nimbus-jose-jwt:${Versions.Jvm.`jose-jwt`}")
-                implementation("io.kotest:kotest-runner-junit5-jvm:${Versions.kotest}")
                 implementation("org.json:json:${Versions.Jvm.json}")
             }
         }
     }
 }
 
-tasks.withType<Test> {
-    if (name == "testReleaseUnitTest") return@withType
-    useJUnitPlatform()
-    filter {
-        isFailOnNoMatchingTests = false
-    }
-    testLogging {
-        showExceptions = true
-        showStandardStreams = true
-        events = setOf(
-            TestLogEvent.FAILED,
-            TestLogEvent.PASSED
-        )
-        exceptionFormat = TestExceptionFormat.FULL
-    }
-}
+
 
 Properties().apply {
     kotlin.runCatching { load(FileInputStream(project.rootProject.file("local.properties"))) }
