@@ -1,5 +1,6 @@
 plugins {
-    id("io.github.gradle-nexus.publish-plugin") version Versions.nexus
+    id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
+    id("at.asitplus.gradle.conventions")
 }
 
 buildscript {
@@ -8,7 +9,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${Versions.kotlin}")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.0")
     }
 }
 
