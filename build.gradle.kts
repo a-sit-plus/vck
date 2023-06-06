@@ -1,21 +1,21 @@
 plugins {
-    id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
     id("at.asitplus.gradle.conventions")
+    //id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
 }
-
+/*
 buildscript {
     repositories {
         gradlePluginPortal()
         mavenCentral()
     }
-}
-
+}*/
+/*
 allprojects {
     repositories {
         google()
         mavenCentral()
     }
-}
+}*/
 
 tasks.register<Delete>("clean") {
     doFirst { println("Cleaning all build files") }

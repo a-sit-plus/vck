@@ -1,11 +1,11 @@
-pluginManagement {
+/*pluginManagement {
     repositories {
         google()
         gradlePluginPortal()
         mavenCentral()
     }
 }
-
+*/
 includeBuild("conventions")
 
 rootProject.name = "vclibrary"

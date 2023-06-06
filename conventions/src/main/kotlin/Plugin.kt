@@ -1,6 +1,6 @@
 import org.gradle.api.*
 class AspConventions: Plugin<Project> {
     override fun apply(target: Project) {
-        // no-op
+       target.rootProject.plugins.apply("io.github.gradle-nexus.publish-plugin")
     }
 }

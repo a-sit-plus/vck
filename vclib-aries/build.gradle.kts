@@ -6,11 +6,11 @@ import java.util.*
 
 plugins {
     kotlin("multiplatform")
-    kotlin("plugin.serialization") version Versions.kotlin
+    kotlin("plugin.serialization")
     id("maven-publish")
-    id("io.kotest.multiplatform") version Versions.kotest
+    id("io.kotest.multiplatform")
     id("signing")
-    id("org.jetbrains.dokka") version Versions.dokka
+    id("org.jetbrains.dokka")
 }
 
 /* required for maven publication */
