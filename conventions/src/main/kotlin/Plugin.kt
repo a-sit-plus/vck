@@ -1,5 +1,7 @@
+import io.github.gradlenexus.publishplugin.NexusPublishExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
@@ -24,6 +26,41 @@ class AspConventions : Plugin<Project> {
         target.rootProject.plugins.apply("io.github.gradle-nexus.publish-plugin")
 
         target.extraProps()
+
+        if(target == target.rootProject){
+
+
+            println("Adding google and maven central repositories")
+            target.allprojects {
+                repositories {
+                    google()
+                    mavenCentral()
+                }
+            }
+
+            println("Adding clean task")
+            target.tasks.register<Delete>("clean") {
+                doFirst { println("Cleaning all build files") }
+
+                delete(target.rootProject.buildDir)
+                delete(target.layout.projectDirectory.dir("repo"))
+                doLast { println("Clean done") }
+            }
+
+            println("Setting nexus publishing urls")
+            target.extensions.getByType<NexusPublishExtension>().apply {
+                repositories {
+                    sonatype {
+                        nexusUrl.set(java.net.URI("https://s01.oss.sonatype.org/service/local/"))
+                        snapshotRepositoryUrl.set(java.net.URI("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+                    }
+                }
+            }
+
+
+
+
+        }
 
         target.plugins.withType<KotlinMultiplatformPluginWrapper> {
             println("Multiplatform project detected")
