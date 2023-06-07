@@ -31,8 +31,8 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
     from(dokkaOutputDir)
 }
 
+exportIosFramework("VcLibAriesKmm",project(":vclib"))
 kotlin {
-    iosFramework("VcLibAriesKmm",project(":vclib")) from project
 
     sourceSets {
         val commonMain by getting {

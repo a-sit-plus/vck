@@ -24,8 +24,8 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
     from(dokkaOutputDir)
 }
 
+exportIosFramework("VcLibOpenIdKmm", project(":vclib"))
 kotlin {
-    iosFramework("VcLibOpenIdKmm", project(":vclib")) from project
 
     sourceSets {
         val commonMain by getting {
@@ -34,9 +34,7 @@ kotlin {
                 api(project(":vclib"))
             }
         }
-        val commonTest by getting {
-        }
-
+        val commonTest by getting
 
         val iosMain by getting
         val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
