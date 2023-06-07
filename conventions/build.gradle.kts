@@ -8,7 +8,7 @@ private val versions = Properties().apply {
     kotlin.runCatching { load(FileInputStream(rootProject.file("src/main/resources/versions.properties"))) }
 }
 group = "at.asitplus.gradle"
-version = versions["kotlin"]
+version = versions["kotlin"] as String
 
 val dokka = versions["dokka"]
 val nexus = versions["nexus"]

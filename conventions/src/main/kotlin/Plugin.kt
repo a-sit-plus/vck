@@ -1,3 +1,5 @@
+@file:Suppress("NOTHING_TO_INLINE")
+
 package at.asitplus.gradle
 
 import AspVersions
@@ -103,7 +105,7 @@ class AspConventions : Plugin<Project> {
                 println("   * RequiresOptIn")
                 kmp.experimentalOptIns()
 
-
+                @Suppress("UNUSED_VARIABLE")
                 kmp.sourceSets {
                     val commonTest by getting {
                         dependencies {
@@ -127,7 +129,7 @@ class AspConventions : Plugin<Project> {
 
             kotlin.apply {
                 jvmToolchain {
-                    (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(AspVersions.Jvm.target))
+                   languageVersion.set(JavaLanguageVersion.of(AspVersions.Jvm.target))
                 }
             }
             if (target != target.rootProject) {
