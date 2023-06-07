@@ -18,6 +18,7 @@ version = artifactVersion
 
 val dokkaOutputDir = "$buildDir/dokka"
 tasks.dokkaHtml {
+    dependsOn(":vclib:transformIosMainCInteropDependenciesMetadataForIde") //task dependency bug workaround
     outputDirectory.set(file(dokkaOutputDir))
 }
 val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") {
@@ -27,6 +28,13 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
     dependsOn(deleteDokkaOutputDir, tasks.dokkaHtml)
     archiveClassifier.set("javadoc")
     from(dokkaOutputDir)
+}
+
+//first sign everything, then publish!
+tasks.withType<AbstractPublishToMaven>() {
+    tasks.withType<Sign>().forEach {
+        dependsOn(it)
+    }
 }
 
 exportIosFramework("VcLibAriesKmm", *commonIosExports(), project(":vclib"))

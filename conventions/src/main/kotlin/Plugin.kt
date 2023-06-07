@@ -112,8 +112,8 @@ class AspConventions : Plugin<Project> {
                 println("Adding opt ins:")
                 println("   * Serialization")
                 println("   * Coroutines")
-                println("   * kotlinx.time")
-                println("   * RequiresOptIn")
+                println("   * kotlinx.datetime")
+                println("   * RequiresOptIn\n")
                 kmp.experimentalOptIns()
 
                 @Suppress("UNUSED_VARIABLE")
@@ -185,7 +185,9 @@ class AspConventions : Plugin<Project> {
                 }
             }
         }.getOrElse {
-            println("No Kotlin plugin detected for project ${target.name}\n")
+            println("No Kotlin plugin detected for ${if (target == target.rootProject) "root " else ""}project ${target.name}")
+            if (target != target.rootProject) println("   Make sure to load the kotlin plugin before the ASP conventions plugin\n")
+            else println("  This is usually fine.")
         }
 
     }
