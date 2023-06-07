@@ -1,16 +1,26 @@
+import java.io.FileInputStream
+import java.util.*
+
 plugins {
     `kotlin-dsl`
 }
-
+private val versions = Properties().apply {
+    kotlin.runCatching { load(FileInputStream(rootProject.file("src/main/resources/versions.properties"))) }
+}
 group = "at.asitplus.gradle"
-version="1.8.0"
+version = versions["kotlin"]
+
+val dokka = versions["dokka"]
+val nexus = versions["nexus"]
+val kotest = versions["kotest"]
+val jvmTarget = versions["jvmTarget"] as String
 
 dependencies {
     api("org.jetbrains.kotlin:kotlin-gradle-plugin:$version")
     api("org.jetbrains.kotlin:kotlin-serialization:$version")
-    api("io.github.gradle-nexus:publish-plugin:1.3.0")
-    api("io.kotest:kotest-framework-multiplatform-plugin-gradle:5.5.4")
-    api("org.jetbrains.dokka:dokka-gradle-plugin:1.8.10")
+    api("io.kotest:kotest-framework-multiplatform-plugin-gradle:$kotest")
+    api("io.github.gradle-nexus:publish-plugin:$nexus")
+    api("org.jetbrains.dokka:dokka-gradle-plugin:$dokka")
 }
 
 repositories {
@@ -19,7 +29,7 @@ repositories {
 }
 kotlin {
     jvmToolchain {
-        (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(11))
+        (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(jvmTarget))
     }
 }
 

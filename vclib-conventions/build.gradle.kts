@@ -4,7 +4,7 @@ plugins {
 group = "at.asitplus.gradle"
 
 dependencies {
-    api("at.asitplus.gradle:conventions:1.8.0")
+    api("at.asitplus.gradle:conventions")
 }
 
 repositories {
@@ -13,7 +13,7 @@ repositories {
 }
 kotlin {
     jvmToolchain {
-        (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(11))
+        (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(11/*TODO share*/))
     }
 }
 

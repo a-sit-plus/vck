@@ -1,13 +1,18 @@
+import org.jetbrains.kotlin.gradle.utils.loadPropertyFromResources
+
 object AspVersions {
-    const val kotlin = "1.8.0"
-    const val serialization = "1.5.0"
-    const val datetime = "0.4.0"
-    const val kotest = "5.5.4"
-    const val coroutines = "1.6.4"
-    const val napier = "2.6.1"
+
+    private fun versionOf(dependency: String) = loadPropertyFromResources("versions.properties", dependency)
+
+    val kotlin = versionOf("kotlin")
+    val serialization = versionOf("serialization")
+    val datetime = versionOf("datetime")
+    val kotest = versionOf("kotest")
+    val coroutines  = versionOf("coroutines")
+    val napier = versionOf("napier")
 
     object Jvm {
-        const val target = "11"
-        const val bouncycastle = "1.72"
+        val target = versionOf("jvmTarget")
+        val bouncycastle = versionOf("bouncycastle")
     }
 }
