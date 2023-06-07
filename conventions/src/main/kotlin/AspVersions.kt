@@ -8,6 +8,7 @@ object AspVersions {
     val serialization = versionOf("serialization")
     val datetime = versionOf("datetime")
     val kotest = versionOf("kotest")
+    val ktor = versionOf("ktor")
     val coroutines  = versionOf("coroutines")
     val napier = versionOf("napier")
     val nexus = versionOf("nexus")

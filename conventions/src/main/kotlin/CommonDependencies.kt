@@ -29,6 +29,8 @@ internal inline fun KotlinDependencyHandler.addKotestJvmRunner() {
 
 inline fun serialization(format: String, target: String? = null) =
     "org.jetbrains.kotlinx:kotlinx-serialization-$format${target.toSuffix()}:${AspVersions.serialization}"
+inline fun ktor(module: String, target: String? = null) =
+    "io.ktor:ktor-$module${target.toSuffix()}:${AspVersions.ktor}"
 
 inline fun coroutines(target: String? = null) =
     "org.jetbrains.kotlinx:kotlinx-coroutines-core${target.toSuffix()}:${AspVersions.coroutines}"

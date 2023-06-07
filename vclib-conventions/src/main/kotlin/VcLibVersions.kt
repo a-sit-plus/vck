@@ -1,5 +1,4 @@
 object VcLibVersions {
-    const val ktor = "2.2.1"
     const val uuid = "0.5.0"
     const val resultlib = "1.4.0"
     const val encoding = "1.1.3"

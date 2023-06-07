@@ -11,8 +11,8 @@ inline fun KotlinDependencyHandler.commonImplementationDependencies() {
     implementation(serialization("json"))
     implementation(coroutines())
     implementation("com.benasher44:uuid:${VcLibVersions.uuid}")
-    implementation("io.ktor:ktor-http:${VcLibVersions.ktor}")
-    implementation("io.ktor:ktor-utils:${VcLibVersions.ktor}")
+    implementation(ktor("http"))
+    implementation(ktor("utils"))
     implementation("com.squareup.okio:okio:${VcLibVersions.okio}")
     implementation(napier())
 }
