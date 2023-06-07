@@ -15,6 +15,7 @@ import org.gradle.kotlin.dsl.*
 import org.gradle.plugins.ide.idea.model.IdeaModel
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
+import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import org.jetbrains.kotlin.gradle.plugin.KotlinMultiplatformPluginWrapper
 
 private inline fun Project.extraProps() {
@@ -27,7 +28,7 @@ private inline fun Project.extraProps() {
 
 class AspConventions : Plugin<Project> {
     override fun apply(target: Project) {
-        println("Adding nexus publish plugin")
+        println("Adding Nexus Publish plugin ${AspVersions.nexus}")
         target.rootProject.plugins.apply("io.github.gradle-nexus.publish-plugin")
 
         target.extraProps()
@@ -40,7 +41,7 @@ class AspConventions : Plugin<Project> {
             }
 
 
-            println("Adding google and maven central repositories")
+            println("Adding Google and maven central repositories")
             target.allprojects {
                 repositories {
                     google()
@@ -48,16 +49,19 @@ class AspConventions : Plugin<Project> {
                 }
             }
 
-            println("Adding clean task")
-            target.tasks.register<Delete>("clean") {
-                doFirst { println("Cleaning all build files") }
+            runCatching {
+                target.tasks.register<Delete>("clean") {
+                    println("Adding clean task to root project")
 
-                delete(target.rootProject.buildDir)
-                delete(target.layout.projectDirectory.dir("repo"))
-                doLast { println("Clean done") }
+                    doFirst { println("Cleaning all build files") }
+
+                    delete(target.rootProject.buildDir)
+                    delete(target.layout.projectDirectory.dir("repo"))
+                    doLast { println("Clean done") }
+                }
             }
 
-            println("Setting nexus publishing url to s01.oss.sonatype.org")
+            println("Setting Nexus publishing URL to s01.oss.sonatype.org")
             target.extensions.getByType<NexusPublishExtension>().apply {
                 repositories {
                     sonatype {
@@ -71,15 +75,20 @@ class AspConventions : Plugin<Project> {
         }
 
         var isMultiplatform = false
+        runCatching {
+            target.plugins.withType<KotlinBasePlugin>().let {
+                println("Using Kotlin version ${it.first().pluginVersion} for project ${target.name}")
+            }
+        }
 
         target.plugins.withType<KotlinMultiplatformPluginWrapper> {
             isMultiplatform = true
             println("Multiplatform project detected")
-            println("Setting up Kotest multiplatform plugin")
+            println("Setting up Kotest multiplatform plugin ${AspVersions.kotest}")
             target.plugins.apply("io.kotest.multiplatform")
 
             target.extensions.getByType<KotlinMultiplatformExtension>().jvm {
-                println("setting jsr305=strict")
+                println("Setting jsr305=strict")
                 compilations.all {
                     kotlinOptions {
                         jvmTarget = AspVersions.Jvm.target
@@ -90,7 +99,6 @@ class AspConventions : Plugin<Project> {
                 }
 
                 println("Configuring Kotest JVM runner")
-
                 testRuns["test"].executionTask.configure {
                     useJUnitPlatform()
                 }
@@ -121,6 +129,7 @@ class AspConventions : Plugin<Project> {
                         }
                     }
                 }
+                println() //to make it look less crammed
             }
         }
 
@@ -156,7 +165,7 @@ class AspConventions : Plugin<Project> {
                 target.afterEvaluate {
 
 
-                    println("Configuring Test output format")
+                    println("Configuring Test output format\n")
                     target.tasks.withType<Test> {
                         if (name == "testReleaseUnitTest") return@withType
                         useJUnitPlatform()
@@ -176,7 +185,7 @@ class AspConventions : Plugin<Project> {
                 }
             }
         }.getOrElse {
-            println("No Kotlin plugin detected")
+            println("No Kotlin plugin detected for project ${target.name}\n")
         }
 
     }

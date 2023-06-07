@@ -10,6 +10,7 @@ object AspVersions {
     val kotest = versionOf("kotest")
     val coroutines  = versionOf("coroutines")
     val napier = versionOf("napier")
+    val nexus = versionOf("nexus")
 
     object Jvm {
         val target = versionOf("jvmTarget")
