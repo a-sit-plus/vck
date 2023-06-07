@@ -1,7 +1,14 @@
 plugins {
     `kotlin-dsl`
+    idea
 }
 group = "at.asitplus.gradle"
+
+idea {
+    project {
+        jdkName="11" //TODO share
+    }
+}
 
 dependencies {
     api("at.asitplus.gradle:conventions")

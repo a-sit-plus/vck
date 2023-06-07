@@ -1,3 +1,5 @@
+@file:Suppress("NOTHING_TO_INLINE", "PackageDirectoryMismatch")
+
 package at.asitplus.gradle
 
 import VcLibVersions

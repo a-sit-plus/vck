@@ -3,6 +3,7 @@ import java.util.*
 
 plugins {
     `kotlin-dsl`
+    idea
 }
 private val versions = Properties().apply {
     kotlin.runCatching { load(FileInputStream(rootProject.file("src/main/resources/versions.properties"))) }
@@ -14,6 +15,13 @@ val dokka = versions["dokka"]
 val nexus = versions["nexus"]
 val kotest = versions["kotest"]
 val jvmTarget = versions["jvmTarget"] as String
+
+
+idea {
+    project {
+        jdkName = jvmTarget
+    }
+}
 
 dependencies {
     api("org.jetbrains.kotlin:kotlin-gradle-plugin:$version")

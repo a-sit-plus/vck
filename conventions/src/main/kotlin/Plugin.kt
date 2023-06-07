@@ -11,13 +11,11 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.gradle.jvm.toolchain.JavaLanguageVersion
-import org.gradle.jvm.toolchain.JavaToolchainSpec
 import org.gradle.kotlin.dsl.*
+import org.gradle.plugins.ide.idea.model.IdeaModel
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinMultiplatformPluginWrapper
-import java.io.FileInputStream
-import java.util.*
 
 private inline fun Project.extraProps() {
     println("Adding support for storing extra project properties in local.properties")
@@ -35,6 +33,11 @@ class AspConventions : Plugin<Project> {
         target.extraProps()
 
         if (target == target.rootProject) {
+
+            target.plugins.apply("idea")
+            target.extensions.getByType<IdeaModel>().project {
+                jdkName = AspVersions.Jvm.target
+            }
 
 
             println("Adding google and maven central repositories")
@@ -129,7 +132,7 @@ class AspConventions : Plugin<Project> {
 
             kotlin.apply {
                 jvmToolchain {
-                   languageVersion.set(JavaLanguageVersion.of(AspVersions.Jvm.target))
+                    languageVersion.set(JavaLanguageVersion.of(AspVersions.Jvm.target))
                 }
             }
             if (target != target.rootProject) {

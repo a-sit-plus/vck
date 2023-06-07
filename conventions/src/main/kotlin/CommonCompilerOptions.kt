@@ -1,4 +1,4 @@
-@file:Suppress("NOTHING_TO_INLINE")
+@file:Suppress("NOTHING_TO_INLINE", "PackageDirectoryMismatch")
 package at.asitplus.gradle
 
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
