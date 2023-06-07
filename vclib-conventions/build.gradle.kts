@@ -4,7 +4,7 @@ plugins {
 group = "at.asitplus.gradle"
 
 dependencies {
-    api("at.asitplus.gradle:conventions")
+    api("at.asitplus.gradle:conventions:1.8.0")
 }
 
 repositories {
