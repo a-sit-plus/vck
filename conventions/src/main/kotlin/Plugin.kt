@@ -1,3 +1,6 @@
+package at.asitplus.gradle
+
+import AspVersions
 import io.github.gradlenexus.publishplugin.NexusPublishExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -5,6 +8,8 @@ import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.gradle.jvm.toolchain.JavaToolchainSpec
 import org.gradle.kotlin.dsl.*
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
@@ -12,7 +17,7 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinMultiplatformPluginWrapper
 import java.io.FileInputStream
 import java.util.*
 
-private fun Project.extraProps(){
+private inline fun Project.extraProps() {
     println("Adding support for storing extra project properties in local.properties")
     java.util.Properties().apply {
         kotlin.runCatching { load(java.io.FileInputStream(rootProject.file("local.properties"))) }
@@ -27,7 +32,7 @@ class AspConventions : Plugin<Project> {
 
         target.extraProps()
 
-        if(target == target.rootProject){
+        if (target == target.rootProject) {
 
 
             println("Adding google and maven central repositories")
@@ -47,7 +52,7 @@ class AspConventions : Plugin<Project> {
                 doLast { println("Clean done") }
             }
 
-            println("Setting nexus publishing urls")
+            println("Setting nexus publishing url to s01.oss.sonatype.org")
             target.extensions.getByType<NexusPublishExtension>().apply {
                 repositories {
                     sonatype {
@@ -58,37 +63,38 @@ class AspConventions : Plugin<Project> {
             }
 
 
-
-
         }
 
+        var isMultiplatform = false
+
         target.plugins.withType<KotlinMultiplatformPluginWrapper> {
+            isMultiplatform = true
             println("Multiplatform project detected")
             println("Setting up Kotest multiplatform plugin")
             target.plugins.apply("io.kotest.multiplatform")
 
-            target.extensions.getByType<KotlinMultiplatformExtension>()  .jvm {
-                    println("setting jsr305=strict")
-                    compilations.all {
-                        kotlinOptions {
-                            jvmTarget = Versions.Jvm.target
-                            freeCompilerArgs = listOf(
-                                "-Xjsr305=strict"
-                            )
-                        }
-                    }
-
-                    println("Configuring Kotest JVM runner")
-
-                    testRuns["test"].executionTask.configure {
-                        useJUnitPlatform()
+            target.extensions.getByType<KotlinMultiplatformExtension>().jvm {
+                println("setting jsr305=strict")
+                compilations.all {
+                    kotlinOptions {
+                        jvmTarget = AspVersions.Jvm.target
+                        freeCompilerArgs = listOf(
+                            "-Xjsr305=strict"
+                        )
                     }
                 }
+
+                println("Configuring Kotest JVM runner")
+
+                testRuns["test"].executionTask.configure {
+                    useJUnitPlatform()
+                }
+            }
 
             target.afterEvaluate {
 
 
-                val kmp = target.extensions.getByType<KotlinMultiplatformExtension>()
+                val kmp = extensions.getByType<KotlinMultiplatformExtension>()
 
                 println("Adding opt ins:")
                 println("   * Serialization")
@@ -97,48 +103,75 @@ class AspConventions : Plugin<Project> {
                 println("   * RequiresOptIn")
                 kmp.experimentalOptIns()
 
-                println("Adding Kotest libraries:")
-                println("   * Assertions")
-                println("   * Property-based testing")
-                println("   * Datatest")
+
                 kmp.sourceSets {
                     val commonTest by getting {
                         dependencies {
-                            commonTestDependencies()
+                            addKotest()
                         }
                     }
                     val jvmTest by getting {
                         dependencies {
-                            implementation("io.kotest:kotest-runner-junit5-jvm:${Versions.kotest}")
+                            addKotestJvmRunner()
                         }
                     }
                 }
             }
         }
-        runCatching {
-            target.kotlinExtension
-            println("Adding maven publish")
-            target.plugins.apply("maven-publish")
 
-            target.afterEvaluate {
-                println("Configuring Test output format")
-                target.tasks.withType<Test> {
-                    if (name == "testReleaseUnitTest") return@withType
-                    useJUnitPlatform()
-                    filter {
-                        isFailOnNoMatchingTests = false
+
+
+        runCatching {
+
+            val kotlin = target.kotlinExtension
+
+            kotlin.apply {
+                jvmToolchain {
+                    (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(AspVersions.Jvm.target))
+                }
+            }
+            if (target != target.rootProject) {
+
+
+                if (!isMultiplatform) {
+                    println("Assuming JVM-only Kotlin project")
+                    target.afterEvaluate {
+                        kotlin.apply {
+                            sourceSets.getByName("test").dependencies {
+                                addKotest("jvm")
+                                addKotestJvmRunner()
+                            }
+
+                        }
                     }
-                    testLogging {
-                        showExceptions = true
-                        showStandardStreams = true
-                        events = setOf(
-                            TestLogEvent.FAILED,
-                            TestLogEvent.PASSED
-                        )
-                        exceptionFormat = TestExceptionFormat.FULL
+                }
+                println("Adding maven publish")
+                target.plugins.apply("maven-publish")
+
+                target.afterEvaluate {
+
+
+                    println("Configuring Test output format")
+                    target.tasks.withType<Test> {
+                        if (name == "testReleaseUnitTest") return@withType
+                        useJUnitPlatform()
+                        filter {
+                            isFailOnNoMatchingTests = false
+                        }
+                        testLogging {
+                            showExceptions = true
+                            showStandardStreams = true
+                            events = setOf(
+                                TestLogEvent.FAILED,
+                                TestLogEvent.PASSED
+                            )
+                            exceptionFormat = TestExceptionFormat.FULL
+                        }
                     }
                 }
             }
+        }.getOrElse {
+            println("No Kotlin plugin detected")
         }
 
     }

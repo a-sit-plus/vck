@@ -1,14 +1,12 @@
-import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.gradle.api.tasks.testing.logging.TestLogEvent
-import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFrameworkConfig
-import java.io.FileInputStream
-import java.util.*
-
+import at.asitplus.gradle.bouncycastle
+import at.asitplus.gradle.commonImplementationDependencies
+import at.asitplus.gradle.commonIosExports
+import at.asitplus.gradle.exportIosFramework
 
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
-    id("at.asitplus.gradle.conventions")
+    id("at.asitplus.gradle.vclib-conventions")
     id("org.jetbrains.dokka")
     id("signing")
 }
@@ -31,7 +29,7 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
     from(dokkaOutputDir)
 }
 
-exportIosFramework("VcLibAriesKmm",project(":vclib"))
+exportIosFramework("VcLibAriesKmm", *commonIosExports(), project(":vclib"))
 kotlin {
 
     sourceSets {
@@ -41,21 +39,19 @@ kotlin {
                 api(project(":vclib"))
             }
         }
-        val commonTest by getting {
-        }
-
+        val commonTest by getting
 
         val iosMain by getting
         val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
         val jvmMain by getting {
             dependencies {
-                implementation("org.bouncycastle:bcprov-jdk18on:${Versions.Jvm.bcprov}")
+                implementation(bouncycastle("bcprov"))
             }
         }
         val jvmTest by getting {
             dependencies {
-                implementation("com.nimbusds:nimbus-jose-jwt:${Versions.Jvm.`jose-jwt`}")
-                implementation("org.json:json:${Versions.Jvm.json}")
+                implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
+                implementation("org.json:json:${VcLibVersions.Jvm.json}")
             }
         }
     }

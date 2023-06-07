@@ -1,8 +1,9 @@
 @file:Suppress("NOTHING_TO_INLINE")
+package at.asitplus.gradle
 
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 
-inline fun KotlinMultiplatformExtension.experimentalOptIns() {
+internal inline fun KotlinMultiplatformExtension.experimentalOptIns() {
     targets.all {
         compilations.all {
             kotlinOptions {

@@ -1,5 +1,5 @@
 plugins {
-    id("at.asitplus.gradle.conventions")
+    id("at.asitplus.gradle.vclib-conventions")
 }
 
 task<Exec>("purge") {
