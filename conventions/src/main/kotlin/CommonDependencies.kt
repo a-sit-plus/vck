@@ -27,17 +27,21 @@ internal inline fun KotlinDependencyHandler.addKotestJvmRunner() {
     implementation("io.kotest:kotest-runner-junit5-jvm:${AspVersions.kotest}")
 }
 
+@JvmOverloads
 inline fun serialization(format: String, target: String? = null) =
     "org.jetbrains.kotlinx:kotlinx-serialization-$format${target.toSuffix()}:${AspVersions.serialization}"
+@JvmOverloads
 inline fun ktor(module: String, target: String? = null) =
     "io.ktor:ktor-$module${target.toSuffix()}:${AspVersions.ktor}"
-
+@JvmOverloads
 inline fun coroutines(target: String? = null) =
     "org.jetbrains.kotlinx:kotlinx-coroutines-core${target.toSuffix()}:${AspVersions.coroutines}"
+@JvmOverloads
 inline fun napier(target: String? = null) =
     "io.github.aakira:napier${target.toSuffix()}:${AspVersions.napier}"
-
+@JvmOverloads
 inline fun datetime(target: String? = null) =
     "org.jetbrains.kotlinx:kotlinx-datetime${target.toSuffix()}:${AspVersions.datetime}"
+@JvmOverloads
 inline fun bouncycastle(module:String, classifier:String="jdk18on") =
     "org.bouncycastle:$module-$classifier:${AspVersions.Jvm.bouncycastle}"
