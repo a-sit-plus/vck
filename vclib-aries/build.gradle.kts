@@ -19,6 +19,7 @@ version = artifactVersion
 val dokkaOutputDir = "$buildDir/dokka"
 tasks.dokkaHtml {
     dependsOn(":vclib:transformIosMainCInteropDependenciesMetadataForIde") //task dependency bug workaround
+    dependsOn(":vclib-openid:transformIosMainCInteropDependenciesMetadataForIde") //task dependency bug workaround
     outputDirectory.set(file(dokkaOutputDir))
 }
 val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") {
