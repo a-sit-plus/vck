@@ -19,7 +19,7 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import org.jetbrains.kotlin.gradle.plugin.KotlinMultiplatformPluginWrapper
 
 private inline fun Project.extraProps() {
-    println("Adding support for storing extra project properties in local.properties")
+    println("  Adding support for storing extra project properties in local.properties")
     java.util.Properties().apply {
         kotlin.runCatching { load(java.io.FileInputStream(rootProject.file("local.properties"))) }
         forEach { (k, v) -> extra.set(k as String, v) }
@@ -28,7 +28,7 @@ private inline fun Project.extraProps() {
 
 class AspConventions : Plugin<Project> {
     override fun apply(target: Project) {
-        println("Adding Nexus Publish plugin ${AspVersions.nexus}")
+        println("  Adding Nexus Publish plugin ${AspVersions.nexus}")
         target.rootProject.plugins.apply("io.github.gradle-nexus.publish-plugin")
 
         target.extraProps()
@@ -41,7 +41,7 @@ class AspConventions : Plugin<Project> {
             }
 
 
-            println("Adding Google and maven central repositories")
+            println("  Adding Google and maven central repositories")
             target.allprojects {
                 repositories {
                     google()
@@ -51,7 +51,7 @@ class AspConventions : Plugin<Project> {
 
             runCatching {
                 target.tasks.register<Delete>("clean") {
-                    println("Adding clean task to root project")
+                    println("  Adding clean task to root project")
 
                     doFirst { println("Cleaning all build files") }
 
@@ -61,7 +61,7 @@ class AspConventions : Plugin<Project> {
                 }
             }
 
-            println("Setting Nexus publishing URL to s01.oss.sonatype.org")
+            println("  Setting Nexus publishing URL to s01.oss.sonatype.org")
             target.extensions.getByType<NexusPublishExtension>().apply {
                 repositories {
                     sonatype {
@@ -77,18 +77,18 @@ class AspConventions : Plugin<Project> {
         var isMultiplatform = false
         runCatching {
             target.plugins.withType<KotlinBasePlugin>().let {
-                println("Using Kotlin version ${it.first().pluginVersion} for project ${target.name}")
+                println("  Using Kotlin version ${it.first().pluginVersion} for project ${target.name}")
             }
         }
 
         target.plugins.withType<KotlinMultiplatformPluginWrapper> {
             isMultiplatform = true
-            println("Multiplatform project detected")
-            println("Setting up Kotest multiplatform plugin ${AspVersions.kotest}")
+            println("  Multiplatform project detected")
+            println("  Setting up Kotest multiplatform plugin ${AspVersions.kotest}")
             target.plugins.apply("io.kotest.multiplatform")
 
             target.extensions.getByType<KotlinMultiplatformExtension>().jvm {
-                println("Setting jsr305=strict")
+                println("  Setting jsr305=strict for JVM nullability annotations")
                 compilations.all {
                     kotlinOptions {
                         jvmTarget = AspVersions.Jvm.target
@@ -98,7 +98,7 @@ class AspConventions : Plugin<Project> {
                     }
                 }
 
-                println("Configuring Kotest JVM runner")
+                println("  Configuring Kotest JVM runner")
                 testRuns["test"].executionTask.configure {
                     useJUnitPlatform()
                 }
@@ -109,7 +109,7 @@ class AspConventions : Plugin<Project> {
 
                 val kmp = extensions.getByType<KotlinMultiplatformExtension>()
 
-                println("Adding opt ins:")
+                println("  Adding opt ins:")
                 println("   * Serialization")
                 println("   * Coroutines")
                 println("   * kotlinx.datetime")
@@ -147,8 +147,8 @@ class AspConventions : Plugin<Project> {
             if (target != target.rootProject) {
 
 
-                if (!isMultiplatform) {
-                    println("Assuming JVM-only Kotlin project")
+                if (!isMultiplatform) /*TODO: actually check for JVM*/ {
+                    println("  Assuming JVM-only Kotlin project")
                     target.afterEvaluate {
                         kotlin.apply {
                             sourceSets.getByName("test").dependencies {
@@ -159,13 +159,13 @@ class AspConventions : Plugin<Project> {
                         }
                     }
                 }
-                println("Adding maven publish")
+                println("  Adding maven publish plugin")
                 target.plugins.apply("maven-publish")
 
                 target.afterEvaluate {
 
 
-                    println("Configuring Test output format\n")
+                    println("  Configuring Test output format")
                     target.tasks.withType<Test> {
                         if (name == "testReleaseUnitTest") return@withType
                         useJUnitPlatform()
@@ -186,7 +186,7 @@ class AspConventions : Plugin<Project> {
             }
         }.getOrElse {
             println("No Kotlin plugin detected for ${if (target == target.rootProject) "root " else ""}project ${target.name}")
-            if (target != target.rootProject) println("   Make sure to load the kotlin plugin before the ASP conventions plugin\n")
+            if (target != target.rootProject) println("   Make sure to load the kotlin jvm or multiplatform plugin before the ASP conventions plugin\n")
             else println("  This is usually fine.")
         }
 
