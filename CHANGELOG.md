@@ -1,5 +1,8 @@
 # Changelog
 
+Release 2.0.1:
+ - `vclib-openid`: Remove `OidcSiopProtocol`, replace with `OidcSiopVerifier` and `OidcSiopWallet`
+
 Release 2.0.0:
  - Add `AtomicAttribute2023` as a sample for custom credentials
  - Remove deprecated methods for "attribute names" and `AtomicAttributeCredential`

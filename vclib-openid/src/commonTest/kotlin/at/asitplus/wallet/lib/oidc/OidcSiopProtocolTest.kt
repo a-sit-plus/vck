@@ -29,8 +29,8 @@ class OidcSiopProtocolTest : FreeSpec({
     lateinit var holder: Holder
     lateinit var verifier: Verifier
 
-    lateinit var holderOidcSiopProtocol: OidcSiopProtocol
-    lateinit var verifierOidcSiopProtocol: OidcSiopProtocol
+    lateinit var holderOidcSiopProtocol: OidcSiopWallet
+    lateinit var verifierOidcSiopProtocol: OidcSiopVerifier
 
     beforeEach {
         holderCryptoService = DefaultCryptoService()
@@ -49,11 +49,11 @@ class OidcSiopProtocolTest : FreeSpec({
             )
         }
 
-        holderOidcSiopProtocol = OidcSiopProtocol.newHolderInstance(
+        holderOidcSiopProtocol = OidcSiopWallet.newInstance(
             holder = holder,
             cryptoService = holderCryptoService
         )
-        verifierOidcSiopProtocol = OidcSiopProtocol.newVerifierInstance(
+        verifierOidcSiopProtocol = OidcSiopVerifier.newInstance(
             verifier = verifier,
             cryptoService = verifierCryptoService
         )
@@ -74,7 +74,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
         val result = verifierOidcSiopProtocol.validateAuthnResponse(authnResponse, relyingPartyUrl)
         println(result)
-        result.shouldBeInstanceOf<OidcSiopProtocol.AuthnResponseResult.Success>()
+        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
 
@@ -92,7 +92,7 @@ class OidcSiopProtocolTest : FreeSpec({
         val parsedAuthnResponse: AuthenticationResponseParameters = authnResponseParams.decodeFromPostBody()
         val result = verifierOidcSiopProtocol.validateAuthnResponse(parsedAuthnResponse, relyingPartyUrl)
         println(result)
-        result.shouldBeInstanceOf<OidcSiopProtocol.AuthnResponseResult.Success>()
+        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
 
