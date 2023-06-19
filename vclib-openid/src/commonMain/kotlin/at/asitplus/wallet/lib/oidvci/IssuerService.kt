@@ -66,8 +66,8 @@ class IssuerService(
      * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
      * code from [codeService].
      */
-    fun authorize(params: AuthenticationRequestParameters): String {
-        val builder = URLBuilder(params.redirectUrl)
+    fun authorize(params: AuthenticationRequestParameters): String? {
+        val builder = URLBuilder(params.redirectUrl ?: return null)
         builder.parameters.append(OpenIdConstants.GRANT_TYPE_CODE, codeService.provideCode())
         return builder.buildString()
     }

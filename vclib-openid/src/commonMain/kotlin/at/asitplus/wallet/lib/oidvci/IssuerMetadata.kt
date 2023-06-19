@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.wallet.lib.oidc.IdTokenType
+import at.asitplus.wallet.lib.oidc.IdTokenTypeSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -21,7 +23,7 @@ data class IssuerMetadata(
      * OID4VCI: REQUIRED. The Credential Issuer's identifier.
      */
     @SerialName("credential_issuer")
-    val credentialIssuer: String,
+    val credentialIssuer: String? = null,
 
     /**
      * OID4VCI: OPTIONAL. Identifier of the OAuth 2.0 Authorization Server (as defined in RFC8414) the Credential
@@ -37,14 +39,25 @@ data class IssuerMetadata(
      * MAY contain port, path and query parameter components.
      */
     @SerialName("credential_endpoint")
-    val credentialEndpointUrl: String,
+    val credentialEndpointUrl: String? = null,
 
     /**
      * OIDC Discovery: URL of the OP's OAuth 2.0 Token Endpoint (OpenID.Core). This is REQUIRED unless only the
      * Implicit Flow is used.
      */
     @SerialName("token_endpoint")
-    val tokenEndpointUrl: String,
+    val tokenEndpointUrl: String? = null,
+
+    /**
+     * OIDC Discovery: REQUIRED. URL of the OP's JSON Web Key Set document. This contains the signing key(s) the RP
+     * uses to validate signatures from the OP. The JWK Set MAY also contain the Server's encryption key(s), which are
+     * used by RPs to encrypt requests to the Server.
+     *
+     * OIDC SIOPv2: MUST NOT be present in Self-Issued OP Metadata. If it is, the RP MUST ignore it and use the `sub`
+     * Claim in the ID Token to obtain signing keys to validate the signatures from the Self-Issued OpenID Provider.
+     */
+    @SerialName("jwks_uri")
+    val jsonWebKeySetUrl: String? = null,
 
     /**
      * OIDC Discovery: REQUIRED. URL of the OP's OAuth 2.0 Authorization Endpoint (OpenID.Core).
@@ -69,7 +82,7 @@ data class IssuerMetadata(
      * structure of the Section 10.2.3.1.
      */
     @SerialName("credentials_supported")
-    val supportedCredentialFormat: Array<SupportedCredentialFormat>,
+    val supportedCredentialFormat: Array<SupportedCredentialFormat>? = null,
 
     /**
      * OID4VCI: OPTIONAL. An array of objects, where each object contains display properties of a Credential Issuer for
@@ -79,29 +92,31 @@ data class IssuerMetadata(
     val displayProperties: Array<DisplayProperties>? = null,
 
     /**
-     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing supported response types.
-     * MUST be id_token.
+     * OIDC Discovery: REQUIRED. JSON array containing a list of the OAuth 2.0 `response_type` values that this OP
+     * supports. Dynamic OpenID Providers MUST support the `code`, `id_token`, and the `token id_token` Response Type
+     * values.
+     * OIDC SIOPv2: MUST be `id_token`.
      */
     @SerialName("response_types_supported")
     val responseTypesSupported: Array<String>? = null,
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array of strings representing supported scopes.
-     * MUST support the openid scope value.
+     * MUST support the `openid` scope value.
      */
     @SerialName("scopes_supported")
     val scopesSupported: Array<String>? = null,
 
     /**
-     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing supported subject types.
-     * Valid values include `pairwise` and `public`.
+     * OIDC Discovery: REQUIRED. JSON array containing a list of the Subject Identifier types that this OP supports.
+     * Valid types include `pairwise` and `public`.
      */
     @SerialName("subject_types_supported")
     val subjectTypesSupported: Array<String>? = null,
 
     /**
-     * OIDC SIOPv2: REQUIRED. A JSON array containing a list of the JWS signing algorithms (alg values) supported by the
-     * OP for the ID Token to encode the Claims in a JWT (RFC7519).
+     * OIDC Discovery: REQUIRED. A JSON array containing a list of the JWS signing algorithms (`alg` values) supported
+     * by the OP for the ID Token to encode the Claims in a JWT (RFC7519).
      * Valid values include `RS256`, `ES256`, `ES256K`, and `EdDSA`.
      */
     @SerialName("id_token_signing_alg_values_supported")
@@ -130,7 +145,7 @@ data class IssuerMetadata(
      * ID Token, i.e. the id token is signed with key material under the end-user's control).
      */
     @SerialName("id_token_types_supported")
-    val idTokenTypesSupported: Array<String>? = null,
+    val idTokenTypesSupported: Array<@Serializable(with = IdTokenTypeSerializer::class) IdTokenType>? = null,
 
     /**
      * OID4VP: OPTIONAL. Boolean value specifying whether the Wallet supports the transfer of `presentation_definition`
@@ -166,9 +181,13 @@ data class IssuerMetadata(
         if (authorizationServer != other.authorizationServer) return false
         if (credentialEndpointUrl != other.credentialEndpointUrl) return false
         if (tokenEndpointUrl != other.tokenEndpointUrl) return false
+        if (jsonWebKeySetUrl != other.jsonWebKeySetUrl) return false
         if (authorizationEndpointUrl != other.authorizationEndpointUrl) return false
         if (batchCredentialEndpointUrl != other.batchCredentialEndpointUrl) return false
-        if (!supportedCredentialFormat.contentEquals(other.supportedCredentialFormat)) return false
+        if (supportedCredentialFormat != null) {
+            if (other.supportedCredentialFormat == null) return false
+            if (!supportedCredentialFormat.contentEquals(other.supportedCredentialFormat)) return false
+        } else if (other.supportedCredentialFormat != null) return false
         if (displayProperties != null) {
             if (other.displayProperties == null) return false
             if (!displayProperties.contentEquals(other.displayProperties)) return false
@@ -213,13 +232,14 @@ data class IssuerMetadata(
 
     override fun hashCode(): Int {
         var result = issuer.hashCode()
-        result = 31 * result + credentialIssuer.hashCode()
+        result = 31 * result + (credentialIssuer?.hashCode() ?: 0)
         result = 31 * result + (authorizationServer?.hashCode() ?: 0)
-        result = 31 * result + credentialEndpointUrl.hashCode()
-        result = 31 * result + tokenEndpointUrl.hashCode()
+        result = 31 * result + (credentialEndpointUrl?.hashCode() ?: 0)
+        result = 31 * result + (tokenEndpointUrl?.hashCode() ?: 0)
+        result = 31 * result + (jsonWebKeySetUrl?.hashCode() ?: 0)
         result = 31 * result + authorizationEndpointUrl.hashCode()
         result = 31 * result + (batchCredentialEndpointUrl?.hashCode() ?: 0)
-        result = 31 * result + supportedCredentialFormat.contentHashCode()
+        result = 31 * result + (supportedCredentialFormat?.contentHashCode() ?: 0)
         result = 31 * result + (displayProperties?.contentHashCode() ?: 0)
         result = 31 * result + (responseTypesSupported?.contentHashCode() ?: 0)
         result = 31 * result + (scopesSupported?.contentHashCode() ?: 0)

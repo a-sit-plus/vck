@@ -44,7 +44,7 @@ class OidcSiopVerifier(
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
-    private val stateOfRelyingParty = uuid4().toString()
+    private val relyingPartyState = uuid4().toString()
 
     companion object {
         fun newInstance(
@@ -95,10 +95,10 @@ class OidcSiopVerifier(
             clientId = relyingPartyUrl,
             redirectUrl = relyingPartyUrl,
             scope = "openid profile",
-            state = stateOfRelyingParty,
+            state = relyingPartyState,
             nonce = relyingPartyChallenge,
             clientMetadata = metadata,
-            idTokenType = IdTokenType.ATTESTER_SIGNED,
+            idTokenType = IdTokenType.SUBJECT_SIGNED.text,
             presentationDefinition = PresentationDefinition(
                 id = uuid4().toString(),
                 formats = FormatHolder(
@@ -183,9 +183,7 @@ class OidcSiopVerifier(
         val vp = params.vpToken
             ?: return AuthnResponseResult.Error("vpToken is null")
                 .also { Napier.w("No VP in response") }
-        val verificationResult = verifier?.verifyPresentation(vp, relyingPartyChallenge)
-            ?: return AuthnResponseResult.Error("vpToken not verified")
-                .also { Napier.w("No VP parsed") }
+        val verificationResult = verifier.verifyPresentation(vp, relyingPartyChallenge)
 
         return when (verificationResult) {
             is Verifier.VerifyPresentationResult.InvalidStructure -> AuthnResponseResult.Error("parse vp failed")

@@ -8,6 +8,9 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsAlgorithm
+import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
@@ -17,6 +20,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
 
 class OidcSiopProtocolTest : FreeSpec({
 
@@ -69,9 +73,33 @@ class OidcSiopProtocolTest : FreeSpec({
         println(authnRequest) // len: 1084 chars
 
         val authnResponse = holderOidcSiopProtocol.createAuthnResponse(authnRequest)
+        println(authnResponse)
         authnResponse.shouldNotBeNull()
         println(authnResponse) // len: 3702 chars with one "atomic" credential (string-string)
 
+        val result = verifierOidcSiopProtocol.validateAuthnResponse(authnResponse, relyingPartyUrl)
+        println(result)
+        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+        result.vp.verifiableCredentials.shouldNotBeEmpty()
+    }
+
+    "test with JAR" {
+        val requestObject = verifierOidcSiopProtocol.createAuthnRequest(relyingPartyUrl)
+        val requestObjectSerialized = jsonSerializer.encodeToString(requestObject)
+        val signedJws = DefaultJwsService(verifierCryptoService).createSignedJwsAddingParams(
+            JwsHeader(algorithm = JwsAlgorithm.ES256),
+            requestObjectSerialized.encodeToByteArray(),
+            true
+        )
+        signedJws.shouldNotBeNull()
+        val authnRequest = AuthenticationRequest(
+            url = walletUrl,
+            params = AuthenticationRequestParameters(clientId = relyingPartyUrl, request = signedJws)
+        ).toUrl()
+        println(authnRequest)
+
+        val authnResponse = holderOidcSiopProtocol.createAuthnResponse(authnRequest)
+        authnResponse.shouldNotBeNull()
         val result = verifierOidcSiopProtocol.validateAuthnResponse(authnResponse, relyingPartyUrl)
         println(result)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()

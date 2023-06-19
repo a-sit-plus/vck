@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldNotBe
 import io.ktor.http.Url
 import kotlinx.datetime.Clock
 
@@ -45,6 +46,7 @@ class OidvciProcessTest : FunSpec({
         val metadata = issuer.metadata
         val authnRequest = client.createAuthRequest()
         val codeUrl = issuer.authorize(authnRequest)
+        codeUrl.shouldNotBeNull()
         val code = Url(codeUrl).parameters[GRANT_TYPE_CODE]
         code.shouldNotBeNull()
         val tokenRequest = client.createTokenRequestParameters(code)

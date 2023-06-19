@@ -6,16 +6,23 @@ import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.JwsSigned
+import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
+import at.asitplus.wallet.lib.oidvci.IssuerMetadata
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
+import kotlinx.serialization.decodeFromString
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -30,7 +37,9 @@ class OidcSiopWallet(
     private val holder: Holder,
     private val agentPublicKey: JsonWebKey,
     private val jwsService: JwsService,
-    private val clock: Clock = Clock.System
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    private val clock: Clock = Clock.System,
+    private val clientId: String = "https://wallet.a-sit.at/"
 ) {
 
     companion object {
@@ -38,12 +47,30 @@ class OidcSiopWallet(
             holder: Holder,
             cryptoService: CryptoService,
             jwsService: JwsService = DefaultJwsService(cryptoService),
-            clock: Clock = Clock.System
+            verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+            clock: Clock = Clock.System,
+            clientId: String = "https://wallet.a-sit.at/"
         ) = OidcSiopWallet(
             holder = holder,
             agentPublicKey = cryptoService.toJsonWebKey(),
             jwsService = jwsService,
-            clock = clock
+            verifierJwsService = verifierJwsService,
+            clock = clock,
+            clientId = clientId,
+        )
+    }
+
+    val metadata: IssuerMetadata by lazy {
+        IssuerMetadata(
+            issuer = clientId,
+            authorizationEndpointUrl = clientId,
+            responseTypesSupported = arrayOf(ID_TOKEN),
+            scopesSupported = arrayOf(SCOPE_OPENID),
+            subjectTypesSupported = arrayOf("pairwise", "public"),
+            idTokenSigningAlgorithmsSupported = arrayOf(JwsAlgorithm.ES256.text),
+            requestObjectSigningAlgorithmsSupported = arrayOf(JwsAlgorithm.ES256.text),
+            subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, "did:key"),
+            idTokenTypesSupported = arrayOf(IdTokenType.SUBJECT_SIGNED),
         )
     }
 
@@ -51,31 +78,54 @@ class OidcSiopWallet(
      * Pass in the serialized [AuthenticationRequest] to create an [AuthenticationResponse]
      */
     suspend fun createAuthnResponse(it: String): String? {
-        val request = AuthenticationRequest.parseUrl(it)
+        val authnRequest = AuthenticationRequest.parseUrl(it)
             ?: return null
                 .also { Napier.w("Could not parse authentication request") }
-        // TODO could also contain "request_uri"
-        // TODO could also contain "response_mode=post"
-        return createAuthnResponse(request.params)
+        authnRequest.params.request?.let { requestObject ->
+            JwsSigned.parse(requestObject)?.let { jws ->
+                if (verifierJwsService.verifyJwsObject(jws, requestObject)) {
+                    val params = kotlin.runCatching {
+                        jsonSerializer.decodeFromString<AuthenticationRequestParameters>(jws.payload.decodeToString())
+                    }.getOrNull()
+                    if (params != null) {
+                        return createAuthnResponse(params)
+                    }
+                }
+            }
+        }
+        return createAuthnResponse(authnRequest.params)
     }
 
     /**
      * Pass in the deserialized [AuthenticationRequestParameters], which are encoded as query params
      */
-    suspend fun createAuthnResponse(authenticationRequestParameters: AuthenticationRequestParameters): String? {
-        val params = createAuthnResponseParams(authenticationRequestParameters)
+    suspend fun createAuthnResponse(request: AuthenticationRequestParameters): String? {
+        val params = createAuthnResponseParams(request)
             ?: return null
-        return AuthenticationResponse(
-            url = authenticationRequestParameters.redirectUrl,
-            params = params
-        ).toUrl()
+        val redirectUrl = request.redirectUrl ?: return null
+        if (request.responseType == null)
+            return null
+        when {
+            request.responseType.contains(ID_TOKEN) -> {
+                val authenticationResponse = AuthenticationResponse(url = redirectUrl, params = params)
+                println(authenticationResponse)
+                println(authenticationResponse.toUrl())
+                return authenticationResponse.toUrl()
+            }
+
+            request.responseType.contains(GRANT_TYPE_CODE) ->
+                // TODO return as POST
+                return null
+
+            else -> return null
+        }
     }
 
     /**
      * Creates the authentication response from the RP's [params]
      */
     suspend fun createAuthnResponseParams(params: AuthenticationRequestParameters): AuthenticationResponseParameters? {
-        val stateOfRelyingParty = params.state
+        val relyingPartyState = params.state
             ?: return null
                 .also { Napier.w("state is null") }
         val audience = params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.identifier
@@ -87,11 +137,11 @@ class OidcSiopWallet(
         if (params.clientId != params.redirectUrl)
             return null
                 .also { Napier.w("client_id does not match redirect_uri") }
-        if (ID_TOKEN !in params.responseType)
+        if (params.responseType?.contains(ID_TOKEN) != true)
             return null
                 .also { Napier.w("response_type is not \"$ID_TOKEN\"") }
         // TODO "claims" may be set by the RP to tell OP which attributes to release
-        if (VP_TOKEN !in params.responseType && params.presentationDefinition == null)
+        if (!params.responseType.contains(VP_TOKEN) && params.presentationDefinition == null)
             return null
                 .also { Napier.w("vp_token not requested") }
         if (params.clientMetadata.vpFormats == null)
@@ -103,7 +153,7 @@ class OidcSiopWallet(
         if (params.nonce == null)
             return null
                 .also { Napier.w("nonce is null") }
-        val vp = holder?.createPresentation(params.nonce, audience)
+        val vp = holder.createPresentation(params.nonce, audience)
             ?: return null
                 .also { Napier.w("Could not create presentation") }
         if (vp !is Holder.CreatePresentationResult.Signed)
@@ -143,7 +193,7 @@ class OidcSiopWallet(
         )
         return AuthenticationResponseParameters(
             idToken = signedIdToken,
-            state = params.state,
+            state = relyingPartyState,
             vpToken = vp.jws,
             presentationSubmission = presentationSubmission,
         )

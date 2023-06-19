@@ -16,6 +16,8 @@ object OpenIdConstants {
 
     const val PATH_WELL_KNOWN_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
 
+    const val SCOPE_OPENID = "openid"
+
     /**
      * To be used in [at.asitplus.wallet.lib.oidvci.AuthorizationDetails.type]
      */

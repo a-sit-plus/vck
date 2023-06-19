@@ -18,9 +18,13 @@ data class AuthenticationRequestParameters(
      * OIDC: REQUIRED. OAuth 2.0 Response Type value that determines the authorization processing flow to be used,
      * including what parameters are returned from the endpoints used. When using the Authorization Code Flow, this
      * value is `code`.
+     *
+     * For OIDC SIOPv2, this is typically `id_token`.
+     *
+     * Optional when JAR (RFC9101) is used.
      */
     @SerialName("response_type")
-    val responseType: String,
+    val responseType: String? = null,
 
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
@@ -32,9 +36,11 @@ data class AuthenticationRequestParameters(
      * OIDC: REQUIRED. Redirection URI to which the response will be sent. This URI MUST exactly match one of the
      * Redirection URI values for the Client pre-registered at the OpenID Provider, with the matching performed as
      * described in Section 6.2.1 of RFC3986 (Simple String Comparison).
+     *
+     * Optional when JAR (RFC9101) is used.
      */
     @SerialName("redirect_uri")
-    val redirectUrl: String,
+    val redirectUrl: String? = null,
 
     /**
      * OIDC: REQUIRED. OpenID Connect requests MUST contain the openid scope value. If the openid scope value is not
@@ -61,6 +67,10 @@ data class AuthenticationRequestParameters(
     @SerialName("nonce")
     val nonce: String? = null,
 
+    /**
+     * OIDC: OPTIONAL. This parameter is used to request that specific Claims be returned. The value is a JSON object
+     * listing the requested Claims.
+     */
     @SerialName("claims")
     val claims: AuthnRequestClaims? = null,
 
@@ -112,9 +122,11 @@ data class AuthenticationRequestParameters(
      * ID Token returned based on the comparison of the `iss` and `sub` claims values. In order to preserve
      * compatibility with existing OpenID Connect deployments, the OP MAY return an ID Token that does not fulfill the
      * requirements as expressed in this parameter. So the RP SHOULD be prepared to reliably handle such an outcome.
+     *
+     * See [IdTokenType] for valid values.
      */
     @SerialName("id_token_type")
-    val idTokenType: IdTokenType? = null,
+    val idTokenType: String? = null,
 
     /**
      * OID4VP: A string containing a Presentation Definition JSON object. This parameter MUST be present when
@@ -171,4 +183,20 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("response_mode")
     val responseMode: String? = null,
+
+    /**
+     * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`
+     * (audience) as members with their semantics being the same as defined in the JWT (RFC7519) specification. The
+     * value of `aud` should be the value of the authorization server (AS) `issuer`, as defined in RFC 8414.
+     */
+    @SerialName("aud")
+    val audience: String? = null,
+
+    /**
+     * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`
+     * (audience) as members with their semantics being the same as defined in the JWT (RFC7519) specification. The
+     * value of `aud` should be the value of the authorization server (AS) `issuer`, as defined in RFC 8414.
+     */
+    @SerialName("iss")
+    val issuer: String? = null,
 )
