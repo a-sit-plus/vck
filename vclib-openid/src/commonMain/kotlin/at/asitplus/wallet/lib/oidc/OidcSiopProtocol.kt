@@ -117,7 +117,7 @@ class OidcSiopProtocol(
         return AuthenticationRequestParameters(
             responseType = "$ID_TOKEN $VP_TOKEN",
             clientId = relyingPartyUrl,
-            redirectUri = relyingPartyUrl,
+            redirectUrl = relyingPartyUrl,
             scope = "openid profile",
             state = stateOfRelyingParty,
             nonce = relyingPartyChallenge,
@@ -171,7 +171,7 @@ class OidcSiopProtocol(
         val params = createAuthnResponseParams(authenticationRequestParameters)
             ?: return null
         return AuthenticationResponse(
-            url = authenticationRequestParameters.redirectUri,
+            url = authenticationRequestParameters.redirectUrl,
             params = params
         ).toUrl()
     }
@@ -181,13 +181,15 @@ class OidcSiopProtocol(
      */
     suspend fun createAuthnResponseParams(params: AuthenticationRequestParameters): AuthenticationResponseParameters? {
         stateOfRelyingParty = params.state
+            ?: return null
+                .also { Napier.w("state is null") }
         val audience = params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.identifier
             ?: return null
                 .also { Napier.w("Could not parse audience") }
         if (URN_TYPE_JWK_THUMBPRINT !in params.clientMetadata.subjectSyntaxTypesSupported)
             return null
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
-        if (params.clientId != params.redirectUri)
+        if (params.clientId != params.redirectUrl)
             return null
                 .also { Napier.w("client_id does not match redirect_uri") }
         if (ID_TOKEN !in params.responseType)
@@ -203,6 +205,9 @@ class OidcSiopProtocol(
         if (params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains(JwsAlgorithm.ES256.text) != true)
             return null
                 .also { Napier.w("Incompatible JWT algorithms") }
+        if (params.nonce == null)
+            return null
+                .also { Napier.w("nonce is null") }
         val vp = holder?.createPresentation(params.nonce, audience)
             ?: return null
                 .also { Napier.w("Could not create presentation") }
@@ -215,7 +220,7 @@ class OidcSiopProtocol(
             issuer = agentPublicKey.jwkThumbprint,
             subject = agentPublicKey.jwkThumbprint,
             subjectJwk = agentPublicKey,
-            audience = params.redirectUri,
+            audience = params.redirectUrl,
             issuedAt = now,
             expiration = now + 60.seconds,
             nonce = params.nonce,

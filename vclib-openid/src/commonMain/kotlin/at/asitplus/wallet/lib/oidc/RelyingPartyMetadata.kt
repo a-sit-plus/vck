@@ -14,10 +14,31 @@ data class RelyingPartyMetadata(
     val redirectUris: Array<String>,
     @SerialName("jwks")
     val jsonWebKeySet: JsonWebKeySet,
+
+    /**
+     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing URI scheme identifiers and optionally method names of
+     * supported Subject Syntax Types.
+     * Valid values include `urn:ietf:params:oauth:jwk-thumbprint`, `did:example` and others.
+     */
     @SerialName("subject_syntax_types_supported")
     val subjectSyntaxTypesSupported: Array<String>,
+
+    /**
+     * OID4VP: REQUIRED. An object defining the formats and proof types of Verifiable Presentations and Verifiable
+     * Credentials that a Verifier supports. Deployments can extend the formats supported, provided Issuers, Holders
+     * and Verifiers all understand the new format.
+     */
     @SerialName("vp_formats")
     val vpFormats: FormatHolder? = null,
+
+    /**
+     * OID4VP: OPTIONAL. JSON String identifying the Client Identifier scheme. The value range defined by this
+     * specification is `pre-registered`, `redirect_uri`, `entity_id`, `did`.
+     * If omitted, the default value is `pre-registered`.
+     */
+    @SerialName("client_id_scheme")
+    val clientIdScheme: String? = "pre-registered",
+
 ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)
@@ -32,8 +53,7 @@ data class RelyingPartyMetadata(
         if (jsonWebKeySet != other.jsonWebKeySet) return false
         if (!subjectSyntaxTypesSupported.contentEquals(other.subjectSyntaxTypesSupported)) return false
         if (vpFormats != other.vpFormats) return false
-
-        return true
+        return clientIdScheme == other.clientIdScheme
     }
 
     override fun hashCode(): Int {
@@ -41,6 +61,7 @@ data class RelyingPartyMetadata(
         result = 31 * result + jsonWebKeySet.hashCode()
         result = 31 * result + subjectSyntaxTypesSupported.contentHashCode()
         result = 31 * result + (vpFormats?.hashCode() ?: 0)
+        result = 31 * result + (clientIdScheme?.hashCode() ?: 0)
         return result
     }
 

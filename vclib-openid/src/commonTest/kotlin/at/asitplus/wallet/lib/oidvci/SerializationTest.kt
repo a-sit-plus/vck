@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
+import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
 import io.kotest.core.spec.style.FunSpec
@@ -13,7 +14,7 @@ import kotlin.random.Random
 
 class SerializationTest : FunSpec({
 
-    fun createAuthorizationRequest() = AuthorizationRequestParameters(
+    fun createAuthorizationRequest() = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         clientId = randomString(),
         authorizationDetails = AuthorizationDetails(
@@ -78,7 +79,7 @@ class SerializationTest : FunSpec({
         url shouldContain baseUrl
         url shouldContain "response_type=${params.responseType}"
         url shouldContain "client_id=${params.clientId}"
-        val parsed: AuthorizationRequestParameters = intermediateMap.decode()
+        val parsed: AuthenticationRequestParameters = intermediateMap.decode()
         parsed shouldBe params
     }
 
@@ -90,9 +91,9 @@ class SerializationTest : FunSpec({
         formEncoded shouldContain "response_type=${params.responseType}"
         formEncoded shouldContain "client_id=${params.clientId}"
         formEncoded shouldContain "authorization_details=" + "{\"type\":".encodeURLParameter()
-        val parsed: AuthorizationRequestParameters = intermediateMap.decode()
+        val parsed: AuthenticationRequestParameters = intermediateMap.decode()
         parsed shouldBe params
-        val parsedToo: AuthorizationRequestParameters = formEncoded.decodeFromPostBody()
+        val parsedToo: AuthenticationRequestParameters = formEncoded.decodeFromPostBody()
         parsedToo shouldBe params
     }
 

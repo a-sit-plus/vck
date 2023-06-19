@@ -48,6 +48,9 @@ data class IssuerMetadata(
 
     /**
      * OIDC Discovery: REQUIRED. URL of the OP's OAuth 2.0 Authorization Endpoint (OpenID.Core).
+     *
+     * OIDC SIOPv2: REQUIRED. URL of the Self-Issued OP used by the RP to perform Authentication of the End-User.
+     * Can be custom URI scheme, or Universal Links/App links.
      */
     @SerialName("authorization_endpoint")
     val authorizationEndpointUrl: String,
@@ -74,6 +77,83 @@ data class IssuerMetadata(
      */
     @SerialName("display")
     val displayProperties: Array<DisplayProperties>? = null,
+
+    /**
+     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing supported response types.
+     * MUST be id_token.
+     */
+    @SerialName("response_types_supported")
+    val responseTypesSupported: Array<String>? = null,
+
+    /**
+     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing supported scopes.
+     * MUST support the openid scope value.
+     */
+    @SerialName("scopes_supported")
+    val scopesSupported: Array<String>? = null,
+
+    /**
+     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing supported subject types.
+     * Valid values include `pairwise` and `public`.
+     */
+    @SerialName("subject_types_supported")
+    val subjectTypesSupported: Array<String>? = null,
+
+    /**
+     * OIDC SIOPv2: REQUIRED. A JSON array containing a list of the JWS signing algorithms (alg values) supported by the
+     * OP for the ID Token to encode the Claims in a JWT (RFC7519).
+     * Valid values include `RS256`, `ES256`, `ES256K`, and `EdDSA`.
+     */
+    @SerialName("id_token_signing_alg_values_supported")
+    val idTokenSigningAlgorithmsSupported: Array<String>? = null,
+
+    /**
+     * OIDC SIOPv2: REQUIRED. A JSON array containing a list of the JWS signing algorithms (alg values) supported by the
+     * OP for Request Objects, which are described in Section 6.1 of OpenID.Core.
+     * Valid values include `none`, `RS256`, `ES256`, `ES256K`, and `EdDSA`.
+     */
+    @SerialName("request_object_signing_alg_values_supported")
+    val requestObjectSigningAlgorithmsSupported: Array<String>? = null,
+
+    /**
+     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing URI scheme identifiers and optionally method names of
+     * supported Subject Syntax Types.
+     * Valid values include `urn:ietf:params:oauth:jwk-thumbprint`, `did:example` and others.
+     */
+    @SerialName("subject_syntax_types_supported")
+    val subjectSyntaxTypesSupported: Array<String>? = null,
+
+    /**
+     * OIDC SIOPv2: OPTIONAL. A JSON array of strings containing the list of ID Token types supported by the OP,
+     * the default value is `attester_signed_id_token` (the id token is issued by the party operating the OP, i.e. this
+     * is the classical id token as defined in OpenID.Core), may also include `subject_signed_id_token` (Self-Issued
+     * ID Token, i.e. the id token is signed with key material under the end-user's control).
+     */
+    @SerialName("id_token_types_supported")
+    val idTokenTypesSupported: Array<String>? = null,
+
+    /**
+     * OID4VP: OPTIONAL. Boolean value specifying whether the Wallet supports the transfer of `presentation_definition`
+     * by reference, with true indicating support. If omitted, the default value is true.
+     */
+    @SerialName("presentation_definition_uri_supported")
+    val presentationDefinitionUriSupported: Boolean = true,
+
+    /**
+     * OID4VP: REQUIRED. An object containing a list of key value pairs, where the key is a string identifying a
+     * Credential format supported by the Wallet. Valid Credential format identifier values are defined in Annex E
+     * of OpenID.VCI. Other values may be used when defined in the profiles of this specification.
+     */
+    @SerialName("vp_formats_supported")
+    val vpFormatsSupported: VpFormatsSupported? = null,
+
+    /**
+     * OID4VP: OPTIONAL. Array of JSON Strings containing the values of the Client Identifier schemes that the Wallet
+     * supports. The values defined by this specification are `pre-registered`, `redirect_uri`, `entity_id`, `did`.
+     * If omitted, the default value is pre-registered.
+     */
+    @SerialName("client_id_schemes_supported")
+    val clientIdSchemesSupported: Array<String>? = null,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -93,6 +173,40 @@ data class IssuerMetadata(
             if (other.displayProperties == null) return false
             if (!displayProperties.contentEquals(other.displayProperties)) return false
         } else if (other.displayProperties != null) return false
+        if (responseTypesSupported != null) {
+            if (other.responseTypesSupported == null) return false
+            if (!responseTypesSupported.contentEquals(other.responseTypesSupported)) return false
+        } else if (other.responseTypesSupported != null) return false
+        if (scopesSupported != null) {
+            if (other.scopesSupported == null) return false
+            if (!scopesSupported.contentEquals(other.scopesSupported)) return false
+        } else if (other.scopesSupported != null) return false
+        if (subjectTypesSupported != null) {
+            if (other.subjectTypesSupported == null) return false
+            if (!subjectTypesSupported.contentEquals(other.subjectTypesSupported)) return false
+        } else if (other.subjectTypesSupported != null) return false
+        if (idTokenSigningAlgorithmsSupported != null) {
+            if (other.idTokenSigningAlgorithmsSupported == null) return false
+            if (!idTokenSigningAlgorithmsSupported.contentEquals(other.idTokenSigningAlgorithmsSupported)) return false
+        } else if (other.idTokenSigningAlgorithmsSupported != null) return false
+        if (requestObjectSigningAlgorithmsSupported != null) {
+            if (other.requestObjectSigningAlgorithmsSupported == null) return false
+            if (!requestObjectSigningAlgorithmsSupported.contentEquals(other.requestObjectSigningAlgorithmsSupported)) return false
+        } else if (other.requestObjectSigningAlgorithmsSupported != null) return false
+        if (subjectSyntaxTypesSupported != null) {
+            if (other.subjectSyntaxTypesSupported == null) return false
+            if (!subjectSyntaxTypesSupported.contentEquals(other.subjectSyntaxTypesSupported)) return false
+        } else if (other.subjectSyntaxTypesSupported != null) return false
+        if (idTokenTypesSupported != null) {
+            if (other.idTokenTypesSupported == null) return false
+            if (!idTokenTypesSupported.contentEquals(other.idTokenTypesSupported)) return false
+        } else if (other.idTokenTypesSupported != null) return false
+        if (presentationDefinitionUriSupported != other.presentationDefinitionUriSupported) return false
+        if (vpFormatsSupported != other.vpFormatsSupported) return false
+        if (clientIdSchemesSupported != null) {
+            if (other.clientIdSchemesSupported == null) return false
+            if (!clientIdSchemesSupported.contentEquals(other.clientIdSchemesSupported)) return false
+        } else if (other.clientIdSchemesSupported != null) return false
 
         return true
     }
@@ -107,6 +221,16 @@ data class IssuerMetadata(
         result = 31 * result + (batchCredentialEndpointUrl?.hashCode() ?: 0)
         result = 31 * result + supportedCredentialFormat.contentHashCode()
         result = 31 * result + (displayProperties?.contentHashCode() ?: 0)
+        result = 31 * result + (responseTypesSupported?.contentHashCode() ?: 0)
+        result = 31 * result + (scopesSupported?.contentHashCode() ?: 0)
+        result = 31 * result + (subjectTypesSupported?.contentHashCode() ?: 0)
+        result = 31 * result + (idTokenSigningAlgorithmsSupported?.contentHashCode() ?: 0)
+        result = 31 * result + (requestObjectSigningAlgorithmsSupported?.contentHashCode() ?: 0)
+        result = 31 * result + (subjectSyntaxTypesSupported?.contentHashCode() ?: 0)
+        result = 31 * result + (idTokenTypesSupported?.contentHashCode() ?: 0)
+        result = 31 * result + presentationDefinitionUriSupported.hashCode()
+        result = 31 * result + (vpFormatsSupported?.hashCode() ?: 0)
+        result = 31 * result + (clientIdSchemesSupported?.contentHashCode() ?: 0)
         return result
     }
 }

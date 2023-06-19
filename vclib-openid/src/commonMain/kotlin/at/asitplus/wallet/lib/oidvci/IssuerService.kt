@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.jws.JsonWebToken
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsSigned
+import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ProofTypes
@@ -65,7 +66,7 @@ class IssuerService(
      * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
      * code from [codeService].
      */
-    fun authorize(params: AuthorizationRequestParameters): String {
+    fun authorize(params: AuthenticationRequestParameters): String {
         val builder = URLBuilder(params.redirectUrl)
         builder.parameters.append(OpenIdConstants.GRANT_TYPE_CODE, codeService.provideCode())
         return builder.buildString()

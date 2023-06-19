@@ -8,6 +8,7 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JsonWebToken
 import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.CREDENTIAL_TYPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
@@ -30,8 +31,8 @@ class WalletService(
      * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
      * [IssuerMetadata.authorizationEndpointUrl])
      */
-    fun createAuthRequest() = AuthorizationRequestParameters(
-        responseType = OpenIdConstants.GRANT_TYPE_CODE,
+    fun createAuthRequest() = AuthenticationRequestParameters(
+        responseType = GRANT_TYPE_CODE,
         clientId = clientId,
         authorizationDetails = AuthorizationDetails(
             type = CREDENTIAL_TYPE_OPENID,
