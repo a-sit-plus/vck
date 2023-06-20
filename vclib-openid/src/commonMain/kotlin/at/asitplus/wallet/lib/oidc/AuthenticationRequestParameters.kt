@@ -6,11 +6,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Some possible parameters for an OIDC Authentication Request.
+ * Contents of an OIDC Authentication Request.
  *
- * Usually, these parameters are appended to the URL of a [AuthenticationRequest].
- *
- * To be sent from the Wallet to the Issuer in OID4VCI, or from the Verifier to the Wallet in OIDC SIOPv2.
+ * Usually, these parameters are appended to the Authorization Endpoint URL of the OpenId Provider (may be the
+ * Wallet App in case of SIOPv2, or the Credential Issuer for OID4VCI).
  */
 @Serializable
 data class AuthenticationRequestParameters(

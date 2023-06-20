@@ -20,6 +20,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.ktor.http.URLBuilder
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 
@@ -105,10 +106,10 @@ class OidcSiopProtocolTest : FreeSpec({
             true
         )
         signedJws.shouldNotBeNull()
-        val authnRequest = AuthenticationRequest(
-            url = walletUrl,
-            params = AuthenticationRequestParameters(clientId = relyingPartyUrl, request = signedJws)
-        ).toUrl()
+        val urlBuilder = URLBuilder(walletUrl)
+        AuthenticationRequestParameters(clientId = relyingPartyUrl, request = signedJws).encodeToParameters()
+            .forEach { urlBuilder.parameters.append(it.key, it.value) }
+        val authnRequest = urlBuilder.buildString()
         println(authnRequest)
 
         val authnResponse = holderOidcSiopProtocol.createAuthnResponse(authnRequest).getOrThrow()

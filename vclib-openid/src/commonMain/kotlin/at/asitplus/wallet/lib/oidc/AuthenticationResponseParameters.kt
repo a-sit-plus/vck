@@ -5,9 +5,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Some possible parameters for an OIDC Authentication Response.
+ * Contents of an OIDC Authentication Response.
  *
- * Usually, these parameters are appended to the URL of an [AuthenticationResponse].
+ * Usually, these parameters are appended to the redirect URL (`redirect_uri`) of the Relying Party.
  */
 @Serializable
 data class AuthenticationResponseParameters(

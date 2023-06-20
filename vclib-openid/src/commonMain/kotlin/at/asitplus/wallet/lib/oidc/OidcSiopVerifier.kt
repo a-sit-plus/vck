@@ -23,8 +23,11 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
+import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
 import kotlinx.datetime.Clock
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -69,13 +72,13 @@ class OidcSiopVerifier(
     }
 
     /**
-     * Creates a OIDC [AuthenticationRequest] URL to call the Wallet Implementation (acting as SIOP V2)
+     * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl].
      */
     fun createAuthnRequestUrl(walletUrl: String, relyingPartyUrl: String, usePost: Boolean = false): String {
-        return AuthenticationRequest(
-            url = walletUrl,
-            params = createAuthnRequest(relyingPartyUrl, usePost = usePost),
-        ).toUrl()
+        val urlBuilder = URLBuilder(walletUrl)
+        createAuthnRequest(relyingPartyUrl, usePost = usePost).encodeToParameters()
+            .forEach { urlBuilder.parameters.append(it.key, it.value) }
+        return urlBuilder.buildString()
     }
 
     /**
@@ -138,8 +141,8 @@ class OidcSiopVerifier(
     }
 
     /**
-     * Validates the [AuthenticationResponse] from the Wallet, where [content] are the HTTP POST encoded parameters,
-     * e.g. "id_token=...&vp_token=..."
+     * Validates the OIDC Authentication Response from the Wallet, where [content] are the HTTP POST encoded
+     * [AuthenticationResponseParameters], e.g. `id_token=...&vp_token=...`
      */
     fun validateAuthnResponseFromPost(content: String, relyingPartyUrl: String): AuthnResponseResult {
         val params: AuthenticationResponseParameters = content.decodeFromPostBody()
@@ -149,14 +152,15 @@ class OidcSiopVerifier(
     }
 
     /**
-     * Validates the [AuthenticationResponse] from the Wallet, where [it] is the whole URL,
-     * e.g. "https://example.com#id_token=..."
+     * Validates the OIDC Authentication Response from the Wallet, where [url] is the whole URL, containing the
+     * [AuthenticationResponseParameters] as the fragment, e.g. `https://example.com#id_token=...`
      */
-    fun validateAuthnResponse(it: String, relyingPartyUrl: String): AuthnResponseResult {
-        val response = AuthenticationResponse.parseUrl(it)
+    fun validateAuthnResponse(url: String, relyingPartyUrl: String): AuthnResponseResult {
+        val params = kotlin.runCatching {
+            Url(url).fragment.decodeFromPostBody<AuthenticationResponseParameters>()
+        }.getOrNull()
             ?: return AuthnResponseResult.Error("url")
-                .also { Napier.w("Could not parse authentication response: $it") }
-        val params = response.params
+                .also { Napier.w("Could not parse authentication response: $url") }
         return validateAuthnResponse(params, relyingPartyUrl)
     }
 

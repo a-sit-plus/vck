@@ -22,13 +22,16 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
 import at.asitplus.wallet.lib.oidvci.IssuerMetadata
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
+import io.ktor.util.flattenEntries
 import kotlinx.datetime.Clock
 import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -66,10 +69,21 @@ class OidcSiopWallet(
         )
     }
 
+    /**
+     * Possible outcomes of creating the OIDC Authentication Response
+     */
     sealed class AuthenticationResponseResult {
+        /**
+         * Wallet returns the [AuthenticationResponseParameters] as form encoded parameters, which shall be posted to
+         * `redirect_uri` of the Relying Party, i.e. clients should execute that POST to call the RP again.
+         */
         data class Post(val url: String, val content: String) : AuthenticationResponseResult()
+
+        /**
+         * Wallet returns the [AuthenticationResponseParameters] as fragment parameters appended to the
+         * `redirect_uri` of the Relying Party, i.e. clients should simply open the URL to call the RP again.
+         */
         data class Redirect(val url: String) : AuthenticationResponseResult()
-        data class Http200OK(val content: String) : AuthenticationResponseResult()
     }
 
     val metadata: IssuerMetadata by lazy {
@@ -87,20 +101,23 @@ class OidcSiopWallet(
     }
 
     /**
-     * Pass in the URL sent by the Verifier (may be a serialized [AuthenticationRequest]),
-     * to create an [AuthenticationResponse] that can be sent back to the Verifier.
+     * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
+     * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
+     * [AuthenticationResponseResult].
      */
     suspend fun createAuthnResponse(it: String): KmmResult<AuthenticationResponseResult> {
-        val authnRequest = AuthenticationRequest.parseUrl(it)
+        val params = kotlin.runCatching {
+            Url(it).parameters.flattenEntries().toMap().decodeFromUrlQuery<AuthenticationRequestParameters>()
+        }.getOrNull()
             ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("Could not parse authentication request") }
-        return extractRequestObject(authnRequest)
+        return extractRequestObject(params)
             ?.let { createAuthnResponse(it) }
-            ?: createAuthnResponse(authnRequest.params)
+            ?: createAuthnResponse(params)
     }
 
-    private fun extractRequestObject(authnRequest: AuthenticationRequest): AuthenticationRequestParameters? {
-        authnRequest.params.request?.let { requestObject ->
+    private fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParameters? {
+        params.request?.let { requestObject ->
             JwsSigned.parse(requestObject)?.let { jws ->
                 if (verifierJwsService.verifyJwsObject(jws, requestObject)) {
                     return kotlin.runCatching {
@@ -128,9 +145,10 @@ class OidcSiopWallet(
                     KmmResult.success(AuthenticationResponseResult.Post(request.redirectUrl, body))
                 } else {
                     // default for id_token is fragment
-                    KmmResult.success(
-                        AuthenticationResponseResult.Redirect(AuthenticationResponse(request.redirectUrl, it).toUrl())
-                    )
+                    val url = URLBuilder(request.redirectUrl)
+                        .apply { encodedFragment = it.encodeToParameters().formUrlEncode() }
+                        .buildString()
+                    KmmResult.success(AuthenticationResponseResult.Redirect(url))
                 }
             } else {
                 KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
