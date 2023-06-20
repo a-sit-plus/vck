@@ -1,5 +1,5 @@
 pluginManagement {
-    includeBuild("vclib-conventions")
+    includeBuild("conventions-vclib")
 }
 
 rootProject.name = "vclibrary"

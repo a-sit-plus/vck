@@ -6,7 +6,7 @@ group = "at.asitplus.gradle"
 
 idea {
     project {
-        jdkName="11" //TODO share
+        jdkName = "11" //TODO use from ASP conventions plugin?
     }
 }
 
