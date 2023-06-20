@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
@@ -13,16 +14,21 @@ import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.RESPONSE_MODE_POST
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
 import at.asitplus.wallet.lib.oidvci.IssuerMetadata
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -60,6 +66,12 @@ class OidcSiopWallet(
         )
     }
 
+    sealed class AuthenticationResponseResult {
+        data class Post(val url: String, val content: String) : AuthenticationResponseResult()
+        data class Redirect(val url: String) : AuthenticationResponseResult()
+        data class Http200OK(val content: String) : AuthenticationResponseResult()
+    }
+
     val metadata: IssuerMetadata by lazy {
         IssuerMetadata(
             issuer = clientId,
@@ -75,89 +87,99 @@ class OidcSiopWallet(
     }
 
     /**
-     * Pass in the serialized [AuthenticationRequest] to create an [AuthenticationResponse]
+     * Pass in the URL sent by the Verifier (may be a serialized [AuthenticationRequest]),
+     * to create an [AuthenticationResponse] that can be sent back to the Verifier.
      */
-    suspend fun createAuthnResponse(it: String): String? {
+    suspend fun createAuthnResponse(it: String): KmmResult<AuthenticationResponseResult> {
         val authnRequest = AuthenticationRequest.parseUrl(it)
-            ?: return null
+            ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("Could not parse authentication request") }
+        return extractRequestObject(authnRequest)
+            ?.let { createAuthnResponse(it) }
+            ?: createAuthnResponse(authnRequest.params)
+    }
+
+    private fun extractRequestObject(authnRequest: AuthenticationRequest): AuthenticationRequestParameters? {
         authnRequest.params.request?.let { requestObject ->
             JwsSigned.parse(requestObject)?.let { jws ->
                 if (verifierJwsService.verifyJwsObject(jws, requestObject)) {
-                    val params = kotlin.runCatching {
+                    return kotlin.runCatching {
                         jsonSerializer.decodeFromString<AuthenticationRequestParameters>(jws.payload.decodeToString())
                     }.getOrNull()
-                    if (params != null) {
-                        return createAuthnResponse(params)
-                    }
                 }
             }
         }
-        return createAuthnResponse(authnRequest.params)
+        return null
     }
 
     /**
-     * Pass in the deserialized [AuthenticationRequestParameters], which are encoded as query params
+     * Pass in the deserialized [AuthenticationRequestParameters], which were either encoded as query params,
+     * or JSON serialized as a JWT Request Object.
      */
-    suspend fun createAuthnResponse(request: AuthenticationRequestParameters): String? {
-        val params = createAuthnResponseParams(request)
-            ?: return null
-        val redirectUrl = request.redirectUrl ?: return null
-        if (request.responseType == null)
-            return null
-        when {
-            request.responseType.contains(ID_TOKEN) -> {
-                val authenticationResponse = AuthenticationResponse(url = redirectUrl, params = params)
-                println(authenticationResponse)
-                println(authenticationResponse.toUrl())
-                return authenticationResponse.toUrl()
+    suspend fun createAuthnResponse(
+        request: AuthenticationRequestParameters
+    ): KmmResult<AuthenticationResponseResult> = createAuthnResponseParams(request).fold(
+        {
+            if (request.responseType?.contains(ID_TOKEN) == true) {
+                if (request.redirectUrl == null)
+                    return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+                if (request.responseMode?.contains(RESPONSE_MODE_POST) == true) {
+                    val body = it.encodeToParameters().formUrlEncode()
+                    KmmResult.success(AuthenticationResponseResult.Post(request.redirectUrl, body))
+                } else {
+                    // default for id_token is fragment
+                    KmmResult.success(
+                        AuthenticationResponseResult.Redirect(AuthenticationResponse(request.redirectUrl, it).toUrl())
+                    )
+                }
+            } else {
+                KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
             }
 
-            request.responseType.contains(GRANT_TYPE_CODE) ->
-                // TODO return as POST
-                return null
-
-            else -> return null
+        }, {
+            return KmmResult.failure(it)
         }
-    }
+    )
 
     /**
      * Creates the authentication response from the RP's [params]
      */
-    suspend fun createAuthnResponseParams(params: AuthenticationRequestParameters): AuthenticationResponseParameters? {
+    suspend fun createAuthnResponseParams(
+        params: AuthenticationRequestParameters
+    ): KmmResult<AuthenticationResponseParameters> {
         val relyingPartyState = params.state
-            ?: return null
+            ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("state is null") }
         val audience = params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.identifier
-            ?: return null
+            ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("Could not parse audience") }
         if (URN_TYPE_JWK_THUMBPRINT !in params.clientMetadata.subjectSyntaxTypesSupported)
-            return null
+            return KmmResult.failure(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
         if (params.clientId != params.redirectUrl)
-            return null
+            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("client_id does not match redirect_uri") }
         if (params.responseType?.contains(ID_TOKEN) != true)
-            return null
+            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("response_type is not \"$ID_TOKEN\"") }
         // TODO "claims" may be set by the RP to tell OP which attributes to release
         if (!params.responseType.contains(VP_TOKEN) && params.presentationDefinition == null)
-            return null
+            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("vp_token not requested") }
         if (params.clientMetadata.vpFormats == null)
-            return null
+            return KmmResult.failure(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
         if (params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains(JwsAlgorithm.ES256.text) != true)
-            return null
+            return KmmResult.failure(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible JWT algorithms") }
         if (params.nonce == null)
-            return null
+            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("nonce is null") }
         val vp = holder.createPresentation(params.nonce, audience)
-            ?: return null
+            ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not create presentation") }
         if (vp !is Holder.CreatePresentationResult.Signed)
-            return null
+            return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not create presentation") }
         val now = clock.now()
         // we'll assume jwk-thumbprint
@@ -173,7 +195,7 @@ class OidcSiopWallet(
         val jwsPayload = idToken.serialize().encodeToByteArray()
         val jwsHeader = JwsHeader(JwsAlgorithm.ES256)
         val signedIdToken = jwsService.createSignedJwsAddingParams(jwsHeader, jwsPayload)
-            ?: return null
+            ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not sign id_token") }
         val presentationSubmission = PresentationSubmission(
             id = uuid4().toString(),
@@ -191,11 +213,13 @@ class OidcSiopWallet(
                 )
             }?.toTypedArray()
         )
-        return AuthenticationResponseParameters(
-            idToken = signedIdToken,
-            state = relyingPartyState,
-            vpToken = vp.jws,
-            presentationSubmission = presentationSubmission,
+        return KmmResult.success(
+            AuthenticationResponseParameters(
+                idToken = signedIdToken,
+                state = relyingPartyState,
+                vpToken = vp.jws,
+                presentationSubmission = presentationSubmission,
+            )
         )
     }
 

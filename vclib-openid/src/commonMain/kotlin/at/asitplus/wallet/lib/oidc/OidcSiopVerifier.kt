@@ -18,8 +18,11 @@ import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.RESPONSE_MODE_POST
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
+import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
@@ -68,10 +71,10 @@ class OidcSiopVerifier(
     /**
      * Creates a OIDC [AuthenticationRequest] URL to call the Wallet Implementation (acting as SIOP V2)
      */
-    fun createAuthnRequestUrl(walletUrl: String, relyingPartyUrl: String): String {
+    fun createAuthnRequestUrl(walletUrl: String, relyingPartyUrl: String, usePost: Boolean = false): String {
         return AuthenticationRequest(
             url = walletUrl,
-            params = createAuthnRequest(relyingPartyUrl),
+            params = createAuthnRequest(relyingPartyUrl, usePost = usePost),
         ).toUrl()
     }
 
@@ -81,7 +84,7 @@ class OidcSiopVerifier(
      *
      * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
      */
-    fun createAuthnRequest(relyingPartyUrl: String): AuthenticationRequestParameters {
+    fun createAuthnRequest(relyingPartyUrl: String, usePost: Boolean = false): AuthenticationRequestParameters {
         val metadata = RelyingPartyMetadata(
             redirectUris = arrayOf(relyingPartyUrl),
             jsonWebKeySet = JsonWebKeySet(arrayOf(agentPublicKey)),
@@ -94,11 +97,12 @@ class OidcSiopVerifier(
             responseType = "$ID_TOKEN $VP_TOKEN",
             clientId = relyingPartyUrl,
             redirectUrl = relyingPartyUrl,
-            scope = "openid profile",
+            scope = "$SCOPE_OPENID profile",
             state = relyingPartyState,
             nonce = relyingPartyChallenge,
             clientMetadata = metadata,
             idTokenType = IdTokenType.SUBJECT_SIGNED.text,
+            responseMode = if (usePost) RESPONSE_MODE_POST else null,
             presentationDefinition = PresentationDefinition(
                 id = uuid4().toString(),
                 formats = FormatHolder(
@@ -131,6 +135,17 @@ class OidcSiopVerifier(
     sealed class AuthnResponseResult {
         data class Error(val reason: String) : AuthnResponseResult()
         data class Success(val vp: VerifiablePresentationParsed) : AuthnResponseResult()
+    }
+
+    /**
+     * Validates the [AuthenticationResponse] from the Wallet, where [content] are the HTTP POST encoded parameters,
+     * e.g. "id_token=...&vp_token=..."
+     */
+    fun validateAuthnResponseFromPost(content: String, relyingPartyUrl: String): AuthnResponseResult {
+        val params: AuthenticationResponseParameters = content.decodeFromPostBody()
+            ?: return AuthnResponseResult.Error("content")
+                .also { Napier.w("Could not parse authentication response: $it") }
+        return validateAuthnResponse(params, relyingPartyUrl)
     }
 
     /**

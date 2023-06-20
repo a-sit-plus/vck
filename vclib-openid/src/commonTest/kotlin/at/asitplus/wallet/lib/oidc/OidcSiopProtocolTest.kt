@@ -18,6 +18,7 @@ import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
@@ -72,13 +73,25 @@ class OidcSiopProtocolTest : FreeSpec({
         val authnRequest = verifierOidcSiopProtocol.createAuthnRequestUrl(walletUrl, relyingPartyUrl)
         println(authnRequest) // len: 1084 chars
 
-        val authnResponse = holderOidcSiopProtocol.createAuthnResponse(authnRequest)
-        println(authnResponse)
-        authnResponse.shouldNotBeNull()
+        val authnResponse = holderOidcSiopProtocol.createAuthnResponse(authnRequest).getOrThrow()
+        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
         println(authnResponse) // len: 3702 chars with one "atomic" credential (string-string)
 
-        val result = verifierOidcSiopProtocol.validateAuthnResponse(authnResponse, relyingPartyUrl)
-        println(result)
+        val result = verifierOidcSiopProtocol.validateAuthnResponse(authnResponse.url, relyingPartyUrl)
+        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+        result.vp.verifiableCredentials.shouldNotBeEmpty()
+    }
+
+    "test with POST" {
+        val authnRequest = verifierOidcSiopProtocol.createAuthnRequestUrl(walletUrl, relyingPartyUrl, usePost = true)
+        println(authnRequest)
+
+        val authnResponse = holderOidcSiopProtocol.createAuthnResponse(authnRequest).getOrThrow()
+        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Post>()
+        println(authnResponse)
+        authnResponse.url.shouldBe(relyingPartyUrl)
+
+        val result = verifierOidcSiopProtocol.validateAuthnResponseFromPost(authnResponse.content, relyingPartyUrl)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
@@ -98,10 +111,9 @@ class OidcSiopProtocolTest : FreeSpec({
         ).toUrl()
         println(authnRequest)
 
-        val authnResponse = holderOidcSiopProtocol.createAuthnResponse(authnRequest)
-        authnResponse.shouldNotBeNull()
-        val result = verifierOidcSiopProtocol.validateAuthnResponse(authnResponse, relyingPartyUrl)
-        println(result)
+        val authnResponse = holderOidcSiopProtocol.createAuthnResponse(authnRequest).getOrThrow()
+        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
+        val result = verifierOidcSiopProtocol.validateAuthnResponse(authnResponse.url, relyingPartyUrl)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
@@ -112,14 +124,12 @@ class OidcSiopProtocolTest : FreeSpec({
         println(authnRequestUrlParams)
 
         val parsedAuthnRequest: AuthenticationRequestParameters = authnRequestUrlParams.decodeFromPostBody()
-        val authnResponse = holderOidcSiopProtocol.createAuthnResponseParams(parsedAuthnRequest)
-        authnResponse.shouldNotBeNull()
+        val authnResponse = holderOidcSiopProtocol.createAuthnResponseParams(parsedAuthnRequest).getOrThrow()
         val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode()
         println(authnResponseParams)
 
         val parsedAuthnResponse: AuthenticationResponseParameters = authnResponseParams.decodeFromPostBody()
         val result = verifierOidcSiopProtocol.validateAuthnResponse(parsedAuthnResponse, relyingPartyUrl)
-        println(result)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }

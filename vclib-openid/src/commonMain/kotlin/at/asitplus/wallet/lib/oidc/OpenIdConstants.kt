@@ -18,6 +18,8 @@ object OpenIdConstants {
 
     const val SCOPE_OPENID = "openid"
 
+    const val RESPONSE_MODE_POST = "post"
+
     /**
      * To be used in [at.asitplus.wallet.lib.oidvci.AuthorizationDetails.type]
      */
