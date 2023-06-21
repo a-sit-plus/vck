@@ -76,7 +76,11 @@ class OidcSiopProtocolTest : FreeSpec({
     }
 
     "test with POST" {
-        val authnRequest = verifierOidcSiopProtocol.createAuthnRequestUrl(walletUrl, relyingPartyUrl, usePost = true)
+        val authnRequest = verifierOidcSiopProtocol.createAuthnRequestUrl(
+            walletUrl,
+            relyingPartyUrl,
+            responseMode = OpenIdConstants.ResponseModes.POST
+        )
         println(authnRequest)
 
         val authnResponse = holderOidcSiopProtocol.createAuthnResponse(authnRequest).getOrThrow()

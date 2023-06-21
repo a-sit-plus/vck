@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.data.dif.Constraint
 import at.asitplus.wallet.lib.data.dif.ConstraintField
@@ -22,7 +23,6 @@ import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.REDIRECT_URI
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.POST
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
@@ -50,7 +50,7 @@ class OidcSiopVerifier(
     private val agentPublicKey: JsonWebKey,
     private val jwsService: JwsService,
     private val verifierJwsService: VerifierJwsService,
-    private val relyingPartyChallenge: String = uuid4().toString(),
+    private val relyingPartyChallenge: String = uuid4().toString(), // TODO support more than one
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
 ) {
@@ -81,10 +81,12 @@ class OidcSiopVerifier(
 
     /**
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl].
+     *
+     * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
      */
-    fun createAuthnRequestUrl(walletUrl: String, relyingPartyUrl: String, usePost: Boolean = false): String {
+    fun createAuthnRequestUrl(walletUrl: String, relyingPartyUrl: String, responseMode: String? = null): String {
         val urlBuilder = URLBuilder(walletUrl)
-        createAuthnRequest(relyingPartyUrl, usePost = usePost).encodeToParameters()
+        createAuthnRequest(relyingPartyUrl, responseMode = responseMode).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
         return urlBuilder.buildString()
     }
@@ -92,26 +94,30 @@ class OidcSiopVerifier(
     /**
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl],
      * containing a JWS Authorization Request (JAR, RFC9101), containing the request parameters itself.
+     *
+     * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
      */
     suspend fun createAuthnRequestUrlWithRequestObject(
         walletUrl: String,
         relyingPartyUrl: String,
-        usePost: Boolean = false
+        responseMode: String? = null,
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
-        createAuthnRequestAsRequestObject(relyingPartyUrl, usePost).encodeToParameters()
+        createAuthnRequestAsRequestObject(relyingPartyUrl, responseMode = responseMode).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
         return urlBuilder.buildString()
     }
 
     /**
-     * Creates an JWS Authorization Request (JAR, RFC9101), wrapping the usual [AuthenticationRequestParameters]
+     * Creates an JWS Authorization Request (JAR, RFC9101), wrapping the usual [AuthenticationRequestParameters].
+     *
+     * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
      */
     suspend fun createAuthnRequestAsRequestObject(
         relyingPartyUrl: String,
-        usePost: Boolean = false
+        responseMode: String? = null,
     ): AuthenticationRequestParameters {
-        val requestObject = createAuthnRequest(relyingPartyUrl, usePost)
+        val requestObject = createAuthnRequest(relyingPartyUrl, responseMode = responseMode)
         val requestObjectSerialized = jsonSerializer.encodeToString(
             requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
         )
@@ -125,11 +131,18 @@ class OidcSiopVerifier(
 
     /**
      * Creates [AuthenticationRequestParameters], to be encoded as query params appended to the URL of the Wallet,
-     * e.g. `https://example.com?repsonse_type=...`
+     * e.g. `https://example.com?repsonse_type=...` (see [createAuthnRequestUrl])
      *
      * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
+     *
+     * @param credentialScheme which credential to request, or any credential if `null`
+     * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
      */
-    fun createAuthnRequest(relyingPartyUrl: String, usePost: Boolean = false): AuthenticationRequestParameters {
+    fun createAuthnRequest(
+        relyingPartyUrl: String,
+        credentialScheme: ConstantIndex.CredentialScheme? = null,
+        responseMode: String? = null,
+    ): AuthenticationRequestParameters {
         val metadata = RelyingPartyMetadata(
             redirectUris = arrayOf(relyingPartyUrl),
             jsonWebKeySet = JsonWebKeySet(arrayOf(agentPublicKey)),
@@ -148,7 +161,7 @@ class OidcSiopVerifier(
             nonce = relyingPartyChallenge,
             clientMetadata = metadata,
             idTokenType = IdTokenType.SUBJECT_SIGNED.text,
-            responseMode = if (usePost) POST else null,
+            responseMode = responseMode,
             presentationDefinition = PresentationDefinition(
                 id = uuid4().toString(),
                 formats = FormatHolder(
