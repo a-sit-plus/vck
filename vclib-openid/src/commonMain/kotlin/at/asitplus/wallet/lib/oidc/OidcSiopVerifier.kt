@@ -23,6 +23,7 @@ import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.REDIRECT_URI
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
@@ -163,7 +164,7 @@ class OidcSiopVerifier(
         val metadata = RelyingPartyMetadata(
             redirectUris = arrayOf(relyingPartyUrl),
             jsonWebKeySet = JsonWebKeySet(arrayOf(agentPublicKey)),
-            subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, "did:key"),
+            subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
             vpFormats = FormatHolder(
                 jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text)),
             ),

@@ -3,7 +3,10 @@ package at.asitplus.wallet.lib.jws
 import io.matthewnelson.component.base64.decodeBase64ToArray
 import io.matthewnelson.component.base64.encodeBase64
 
+
 object MultibaseHelper {
+
+    private const val PREFIX_DID_KEY = "did:key"
 
     /**
      * Returns something like `did:key:mEpA...` with the [x] and [y] values appended in Base64.
@@ -15,12 +18,12 @@ object MultibaseHelper {
     fun calcKeyId(curve: EcCurve, x: ByteArray, y: ByteArray): String? {
         if (curve != EcCurve.SECP_256_R_1)
             return null
-        return "did:key:${multibaseWrapBase64(multicodecWrapP256(encodeP256Key(x, y)))}"
+        return "$PREFIX_DID_KEY:${multibaseWrapBase64(multicodecWrapP256(encodeP256Key(x, y)))}"
     }
 
     fun calcPublicKey(keyId: String): Pair<ByteArray, ByteArray>? {
-        if (!keyId.startsWith("did:key:")) return null
-        val stripped = keyId.removePrefix("did:key:")
+        if (!keyId.startsWith("$PREFIX_DID_KEY:")) return null
+        val stripped = keyId.removePrefix("$PREFIX_DID_KEY:")
         return decodeP256Key(multicodecDecode(multibaseDecode(stripped)))
     }
 

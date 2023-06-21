@@ -16,6 +16,7 @@ import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.POST
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
@@ -97,7 +98,7 @@ class OidcSiopWallet(
             subjectTypesSupported = arrayOf("pairwise", "public"),
             idTokenSigningAlgorithmsSupported = arrayOf(JwsAlgorithm.ES256.text),
             requestObjectSigningAlgorithmsSupported = arrayOf(JwsAlgorithm.ES256.text),
-            subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, "did:key"),
+            subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
             idTokenTypesSupported = arrayOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,
         )

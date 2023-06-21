@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ProofTypes
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_PREFIX_BEARER
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
@@ -43,7 +44,7 @@ class IssuerService(
                 format = CredentialFormatEnum.JWT_VC,
                 id = it.vcType,
                 types = arrayOf(VERIFIABLE_CREDENTIAL, it.vcType),
-                supportedBindingMethods = arrayOf("did:key", URN_TYPE_JWK_THUMBPRINT),
+                supportedBindingMethods = arrayOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
                 supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
             )
         }
