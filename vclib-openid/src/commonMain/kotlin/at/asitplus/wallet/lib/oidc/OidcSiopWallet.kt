@@ -16,7 +16,8 @@ import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.RESPONSE_MODE_POST
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.POST
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
@@ -97,6 +98,7 @@ class OidcSiopWallet(
             requestObjectSigningAlgorithmsSupported = arrayOf(JwsAlgorithm.ES256.text),
             subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, "did:key"),
             idTokenTypesSupported = arrayOf(IdTokenType.SUBJECT_SIGNED),
+            presentationDefinitionUriSupported = false,
         )
     }
 
@@ -137,23 +139,31 @@ class OidcSiopWallet(
         request: AuthenticationRequestParameters
     ): KmmResult<AuthenticationResponseResult> = createAuthnResponseParams(request).fold(
         {
-            if (request.responseType?.contains(ID_TOKEN) == true) {
+            if (request.responseType == null) {
+                return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+            }
+            if (!request.responseType.contains(ID_TOKEN) && !request.responseType.contains(VP_TOKEN)) {
+                return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+            }
+            if (request.responseMode?.contains(POST) == true) {
                 if (request.redirectUrl == null)
                     return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                if (request.responseMode?.contains(RESPONSE_MODE_POST) == true) {
-                    val body = it.encodeToParameters().formUrlEncode()
-                    KmmResult.success(AuthenticationResponseResult.Post(request.redirectUrl, body))
-                } else {
-                    // default for id_token is fragment
-                    val url = URLBuilder(request.redirectUrl)
-                        .apply { encodedFragment = it.encodeToParameters().formUrlEncode() }
-                        .buildString()
-                    KmmResult.success(AuthenticationResponseResult.Redirect(url))
-                }
+                val body = it.encodeToParameters().formUrlEncode()
+                KmmResult.success(AuthenticationResponseResult.Post(request.redirectUrl, body))
+            } else if (request.responseMode?.contains(DIRECT_POST) == true) {
+                if (request.responseUrl == null || request.redirectUrl != null)
+                    return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+                val body = it.encodeToParameters().formUrlEncode()
+                KmmResult.success(AuthenticationResponseResult.Post(request.responseUrl, body))
             } else {
-                KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+                // default for vp_token and id_token is fragment
+                if (request.redirectUrl == null)
+                    return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+                val url = URLBuilder(request.redirectUrl)
+                    .apply { encodedFragment = it.encodeToParameters().formUrlEncode() }
+                    .buildString()
+                KmmResult.success(AuthenticationResponseResult.Redirect(url))
             }
-
         }, {
             return KmmResult.failure(it)
         }

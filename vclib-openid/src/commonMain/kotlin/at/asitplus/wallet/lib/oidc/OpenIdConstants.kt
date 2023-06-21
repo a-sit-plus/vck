@@ -18,8 +18,6 @@ object OpenIdConstants {
 
     const val SCOPE_OPENID = "openid"
 
-    const val RESPONSE_MODE_POST = "post"
-
     /**
      * To be used in [at.asitplus.wallet.lib.oidvci.AuthorizationDetails.type]
      */
@@ -33,6 +31,60 @@ object OpenIdConstants {
         const val JWT = "jwt"
 
         const val JWT_HEADER_TYPE = "openid4vci-proof+jwt"
+    }
+
+    /**
+     * Constants from OID4VP
+     */
+    object ClientIdSchemes {
+        /**
+         *  This value represents the RFC6749 default behavior, i.e., the Client Identifier needs to be known to the
+         *  Wallet in advance of the Authorization Request. The Verifier metadata is obtained using RFC7591 or
+         *  through out-of-band mechanisms.
+         */
+        const val PRE_REGISTERED = "pre-registered"
+
+        /**
+         * This value indicates that the Verifier's redirect URI is also the value of the Client Identifier.
+         * In this case, the Authorization Request MUST NOT be signed, the Verifier MAY omit the `redirect_uri`
+         * Authorization Request parameter, and all Verifier metadata parameters MUST be passed using the
+         * `client_metadata` or `client_metadata_uri` parameter.
+         */
+        const val REDIRECT_URI = "redirect_uri"
+
+        /**
+         * This value indicates that the Client Identifier is an Entity Identifier defined in OpenID Connect Federation.
+         * Processing rules given in OpenID.Federation MUST be followed. Automatic Registration as defined in
+         * OpenID.Federation MUST be used. The Authorization Request MAY also contain a `trust_chain` parameter.
+         * The Wallet MUST obtain Verifier metadata only from the Entity Statement(s). The `client_metadata` or
+         * `client_metadata_uri` parameter MUST NOT be present in the Authorization Request when this Client
+         * Identifier scheme is used.
+         */
+        const val ENTITY_ID = "entity_id"
+
+        /**
+         * This value indicates that the Client Identifier is a DID defined in DID-Core. The request MUST be signed
+         * with a private key associated with the DID. A public key to verify the signature MUST be obtained from the
+         * `verificationMethod` property of a DID Document. Since DID Document may include multiple public keys, a
+         * particular public key used to sign the request in question MUST be identified by the `kid` in the JOSE
+         * Header. To obtain the DID Document, the Wallet MUST use DID Resolution defined by the DID method used by
+         * the Verifier. All Verifier metadata other than the public key MUST be obtained from the `client_metadata`
+         * or the `client_metadata_uri` parameter.
+         */
+        const val DID = "did"
+    }
+
+    object ResponseModes {
+        /**
+         * OID4VP: In this mode, the Authorization Response is sent to the Verifier using an HTTPS POST request to an
+         * endpoint controlled by the Verifier. The Authorization Response parameters are encoded in the body using the
+         * `application/x-www-form-urlencoded` content type. The flow can end with an HTTPS POST request from the Wallet
+         * to the Verifier, or it can end with a redirect that follows the HTTPS POST request, if the Verifier responds
+         * with a redirect URI to the Wallet.
+         */
+        const val DIRECT_POST = "direct_post"
+
+        const val POST = "post"
     }
 
     /**

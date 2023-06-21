@@ -12,13 +12,17 @@ import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.SchemaReference
+import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
+import at.asitplus.wallet.lib.jws.JwsHeader
+import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.REDIRECT_URI
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.RESPONSE_MODE_POST
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.POST
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
@@ -29,6 +33,7 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import kotlinx.datetime.Clock
+import kotlinx.serialization.encodeToString
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -43,10 +48,11 @@ import kotlin.time.toDuration
 class OidcSiopVerifier(
     private val verifier: Verifier,
     private val agentPublicKey: JsonWebKey,
+    private val jwsService: JwsService,
     private val verifierJwsService: VerifierJwsService,
     private val relyingPartyChallenge: String = uuid4().toString(),
     timeLeewaySeconds: Long = 300L,
-    private val clock: Clock = Clock.System
+    private val clock: Clock = Clock.System,
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
@@ -57,12 +63,14 @@ class OidcSiopVerifier(
             verifier: Verifier,
             cryptoService: CryptoService,
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
+            jwsService: JwsService = DefaultJwsService(cryptoService),
             relyingPartyChallenge: String = uuid4().toString(),
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System
         ) = OidcSiopVerifier(
             verifier = verifier,
             agentPublicKey = cryptoService.toJsonWebKey(),
+            jwsService = jwsService,
             verifierJwsService = verifierJwsService,
             relyingPartyChallenge = relyingPartyChallenge,
             timeLeewaySeconds = timeLeewaySeconds,
@@ -79,6 +87,40 @@ class OidcSiopVerifier(
         createAuthnRequest(relyingPartyUrl, usePost = usePost).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
         return urlBuilder.buildString()
+    }
+
+    /**
+     * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl],
+     * containing a JWS Authorization Request (JAR, RFC9101), containing the request parameters itself.
+     */
+    suspend fun createAuthnRequestUrlWithRequestObject(
+        walletUrl: String,
+        relyingPartyUrl: String,
+        usePost: Boolean = false
+    ): String {
+        val urlBuilder = URLBuilder(walletUrl)
+        createAuthnRequestAsRequestObject(relyingPartyUrl, usePost).encodeToParameters()
+            .forEach { urlBuilder.parameters.append(it.key, it.value) }
+        return urlBuilder.buildString()
+    }
+
+    /**
+     * Creates an JWS Authorization Request (JAR, RFC9101), wrapping the usual [AuthenticationRequestParameters]
+     */
+    suspend fun createAuthnRequestAsRequestObject(
+        relyingPartyUrl: String,
+        usePost: Boolean = false
+    ): AuthenticationRequestParameters {
+        val requestObject = createAuthnRequest(relyingPartyUrl, usePost)
+        val requestObjectSerialized = jsonSerializer.encodeToString(
+            requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
+        )
+        val signedJws = jwsService.createSignedJwsAddingParams(
+            JwsHeader(algorithm = JwsAlgorithm.ES256),
+            requestObjectSerialized.encodeToByteArray(),
+            true
+        )
+        return AuthenticationRequestParameters(clientId = relyingPartyUrl, request = signedJws)
     }
 
     /**
@@ -100,12 +142,13 @@ class OidcSiopVerifier(
             responseType = "$ID_TOKEN $VP_TOKEN",
             clientId = relyingPartyUrl,
             redirectUrl = relyingPartyUrl,
-            scope = "$SCOPE_OPENID profile",
+            clientIdScheme = REDIRECT_URI,
+            scope = "$SCOPE_OPENID profile", // todo define which credential to request
             state = relyingPartyState,
             nonce = relyingPartyChallenge,
             clientMetadata = metadata,
             idTokenType = IdTokenType.SUBJECT_SIGNED.text,
-            responseMode = if (usePost) RESPONSE_MODE_POST else null,
+            responseMode = if (usePost) POST else null,
             presentationDefinition = PresentationDefinition(
                 id = uuid4().toString(),
                 formats = FormatHolder(

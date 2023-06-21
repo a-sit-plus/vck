@@ -8,21 +8,15 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.JwsAlgorithm
-import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.URLBuilder
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.encodeToString
 
 class OidcSiopProtocolTest : FreeSpec({
 
@@ -68,8 +62,6 @@ class OidcSiopProtocolTest : FreeSpec({
         walletUrl = "https://example.com/${uuid4()}"
     }
 
-    // TODO also test with "response_mode=post" = cross-device SIOP
-
     "test with URLs" {
         val authnRequest = verifierOidcSiopProtocol.createAuthnRequestUrl(walletUrl, relyingPartyUrl)
         println(authnRequest) // len: 1084 chars
@@ -98,18 +90,7 @@ class OidcSiopProtocolTest : FreeSpec({
     }
 
     "test with JAR" {
-        val requestObject = verifierOidcSiopProtocol.createAuthnRequest(relyingPartyUrl)
-        val requestObjectSerialized = jsonSerializer.encodeToString(requestObject)
-        val signedJws = DefaultJwsService(verifierCryptoService).createSignedJwsAddingParams(
-            JwsHeader(algorithm = JwsAlgorithm.ES256),
-            requestObjectSerialized.encodeToByteArray(),
-            true
-        )
-        signedJws.shouldNotBeNull()
-        val urlBuilder = URLBuilder(walletUrl)
-        AuthenticationRequestParameters(clientId = relyingPartyUrl, request = signedJws).encodeToParameters()
-            .forEach { urlBuilder.parameters.append(it.key, it.value) }
-        val authnRequest = urlBuilder.buildString()
+        val authnRequest = verifierOidcSiopProtocol.createAuthnRequestUrlWithRequestObject(walletUrl, relyingPartyUrl)
         println(authnRequest)
 
         val authnResponse = holderOidcSiopProtocol.createAuthnResponse(authnRequest).getOrThrow()
