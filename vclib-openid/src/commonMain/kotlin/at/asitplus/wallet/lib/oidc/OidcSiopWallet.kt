@@ -19,6 +19,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.POST
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
 import at.asitplus.wallet.lib.oidvci.IssuerMetadata
@@ -190,10 +191,10 @@ class OidcSiopWallet(
         if (params.responseType?.contains(ID_TOKEN) != true)
             return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("response_type is not \"$ID_TOKEN\"") }
-        // TODO "claims" may be set by the RP to tell OP which attributes to release
         if (!params.responseType.contains(VP_TOKEN) && params.presentationDefinition == null)
             return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("vp_token not requested") }
+        // TODO Client shall send the client_id_scheme, which needs to be supported by the Wallet
         if (params.clientMetadata.vpFormats == null)
             return KmmResult.failure(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
@@ -203,7 +204,11 @@ class OidcSiopWallet(
         if (params.nonce == null)
             return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("nonce is null") }
-        val vp = holder.createPresentation(params.nonce, audience)
+
+        val attributeTypes = params.scope?.split(" ")
+            ?.filterNot { it == SCOPE_OPENID }?.filterNot { it == SCOPE_PROFILE }
+            ?.toList()?.ifEmpty { null }
+        val vp = holder.createPresentation(params.nonce, audience, attributeTypes)
             ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not create presentation") }
         if (vp !is Holder.CreatePresentationResult.Signed)

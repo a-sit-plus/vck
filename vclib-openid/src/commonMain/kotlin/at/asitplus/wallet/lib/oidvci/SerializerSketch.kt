@@ -1,11 +1,18 @@
 package at.asitplus.wallet.lib.oidvci
 
-import io.ktor.http.*
+import io.ktor.http.decodeURLQueryComponent
+import io.ktor.http.formUrlEncode
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonUnquotedLiteral
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 
 typealias Parameters = Map<String, String>
 
@@ -19,11 +26,22 @@ inline fun <reified T> Parameters.decode(): T =
         }
     }))
 
+//  to
 inline fun <reified T> Parameters.decodeFromUrlQuery(): T =
     entries.associate { (k, v) -> k.decodeURLQueryComponent() to v.decodeURLQueryComponent() }.decode()
 
 inline fun <reified T> String.decodeFromPostBody(): T = split("&")
-    .associate { it.split("=")[0].decodeURLQueryComponent() to it.split("=")[1].decodeURLQueryComponent() }
+    .associate {
+        it.substringBefore("=").decodeURLQueryComponent() to
+                it.substringAfter("=", "").decodeURLQueryComponent()
+    }
+    .decode()
+
+inline fun <reified T> String.decodeFromUrlQuery(): T = split("&")
+    .associate {
+        it.substringBefore("=").decodeURLQueryComponent(plusIsSpace = true) to
+                it.substringAfter("=", "").decodeURLQueryComponent(plusIsSpace = true)
+    }
     .decode()
 
 fun Parameters.formUrlEncode() = map { (k, v) -> k to v }.formUrlEncode()

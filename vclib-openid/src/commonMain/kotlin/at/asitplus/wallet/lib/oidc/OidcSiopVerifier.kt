@@ -24,6 +24,7 @@ import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.REDIRECT_URI
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
@@ -84,9 +85,18 @@ class OidcSiopVerifier(
      *
      * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
      */
-    fun createAuthnRequestUrl(walletUrl: String, relyingPartyUrl: String, responseMode: String? = null): String {
+    fun createAuthnRequestUrl(
+        walletUrl: String,
+        relyingPartyUrl: String,
+        responseMode: String? = null,
+        credentialScheme: ConstantIndex.CredentialScheme? = null,
+    ): String {
         val urlBuilder = URLBuilder(walletUrl)
-        createAuthnRequest(relyingPartyUrl, responseMode = responseMode).encodeToParameters()
+        createAuthnRequest(
+            relyingPartyUrl,
+            responseMode = responseMode,
+            credentialScheme = credentialScheme
+        ).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
         return urlBuilder.buildString()
     }
@@ -101,9 +111,14 @@ class OidcSiopVerifier(
         walletUrl: String,
         relyingPartyUrl: String,
         responseMode: String? = null,
+        credentialScheme: ConstantIndex.CredentialScheme? = null,
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
-        createAuthnRequestAsRequestObject(relyingPartyUrl, responseMode = responseMode).encodeToParameters()
+        createAuthnRequestAsRequestObject(
+            relyingPartyUrl,
+            responseMode = responseMode,
+            credentialScheme = credentialScheme
+        ).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
         return urlBuilder.buildString()
     }
@@ -116,8 +131,10 @@ class OidcSiopVerifier(
     suspend fun createAuthnRequestAsRequestObject(
         relyingPartyUrl: String,
         responseMode: String? = null,
+        credentialScheme: ConstantIndex.CredentialScheme? = null,
     ): AuthenticationRequestParameters {
-        val requestObject = createAuthnRequest(relyingPartyUrl, responseMode = responseMode)
+        val requestObject =
+            createAuthnRequest(relyingPartyUrl, responseMode = responseMode, credentialScheme = credentialScheme)
         val requestObjectSerialized = jsonSerializer.encodeToString(
             requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
         )
@@ -156,7 +173,7 @@ class OidcSiopVerifier(
             clientId = relyingPartyUrl,
             redirectUrl = relyingPartyUrl,
             clientIdScheme = REDIRECT_URI,
-            scope = "$SCOPE_OPENID profile", // todo define which credential to request
+            scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.vcType).joinToString(" "),
             state = relyingPartyState,
             nonce = relyingPartyChallenge,
             clientMetadata = metadata,
@@ -170,17 +187,14 @@ class OidcSiopVerifier(
                 inputDescriptors = arrayOf(
                     InputDescriptor(
                         id = uuid4().toString(),
-                        format = FormatHolder(
-                            jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text))
-                        ),
-                        schema = arrayOf(SchemaReference("https://example.com")),
+                        schema = arrayOf(SchemaReference(credentialScheme?.schemaUri ?: "https://example.com")),
                         constraints = Constraint(
                             fields = arrayOf(
                                 ConstraintField(
                                     path = arrayOf("$.type"),
                                     filter = ConstraintFilter(
                                         type = "string",
-                                        pattern = "IDCardCredential",
+                                        pattern = credentialScheme?.vcType ?: "AnyCredential",
                                     )
                                 )
                             ),
