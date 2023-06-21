@@ -1,16 +1,14 @@
-import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.gradle.api.tasks.testing.logging.TestLogEvent
-import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFrameworkConfig
-import java.io.FileInputStream
-import java.util.*
+import at.asitplus.gradle.bouncycastle
+import at.asitplus.gradle.commonImplementationDependencies
+import at.asitplus.gradle.commonIosExports
+import at.asitplus.gradle.exportIosFramework
 
 plugins {
     kotlin("multiplatform")
-    kotlin("plugin.serialization") version Versions.kotlin
-    id("maven-publish")
-    id("io.kotest.multiplatform") version Versions.kotest
+    kotlin("plugin.serialization")
+    id("at.asitplus.gradle.vclib-conventions")
+    id("org.jetbrains.dokka")
     id("signing")
-    id("org.jetbrains.dokka") version Versions.dokka
 }
 
 /* required for maven publication */
@@ -20,6 +18,8 @@ version = artifactVersion
 
 val dokkaOutputDir = "$buildDir/dokka"
 tasks.dokkaHtml {
+    dependsOn(":vclib:transformIosMainCInteropDependenciesMetadataForIde") //task dependency bug workaround
+    dependsOn(":vclib-openid:transformIosMainCInteropDependenciesMetadataForIde") //task dependency bug workaround
     outputDirectory.set(file(dokkaOutputDir))
 }
 val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") {
@@ -31,46 +31,15 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
     from(dokkaOutputDir)
 }
 
+//first sign everything, then publish!
+tasks.withType<AbstractPublishToMaven>() {
+    tasks.withType<Sign>().forEach {
+        dependsOn(it)
+    }
+}
+
+exportIosFramework("VcLibAriesKmm", *commonIosExports(), project(":vclib"))
 kotlin {
-    "VcLibAriesKmm".also { name ->
-        XCFrameworkConfig(project, name).also { xcf ->
-            ios {
-                binaries.framework {
-                    baseName = name
-                    embedBitcode("bitcode")
-                    addCommonExports()
-                    export(project(":vclib"))
-                    xcf.add(this)
-                }
-            }
-            iosSimulatorArm64 {
-                binaries.framework {
-                    baseName = name
-                    embedBitcode("bitcode")
-                    addCommonExports()
-                    export(project(":vclib"))
-                    xcf.add(this)
-                }
-            }
-        }
-    }
-
-    jvm {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = Versions.Jvm.target
-                freeCompilerArgs = listOf(
-                    "-Xjsr305=strict"
-                )
-            }
-        }
-
-        testRuns["test"].executionTask.configure {
-            useJUnitPlatform()
-        }
-    }
-
-    experimentalOptIns()
 
     sourceSets {
         val commonMain by getting {
@@ -79,50 +48,22 @@ kotlin {
                 api(project(":vclib"))
             }
         }
-        val commonTest by getting {
-            dependencies {
-                commonTestDependencies()
-            }
-        }
-
+        val commonTest by getting
 
         val iosMain by getting
         val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
         val jvmMain by getting {
             dependencies {
-                implementation("org.bouncycastle:bcprov-jdk18on:${Versions.Jvm.bcprov}")
+                implementation(bouncycastle("bcprov"))
             }
         }
         val jvmTest by getting {
             dependencies {
-                implementation("com.nimbusds:nimbus-jose-jwt:${Versions.Jvm.`jose-jwt`}")
-                implementation("io.kotest:kotest-runner-junit5-jvm:${Versions.kotest}")
-                implementation("org.json:json:${Versions.Jvm.json}")
+                implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
+                implementation("org.json:json:${VcLibVersions.Jvm.json}")
             }
         }
     }
-}
-
-tasks.withType<Test> {
-    if (name == "testReleaseUnitTest") return@withType
-    useJUnitPlatform()
-    filter {
-        isFailOnNoMatchingTests = false
-    }
-    testLogging {
-        showExceptions = true
-        showStandardStreams = true
-        events = setOf(
-            TestLogEvent.FAILED,
-            TestLogEvent.PASSED
-        )
-        exceptionFormat = TestExceptionFormat.FULL
-    }
-}
-
-Properties().apply {
-    kotlin.runCatching { load(FileInputStream(project.rootProject.file("local.properties"))) }
-    forEach { (k, v) -> extra.set(k as String, v) }
 }
 
 repositories {
