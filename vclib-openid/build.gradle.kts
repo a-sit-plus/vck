@@ -31,11 +31,9 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
     from(dokkaOutputDir)
 }
 
-//first sign everything, then publish!
-tasks.withType<AbstractPublishToMaven>() {
-    tasks.withType<Sign>().forEach {
-        dependsOn(it)
-    }
+val signingTasks: TaskCollection<Sign> = tasks.withType<Sign>()
+tasks.withType<PublishToMavenRepository>().configureEach {
+    mustRunAfter(signingTasks)
 }
 
 exportIosFramework("VcLibOpenIdKmm", *commonIosExports(), project(":vclib"))
