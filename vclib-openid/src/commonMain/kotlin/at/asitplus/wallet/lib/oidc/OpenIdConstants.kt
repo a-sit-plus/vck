@@ -88,7 +88,25 @@ object OpenIdConstants {
          */
         const val DIRECT_POST = "direct_post"
 
+        /**
+         * SIOPv2: This response mode is used to request the Self-Issued OP to deliver the result of the authentication
+         * process to a certain endpoint using the HTTP POST method. The additional parameter `response_mode` is used
+         * to carry this value.
+         */
+        //NOTE: This seems to be the same as `direct_post` from OID4VP? But it's defined in SIOPv2 ...
         const val POST = "post"
+
+        /**
+         * OAuth 2.0: In this mode, Authorization Response parameters are encoded in the query string added to the
+         * `redirect_uri` when redirecting back to the Client.
+         */
+        const val QUERY = "query"
+
+        /**
+         * OAuth 2.0: In this mode, Authorization Response parameters are encoded in the fragment added to the
+         * `redirect_uri` when redirecting back to the Client.
+         */
+        const val FRAGMENT = "fragment"
     }
 
     /**

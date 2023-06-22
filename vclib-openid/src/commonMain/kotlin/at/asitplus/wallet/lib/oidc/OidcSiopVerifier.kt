@@ -29,6 +29,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
+import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -228,7 +229,11 @@ class OidcSiopVerifier(
      */
     fun validateAuthnResponse(url: String, relyingPartyUrl: String): AuthnResponseResult {
         val params = kotlin.runCatching {
-            Url(url).fragment.decodeFromPostBody<AuthenticationResponseParameters>()
+            val parsedUrl = Url(url)
+            if (parsedUrl.fragment.isNotEmpty())
+                parsedUrl.fragment.decodeFromPostBody<AuthenticationResponseParameters>()
+            else
+                parsedUrl.encodedQuery.decodeFromUrlQuery<AuthenticationResponseParameters>()
         }.getOrNull()
             ?: return AuthnResponseResult.Error("url")
                 .also { Napier.w("Could not parse authentication response: $url") }

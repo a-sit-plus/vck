@@ -19,6 +19,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.POST
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.QUERY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
@@ -34,7 +35,6 @@ import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import io.ktor.util.flattenEntries
 import kotlinx.datetime.Clock
-import kotlinx.serialization.decodeFromString
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -140,7 +140,7 @@ class OidcSiopWallet(
     suspend fun createAuthnResponse(
         request: AuthenticationRequestParameters
     ): KmmResult<AuthenticationResponseResult> = createAuthnResponseParams(request).fold(
-        {
+        { responseParams ->
             if (request.responseType == null) {
                 return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
             }
@@ -150,19 +150,30 @@ class OidcSiopWallet(
             if (request.responseMode?.contains(POST) == true) {
                 if (request.redirectUrl == null)
                     return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                val body = it.encodeToParameters().formUrlEncode()
+                val body = responseParams.encodeToParameters().formUrlEncode()
                 KmmResult.success(AuthenticationResponseResult.Post(request.redirectUrl, body))
             } else if (request.responseMode?.contains(DIRECT_POST) == true) {
                 if (request.responseUrl == null || request.redirectUrl != null)
                     return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                val body = it.encodeToParameters().formUrlEncode()
+                val body = responseParams.encodeToParameters().formUrlEncode()
                 KmmResult.success(AuthenticationResponseResult.Post(request.responseUrl, body))
+            } else if (request.responseMode?.contains(QUERY) == true) {
+                if (request.redirectUrl == null)
+                    return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+                val url = URLBuilder(request.redirectUrl)
+                    .apply {
+                        responseParams.encodeToParameters().forEach {
+                            this.parameters.append(it.key, it.value)
+                        }
+                    }
+                    .buildString()
+                KmmResult.success(AuthenticationResponseResult.Redirect(url))
             } else {
                 // default for vp_token and id_token is fragment
                 if (request.redirectUrl == null)
                     return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 val url = URLBuilder(request.redirectUrl)
-                    .apply { encodedFragment = it.encodeToParameters().formUrlEncode() }
+                    .apply { encodedFragment = responseParams.encodeToParameters().formUrlEncode() }
                     .buildString()
                 KmmResult.success(AuthenticationResponseResult.Redirect(url))
             }

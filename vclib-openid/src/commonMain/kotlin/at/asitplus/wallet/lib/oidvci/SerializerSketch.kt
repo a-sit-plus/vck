@@ -4,7 +4,6 @@ import io.ktor.http.decodeURLQueryComponent
 import io.ktor.http.formUrlEncode
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -26,7 +25,6 @@ inline fun <reified T> Parameters.decode(): T =
         }
     }))
 
-//  to
 inline fun <reified T> Parameters.decodeFromUrlQuery(): T =
     entries.associate { (k, v) -> k.decodeURLQueryComponent() to v.decodeURLQueryComponent() }.decode()
 
