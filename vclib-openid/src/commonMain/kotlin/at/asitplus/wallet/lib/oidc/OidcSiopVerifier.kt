@@ -50,6 +50,7 @@ import kotlin.time.toDuration
  */
 class OidcSiopVerifier(
     private val verifier: Verifier,
+    private val relyingPartyUrl: String,
     private val agentPublicKey: JsonWebKey,
     private val jwsService: JwsService,
     private val verifierJwsService: VerifierJwsService,
@@ -64,12 +65,14 @@ class OidcSiopVerifier(
         fun newInstance(
             verifier: Verifier,
             cryptoService: CryptoService,
+            relyingPartyUrl: String,
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
             jwsService: JwsService = DefaultJwsService(cryptoService),
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System
         ) = OidcSiopVerifier(
             verifier = verifier,
+            relyingPartyUrl = relyingPartyUrl,
             agentPublicKey = cryptoService.toJsonWebKey(),
             jwsService = jwsService,
             verifierJwsService = verifierJwsService,
@@ -86,13 +89,11 @@ class OidcSiopVerifier(
      */
     fun createAuthnRequestUrl(
         walletUrl: String,
-        relyingPartyUrl: String,
         responseMode: String? = null,
         credentialScheme: ConstantIndex.CredentialScheme? = null,
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
         createAuthnRequest(
-            relyingPartyUrl,
             responseMode = responseMode,
             credentialScheme = credentialScheme
         ).encodeToParameters()
@@ -108,13 +109,11 @@ class OidcSiopVerifier(
      */
     suspend fun createAuthnRequestUrlWithRequestObject(
         walletUrl: String,
-        relyingPartyUrl: String,
         responseMode: String? = null,
         credentialScheme: ConstantIndex.CredentialScheme? = null,
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
         createAuthnRequestAsRequestObject(
-            relyingPartyUrl,
             responseMode = responseMode,
             credentialScheme = credentialScheme
         ).encodeToParameters()
@@ -128,12 +127,11 @@ class OidcSiopVerifier(
      * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
      */
     suspend fun createAuthnRequestAsRequestObject(
-        relyingPartyUrl: String,
         responseMode: String? = null,
         credentialScheme: ConstantIndex.CredentialScheme? = null,
     ): AuthenticationRequestParameters {
         val requestObject =
-            createAuthnRequest(relyingPartyUrl, responseMode = responseMode, credentialScheme = credentialScheme)
+            createAuthnRequest(responseMode = responseMode, credentialScheme = credentialScheme)
         val requestObjectSerialized = jsonSerializer.encodeToString(
             requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
         )
@@ -155,7 +153,6 @@ class OidcSiopVerifier(
      * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
      */
     fun createAuthnRequest(
-        relyingPartyUrl: String,
         credentialScheme: ConstantIndex.CredentialScheme? = null,
         responseMode: String? = null,
     ): AuthenticationRequestParameters {
@@ -212,18 +209,18 @@ class OidcSiopVerifier(
      * Validates the OIDC Authentication Response from the Wallet, where [content] are the HTTP POST encoded
      * [AuthenticationResponseParameters], e.g. `id_token=...&vp_token=...`
      */
-    fun validateAuthnResponseFromPost(content: String, relyingPartyUrl: String): AuthnResponseResult {
+    fun validateAuthnResponseFromPost(content: String): AuthnResponseResult {
         val params: AuthenticationResponseParameters = content.decodeFromPostBody()
             ?: return AuthnResponseResult.Error("content")
                 .also { Napier.w("Could not parse authentication response: $it") }
-        return validateAuthnResponse(params, relyingPartyUrl)
+        return validateAuthnResponse(params)
     }
 
     /**
      * Validates the OIDC Authentication Response from the Wallet, where [url] is the whole URL, containing the
      * [AuthenticationResponseParameters] as the fragment, e.g. `https://example.com#id_token=...`
      */
-    fun validateAuthnResponse(url: String, relyingPartyUrl: String): AuthnResponseResult {
+    fun validateAuthnResponse(url: String): AuthnResponseResult {
         val params = kotlin.runCatching {
             val parsedUrl = Url(url)
             if (parsedUrl.fragment.isNotEmpty())
@@ -233,13 +230,13 @@ class OidcSiopVerifier(
         }.getOrNull()
             ?: return AuthnResponseResult.Error("url")
                 .also { Napier.w("Could not parse authentication response: $url") }
-        return validateAuthnResponse(params, relyingPartyUrl)
+        return validateAuthnResponse(params)
     }
 
     /**
-     * Validates [AuthenticationResponseParameters] from the Wallet, where [relyingPartyUrl] is "our" (=the RP) URL
+     * Validates [AuthenticationResponseParameters] from the Wallet
      */
-    fun validateAuthnResponse(params: AuthenticationResponseParameters, relyingPartyUrl: String): AuthnResponseResult {
+    fun validateAuthnResponse(params: AuthenticationResponseParameters): AuthnResponseResult {
         val idTokenJws = params.idToken
         val jwsSigned = JwsSigned.parse(idTokenJws)
             ?: return AuthnResponseResult.Error("idToken")

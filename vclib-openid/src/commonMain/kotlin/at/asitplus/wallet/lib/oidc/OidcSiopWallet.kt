@@ -188,7 +188,6 @@ class OidcSiopWallet(
     suspend fun createAuthnResponseParams(
         params: AuthenticationRequestParameters
     ): KmmResult<AuthenticationResponseParameters> {
-        val relyingPartyState = params.state
         val audience = params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.identifier
             ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("Could not parse audience") }
@@ -259,7 +258,7 @@ class OidcSiopWallet(
         return KmmResult.success(
             AuthenticationResponseParameters(
                 idToken = signedIdToken,
-                state = relyingPartyState,
+                state = params.state,
                 vpToken = vp.jws,
                 presentationSubmission = presentationSubmission,
             )
