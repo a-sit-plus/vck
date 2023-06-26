@@ -53,13 +53,12 @@ class OidcSiopVerifier(
     private val agentPublicKey: JsonWebKey,
     private val jwsService: JwsService,
     private val verifierJwsService: VerifierJwsService,
-    private val relyingPartyChallenge: String = uuid4().toString(), // TODO support more than one
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
-    private val relyingPartyState = uuid4().toString()
+    private val challengeSet = mutableSetOf<String>()
 
     companion object {
         fun newInstance(
@@ -67,7 +66,6 @@ class OidcSiopVerifier(
             cryptoService: CryptoService,
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
             jwsService: JwsService = DefaultJwsService(cryptoService),
-            relyingPartyChallenge: String = uuid4().toString(),
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System
         ) = OidcSiopVerifier(
@@ -75,7 +73,6 @@ class OidcSiopVerifier(
             agentPublicKey = cryptoService.toJsonWebKey(),
             jwsService = jwsService,
             verifierJwsService = verifierJwsService,
-            relyingPartyChallenge = relyingPartyChallenge,
             timeLeewaySeconds = timeLeewaySeconds,
             clock = clock
         )
@@ -176,8 +173,7 @@ class OidcSiopVerifier(
             redirectUrl = relyingPartyUrl,
             clientIdScheme = REDIRECT_URI,
             scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.vcType).joinToString(" "),
-            state = relyingPartyState,
-            nonce = relyingPartyChallenge,
+            nonce = uuid4().toString().also { challengeSet += it },
             clientMetadata = metadata,
             idTokenType = IdTokenType.SUBJECT_SIGNED.text,
             responseMode = responseMode,
@@ -266,9 +262,9 @@ class OidcSiopVerifier(
         if (idToken.issuedAt > (clock.now() + timeLeeway))
             return AuthnResponseResult.Error("iat")
                 .also { Napier.d("issuedAt after now: ${idToken.issuedAt}") }
-        if (idToken.nonce != relyingPartyChallenge)
+        if (!challengeSet.remove(idToken.nonce))
             return AuthnResponseResult.Error("nonce")
-                .also { Napier.d("nonce not valid: ${idToken.nonce}, should be $relyingPartyChallenge") }
+                .also { Napier.d("nonce not valid: ${idToken.nonce}, not known to us") }
         if (idToken.subjectJwk == null)
             return AuthnResponseResult.Error("nonce")
                 .also { Napier.d("sub_jwk is null") }
@@ -278,7 +274,7 @@ class OidcSiopVerifier(
         val vp = params.vpToken
             ?: return AuthnResponseResult.Error("vpToken is null")
                 .also { Napier.w("No VP in response") }
-        val verificationResult = verifier.verifyPresentation(vp, relyingPartyChallenge)
+        val verificationResult = verifier.verifyPresentation(vp, idToken.nonce)
 
         return when (verificationResult) {
             is Verifier.VerifyPresentationResult.InvalidStructure -> AuthnResponseResult.Error("parse vp failed")

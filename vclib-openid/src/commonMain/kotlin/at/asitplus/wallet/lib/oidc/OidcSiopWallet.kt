@@ -189,8 +189,6 @@ class OidcSiopWallet(
         params: AuthenticationRequestParameters
     ): KmmResult<AuthenticationResponseParameters> {
         val relyingPartyState = params.state
-            ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("state is null") }
         val audience = params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.identifier
             ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("Could not parse audience") }
