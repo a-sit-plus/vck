@@ -120,9 +120,11 @@ class OidcSiopProtocolTest : FreeSpec({
     }
 
     "test with Query" {
+        val expectedState = uuid4().toString()
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl,
-            responseMode = OpenIdConstants.ResponseModes.QUERY
+            responseMode = OpenIdConstants.ResponseModes.QUERY,
+            state = expectedState
         )
         println(authnRequest)
 
@@ -136,6 +138,7 @@ class OidcSiopProtocolTest : FreeSpec({
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
+        result.state.shouldBe(expectedState)
     }
 
     "test with JAR" {

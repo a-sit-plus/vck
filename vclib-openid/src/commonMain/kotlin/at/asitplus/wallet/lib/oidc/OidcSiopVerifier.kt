@@ -79,7 +79,6 @@ class OidcSiopVerifier(
             timeLeewaySeconds = timeLeewaySeconds,
             clock = clock
         )
-
     }
 
     /**
@@ -91,11 +90,13 @@ class OidcSiopVerifier(
         walletUrl: String,
         responseMode: String? = null,
         credentialScheme: ConstantIndex.CredentialScheme? = null,
+        state: String? = uuid4().toString(),
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
         createAuthnRequest(
             responseMode = responseMode,
-            credentialScheme = credentialScheme
+            credentialScheme = credentialScheme,
+            state = state,
         ).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
         return urlBuilder.buildString()
@@ -105,17 +106,21 @@ class OidcSiopVerifier(
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl],
      * containing a JWS Authorization Request (JAR, RFC9101), containing the request parameters itself.
      *
+     * @param credentialScheme which credential to request, or any credential if `null`
      * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
+     * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
      */
     suspend fun createAuthnRequestUrlWithRequestObject(
         walletUrl: String,
         responseMode: String? = null,
         credentialScheme: ConstantIndex.CredentialScheme? = null,
+        state: String? = uuid4().toString(),
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
         createAuthnRequestAsRequestObject(
             responseMode = responseMode,
-            credentialScheme = credentialScheme
+            credentialScheme = credentialScheme,
+            state = state,
         ).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
         return urlBuilder.buildString()
@@ -124,14 +129,20 @@ class OidcSiopVerifier(
     /**
      * Creates an JWS Authorization Request (JAR, RFC9101), wrapping the usual [AuthenticationRequestParameters].
      *
+     * @param credentialScheme which credential to request, or any credential if `null`
      * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
+     * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
      */
     suspend fun createAuthnRequestAsRequestObject(
         responseMode: String? = null,
         credentialScheme: ConstantIndex.CredentialScheme? = null,
+        state: String? = uuid4().toString(),
     ): AuthenticationRequestParameters {
-        val requestObject =
-            createAuthnRequest(responseMode = responseMode, credentialScheme = credentialScheme)
+        val requestObject = createAuthnRequest(
+            responseMode = responseMode,
+            credentialScheme = credentialScheme,
+            state = state,
+        )
         val requestObjectSerialized = jsonSerializer.encodeToString(
             requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
         )
@@ -151,10 +162,12 @@ class OidcSiopVerifier(
      *
      * @param credentialScheme which credential to request, or any credential if `null`
      * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
+     * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
      */
     fun createAuthnRequest(
         credentialScheme: ConstantIndex.CredentialScheme? = null,
         responseMode: String? = null,
+        state: String? = uuid4().toString(),
     ): AuthenticationRequestParameters {
         val metadata = RelyingPartyMetadata(
             redirectUris = arrayOf(relyingPartyUrl),
@@ -174,6 +187,7 @@ class OidcSiopVerifier(
             clientMetadata = metadata,
             idTokenType = IdTokenType.SUBJECT_SIGNED.text,
             responseMode = responseMode,
+            state = state,
             presentationDefinition = PresentationDefinition(
                 id = uuid4().toString(),
                 formats = FormatHolder(
@@ -201,8 +215,20 @@ class OidcSiopVerifier(
     }
 
     sealed class AuthnResponseResult {
-        data class Error(val reason: String) : AuthnResponseResult()
-        data class Success(val vp: VerifiablePresentationParsed) : AuthnResponseResult()
+        /**
+         * Error in parsing the URL or content itself, before verifying the contents of the OpenId response
+         */
+        data class Error(val reason: String, val state: String?) : AuthnResponseResult()
+
+        /**
+         * Error when validating the `vpToken` or `idToken`
+         */
+        data class ValidationError(val field: String, val state: String?) : AuthnResponseResult()
+
+        /**
+         * Successfully decoded and validated the response from the Wallet
+         */
+        data class Success(val vp: VerifiablePresentationParsed, val state: String?) : AuthnResponseResult()
     }
 
     /**
@@ -211,7 +237,7 @@ class OidcSiopVerifier(
      */
     fun validateAuthnResponseFromPost(content: String): AuthnResponseResult {
         val params: AuthenticationResponseParameters = content.decodeFromPostBody()
-            ?: return AuthnResponseResult.Error("content")
+            ?: return AuthnResponseResult.Error("content", null)
                 .also { Napier.w("Could not parse authentication response: $it") }
         return validateAuthnResponse(params)
     }
@@ -228,7 +254,7 @@ class OidcSiopVerifier(
             else
                 parsedUrl.encodedQuery.decodeFromUrlQuery<AuthenticationResponseParameters>()
         }.getOrNull()
-            ?: return AuthnResponseResult.Error("url")
+            ?: return AuthnResponseResult.Error("url not parsable", null)
                 .also { Napier.w("Could not parse authentication response: $url") }
         return validateAuthnResponse(params)
     }
@@ -239,44 +265,55 @@ class OidcSiopVerifier(
     fun validateAuthnResponse(params: AuthenticationResponseParameters): AuthnResponseResult {
         val idTokenJws = params.idToken
         val jwsSigned = JwsSigned.parse(idTokenJws)
-            ?: return AuthnResponseResult.Error("idToken")
+            ?: return AuthnResponseResult.ValidationError("idToken", params.state)
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
         if (!verifierJwsService.verifyJwsObject(jwsSigned, idTokenJws))
-            return AuthnResponseResult.Error("idToken")
+            return AuthnResponseResult.ValidationError("idToken", params.state)
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
         val idToken = IdToken.deserialize(jwsSigned.payload.decodeToString())
-            ?: return AuthnResponseResult.Error("idToken")
+            ?: return AuthnResponseResult.ValidationError("idToken", params.state)
                 .also { Napier.w("Could not deserialize idToken: $idTokenJws") }
         if (idToken.issuer != idToken.subject)
-            return AuthnResponseResult.Error("iss")
+            return AuthnResponseResult.ValidationError("iss", params.state)
                 .also { Napier.d("Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}") }
         if (idToken.audience != relyingPartyUrl)
-            return AuthnResponseResult.Error("aud")
+            return AuthnResponseResult.ValidationError("aud", params.state)
                 .also { Napier.d("audience not valid: ${idToken.audience}") }
         if (idToken.expiration < (clock.now() - timeLeeway))
-            return AuthnResponseResult.Error("exp")
+            return AuthnResponseResult.ValidationError("exp", params.state)
                 .also { Napier.d("expirationDate before now: ${idToken.expiration}") }
         if (idToken.issuedAt > (clock.now() + timeLeeway))
-            return AuthnResponseResult.Error("iat")
+            return AuthnResponseResult.ValidationError("iat", params.state)
                 .also { Napier.d("issuedAt after now: ${idToken.issuedAt}") }
         if (!challengeSet.remove(idToken.nonce))
-            return AuthnResponseResult.Error("nonce")
+            return AuthnResponseResult.ValidationError("nonce", params.state)
                 .also { Napier.d("nonce not valid: ${idToken.nonce}, not known to us") }
         if (idToken.subjectJwk == null)
-            return AuthnResponseResult.Error("nonce")
+            return AuthnResponseResult.ValidationError("nonce", params.state)
                 .also { Napier.d("sub_jwk is null") }
         if (idToken.subject != idToken.subjectJwk.jwkThumbprint)
-            return AuthnResponseResult.Error("sub")
+            return AuthnResponseResult.ValidationError("sub", params.state)
                 .also { Napier.d("subject does not equal thumbprint of sub_jwk: ${idToken.subject}") }
         val vp = params.vpToken
-            ?: return AuthnResponseResult.Error("vpToken is null")
+            ?: return AuthnResponseResult.ValidationError("vpToken is null", params.state)
                 .also { Napier.w("No VP in response") }
         val verificationResult = verifier.verifyPresentation(vp, idToken.nonce)
 
         return when (verificationResult) {
-            is Verifier.VerifyPresentationResult.InvalidStructure -> AuthnResponseResult.Error("parse vp failed")
-            is Verifier.VerifyPresentationResult.Success -> AuthnResponseResult.Success(verificationResult.vp)
-            is Verifier.VerifyPresentationResult.NotVerified -> AuthnResponseResult.Error("vp not verified")
+            is Verifier.VerifyPresentationResult.InvalidStructure -> {
+                Napier.w("VP error: $verificationResult")
+                AuthnResponseResult.Error("parse vp failed", params.state)
+            }
+
+            is Verifier.VerifyPresentationResult.Success -> {
+                Napier.i("VP success: $verificationResult")
+                AuthnResponseResult.Success(verificationResult.vp, params.state)
+            }
+
+            is Verifier.VerifyPresentationResult.NotVerified -> {
+                Napier.w("VP error: $verificationResult")
+                AuthnResponseResult.ValidationError("vpToken", params.state)
+            }
         }
     }
 
