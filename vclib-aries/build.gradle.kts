@@ -17,6 +17,11 @@ group = "at.asitplus.wallet"
 version = artifactVersion
 
 val dokkaOutputDir = "$buildDir/dokka"
+
+tasks.dokkaHtmlPartial{
+    dependsOn(":vclib:transformIosMainCInteropDependenciesMetadataForIde")
+    dependsOn(":vclib-openid:transformIosMainCInteropDependenciesMetadataForIde")
+}
 tasks.dokkaHtml {
     dependsOn(":vclib:transformIosMainCInteropDependenciesMetadataForIde") //task dependency bug workaround
     dependsOn(":vclib-openid:transformIosMainCInteropDependenciesMetadataForIde") //task dependency bug workaround

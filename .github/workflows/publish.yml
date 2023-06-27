@@ -1,5 +1,9 @@
 name: Publish
 on: workflow_dispatch
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 jobs:
   build:
     runs-on: macos-latest
@@ -20,3 +24,24 @@ jobs:
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.PUBLISH_SIGNING_PASSWORD }}
           ORG_GRADLE_PROJECT_sonatypeUsername: ${{ secrets.PUBLISH_SONATYPE_USER }}
           ORG_GRADLE_PROJECT_sonatypePassword: ${{ secrets.PUBLISH_SONATYPE_PASSWORD }}
+  deploy-docs:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build Dokka HTML
+        run: ./gradlew dokkaHtmlMultiModule
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          # Upload docs folder
+          path: './build/dokka'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
