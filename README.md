@@ -85,3 +85,14 @@ at.asitplus.wallet.lib.LibraryInitializer.registerExtensionLibrary(
     )
 )
 ```
+
+<br>
+
+---
+<p align="center">
+This project has received funding from the European Union’s Horizon 2020 research and innovation
+programme under grant agreement No 959072.
+</p>
+<p align="center">
+<img src="https://github.com/a-sit-plus/kmm-vc-library/assets/5648377/a236d75d-c940-401b-a60d-18c30d0c60c5" alt="EU flag">
+</p>
