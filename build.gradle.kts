@@ -8,8 +8,10 @@ plugins {
 //access dokka plugin from conventions plugin's classpath in root project → no need to specify version
 apply(plugin = "org.jetbrains.dokka")
 
-tasks.getByName("dokkaHtmlMultiModule"){
-    (this as DokkaMultiModuleTask). outputDirectory.set(File("$buildDir/dokka"))
+tasks.getByName("dokkaHtmlMultiModule") {
+    (this as DokkaMultiModuleTask)
+    outputDirectory.set(File("$buildDir/dokka"))
+    includes.from("README.md")
 }
 
 task<Exec>("purge") {

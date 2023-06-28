@@ -5,11 +5,11 @@
 ![Java](https://img.shields.io/badge/java-11-blue.svg?logo=OPENJDK)
 [![Maven Central](https://img.shields.io/maven-central/v/at.asitplus.wallet/vclib)](https://mvnrepository.com/artifact/at.asitplus.wallet/vclib/)
 
-This [Kotlin Mulitplatform](https://kotlinlang.org/docs/multiplatform.html) library implements the [W3C VC Data Model](https://w3c.github.io/vc-data-model/) to support several use cases of verifiable credentials, verifiable presentations, and validation thereof. This library may be shared between Wallet Apps, Verifier Apps and a Backend Service issuing credentials.
+This [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) library implements the [W3C VC Data Model](https://w3c.github.io/vc-data-model/) to support several use cases of verifiable credentials, verifiable presentations, and validation thereof. This library may be shared between Wallet Apps, Verifier Apps and a Backend Service issuing credentials.
 
 ## Architecture
 
-This library was built with [Kotlin Mulitplatform](https://kotlinlang.org/docs/multiplatform.html) and [Mulitplatform Mobile](https://kotlinlang.org/lp/mobile/) in mind. Its primary targets are JVM, Android and iOS. In order to achieve smooth usage especially under iOS, there have been some notable design decisions:
+This library was built with [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) and [Multiplatform Mobile](https://kotlinlang.org/lp/mobile/) in mind. Its primary targets are JVM, Android and iOS. In order to achieve smooth usage especially under iOS, there have been some notable design decisions:
 
  - Code interfacing with client implementations uses the return type `KmmResult` to transport the `Success` case (i.e. a custom data type) as well as potential errors from native implementations as a `Failure`.
  - Native implementations can be plugged in by implementing interfaces, e.g. `CryptoService`, as opposed to callback functions.
@@ -17,7 +17,7 @@ This library was built with [Kotlin Mulitplatform](https://kotlinlang.org/docs/m
  - This library provides some "default" implementations, e.g. `DefaultCryptoService` to test as much code as possible from the `commonMain` module.
  - Some classes feature additional constructors or factory methods with a shorter argument list because the default arguments are lost when called from Swift.
  
-Notable features for mulitplatform are:
+Notable features for multiplatform are:
 
  - Use of [Napier](https://github.com/AAkira/Napier) as the logging framework
  - Use of [Kotest](https://kotest.io/) for unit tests
