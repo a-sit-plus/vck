@@ -24,7 +24,7 @@ tasks.dokkaHtmlPartial {
             sourceLink {
                 localDirectory.set(file("src/$name/kotlin"))
                 remoteUrl.set(
-                    uri("https://github.com/a-sit-plus/kmm-vc-library/tree/main/vclib/src/$name/kotlin").toURL()
+                    uri("https://github.com/a-sit-plus/kmm-vc-library/tree/main/${project.name}/src/$name/kotlin").toURL()
                 )
                 // Suffix which is used to append the line number to the URL. Use #L for GitHub
                 remoteLineSuffix.set("#L")
