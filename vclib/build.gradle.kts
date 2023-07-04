@@ -44,6 +44,7 @@ kotlin {
                 api("at.asitplus:kmmresult:${VcLibVersions.resultlib}")
                 api("io.matthewnelson.kotlin-components:encoding-base16:${VcLibVersions.encoding}")
                 api("io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}")
+                api(serialization("cbor"))
             }
         }
         val commonTest by getting
