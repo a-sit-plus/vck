@@ -2,6 +2,7 @@
 
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.wallet.lib.jws.ByteArrayBase64UrlSerializer
 import io.github.aakira.napier.Napier
 import io.matthewnelson.component.base64.encodeBase64ToCharArray
 import kotlinx.datetime.LocalDate
@@ -35,6 +36,7 @@ data class MobileDrivingLicence(
     val licenceNumber: String,
     @SerialName("portrait")
     @ByteString
+    @Serializable(with = ByteArrayBase64UrlSerializer::class) // TODO and with cbor!?
     val portrait: ByteArray,
     @SerialName("driving_privileges")
     val drivingPrivileges: Array<DrivingPrivilege>,
