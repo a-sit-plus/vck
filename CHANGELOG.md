@@ -1,5 +1,8 @@
 # Changelog
 
+Release 2.1.0:
+ - tbd
+
 Release 2.0.2:
  - `vclib-openid`: Add response modes for query and fragment, i.e. Wallet may return the authentication response in query params or as fragment params on a SIOPv2 call
  - `vclib-openid`: Create fresh challenges for every SIOPv2 request
