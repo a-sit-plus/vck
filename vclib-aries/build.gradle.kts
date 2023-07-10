@@ -21,6 +21,18 @@ val dokkaOutputDir = "$buildDir/dokka"
 tasks.dokkaHtmlPartial{
     dependsOn(":vclib:transformIosMainCInteropDependenciesMetadataForIde")
     dependsOn(":vclib-openid:transformIosMainCInteropDependenciesMetadataForIde")
+    dokkaSourceSets {
+        configureEach {
+            sourceLink {
+                localDirectory.set(file("src/$name/kotlin"))
+                remoteUrl.set(
+                    uri("https://github.com/a-sit-plus/kmm-vc-library/tree/main/${project.name}/src/$name/kotlin").toURL()
+                )
+                // Suffix which is used to append the line number to the URL. Use #L for GitHub
+                remoteLineSuffix.set("#L")
+            }
+        }
+    }
 }
 tasks.dokkaHtml {
     dependsOn(":vclib:transformIosMainCInteropDependenciesMetadataForIde") //task dependency bug workaround
