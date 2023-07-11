@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -13,8 +14,40 @@ data class CredentialRequestParameters(
     @SerialName("format")
     val format: CredentialFormatEnum,
 
+    /**
+     * OID4VCI:
+     * ISO mDL: N/A.
+     * W3C Verifiable Credentials: REQUIRED.
+     *
+     * JSON array designating the types a certain credential type supports according to (VC_DATA),
+     * Section 4.3.
+     * e.g. `VerifiableCredential`, `UniversityDegreeCredential`.
+     */
     @SerialName("types")
     val types: Array<String> = arrayOf(),
+
+    /**
+     * OID4VCI:
+     * ISO mDL: REQUIRED.
+     * W3C Verifiable Credentials: N/A.
+     *
+     * JSON string identifying the credential type.
+     */
+    @SerialName("doctype")
+    val docType: String? = null,
+
+    /**
+     * OID4VCI:
+     * ISO mDL: OPTIONAL.
+     * W3C Verifiable Credentials: N/A.
+     *
+     * A JSON object containing a list of key value pairs,
+     * where the key is a certain namespace as defined in [ISO.18013-5] (or any profile of it),
+     * and the value is a JSON object. This object also contains a list of key value pairs,
+     * where the key is a claim that is defined in the respective namespace and is offered in the Credential.
+     */
+    @SerialName("claims")
+    val claims: Map<String, Map<String, RequestedCredentialClaimSpecification>>? = null,
 
     /**
      * OID4VCI:
@@ -34,12 +67,16 @@ data class CredentialRequestParameters(
 
         if (format != other.format) return false
         if (!types.contentEquals(other.types)) return false
+        if (docType != other.docType) return false
+        if (claims != other.claims) return false
         return proof == other.proof
     }
 
     override fun hashCode(): Int {
         var result = format.hashCode()
         result = 31 * result + types.contentHashCode()
+        result = 31 * result + (docType?.hashCode() ?: 0)
+        result = 31 * result + (claims?.hashCode() ?: 0)
         result = 31 * result + (proof?.hashCode() ?: 0)
         return result
     }

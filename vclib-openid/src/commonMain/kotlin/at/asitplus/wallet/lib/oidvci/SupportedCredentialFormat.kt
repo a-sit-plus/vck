@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -26,7 +27,11 @@ data class SupportedCredentialFormat(
     val id: String? = null,
 
     /**
-     * OID4VCI: REQUIRED. JSON array designating the types a certain credential type supports according to (VC_DATA),
+     * OID4VCI:
+     * ISO mDL: N/A.
+     * W3C Verifiable Credentials: OPTIONAL.
+     *
+     * JSON array designating the types a certain credential type supports according to (VC_DATA),
      * Section 4.3.
      * e.g. `VerifiableCredential`, `UniversityDegreeCredential`
      */
@@ -34,13 +39,50 @@ data class SupportedCredentialFormat(
     val types: Array<String>,
 
     /**
-     * OID4VCI: OPTIONAL. A JSON object containing a list of key value pairs, where the key identifies the claim offered
+     * OID4VCI:
+     * ISO mDL: N/A.
+     * W3C Verifiable Credentials: OPTIONAL.
+     *
+     * A JSON object containing a list of key value pairs, where the key identifies the claim offered
      * in the Credential. The value MAY be a dictionary, which allows to represent the full (potentially deeply nested)
      * structure of the verifiable credential to be issued. The value is a JSON object detailing the specifics about the
      * support for the claim.
      */
     @SerialName("credentialSubject")
     val credentialSubject: Map<String, CredentialSubjectMetadataSingle>? = null,
+
+    /**
+     * OID4VCI:
+     * ISO mDL: OPTIONAL.
+     * W3C Verifiable Credentials: N/A.
+     *
+     * JSON string identifying the credential type.
+     */
+    @SerialName("doctype")
+    val docType: String? = null,
+
+    /**
+     * OID4VCI:
+     * ISO mDL: OPTIONAL.
+     * W3C Verifiable Credentials: N/A.
+     *
+     * A JSON object containing a list of key value pairs,
+     * where the key is a certain namespace as defined in [ISO.18013-5] (or any profile of it),
+     * and the value is a JSON object. This object also contains a list of key value pairs,
+     * where the key is a claim that is defined in the respective namespace and is offered in the Credential.
+     */
+    @SerialName("claims")
+    val claims: Map<String, Map<String, RequestedCredentialClaimSpecification>>? = null,
+
+    /**
+     * OID4VCI:
+     * ISO mDL: OPTIONAL.
+     * W3C Verifiable Credentials: OPTIONAL.
+     *
+     * An array of claims.display.name values that lists them in the order they should be displayed by the Wallet.
+     */
+    @SerialName("order")
+    val order: Array<String>? = null,
 
     /**
      * OID4VCI: OPTIONAL. Array of case-sensitive strings that identify how the Credential is bound to the identifier of
@@ -63,6 +105,15 @@ data class SupportedCredentialFormat(
      */
     @SerialName("cryptographic_suites_supported")
     val supportedCryptographicSuites: Array<String>,
+
+    //    // TODO
+    //    /**
+    //     * OID4VCI:
+    //     * OPTIONAL. An array of objects, where each object contains the display properties of the supported credential for a certain language.
+    //     * Note that the display name of the supported credential is obtained from display.name and individual claim names from claims.display.name values.
+    //     */
+    //    @SerialName("display")
+    //    val display: Array<>? = null,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -74,6 +125,12 @@ data class SupportedCredentialFormat(
         if (id != other.id) return false
         if (!types.contentEquals(other.types)) return false
         if (credentialSubject != other.credentialSubject) return false
+        if (docType != other.docType) return false
+        if (claims != other.claims) return false
+        if (order != null) {
+            if (other.order == null) return false
+            if (!order.contentEquals(other.order)) return false
+        } else if (other.order != null) return false
         if (!supportedBindingMethods.contentEquals(other.supportedBindingMethods)) return false
         return supportedCryptographicSuites.contentEquals(other.supportedCryptographicSuites)
     }
@@ -83,6 +140,9 @@ data class SupportedCredentialFormat(
         result = 31 * result + (id?.hashCode() ?: 0)
         result = 31 * result + types.contentHashCode()
         result = 31 * result + (credentialSubject?.hashCode() ?: 0)
+        result = 31 * result + (docType?.hashCode() ?: 0)
+        result = 31 * result + (claims?.hashCode() ?: 0)
+        result = 31 * result + (order?.contentHashCode() ?: 0)
         result = 31 * result + supportedBindingMethods.contentHashCode()
         result = 31 * result + supportedCryptographicSuites.contentHashCode()
         return result
