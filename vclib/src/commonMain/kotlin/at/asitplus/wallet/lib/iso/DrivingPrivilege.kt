@@ -7,6 +7,9 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.cbor.KeyTags
+import kotlinx.serialization.cbor.ValueTags
+import kotlinx.serialization.cbor.ValueTags.Companion.REGEX
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 
@@ -15,11 +18,13 @@ import kotlinx.serialization.encodeToByteArray
  */
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
-data class DrivingPrivilege(
+data class DrivingPrivilege constructor(
     @SerialName("vehicle_category_code")
     val vehicleCategoryCode: String,
+    @ValueTags(REGEX)
     @SerialName("issue_date")
     val issueDate: LocalDate? = null,
+    @ValueTags(1004u)
     @SerialName("expiry_date")
     val expiryDate: LocalDate? = null,
     @SerialName("codes")
