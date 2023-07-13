@@ -21,7 +21,7 @@ import kotlinx.serialization.encodeToByteArray
 data class DrivingPrivilege constructor(
     @SerialName("vehicle_category_code")
     val vehicleCategoryCode: String,
-    @ValueTags(REGEX)
+    @ValueTags(1004u)
     @SerialName("issue_date")
     val issueDate: LocalDate? = null,
     @ValueTags(1004u)
