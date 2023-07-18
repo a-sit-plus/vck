@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
 import io.matthewnelson.component.base64.decodeBase64ToArray
 import io.matthewnelson.component.base64.encodeBase64
 
@@ -17,6 +18,19 @@ object MultibaseHelper {
      */
     fun calcKeyId(curve: EcCurve, x: ByteArray, y: ByteArray): String? {
         if (curve != EcCurve.SECP_256_R_1)
+            return null
+        return "$PREFIX_DID_KEY:${multibaseWrapBase64(multicodecWrapP256(encodeP256Key(x, y)))}"
+    }
+
+    /**
+     * Returns something like `did:key:mEpA...` with the [x] and [y] values appended in Base64.
+     * This translates to `Base64(0x12, 0x90, EC-P-256-Key)`.
+     * Note that `0x1290` is not an official Multicodec prefix, but there seems to be none for
+     * uncompressed P-256 key. We can't use the compressed format, because decoding that would
+     * require some EC Point math...
+     */
+    fun calcKeyId(curve: CoseEllipticCurve, x: ByteArray, y: ByteArray): String? {
+        if (curve != CoseEllipticCurve.P256)
             return null
         return "$PREFIX_DID_KEY:${multibaseWrapBase64(multicodecWrapP256(encodeP256Key(x, y)))}"
     }

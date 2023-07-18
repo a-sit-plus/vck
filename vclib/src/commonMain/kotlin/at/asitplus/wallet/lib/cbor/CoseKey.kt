@@ -1,6 +1,11 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.iso.cborSerializer
+import at.asitplus.wallet.lib.jws.EcCurve
+import at.asitplus.wallet.lib.jws.JsonWebKey
+import at.asitplus.wallet.lib.jws.JwkType
+import at.asitplus.wallet.lib.jws.MultibaseHelper
 import io.github.aakira.napier.Napier
 import io.matthewnelson.component.base64.encodeBase64
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -46,6 +51,12 @@ data class CoseKey(
 ) {
     fun serialize() = cborSerializer.encodeToByteArray(this)
 
+    fun toAnsiX963ByteArray(): KmmResult<ByteArray> {
+        if (x != null && y != null)
+            return KmmResult.success(byteArrayOf(0x04.toByte()) + x + y);
+        return KmmResult.failure(IllegalArgumentException())
+    }
+
     companion object {
 
         fun deserialize(it: ByteArray) = kotlin.runCatching {
@@ -55,6 +66,47 @@ data class CoseKey(
             null
         }
 
+        fun fromAnsiX963Bytes(type: CoseKeyType, curve: CoseEllipticCurve, it: ByteArray): CoseKey? {
+            if (type != CoseKeyType.EC2 || curve != CoseEllipticCurve.P256) {
+                return null
+            }
+            if (it.size != 1 + 32 + 32 || it[0] != 0x04.toByte()) {
+                return null
+            }
+            val xCoordinate = it.sliceArray(1 until 33)
+            val yCoordinate = it.sliceArray(33 until 65)
+            val keyId = MultibaseHelper.calcKeyId(curve, xCoordinate, yCoordinate)
+                ?: return null
+            return CoseKey(
+                type = type,
+                keyId = keyId.encodeToByteArray(),
+                algorithm = CoseAlgorithm.ES256,
+                curve = curve,
+                x = xCoordinate,
+                y = yCoordinate,
+            )
+        }
+
+        fun fromCoordinates(
+            type: CoseKeyType,
+            curve: CoseEllipticCurve,
+            x: ByteArray,
+            y: ByteArray
+        ): CoseKey? {
+            if (type != CoseKeyType.EC2 || curve != CoseEllipticCurve.P256) {
+                return null
+            }
+            val keyId = MultibaseHelper.calcKeyId(curve, x, y)
+                ?: return null
+            return CoseKey(
+                type = type,
+                keyId = keyId.encodeToByteArray(),
+                algorithm = CoseAlgorithm.ES256,
+                curve = curve,
+                x = x,
+                y = y
+            )
+        }
     }
 
     override fun equals(other: Any?): Boolean {

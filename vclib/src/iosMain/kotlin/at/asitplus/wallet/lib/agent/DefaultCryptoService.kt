@@ -1,6 +1,10 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.cbor.CoseAlgorithm
+import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
+import at.asitplus.wallet.lib.cbor.CoseKey
+import at.asitplus.wallet.lib.cbor.CoseKeyType
 import io.matthewnelson.component.base64.encodeBase64
 import at.asitplus.wallet.lib.jws.EcCurve
 import at.asitplus.wallet.lib.jws.JsonWebKey
@@ -52,9 +56,11 @@ import platform.CoreFoundation.CFDictionaryAddValue as CFDictionaryAddValue1
 actual class DefaultCryptoService : CryptoService {
 
     override val jwsAlgorithm = JwsAlgorithm.ES256
+    override val coseAlgorithm = CoseAlgorithm.ES256
     private val privateKey: SecKeyRef
     private val publicKey: SecKeyRef
     private val jsonWebKey: JsonWebKey
+    private val coseKey: CoseKey
 
     actual constructor() {
         val query = CFDictionaryCreateMutable(null, 2, null, null).apply {
@@ -66,6 +72,7 @@ actual class DefaultCryptoService : CryptoService {
         val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
         this.jsonWebKey = JsonWebKey.fromAnsiX963Bytes(JwkType.EC, EcCurve.SECP_256_R_1, data.toByteArray())!!
+        this.coseKey = CoseKey.fromAnsiX963Bytes(CoseKeyType.EC2, CoseEllipticCurve.P256, data.toByteArray())!!
     }
 
     override suspend fun sign(input: ByteArray): KmmResult<ByteArray> {
@@ -137,6 +144,7 @@ actual class DefaultCryptoService : CryptoService {
 
     override fun toJsonWebKey() = jsonWebKey
 
+    override fun toCoseKey() = coseKey
 }
 
 @Suppress("UNCHECKED_CAST")
@@ -173,6 +181,37 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
         }
     }
 
+
+    override fun verify(
+        input: ByteArray,
+        signature: ByteArray,
+        algorithm: CoseAlgorithm,
+        publicKey: CoseKey
+    ): KmmResult<Boolean> {
+        memScoped {
+            val ansix962 = publicKey.toAnsiX963ByteArray().getOrElse {
+                return KmmResult.failure(it)
+            }
+            val keyData = CFBridgingRetain(toData(ansix962)) as CFDataRef
+            val attributes = CFDictionaryCreateMutable(null, 3, null, null).apply {
+                CFDictionaryAddValue1(this, kSecAttrKeyClass, kSecAttrKeyClassPublic)
+                CFDictionaryAddValue1(this, kSecAttrKeyType, kSecAttrKeyTypeEC)
+                CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
+            }
+            val secKey = SecKeyCreateWithData(keyData, attributes, null)
+                ?: return KmmResult.failure(IllegalArgumentException())
+            val inputData = CFBridgingRetain(toData(input)) as CFDataRef
+            val signatureData = CFBridgingRetain(toData(signature.convertToAsn1Signature(32))) as CFDataRef
+            val verified = SecKeyVerifySignature(
+                secKey,
+                kSecKeyAlgorithmECDSASignatureMessageX962SHA256,
+                inputData,
+                signatureData,
+                null
+            )
+            return KmmResult.success(verified)
+        }
+    }
 }
 
 @Suppress("UNCHECKED_CAST")

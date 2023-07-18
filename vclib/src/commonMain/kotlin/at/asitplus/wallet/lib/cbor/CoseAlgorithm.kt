@@ -15,6 +15,12 @@ enum class CoseAlgorithm(val value: Int) {
     ES384(-35),
     ES512(-36);
 
+    val signatureValueLength
+        get() = when (this) {
+            ES256 -> 256 / 8
+            ES384 -> 384 / 8
+            ES512 -> 512 / 8
+        }
 }
 
 

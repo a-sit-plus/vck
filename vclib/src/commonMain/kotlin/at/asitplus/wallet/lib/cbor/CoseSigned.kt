@@ -67,6 +67,51 @@ data class CoseSigned(
     }
 }
 
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
+@CborArray
+data class CoseSignatureInput(
+    val contextString: String = "Signature1",
+    @Serializable(with = ByteStringWrapperSerializer::class)
+    @ByteString
+    val protectedHeader: ByteStringWrapper<CoseHeader>,
+    @ByteString
+    val externalAad: ByteArray = byteArrayOf(),
+    @ByteString
+    val payload: ByteArray,
+){
+    fun serialize() = cborSerializer.encodeToByteArray(this)
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as CoseSignatureInput
+
+        if (contextString != other.contextString) return false
+        if (protectedHeader != other.protectedHeader) return false
+        if (!externalAad.contentEquals(other.externalAad)) return false
+        return payload.contentEquals(other.payload)
+    }
+
+    override fun hashCode(): Int {
+        var result = contextString.hashCode()
+        result = 31 * result + protectedHeader.hashCode()
+        result = 31 * result + externalAad.contentHashCode()
+        result = 31 * result + payload.contentHashCode()
+        return result
+    }
+
+    companion object {
+        fun deserialize(it: ByteArray) = kotlin.runCatching {
+            cborSerializer.decodeFromByteArray<CoseSignatureInput>(it)
+        }.getOrElse {
+            Napier.w("deserialize failed", it)
+            null
+        }
+    }
+}
+
 object ByteStringWrapperSerializer : KSerializer<ByteStringWrapper<CoseHeader>> {
 
     override val descriptor: SerialDescriptor =

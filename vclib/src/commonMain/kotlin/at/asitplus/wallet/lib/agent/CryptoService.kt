@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.cbor.CoseAlgorithm
+import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.jws.EcCurve
 import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.jws.JweAlgorithm
@@ -45,7 +47,11 @@ interface CryptoService {
 
     val jwsAlgorithm: JwsAlgorithm
 
+    val coseAlgorithm: CoseAlgorithm
+
     fun toJsonWebKey(): JsonWebKey
+
+    fun toCoseKey(): CoseKey
 
 }
 
@@ -56,6 +62,13 @@ interface VerifierCryptoService {
         signature: ByteArray,
         algorithm: JwsAlgorithm,
         publicKey: JsonWebKey
+    ): KmmResult<Boolean>
+
+    fun verify(
+        input: ByteArray,
+        signature: ByteArray,
+        algorithm: CoseAlgorithm,
+        publicKey: CoseKey
     ): KmmResult<Boolean>
 
 }
