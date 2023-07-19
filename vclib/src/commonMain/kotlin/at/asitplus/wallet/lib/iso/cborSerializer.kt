@@ -7,6 +7,7 @@ import kotlinx.serialization.cbor.Cbor
 val cborSerializer by lazy {
     Cbor {
         ignoreUnknownKeys = true
+        alwaysUseByteString = true
         encodeDefaults = false
     }
 }

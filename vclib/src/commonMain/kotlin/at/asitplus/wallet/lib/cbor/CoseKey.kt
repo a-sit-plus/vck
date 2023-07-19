@@ -8,6 +8,7 @@ import at.asitplus.wallet.lib.jws.JwkType
 import at.asitplus.wallet.lib.jws.MultibaseHelper
 import io.github.aakira.napier.Napier
 import io.matthewnelson.component.base64.encodeBase64
+import io.matthewnelson.component.encoding.base16.encodeBase16
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -160,7 +161,15 @@ data class CoseKey(
     }
 
     override fun toString(): String {
-        return "CoseKey(type=$type, keyId=${keyId?.encodeBase64()}, algorithm=$algorithm, operations=${operations?.contentToString()}, baseIv=${baseIv?.encodeBase64()}, curve=$curve, x=${x?.encodeBase64()}, y=${y?.encodeBase64()}, d=${d?.encodeBase64()})"
+        return "CoseKey(type=$type," +
+                " keyId=${keyId?.encodeBase16()}," +
+                " algorithm=$algorithm," +
+                " operations=${operations?.contentToString()}," +
+                " baseIv=${baseIv?.encodeBase16()}," +
+                " curve=$curve," +
+                " x=${x?.encodeBase16()}," +
+                " y=${y?.encodeBase16()}," +
+                " d=${d?.encodeBase16()})"
     }
 
 

@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.wallet.lib.iso.cborSerializer
 import io.github.aakira.napier.Napier
+import io.matthewnelson.component.encoding.base16.encodeBase16
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -25,7 +26,7 @@ import kotlinx.serialization.encoding.Encoder
 @Serializable
 @CborArray(18U)
 data class CoseSigned(
-    @Serializable(with = ByteStringWrapperSerializer::class)
+    @Serializable(with = ByteStringWrapperCoseHeaderSerializer::class)
     @ByteString
     val protectedHeader: ByteStringWrapper<CoseHeader>,
     val unprotectedHeader: CoseHeader? = null,
@@ -57,6 +58,11 @@ data class CoseSigned(
         return result
     }
 
+    override fun toString(): String {
+        return "CoseSigned(protectedHeader=$protectedHeader, unprotectedHeader=$unprotectedHeader, payload=${payload.encodeBase16()}, signature=${signature.encodeBase16()})"
+    }
+
+
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<CoseSigned>(it)
@@ -72,7 +78,7 @@ data class CoseSigned(
 @CborArray
 data class CoseSignatureInput(
     val contextString: String = "Signature1",
-    @Serializable(with = ByteStringWrapperSerializer::class)
+    @Serializable(with = ByteStringWrapperCoseHeaderSerializer::class)
     @ByteString
     val protectedHeader: ByteStringWrapper<CoseHeader>,
     @ByteString
@@ -112,7 +118,7 @@ data class CoseSignatureInput(
     }
 }
 
-object ByteStringWrapperSerializer : KSerializer<ByteStringWrapper<CoseHeader>> {
+object ByteStringWrapperCoseHeaderSerializer : KSerializer<ByteStringWrapper<CoseHeader>> {
 
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("ByteStringWrapperCoseHeaderSerializer", PrimitiveKind.STRING)

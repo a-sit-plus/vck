@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.wallet.lib.iso.cborSerializer
 import io.github.aakira.napier.Napier
+import io.matthewnelson.component.encoding.base16.encodeBase16
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -36,10 +37,15 @@ data class CoseHeader(
     @SerialName("Partial IV")
     @ByteString
     val partialIv: ByteArray? = null,
+    @SerialLabel(33)
+    @SerialName("x5chain")
+    @ByteString
+    // TODO this is wrong in the ISO example of IssuerAuth!?
+    // shouldn't this be an array here?
+    val certificateChain: ByteArray? = null,
 ) {
 
     fun serialize() = cborSerializer.encodeToByteArray(this)
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -58,6 +64,10 @@ data class CoseHeader(
             if (other.partialIv == null) return false
             if (!partialIv.contentEquals(other.partialIv)) return false
         } else if (other.partialIv != null) return false
+        if (certificateChain != null) {
+            if (other.certificateChain == null) return false
+            if (!certificateChain.contentEquals(other.certificateChain)) return false
+        } else if (other.certificateChain != null) return false
 
         return true
     }
@@ -69,8 +79,14 @@ data class CoseHeader(
         result = 31 * result + (kid?.hashCode() ?: 0)
         result = 31 * result + (iv?.contentHashCode() ?: 0)
         result = 31 * result + (partialIv?.contentHashCode() ?: 0)
+        result = 31 * result + (certificateChain?.contentHashCode() ?: 0)
         return result
     }
+
+    override fun toString(): String {
+        return "CoseHeader(algorithm=$algorithm, criticalHeaders=$criticalHeaders, contentType=$contentType, kid=$kid, iv=${iv?.encodeBase16()}, partialIv=${partialIv?.encodeBase16()}, certificateChain=${certificateChain?.encodeBase16()})"
+    }
+
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
