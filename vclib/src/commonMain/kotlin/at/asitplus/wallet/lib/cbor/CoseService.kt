@@ -19,8 +19,8 @@ interface CoseService {
      */
     suspend fun createSignedCose(
         protectedHeader: CoseHeader,
-        unprotectedHeader: CoseHeader,
-        payload: ByteArray,
+        unprotectedHeader: CoseHeader? = null,
+        payload: ByteArray? = null,
         addKeyId: Boolean = true,
     ): KmmResult<CoseSigned>
 }
@@ -35,8 +35,8 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
 
     override suspend fun createSignedCose(
         protectedHeader: CoseHeader,
-        unprotectedHeader: CoseHeader,
-        payload: ByteArray,
+        unprotectedHeader: CoseHeader?,
+        payload: ByteArray?,
         addKeyId: Boolean,
     ): KmmResult<CoseSigned> {
         var copy = protectedHeader.copy(algorithm = cryptoService.coseAlgorithm)

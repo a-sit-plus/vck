@@ -4,6 +4,7 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.wallet.lib.cbor.CoseSigned
 import io.github.aakira.napier.Napier
+import io.matthewnelson.component.encoding.base16.encodeBase16
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -12,7 +13,6 @@ import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.ByteStringWrapper
-import kotlinx.serialization.cbor.CborArray
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -74,6 +74,11 @@ data class DocRequest(
     fun extractReaderAuthentication() {
         // TODO is COSE_SIGN1
     }
+
+    override fun toString(): String {
+        return "DocRequest(itemsRequest=${itemsRequest.value}, readerAuth=$readerAuth)"
+    }
+
 }
 
 /**
@@ -168,6 +173,8 @@ data class IssuerSigned(
     val issuerAuth: CoseSigned,
 ) {
 
+    fun serialize() = cborSerializer.encodeToByteArray(this)
+
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<IssuerSigned>(it)
@@ -175,6 +182,10 @@ data class IssuerSigned(
             Napier.w("deserialize failed", it)
             null
         }
+    }
+
+    override fun toString(): String {
+        return "IssuerSigned(namespaces=${namespaces?.map { it.key to it.value.map { it.value } }}, issuerAuth=$issuerAuth)"
     }
 }
 
@@ -193,6 +204,36 @@ data class IssuerSignedItem(
     @SerialName("elementValue")
     val elementValue: ElementValue,
 ) {
+
+    fun serialize() = cborSerializer.encodeToByteArray(this)
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as IssuerSignedItem
+
+        if (digestId != other.digestId) return false
+        if (!random.contentEquals(other.random)) return false
+        if (elementIdentifier != other.elementIdentifier) return false
+        return elementValue == other.elementValue
+    }
+
+    override fun hashCode(): Int {
+        var result = digestId.hashCode()
+        result = 31 * result + random.contentHashCode()
+        result = 31 * result + elementIdentifier.hashCode()
+        result = 31 * result + elementValue.hashCode()
+        return result
+    }
+
+    override fun toString(): String {
+        return "IssuerSignedItem(digestId=$digestId," +
+                " random=${random.encodeBase16()}," +
+                " elementIdentifier='$elementIdentifier'," +
+                " elementValue=$elementValue)"
+    }
+
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<IssuerSignedItem>(it)
@@ -229,6 +270,10 @@ data class ElementValue(
         result = 31 * result + (string?.hashCode() ?: 0)
         result = 31 * result + (drivingPrivilege?.hashCode() ?: 0)
         return result
+    }
+
+    override fun toString(): String {
+        return "ElementValue(bytes=${bytes?.encodeBase16()}, string=$string, drivingPrivilege=$drivingPrivilege)"
     }
 
     companion object {
