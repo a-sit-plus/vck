@@ -10,7 +10,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 
 /**
- * JWS representation of a [MobileDrivingLicence].
+ * JWS representation of a [MobileDrivingLicence], used e.g. in the payload of a JWS in a single
+ * instance of [ServerResponse.documents]
  */
 @Serializable
 data class MobileDrivingLicenceJws(

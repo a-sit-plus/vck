@@ -23,15 +23,15 @@ data class MobileDrivingLicence(
     @SerialName("given_name")
     val givenName: String,
     @SerialName("birth_date")
-    val dateOfBirth: LocalDate,
+    val dateOfBirth: LocalDate? = null,
     @SerialName("issue_date")
     val issueDate: LocalDate,
     @SerialName("expiry_date")
     val expiryDate: LocalDate,
     @SerialName("issuing_country")
-    val issuingCountry: String,
+    val issuingCountry: String? = null,
     @SerialName("issuing_authority")
-    val issuingAuthority: String,
+    val issuingAuthority: String? = null,
     @SerialName("document_number")
     val licenceNumber: String,
     @SerialName("portrait")
@@ -41,7 +41,7 @@ data class MobileDrivingLicence(
     @SerialName("driving_privileges")
     val drivingPrivileges: Array<DrivingPrivilege>,
     @SerialName("un_distinguishing_sign")
-    val unDistinguishingSign: String,
+    val unDistinguishingSign: String? = null,
     @SerialName("administrative_number")
     val administrativeNumber: String? = null,
     @SerialName("sex")
@@ -137,15 +137,15 @@ data class MobileDrivingLicence(
     override fun hashCode(): Int {
         var result = familyName.hashCode()
         result = 31 * result + givenName.hashCode()
-        result = 31 * result + dateOfBirth.hashCode()
+        result = 31 * result + (dateOfBirth?.hashCode() ?: 0)
         result = 31 * result + issueDate.hashCode()
         result = 31 * result + expiryDate.hashCode()
-        result = 31 * result + issuingCountry.hashCode()
-        result = 31 * result + issuingAuthority.hashCode()
+        result = 31 * result + (issuingCountry?.hashCode() ?: 0)
+        result = 31 * result + (issuingAuthority?.hashCode() ?: 0)
         result = 31 * result + licenceNumber.hashCode()
         result = 31 * result + portrait.contentHashCode()
         result = 31 * result + drivingPrivileges.contentHashCode()
-        result = 31 * result + unDistinguishingSign.hashCode()
+        result = 31 * result + (unDistinguishingSign?.hashCode() ?: 0)
         result = 31 * result + (administrativeNumber?.hashCode() ?: 0)
         result = 31 * result + (sex?.hashCode() ?: 0)
         result = 31 * result + (height?.hashCode() ?: 0)
