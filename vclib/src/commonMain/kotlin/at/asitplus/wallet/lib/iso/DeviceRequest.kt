@@ -12,6 +12,7 @@ import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.ByteStringWrapper
+import kotlinx.serialization.cbor.CborArray
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -251,7 +252,7 @@ data class DeviceSigned(
     val namespaces: ByteArray,
     @SerialName("deviceAuth")
     @ByteString
-    val deviceAuth: Map<String, List<DeviceAuth>>,
+    val deviceAuth: DeviceAuth,
 ) {
     fun extractDeviceNameSpaces() {
         // TODO
@@ -272,6 +273,7 @@ data class DeviceSigned(
         result = 31 * result + deviceAuth.hashCode()
         return result
     }
+
 }
 
 
@@ -339,23 +341,16 @@ object ElementValueSerializer : KSerializer<ElementValue> {
     override fun deserialize(decoder: Decoder): ElementValue {
         runCatching {
             return ElementValue(bytes = decoder.decodeSerializableValue(ByteArraySerializer()))
-        }.onFailure {
-            println("error deserializing bytearray")
-            println(it)
         }
         runCatching {
             return ElementValue(string = decoder.decodeString())
-        }.onFailure {
-            println("error deserializing string")
-            println(it)
         }
         runCatching {
-            return ElementValue(drivingPrivilege = decoder.decodeSerializableValue(ListSerializer(DrivingPrivilege.serializer())))
-        }.onFailure {
-            println("error deserializing drivingprivileges")
-            println(it)
+            return ElementValue(
+                drivingPrivilege = decoder.decodeSerializableValue(ListSerializer(DrivingPrivilege.serializer()))
+            )
         }
-        throw IllegalArgumentException("Could not decode")
+        throw IllegalArgumentException("Could not decode instance of ElementValue")
     }
 
 }
