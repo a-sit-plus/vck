@@ -84,7 +84,13 @@ data class CoseHeader(
     }
 
     override fun toString(): String {
-        return "CoseHeader(algorithm=$algorithm, criticalHeaders=$criticalHeaders, contentType=$contentType, kid=$kid, iv=${iv?.encodeBase16()}, partialIv=${partialIv?.encodeBase16()}, certificateChain=${certificateChain?.encodeBase16()})"
+        return "CoseHeader(algorithm=$algorithm," +
+                " criticalHeaders=$criticalHeaders," +
+                " contentType=$contentType," +
+                " kid=$kid," +
+                " iv=${iv?.encodeBase16()}," +
+                " partialIv=${partialIv?.encodeBase16()}," +
+                " certificateChain=${certificateChain?.encodeBase16()})"
     }
 
 

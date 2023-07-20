@@ -238,6 +238,7 @@ val CoseAlgorithm.jcaName
         CoseAlgorithm.ES256 -> "SHA256withECDSA"
         CoseAlgorithm.ES384 -> "SHA384withECDSA"
         CoseAlgorithm.ES512 -> "SHA512withECDSA"
+        CoseAlgorithm.HMAC256_256 -> "HmacSHA256"
     }
 
 val Digest.jcaName

@@ -13,13 +13,15 @@ enum class CoseAlgorithm(val value: Int) {
 
     ES256(-7),
     ES384(-35),
-    ES512(-36);
+    ES512(-36),
+    HMAC256_256(5);
 
     val signatureValueLength
         get() = when (this) {
             ES256 -> 256 / 8
             ES384 -> 384 / 8
             ES512 -> 512 / 8
+            else -> throw IllegalArgumentException(this.toString())
         }
 }
 

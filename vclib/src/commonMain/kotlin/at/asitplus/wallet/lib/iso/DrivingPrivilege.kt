@@ -18,7 +18,7 @@ import kotlinx.serialization.encodeToByteArray
  */
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
-data class DrivingPrivilege constructor(
+data class DrivingPrivilege(
     @SerialName("vehicle_category_code")
     val vehicleCategoryCode: String,
     @ValueTags(1004u)

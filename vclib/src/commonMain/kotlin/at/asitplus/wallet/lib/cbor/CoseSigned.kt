@@ -31,7 +31,7 @@ data class CoseSigned(
     val protectedHeader: ByteStringWrapper<CoseHeader>,
     val unprotectedHeader: CoseHeader? = null,
     @ByteString
-    val payload: ByteArray,
+    val payload: ByteArray? = null,
     @ByteString
     val signature: ByteArray,
 ) {
@@ -46,22 +46,27 @@ data class CoseSigned(
 
         if (protectedHeader != other.protectedHeader) return false
         if (unprotectedHeader != other.unprotectedHeader) return false
-        if (!payload.contentEquals(other.payload)) return false
+        if (payload != null) {
+            if (other.payload == null) return false
+            if (!payload.contentEquals(other.payload)) return false
+        } else if (other.payload != null) return false
         return signature.contentEquals(other.signature)
     }
 
     override fun hashCode(): Int {
         var result = protectedHeader.hashCode()
         result = 31 * result + (unprotectedHeader?.hashCode() ?: 0)
-        result = 31 * result + payload.contentHashCode()
+        result = 31 * result + (payload?.contentHashCode() ?: 0)
         result = 31 * result + signature.contentHashCode()
         return result
     }
 
     override fun toString(): String {
-        return "CoseSigned(protectedHeader=$protectedHeader, unprotectedHeader=$unprotectedHeader, payload=${payload.encodeBase16()}, signature=${signature.encodeBase16()})"
+        return "CoseSigned(protectedHeader=${protectedHeader.value}," +
+                " unprotectedHeader=$unprotectedHeader," +
+                " payload=${payload?.encodeBase16()}," +
+                " signature=${signature.encodeBase16()})"
     }
-
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
@@ -84,7 +89,7 @@ data class CoseSignatureInput(
     @ByteString
     val externalAad: ByteArray = byteArrayOf(),
     @ByteString
-    val payload: ByteArray,
+    val payload: ByteArray? = null,
 ){
     fun serialize() = cborSerializer.encodeToByteArray(this)
 
@@ -97,16 +102,29 @@ data class CoseSignatureInput(
         if (contextString != other.contextString) return false
         if (protectedHeader != other.protectedHeader) return false
         if (!externalAad.contentEquals(other.externalAad)) return false
-        return payload.contentEquals(other.payload)
+        if (payload != null) {
+            if (other.payload == null) return false
+            if (!payload.contentEquals(other.payload)) return false
+        } else if (other.payload != null) return false
+
+        return true
     }
 
     override fun hashCode(): Int {
         var result = contextString.hashCode()
         result = 31 * result + protectedHeader.hashCode()
         result = 31 * result + externalAad.contentHashCode()
-        result = 31 * result + payload.contentHashCode()
+        result = 31 * result + (payload?.contentHashCode() ?: 0)
         return result
     }
+
+    override fun toString(): String {
+        return "CoseSignatureInput(contextString='$contextString'," +
+                " protectedHeader=${protectedHeader.value}," +
+                " externalAad=${externalAad.encodeBase16()}," +
+                " payload=${payload?.encodeBase16()})"
+    }
+
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
@@ -124,13 +142,13 @@ object ByteStringWrapperCoseHeaderSerializer : KSerializer<ByteStringWrapper<Cos
         PrimitiveSerialDescriptor("ByteStringWrapperCoseHeaderSerializer", PrimitiveKind.STRING)
 
     override fun serialize(encoder: Encoder, value: ByteStringWrapper<CoseHeader>) {
-        val bytes = Cbor.encodeToByteArray(value.value)
+        val bytes = cborSerializer.encodeToByteArray(value.value)
         encoder.encodeSerializableValue(ByteArraySerializer(), bytes)
     }
 
     override fun deserialize(decoder: Decoder): ByteStringWrapper<CoseHeader> {
         val bytes = decoder.decodeSerializableValue(ByteArraySerializer())
-        return ByteStringWrapper(Cbor.decodeFromByteArray(bytes), bytes)
+        return ByteStringWrapper(cborSerializer.decodeFromByteArray(bytes), bytes)
     }
 
 }
