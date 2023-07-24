@@ -26,6 +26,7 @@ import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.encoding.decodeStructure
+import kotlinx.serialization.encoding.encodeCollection
 import kotlinx.serialization.encoding.encodeStructure
 
 /**
@@ -221,7 +222,7 @@ data class Document(
 data class IssuerSigned(
     @SerialName("nameSpaces")
     @ByteString
-    val namespaces: Map<String, List<@Serializable(with = ByteStringWrapperIssuerSignedItemSerializer::class) ByteStringWrapper<IssuerSignedItem>>>? = null,
+    val namespaces: Map<String, IssuerSignedList>? = null,
     @SerialName("issuerAuth")
     val issuerAuth: CoseSigned,
 ) {
@@ -236,9 +237,56 @@ data class IssuerSigned(
             null
         }
     }
+}
 
+
+@Serializable(with = IssuerSignedListSerializer::class)
+data class IssuerSignedList(
+    val entries: List<ByteStringWrapper<IssuerSignedItem>>
+) {
     override fun toString(): String {
-        return "IssuerSigned(namespaces=${namespaces?.map { it.key to it.value.map { it.value } }}, issuerAuth=$issuerAuth)"
+        return "IssuerSignedList(entries=${entries.map { it.value }})"
+    }
+
+    companion object {
+        fun withItems(list: List<IssuerSignedItem>) = IssuerSignedList(
+            list.map { ByteStringWrapper(it, cborSerializer.encodeToByteArray(it).wrapInCborTag(24)) }
+        )
+    }
+}
+
+object IssuerSignedListSerializer : KSerializer<IssuerSignedList> {
+
+    override val descriptor: SerialDescriptor = listSerialDescriptor(
+        listSerialDescriptor<Byte>()
+    )
+
+    override fun serialize(encoder: Encoder, value: IssuerSignedList) {
+        var index = 0
+        encoder.encodeCollection(descriptor, value.entries.size) {
+            value.entries.forEach {
+                encodeSerializableElement(descriptor, index++, ByteArraySerializer(), it.value.serialize())
+            }
+        }
+    }
+
+    override fun deserialize(decoder: Decoder): IssuerSignedList {
+        val entries = mutableListOf<ByteStringWrapper<IssuerSignedItem>>()
+        decoder.decodeStructure(descriptor) {
+            while (true) {
+                val index = decodeElementIndex(descriptor)
+                if (index == CompositeDecoder.DECODE_DONE) {
+                    break
+                } else {
+                    val readBytes = decoder.decodeSerializableValue(ByteArraySerializer())
+                    entries += ByteStringWrapper(
+                        value = IssuerSignedItem.deserialize(readBytes)!!,
+                        serialized = readBytes
+                    )
+                }
+            }
+        }
+        return IssuerSignedList(entries)
     }
 }
 
@@ -430,23 +478,6 @@ object ByteStringWrapperItemsRequestSerializer : KSerializer<ByteStringWrapper<I
 
 }
 
-object ByteStringWrapperIssuerSignedItemSerializer : KSerializer<ByteStringWrapper<IssuerSignedItem>> {
-
-    override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("ByteStringWrapperItemsRequestSerializer", PrimitiveKind.STRING)
-
-    override fun serialize(encoder: Encoder, value: ByteStringWrapper<IssuerSignedItem>) {
-        val bytes = cborSerializer.encodeToByteArray(value.value)
-        encoder.encodeSerializableValue(ByteArraySerializer(), bytes)
-    }
-
-    override fun deserialize(decoder: Decoder): ByteStringWrapper<IssuerSignedItem> {
-        val bytes = decoder.decodeSerializableValue(ByteArraySerializer())
-        return ByteStringWrapper(cborSerializer.decodeFromByteArray(bytes), bytes)
-    }
-
-}
-
 object ElementValueSerializer : KSerializer<ElementValue> {
 
     override val descriptor: SerialDescriptor =
@@ -478,3 +509,9 @@ object ElementValueSerializer : KSerializer<ElementValue> {
     }
 
 }
+
+fun ByteArray.stripCborTag(tag: Byte) = this.dropWhile { it == 0xd8.toByte() }.dropWhile { it == tag }.toByteArray()
+
+fun ByteArray.wrapInCborTag(tag: Byte) = byteArrayOf(0xd8.toByte()) + byteArrayOf(tag) + this
+
+fun ByteArray.sha256(): ByteArray = this//toByteString().sha256().toByteArray()

@@ -84,6 +84,13 @@ data class ValueDigest(
         return "MobileSecurityObjectNamespaceEntry(key=$key, value=${value.encodeBase16()})"
     }
 
+    companion object {
+        fun fromIssuerSigned(value: IssuerSignedItem) = ValueDigest(
+            value.digestId,
+            value.serialize().wrapInCborTag(24).sha256()
+        )
+    }
+
 }
 
 

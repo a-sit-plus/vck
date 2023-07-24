@@ -26,7 +26,6 @@ import io.matthewnelson.component.encoding.base16.encodeBase16
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.cbor.ByteStringWrapper
-import okio.ByteString.Companion.toByteString
 import kotlin.random.Random
 
 class IsoMdocTest : FreeSpec({
@@ -64,42 +63,32 @@ class Wallet {
     )
 
     var storedMdl: MobileDrivingLicence? = null
-    var storedMso: MobileSecurityObject? = null
     var storedIssuerAuth: CoseSigned? = null
-    var storedIssuerSigned: IssuerSigned? = null
-    var storedMdlItems: List<ByteStringWrapper<IssuerSignedItem>>? = null
+    var storedMdlItems: IssuerSignedList? = null
 
-    fun storeMdl(
-        deviceResponse: DeviceResponse
-    ) {
+    fun storeMdl(deviceResponse: DeviceResponse) {
         val document = deviceResponse.documents?.firstOrNull()
         document.shouldNotBeNull()
         document.docType shouldBe DOC_TYPE_MDL
         val issuerAuth = document.issuerSigned.issuerAuth
-        this.storedIssuerSigned = document.issuerSigned
         this.storedIssuerAuth = issuerAuth
+        println("Wallet stored IssuerAuth: $issuerAuth")
         val issuerAuthPayload = issuerAuth.payload
         issuerAuthPayload.shouldNotBeNull()
-        val mso = MobileSecurityObject.deserialize(issuerAuthPayload.stripTag(24))
+        val mso = MobileSecurityObject.deserialize(issuerAuthPayload.stripCborTag(24))
         mso.shouldNotBeNull()
-        this.storedMso = mso
-        println("Wallet stored MSO: $storedMso")
         val mdlItems = document.issuerSigned.namespaces?.get(NAMESPACE_MDL)
         mdlItems.shouldNotBeNull()
         this.storedMdlItems = mdlItems
         val valueDigests = mso.valueDigests[NAMESPACE_MDL]
         valueDigests.shouldNotBeNull()
 
-        val (givenNameValue, givenNameHash) = extractDataString(mdlItems, valueDigests, GIVEN_NAME)
-        val (familyNameValue, familyNameHash) = extractDataString(mdlItems, valueDigests, FAMILY_NAME)
-        val (licenceNumberValue, licenceNumberHash) = extractDataString(mdlItems, valueDigests, DOCUMENT_NUMBER)
-        val (issueDateValue, issueDateHash) = extractDataString(mdlItems, valueDigests, ISSUE_DATE)
-        val (expiryDateValue, expiryDateHash) = extractDataString(mdlItems, valueDigests, EXPIRY_DATE)
-        val (drivingPrivilegesValue, drivingPrivilegesHash) = extractDataDrivingPrivileges(
-            mdlItems,
-            valueDigests,
-            DRIVING_PRIVILEGES
-        )
+        val givenNameValue = extractDataString(mdlItems, GIVEN_NAME)
+        val familyNameValue = extractDataString(mdlItems, FAMILY_NAME)
+        val licenceNumberValue = extractDataString(mdlItems, DOCUMENT_NUMBER)
+        val issueDateValue = extractDataString(mdlItems, ISSUE_DATE)
+        val expiryDateValue = extractDataString(mdlItems, EXPIRY_DATE)
+        val drivingPrivilegesValue = extractDataDrivingPrivileges(mdlItems, DRIVING_PRIVILEGES)
 
         storedMdl = MobileDrivingLicence(
             familyName = familyNameValue,
@@ -124,9 +113,9 @@ class Wallet {
                     docType = DOC_TYPE_MDL,
                     issuerSigned = IssuerSigned(
                         namespaces = mapOf(
-                            NAMESPACE_MDL to storedMdlItems!!.filter {
+                            NAMESPACE_MDL to IssuerSignedList(storedMdlItems!!.entries.filter {
                                 it.value.elementIdentifier in requestedKeys
-                            }
+                            })
                         ),
                         issuerAuth = storedIssuerAuth!!
                     ),
@@ -177,10 +166,7 @@ class Issuer {
             digestAlgorithm = "SHA-256",
             valueDigests = mapOf(
                 NAMESPACE_MDL to ValueDigestList(entries = issuerSigned.map {
-                    ValueDigest(
-                        it.digestId,
-                        it.serialize().wrapInCborTag(24).sha256()
-                    )
+                    ValueDigest.fromIssuerSigned(it)
                 })
             ),
             deviceKeyInfo = walletKeyInfo,
@@ -201,7 +187,7 @@ class Issuer {
                     docType = DOC_TYPE_MDL,
                     issuerSigned = IssuerSigned(
                         namespaces = mapOf(
-                            NAMESPACE_MDL to issuerSigned.map { ByteStringWrapper(it) }.toList()
+                            NAMESPACE_MDL to IssuerSignedList.withItems(issuerSigned)
                         ),
                         issuerAuth = coseService.createSignedCose(
                             protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
@@ -264,9 +250,9 @@ class Verifier {
         val issuerSigned = doc.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
         verifierCoseService.verifyCose(issuerAuth, issuerKey).getOrThrow().shouldBe(true)
-        val payload = issuerAuth.payload
-        payload.shouldNotBeNull()
-        val mso = MobileSecurityObject.deserialize(payload.stripTag(24))
+        val issuerAuthPayload = issuerAuth.payload
+        issuerAuthPayload.shouldNotBeNull()
+        val mso = MobileSecurityObject.deserialize(issuerAuthPayload.stripCborTag(24))
         mso.shouldNotBeNull()
         mso.docType shouldBe DOC_TYPE_MDL
         val mdlItems = mso.valueDigests[NAMESPACE_MDL]
@@ -281,50 +267,44 @@ class Verifier {
         val issuerSignedItems = namespaces[NAMESPACE_MDL]
         issuerSignedItems.shouldNotBeNull()
 
-        extracted(issuerSignedItems, mdlItems, FAMILY_NAME)
-        extracted(issuerSignedItems, mdlItems, GIVEN_NAME)
+        extractAndVerifyData(issuerSignedItems, mdlItems, FAMILY_NAME)
+        extractAndVerifyData(issuerSignedItems, mdlItems, GIVEN_NAME)
     }
 
-    private fun extracted(
-        issuerSignedItems: List<ByteStringWrapper<IssuerSignedItem>>,
+    private fun extractAndVerifyData(
+        issuerSignedItems: IssuerSignedList,
         mdlItems: ValueDigestList,
         key: String
     ) {
-        val issuerSignedItem = issuerSignedItems.first { it.value.elementIdentifier == key }
+        val issuerSignedItem = issuerSignedItems.entries.first { it.value.elementIdentifier == key }
         val elementValue = issuerSignedItem.value.elementValue.string
         elementValue.shouldNotBeNull()
         val issuerHash = mdlItems.entries.first { it.key == issuerSignedItem.value.digestId }
         issuerHash.shouldNotBeNull()
-        val verifierHash = issuerSignedItem.value.serialize().wrapInCborTag(24).sha256()
+        val verifierHash = issuerSignedItem.serialized.sha256()
         verifierHash.encodeBase16() shouldBe issuerHash.value.encodeBase16()
         println("Verifier got $key with value $elementValue and correct hash ${verifierHash.encodeBase16()}")
     }
 }
 
 private fun extractDataString(
-    mdlItems: List<ByteStringWrapper<IssuerSignedItem>>,
-    valueDigests: ValueDigestList,
+    mdlItems: IssuerSignedList,
     key: String
-): Pair<String, String> {
-    val element = mdlItems.first { it.value.elementIdentifier == key }.value
-    val value = element.elementValue.string
-    val hash = valueDigests.entries.first { it.key == element.digestId }.value.encodeBase16()
+): String {
+    val element = mdlItems.entries.first { it.value.elementIdentifier == key }
+    val value = element.value.elementValue.string
     value.shouldNotBeNull()
-    hash.shouldNotBeNull()
-    return Pair(value, hash)
+    return value
 }
 
 private fun extractDataDrivingPrivileges(
-    mdlItems: List<ByteStringWrapper<IssuerSignedItem>>,
-    valueDigests: ValueDigestList,
+    mdlItems: IssuerSignedList,
     key: String
-): Pair<List<DrivingPrivilege>, String> {
-    val element = mdlItems.first { it.value.elementIdentifier == key }.value
-    val value = element.elementValue.drivingPrivilege
-    val hash = valueDigests.entries.first { it.key == element.digestId }.value.encodeBase16()
+): List<DrivingPrivilege> {
+    val element = mdlItems.entries.first { it.value.elementIdentifier == key }
+    val value = element.value.elementValue.drivingPrivilege
     value.shouldNotBeNull()
-    hash.shouldNotBeNull()
-    return Pair(value, hash)
+    return value
 }
 
 
@@ -341,9 +321,3 @@ fun buildIssuerSignedItem(elementIdentifier: String, elementValue: DrivingPrivil
     elementIdentifier = elementIdentifier,
     elementValue = ElementValue(drivingPrivilege = listOf(elementValue))
 )
-
-private fun ByteArray.stripTag(tag: Byte) = this.dropWhile { it == 0xd8.toByte() }.dropWhile { it == tag }.toByteArray()
-
-fun ByteArray.wrapInCborTag(tag: Byte) = byteArrayOf(0xd8.toByte()) + byteArrayOf(tag) + this
-
-private fun ByteArray.sha256(): ByteArray = toByteString().sha256().toByteArray()
