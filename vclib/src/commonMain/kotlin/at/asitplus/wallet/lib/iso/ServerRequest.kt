@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.wallet.lib.data.jsonSerializer
+import at.asitplus.wallet.lib.jws.JwsSigned
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -75,8 +76,8 @@ data class ServerResponse(
     @SerialName("documentErrors")
     val documentErrors: Map<String, Int>? = null,
 ) {
-
     fun serialize() = jsonSerializer.encodeToString(this)
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false

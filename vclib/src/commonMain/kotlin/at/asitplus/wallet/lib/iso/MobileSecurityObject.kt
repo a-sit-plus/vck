@@ -70,11 +70,19 @@ data class MobileSecurityObject(
     }
 }
 
+/**
+ * Convenience class with a custom serializer ([ValueDigestListSerializer]) to prevent
+ * usage of the type `Map<String, Map<UInt, ByteArray>>` in [MobileSecurityObject.valueDigests].
+ */
 @Serializable(with = ValueDigestListSerializer::class)
 data class ValueDigestList(
     val entries: List<ValueDigest>
 )
 
+/**
+ * Convenience class with a custom serializer ([ValueDigestListSerializer]) to prevent
+ * usage of the type `Map<String, Map<UInt, ByteArray>>` in [MobileSecurityObject.valueDigests].
+ */
 data class ValueDigest(
     val key: UInt,
     val value: ByteArray,
@@ -105,10 +113,13 @@ data class ValueDigest(
             value.serialize().wrapInCborTag(24).sha256()
         )
     }
-
 }
 
-
+/**
+ * Serialized the [ValueDigestList.entries] as an "inline map",
+ * meaning [ValueDigest.key] is the map key and [ValueDigest.value] the map value,
+ * for the map represented by [ValueDigestList]
+ */
 object ValueDigestListSerializer : KSerializer<ValueDigestList> {
 
     override val descriptor: SerialDescriptor = mapSerialDescriptor(
@@ -121,6 +132,7 @@ object ValueDigestListSerializer : KSerializer<ValueDigestList> {
             var index = 0
             value.entries.forEach {
                 this.encodeIntElement(descriptor, index++, it.key.toInt())
+                // TODO Values need to be tagged with 24 ... resulting in prefix D818
                 this.encodeSerializableElement(descriptor, index++, ByteArraySerializer(), it.value)
             }
         }
@@ -146,7 +158,6 @@ object ValueDigestListSerializer : KSerializer<ValueDigestList> {
         return ValueDigestList(entries)
     }
 }
-
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for MSO (9.1.2.4)

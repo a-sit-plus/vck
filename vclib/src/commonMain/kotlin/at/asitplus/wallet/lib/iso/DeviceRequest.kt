@@ -100,16 +100,30 @@ data class ItemsRequest(
 )
 
 
+
+/**
+ * Convenience class with a custom serializer ([ItemsRequestListSerializer]) to prevent
+ * usage of the type `Map<String, Map<String, Boolean>>` in [ItemsRequest.namespaces].
+ */
 @Serializable(with = ItemsRequestListSerializer::class)
 data class ItemsRequestList(
     val entries: List<SingleItemsRequest>
 )
 
+/**
+ * Convenience class with a custom serializer ([ItemsRequestListSerializer]) to prevent
+ * usage of the type `Map<String, Map<String, Boolean>>` in [ItemsRequest.namespaces].
+ */
 data class SingleItemsRequest(
     val key: String,
     val value: Boolean,
 )
 
+/**
+ * Serializes [ItemsRequestList.entries] as an "inline map",
+ * having [SingleItemsRequest.key] as the map key and [SingleItemsRequest.value] as the map value,
+ * for the map represented by [ItemsRequestList].
+ */
 object ItemsRequestListSerializer : KSerializer<ItemsRequestList> {
 
     override val descriptor: SerialDescriptor = mapSerialDescriptor(
@@ -244,6 +258,10 @@ data class IssuerSigned(
 }
 
 
+/**
+ * Convenience class with a custom serializer ([IssuerSignedListSerializer]) to prevent
+ * usage of the type `Map<String, List<ByteStringWrapper<IssuerSignedItem>>>` in [IssuerSigned.namespaces].
+ */
 @Serializable(with = IssuerSignedListSerializer::class)
 data class IssuerSignedList(
     val entries: List<ByteStringWrapper<IssuerSignedItem>>
@@ -260,6 +278,10 @@ data class IssuerSignedList(
     }
 }
 
+/**
+ * Serializes [IssuerSignedList.entries] as an "inline list",
+ * having serialized instances of [IssuerSignedItem] as the values.
+ */
 object IssuerSignedListSerializer : KSerializer<IssuerSignedList> {
 
     override val descriptor: SerialDescriptor = listSerialDescriptor(
@@ -350,6 +372,9 @@ data class IssuerSignedItem(
     }
 }
 
+/**
+ * Convenience class to enable serialization of (nearly) "any" value in [IssuerSignedItem.elementValue]
+ */
 // TODO Could this be anything else?
 @Serializable(with = ElementValueSerializer::class)
 data class ElementValue(
@@ -437,6 +462,7 @@ data class DeviceSigned(
     }
 }
 
+// TODO see if we really need this class
 data class DeviceNameSpaces(
     @SerialName(NAMESPACE_MDL)
     val entries: Map<String, ElementValue>

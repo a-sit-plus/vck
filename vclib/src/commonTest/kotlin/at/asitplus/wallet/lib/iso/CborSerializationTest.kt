@@ -17,6 +17,7 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.ktor.util.Identity.encode
 import io.ktor.utils.io.core.toByteArray
 import io.matthewnelson.component.encoding.base16.decodeBase16ToArray
 import io.matthewnelson.component.encoding.base16.encodeBase16
@@ -157,6 +158,9 @@ class CborSerializationTest : FreeSpec({
 
         docRequest.readerAuth.shouldNotBeNull()
         docRequest.readerAuth?.unprotectedHeader?.certificateChain?.shouldNotBeNull()
+
+        // TODO Needs definite length for arrays, e.g. in deviceRequest.docRequests
+        //deviceRequest.serialize().encodeBase16().uppercase() shouldBe input
     }
 
     // From ISO/IEC 18013-5:2021(E), D4.1.2, page 116
@@ -377,6 +381,9 @@ class CborSerializationTest : FreeSpec({
             .decodeBase16ToArray()
         valueDigestListUs.findItem(1U) shouldBe "4D80E1E2E4FB246D97895427CE7000BB59BB24C8CD003ECF94BF35BBD2917E34"
             .decodeBase16ToArray()
+
+        // TODO D818 is the tags for digests
+        //deviceResponse.serialize().encodeBase16() shouldBe input
     }
 
     "Driving Privilege" {
@@ -546,6 +553,9 @@ class CborSerializationTest : FreeSpec({
             .decodeBase16ToArray()
         valueDigestListUs.findItem(1U) shouldBe "4D80E1E2E4FB246D97895427CE7000BB59BB24C8CD003ECF94BF35BBD2917E34"
             .decodeBase16ToArray()
+
+        // TODO only A7 vs A1 for serialized CoseHeader is wrong!
+        //coseSigned.serialize().encodeBase16() shouldBe input
     }
 
 })

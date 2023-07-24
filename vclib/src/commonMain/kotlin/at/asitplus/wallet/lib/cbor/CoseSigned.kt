@@ -24,7 +24,7 @@ import kotlinx.serialization.encoding.Encoder
  */
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
-@CborArray(18U)
+@CborArray
 data class CoseSigned(
     @Serializable(with = ByteStringWrapperCoseHeaderSerializer::class)
     @ByteString
