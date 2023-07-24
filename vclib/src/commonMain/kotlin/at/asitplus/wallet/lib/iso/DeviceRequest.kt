@@ -19,9 +19,14 @@ import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.listSerialDescriptor
+import kotlinx.serialization.descriptors.mapSerialDescriptor
 import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.encoding.decodeStructure
+import kotlinx.serialization.encoding.encodeStructure
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
@@ -87,10 +92,60 @@ data class ItemsRequest(
     @SerialName("docType")
     val docType: String,
     @SerialName("nameSpaces")
-    val namespaces: Map<String, Map<String, Boolean>>,
+    val namespaces: Map<String, ItemsRequestList>,
     @SerialName("requestInfo")
     val requestInfo: Map<String, String>? = null,
 )
+
+
+@Serializable(with = ItemsRequestListSerializer::class)
+data class ItemsRequestList(
+    val entries: List<SingleItemsRequest>
+)
+
+data class SingleItemsRequest(
+    val key: String,
+    val value: Boolean,
+)
+
+object ItemsRequestListSerializer : KSerializer<ItemsRequestList> {
+
+    override val descriptor: SerialDescriptor = mapSerialDescriptor(
+        keyDescriptor = PrimitiveSerialDescriptor("key", PrimitiveKind.INT),
+        valueDescriptor = listSerialDescriptor<Byte>(),
+    )
+
+    override fun serialize(encoder: Encoder, value: ItemsRequestList) {
+        encoder.encodeStructure(descriptor) {
+            var index = 0
+            value.entries.forEach {
+                this.encodeStringElement(descriptor, index++, it.key)
+                this.encodeBooleanElement(descriptor, index++, it.value)
+            }
+        }
+    }
+
+    override fun deserialize(decoder: Decoder): ItemsRequestList {
+        val entries = mutableListOf<SingleItemsRequest>()
+        decoder.decodeStructure(descriptor) {
+            lateinit var key: String
+            var value: Boolean
+            while (true) {
+                val index = decodeElementIndex(descriptor)
+                if (index == CompositeDecoder.DECODE_DONE) {
+                    break
+                } else if (index % 2 == 0) {
+                    key = decodeStringElement(descriptor, index)
+                } else if (index % 2 == 1) {
+                    value = decodeBooleanElement(descriptor, index)
+                    entries += SingleItemsRequest(key, value)
+                }
+            }
+        }
+        return ItemsRequestList(entries)
+    }
+}
+
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)

@@ -116,7 +116,7 @@ class Wallet {
     suspend fun buildDeviceResponse(verifierRequest: DeviceRequest): DeviceResponse {
         val isoNamespace = verifierRequest.docRequests[0].itemsRequest.value.namespaces[NAMESPACE_MDL]
         isoNamespace.shouldNotBeNull()
-        val requestedKeys = isoNamespace.filter { it.value }.map { it.key }
+        val requestedKeys = isoNamespace.entries.filter { it.value }.map { it.key }
         return DeviceResponse(
             version = "1.0",
             documents = arrayOf(
@@ -235,10 +235,12 @@ class Verifier {
                     value = ItemsRequest(
                         docType = DOC_TYPE_MDL,
                         namespaces = mapOf(
-                            NAMESPACE_MDL to mapOf(
-                                FAMILY_NAME to true,
-                                GIVEN_NAME to true,
-                                PORTRAIT to false
+                            NAMESPACE_MDL to ItemsRequestList(
+                                listOf(
+                                    SingleItemsRequest(FAMILY_NAME, true),
+                                    SingleItemsRequest(GIVEN_NAME, true),
+                                    SingleItemsRequest(PORTRAIT, false)
+                                )
                             )
                         )
                     )
