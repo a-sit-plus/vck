@@ -73,10 +73,6 @@ data class DocRequest(
     @SerialName("readerAuth")
     val readerAuth: CoseSigned? = null,
 ) {
-    fun extractReaderAuthentication() {
-        // TODO is COSE_SIGN1
-    }
-
     override fun toString(): String {
         return "DocRequest(itemsRequest=${itemsRequest.value}, readerAuth=$readerAuth)"
     }

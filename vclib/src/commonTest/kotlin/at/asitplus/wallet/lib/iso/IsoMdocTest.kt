@@ -26,6 +26,7 @@ import io.matthewnelson.component.encoding.base16.encodeBase16
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.cbor.ByteStringWrapper
+import okio.ByteString.Companion.toByteString
 import kotlin.random.Random
 
 class IsoMdocTest : FreeSpec({
@@ -175,7 +176,12 @@ class Issuer {
             version = "1.0",
             digestAlgorithm = "SHA-256",
             valueDigests = mapOf(
-                NAMESPACE_MDL to issuerSigned.associate { it.digestId to it.serialize().wrapInCborTag(24).sha256() }
+                NAMESPACE_MDL to ValueDigestList(entries = issuerSigned.map {
+                    ValueDigest(
+                        it.digestId,
+                        it.serialize().wrapInCborTag(24).sha256()
+                    )
+                })
             ),
             deviceKeyInfo = walletKeyInfo,
             docType = DOC_TYPE_MDL,
@@ -279,28 +285,28 @@ class Verifier {
 
     private fun extracted(
         issuerSignedItems: List<ByteStringWrapper<IssuerSignedItem>>,
-        mdlItems: Map<UInt, ByteArray>,
+        mdlItems: ValueDigestList,
         key: String
     ) {
         val issuerSignedItem = issuerSignedItems.first { it.value.elementIdentifier == key }
         val elementValue = issuerSignedItem.value.elementValue.string
         elementValue.shouldNotBeNull()
-        val issuerHash = mdlItems[issuerSignedItem.value.digestId]
+        val issuerHash = mdlItems.entries.first { it.key == issuerSignedItem.value.digestId }
         issuerHash.shouldNotBeNull()
         val verifierHash = issuerSignedItem.value.serialize().wrapInCborTag(24).sha256()
-        verifierHash.encodeBase16() shouldBe issuerHash.encodeBase16()
+        verifierHash.encodeBase16() shouldBe issuerHash.value.encodeBase16()
         println("Verifier got $key with value $elementValue and correct hash ${verifierHash.encodeBase16()}")
     }
 }
 
 private fun extractDataString(
     mdlItems: List<ByteStringWrapper<IssuerSignedItem>>,
-    valueDigests: Map<UInt, ByteArray>,
+    valueDigests: ValueDigestList,
     key: String
 ): Pair<String, String> {
     val element = mdlItems.first { it.value.elementIdentifier == key }.value
     val value = element.elementValue.string
-    val hash = valueDigests[element.digestId]?.encodeBase16()
+    val hash = valueDigests.entries.first { it.key == element.digestId }.value.encodeBase16()
     value.shouldNotBeNull()
     hash.shouldNotBeNull()
     return Pair(value, hash)
@@ -308,12 +314,12 @@ private fun extractDataString(
 
 private fun extractDataDrivingPrivileges(
     mdlItems: List<ByteStringWrapper<IssuerSignedItem>>,
-    valueDigests: Map<UInt, ByteArray>,
+    valueDigests: ValueDigestList,
     key: String
 ): Pair<List<DrivingPrivilege>, String> {
     val element = mdlItems.first { it.value.elementIdentifier == key }.value
     val value = element.elementValue.drivingPrivilege
-    val hash = valueDigests[element.digestId]?.encodeBase16()
+    val hash = valueDigests.entries.first { it.key == element.digestId }.value.encodeBase16()
     value.shouldNotBeNull()
     hash.shouldNotBeNull()
     return Pair(value, hash)
@@ -338,5 +344,4 @@ private fun ByteArray.stripTag(tag: Byte) = this.dropWhile { it == 0xd8.toByte()
 
 fun ByteArray.wrapInCborTag(tag: Byte) = byteArrayOf(0xd8.toByte()) + byteArrayOf(tag) + this
 
-// TODO actually hash it
-private fun ByteArray.sha256(): ByteArray = this
+private fun ByteArray.sha256(): ByteArray = toByteString().sha256().toByteArray()
