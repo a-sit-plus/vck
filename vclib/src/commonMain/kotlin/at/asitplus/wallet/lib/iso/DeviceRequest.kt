@@ -3,6 +3,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.wallet.lib.cbor.CoseSigned
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import io.github.aakira.napier.Napier
 import io.matthewnelson.component.encoding.base16.encodeBase16
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -13,6 +14,7 @@ import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.ByteStringWrapper
+import kotlinx.serialization.cbor.ValueTags
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -251,6 +253,8 @@ data class ElementValue(
     val string: String? = null,
     val drivingPrivilege: List<DrivingPrivilege>? = null,
 ) {
+    fun serialize() = cborSerializer.encodeToByteArray(this)
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -294,13 +298,14 @@ data class ElementValue(
 data class DeviceSigned(
     @SerialName("nameSpaces")
     @ByteString
+    @ValueTags(24U)
     val namespaces: ByteArray,
     @SerialName("deviceAuth")
     @ByteString
     val deviceAuth: DeviceAuth,
 ) {
-    fun extractDeviceNameSpaces() {
-        // TODO
+    fun extractDeviceNameSpaces(): Map<String, Map<String, ElementValue>> {
+        return cborSerializer.decodeFromByteArray(namespaces)
     }
 
     override fun equals(other: Any?): Boolean {
@@ -319,6 +324,29 @@ data class DeviceSigned(
         return result
     }
 
+    companion object {
+        fun withDeviceNameSpaces(value: Map<String, Map<String, ElementValue>>, deviceAuth: DeviceAuth) =
+            DeviceSigned(
+                namespaces = cborSerializer.encodeToByteArray(value),
+                deviceAuth = deviceAuth
+            )
+    }
+}
+
+data class DeviceNameSpaces(
+    @SerialName(NAMESPACE_MDL)
+    val entries: Map<String, ElementValue>
+) {
+    fun serialize() = cborSerializer.encodeToByteArray(this)
+
+    companion object {
+        fun deserialize(it: ByteArray) = kotlin.runCatching {
+            cborSerializer.decodeFromByteArray<DeviceNameSpaces>(it)
+        }.getOrElse {
+            Napier.w("deserialize failed", it)
+            null
+        }
+    }
 }
 
 

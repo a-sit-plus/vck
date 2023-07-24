@@ -11,7 +11,7 @@ import kotlinx.serialization.encodeToString
  */
 @Serializable
 data class MobileDrivingLicenceJwsNamespace(
-    @SerialName(IsoDataModelConstants.NAMESPACE)
+    @SerialName(IsoDataModelConstants.NAMESPACE_MDL)
     val mdl: MobileDrivingLicence,
 ) {
 

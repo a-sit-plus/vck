@@ -3,13 +3,25 @@ package at.asitplus.wallet.lib.iso
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.cbor.CoseHeader
+import at.asitplus.wallet.lib.cbor.CoseKey
+import at.asitplus.wallet.lib.cbor.CoseSigned
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
+import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DOCUMENT_NUMBER
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DRIVING_PRIVILEGES
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.EXPIRY_DATE
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.FAMILY_NAME
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.GIVEN_NAME
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUE_DATE
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.PORTRAIT
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.ktor.utils.io.core.toByteArray
 import io.matthewnelson.component.encoding.base16.encodeBase16
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -22,68 +34,210 @@ class IsoMdocTest : FreeSpec({
         Napier.base(DebugAntilog())
     }
 
-    "issue and verify" {
-        val deviceCryptoService = DefaultCryptoService()
-        val deviceKeyInfo = DeviceKeyInfo(
-            deviceKey = deviceCryptoService.toCoseKey(),
-            keyAuthorizations = KeyAuthorization(namespaces = arrayOf("foo"), dataElements = mapOf("foo" to arrayOf("bar"))),
-            keyInfo = mapOf(0 to "bar")
-        )
-        val deviceRequest = buildDeviceRequest(deviceCryptoService)
-        //println(deviceRequest)
-        // Wallet sends deviceRequest to Issuer
+    "issue, store, present, verify" {
+        val wallet = Wallet()
+        val verifier = Verifier()
+        val issuer = Issuer()
 
-        val deviceResponse = buildDeviceResponse(deviceKeyInfo)
-        //println(deviceResponse)
-        // Issuer sends deviceResponse to Wallet
+        // TODO Wallet needs to prove posession of key
+        val deviceResponse = issuer.buildDeviceResponse(wallet.deviceKeyInfo)
+        wallet.storeMdl(deviceResponse)
 
-        val document = deviceResponse.documents?.firstOrNull()
-        document.shouldNotBeNull()
-        println(document)
-        document.docType shouldBe "org.iso.18013.5.1.mDL"
-        val issuerAuth = document.issuerSigned.issuerAuth.payload
-        issuerAuth.shouldNotBeNull()
-        val mso = MobileSecurityObject.deserialize(issuerAuth.stripTag(24))
-        mso.shouldNotBeNull()
-
-        val mdlItems = document.issuerSigned.namespaces?.get("org.iso.18013.5.1")
-        mdlItems.shouldNotBeNull()
-        val valueDigests = mso.valueDigests["org.iso.18013.5.1"]
-        valueDigests.shouldNotBeNull()
-
-        val givenName = mdlItems.first { it.value.elementIdentifier == "given_name" }.value
-        val givenNameValue = givenName.elementValue.string
-        val givenNameHash = valueDigests[givenName.digestId]?.encodeBase16()
-        val familyName = mdlItems.first { it.value.elementIdentifier == "family_name" }.value
-        val familyNameValue = familyName.elementValue.string
-        val familyNameHash = valueDigests[familyName.digestId]?.encodeBase16()
-
-        println("Given name: $givenNameValue with hash $givenNameHash")
-        println("Family name: $familyNameValue with hash $familyNameHash")
+        val verifierRequest = verifier.buildDeviceRequest()
+        val walletResponse = wallet.buildDeviceResponse(verifierRequest)
+        verifier.verifyResponse(walletResponse, issuer.cryptoService.toCoseKey())
     }
 
 })
 
+class Wallet {
 
-private suspend fun buildDeviceRequest(deviceCryptoService: DefaultCryptoService): DeviceRequest {
-    val deviceCoseService = DefaultCoseService(deviceCryptoService)
-    return DeviceRequest(
+    val cryptoService = DefaultCryptoService()
+    val coseService = DefaultCoseService(cryptoService)
+
+    val deviceKeyInfo = DeviceKeyInfo(
+        deviceKey = cryptoService.toCoseKey(),
+        // specify optional parameters as workaround for definite length encoding in CBOR
+        keyAuthorizations = KeyAuthorization(namespaces = arrayOf("a"), dataElements = mapOf("b" to arrayOf("c"))),
+        keyInfo = mapOf(0 to "bar")
+    )
+
+    var storedMdl: MobileDrivingLicence? = null
+    var storedMso: MobileSecurityObject? = null
+    var storedIssuerAuth: CoseSigned? = null
+    var storedIssuerSigned: IssuerSigned? = null
+    var storedMdlItems: List<ByteStringWrapper<IssuerSignedItem>>? = null
+
+    fun storeMdl(
+        deviceResponse: DeviceResponse
+    ) {
+        val document = deviceResponse.documents?.firstOrNull()
+        document.shouldNotBeNull()
+        document.docType shouldBe DOC_TYPE_MDL
+        val issuerAuth = document.issuerSigned.issuerAuth
+        this.storedIssuerSigned = document.issuerSigned
+        this.storedIssuerAuth = issuerAuth
+        val issuerAuthPayload = issuerAuth.payload
+        issuerAuthPayload.shouldNotBeNull()
+        val mso = MobileSecurityObject.deserialize(issuerAuthPayload.stripTag(24))
+        mso.shouldNotBeNull()
+        this.storedMso = mso
+        println("Wallet stored MSO: $storedMso")
+        val mdlItems = document.issuerSigned.namespaces?.get(NAMESPACE_MDL)
+        mdlItems.shouldNotBeNull()
+        this.storedMdlItems = mdlItems
+        val valueDigests = mso.valueDigests[NAMESPACE_MDL]
+        valueDigests.shouldNotBeNull()
+
+        val (givenNameValue, givenNameHash) = extractDataString(mdlItems, valueDigests, GIVEN_NAME)
+        val (familyNameValue, familyNameHash) = extractDataString(mdlItems, valueDigests, FAMILY_NAME)
+        val (licenceNumberValue, licenceNumberHash) = extractDataString(mdlItems, valueDigests, DOCUMENT_NUMBER)
+        val (issueDateValue, issueDateHash) = extractDataString(mdlItems, valueDigests, ISSUE_DATE)
+        val (expiryDateValue, expiryDateHash) = extractDataString(mdlItems, valueDigests, EXPIRY_DATE)
+        val (drivingPrivilegesValue, drivingPrivilegesHash) = extractDataDrivingPrivileges(
+            mdlItems,
+            valueDigests,
+            DRIVING_PRIVILEGES
+        )
+
+        storedMdl = MobileDrivingLicence(
+            familyName = familyNameValue,
+            givenName = givenNameValue,
+            licenceNumber = licenceNumberValue,
+            portrait = byteArrayOf(),
+            issueDate = LocalDate.parse(issueDateValue),
+            expiryDate = LocalDate.parse(expiryDateValue),
+            drivingPrivileges = drivingPrivilegesValue,
+        )
+        println("Wallet stored MDL: $storedMdl")
+    }
+
+    suspend fun buildDeviceResponse(verifierRequest: DeviceRequest): DeviceResponse {
+        val isoNamespace = verifierRequest.docRequests[0].itemsRequest.value.namespaces[NAMESPACE_MDL]
+        isoNamespace.shouldNotBeNull()
+        val requestedKeys = isoNamespace.filter { it.value }.map { it.key }
+        return DeviceResponse(
+            version = "1.0",
+            documents = arrayOf(
+                Document(
+                    docType = DOC_TYPE_MDL,
+                    issuerSigned = IssuerSigned(
+                        namespaces = mapOf(
+                            NAMESPACE_MDL to storedMdlItems!!.filter {
+                                it.value.elementIdentifier in requestedKeys
+                            }
+                        ),
+                        issuerAuth = storedIssuerAuth!!
+                    ),
+                    deviceSigned = DeviceSigned(
+                        namespaces = byteArrayOf(),
+                        deviceAuth = DeviceAuth(
+                            deviceSignature = coseService.createSignedCose(
+                                protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
+                                unprotectedHeader = null,
+                                payload = null,
+                                addKeyId = false
+                            ).getOrThrow()
+                        )
+                    )
+                )
+            ),
+            status = 0U,
+        )
+    }
+
+}
+
+class Issuer {
+
+    val cryptoService = DefaultCryptoService()
+    val coseService = DefaultCoseService(cryptoService)
+
+    suspend fun buildDeviceResponse(walletKeyInfo: DeviceKeyInfo): DeviceResponse {
+        val drivingPrivilege = DrivingPrivilege(
+            vehicleCategoryCode = "B",
+            issueDate = LocalDate.parse("2023-01-01"),
+            expiryDate = LocalDate.parse("2033-01-31"),
+            codes = arrayOf(
+                DrivingPrivilegeCode(code = "B", sign = "sign", value = "value")
+            )
+        )
+        val issuerSigned = listOf(
+            buildIssuerSignedItem(FAMILY_NAME, "Mustermann", 0U),
+            buildIssuerSignedItem(GIVEN_NAME, "Max", 1U),
+            buildIssuerSignedItem(DOCUMENT_NUMBER, "123456789", 2U),
+            buildIssuerSignedItem(ISSUE_DATE, "2023-01-01", 3U),
+            buildIssuerSignedItem(EXPIRY_DATE, "2033-01-31", 4U),
+            buildIssuerSignedItem(DRIVING_PRIVILEGES, drivingPrivilege, 4U),
+        )
+
+        val mso = MobileSecurityObject(
+            version = "1.0",
+            digestAlgorithm = "SHA-256",
+            valueDigests = mapOf(
+                NAMESPACE_MDL to issuerSigned.associate { it.digestId to it.serialize().wrapInCborTag(24).sha256() }
+            ),
+            deviceKeyInfo = walletKeyInfo,
+            docType = DOC_TYPE_MDL,
+            validityInfo = ValidityInfo(
+                signed = Clock.System.now(),
+                validFrom = Clock.System.now(),
+                validUntil = Clock.System.now(),
+                // specify optional parameters as workaround for definite length encoding in CBOR
+                expectedUpdate = Clock.System.now(),
+            )
+        )
+
+        return DeviceResponse(
+            version = "1.0",
+            documents = arrayOf(
+                Document(
+                    docType = DOC_TYPE_MDL,
+                    issuerSigned = IssuerSigned(
+                        namespaces = mapOf(
+                            NAMESPACE_MDL to issuerSigned.map { ByteStringWrapper(it) }.toList()
+                        ),
+                        issuerAuth = coseService.createSignedCose(
+                            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
+                            unprotectedHeader = null, // TODO transport issuer certificate
+                            payload = mso.serialize().wrapInCborTag(24),
+                            addKeyId = false,
+                        ).getOrThrow()
+                    ),
+                    deviceSigned = DeviceSigned(
+                        namespaces = byteArrayOf(),
+                        deviceAuth = DeviceAuth()
+                    )
+                )
+            ),
+            status = 0U,
+        )
+    }
+}
+
+class Verifier {
+
+    val cryptoService = DefaultCryptoService()
+    val coseService = DefaultCoseService(cryptoService)
+    val verifierCoseService = DefaultVerifierCoseService()
+
+    suspend fun buildDeviceRequest() = DeviceRequest(
         version = "1.0",
         docRequests = arrayOf(
             DocRequest(
                 itemsRequest = ByteStringWrapper(
                     value = ItemsRequest(
-                        docType = "org.iso.18013.5.1.mDL",
+                        docType = DOC_TYPE_MDL,
                         namespaces = mapOf(
-                            // TODO is this necessary?
-                            "org.iso.18013.5.1" to mapOf(
-                                "family_name" to true,
-                                "portrait" to false
+                            NAMESPACE_MDL to mapOf(
+                                FAMILY_NAME to true,
+                                GIVEN_NAME to true,
+                                PORTRAIT to false
                             )
                         )
                     )
                 ),
-                readerAuth = deviceCoseService.createSignedCose(
+                readerAuth = coseService.createSignedCose(
                     protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
                     unprotectedHeader = CoseHeader(),
                     payload = null,
@@ -92,97 +246,97 @@ private suspend fun buildDeviceRequest(deviceCryptoService: DefaultCryptoService
             )
         )
     )
+
+    fun verifyResponse(deviceResponse: DeviceResponse, issuerKey: CoseKey) {
+        val documents = deviceResponse.documents
+        documents.shouldNotBeNull()
+        val doc = documents.first()
+        doc.docType shouldBe DOC_TYPE_MDL
+        doc.errors.shouldBeNull()
+        val issuerSigned = doc.issuerSigned
+        val issuerAuth = issuerSigned.issuerAuth
+        verifierCoseService.verifyCose(issuerAuth, issuerKey).getOrThrow().shouldBe(true)
+        val payload = issuerAuth.payload
+        payload.shouldNotBeNull()
+        val mso = MobileSecurityObject.deserialize(payload.stripTag(24))
+        mso.shouldNotBeNull()
+        mso.docType shouldBe DOC_TYPE_MDL
+        val mdlItems = mso.valueDigests[NAMESPACE_MDL]
+        mdlItems.shouldNotBeNull()
+
+        val walletKey = mso.deviceKeyInfo.deviceKey
+        val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature
+        deviceSignature.shouldNotBeNull()
+        verifierCoseService.verifyCose(deviceSignature, walletKey).getOrThrow().shouldBe(true)
+        val namespaces = issuerSigned.namespaces
+        namespaces.shouldNotBeNull()
+        val issuerSignedItems = namespaces[NAMESPACE_MDL]
+        issuerSignedItems.shouldNotBeNull()
+
+        extracted(issuerSignedItems, mdlItems, FAMILY_NAME)
+        extracted(issuerSignedItems, mdlItems, GIVEN_NAME)
+    }
+
+    private fun extracted(
+        issuerSignedItems: List<ByteStringWrapper<IssuerSignedItem>>,
+        mdlItems: Map<UInt, ByteArray>,
+        key: String
+    ) {
+        val issuerSignedItem = issuerSignedItems.first { it.value.elementIdentifier == key }
+        val elementValue = issuerSignedItem.value.elementValue.string
+        elementValue.shouldNotBeNull()
+        val issuerHash = mdlItems[issuerSignedItem.value.digestId]
+        issuerHash.shouldNotBeNull()
+        val verifierHash = issuerSignedItem.value.serialize().wrapInCborTag(24).sha256()
+        verifierHash.encodeBase16() shouldBe issuerHash.encodeBase16()
+        println("Verifier got $key with value $elementValue and correct hash ${verifierHash.encodeBase16()}")
+    }
 }
 
-private suspend fun buildDeviceResponse(deviceKeyInfo: DeviceKeyInfo): DeviceResponse {
-    val mdl = MobileDrivingLicence(
-        familyName = "Mustermann",
-        givenName = "Max",
-        dateOfBirth = LocalDate.parse("1970-01-01"),
-        issueDate = LocalDate.parse("2018-08-09"),
-        expiryDate = LocalDate.parse("2024-10-20"),
-        issuingCountry = "AT",
-        issuingAuthority = "LPD Steiermark",
-        licenceNumber = "A/3f984/019",
-        portrait = "foo".toByteArray(),
-        drivingPrivileges = arrayOf(
-            DrivingPrivilege(
-                vehicleCategoryCode = "A",
-                issueDate = LocalDate.parse("2018-08-09"),
-                expiryDate = LocalDate.parse("2024-10-20")
-            )
-        ),
-        unDistinguishingSign = "AT"
-    )
-    val familyNameIssuerSigned = IssuerSignedItem(
-        digestId = 0U,
-        random = Random.nextBytes(16),
-        elementIdentifier = "family_name",
-        elementValue = ElementValue(string = mdl.familyName)
-    )
-    val givenNameIssuerSigned = IssuerSignedItem(
-        digestId = 1U,
-        random = Random.nextBytes(16),
-        elementIdentifier = "given_name",
-        elementValue = ElementValue(string = mdl.givenName)
-    )
-    val mso = MobileSecurityObject(
-        version = "1.0",
-        digestAlgorithm = "SHA-256",
-        valueDigests = mapOf(
-            "org.iso.18013.5.1" to mapOf(
-                0U to familyNameIssuerSigned.toValueDigest(),
-                1U to givenNameIssuerSigned.toValueDigest()
-            )
-        ),
-        deviceKeyInfo = deviceKeyInfo,
-        docType = "org.iso.18013.5.1.mDL",
-        validityInfo = ValidityInfo(
-            signed = Clock.System.now(),
-            validFrom = Clock.System.now(),
-            validUntil = Clock.System.now(),
-            expectedUpdate = Clock.System.now(),
-        )
-    )
-
-    val issuerCryptoService = DefaultCryptoService()
-    val issuerCoseService = DefaultCoseService(issuerCryptoService)
-    return DeviceResponse(
-        version = "1.0",
-        documents = arrayOf(
-            Document(
-                docType = "org.iso.18013.5.1.mDL",
-                issuerSigned = IssuerSigned(
-                    namespaces = mapOf(
-                        "org.iso.18013.5.1" to listOf(
-                            ByteStringWrapper(familyNameIssuerSigned),
-                            ByteStringWrapper(givenNameIssuerSigned),
-                        )
-                    ),
-                    issuerAuth = issuerCoseService.createSignedCose(
-                        protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
-                        unprotectedHeader = null,
-                        payload = mso.serialize().wrapInCborTag(24),
-                        addKeyId = false,
-                    ).getOrThrow()
-                ),
-                deviceSigned = DeviceSigned(
-                    namespaces = byteArrayOf(),
-                    deviceAuth = DeviceAuth(
-
-                    )
-                )
-            )
-        ),
-        status = 0U,
-    )
+private fun extractDataString(
+    mdlItems: List<ByteStringWrapper<IssuerSignedItem>>,
+    valueDigests: Map<UInt, ByteArray>,
+    key: String
+): Pair<String, String> {
+    val element = mdlItems.first { it.value.elementIdentifier == key }.value
+    val value = element.elementValue.string
+    val hash = valueDigests[element.digestId]?.encodeBase16()
+    value.shouldNotBeNull()
+    hash.shouldNotBeNull()
+    return Pair(value, hash)
 }
+
+private fun extractDataDrivingPrivileges(
+    mdlItems: List<ByteStringWrapper<IssuerSignedItem>>,
+    valueDigests: Map<UInt, ByteArray>,
+    key: String
+): Pair<List<DrivingPrivilege>, String> {
+    val element = mdlItems.first { it.value.elementIdentifier == key }.value
+    val value = element.elementValue.drivingPrivilege
+    val hash = valueDigests[element.digestId]?.encodeBase16()
+    value.shouldNotBeNull()
+    hash.shouldNotBeNull()
+    return Pair(value, hash)
+}
+
+
+fun buildIssuerSignedItem(elementIdentifier: String, elementValue: String, digestId: UInt) = IssuerSignedItem(
+    digestId = digestId,
+    random = Random.nextBytes(16),
+    elementIdentifier = elementIdentifier,
+    elementValue = ElementValue(string = elementValue)
+)
+
+fun buildIssuerSignedItem(elementIdentifier: String, elementValue: DrivingPrivilege, digestId: UInt) = IssuerSignedItem(
+    digestId = digestId,
+    random = Random.nextBytes(16),
+    elementIdentifier = elementIdentifier,
+    elementValue = ElementValue(drivingPrivilege = listOf(elementValue))
+)
 
 private fun ByteArray.stripTag(tag: Byte) = this.dropWhile { it == 0xd8.toByte() }.dropWhile { it == tag }.toByteArray()
 
-private fun ByteArray.wrapInCborTag(tag: Byte) = byteArrayOf(0xd8.toByte()) + byteArrayOf(tag) + this
-
-private fun IssuerSignedItem.toValueDigest() = this.serialize().wrapInCborTag(24).sha256()
+fun ByteArray.wrapInCborTag(tag: Byte) = byteArrayOf(0xd8.toByte()) + byteArrayOf(tag) + this
 
 // TODO actually hash it
 private fun ByteArray.sha256(): ByteArray = this

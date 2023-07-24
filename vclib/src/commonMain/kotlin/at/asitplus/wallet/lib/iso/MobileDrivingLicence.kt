@@ -36,7 +36,7 @@ import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.UN_DISTINGU
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.WEIGHT
 import at.asitplus.wallet.lib.jws.ByteArrayBase64UrlSerializer
 import io.github.aakira.napier.Napier
-import io.matthewnelson.component.base64.encodeBase64ToCharArray
+import io.matthewnelson.component.encoding.base16.encodeBase16
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -211,7 +211,7 @@ data class MobileDrivingLicence(
                 " issuingCountry='$issuingCountry'," +
                 " issuingAuthority='$issuingAuthority'," +
                 " licenceNumber='$licenceNumber'," +
-                " portrait=${portrait.encodeBase64ToCharArray()}," +
+                " portrait=${portrait.encodeBase16()}," +
                 " drivingPrivileges=${drivingPrivileges}," +
                 " unDistinguishingSign='$unDistinguishingSign'," +
                 " administrativeNumber=$administrativeNumber," +
@@ -234,7 +234,7 @@ data class MobileDrivingLicence(
                 " residentCountry=$residentCountry," +
                 " familyNameNationalCharacters=$familyNameNationalCharacters," +
                 " givenNameNationalCharacters=$givenNameNationalCharacters," +
-                " signatureOrUsualMark=${signatureOrUsualMark?.encodeBase64ToCharArray()})"
+                " signatureOrUsualMark=${signatureOrUsualMark?.encodeBase16()})"
     }
 
     companion object {

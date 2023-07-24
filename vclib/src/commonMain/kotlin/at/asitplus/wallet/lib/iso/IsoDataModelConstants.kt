@@ -4,7 +4,7 @@ object IsoDataModelConstants {
 
     const val DOC_TYPE_MDL = "org.iso.18013.5.1.mDL"
 
-    const val NAMESPACE = "org.iso.18013.5.1"
+    const val NAMESPACE_MDL = "org.iso.18013.5.1"
 
     object DataElements {
 
