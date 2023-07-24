@@ -2,6 +2,38 @@
 
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ADMINISTRATIVE_NUMBER
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.AGE_BIRTH_YEAR
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.AGE_IN_YEARS
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.AGE_OVER_18
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.BIRTH_DATE
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.BIRTH_PLACE
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DOCUMENT_NUMBER
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DRIVING_PRIVILEGES
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.EXPIRY_DATE
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.EYE_COLOUR
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.FAMILY_NAME
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.FAMILY_NAME_NATIONAL_CHARACTER
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.GIVEN_NAME
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.GIVEN_NAME_NATIONAL_CHARACTER
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.HAIR_COLOUR
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.HEIGHT
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUE_DATE
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUING_AUTHORITY
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUING_COUNTRY
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUING_JURISDICTION
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.NATIONALITY
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.PORTRAIT
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.PORTRAIT_CAPTURE_DATE
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.RESIDENT_ADDRESS
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.RESIDENT_CITY
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.RESIDENT_COUNTRY
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.RESIDENT_POSTAL_CODE
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.RESIDENT_STATE
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.SEX
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.SIGNATURE_USUAL_MARK
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.UN_DISTINGUISHING_SIGN
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.WEIGHT
 import at.asitplus.wallet.lib.jws.ByteArrayBase64UrlSerializer
 import io.github.aakira.napier.Napier
 import io.matthewnelson.component.base64.encodeBase64ToCharArray
@@ -18,73 +50,73 @@ import kotlinx.serialization.encodeToByteArray
  */
 @Serializable
 data class MobileDrivingLicence(
-    @SerialName("family_name")
+    @SerialName(FAMILY_NAME)
     val familyName: String,
-    @SerialName("given_name")
+    @SerialName(GIVEN_NAME)
     val givenName: String,
-    @SerialName("birth_date")
+    @SerialName(BIRTH_DATE)
     val dateOfBirth: LocalDate? = null,
-    @SerialName("issue_date")
+    @SerialName(ISSUE_DATE)
     val issueDate: LocalDate,
-    @SerialName("expiry_date")
+    @SerialName(EXPIRY_DATE)
     val expiryDate: LocalDate,
-    @SerialName("issuing_country")
+    @SerialName(ISSUING_COUNTRY)
     val issuingCountry: String? = null,
-    @SerialName("issuing_authority")
+    @SerialName(ISSUING_AUTHORITY)
     val issuingAuthority: String? = null,
-    @SerialName("document_number")
+    @SerialName(DOCUMENT_NUMBER)
     val licenceNumber: String,
-    @SerialName("portrait")
+    @SerialName(PORTRAIT)
     @ByteString
     @Serializable(with = ByteArrayBase64UrlSerializer::class) // TODO and with cbor!?
     val portrait: ByteArray,
-    @SerialName("driving_privileges")
-    val drivingPrivileges: Array<DrivingPrivilege>,
-    @SerialName("un_distinguishing_sign")
+    @SerialName(DRIVING_PRIVILEGES)
+    val drivingPrivileges: List<DrivingPrivilege>,
+    @SerialName(UN_DISTINGUISHING_SIGN)
     val unDistinguishingSign: String? = null,
-    @SerialName("administrative_number")
+    @SerialName(ADMINISTRATIVE_NUMBER)
     val administrativeNumber: String? = null,
-    @SerialName("sex")
+    @SerialName(SEX)
     @Serializable(with = IsoSexEnumSerializer::class)
     val sex: IsoSexEnum? = null,
-    @SerialName("height")
+    @SerialName(HEIGHT)
     val height: UInt? = null,
-    @SerialName("weight")
+    @SerialName(WEIGHT)
     val weight: UInt? = null,
-    @SerialName("eye_colour")
+    @SerialName(EYE_COLOUR)
     val eyeColor: String? = null,
-    @SerialName("hair_colour")
+    @SerialName(HAIR_COLOUR)
     val hairColor: String? = null,
-    @SerialName("birth_place")
+    @SerialName(BIRTH_PLACE)
     val placeOfBirth: String? = null,
-    @SerialName("resident_address")
+    @SerialName(RESIDENT_ADDRESS)
     val placeOfResidence: String? = null,
-    @SerialName("portrait_capture_date")
+    @SerialName(PORTRAIT_CAPTURE_DATE)
     val portraitImageTimestamp: LocalDate? = null,
-    @SerialName("age_in_years")
+    @SerialName(AGE_IN_YEARS)
     val ageInYears: UInt? = null,
-    @SerialName("age_birth_year")
+    @SerialName(AGE_BIRTH_YEAR)
     val ageBirthYear: UInt? = null,
-    @SerialName("age_over_18")
+    @SerialName(AGE_OVER_18)
     val ageOver18: Boolean? = null,
-    @SerialName("issuing_jurisdiction")
+    @SerialName(ISSUING_JURISDICTION)
     val issuingJurisdiction: String? = null,
-    @SerialName("nationality")
+    @SerialName(NATIONALITY)
     val nationality: String? = null,
-    @SerialName("resident_city")
+    @SerialName(RESIDENT_CITY)
     val residentCity: String? = null,
-    @SerialName("resident_state")
+    @SerialName(RESIDENT_STATE)
     val residentState: String? = null,
-    @SerialName("resident_postal_code")
+    @SerialName(RESIDENT_POSTAL_CODE)
     val residentPostalCode: String? = null,
-    @SerialName("resident_country")
+    @SerialName(RESIDENT_COUNTRY)
     val residentCountry: String? = null,
-    @SerialName("family_name_national_character")
+    @SerialName(FAMILY_NAME_NATIONAL_CHARACTER)
     val familyNameNationalCharacters: String? = null,
-    @SerialName("given_name_national_character")
+    @SerialName(GIVEN_NAME_NATIONAL_CHARACTER)
     val givenNameNationalCharacters: String? = null,
     @ByteString
-    @SerialName("signature_usual_mark")
+    @SerialName(SIGNATURE_USUAL_MARK)
     val signatureOrUsualMark: ByteArray? = null,
 ) {
     fun serialize() = cborSerializer.encodeToByteArray(this)
@@ -104,7 +136,7 @@ data class MobileDrivingLicence(
         if (issuingAuthority != other.issuingAuthority) return false
         if (licenceNumber != other.licenceNumber) return false
         if (!portrait.contentEquals(other.portrait)) return false
-        if (!drivingPrivileges.contentEquals(other.drivingPrivileges)) return false
+        if (drivingPrivileges != other.drivingPrivileges) return false
         if (unDistinguishingSign != other.unDistinguishingSign) return false
         if (administrativeNumber != other.administrativeNumber) return false
         if (sex != other.sex) return false
@@ -144,7 +176,7 @@ data class MobileDrivingLicence(
         result = 31 * result + (issuingAuthority?.hashCode() ?: 0)
         result = 31 * result + licenceNumber.hashCode()
         result = 31 * result + portrait.contentHashCode()
-        result = 31 * result + drivingPrivileges.contentHashCode()
+        result = 31 * result + drivingPrivileges.hashCode()
         result = 31 * result + (unDistinguishingSign?.hashCode() ?: 0)
         result = 31 * result + (administrativeNumber?.hashCode() ?: 0)
         result = 31 * result + (sex?.hashCode() ?: 0)
@@ -180,7 +212,7 @@ data class MobileDrivingLicence(
                 " issuingAuthority='$issuingAuthority'," +
                 " licenceNumber='$licenceNumber'," +
                 " portrait=${portrait.encodeBase64ToCharArray()}," +
-                " drivingPrivileges=${drivingPrivileges.contentToString()}," +
+                " drivingPrivileges=${drivingPrivileges}," +
                 " unDistinguishingSign='$unDistinguishingSign'," +
                 " administrativeNumber=$administrativeNumber," +
                 " sex=$sex," +
