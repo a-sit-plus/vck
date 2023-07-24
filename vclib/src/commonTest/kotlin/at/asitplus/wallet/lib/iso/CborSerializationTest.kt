@@ -2,15 +2,25 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.wallet.lib.cbor.CoseSigned
 import at.asitplus.wallet.lib.data.jsonSerializer
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DOCUMENT_NUMBER
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DRIVING_PRIVILEGES
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.EXPIRY_DATE
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.FAMILY_NAME
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUE_DATE
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.PORTRAIT
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.utils.io.core.toByteArray
 import io.matthewnelson.component.encoding.base16.decodeBase16ToArray
 import io.matthewnelson.component.encoding.base16.encodeBase16
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.encodeToString
 
@@ -128,10 +138,25 @@ class CborSerializationTest : FreeSpec({
             9bb7f80bf
         """.trimIndent().replace("\n", "").uppercase()
 
-        val deserialized = DeviceRequest.deserialize(input.decodeBase16ToArray()!!)
-        deserialized.shouldNotBeNull()
+        val deviceRequest = DeviceRequest.deserialize(input.decodeBase16ToArray()!!)
+        deviceRequest.shouldNotBeNull()
+        println(deviceRequest)
 
-        println(deserialized)
+        deviceRequest.version shouldBe "1.0"
+        val docRequest = deviceRequest.docRequests.first()
+        docRequest.shouldNotBeNull()
+
+        docRequest.itemsRequest.value.docType shouldBe DOC_TYPE_MDL
+        val itemsRequestList = docRequest.itemsRequest.value.namespaces[NAMESPACE_MDL]
+        itemsRequestList.shouldNotBeNull()
+        itemsRequestList.findItem(FAMILY_NAME) shouldBe true
+        itemsRequestList.findItem(DOCUMENT_NUMBER) shouldBe true
+        itemsRequestList.findItem(DRIVING_PRIVILEGES) shouldBe true
+        itemsRequestList.findItem(EXPIRY_DATE) shouldBe true
+        itemsRequestList.findItem(PORTRAIT) shouldBe false
+
+        docRequest.readerAuth.shouldNotBeNull()
+        docRequest.readerAuth?.unprotectedHeader?.certificateChain?.shouldNotBeNull()
     }
 
     // From ISO/IEC 18013-5:2021(E), D4.1.2, page 116
@@ -298,10 +323,60 @@ class CborSerializationTest : FreeSpec({
             806a07f8b5388a332d92c189a7bf293ee1f543405ae6824d6673746174757300
         """.trimIndent().replace("\n", "").uppercase()
 
-        val deserialized = DeviceResponse.deserialize(input.decodeBase16ToArray()!!)
-        deserialized.shouldNotBeNull()
+        val deviceResponse = DeviceResponse.deserialize(input.decodeBase16ToArray()!!)
+        deviceResponse.shouldNotBeNull()
 
-        println(deserialized)
+        println(deviceResponse)
+
+        deviceResponse.version shouldBe "1.0"
+        val document = deviceResponse.documents?.get(0)
+        document.shouldNotBeNull()
+        document.docType shouldBe DOC_TYPE_MDL
+        val issuerSignedList = document.issuerSigned.namespaces?.get(NAMESPACE_MDL)
+        issuerSignedList.shouldNotBeNull()
+        issuerSignedList.findItem(0U).elementIdentifier shouldBe FAMILY_NAME
+        issuerSignedList.findItem(0U).elementValue.string shouldBe "Doe"
+        issuerSignedList.findItem(3U).elementIdentifier shouldBe ISSUE_DATE
+        issuerSignedList.findItem(3U).elementValue.string shouldBe "2019-10-20"
+        issuerSignedList.findItem(4U).elementIdentifier shouldBe EXPIRY_DATE
+        issuerSignedList.findItem(4U).elementValue.string shouldBe "2024-10-20"
+        issuerSignedList.findItem(7U).elementIdentifier shouldBe DOCUMENT_NUMBER
+        issuerSignedList.findItem(7U).elementValue.string shouldBe "123456789"
+        issuerSignedList.findItem(8U).elementIdentifier shouldBe PORTRAIT
+        issuerSignedList.findItem(8U).elementValue.bytes.shouldNotBeNull()
+        issuerSignedList.findItem(9U).elementIdentifier shouldBe DRIVING_PRIVILEGES
+        val drivingPrivilege = issuerSignedList.findItem(9U).elementValue.drivingPrivilege
+        drivingPrivilege.shouldNotBeNull()
+        drivingPrivilege shouldContain DrivingPrivilege(
+            vehicleCategoryCode = "A",
+            issueDate = LocalDate.parse("2018-08-09"),
+            expiryDate = LocalDate.parse("2024-10-20")
+        )
+        drivingPrivilege shouldContain DrivingPrivilege(
+            vehicleCategoryCode = "B",
+            issueDate = LocalDate.parse("2017-02-23"),
+            expiryDate = LocalDate.parse("2024-10-20")
+        )
+        val mso = document.issuerSigned.getIssuerAuthPayloadAsMso()
+        mso.shouldNotBeNull()
+        mso.version shouldBe "1.0"
+        mso.digestAlgorithm shouldBe "SHA-256"
+        mso.docType shouldBe DOC_TYPE_MDL
+        mso.validityInfo.signed shouldBe Instant.parse("2020-10-01T13:30:02Z")
+        mso.validityInfo.validFrom shouldBe Instant.parse("2020-10-01T13:30:02Z")
+        mso.validityInfo.validUntil shouldBe Instant.parse("2021-10-01T13:30:02Z")
+        val valueDigestList = mso.valueDigests[NAMESPACE_MDL]
+        valueDigestList.shouldNotBeNull()
+        valueDigestList.findItem(0U) shouldBe "75167333B47B6C2BFB86ECCC1F438CF57AF055371AC55E1E359E20F254ADCEBF"
+            .decodeBase16ToArray()
+        valueDigestList.findItem(1U) shouldBe "67E539D6139EBD131AEF441B445645DD831B2B375B390CA5EF6279B205ED4571"
+            .decodeBase16ToArray()
+        val valueDigestListUs = mso.valueDigests[NAMESPACE_MDL + ".US"]
+        valueDigestListUs.shouldNotBeNull()
+        valueDigestListUs.findItem(0U) shouldBe "D80B83D25173C484C5640610FF1A31C949C1D934BF4CF7F18D5223B15DD4F21C"
+            .decodeBase16ToArray()
+        valueDigestListUs.findItem(1U) shouldBe "4D80E1E2E4FB246D97895427CE7000BB59BB24C8CD003ECF94BF35BBD2917E34"
+            .decodeBase16ToArray()
     }
 
     "Driving Privilege" {
@@ -444,18 +519,42 @@ class CborSerializationTest : FreeSpec({
             044b890ad85aa53f129134775d733754d7cb7a413766aeff13cb2e
         """.trimIndent().replace("\n", "").uppercase()
 
-        val deserialized = CoseSigned.deserialize(input.decodeBase16ToArray()!!)
-        deserialized.shouldNotBeNull()
+        val coseSigned = CoseSigned.deserialize(input.decodeBase16ToArray()!!)
+        coseSigned.shouldNotBeNull()
+        println(coseSigned)
 
-        println(deserialized)
-        // NOTE: deserialized.payload is a tagged CBOR bytestring with Tag 24 = 0xD818
-        // TODO How to deserialize a tagged byte string?
-        val payload = deserialized.payload
+        val payload = coseSigned.payload
         payload.shouldNotBeNull()
-        val stripped = payload.drop(5).toByteArray()
-        val parsed = MobileSecurityObject.deserialize(stripped)
-        parsed.shouldNotBeNull()
-        println(parsed)
+        val mso = MobileSecurityObject.deserializeFromIssuerAuth(payload)
+        mso.shouldNotBeNull()
+        println(mso)
+        mso.version shouldBe "1.0"
+        mso.digestAlgorithm shouldBe "SHA-256"
+        mso.docType shouldBe DOC_TYPE_MDL
+        mso.validityInfo.signed shouldBe Instant.parse("2020-10-01T13:30:02Z")
+        mso.validityInfo.validFrom shouldBe Instant.parse("2020-10-01T13:30:02Z")
+        mso.validityInfo.validUntil shouldBe Instant.parse("2021-10-01T13:30:02Z")
+        val valueDigestList = mso.valueDigests[NAMESPACE_MDL]
+        valueDigestList.shouldNotBeNull()
+        valueDigestList.findItem(0U) shouldBe "75167333B47B6C2BFB86ECCC1F438CF57AF055371AC55E1E359E20F254ADCEBF"
+            .decodeBase16ToArray()
+        valueDigestList.findItem(1U) shouldBe "67E539D6139EBD131AEF441B445645DD831B2B375B390CA5EF6279B205ED4571"
+            .decodeBase16ToArray()
+        val valueDigestListUs = mso.valueDigests["$NAMESPACE_MDL.US"]
+        valueDigestListUs.shouldNotBeNull()
+        valueDigestListUs.findItem(0U) shouldBe "D80B83D25173C484C5640610FF1A31C949C1D934BF4CF7F18D5223B15DD4F21C"
+            .decodeBase16ToArray()
+        valueDigestListUs.findItem(1U) shouldBe "4D80E1E2E4FB246D97895427CE7000BB59BB24C8CD003ECF94BF35BBD2917E34"
+            .decodeBase16ToArray()
     }
 
 })
+
+private fun ItemsRequestList.findItem(key: String) =
+    entries.first { it.key == key }.value
+
+private fun ValueDigestList.findItem(digestId: UInt) =
+    entries.first { it.key == digestId }.value
+
+private fun IssuerSignedList.findItem(digestId: UInt) =
+    entries.first { it.value.digestId == digestId }.value

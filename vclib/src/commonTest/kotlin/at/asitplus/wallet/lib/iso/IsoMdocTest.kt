@@ -75,7 +75,7 @@ class Wallet {
         println("Wallet stored IssuerAuth: $issuerAuth")
         val issuerAuthPayload = issuerAuth.payload
         issuerAuthPayload.shouldNotBeNull()
-        val mso = MobileSecurityObject.deserialize(issuerAuthPayload.stripCborTag(24))
+        val mso = document.issuerSigned.getIssuerAuthPayloadAsMso()
         mso.shouldNotBeNull()
         val mdlItems = document.issuerSigned.namespaces?.get(NAMESPACE_MDL)
         mdlItems.shouldNotBeNull()
@@ -192,7 +192,7 @@ class Issuer {
                         issuerAuth = coseService.createSignedCose(
                             protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
                             unprotectedHeader = null, // TODO transport issuer certificate
-                            payload = mso.serialize().wrapInCborTag(24),
+                            payload = mso.serializeForIssuerAuth(),
                             addKeyId = false,
                         ).getOrThrow()
                     ),
@@ -252,7 +252,7 @@ class Verifier {
         verifierCoseService.verifyCose(issuerAuth, issuerKey).getOrThrow().shouldBe(true)
         val issuerAuthPayload = issuerAuth.payload
         issuerAuthPayload.shouldNotBeNull()
-        val mso = MobileSecurityObject.deserialize(issuerAuthPayload.stripCborTag(24))
+        val mso = issuerSigned.getIssuerAuthPayloadAsMso()
         mso.shouldNotBeNull()
         mso.docType shouldBe DOC_TYPE_MDL
         val mdlItems = mso.valueDigests[NAMESPACE_MDL]

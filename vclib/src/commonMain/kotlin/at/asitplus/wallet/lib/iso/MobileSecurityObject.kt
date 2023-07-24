@@ -11,6 +11,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.cbor.ByteStringWrapper
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -45,7 +46,21 @@ data class MobileSecurityObject(
 
     fun serialize() = cborSerializer.encodeToByteArray(this)
 
+    fun serializeForIssuerAuth() =
+        cborSerializer.encodeToByteArray(ByteStringWrapperMobileSecurityObjectSerializer, ByteStringWrapper(this))
+            .wrapInCborTag(24)
+
     companion object {
+        fun deserializeFromIssuerAuth(it: ByteArray) = kotlin.runCatching {
+            cborSerializer.decodeFromByteArray(
+                ByteStringWrapperMobileSecurityObjectSerializer,
+                it.stripCborTag(24)
+            ).value
+        }.getOrElse {
+            Napier.w("deserialize failed", it)
+            null
+        }
+
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<MobileSecurityObject>(it)
         }.getOrElse {
@@ -225,4 +240,22 @@ data class ValidityInfo(
             null
         }
     }
+}
+
+
+object ByteStringWrapperMobileSecurityObjectSerializer : KSerializer<ByteStringWrapper<MobileSecurityObject>> {
+
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("ByteStringWrapperMobileSecurityObjectSerializer", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: ByteStringWrapper<MobileSecurityObject>) {
+        val bytes = cborSerializer.encodeToByteArray(value.value)
+        encoder.encodeSerializableValue(ByteArraySerializer(), bytes)
+    }
+
+    override fun deserialize(decoder: Decoder): ByteStringWrapper<MobileSecurityObject> {
+        val bytes = decoder.decodeSerializableValue(ByteArraySerializer())
+        return ByteStringWrapper(cborSerializer.decodeFromByteArray(bytes), bytes)
+    }
+
 }

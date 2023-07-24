@@ -28,6 +28,7 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.encoding.decodeStructure
 import kotlinx.serialization.encoding.encodeCollection
 import kotlinx.serialization.encoding.encodeStructure
+import okio.ByteString.Companion.toByteString
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
@@ -227,6 +228,9 @@ data class IssuerSigned(
     val issuerAuth: CoseSigned,
 ) {
 
+    fun getIssuerAuthPayloadAsMso() = issuerAuth.payload?.stripCborTag(24)
+        ?.let { cborSerializer.decodeFromByteArray(ByteStringWrapperMobileSecurityObjectSerializer, it).value }
+
     fun serialize() = cborSerializer.encodeToByteArray(this)
 
     companion object {
@@ -250,6 +254,7 @@ data class IssuerSignedList(
 
     companion object {
         fun withItems(list: List<IssuerSignedItem>) = IssuerSignedList(
+            // TODO verify serialization of this
             list.map { ByteStringWrapper(it, cborSerializer.encodeToByteArray(it).wrapInCborTag(24)) }
         )
     }
@@ -514,4 +519,4 @@ fun ByteArray.stripCborTag(tag: Byte) = this.dropWhile { it == 0xd8.toByte() }.d
 
 fun ByteArray.wrapInCborTag(tag: Byte) = byteArrayOf(0xd8.toByte()) + byteArrayOf(tag) + this
 
-fun ByteArray.sha256(): ByteArray = this//toByteString().sha256().toByteArray()
+fun ByteArray.sha256(): ByteArray = toByteString().sha256().toByteArray()
