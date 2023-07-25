@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.cbor.CoseSigned
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import io.github.aakira.napier.Napier
 import io.matthewnelson.component.encoding.base16.encodeBase16
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -414,10 +415,19 @@ data class IssuerSignedItem(
 @Serializable(with = ElementValueSerializer::class)
 data class ElementValue(
     val bytes: ByteArray? = null,
+    @ValueTags(1004u)
+    val date: LocalDate? = null,
     val string: String? = null,
     val drivingPrivilege: List<DrivingPrivilege>? = null,
 ) {
     fun serialize() = cborSerializer.encodeToByteArray(this)
+
+    override fun toString(): String {
+        return "ElementValue(bytes=${bytes?.encodeBase16()}," +
+                " date=${date}," +
+                " string=$string," +
+                " drivingPrivilege=$drivingPrivilege)"
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -429,19 +439,17 @@ data class ElementValue(
             if (other.bytes == null) return false
             if (!bytes.contentEquals(other.bytes)) return false
         } else if (other.bytes != null) return false
+        if (date != other.date) return false
         if (string != other.string) return false
         return drivingPrivilege == other.drivingPrivilege
     }
 
     override fun hashCode(): Int {
         var result = bytes?.contentHashCode() ?: 0
+        result = 31 * result + (date?.hashCode() ?: 0)
         result = 31 * result + (string?.hashCode() ?: 0)
         result = 31 * result + (drivingPrivilege?.hashCode() ?: 0)
         return result
-    }
-
-    override fun toString(): String {
-        return "ElementValue(bytes=${bytes?.encodeBase16()}, string=$string, drivingPrivilege=$drivingPrivilege)"
     }
 
     companion object {
@@ -551,6 +559,9 @@ object ElementValueSerializer : KSerializer<ElementValue> {
     override fun serialize(encoder: Encoder, value: ElementValue) {
         value.bytes?.let {
             encoder.encodeSerializableValue(ByteArraySerializer(), it)
+        } ?: value.date?.let {
+            // TODO write tag 1004
+            encoder.encodeSerializableValue(LocalDate.serializer(), it)
         } ?: value.string?.let {
             encoder.encodeString(it)
         } ?: value.drivingPrivilege?.let {
@@ -563,12 +574,19 @@ object ElementValueSerializer : KSerializer<ElementValue> {
             return ElementValue(bytes = decoder.decodeSerializableValue(ByteArraySerializer()))
         }
         runCatching {
-            return ElementValue(string = decoder.decodeString())
-        }
-        runCatching {
             return ElementValue(
                 drivingPrivilege = decoder.decodeSerializableValue(ListSerializer(DrivingPrivilege.serializer()))
             )
+        }
+        runCatching {
+            val string = decoder.decodeString()
+            runCatching {
+                LocalDate.parse(string)
+            }.onSuccess {
+                return ElementValue(date = it)
+            }.onFailure {
+                return ElementValue(string = string)
+            }
         }
         throw IllegalArgumentException("Could not decode instance of ElementValue")
     }

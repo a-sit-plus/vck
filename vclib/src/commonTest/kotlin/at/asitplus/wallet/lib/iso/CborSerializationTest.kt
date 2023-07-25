@@ -341,9 +341,9 @@ class CborSerializationTest : FreeSpec({
         issuerSignedList.findItem(0U).elementIdentifier shouldBe FAMILY_NAME
         issuerSignedList.findItem(0U).elementValue.string shouldBe "Doe"
         issuerSignedList.findItem(3U).elementIdentifier shouldBe ISSUE_DATE
-        issuerSignedList.findItem(3U).elementValue.string shouldBe "2019-10-20"
+        issuerSignedList.findItem(3U).elementValue.date shouldBe LocalDate.parse("2019-10-20")
         issuerSignedList.findItem(4U).elementIdentifier shouldBe EXPIRY_DATE
-        issuerSignedList.findItem(4U).elementValue.string shouldBe "2024-10-20"
+        issuerSignedList.findItem(4U).elementValue.date shouldBe LocalDate.parse("2024-10-20")
         issuerSignedList.findItem(7U).elementIdentifier shouldBe DOCUMENT_NUMBER
         issuerSignedList.findItem(7U).elementValue.string shouldBe "123456789"
         issuerSignedList.findItem(8U).elementIdentifier shouldBe PORTRAIT
@@ -384,7 +384,7 @@ class CborSerializationTest : FreeSpec({
 
         document.deviceSigned.deviceAuth.deviceMac.shouldNotBeNull()
 
-        // TODO valuedigests need tag 24 -> 0xd818
+        // TODO dates in ElementValue need tags 1004u => 0xD903EC
         deviceResponse.serialize().encodeBase16() shouldBe input
     }
 
