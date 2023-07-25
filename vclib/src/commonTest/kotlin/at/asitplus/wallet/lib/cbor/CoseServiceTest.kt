@@ -32,10 +32,8 @@ class CoseServiceTest : FreeSpec({
         signed.payload shouldBe randomPayload
         signed.signature.shouldNotBeNull()
 
-        // TODO activate once serialization works
-        //val parsed = CoseSigned.deserialize(signed.serialize())
-        //parsed.shouldNotBeNull()
-        val parsed = signed
+        val parsed = CoseSigned.deserialize(signed.serialize())
+        parsed.shouldNotBeNull()
 
         val result = verifierCoseService.verifyCose(parsed, cryptoService.toCoseKey()).getOrThrow()
         result shouldBe true

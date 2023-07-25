@@ -9,5 +9,6 @@ val cborSerializer by lazy {
         ignoreUnknownKeys = true
         alwaysUseByteString = true
         encodeDefaults = false
+        writeDefiniteLengths = true
     }
 }

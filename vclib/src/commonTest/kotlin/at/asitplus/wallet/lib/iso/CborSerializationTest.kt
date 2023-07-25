@@ -159,8 +159,8 @@ class CborSerializationTest : FreeSpec({
         docRequest.readerAuth.shouldNotBeNull()
         docRequest.readerAuth?.unprotectedHeader?.certificateChain?.shouldNotBeNull()
 
-        // TODO Needs definite length for arrays, e.g. in deviceRequest.docRequests
-        //deviceRequest.serialize().encodeBase16().uppercase() shouldBe input
+        // TODO only F6 as "null" for readerAuth.payload is missing
+        deviceRequest.serialize().encodeBase16().uppercase() shouldBe input
     }
 
     // From ISO/IEC 18013-5:2021(E), D4.1.2, page 116
@@ -382,8 +382,10 @@ class CborSerializationTest : FreeSpec({
         valueDigestListUs.findItem(1U) shouldBe "4D80E1E2E4FB246D97895427CE7000BB59BB24C8CD003ECF94BF35BBD2917E34"
             .decodeBase16ToArray()
 
-        // TODO D818 is the tags for digests
-        //deviceResponse.serialize().encodeBase16() shouldBe input
+        document.deviceSigned.deviceAuth.deviceMac.shouldNotBeNull()
+
+        // TODO valuedigests need tag 24 -> 0xd818
+        deviceResponse.serialize().encodeBase16() shouldBe input
     }
 
     "Driving Privilege" {
@@ -555,7 +557,7 @@ class CborSerializationTest : FreeSpec({
             .decodeBase16ToArray()
 
         // TODO only A7 vs A1 for serialized CoseHeader is wrong!
-        //coseSigned.serialize().encodeBase16() shouldBe input
+        coseSigned.serialize().encodeBase16() shouldBe input
     }
 
 })

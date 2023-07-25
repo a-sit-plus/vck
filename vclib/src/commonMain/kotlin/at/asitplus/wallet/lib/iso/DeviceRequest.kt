@@ -76,6 +76,7 @@ data class DeviceRequest(
 data class DocRequest(
     @SerialName("itemsRequest")
     @Serializable(with = ByteStringWrapperItemsRequestSerializer::class)
+    @ValueTags(24U)
     val itemsRequest: ByteStringWrapper<ItemsRequest>,
     @SerialName("readerAuth")
     val readerAuth: CoseSigned? = null,
@@ -236,7 +237,6 @@ data class Document(
 @Serializable
 data class IssuerSigned(
     @SerialName("nameSpaces")
-    @ByteString
     val namespaces: Map<String, IssuerSignedList>? = null,
     @SerialName("issuerAuth")
     val issuerAuth: CoseSigned,
@@ -292,6 +292,7 @@ object IssuerSignedListSerializer : KSerializer<IssuerSignedList> {
         var index = 0
         encoder.encodeCollection(descriptor, value.entries.size) {
             value.entries.forEach {
+                // TODO Need tag 24 -> 0xd818 prefix for each bytearray ...
                 encodeSerializableElement(descriptor, index++, ByteArraySerializer(), it.value.serialize())
             }
         }
@@ -430,7 +431,6 @@ data class DeviceSigned(
     @ValueTags(24U)
     val namespaces: ByteArray,
     @SerialName("deviceAuth")
-    @ByteString
     val deviceAuth: DeviceAuth,
 ) {
     fun extractDeviceNameSpaces(): Map<String, Map<String, ElementValue>> {

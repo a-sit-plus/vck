@@ -30,13 +30,13 @@ data class CoseKey(
     @SerialLabel(3)
     @SerialName("alg")
     val algorithm: CoseAlgorithm? = null,
-//    @SerialLabel(4)
-//    @SerialName("key_ops")
-//    val operations: Array<CoseKeyOperation>? = null,
-//    @SerialLabel(5)
-//    @SerialName("Base IV")
-//    @ByteString
-//    val baseIv: ByteArray? = null,
+    @SerialLabel(4)
+    @SerialName("key_ops")
+    val operations: Array<CoseKeyOperation>? = null,
+    @SerialLabel(5)
+    @SerialName("Base IV")
+    @ByteString
+    val baseIv: ByteArray? = null,
     @SerialLabel(-1)
     @SerialName("crv")
     val curve: CoseEllipticCurve? = null,
@@ -46,9 +46,9 @@ data class CoseKey(
     @SerialLabel(-3)
     @SerialName("y") // TODO might also be bool
     val y: ByteArray? = null,
-//    @SerialLabel(-4)
-//    @SerialName("d")
-//    val d: ByteArray? = null,
+    @SerialLabel(-4)
+    @SerialName("d")
+    val d: ByteArray? = null,
 ) {
     fun serialize() = cborSerializer.encodeToByteArray(this)
 
@@ -114,12 +114,12 @@ data class CoseKey(
         return "CoseKey(type=$type," +
                 " keyId=${keyId?.encodeBase16()}," +
                 " algorithm=$algorithm," +
-                //" operations=${operations?.contentToString()}," +
-                //" baseIv=${baseIv?.encodeBase16()}," +
+                " operations=${operations?.contentToString()}," +
+                " baseIv=${baseIv?.encodeBase16()}," +
                 " curve=$curve," +
                 " x=${x?.encodeBase16()}," +
-                " y=${y?.encodeBase16()})"
-                //" d=${d?.encodeBase16()})"
+                " y=${y?.encodeBase16()}," +
+                " d=${d?.encodeBase16()})"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -134,6 +134,14 @@ data class CoseKey(
             if (!keyId.contentEquals(other.keyId)) return false
         } else if (other.keyId != null) return false
         if (algorithm != other.algorithm) return false
+        if (operations != null) {
+            if (other.operations == null) return false
+            if (!operations.contentEquals(other.operations)) return false
+        } else if (other.operations != null) return false
+        if (baseIv != null) {
+            if (other.baseIv == null) return false
+            if (!baseIv.contentEquals(other.baseIv)) return false
+        } else if (other.baseIv != null) return false
         if (curve != other.curve) return false
         if (x != null) {
             if (other.x == null) return false
@@ -143,6 +151,10 @@ data class CoseKey(
             if (other.y == null) return false
             if (!y.contentEquals(other.y)) return false
         } else if (other.y != null) return false
+        if (d != null) {
+            if (other.d == null) return false
+            if (!d.contentEquals(other.d)) return false
+        } else if (other.d != null) return false
 
         return true
     }
@@ -151,9 +163,12 @@ data class CoseKey(
         var result = type.hashCode()
         result = 31 * result + (keyId?.contentHashCode() ?: 0)
         result = 31 * result + (algorithm?.hashCode() ?: 0)
+        result = 31 * result + (operations?.contentHashCode() ?: 0)
+        result = 31 * result + (baseIv?.contentHashCode() ?: 0)
         result = 31 * result + (curve?.hashCode() ?: 0)
         result = 31 * result + (x?.contentHashCode() ?: 0)
         result = 31 * result + (y?.contentHashCode() ?: 0)
+        result = 31 * result + (d?.contentHashCode() ?: 0)
         return result
     }
 

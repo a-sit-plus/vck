@@ -57,9 +57,6 @@ class Wallet {
 
     val deviceKeyInfo = DeviceKeyInfo(
         deviceKey = cryptoService.toCoseKey(),
-        // specify optional parameters as workaround for definite length encoding in CBOR
-        keyAuthorizations = KeyAuthorization(namespaces = arrayOf("a"), dataElements = mapOf("b" to arrayOf("c"))),
-        keyInfo = mapOf(0 to "bar")
     )
 
     var storedMdl: MobileDrivingLicence? = null
@@ -175,8 +172,6 @@ class Issuer {
                 signed = Clock.System.now(),
                 validFrom = Clock.System.now(),
                 validUntil = Clock.System.now(),
-                // specify optional parameters as workaround for definite length encoding in CBOR
-                expectedUpdate = Clock.System.now(),
             )
         )
 
