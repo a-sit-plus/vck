@@ -12,6 +12,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.ByteStringWrapper
 import kotlinx.serialization.cbor.ValueTags
@@ -19,6 +20,8 @@ import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.SerialKind
+import kotlinx.serialization.descriptors.StructureKind
 import kotlinx.serialization.descriptors.listSerialDescriptor
 import kotlinx.serialization.descriptors.mapSerialDescriptor
 import kotlinx.serialization.encodeToByteArray
@@ -99,7 +102,6 @@ data class ItemsRequest(
     @SerialName("requestInfo")
     val requestInfo: Map<String, String>? = null,
 )
-
 
 
 /**
@@ -284,15 +286,47 @@ data class IssuerSignedList(
  */
 object IssuerSignedListSerializer : KSerializer<IssuerSignedList> {
 
-    override val descriptor: SerialDescriptor = listSerialDescriptor(
-        listSerialDescriptor<Byte>()
-    )
+    override val descriptor: SerialDescriptor = object : SerialDescriptor {
+        @ExperimentalSerializationApi
+        override val elementsCount: Int = 1
+
+        @ExperimentalSerializationApi
+        override val kind: SerialKind = StructureKind.LIST
+
+        @ExperimentalSerializationApi
+        override val serialName: String = "kotlin.collections.ArrayList"
+
+        @ExperimentalSerializationApi
+        override fun getElementAnnotations(index: Int): List<Annotation> {
+            return listOf(ValueTags(24U))
+        }
+
+        @ExperimentalSerializationApi
+        override fun getElementDescriptor(index: Int): SerialDescriptor {
+            return Byte.serializer().descriptor
+        }
+
+        @ExperimentalSerializationApi
+        override fun getElementIndex(name: String): Int {
+            return name.toInt()
+        }
+
+        @ExperimentalSerializationApi
+        override fun getElementName(index: Int): String {
+            return index.toString()
+        }
+
+        @ExperimentalSerializationApi
+        override fun isElementOptional(index: Int): Boolean {
+            return false
+        }
+    }
+
 
     override fun serialize(encoder: Encoder, value: IssuerSignedList) {
         var index = 0
         encoder.encodeCollection(descriptor, value.entries.size) {
             value.entries.forEach {
-                // TODO Need tag 24 -> 0xd818 prefix for each bytearray ...
                 encodeSerializableElement(descriptor, index++, ByteArraySerializer(), it.value.serialize())
             }
         }

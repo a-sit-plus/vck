@@ -39,7 +39,7 @@ class IsoMdocTest : FreeSpec({
         val verifier = Verifier()
         val issuer = Issuer()
 
-        // TODO Wallet needs to prove posession of key
+        // TODO Wallet needs to prove possession of key
         val deviceResponse = issuer.buildDeviceResponse(wallet.deviceKeyInfo)
         wallet.storeMdl(deviceResponse)
 
