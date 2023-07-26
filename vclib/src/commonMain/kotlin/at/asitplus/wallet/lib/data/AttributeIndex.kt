@@ -6,6 +6,7 @@ object AttributeIndex {
 
     init {
         schemeSet += ConstantIndex.AtomicAttribute2023
+        schemeSet += ConstantIndex.MobileDrivingLicence2023
     }
 
     internal fun registerAttributeType(scheme: ConstantIndex.CredentialScheme) {

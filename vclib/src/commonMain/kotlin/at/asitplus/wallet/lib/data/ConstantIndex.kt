@@ -2,6 +2,11 @@ package at.asitplus.wallet.lib.data
 
 object ConstantIndex {
 
+    enum class CredentialFormat {
+        ISO_18013,
+        W3C_VC
+    }
+
     interface CredentialScheme {
         /**
          * Name of the credential definition, used in several protocols.
@@ -21,6 +26,11 @@ object ConstantIndex {
          * Name of the subclass of [CredentialSubject] and thus the `type` of the credential.
          */
         val vcType: String
+
+        /**
+         * Form of the credential, either according to ISO 18013 (mobile driving licence) or W3C VC Data Model.
+         */
+        val credentialFormat: CredentialFormat
     }
 
     object Parser {
@@ -28,6 +38,7 @@ object ConstantIndex {
 
         init {
             registerGoalCode(AtomicAttribute2023)
+            registerGoalCode(MobileDrivingLicence2023)
         }
 
         fun parseGoalCode(goalCode: String) = when (goalCode) {
@@ -45,7 +56,14 @@ object ConstantIndex {
         override val credentialDefinitionName: String = "atomic-attribute-2023"
         override val schemaUri: String = "https://wallet.a-sit.at/schemas/1.0.0/AtomicAttribute2023.json"
         override val vcType: String = "AtomicAttribute2023"
+        override val credentialFormat: CredentialFormat = CredentialFormat.W3C_VC
+    }
 
+    object MobileDrivingLicence2023 : CredentialScheme {
+        override val credentialDefinitionName: String = "mobile-driving-licence-2023"
+        override val schemaUri: String = "https://wallet.a-sit.at/schemas/1.0.0/MobileDrivingLicence2023.json"
+        override val vcType: String = "MobileDrivingLicence"
+        override val credentialFormat: CredentialFormat = CredentialFormat.ISO_18013
     }
 
 }
