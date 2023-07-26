@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
+import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
 import io.matthewnelson.component.encoding.base16.encodeBase16
@@ -47,6 +48,7 @@ class TestCredentialDataProvider(
 
     override fun getCredentialWithType(
         subjectId: String,
+        subjectPublicKey: CoseKey?,
         attributeTypes: Collection<String>
     ): KmmResult<List<CredentialToBeIssued>> {
         val attributeType = TestCredentialScheme.vcType

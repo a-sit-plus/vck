@@ -1,11 +1,25 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
+import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.iso.DeviceKeyInfo
+import at.asitplus.wallet.lib.iso.DrivingPrivilege
+import at.asitplus.wallet.lib.iso.DrivingPrivilegeCode
+import at.asitplus.wallet.lib.iso.ElementValue
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements
+import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.iso.IssuerSignedList
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.wallet.lib.iso.ValidityInfo
+import at.asitplus.wallet.lib.iso.ValueDigest
+import at.asitplus.wallet.lib.iso.ValueDigestList
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import io.kotest.core.spec.style.FunSpec
@@ -13,27 +27,60 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.ktor.http.Url
 import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
+import kotlin.random.Random
 
 class OidvciProcessTest : FunSpec({
 
-    val dataProvider = object : IssuerCredentialDataProvider {
+    class OidvciDataProvider : IssuerCredentialDataProvider {
         override fun getCredentialWithType(
             subjectId: String,
+            subjectPublicKey: CoseKey?,
             attributeTypes: Collection<String>
-        ): KmmResult<List<IssuerCredentialDataProvider.CredentialToBeIssued>> {
+        ): KmmResult<List<CredentialToBeIssued>> {
             return KmmResult.success(
                 attributeTypes.mapNotNull {
                     when (it) {
-                        ConstantIndex.AtomicAttribute2023.vcType -> {
-                            IssuerCredentialDataProvider.CredentialToBeIssued(
-                                subject = AtomicAttribute2023(subjectId, "name", "value"),
-                                expiration = Clock.System.now(),
-                                attributeType = ConstantIndex.AtomicAttribute2023.vcType,
+                        ConstantIndex.MobileDrivingLicence2023.vcType -> {
+                            val drivingPrivilege = DrivingPrivilege(
+                                vehicleCategoryCode = "B",
+                                issueDate = LocalDate.parse("2023-01-01"),
+                                expiryDate = LocalDate.parse("2033-01-31"),
+                                codes = arrayOf(DrivingPrivilegeCode(code = "B", sign = "sign", value = "value"))
+                            )
+                            val issuerSignedItems = listOf(
+                                buildIssuerSignedItem(DataElements.FAMILY_NAME, "Mustermann", 0U),
+                                buildIssuerSignedItem(DataElements.GIVEN_NAME, "Max", 1U),
+                                buildIssuerSignedItem(DataElements.DOCUMENT_NUMBER, "123456789", 2U),
+                                buildIssuerSignedItem(DataElements.ISSUE_DATE, "2023-01-01", 3U),
+                                buildIssuerSignedItem(DataElements.EXPIRY_DATE, "2033-01-31", 4U),
+                                buildIssuerSignedItem(DataElements.DRIVING_PRIVILEGES, drivingPrivilege, 4U),
+                            )
+
+                            val mso = MobileSecurityObject(
+                                version = "1.0",
+                                digestAlgorithm = "SHA-256",
+                                valueDigests = mapOf(
+                                    IsoDataModelConstants.NAMESPACE_MDL to ValueDigestList(entries = issuerSignedItems.map {
+                                        ValueDigest.fromIssuerSigned(it)
+                                    })
+                                ),
+                                deviceKeyInfo = DeviceKeyInfo(subjectPublicKey!!),
+                                docType = IsoDataModelConstants.DOC_TYPE_MDL,
+                                validityInfo = ValidityInfo(
+                                    signed = Clock.System.now(),
+                                    validFrom = Clock.System.now(),
+                                    validUntil = Clock.System.now(),
+                                )
+                            )
+                            CredentialToBeIssued.Iso(
+                                issuerSigned = IssuerSignedList.withItems(issuerSignedItems),
+                                mso = mso,
                             )
                         }
 
-                        ConstantIndex.MobileDrivingLicence2023.vcType -> {
-                            IssuerCredentialDataProvider.CredentialToBeIssued(
+                        ConstantIndex.AtomicAttribute2023.vcType -> {
+                            CredentialToBeIssued.Vc(
                                 subject = AtomicAttribute2023(subjectId, "name", "value"),
                                 expiration = Clock.System.now(),
                                 attributeType = ConstantIndex.AtomicAttribute2023.vcType,
@@ -48,6 +95,8 @@ class OidvciProcessTest : FunSpec({
             )
         }
     }
+
+    val dataProvider = OidvciDataProvider()
     val issuer = IssuerService(
         issuer = IssuerAgent.newDefaultInstance(
             cryptoService = DefaultCryptoService(),
@@ -89,3 +138,17 @@ class OidvciProcessTest : FunSpec({
     }
 
 })
+
+fun buildIssuerSignedItem(elementIdentifier: String, elementValue: String, digestId: UInt) = IssuerSignedItem(
+    digestId = digestId,
+    random = Random.nextBytes(16),
+    elementIdentifier = elementIdentifier,
+    elementValue = ElementValue(string = elementValue)
+)
+
+fun buildIssuerSignedItem(elementIdentifier: String, elementValue: DrivingPrivilege, digestId: UInt) = IssuerSignedItem(
+    digestId = digestId,
+    random = Random.nextBytes(16),
+    elementIdentifier = elementIdentifier,
+    elementValue = ElementValue(drivingPrivilege = listOf(elementValue))
+)

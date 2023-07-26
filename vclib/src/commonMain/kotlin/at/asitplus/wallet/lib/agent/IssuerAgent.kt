@@ -67,7 +67,7 @@ class IssuerAgent constructor(
         subjectPublicKey: CoseKey?,
         attributeTypes: Collection<String>
     ): Issuer.IssuedCredentialResult {
-        val result = dataProvider.getCredentialWithType(subjectId, attributeTypes)
+        val result = dataProvider.getCredentialWithType(subjectId, subjectPublicKey, attributeTypes)
         result.exceptionOrNull()?.let { failure ->
             return Issuer.IssuedCredentialResult(failed = attributeTypes.map { Issuer.FailedAttribute(it, failure) })
         }

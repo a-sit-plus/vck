@@ -110,7 +110,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it)
@@ -126,7 +126,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it)
@@ -143,7 +143,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it)
@@ -160,7 +160,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it)
@@ -176,7 +176,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it)
@@ -193,7 +193,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it)
@@ -211,7 +211,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it, expirationDate = Clock.System.now() - 1.hours)
@@ -237,7 +237,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it, expirationDate = null)
@@ -253,7 +253,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it, expirationDate = Clock.System.now() + 1.hours)
@@ -270,7 +270,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 it.let {
@@ -291,7 +291,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 it.let { issueCredential(it) }
@@ -310,7 +310,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it, issuanceDate = Clock.System.now() + 1.hours)
@@ -327,7 +327,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 dataProvider.getCredentialWithType(
                     verifier.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
             ) {
                 issueCredential(it, issuanceDate = Clock.System.now() - 1.hours)

@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.iso.IssuerSignedList
 import at.asitplus.wallet.lib.iso.MobileSecurityObject
@@ -9,7 +10,7 @@ import kotlinx.datetime.Instant
 /**
  * Provides data for credentials to be issued.
  */
-fun interface IssuerCredentialDataProvider {
+interface IssuerCredentialDataProvider {
 
     /**
      * Gets called with a list of credential types, i.e. some of
@@ -17,6 +18,7 @@ fun interface IssuerCredentialDataProvider {
      */
     fun getCredentialWithType(
         subjectId: String,
+        subjectPublicKey: CoseKey? = null,
         attributeTypes: Collection<String>
     ): KmmResult<List<CredentialToBeIssued>>
 
