@@ -29,9 +29,9 @@ data class CoseSigned(
     @Serializable(with = ByteStringWrapperCoseHeaderSerializer::class)
     @ByteString
     val protectedHeader: ByteStringWrapper<CoseHeader>,
-    val unprotectedHeader: CoseHeader? = null,
+    val unprotectedHeader: CoseHeader?,
     @ByteString
-    val payload: ByteArray? = null,
+    val payload: ByteArray?,
     @ByteString
     val signature: ByteArray,
 ) {
@@ -87,9 +87,9 @@ data class CoseSignatureInput(
     @ByteString
     val protectedHeader: ByteStringWrapper<CoseHeader>,
     @ByteString
-    val externalAad: ByteArray = byteArrayOf(),
+    val externalAad: ByteArray,
     @ByteString
-    val payload: ByteArray? = null,
+    val payload: ByteArray?,
 ){
     fun serialize() = cborSerializer.encodeToByteArray(this)
 

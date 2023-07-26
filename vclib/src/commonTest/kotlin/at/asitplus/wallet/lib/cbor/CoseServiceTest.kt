@@ -42,4 +42,24 @@ class CoseServiceTest : FreeSpec({
         result shouldBe true
     }
 
+    "signed object without payload can be verified" {
+        val signed = coseService.createSignedCose(
+            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
+            unprotectedHeader = null,
+            payload = null,
+            addKeyId = true
+        ).getOrThrow()
+        signed.shouldNotBeNull()
+        println(signed.serialize().encodeBase16())
+
+        signed.payload shouldBe null
+        signed.signature.shouldNotBeNull()
+
+        val parsed = CoseSigned.deserialize(signed.serialize())
+        parsed.shouldNotBeNull()
+
+        val result = verifierCoseService.verifyCose(parsed, cryptoService.toCoseKey()).getOrThrow()
+        result shouldBe true
+    }
+
 })

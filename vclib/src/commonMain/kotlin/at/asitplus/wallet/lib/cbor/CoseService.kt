@@ -46,6 +46,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         val signatureInput = CoseSignatureInput(
             contextString = "Signature1",
             protectedHeader = ByteStringWrapper(copy),
+            externalAad = byteArrayOf(),
             payload = payload,
         ).serialize()
 
@@ -71,6 +72,7 @@ class DefaultVerifierCoseService(
         val signatureInput = CoseSignatureInput(
             contextString = "Signature1",
             protectedHeader = ByteStringWrapper(coseSigned.protectedHeader.value),
+            externalAad = byteArrayOf(),
             payload = coseSigned.payload,
         ).serialize()
 

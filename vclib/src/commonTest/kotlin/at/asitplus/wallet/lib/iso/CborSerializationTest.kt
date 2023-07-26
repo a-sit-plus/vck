@@ -159,7 +159,6 @@ class CborSerializationTest : FreeSpec({
         docRequest.readerAuth.shouldNotBeNull()
         docRequest.readerAuth?.unprotectedHeader?.certificateChain?.shouldNotBeNull()
 
-        // TODO only F6 as "null" for readerAuth.payload is missing
         deviceRequest.serialize().encodeBase16().uppercase() shouldBe input
     }
 
