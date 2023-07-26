@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.data.CredentialSubject
-import at.asitplus.wallet.lib.iso.IssuerSignedList
+import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import kotlinx.datetime.Instant
 
@@ -33,7 +33,9 @@ sealed class CredentialToBeIssued {
     ) : CredentialToBeIssued()
 
     data class Iso(
-        val issuerSigned: IssuerSignedList,
-        val mso: MobileSecurityObject
+        val issuerSignedItems: List<IssuerSignedItem>,
+        val subjectPublicKey: CoseKey,
+        val expiration: Instant,
+        val attributeType: String,
     ) : CredentialToBeIssued()
 }

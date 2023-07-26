@@ -23,6 +23,8 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import io.ktor.http.URLBuilder
+import io.matthewnelson.component.base64.Base64.UrlSafe
+import io.matthewnelson.component.base64.encodeBase64
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -161,13 +163,18 @@ class IssuerService(
         if (issuedCredentialResult.successful.isEmpty()) {
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
-        val issuedCredential = issuedCredentialResult.successful.first()
-        issuedCredential as Issuer.IssuedCredential.Vc
-        // TODO Distinguish format of credential
-        return CredentialResponseParameters(
-            format = CredentialFormatEnum.JWT_VC,
-            credential = issuedCredential.vcJws
-        )
+
+        return when (val issuedCredential = issuedCredentialResult.successful.first()) {
+            is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
+                format = CredentialFormatEnum.MSO_MDOC,
+                credential = issuedCredential.issuerSigned.serialize().encodeBase64(UrlSafe())
+            )
+
+            is Issuer.IssuedCredential.Vc -> CredentialResponseParameters(
+                format = CredentialFormatEnum.JWT_VC,
+                credential = issuedCredential.vcJws
+            )
+        }
     }
 
 }

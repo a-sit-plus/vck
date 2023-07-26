@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.CredentialSubject
+import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import kotlinx.datetime.Instant
 
 /**
@@ -19,6 +20,18 @@ interface IssuerCredentialStore {
         issuanceDate: Instant,
         expirationDate: Instant,
         timePeriod: Int
+    ): Long?
+
+    /**
+     * Called by the issuer when creating a new credential.
+     * Expected to return a new index to use as something for ISO revocation?!
+     * Returns null if `vcId` is already registered
+     */
+    fun storeGetNextIndex(
+        issuerSignedItemList: List<IssuerSignedItem>,
+        issuanceDate: Instant,
+        expirationDate: Instant,
+        timePeriod: Int,
     ): Long?
 
     /**

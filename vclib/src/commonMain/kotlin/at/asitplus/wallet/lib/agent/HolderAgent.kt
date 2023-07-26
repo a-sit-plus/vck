@@ -122,10 +122,9 @@ class HolderAgent constructor(
         audienceId: String,
         attributeTypes: Collection<String>?,
     ): Holder.CreatePresentationResult? {
-        val credentials =
-            subjectCredentialStore.getCredentials(attributeTypes).getOrNull()
-                ?: return null
-                    .also { Napier.w("Got no credentials from subjectCredentialStore") }
+        val credentials = subjectCredentialStore.getCredentials(attributeTypes).getOrNull()
+            ?: return null
+                .also { Napier.w("Got no credentials from subjectCredentialStore") }
         val validCredentials = credentials
             .filter { validator.checkRevocationStatus(it.vc) != Validator.RevocationStatus.REVOKED }
             .map { it.vcSerialized }

@@ -6,6 +6,10 @@ object IsoDataModelConstants {
 
     const val NAMESPACE_MDL = "org.iso.18013.5.1"
 
+    const val DIGEST_SHA_256 = "SHA-256"
+
+    const val VERSION_1_0 = "1.0"
+
     object DataElements {
 
         const val FAMILY_NAME = "family_name"

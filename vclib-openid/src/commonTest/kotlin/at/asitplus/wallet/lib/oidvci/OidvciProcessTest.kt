@@ -15,7 +15,6 @@ import at.asitplus.wallet.lib.iso.ElementValue
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.iso.IssuerSignedList
 import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.wallet.lib.iso.ValidityInfo
 import at.asitplus.wallet.lib.iso.ValueDigest
@@ -27,7 +26,9 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.ktor.http.Url
 import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 import kotlin.random.Random
 
 class OidvciProcessTest : FunSpec({
@@ -56,40 +57,23 @@ class OidvciProcessTest : FunSpec({
                                 buildIssuerSignedItem(DataElements.EXPIRY_DATE, "2033-01-31", 4U),
                                 buildIssuerSignedItem(DataElements.DRIVING_PRIVILEGES, drivingPrivilege, 4U),
                             )
-
-                            val mso = MobileSecurityObject(
-                                version = "1.0",
-                                digestAlgorithm = "SHA-256",
-                                valueDigests = mapOf(
-                                    IsoDataModelConstants.NAMESPACE_MDL to ValueDigestList(entries = issuerSignedItems.map {
-                                        ValueDigest.fromIssuerSigned(it)
-                                    })
-                                ),
-                                deviceKeyInfo = DeviceKeyInfo(subjectPublicKey!!),
-                                docType = IsoDataModelConstants.DOC_TYPE_MDL,
-                                validityInfo = ValidityInfo(
-                                    signed = Clock.System.now(),
-                                    validFrom = Clock.System.now(),
-                                    validUntil = Clock.System.now(),
-                                )
-                            )
                             CredentialToBeIssued.Iso(
-                                issuerSigned = IssuerSignedList.withItems(issuerSignedItems),
-                                mso = mso,
+                                issuerSignedItems = issuerSignedItems,
+                                subjectPublicKey = subjectPublicKey!!,
+                                expiration = Clock.System.now().plus(60, DateTimeUnit.SECOND),
+                                attributeType = ConstantIndex.MobileDrivingLicence2023.vcType,
                             )
                         }
 
                         ConstantIndex.AtomicAttribute2023.vcType -> {
                             CredentialToBeIssued.Vc(
                                 subject = AtomicAttribute2023(subjectId, "name", "value"),
-                                expiration = Clock.System.now(),
+                                expiration = Clock.System.now().plus(60, DateTimeUnit.SECOND),
                                 attributeType = ConstantIndex.AtomicAttribute2023.vcType,
                             )
                         }
 
-                        else -> {
-                            null
-                        }
+                        else -> null
                     }
                 }
             )

@@ -4,11 +4,25 @@ import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.ZlibService
+import at.asitplus.wallet.lib.cbor.CoseAlgorithm
+import at.asitplus.wallet.lib.cbor.CoseHeader
 import at.asitplus.wallet.lib.cbor.CoseKey
+import at.asitplus.wallet.lib.cbor.CoseService
+import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
 import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.iso.DeviceKeyInfo
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DIGEST_SHA_256
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.VERSION_1_0
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.iso.IssuerSignedList
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.wallet.lib.iso.ValidityInfo
+import at.asitplus.wallet.lib.iso.ValueDigest
+import at.asitplus.wallet.lib.iso.ValueDigestList
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -16,13 +30,15 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.component.base64.encodeBase64
 import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.plus
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 
 /**
  * An agent that only implements [Issuer], i.e. it issues credentials for other agents.
  */
-class IssuerAgent constructor(
+class IssuerAgent(
     private val validator: Validator,
     private val issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
     private val revocationListBaseUrl: String = "https://wallet.a-sit.at/backend/credentials/status",
@@ -30,6 +46,7 @@ class IssuerAgent constructor(
     private val zlibService: ZlibService = DefaultZlibService(),
     private val revocationListLifetime: Duration = 48.hours,
     private val jwsService: JwsService,
+    private val coseService: CoseService,
     private val clock: Clock = Clock.System,
     override val identifier: String,
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
@@ -50,6 +67,7 @@ class IssuerAgent constructor(
             ),
             issuerCredentialStore = issuerCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
+            coseService = DefaultCoseService(cryptoService),
             dataProvider = dataProvider,
             identifier = cryptoService.identifier,
             timePeriodProvider = timePeriodProvider,
@@ -84,11 +102,55 @@ class IssuerAgent constructor(
     override suspend fun issueCredential(
         credential: CredentialToBeIssued,
     ): Issuer.IssuedCredentialResult {
+        val issuanceDate = clock.now()
         when (credential) {
-            is CredentialToBeIssued.Iso -> TODO()
+            is CredentialToBeIssued.Iso -> {
+                val expirationDate = credential.expiration
+                val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
+                val statusListIndex = issuerCredentialStore.storeGetNextIndex(
+                    credential.issuerSignedItems,
+                    issuanceDate,
+                    expirationDate,
+                    timePeriod,
+                ) ?: return Issuer.IssuedCredentialResult(
+                    failed = listOf(
+                        Issuer.FailedAttribute(credential.attributeType, DataSourceProblem("no statusListIndex"))
+                    )
+                ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }
+                val mso = MobileSecurityObject(
+                    version = VERSION_1_0,
+                    digestAlgorithm = DIGEST_SHA_256,
+                    valueDigests = mapOf(
+                        IsoDataModelConstants.NAMESPACE_MDL to ValueDigestList(credential.issuerSignedItems.map {
+                            ValueDigest.fromIssuerSigned(it)
+                        })
+                    ),
+                    deviceKeyInfo = DeviceKeyInfo(credential.subjectPublicKey),
+                    docType = IsoDataModelConstants.DOC_TYPE_MDL,
+                    validityInfo = ValidityInfo(
+                        signed = issuanceDate,
+                        validFrom = issuanceDate,
+                        validUntil = expirationDate,
+                    )
+                )
+                val issuerSigned = IssuerSigned(
+                    namespaces = mapOf(
+                        IsoDataModelConstants.NAMESPACE_MDL to IssuerSignedList.withItems(credential.issuerSignedItems)
+                    ),
+                    issuerAuth = coseService.createSignedCose(
+                        protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
+                        unprotectedHeader = null, // TODO transport issuer certificate
+                        payload = mso.serializeForIssuerAuth(),
+                        addKeyId = false,
+                    ).getOrThrow()
+                )
+                return Issuer.IssuedCredentialResult(
+                    successful = listOf(Issuer.IssuedCredential.Iso(issuerSigned))
+                )
+            }
+
             is CredentialToBeIssued.Vc -> {
                 val vcId = "urn:uuid:${uuid4()}"
-                val issuanceDate = clock.now()
                 val expirationDate = credential.expiration
                 val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
                 val statusListIndex = issuerCredentialStore.storeGetNextIndex(
@@ -103,8 +165,7 @@ class IssuerAgent constructor(
                     )
                 ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }
 
-                val credentialStatus =
-                    CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
+                val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
                 val vc = VerifiableCredential(
                     id = vcId,
                     issuer = identifier,
@@ -118,10 +179,7 @@ class IssuerAgent constructor(
                 val vcInJws = wrapVcInJws(vc)
                     ?: return Issuer.IssuedCredentialResult(
                         failed = listOf(
-                            Issuer.FailedAttribute(
-                                credential.attributeType,
-                                RuntimeException("signing failed")
-                            )
+                            Issuer.FailedAttribute(credential.attributeType, RuntimeException("signing failed"))
                         )
                     ).also { Napier.w("Could not wrap credential in JWS") }
 
