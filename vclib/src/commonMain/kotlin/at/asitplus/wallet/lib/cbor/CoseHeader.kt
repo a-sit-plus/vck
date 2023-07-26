@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.wallet.lib.iso.cborSerializer
 import io.github.aakira.napier.Napier
+import io.ktor.http.content.ByteArrayContent
 import io.matthewnelson.component.encoding.base16.encodeBase16
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -28,7 +29,8 @@ data class CoseHeader(
     val contentType: String? = null,
     @SerialLabel(4)
     @SerialName("kid")
-    val kid: String? = null,
+    @ByteString
+    val kid: ByteArray? = null,
     @SerialLabel(5)
     @SerialName("IV")
     @ByteString
@@ -46,6 +48,7 @@ data class CoseHeader(
 ) {
 
     fun serialize() = cborSerializer.encodeToByteArray(this)
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -55,7 +58,10 @@ data class CoseHeader(
         if (algorithm != other.algorithm) return false
         if (criticalHeaders != other.criticalHeaders) return false
         if (contentType != other.contentType) return false
-        if (kid != other.kid) return false
+        if (kid != null) {
+            if (other.kid == null) return false
+            if (!kid.contentEquals(other.kid)) return false
+        } else if (other.kid != null) return false
         if (iv != null) {
             if (other.iv == null) return false
             if (!iv.contentEquals(other.iv)) return false
@@ -76,7 +82,7 @@ data class CoseHeader(
         var result = algorithm?.hashCode() ?: 0
         result = 31 * result + (criticalHeaders?.hashCode() ?: 0)
         result = 31 * result + (contentType?.hashCode() ?: 0)
-        result = 31 * result + (kid?.hashCode() ?: 0)
+        result = 31 * result + (kid?.contentHashCode() ?: 0)
         result = 31 * result + (iv?.contentHashCode() ?: 0)
         result = 31 * result + (partialIv?.contentHashCode() ?: 0)
         result = 31 * result + (certificateChain?.contentHashCode() ?: 0)
@@ -87,12 +93,11 @@ data class CoseHeader(
         return "CoseHeader(algorithm=$algorithm," +
                 " criticalHeaders=$criticalHeaders," +
                 " contentType=$contentType," +
-                " kid=$kid," +
+                " kid=${kid?.encodeBase16()}," +
                 " iv=${iv?.encodeBase16()}," +
                 " partialIv=${partialIv?.encodeBase16()}," +
                 " certificateChain=${certificateChain?.encodeBase16()})"
     }
-
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {

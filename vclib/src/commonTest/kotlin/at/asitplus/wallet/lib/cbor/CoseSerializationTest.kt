@@ -28,7 +28,7 @@ class CoseSerializationTest : FreeSpec({
     }
 
     "Serialize header" {
-        val header = CoseHeader(algorithm = CoseAlgorithm.ES256, kid = "11")
+        val header = CoseHeader(algorithm = CoseAlgorithm.ES256, kid = "11".encodeToByteArray())
         val serialized = header.serialize().encodeBase16().uppercase()
         println(serialized)
 

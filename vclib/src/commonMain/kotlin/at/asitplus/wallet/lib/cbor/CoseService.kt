@@ -41,7 +41,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
     ): KmmResult<CoseSigned> {
         var copy = protectedHeader.copy(algorithm = cryptoService.coseAlgorithm)
         if (addKeyId)
-            copy = copy.copy(kid = cryptoService.identifier)
+            copy = copy.copy(kid = cryptoService.identifier.encodeToByteArray())
 
         val signatureInput = CoseSignatureInput(
             contextString = "Signature1",
