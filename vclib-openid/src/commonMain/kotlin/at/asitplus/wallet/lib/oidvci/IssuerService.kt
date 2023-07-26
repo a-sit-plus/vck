@@ -150,6 +150,7 @@ class IssuerService(
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
         val issuedCredential = issuedCredentialResult.successful.first()
+        issuedCredential as Issuer.IssuedCredential.Vc
         // TODO Distinguish format of credential
         return CredentialResponseParameters(
             format = CredentialFormatEnum.JWT_VC,

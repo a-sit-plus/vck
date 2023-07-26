@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.aries
 
+import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -16,7 +16,6 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.datetime.Clock
 import kotlin.time.Duration
@@ -86,8 +85,9 @@ class PresentProofMessengerTest : FreeSpec() {
 
         "selectiveDisclosure" {
             val expectedSubject = randomCredential(holder.identifier)
-            val attributeName = (expectedSubject.subject as AtomicAttribute2023).name
-            val attributeValue = (expectedSubject.subject as AtomicAttribute2023).value
+            val subject = expectedSubject.subject
+            val attributeName = (subject as AtomicAttribute2023).name
+            val attributeValue = (subject as AtomicAttribute2023).value
             val expectedVc = issuer.issueCredential(expectedSubject)
             holder.storeCredentials(expectedVc.toStoreCredentialInput())
 
@@ -140,16 +140,15 @@ class PresentProofMessengerTest : FreeSpec() {
         }
     }
 
-    private fun randomCredential(subjectId: String) =
-        IssuerCredentialDataProvider.CredentialToBeIssued(
-            AtomicAttribute2023(
-                subjectId,
-                uuid4().toString(),
-                uuid4().toString(),
-                "application/text"
-            ),
-            Clock.System.now() + attributeLifetime,
-            ConstantIndex.AtomicAttribute2023.vcType
-        )
+    private fun randomCredential(subjectId: String) = CredentialToBeIssued.Vc(
+        AtomicAttribute2023(
+            subjectId,
+            uuid4().toString(),
+            uuid4().toString(),
+            "application/text"
+        ),
+        Clock.System.now() + attributeLifetime,
+        ConstantIndex.AtomicAttribute2023.vcType
+    )
 
 }

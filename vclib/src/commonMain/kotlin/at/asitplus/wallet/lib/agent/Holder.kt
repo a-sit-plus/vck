@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentation
+import at.asitplus.wallet.lib.iso.IssuerSigned
 
 /**
  * Summarizes operations for a Holder in the sense of the [W3C VC Data Model](https://w3c.github.io/vc-data-model/).
@@ -23,10 +24,10 @@ interface Holder {
      */
     fun setRevocationList(it: String): Boolean
 
-    data class StoreCredentialInput(
-        val vcJws: String,
-        val attachments: List<Issuer.Attachment>? = null,
-    )
+    sealed class StoreCredentialInput {
+        data class Vc(val vcJws: String, val attachments: List<Issuer.Attachment>? = null): StoreCredentialInput()
+        data class Iso(val issuerSigned: IssuerSigned): StoreCredentialInput()
+    }
 
     /**
      * Stores all verifiable credentials from [credentialList] that parse and validate,

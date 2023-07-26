@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
@@ -47,7 +48,7 @@ class TestCredentialDataProvider(
     override fun getCredentialWithType(
         subjectId: String,
         attributeTypes: Collection<String>
-    ): KmmResult<List<IssuerCredentialDataProvider.CredentialToBeIssued>> {
+    ): KmmResult<List<CredentialToBeIssued>> {
         val attributeType = TestCredentialScheme.vcType
         if (!attributeTypes.contains(attributeType)) {
             return KmmResult.failure(UnsupportedOperationException("no data"))
@@ -55,7 +56,7 @@ class TestCredentialDataProvider(
         val expiration = clock.now() + defaultLifetime
         return KmmResult.success(
             listOf(
-                IssuerCredentialDataProvider.CredentialToBeIssued(
+                CredentialToBeIssued.Vc(
                     TestCredential(subjectId, randomValue(), randomValue()),
                     expiration,
                     attributeType,

@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.aries
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -19,7 +20,7 @@ class DummyCredentialDataProvider(
     override fun getCredentialWithType(
         subjectId: String,
         attributeTypes: Collection<String>
-    ): KmmResult<List<IssuerCredentialDataProvider.CredentialToBeIssued>> {
+    ): KmmResult<List<CredentialToBeIssued>> {
         val attributeType = ConstantIndex.AtomicAttribute2023.vcType
         if (!attributeTypes.contains(attributeType)) {
             return KmmResult.failure(UnsupportedOperationException("no data"))
@@ -27,27 +28,27 @@ class DummyCredentialDataProvider(
         val expiration = clock.now() + defaultLifetime
         return KmmResult.success(
             listOf(
-                IssuerCredentialDataProvider.CredentialToBeIssued(
+                CredentialToBeIssued.Vc(
                     AtomicAttribute2023(subjectId, "given-name", "Susanne"),
                     expiration,
                     attributeType,
                 ),
-                IssuerCredentialDataProvider.CredentialToBeIssued(
+                CredentialToBeIssued.Vc(
                     AtomicAttribute2023(subjectId, "family-name", "Meier"),
                     expiration,
                     attributeType,
                 ),
-                IssuerCredentialDataProvider.CredentialToBeIssued(
+                CredentialToBeIssued.Vc(
                     AtomicAttribute2023(subjectId, "date-of-birth", "1990-01-01"),
                     expiration,
                     attributeType,
                 ),
-                IssuerCredentialDataProvider.CredentialToBeIssued(
+                CredentialToBeIssued.Vc(
                     AtomicAttribute2023(subjectId, "identifier", randomValue()),
                     expiration,
                     attributeType,
                 ),
-                IssuerCredentialDataProvider.CredentialToBeIssued(
+                CredentialToBeIssued.Vc(
                     AtomicAttribute2023(subjectId, "picture", randomValue()),
                     expiration,
                     attributeType,

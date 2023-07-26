@@ -4,7 +4,6 @@ import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.ZlibService
-import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider.CredentialToBeIssued
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
@@ -83,42 +82,52 @@ class IssuerAgent constructor(
     override suspend fun issueCredential(
         credential: CredentialToBeIssued,
     ): Issuer.IssuedCredentialResult {
-        val vcId = "urn:uuid:${uuid4()}"
-        val issuanceDate = clock.now()
-        val expirationDate = credential.expiration
-        val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-        val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            vcId,
-            credential.subject,
-            issuanceDate,
-            expirationDate,
-            timePeriod
-        ) ?: return Issuer.IssuedCredentialResult(
-            failed = listOf(
-                Issuer.FailedAttribute(credential.attributeType, DataSourceProblem("vcId internal mismatch"))
-            )
-        ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }
+        when (credential) {
+            is CredentialToBeIssued.Iso -> TODO()
+            is CredentialToBeIssued.Vc -> {
+                val vcId = "urn:uuid:${uuid4()}"
+                val issuanceDate = clock.now()
+                val expirationDate = credential.expiration
+                val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
+                val statusListIndex = issuerCredentialStore.storeGetNextIndex(
+                    vcId,
+                    credential.subject,
+                    issuanceDate,
+                    expirationDate,
+                    timePeriod
+                ) ?: return Issuer.IssuedCredentialResult(
+                    failed = listOf(
+                        Issuer.FailedAttribute(credential.attributeType, DataSourceProblem("vcId internal mismatch"))
+                    )
+                ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }
 
-        val credentialStatus =
-            CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
-        val vc = VerifiableCredential(
-            id = vcId,
-            issuer = identifier,
-            issuanceDate = issuanceDate,
-            expirationDate = expirationDate,
-            credentialStatus = credentialStatus,
-            credentialSubject = credential.subject,
-            credentialType = credential.attributeType,
-        )
+                val credentialStatus =
+                    CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
+                val vc = VerifiableCredential(
+                    id = vcId,
+                    issuer = identifier,
+                    issuanceDate = issuanceDate,
+                    expirationDate = expirationDate,
+                    credentialStatus = credentialStatus,
+                    credentialSubject = credential.subject,
+                    credentialType = credential.attributeType,
+                )
 
-        val vcInJws = wrapVcInJws(vc)
-            ?: return Issuer.IssuedCredentialResult(
-                failed = listOf(Issuer.FailedAttribute(credential.attributeType, RuntimeException("signing failed")))
-            ).also { Napier.w("Could not wrap credential in JWS") }
+                val vcInJws = wrapVcInJws(vc)
+                    ?: return Issuer.IssuedCredentialResult(
+                        failed = listOf(
+                            Issuer.FailedAttribute(
+                                credential.attributeType,
+                                RuntimeException("signing failed")
+                            )
+                        )
+                    ).also { Napier.w("Could not wrap credential in JWS") }
 
-        return Issuer.IssuedCredentialResult(
-            successful = listOf(Issuer.IssuedCredential(vcInJws, credential.attachments))
-        )
+                return Issuer.IssuedCredentialResult(
+                    successful = listOf(Issuer.IssuedCredential.Vc(vcInJws, credential.attachments))
+                )
+            }
+        }
     }
 
     /**

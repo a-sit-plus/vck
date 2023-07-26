@@ -64,7 +64,7 @@ class HolderAgent constructor(
         val accepted = mutableListOf<VerifiableCredentialJws>()
         val rejected = mutableListOf<String>()
         val attachments = mutableListOf<Holder.StoredAttachmentResult>()
-        credentialList.forEach { cred ->
+        credentialList.filterIsInstance<Holder.StoreCredentialInput.Vc>().forEach { cred ->
             when (val vc = validator.verifyVcJws(cred.vcJws, identifier)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input

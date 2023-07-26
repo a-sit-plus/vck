@@ -247,7 +247,7 @@ class IssueCredentialProtocol(
 
         val fulfillmentAttachments = mutableListOf<JwmAttachment>()
         val binaryAttachments = mutableListOf<JwmAttachment>()
-        issuedCredentials.successful.forEach { cred ->
+        issuedCredentials.successful.filterIsInstance<Issuer.IssuedCredential.Vc>().forEach { cred ->
             val fulfillment = JwmAttachment.encodeJws(cred.vcJws)
             val binary = cred.attachments?.map {
                 JwmAttachment.encode(
@@ -307,7 +307,7 @@ class IssueCredentialProtocol(
         val attachmentList = binaryAttachments
             .filter { it.parent == fulfillment.id }
             .mapNotNull { extractBinaryAttachment(it) }
-        return Holder.StoreCredentialInput(decoded, attachmentList)
+        return Holder.StoreCredentialInput.Vc(decoded, attachmentList)
     }
 
     private fun extractBinaryAttachment(attachment: JwmAttachment): Issuer.Attachment? {

@@ -4,8 +4,10 @@ import at.asitplus.KmmResult
 
 object EmptyCredentialDataProvider : IssuerCredentialDataProvider {
 
-    override fun getCredentialWithType(subjectId: String, attributeTypes: Collection<String>)
-            : KmmResult<List<IssuerCredentialDataProvider.CredentialToBeIssued>> =
+    override fun getCredentialWithType(
+        subjectId: String,
+        attributeTypes: Collection<String>
+    ): KmmResult<List<CredentialToBeIssued>> =
         KmmResult.failure(NotImplementedError())
 
 }

@@ -51,7 +51,7 @@ class ValidatorVcTest : FreeSpec() {
             issuer.issueCredentialWithTypes(
                 verifier.identifier,
                 listOf(ConstantIndex.AtomicAttribute2023.vcType)
-            ).successful.map { it.vcJws }
+            ).successful.filterIsInstance<Issuer.IssuedCredential.Vc>().map { it.vcJws }
                 .forEach {
                     verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
                 }
@@ -62,6 +62,7 @@ class ValidatorVcTest : FreeSpec() {
                 verifier.identifier,
                 listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).successful
+                .filterIsInstance<Issuer.IssuedCredential.Vc>()
                 .map { it.vcJws }
                 .map { it to verifier.verifyVcJws(it) }.forEach {
                     val value = it.second
@@ -82,7 +83,9 @@ class ValidatorVcTest : FreeSpec() {
 
         "wrong subject keyId is not be valid" {
             issuer.issueCredentialWithTypes(uuid4().toString(), listOf(ConstantIndex.AtomicAttribute2023.vcType))
-                .successful.map { it.vcJws }.forEach {
+                .successful
+                .filterIsInstance<Issuer.IssuedCredential.Vc>()
+                .map { it.vcJws }.forEach {
                     verifier.verifyVcJws(it)
                         .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                 }
@@ -92,7 +95,9 @@ class ValidatorVcTest : FreeSpec() {
             issuer.issueCredentialWithTypes(
                 verifier.identifier,
                 listOf(ConstantIndex.AtomicAttribute2023.vcType)
-            ).successful.map { it.vcJws }
+            ).successful
+                .filterIsInstance<Issuer.IssuedCredential.Vc>()
+                .map { it.vcJws }
                 .map { it.replaceFirstChar { "f" } }.forEach {
                     verifier.verifyVcJws(it)
                         .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
@@ -335,16 +340,23 @@ class ValidatorVcTest : FreeSpec() {
     }
 
     private fun issueCredential(
-        credential: IssuerCredentialDataProvider.CredentialToBeIssued,
+        credential: CredentialToBeIssued,
         issuanceDate: Instant = Clock.System.now(),
         expirationDate: Instant? = Clock.System.now() + 60.seconds
     ): VerifiableCredential {
+        credential.shouldBeInstanceOf<CredentialToBeIssued.Vc>()
         val sub = credential.subject
         sub as AtomicAttribute2023
         val vcId = "urn:uuid:${uuid4()}"
         val exp = expirationDate ?: (Clock.System.now() + 60.seconds)
         val statusListIndex =
-            issuerCredentialStore.storeGetNextIndex(vcId, sub, issuanceDate, exp, FixedTimePeriodProvider.timePeriod)!!
+            issuerCredentialStore.storeGetNextIndex(
+                vcId,
+                sub,
+                issuanceDate,
+                exp,
+                FixedTimePeriodProvider.timePeriod
+            )!!
         val credentialStatus = CredentialStatus(revocationListUrl, statusListIndex)
         return VerifiableCredential(
             id = vcId,

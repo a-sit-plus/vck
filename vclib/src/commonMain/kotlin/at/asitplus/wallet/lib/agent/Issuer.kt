@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.iso.IssuerSigned
 
 
 /**
@@ -12,16 +13,17 @@ interface Issuer {
 
     data class FailedAttribute(val attributeName: String, val reason: Throwable)
 
-    data class IssuedCredential(
-        val vcJws: String,
-        val attachments: List<Attachment>? = null,
-    )
+    sealed class IssuedCredential {
+        data class Vc(val vcJws: String, val attachments: List<Attachment>? = null) : IssuedCredential()
+        data class Iso(val issuerSigned: IssuerSigned) : IssuedCredential()
+    }
 
     data class IssuedCredentialResult(
         val successful: List<IssuedCredential> = listOf(),
         val failed: List<FailedAttribute> = listOf()
     ) {
-        fun toStoreCredentialInput() = successful.map { Holder.StoreCredentialInput(it.vcJws, it.attachments) }
+        fun toStoreCredentialInput() = successful.filterIsInstance<IssuedCredential.Vc>()
+            .map { Holder.StoreCredentialInput.Vc(it.vcJws, it.attachments) }
     }
 
     /**
@@ -41,7 +43,7 @@ interface Issuer {
      * Wraps [credential] in a single [VerifiableCredential],
      * returns a JWS representation of that VC.
      */
-    suspend fun issueCredential(credential: IssuerCredentialDataProvider.CredentialToBeIssued): IssuedCredentialResult
+    suspend fun issueCredential(credential: CredentialToBeIssued): IssuedCredentialResult
 
     /**
      * Wraps the revocation information into a VC,
