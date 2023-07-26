@@ -4,6 +4,9 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JsonWebToken
 import at.asitplus.wallet.lib.jws.JwsHeader
@@ -12,6 +15,7 @@ import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.CREDENTIAL_TYPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
+import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import kotlinx.datetime.Clock
 
 /**
@@ -34,11 +38,30 @@ class WalletService(
     fun createAuthRequest() = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         clientId = clientId,
-        authorizationDetails = AuthorizationDetails(
-            type = CREDENTIAL_TYPE_OPENID,
-            format = CredentialFormatEnum.JWT_VC,
-            types = arrayOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
-        ),
+        authorizationDetails = when (credentialScheme.credentialFormat) {
+            ConstantIndex.CredentialFormat.ISO_18013 -> AuthorizationDetails(
+                type = CREDENTIAL_TYPE_OPENID,
+                format = CredentialFormatEnum.MSO_MDOC,
+                docType = DOC_TYPE_MDL,
+                types = arrayOf(credentialScheme.vcType),
+                claims = mapOf(
+                    IsoDataModelConstants.NAMESPACE_MDL to mapOf(
+                        DataElements.GIVEN_NAME to RequestedCredentialClaimSpecification(),
+                        DataElements.FAMILY_NAME to RequestedCredentialClaimSpecification(),
+                        DataElements.DOCUMENT_NUMBER to RequestedCredentialClaimSpecification(),
+                        DataElements.ISSUE_DATE to RequestedCredentialClaimSpecification(),
+                        DataElements.EXPIRY_DATE to RequestedCredentialClaimSpecification(),
+                        DataElements.DRIVING_PRIVILEGES to RequestedCredentialClaimSpecification(),
+                    )
+                )
+            )
+
+            ConstantIndex.CredentialFormat.W3C_VC -> AuthorizationDetails(
+                type = CREDENTIAL_TYPE_OPENID,
+                format = CredentialFormatEnum.JWT_VC,
+                types = arrayOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
+            )
+        },
         redirectUrl = redirectUrl,
     )
 
@@ -62,10 +85,9 @@ class WalletService(
     suspend fun createCredentialRequest(
         tokenResponse: TokenResponseParameters,
         issuerMetadata: IssuerMetadata
-    ) = CredentialRequestParameters(
-        format = CredentialFormatEnum.JWT_VC,
-        types = arrayOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
-        proof = CredentialRequestProof(
+    ): CredentialRequestParameters {
+        // TODO Specification is missing a proof type for binding method `cose_key`, so we'll use JWT
+        val proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofTypes.JWT,
             jwt = jwsService.createSignedJwsAddingParams(
                 header = JwsHeader(
@@ -82,6 +104,30 @@ class WalletService(
                 addJsonWebKey = true
             )!!
         )
-    )
+        return when (credentialScheme.credentialFormat) {
+            ConstantIndex.CredentialFormat.ISO_18013 -> CredentialRequestParameters(
+                format = CredentialFormatEnum.MSO_MDOC,
+                docType = DOC_TYPE_MDL,
+                claims = mapOf(
+                    IsoDataModelConstants.NAMESPACE_MDL to mapOf(
+                        DataElements.GIVEN_NAME to RequestedCredentialClaimSpecification(),
+                        DataElements.FAMILY_NAME to RequestedCredentialClaimSpecification(),
+                        DataElements.DOCUMENT_NUMBER to RequestedCredentialClaimSpecification(),
+                        DataElements.ISSUE_DATE to RequestedCredentialClaimSpecification(),
+                        DataElements.EXPIRY_DATE to RequestedCredentialClaimSpecification(),
+                        DataElements.DRIVING_PRIVILEGES to RequestedCredentialClaimSpecification(),
+                    )
+                ),
+                types = arrayOf(credentialScheme.vcType),
+                proof = proof
+            )
+
+            ConstantIndex.CredentialFormat.W3C_VC -> CredentialRequestParameters(
+                format = CredentialFormatEnum.JWT_VC,
+                types = arrayOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
+                proof = proof
+            )
+        }
+    }
 
 }

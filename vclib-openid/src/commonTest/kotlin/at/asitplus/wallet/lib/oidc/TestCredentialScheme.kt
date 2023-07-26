@@ -15,6 +15,7 @@ object TestCredentialScheme : ConstantIndex.CredentialScheme {
     override val credentialDefinitionName: String = "test-credential"
     override val schemaUri: String = "https://example.com/schema/testcredential/1.0.0"
     override val vcType: String = "TestCredential"
+    override val credentialFormat: ConstantIndex.CredentialFormat = ConstantIndex.CredentialFormat.W3C_VC
 }
 
 @Serializable

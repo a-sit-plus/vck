@@ -14,6 +14,8 @@ object OpenIdConstants {
 
     const val URN_TYPE_JWK_THUMBPRINT = "urn:ietf:params:oauth:jwk-thumbprint"
 
+    const val BINDING_METHOD_COSE_KEY = "cose_key"
+
     const val PREFIX_DID_KEY = "did:key"
 
     const val PATH_WELL_KNOWN_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
