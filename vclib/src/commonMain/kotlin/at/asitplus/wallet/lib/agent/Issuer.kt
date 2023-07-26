@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
@@ -35,9 +36,13 @@ interface Issuer {
     /**
      * Issues credentials for some [attributeTypes] (i.e. some of
      * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with [subjectId]
-     * (which should be a URL of the cryptographic key of the holder)
+     * (which should be a URL of the cryptographic key of the holder) or with [subjectPublicKey].
      */
-    suspend fun issueCredentialWithTypes(subjectId: String, attributeTypes: Collection<String>): IssuedCredentialResult
+    suspend fun issueCredentialWithTypes(
+        subjectId: String,
+        subjectPublicKey: CoseKey? = null,
+        attributeTypes: Collection<String>
+    ): IssuedCredentialResult
 
     /**
      * Wraps [credential] in a single [VerifiableCredential],

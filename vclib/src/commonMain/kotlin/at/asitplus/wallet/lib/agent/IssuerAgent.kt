@@ -4,6 +4,7 @@ import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.ZlibService
+import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
@@ -63,6 +64,7 @@ class IssuerAgent constructor(
      */
     override suspend fun issueCredentialWithTypes(
         subjectId: String,
+        subjectPublicKey: CoseKey?,
         attributeTypes: Collection<String>
     ): Issuer.IssuedCredentialResult {
         val result = dataProvider.getCredentialWithType(subjectId, attributeTypes)

@@ -65,7 +65,7 @@ class OidcSiopProtocolTest : FreeSpec({
                     dataProvider = DummyCredentialDataProvider(),
                 ).issueCredentialWithTypes(
                     holderAgent.identifier,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).toStoreCredentialInput()
             )
         }
@@ -175,7 +175,7 @@ class OidcSiopProtocolTest : FreeSpec({
                 dataProvider = TestCredentialDataProvider(),
             ).issueCredentialWithTypes(
                 holderAgent.identifier,
-                listOf(TestCredentialScheme.vcType)
+                attributeTypes = listOf(TestCredentialScheme.vcType)
             ).toStoreCredentialInput()
         )
 

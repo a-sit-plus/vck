@@ -50,7 +50,7 @@ class PresentProofProtocolTest : FreeSpec({
                 dataProvider = DummyCredentialDataProvider(),
             ).issueCredentialWithTypes(
                 holder.identifier,
-                listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).toStoreCredentialInput()
         )
 
@@ -81,7 +81,7 @@ class PresentProofProtocolTest : FreeSpec({
                 dataProvider = DummyCredentialDataProvider(),
             ).issueCredentialWithTypes(
                 holder.identifier,
-                listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).toStoreCredentialInput()
         )
 

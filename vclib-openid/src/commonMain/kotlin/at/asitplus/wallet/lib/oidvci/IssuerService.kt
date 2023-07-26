@@ -1,6 +1,9 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
+import at.asitplus.wallet.lib.cbor.CoseKey
+import at.asitplus.wallet.lib.cbor.CoseKeyType
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
@@ -143,9 +146,18 @@ class IssuerService(
             throw OAuth2Exception(Errors.INVALID_PROOF)
         if (jwsSigned.header.type != ProofTypes.JWT_HEADER_TYPE)
             throw OAuth2Exception(Errors.INVALID_PROOF)
-        val subjectId = jwsSigned.header.publicKey?.identifier
+        val subjectPublicKey = jwsSigned.header.publicKey
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
-        val issuedCredentialResult = issuer.issueCredentialWithTypes(subjectId, params.types.toList())
+
+        val issuedCredentialResult = issuer.issueCredentialWithTypes(
+            subjectId = subjectPublicKey.identifier,
+            subjectPublicKey = CoseKey.fromAnsiX963Bytes(
+                CoseKeyType.EC2,
+                CoseEllipticCurve.P256,
+                subjectPublicKey.toAnsiX963ByteArray().getOrThrow()
+            ),
+            attributeTypes = params.types.toList()
+        )
         if (issuedCredentialResult.successful.isEmpty()) {
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }

@@ -50,7 +50,7 @@ class ValidatorVcTest : FreeSpec() {
         "credentials are valid for" {
             issuer.issueCredentialWithTypes(
                 verifier.identifier,
-                listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).successful.filterIsInstance<Issuer.IssuedCredential.Vc>().map { it.vcJws }
                 .forEach {
                     verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
@@ -60,7 +60,7 @@ class ValidatorVcTest : FreeSpec() {
         "revoked credentials are not valid" {
             issuer.issueCredentialWithTypes(
                 verifier.identifier,
-                listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).successful
                 .filterIsInstance<Issuer.IssuedCredential.Vc>()
                 .map { it.vcJws }
@@ -82,8 +82,10 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "wrong subject keyId is not be valid" {
-            issuer.issueCredentialWithTypes(uuid4().toString(), listOf(ConstantIndex.AtomicAttribute2023.vcType))
-                .successful
+            issuer.issueCredentialWithTypes(
+                uuid4().toString(),
+                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
+            ).successful
                 .filterIsInstance<Issuer.IssuedCredential.Vc>()
                 .map { it.vcJws }.forEach {
                     verifier.verifyVcJws(it)
@@ -94,7 +96,7 @@ class ValidatorVcTest : FreeSpec() {
         "credential with invalid JWS format is not valid" {
             issuer.issueCredentialWithTypes(
                 verifier.identifier,
-                listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).successful
                 .filterIsInstance<Issuer.IssuedCredential.Vc>()
                 .map { it.vcJws }

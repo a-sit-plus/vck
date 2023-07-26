@@ -229,8 +229,9 @@ class IssueCredentialProtocol(
         val requestedAttributeType = AttributeIndex.getTypeOfAttributeForSchemaUri(uri)
             ?: return problemReporter.problemLastMessage(lastMessage.threadId, "requested-attributes-empty")
 
-        val issuedCredentials = issuer?.issueCredentialWithTypes(subjectIdentifier, listOf(requestedAttributeType))
-            ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
+        val issuedCredentials =
+            issuer?.issueCredentialWithTypes(subjectIdentifier, attributeTypes = listOf(requestedAttributeType))
+                ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
 
         //TODO: Pack this info into `args` or `comment`
         if (issuedCredentials.failed.isNotEmpty()) {
