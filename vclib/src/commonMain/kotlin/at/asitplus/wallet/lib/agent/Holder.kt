@@ -25,8 +25,8 @@ interface Holder {
     fun setRevocationList(it: String): Boolean
 
     sealed class StoreCredentialInput {
-        data class Vc(val vcJws: String, val attachments: List<Issuer.Attachment>? = null): StoreCredentialInput()
-        data class Iso(val issuerSigned: IssuerSigned): StoreCredentialInput()
+        data class Vc(val vcJws: String, val attachments: List<Issuer.Attachment>? = null) : StoreCredentialInput()
+        data class Iso(val issuerSigned: IssuerSigned) : StoreCredentialInput()
     }
 
     /**
@@ -39,6 +39,7 @@ interface Holder {
 
     data class StoredCredentialsResult(
         val accepted: List<VerifiableCredentialJws> = listOf(),
+        val acceptedIso: List<IssuerSigned> = listOf(),
         val rejected: List<String> = listOf(),
         val notVerified: List<String> = listOf(),
         val attachments: List<StoredAttachmentResult> = listOf(),
@@ -82,11 +83,17 @@ interface Holder {
         attributeTypes: Collection<String>? = null,
     ): Collection<StoredCredential>?
 
-    data class StoredCredential(
-        val vcSerialized: String,
-        val vc: VerifiableCredentialJws,
-        val status: Validator.RevocationStatus
-    )
+    sealed class StoredCredential {
+        data class Vc(
+            val vcSerialized: String,
+            val vc: VerifiableCredentialJws,
+            val status: Validator.RevocationStatus
+        ) : StoredCredential()
+
+        data class Iso(
+            val issuerSigned: IssuerSigned
+        ) : StoredCredential()
+    }
 
     /**
      * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,

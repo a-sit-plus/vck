@@ -23,8 +23,12 @@ interface Issuer {
         val successful: List<IssuedCredential> = listOf(),
         val failed: List<FailedAttribute> = listOf()
     ) {
-        fun toStoreCredentialInput() = successful.filterIsInstance<IssuedCredential.Vc>()
-            .map { Holder.StoreCredentialInput.Vc(it.vcJws, it.attachments) }
+        fun toStoreCredentialInput() = successful.map {
+            when (it) {
+                is IssuedCredential.Iso -> Holder.StoreCredentialInput.Iso(it.issuerSigned)
+                is IssuedCredential.Vc -> Holder.StoreCredentialInput.Vc(it.vcJws, it.attachments)
+            }
+        }
     }
 
     /**

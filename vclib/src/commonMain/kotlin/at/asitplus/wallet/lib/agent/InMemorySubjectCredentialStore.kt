@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.iso.IssuerSigned
 
 class InMemorySubjectCredentialStore : SubjectCredentialStore {
 
@@ -9,7 +10,11 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
     private val attachments = mutableListOf<SubjectCredentialStore.AttachmentEntry>()
 
     override suspend fun storeCredential(vc: VerifiableCredentialJws, vcSerialized: String) {
-        credentials += SubjectCredentialStore.StoreEntry(vcSerialized, vc)
+        credentials += SubjectCredentialStore.StoreEntry.Vc(vcSerialized, vc)
+    }
+
+    override suspend fun storeCredential(issuerSigned: IssuerSigned) {
+        credentials += SubjectCredentialStore.StoreEntry.Iso(issuerSigned)
     }
 
     override suspend fun storeAttachment(name: String, data: ByteArray, vcId: String) {
@@ -21,7 +26,10 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
     ) = KmmResult.success(
         credentials.filter {
             requiredAttributeTypes?.let { types ->
-                it.vc.vc.type.any { it in types }
+                when (it) {
+                    is SubjectCredentialStore.StoreEntry.Iso -> it.issuerSigned.namespaces?.keys?.any { it in types }
+                    is SubjectCredentialStore.StoreEntry.Vc -> it.vc.vc.type.any { it in types }
+                }
             } ?: true
         }
     )

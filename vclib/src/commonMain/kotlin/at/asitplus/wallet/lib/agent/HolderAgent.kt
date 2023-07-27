@@ -1,7 +1,10 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.cbor.CoseKey
+import at.asitplus.wallet.lib.cbor.CoseKeyType
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentation
+import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -12,7 +15,7 @@ import io.github.aakira.napier.Napier
  * An agent that only implements [Holder], i.e. it can receive credentials form other agents
  * and present credentials to other agents.
  */
-class HolderAgent constructor(
+class HolderAgent(
     private val validator: Validator = Validator.newDefaultInstance(),
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val jwsService: JwsService,
@@ -62,6 +65,7 @@ class HolderAgent constructor(
      */
     override suspend fun storeCredentials(credentialList: List<Holder.StoreCredentialInput>): Holder.StoredCredentialsResult {
         val accepted = mutableListOf<VerifiableCredentialJws>()
+        val acceptedIso = mutableListOf<IssuerSigned>()
         val rejected = mutableListOf<String>()
         val attachments = mutableListOf<Holder.StoredAttachmentResult>()
         credentialList.filterIsInstance<Holder.StoreCredentialInput.Vc>().forEach { cred ->
@@ -76,9 +80,27 @@ class HolderAgent constructor(
                                 .also { attachments += Holder.StoredAttachmentResult(attachment.name, attachment.data) }
                         }
                     }
+
+                else -> {}
             }
         }
-        return Holder.StoredCredentialsResult(accepted = accepted, rejected = rejected, attachments = attachments)
+        credentialList.filterIsInstance<Holder.StoreCredentialInput.Iso>().forEach { cred ->
+            // TODO Where to get the ISO issuer key?
+            when (val result = validator.verifyIsoCred(cred.issuerSigned, CoseKey(type = CoseKeyType.EC2))) {
+                is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += result.input
+                is Verifier.VerifyCredentialResult.Revoked -> rejected += result.input
+                is Verifier.VerifyCredentialResult.SuccessIso -> acceptedIso += result.issuerSigned
+                    .also { subjectCredentialStore.storeCredential(result.issuerSigned) }
+
+                else -> {}
+            }
+        }
+        return Holder.StoredCredentialsResult(
+            accepted = accepted,
+            acceptedIso = acceptedIso,
+            rejected = rejected,
+            attachments = attachments
+        )
     }
 
     /**
@@ -102,12 +124,18 @@ class HolderAgent constructor(
     override suspend fun getCredentials(
         attributeTypes: Collection<String>?,
     ): Collection<Holder.StoredCredential>? {
-        val credentials =
-            subjectCredentialStore.getCredentials(attributeTypes).getOrNull()
-                ?: return null
-                    .also { Napier.w("Got no credentials from subjectCredentialStore") }
+        val credentials = subjectCredentialStore.getCredentials(attributeTypes).getOrNull()
+            ?: return null
+                .also { Napier.w("Got no credentials from subjectCredentialStore") }
         return credentials.map {
-            Holder.StoredCredential(it.vcSerialized, it.vc, validator.checkRevocationStatus(it.vc))
+            when (it) {
+                is SubjectCredentialStore.StoreEntry.Iso -> Holder.StoredCredential.Iso(it.issuerSigned)
+                is SubjectCredentialStore.StoreEntry.Vc -> Holder.StoredCredential.Vc(
+                    it.vcSerialized,
+                    it.vc,
+                    validator.checkRevocationStatus(it.vc)
+                )
+            }
         }
     }
 
@@ -126,6 +154,7 @@ class HolderAgent constructor(
             ?: return null
                 .also { Napier.w("Got no credentials from subjectCredentialStore") }
         val validCredentials = credentials
+            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
             .filter { validator.checkRevocationStatus(it.vc) != Validator.RevocationStatus.REVOKED }
             .map { it.vcSerialized }
         if (validCredentials.isEmpty()) return null

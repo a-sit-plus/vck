@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.iso.IssuerSigned
 
 /**
  * Stores all credentials that a subject has received
@@ -17,6 +18,14 @@ interface SubjectCredentialStore {
      * @param vcSerialized Serialized form of [VerifiableCredential]
      */
     suspend fun storeCredential(vc: VerifiableCredentialJws, vcSerialized: String)
+
+    /**
+     * Implementations should store the passed credential in a secure way.
+     * Passed credentials have been validated before.
+     *
+     * @param issuerSigned Instance of [IssuerSigned] (an ISO credential)
+     */
+    suspend fun storeCredential(issuerSigned: IssuerSigned)
 
     /**
      * Implementation should store the attachment in a secure way.
@@ -44,7 +53,10 @@ interface SubjectCredentialStore {
      */
     suspend fun getAttachment(name: String, vcId: String): KmmResult<ByteArray>
 
-    data class StoreEntry(val vcSerialized: String, val vc: VerifiableCredentialJws)
+    sealed class StoreEntry {
+        data class Vc(val vcSerialized: String, val vc: VerifiableCredentialJws) : StoreEntry()
+        data class Iso(val issuerSigned: IssuerSigned) : StoreEntry()
+    }
 
     data class AttachmentEntry(val name: String, val data: ByteArray, val vcId: String) {
         override fun equals(other: Any?): Boolean {

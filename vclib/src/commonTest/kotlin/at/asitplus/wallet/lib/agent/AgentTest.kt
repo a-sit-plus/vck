@@ -164,7 +164,7 @@ class AgentTest : FreeSpec({
             "without a revocation list set" {
                 val holderCredentials = holder.getCredentials()
                 holderCredentials.shouldNotBeNull()
-                holderCredentials.forEach {
+                holderCredentials.filterIsInstance<Holder.StoredCredential.Vc>().forEach {
                     it.status.shouldBe(Validator.RevocationStatus.UNKNOWN)
                 }
             }
@@ -173,7 +173,7 @@ class AgentTest : FreeSpec({
                 holder.setRevocationList(issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)!!) shouldBe true
                 val holderCredentials = holder.getCredentials()
                 holderCredentials.shouldNotBeNull()
-                holderCredentials.forEach {
+                holderCredentials.filterIsInstance<Holder.StoredCredential.Vc>().forEach {
                     it.status.shouldBe(Validator.RevocationStatus.VALID)
                 }
             }
@@ -198,7 +198,7 @@ class AgentTest : FreeSpec({
 
             val holderCredentials = holder.getCredentials()
             holderCredentials.shouldNotBeNull()
-            holderCredentials.forEach {
+            holderCredentials.filterIsInstance<Holder.StoredCredential.Vc>().forEach {
                 it.status.shouldBe(Validator.RevocationStatus.REVOKED)
             }
         }

@@ -3,25 +3,31 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.ZlibService
+import at.asitplus.wallet.lib.cbor.CoseKey
+import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
+import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.iso.IssuerSigned
 import io.matthewnelson.component.base64.decodeBase64ToArray
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.toBitSet
 import io.github.aakira.napier.Napier
+import io.matthewnelson.component.encoding.base16.encodeBase16
 
 
 /**
  * Parses and validates Verifiable Credentials and Verifiable Presentations.
- * Does verify the cryptographic authenticity of the data, if a [verifierJwsService] is set on creation.
- * Does verify the revocation status of the data.
+ * Does verify the cryptographic authenticity of the data.
+ * Does verify the revocation status of the data (when a status information is encoded in the credential).
  */
 class Validator(
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
+    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
     private val parser: Parser = Parser(),
     private val zlibService: ZlibService = DefaultZlibService(),
 ) {
@@ -32,6 +38,7 @@ class Validator(
             parser: Parser = Parser()
         ) = Validator(
             verifierJwsService = DefaultVerifierJwsService(cryptoService = cryptoService),
+            verifierCoseService = DefaultVerifierCoseService(cryptoService = cryptoService),
             parser = parser
         )
 
@@ -199,6 +206,21 @@ class Validator(
             is Parser.ParseVcResult.Success -> Verifier.VerifyCredentialResult.Success(vcJws)
                 .also { Napier.d("VC: Valid") }
         }
+    }
+
+    /**
+     * Validates the content of a [IssuerSigned] object.
+     *
+     * @param it The [IssuerSigned] structure from ISO 18013-5
+     */
+    fun verifyIsoCred(it: IssuerSigned, issuerKey: CoseKey): Verifier.VerifyCredentialResult {
+        Napier.d("Verifying ISO Cred $it")
+        val result = verifierCoseService.verifyCose(it.issuerAuth, issuerKey)
+        if (result.getOrNull() != true) {
+            Napier.w("ISO: Could not verify credential", result.exceptionOrNull())
+            return Verifier.VerifyCredentialResult.InvalidStructure(it.serialize().encodeBase16())
+        }
+        return Verifier.VerifyCredentialResult.SuccessIso(it)
     }
 
 }

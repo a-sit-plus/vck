@@ -61,6 +61,14 @@ data class JwmAttachment(
             )
         )
 
+        fun encodeBase64(data: ByteArray) = JwmAttachment(
+            id = uuid4().toString(),
+            mediaType = "application/base64",
+            data = JwmAttachmentData(
+                base64 = data.encodeBase64()
+            )
+        )
+
         fun encode(data: ByteArray, filename: String, mediaType: String, parent: String) = JwmAttachment(
             id = uuid4().toString(),
             mediaType = mediaType,

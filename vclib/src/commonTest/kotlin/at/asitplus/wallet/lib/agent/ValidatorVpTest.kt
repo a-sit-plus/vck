@@ -65,7 +65,10 @@ class ValidatorVpTest : FreeSpec({
     "wrong structure of VC is detected" {
         val holderCredentials = holder.getCredentials()
         holderCredentials.shouldNotBeNull()
-        val holderVcSerialized = holderCredentials.map { it.vcSerialized }.map { it.reversed() }
+        val holderVcSerialized = holderCredentials
+            .filterIsInstance<Holder.StoredCredential.Vc>()
+            .map { it.vcSerialized }
+            .map { it.reversed() }
         val vp = holder.createPresentation(holderVcSerialized, challenge, verifier.identifier)
         vp.shouldNotBeNull()
 
@@ -100,7 +103,8 @@ class ValidatorVpTest : FreeSpec({
 
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
-        holderCredentialStore.getCredentials().getOrThrow().map { it.vc }
+        holderCredentialStore.getCredentials().getOrThrow().filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+            .map { it.vc }
             .forEach {
                 issuerCredentialStore.revoke(it.vc.id, FixedTimePeriodProvider.timePeriod) shouldBe true
             }
@@ -119,6 +123,7 @@ class ValidatorVpTest : FreeSpec({
     "Manually created and valid presentation is valid" {
         val credentials = holderCredentialStore.getCredentials().getOrThrow()
         val validCredentials = credentials
+            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
             .filter { validator.checkRevocationStatus(it.vc) != Validator.RevocationStatus.REVOKED }
             .map { it.vcSerialized }
         (validCredentials.isEmpty()) shouldBe false
@@ -138,8 +143,9 @@ class ValidatorVpTest : FreeSpec({
     }
 
     "Wrong issuer in VP is not valid" {
-        val credentials =
-            holderCredentialStore.getCredentials().getOrThrow().map { it.vcSerialized }
+        val credentials = holderCredentialStore.getCredentials().getOrThrow()
+            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+            .map { it.vcSerialized }
 
         val vp = VerifiablePresentation(credentials.toTypedArray())
         val vpSerialized = VerifiablePresentationJws(
@@ -158,8 +164,9 @@ class ValidatorVpTest : FreeSpec({
     }
 
     "Wrong jwtId in VP is not valid" {
-        val credentials =
-            holderCredentialStore.getCredentials().getOrThrow().map { it.vcSerialized }
+        val credentials = holderCredentialStore.getCredentials().getOrThrow()
+            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+            .map { it.vcSerialized }
         val vp = VerifiablePresentation(credentials.toTypedArray())
         val vpSerialized = VerifiablePresentationJws(
             vp = vp,
@@ -177,8 +184,9 @@ class ValidatorVpTest : FreeSpec({
     }
 
     "Wrong type in VP is not valid" {
-        val credentials =
-            holderCredentialStore.getCredentials().getOrThrow().map { it.vcSerialized }
+        val credentials = holderCredentialStore.getCredentials().getOrThrow()
+            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
+            .map { it.vcSerialized }
         val vp = VerifiablePresentation(
             id = "urn:uuid:${uuid4()}",
             type = "wrong_type",

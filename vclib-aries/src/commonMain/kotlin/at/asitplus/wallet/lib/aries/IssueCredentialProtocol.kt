@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.data.SchemaIndex
 import at.asitplus.wallet.lib.data.dif.CredentialDefinition
 import at.asitplus.wallet.lib.data.dif.CredentialManifest
 import at.asitplus.wallet.lib.data.dif.SchemaReference
+import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.msg.AttachmentFormatReference
 import at.asitplus.wallet.lib.msg.IssueCredential
@@ -261,6 +262,10 @@ class IssueCredentialProtocol(
             fulfillmentAttachments.add(fulfillment)
             binaryAttachments.addAll(binary)
         }
+        issuedCredentials.successful.filterIsInstance<Issuer.IssuedCredential.Iso>().forEach { cred ->
+            val fulfillment = JwmAttachment.encodeBase64(cred.issuerSigned.serialize())
+            fulfillmentAttachments.add(fulfillment)
+        }
         val message = IssueCredential(
             body = IssueCredentialBody(
                 comment = "Here are your credentials",
@@ -304,11 +309,16 @@ class IssueCredentialProtocol(
         fulfillment: JwmAttachment,
         binaryAttachments: List<JwmAttachment>
     ): Holder.StoreCredentialInput? {
-        val decoded = fulfillment.decodeString() ?: return null
-        val attachmentList = binaryAttachments
-            .filter { it.parent == fulfillment.id }
-            .mapNotNull { extractBinaryAttachment(it) }
-        return Holder.StoreCredentialInput.Vc(decoded, attachmentList)
+        runCatching { fulfillment.decodeString() }.getOrNull()?.let { decoded ->
+            val attachmentList = binaryAttachments
+                .filter { it.parent == fulfillment.id }
+                .mapNotNull { extractBinaryAttachment(it) }
+            return Holder.StoreCredentialInput.Vc(decoded, attachmentList)
+        } ?: runCatching { fulfillment.decodeBinary() }.getOrNull()?.let { decoded ->
+            IssuerSigned.deserialize(decoded)?.let { issuerSigned ->
+                return Holder.StoreCredentialInput.Iso(issuerSigned)
+            }
+        } ?: return null
     }
 
     private fun extractBinaryAttachment(attachment: JwmAttachment): Issuer.Attachment? {

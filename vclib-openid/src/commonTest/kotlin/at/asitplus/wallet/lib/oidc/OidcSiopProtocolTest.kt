@@ -59,6 +59,7 @@ class OidcSiopProtocolTest : FreeSpec({
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
         verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
         runBlocking {
+            // TODO Also test with ISO credentials
             holderAgent.storeCredentials(
                 IssuerAgent.newDefaultInstance(
                     DefaultCryptoService(),
