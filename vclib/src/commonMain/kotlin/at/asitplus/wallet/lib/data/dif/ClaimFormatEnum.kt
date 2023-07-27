@@ -14,7 +14,8 @@ enum class ClaimFormatEnum(val text: String) {
     JWT_VP("jwt_vp"),
     LDP("ldp"),
     LDP_VC("ldp_vc"),
-    LDP_VP("ldp_vp");
+    LDP_VP("ldp_vp"),
+    MSO_MDOC("mso_mdoc");
 
     companion object {
         fun parse(text: String) = values().firstOrNull { it.text == text }

@@ -1,9 +1,17 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.cbor.CoseAlgorithm
+import at.asitplus.wallet.lib.cbor.CoseHeader
 import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.cbor.CoseKeyType
+import at.asitplus.wallet.lib.cbor.CoseService
+import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentation
+import at.asitplus.wallet.lib.iso.DeviceAuth
+import at.asitplus.wallet.lib.iso.DeviceSigned
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -19,6 +27,7 @@ class HolderAgent(
     private val validator: Validator = Validator.newDefaultInstance(),
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val jwsService: JwsService,
+    private val coseService: CoseService,
     override val identifier: String
 ) : Holder {
 
@@ -31,6 +40,7 @@ class HolderAgent(
             validator = Validator.newDefaultInstance(verifierCryptoService, Parser()),
             subjectCredentialStore = subjectCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
+            coseService = DefaultCoseService(cryptoService),
             identifier = cryptoService.identifier,
         )
 
@@ -44,6 +54,7 @@ class HolderAgent(
             validator = Validator.newDefaultInstance(DefaultVerifierCryptoService(), Parser()),
             subjectCredentialStore = subjectCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
+            coseService = DefaultCoseService(cryptoService),
             identifier = cryptoService.identifier,
         )
     }
@@ -153,13 +164,40 @@ class HolderAgent(
         val credentials = subjectCredentialStore.getCredentials(attributeTypes).getOrNull()
             ?: return null
                 .also { Napier.w("Got no credentials from subjectCredentialStore") }
-        val validCredentials = credentials
+        val validVcCredentials = credentials
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
             .filter { validator.checkRevocationStatus(it.vc) != Validator.RevocationStatus.REVOKED }
             .map { it.vcSerialized }
-        if (validCredentials.isEmpty()) return null
-            .also { Napier.w("Got no valid credentials") }
-        return createPresentation(validCredentials, challenge, audienceId)
+        if (validVcCredentials.isNotEmpty()) {
+            return createPresentation(validVcCredentials, challenge, audienceId)
+        }
+        val validIsoCredential = credentials
+            .filterIsInstance<SubjectCredentialStore.StoreEntry.Iso>()
+            // no revocation check
+            .map { it.issuerSigned }
+            .firstOrNull()
+        if (validIsoCredential != null) {
+            val deviceSignature = coseService.createSignedCose(
+                protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
+                unprotectedHeader = null,
+                payload = null,
+                addKeyId = false
+            ).getOrNull() ?: return null
+                .also { Napier.w("Could not create DeviceAuth for presentation") }
+            // TODO Create the correct ISO document
+            return Holder.CreatePresentationResult.Document(
+                Document(
+                    docType = DOC_TYPE_MDL,
+                    issuerSigned = validIsoCredential,
+                    deviceSigned = DeviceSigned(
+                        namespaces = byteArrayOf(), // TODO fill it
+                        deviceAuth = DeviceAuth(deviceSignature = deviceSignature)
+                    )
+                )
+            )
+        }
+        Napier.w("Got no valid credentials for $attributeTypes")
+        return null
     }
 
     /**
@@ -177,6 +215,7 @@ class HolderAgent(
         val jwsPayload = vpSerialized.encodeToByteArray()
         val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
             ?: return null
+                .also { Napier.w("Could not create JWS for presentation") }
         return Holder.CreatePresentationResult.Signed(jws)
     }
 

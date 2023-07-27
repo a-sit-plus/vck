@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
 
@@ -40,6 +41,7 @@ interface Verifier {
 
     sealed class VerifyPresentationResult {
         data class Success(val vp: VerifiablePresentationParsed) : VerifyPresentationResult()
+        data class SuccessIso(val document: Document) : VerifyPresentationResult()
         data class InvalidStructure(val input: String) : VerifyPresentationResult()
         data class NotVerified(val input: String, val challenge: String) : VerifyPresentationResult()
     }

@@ -272,6 +272,7 @@ class PresentProofProtocol(
             requestPresentationAttachment.options.verifier ?: senderKey.identifier,
             attributeTypes = requestedTypes.ifEmpty { null },
         ) ?: return problemReporter.problemInternal(lastMessage.threadId, "vp-empty")
+        // TODO is ISO supported here?
         if (vp !is Holder.CreatePresentationResult.Signed) {
             return problemReporter.problemInternal(lastMessage.threadId, "vp-not-signed")
         }

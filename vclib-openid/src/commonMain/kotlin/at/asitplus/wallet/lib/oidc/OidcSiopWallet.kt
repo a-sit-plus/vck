@@ -34,6 +34,7 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import io.ktor.util.flattenEntries
+import io.matthewnelson.component.encoding.base16.encodeBase16
 import kotlinx.datetime.Clock
 import kotlin.time.Duration.Companion.seconds
 
@@ -214,15 +215,6 @@ class OidcSiopWallet(
             return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("nonce is null") }
 
-        val attributeTypes = params.scope?.split(" ")
-            ?.filterNot { it == SCOPE_OPENID }?.filterNot { it == SCOPE_PROFILE }
-            ?.toList()?.ifEmpty { null }
-        val vp = holder.createPresentation(params.nonce, audience, attributeTypes)
-            ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
-                .also { Napier.w("Could not create presentation") }
-        if (vp !is Holder.CreatePresentationResult.Signed)
-            return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
-                .also { Napier.w("Could not create presentation") }
         val now = clock.now()
         // we'll assume jwk-thumbprint
         val idToken = IdToken(
@@ -239,30 +231,69 @@ class OidcSiopWallet(
         val signedIdToken = jwsService.createSignedJwsAddingParams(jwsHeader, jwsPayload)
             ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not sign id_token") }
-        val presentationSubmission = PresentationSubmission(
-            id = uuid4().toString(),
-            definitionId = params.presentationDefinition?.id ?: uuid4().toString(),
-            descriptorMap = params.presentationDefinition?.inputDescriptors?.map {
-                PresentationSubmissionDescriptor(
-                    id = it.id,
-                    format = ClaimFormatEnum.JWT_VP,
-                    path = "$",
-                    nestedPath = PresentationSubmissionDescriptor(
-                        id = uuid4().toString(),
-                        format = ClaimFormatEnum.JWT_VC,
-                        path = "$.verifiableCredential[0]"
-                    ),
+
+        val attributeTypes = params.scope?.split(" ")
+            ?.filterNot { it == SCOPE_OPENID }?.filterNot { it == SCOPE_PROFILE }
+            ?.toList()?.ifEmpty { null }
+        val vp = holder.createPresentation(params.nonce, audience, attributeTypes)
+            ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
+                .also { Napier.w("Could not create presentation") }
+
+        when (vp) {
+            is Holder.CreatePresentationResult.Signed -> {
+                val presentationSubmission = PresentationSubmission(
+                    id = uuid4().toString(),
+                    definitionId = params.presentationDefinition?.id ?: uuid4().toString(),
+                    descriptorMap = params.presentationDefinition?.inputDescriptors?.map {
+                        PresentationSubmissionDescriptor(
+                            id = it.id,
+                            format = ClaimFormatEnum.JWT_VP,
+                            path = "$",
+                            nestedPath = PresentationSubmissionDescriptor(
+                                id = uuid4().toString(),
+                                format = ClaimFormatEnum.JWT_VC,
+                                path = "$.verifiableCredential[0]"
+                            ),
+                        )
+                    }?.toTypedArray()
                 )
-            }?.toTypedArray()
-        )
-        return KmmResult.success(
-            AuthenticationResponseParameters(
-                idToken = signedIdToken,
-                state = params.state,
-                vpToken = vp.jws,
-                presentationSubmission = presentationSubmission,
-            )
-        )
+                return KmmResult.success(
+                    AuthenticationResponseParameters(
+                        idToken = signedIdToken,
+                        state = params.state,
+                        vpToken = vp.jws,
+                        presentationSubmission = presentationSubmission,
+                    )
+                )
+            }
+
+            is Holder.CreatePresentationResult.Document -> {
+                val presentationSubmission = PresentationSubmission(
+                    id = uuid4().toString(),
+                    definitionId = params.presentationDefinition?.id ?: uuid4().toString(),
+                    descriptorMap = params.presentationDefinition?.inputDescriptors?.map {
+                        PresentationSubmissionDescriptor(
+                            id = it.id,
+                            format = ClaimFormatEnum.MSO_MDOC,
+                            path = "$",
+                        )
+                    }?.toTypedArray()
+                )
+                return KmmResult.success(
+                    AuthenticationResponseParameters(
+                        idToken = signedIdToken,
+                        state = params.state,
+                        vpToken = vp.document.serialize().encodeBase16(),
+                        presentationSubmission = presentationSubmission,
+                    )
+                )
+            }
+
+            else -> {
+                return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
+                    .also { Napier.w("Could not create presentation") }
+            }
+        }
     }
 
 

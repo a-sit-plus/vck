@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentation
+import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
 /**
@@ -123,6 +124,11 @@ interface Holder {
          * [jws] contains a valid, serialized, Verifiable Presentation that can be parsed by [Verifier.verifyPresentation]
          */
         data class Signed(val jws: String) : CreatePresentationResult()
+
+        /**
+         * [document] contains a valid ISO 18013 [Document] with [IssuerSigned] and [DeviceSigned] structures
+         */
+        data class Document(val document: at.asitplus.wallet.lib.iso.Document): CreatePresentationResult()
     }
 
 }

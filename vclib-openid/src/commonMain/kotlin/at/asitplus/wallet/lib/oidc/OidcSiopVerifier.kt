@@ -5,6 +5,7 @@ import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.Constraint
 import at.asitplus.wallet.lib.data.dif.ConstraintField
 import at.asitplus.wallet.lib.data.dif.ConstraintFilter
@@ -13,6 +14,7 @@ import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.SchemaReference
+import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JsonWebKey
@@ -226,9 +228,14 @@ class OidcSiopVerifier(
         data class ValidationError(val field: String, val state: String?) : AuthnResponseResult()
 
         /**
-         * Successfully decoded and validated the response from the Wallet
+         * Successfully decoded and validated the response from the Wallet (W3C credential)
          */
         data class Success(val vp: VerifiablePresentationParsed, val state: String?) : AuthnResponseResult()
+
+        /**
+         * Successfully decoded and validated the response from the Wallet (ISO credential)
+         */
+        data class SuccessIso(val document: Document, val state: String?) : AuthnResponseResult()
     }
 
     /**
@@ -294,10 +301,24 @@ class OidcSiopVerifier(
         if (idToken.subject != idToken.subjectJwk.jwkThumbprint)
             return AuthnResponseResult.ValidationError("sub", params.state)
                 .also { Napier.d("subject does not equal thumbprint of sub_jwk: ${idToken.subject}") }
+
+        val presentationSubmission = params.presentationSubmission
+            ?: return AuthnResponseResult.ValidationError("presentation_submission", params.state)
+                .also { Napier.w("presentation_submission empty") }
+        val descriptor = presentationSubmission.descriptorMap?.get(0)
+            ?: return AuthnResponseResult.ValidationError("presentation_submission", params.state)
+                .also { Napier.w("presentation_submission contains no descriptors") }
         val vp = params.vpToken
-            ?: return AuthnResponseResult.ValidationError("vpToken is null", params.state)
+            ?: return AuthnResponseResult.ValidationError("vp_token is null", params.state)
                 .also { Napier.w("No VP in response") }
-        val verificationResult = verifier.verifyPresentation(vp, idToken.nonce)
+        val format = descriptor.format
+
+        val verificationResult = when (format) {
+            ClaimFormatEnum.JWT_VP -> verifier.verifyPresentation(vp, idToken.nonce)
+            ClaimFormatEnum.MSO_MDOC -> verifier.verifyPresentation(vp, idToken.nonce)
+            else -> null
+        } ?: return AuthnResponseResult.ValidationError("descriptor format not known", params.state)
+            .also { Napier.w("Descriptor format not known: $format") }
 
         return when (verificationResult) {
             is Verifier.VerifyPresentationResult.InvalidStructure -> {
@@ -313,6 +334,11 @@ class OidcSiopVerifier(
             is Verifier.VerifyPresentationResult.NotVerified -> {
                 Napier.w("VP error: $verificationResult")
                 AuthnResponseResult.ValidationError("vpToken", params.state)
+            }
+
+            is Verifier.VerifyPresentationResult.SuccessIso -> {
+                Napier.i("VP success: $verificationResult")
+                AuthnResponseResult.SuccessIso(verificationResult.document, params.state)
             }
         }
     }

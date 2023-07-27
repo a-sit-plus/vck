@@ -11,8 +11,8 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ArraySerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
-import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.ByteStringWrapper
@@ -232,7 +232,19 @@ data class Document(
     val deviceSigned: DeviceSigned,
     @SerialName("errors")
     val errors: Map<String, Map<String, Int>>? = null,
-)
+) {
+
+    fun serialize() = cborSerializer.encodeToByteArray(this)
+
+    companion object {
+        fun deserialize(it: ByteArray) = kotlin.runCatching {
+            cborSerializer.decodeFromByteArray<Document>(it)
+        }.getOrElse {
+            Napier.w("deserialize failed", it)
+            null
+        }
+    }
+}
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
@@ -418,7 +430,8 @@ data class ElementValue(
     @ValueTags(1004u)
     val date: LocalDate? = null,
     val string: String? = null,
-    val drivingPrivilege: List<DrivingPrivilege>? = null,
+    // TODO verify serialization issues
+    val drivingPrivilege: Array<DrivingPrivilege>? = null,
 ) {
     fun serialize() = cborSerializer.encodeToByteArray(this)
 
@@ -441,14 +454,19 @@ data class ElementValue(
         } else if (other.bytes != null) return false
         if (date != other.date) return false
         if (string != other.string) return false
-        return drivingPrivilege == other.drivingPrivilege
+        if (drivingPrivilege != null) {
+            if (other.drivingPrivilege == null) return false
+            if (!drivingPrivilege.contentEquals(other.drivingPrivilege)) return false
+        } else if (other.drivingPrivilege != null) return false
+
+        return true
     }
 
     override fun hashCode(): Int {
         var result = bytes?.contentHashCode() ?: 0
         result = 31 * result + (date?.hashCode() ?: 0)
         result = 31 * result + (string?.hashCode() ?: 0)
-        result = 31 * result + (drivingPrivilege?.hashCode() ?: 0)
+        result = 31 * result + (drivingPrivilege?.contentHashCode() ?: 0)
         return result
     }
 
@@ -565,7 +583,7 @@ object ElementValueSerializer : KSerializer<ElementValue> {
         } ?: value.string?.let {
             encoder.encodeString(it)
         } ?: value.drivingPrivilege?.let {
-            encoder.encodeSerializableValue(ListSerializer(DrivingPrivilege.serializer()), it)
+            encoder.encodeSerializableValue(ArraySerializer(DrivingPrivilege.serializer()), it)
         } ?: throw IllegalArgumentException("No value exists")
     }
 
@@ -575,7 +593,7 @@ object ElementValueSerializer : KSerializer<ElementValue> {
         }
         runCatching {
             return ElementValue(
-                drivingPrivilege = decoder.decodeSerializableValue(ListSerializer(DrivingPrivilege.serializer()))
+                drivingPrivilege = decoder.decodeSerializableValue(ArraySerializer(DrivingPrivilege.serializer()))
             )
         }
         runCatching {
