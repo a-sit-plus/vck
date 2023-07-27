@@ -8,6 +8,7 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.component.encoding.base16.encodeBase16
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -23,6 +24,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
+import kotlinx.serialization.descriptors.buildSerialDescriptor
 import kotlinx.serialization.descriptors.listSerialDescriptor
 import kotlinx.serialization.descriptors.mapSerialDescriptor
 import kotlinx.serialization.encodeToByteArray
@@ -430,7 +432,6 @@ data class ElementValue(
     @ValueTags(1004u)
     val date: LocalDate? = null,
     val string: String? = null,
-    // TODO verify serialization issues
     val drivingPrivilege: Array<DrivingPrivilege>? = null,
 ) {
     fun serialize() = cborSerializer.encodeToByteArray(this)
@@ -571,8 +572,9 @@ object ByteStringWrapperItemsRequestSerializer : KSerializer<ByteStringWrapper<I
 
 object ElementValueSerializer : KSerializer<ElementValue> {
 
-    override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("ElementValueSerializer", PrimitiveKind.STRING)
+    @OptIn(InternalSerializationApi::class)
+    // Use StructureKind.LIST to prevent the indices ("0") from getting serialized for driving privileges
+    override val descriptor: SerialDescriptor = buildSerialDescriptor("ElementValueSerializer", StructureKind.LIST)
 
     override fun serialize(encoder: Encoder, value: ElementValue) {
         value.bytes?.let {

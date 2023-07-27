@@ -382,7 +382,7 @@ class CborSerializationTest : FreeSpec({
 
         document.deviceSigned.deviceAuth.deviceMac.shouldNotBeNull()
 
-        // TODO dates in ElementValue need tags 1004u => 0xD903EC
+        // TODO "elementValue" in IssuerSignedItem needs a tag 1004u (0xD903EC) iff the value is a date
         deviceResponse.serialize().encodeBase16() shouldBe input
     }
 
@@ -414,6 +414,83 @@ class CborSerializationTest : FreeSpec({
         deserialized.vehicleCategoryCode shouldBe "A"
         deserialized.issueDate shouldBe LocalDate.parse("2018-08-09")
         deserialized.expiryDate shouldBe LocalDate.parse("2024-10-20")
+    }
+
+    "Date in IssuerSignedItem from ISO example" {
+        val input = """
+            a4686469676573744944036672616e646f6d5820b23f627e8999c706df0c0a4ed98ad74af988af619b4bb078b89058553f44615d7165
+            6c656d656e744964656e7469666965726a69737375655f646174656c656c656d656e7456616c7565d903ec6a323031392d31302d3230
+        """.trimIndent().replace("\n", "").uppercase()
+
+        val deserialized = IssuerSignedItem.deserialize(input.decodeBase16ToArray()!!)
+        deserialized.shouldNotBeNull()
+        val serialized = deserialized.serialize()
+
+        // TODO "elementValue" in IssuerSignedItem needs a tag 1004u (0xD903EC) iff the value is a date
+        serialized.encodeBase16().uppercase() shouldBe input
+    }
+
+    "Driving Privilege in IssuerSignedItem from ISO example" {
+        /**
+         * A4                                      # map(4)
+         *    68                                   # text(8)
+         *       6469676573744944                  # "digestID"
+         *    09                                   # unsigned(9)
+         *    66                                   # text(6)
+         *       72616E646F6D                      # "random"
+         *    58 20                                # bytes(32)
+         *       4599F81BEAA2B20BD0FFCC9AA03A6F985BEFAB3F6BEAFFA41E6354CDB2AB2CE4 # "E\x99\xF8\eꢲ\v\xD0\xFF̚\xA0:o\x98[\xEF\xAB?k\xEA\xFF\xA4\u001EcTͲ\xAB,\xE4"
+         *    71                                   # text(17)
+         *       656C656D656E744964656E746966696572 # "elementIdentifier"
+         *    72                                   # text(18)
+         *       64726976696E675F70726976696C65676573 # "driving_privileges"
+         *    6C                                   # text(12)
+         *       656C656D656E7456616C7565          # "elementValue"
+         *    82                                   # array(2)
+         *       A3                                # map(3)
+         *          75                             # text(21)
+         *             76656869636C655F63617465676F72795F636F6465 # "vehicle_category_code"
+         *          61                             # text(1)
+         *             41                          # "A"
+         *          6A                             # text(10)
+         *             69737375655F64617465        # "issue_date"
+         *          D9 03EC                        # tag(1004)
+         *             6A                          # text(10)
+         *                323031382D30382D3039     # "2018-08-09"
+         *          6B                             # text(11)
+         *             6578706972795F64617465      # "expiry_date"
+         *          D9 03EC                        # tag(1004)
+         *             6A                          # text(10)
+         *                323032342D31302D3230     # "2024-10-20"
+         *       A3                                # map(3)
+         *          75                             # text(21)
+         *             76656869636C655F63617465676F72795F636F6465 # "vehicle_category_code"
+         *          61                             # text(1)
+         *             42                          # "B"
+         *          6A                             # text(10)
+         *             69737375655F64617465        # "issue_date"
+         *          D9 03EC                        # tag(1004)
+         *             6A                          # text(10)
+         *                323031372D30322D3233     # "2017-02-23"
+         *          6B                             # text(11)
+         *             6578706972795F64617465      # "expiry_date"
+         *          D9 03EC                        # tag(1004)
+         *             6A                          # text(10)
+         *                323032342D31302D3230     # "2024-10-20"
+         */
+        val input = """
+            A4686469676573744944096672616E646F6D58204599F81BEAA2B20BD0FFCC9AA03A6F985BEFAB3F6BEAFFA41E6354CDB2AB2CE47165
+            6C656D656E744964656E7469666965727264726976696E675F70726976696C656765736C656C656D656E7456616C756582A375766568
+            69636C655F63617465676F72795F636F646561416A69737375655F64617465D903EC6A323031382D30382D30396B6578706972795F64
+            617465D903EC6A323032342D31302D3230A37576656869636C655F63617465676F72795F636F646561426A69737375655F64617465D9
+            03EC6A323031372D30322D32336B6578706972795F64617465D903EC6A323032342D31302D3230
+        """.trimIndent().replace("\n", "")
+
+        val deserialized = IssuerSignedItem.deserialize(input.decodeBase16ToArray()!!)
+        deserialized.shouldNotBeNull()
+        val serialized = deserialized.serialize()
+
+        serialized.encodeBase16().uppercase() shouldBe input
     }
 
     // From ISO/IEC 18013-5:2021(E), page 130
