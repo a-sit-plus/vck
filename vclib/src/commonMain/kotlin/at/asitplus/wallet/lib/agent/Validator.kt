@@ -6,18 +6,27 @@ import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
+import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import at.asitplus.wallet.lib.iso.IssuerSigned
-import io.matthewnelson.component.base64.decodeBase64ToArray
+import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.iso.ValueDigestList
+import at.asitplus.wallet.lib.iso.sha256
+import at.asitplus.wallet.lib.iso.wrapInCborTag
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.toBitSet
 import io.github.aakira.napier.Napier
+import io.matthewnelson.component.base64.decodeBase64ToArray
+import io.matthewnelson.component.encoding.base16.encodeBase16
+import kotlinx.serialization.cbor.ByteStringWrapper
 
 
 /**
@@ -175,9 +184,66 @@ class Validator(
     /**
      * Validates an ISO document, equivalent of a Verifiable Presentation
      */
-    fun verifyDocument(it: Document, challenge: String): Verifier.VerifyPresentationResult {
-        // TODO Actually verify ISO document
-        return Verifier.VerifyPresentationResult.SuccessIso(it)
+    fun verifyDocument(doc: Document, challenge: String): Verifier.VerifyPresentationResult {
+        if (doc.docType != DOC_TYPE_MDL)
+            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
+                .also { Napier.w("Invalid docType: ${doc.docType}") }
+        if (doc.errors != null) {
+            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
+                .also { Napier.w("Document has errors: ${doc.errors}") }
+        }
+        val issuerSigned = doc.issuerSigned
+        val issuerAuth = issuerSigned.issuerAuth
+        // TODO Get Issuer Key somewhere
+        //        if (verifierCoseService.verifyCose(issuerAuth, CoseKey(CoseKeyType.EC2)).getOrNull() != true) {
+        //            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
+        //                .also { Napier.w("IssuerAuth not verified: $issuerAuth") }
+        //        }
+
+        val mso = issuerSigned.getIssuerAuthPayloadAsMso()
+            ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
+                .also { Napier.w("MSO is null: ${issuerAuth.payload?.encodeBase16()}") }
+        if (mso.docType != DOC_TYPE_MDL) {
+            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
+                .also { Napier.w("Invalid docType in MSO: ${mso.docType}") }
+        }
+        val mdlItems = mso.valueDigests[NAMESPACE_MDL]
+            ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
+                .also { Napier.w("mdlItems are null in MSO: ${mso.valueDigests}") }
+
+        val walletKey = mso.deviceKeyInfo.deviceKey
+        val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature
+            ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
+                .also { Napier.w("DeviceSignature is null: ${doc.deviceSigned.deviceAuth}") }
+        // TODO Does the challenge need to be included in deviceSignature somehow?
+
+        if (verifierCoseService.verifyCose(deviceSignature, walletKey).getOrNull() != true) {
+            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
+                .also { Napier.w("DeviceSignature not verified") }
+        }
+
+        val issuerSignedItems = issuerSigned.namespaces?.get(NAMESPACE_MDL)
+            ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
+                .also { Napier.w("No issuer signed items in ${issuerSigned.namespaces}") }
+
+        val validatedItems = issuerSignedItems.entries.associateWith { it.verify(mdlItems) }
+        return Verifier.VerifyPresentationResult.SuccessIso(
+            IsoDocumentParsed(
+                validItems = validatedItems.filter { it.value }.map { it.key.value },
+                invalidItems = validatedItems.filter { !it.value }.map { it.key.value },
+            )
+        )
+    }
+
+    private fun ByteStringWrapper<IssuerSignedItem>.verify(mdlItems: ValueDigestList): Boolean {
+        val issuerHash = mdlItems.entries.first { it.key == value.digestId }
+        // TODO analyze usages of tag wrapping
+        val verifierHash = serialized.wrapInCborTag(24).sha256()
+        if (!verifierHash.encodeBase16().contentEquals(issuerHash.value.encodeBase16())) {
+            Napier.w("Could not verify hash of value for ${value.elementIdentifier}")
+            return false
+        }
+        return true
     }
 
     /**

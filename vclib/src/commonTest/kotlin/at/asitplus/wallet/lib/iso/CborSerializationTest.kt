@@ -17,7 +17,6 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import io.ktor.util.Identity.encode
 import io.ktor.utils.io.core.toByteArray
 import io.matthewnelson.component.encoding.base16.decodeBase16ToArray
 import io.matthewnelson.component.encoding.base16.encodeBase16
@@ -374,7 +373,7 @@ class CborSerializationTest : FreeSpec({
             .decodeBase16ToArray()
         valueDigestList.findItem(1U) shouldBe "67E539D6139EBD131AEF441B445645DD831B2B375B390CA5EF6279B205ED4571"
             .decodeBase16ToArray()
-        val valueDigestListUs = mso.valueDigests[NAMESPACE_MDL + ".US"]
+        val valueDigestListUs = mso.valueDigests["$NAMESPACE_MDL.US"]
         valueDigestListUs.shouldNotBeNull()
         valueDigestListUs.findItem(0U) shouldBe "D80B83D25173C484C5640610FF1A31C949C1D934BF4CF7F18D5223B15DD4F21C"
             .decodeBase16ToArray()

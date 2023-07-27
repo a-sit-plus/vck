@@ -184,17 +184,21 @@ class HolderAgent(
                 addKeyId = false
             ).getOrNull() ?: return null
                 .also { Napier.w("Could not create DeviceAuth for presentation") }
-            // TODO Create the correct ISO document
-            return Holder.CreatePresentationResult.Document(
-                Document(
-                    docType = DOC_TYPE_MDL,
-                    issuerSigned = validIsoCredential,
-                    deviceSigned = DeviceSigned(
-                        namespaces = byteArrayOf(), // TODO fill it
-                        deviceAuth = DeviceAuth(deviceSignature = deviceSignature)
+            val doc = Document(
+                docType = DOC_TYPE_MDL,
+                issuerSigned = IssuerSigned(
+                    // TODO selective disclosure, i.e. only specify the requested keys of the stored items
+                    namespaces = validIsoCredential.namespaces,
+                    issuerAuth = validIsoCredential.issuerAuth
+                ),
+                deviceSigned = DeviceSigned(
+                    namespaces = byteArrayOf(),
+                    deviceAuth = DeviceAuth(
+                        deviceSignature = deviceSignature
                     )
                 )
             )
+            return Holder.CreatePresentationResult.Document(doc)
         }
         Napier.w("Got no valid credentials for $attributeTypes")
         return null

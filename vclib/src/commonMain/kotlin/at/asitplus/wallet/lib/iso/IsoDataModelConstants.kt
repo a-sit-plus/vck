@@ -45,5 +45,39 @@ object IsoDataModelConstants {
         const val GIVEN_NAME_NATIONAL_CHARACTER = "given_name_national_character"
         const val SIGNATURE_USUAL_MARK = "signature_usual_mark"
 
+        val ALL_ELEMENTS = listOf(
+            FAMILY_NAME,
+            GIVEN_NAME,
+            BIRTH_DATE,
+            ISSUE_DATE,
+            EXPIRY_DATE,
+            ISSUING_COUNTRY,
+            ISSUING_AUTHORITY,
+            DOCUMENT_NUMBER,
+            PORTRAIT,
+            DRIVING_PRIVILEGES,
+            UN_DISTINGUISHING_SIGN,
+            ADMINISTRATIVE_NUMBER,
+            SEX,
+            HEIGHT,
+            WEIGHT,
+            EYE_COLOUR,
+            HAIR_COLOUR,
+            BIRTH_PLACE,
+            RESIDENT_ADDRESS,
+            PORTRAIT_CAPTURE_DATE,
+            AGE_IN_YEARS,
+            AGE_BIRTH_YEAR,
+            AGE_OVER_18,
+            ISSUING_JURISDICTION,
+            NATIONALITY,
+            RESIDENT_CITY,
+            RESIDENT_STATE,
+            RESIDENT_POSTAL_CODE,
+            RESIDENT_COUNTRY,
+            FAMILY_NAME_NATIONAL_CHARACTER,
+            GIVEN_NAME_NATIONAL_CHARACTER,
+            SIGNATURE_USUAL_MARK,
+        )
     }
 }

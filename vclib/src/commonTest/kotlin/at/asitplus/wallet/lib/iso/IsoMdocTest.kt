@@ -94,7 +94,7 @@ class Wallet {
             portrait = byteArrayOf(),
             issueDate = LocalDate.parse(issueDateValue),
             expiryDate = LocalDate.parse(expiryDateValue),
-            drivingPrivileges = drivingPrivilegesValue,
+            drivingPrivileges = drivingPrivilegesValue.toList(),
         )
         println("Wallet stored MDL: $storedMdl")
     }
@@ -295,7 +295,7 @@ private fun extractDataString(
 private fun extractDataDrivingPrivileges(
     mdlItems: IssuerSignedList,
     key: String
-): List<DrivingPrivilege> {
+): Array<DrivingPrivilege> {
     val element = mdlItems.entries.first { it.value.elementIdentifier == key }
     val value = element.value.elementValue.drivingPrivilege
     value.shouldNotBeNull()
@@ -314,5 +314,5 @@ fun buildIssuerSignedItem(elementIdentifier: String, elementValue: DrivingPrivil
     digestId = digestId,
     random = Random.nextBytes(16),
     elementIdentifier = elementIdentifier,
-    elementValue = ElementValue(drivingPrivilege = listOf(elementValue))
+    elementValue = ElementValue(drivingPrivilege = arrayOf(elementValue))
 )
