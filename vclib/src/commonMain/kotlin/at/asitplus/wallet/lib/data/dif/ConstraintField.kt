@@ -19,7 +19,9 @@ data class ConstraintField(
     // should be JSONPath
     val path: Array<String>,
     @SerialName("filter")
-    val filter: ConstraintFilter? = null
+    val filter: ConstraintFilter? = null,
+    @SerialName("intent_to_retain")
+    val intentToRetain: Boolean? = null,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -32,8 +34,7 @@ data class ConstraintField(
         if (predicate != other.predicate) return false
         if (!path.contentEquals(other.path)) return false
         if (filter != other.filter) return false
-
-        return true
+        return intentToRetain == other.intentToRetain
     }
 
     override fun hashCode(): Int {
@@ -42,6 +43,7 @@ data class ConstraintField(
         result = 31 * result + (predicate?.hashCode() ?: 0)
         result = 31 * result + path.contentHashCode()
         result = 31 * result + (filter?.hashCode() ?: 0)
+        result = 31 * result + (intentToRetain?.hashCode() ?: 0)
         return result
     }
 }

@@ -98,7 +98,7 @@ interface Holder {
 
     /**
      * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,
-     * that match the [attributeTypes] (if specified).
+     * that match the [attributeTypes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO case).
      *
      * May return null if no valid credentials (i.e. non-revoked, matching attribute name) are available.
      */
@@ -106,6 +106,7 @@ interface Holder {
         challenge: String,
         audienceId: String,
         attributeTypes: Collection<String>? = null,
+        requestedClaims: Collection<String>? = null,
     ): CreatePresentationResult?
 
     /**

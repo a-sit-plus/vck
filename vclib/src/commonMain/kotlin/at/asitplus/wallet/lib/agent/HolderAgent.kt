@@ -156,7 +156,7 @@ class HolderAgent(
 
     /**
      * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,
-     * that match [attributeTypes] (if specified).
+     * that match [attributeTypes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO case).
      *
      * May return null if no valid credentials (i.e. non-revoked, matching attribute name) are available.
      */
@@ -164,6 +164,7 @@ class HolderAgent(
         challenge: String,
         audienceId: String,
         attributeTypes: Collection<String>?,
+        requestedClaims: Collection<String>?,
     ): Holder.CreatePresentationResult? {
         val credentials = subjectCredentialStore.getCredentials(attributeTypes).getOrNull()
             ?: return null
@@ -196,7 +197,7 @@ class HolderAgent(
                     docType = DOC_TYPE_MDL,
                     issuerSigned = IssuerSigned(
                         namespaces = mapOf(NAMESPACE_MDL to IssuerSignedList(attributes.entries.filter {
-                            it.discloseItem(attributeTypes)
+                            it.discloseItem(requestedClaims)
                         })),
                         issuerAuth = validIsoCredential.issuerAuth
                     ),
@@ -213,9 +214,9 @@ class HolderAgent(
         return null
     }
 
-    private fun ByteStringWrapper<IssuerSignedItem>.discloseItem(attributeTypes: Collection<String>?) =
-        if (attributeTypes?.isNotEmpty() == true) {
-            value.elementIdentifier in attributeTypes
+    private fun ByteStringWrapper<IssuerSignedItem>.discloseItem(requestedClaims: Collection<String>?) =
+        if (requestedClaims?.isNotEmpty() == true) {
+            value.elementIdentifier in requestedClaims
         } else {
             true
         }

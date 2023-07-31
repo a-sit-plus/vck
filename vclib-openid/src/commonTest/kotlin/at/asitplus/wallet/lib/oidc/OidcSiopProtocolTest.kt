@@ -169,6 +169,12 @@ class OidcSiopProtocolTest : FreeSpec({
     }
 
     "test specific credential" {
+        verifierSiop = OidcSiopVerifier.newInstance(
+            verifier = verifierAgent,
+            cryptoService = verifierCryptoService,
+            relyingPartyUrl = relyingPartyUrl,
+            credentialScheme = TestCredentialScheme
+        )
         holderAgent.storeCredentials(
             IssuerAgent.newDefaultInstance(
                 DefaultCryptoService(),
@@ -179,7 +185,7 @@ class OidcSiopProtocolTest : FreeSpec({
             ).toStoreCredentialInput()
         )
 
-        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl, credentialScheme = TestCredentialScheme)
+        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl)
         println(authnRequest)
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()

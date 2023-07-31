@@ -235,8 +235,14 @@ class OidcSiopWallet(
         val requestedScopes = params.scope?.split(" ")
             ?.filterNot { it == SCOPE_OPENID }?.filterNot { it == SCOPE_PROFILE }
             ?.toList() ?: listOf()
-        // TODO also add requested claims
-        val vp = holder.createPresentation(params.nonce, audience, requestedScopes)
+        val requestedClaims = params.presentationDefinition?.inputDescriptors
+            ?.mapNotNull { it.constraints }?.flatMap { it.fields?.toList() ?: listOf() }
+            ?.flatMap { it.path.toList() }
+            ?.filter { it != "$.type" }
+            ?.filter { it != "$.mdoc.doctype" }
+            ?.map { it.removePrefix("\$.mdoc.") }
+            ?: listOf()
+        val vp = holder.createPresentation(params.nonce, audience, requestedScopes, requestedClaims)
             ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not create presentation") }
 

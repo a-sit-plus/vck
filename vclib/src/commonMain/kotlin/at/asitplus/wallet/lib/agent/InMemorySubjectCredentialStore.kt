@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
@@ -31,9 +32,7 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
         requiredAttributeTypes: Collection<String>?
     ) = if (requiredAttributeTypes?.isNotEmpty() == true) {
         when (this) {
-            is SubjectCredentialStore.StoreEntry.Iso -> issuerSigned.namespaces?.keys?.any { it in requiredAttributeTypes }
-                ?: false
-
+            is SubjectCredentialStore.StoreEntry.Iso -> ConstantIndex.MobileDrivingLicence2023.vcType in requiredAttributeTypes
             is SubjectCredentialStore.StoreEntry.Vc -> vc.vc.type.any { it in requiredAttributeTypes }
         }
     } else true
