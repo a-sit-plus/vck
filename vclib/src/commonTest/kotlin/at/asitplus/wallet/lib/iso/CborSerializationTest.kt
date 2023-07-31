@@ -631,7 +631,6 @@ class CborSerializationTest : FreeSpec({
         valueDigestListUs.findItem(1U) shouldBe "4D80E1E2E4FB246D97895427CE7000BB59BB24C8CD003ECF94BF35BBD2917E34"
             .decodeBase16ToArray()
 
-        // TODO only A7 vs A1 for serialized CoseHeader is wrong!
         coseSigned.serialize().encodeBase16() shouldBe input
     }
 

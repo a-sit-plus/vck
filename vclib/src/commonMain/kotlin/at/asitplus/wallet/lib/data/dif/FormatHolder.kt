@@ -21,4 +21,6 @@ data class FormatHolder(
     val ldpVp: FormatContainerLdp? = null,
     @SerialName("ldp_vc")
     val ldpVc: FormatContainerLdp? = null,
+    @SerialName("mso_mdoc")
+    val msoMdoc: FormatContainerJwt? = null,
 )

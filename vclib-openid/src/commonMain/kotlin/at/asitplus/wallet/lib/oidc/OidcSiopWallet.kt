@@ -232,10 +232,11 @@ class OidcSiopWallet(
             ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not sign id_token") }
 
-        val attributeTypes = params.scope?.split(" ")
+        val requestedScopes = params.scope?.split(" ")
             ?.filterNot { it == SCOPE_OPENID }?.filterNot { it == SCOPE_PROFILE }
-            ?.toList()?.ifEmpty { null }
-        val vp = holder.createPresentation(params.nonce, audience, attributeTypes)
+            ?.toList() ?: listOf()
+        // TODO also add requested claims
+        val vp = holder.createPresentation(params.nonce, audience, requestedScopes)
             ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not create presentation") }
 

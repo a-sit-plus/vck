@@ -15,6 +15,7 @@ import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.SchemaReference
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JsonWebKey
@@ -58,6 +59,7 @@ class OidcSiopVerifier(
     private val verifierJwsService: VerifierJwsService,
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
+    private val credentialScheme: ConstantIndex.CredentialScheme? = null,
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
@@ -71,7 +73,8 @@ class OidcSiopVerifier(
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
             jwsService: JwsService = DefaultJwsService(cryptoService),
             timeLeewaySeconds: Long = 300L,
-            clock: Clock = Clock.System
+            clock: Clock = Clock.System,
+            credentialScheme: ConstantIndex.CredentialScheme? = null,
         ) = OidcSiopVerifier(
             verifier = verifier,
             relyingPartyUrl = relyingPartyUrl,
@@ -79,7 +82,8 @@ class OidcSiopVerifier(
             jwsService = jwsService,
             verifierJwsService = verifierJwsService,
             timeLeewaySeconds = timeLeewaySeconds,
-            clock = clock
+            clock = clock,
+            credentialScheme = credentialScheme,
         )
     }
 
@@ -171,14 +175,42 @@ class OidcSiopVerifier(
         responseMode: String? = null,
         state: String? = uuid4().toString(),
     ): AuthenticationRequestParameters {
+        val vpFormats = FormatHolder(
+            msoMdoc = if (credentialScheme?.credentialFormat == ConstantIndex.CredentialFormat.ISO_18013)
+                FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text)) else null,
+            jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text)),
+        )
         val metadata = RelyingPartyMetadata(
             redirectUris = arrayOf(relyingPartyUrl),
             jsonWebKeySet = JsonWebKeySet(arrayOf(agentPublicKey)),
             subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
-            vpFormats = FormatHolder(
-                jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text)),
-            ),
+            vpFormats = vpFormats,
         )
+        val mainConstraint = when (credentialScheme?.credentialFormat) {
+            ConstantIndex.CredentialFormat.W3C_VC -> ConstraintField(
+                path = arrayOf("$.type"),
+                filter = ConstraintFilter(
+                    type = "string",
+                    pattern = credentialScheme.vcType,
+                )
+            )
+
+            ConstantIndex.CredentialFormat.ISO_18013 -> ConstraintField(
+                path = arrayOf("$.mdoc.doctype"),
+                filter = ConstraintFilter(
+                    type = "string",
+                    pattern = NAMESPACE_MDL,
+                )
+            )
+
+            else -> ConstraintField(
+                path = arrayOf("$.type"),
+                filter = ConstraintFilter(
+                    type = "string",
+                    pattern = "AnyCredential",
+                )
+            )
+        }
         return AuthenticationRequestParameters(
             responseType = "$ID_TOKEN $VP_TOKEN",
             clientId = relyingPartyUrl,
@@ -192,22 +224,15 @@ class OidcSiopVerifier(
             state = state,
             presentationDefinition = PresentationDefinition(
                 id = uuid4().toString(),
-                formats = FormatHolder(
-                    jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text))
-                ),
+                formats = vpFormats,
                 inputDescriptors = arrayOf(
                     InputDescriptor(
                         id = uuid4().toString(),
                         schema = arrayOf(SchemaReference(credentialScheme?.schemaUri ?: "https://example.com")),
                         constraints = Constraint(
                             fields = arrayOf(
-                                ConstraintField(
-                                    path = arrayOf("$.type"),
-                                    filter = ConstraintFilter(
-                                        type = "string",
-                                        pattern = credentialScheme?.vcType ?: "AnyCredential",
-                                    )
-                                )
+                                mainConstraint
+                                // TODO Add constraints for requested MDOC fields
                             ),
                         ),
                     )

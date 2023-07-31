@@ -24,15 +24,19 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
     override suspend fun getCredentials(
         requiredAttributeTypes: Collection<String>?,
     ) = KmmResult.success(
-        credentials.filter {
-            requiredAttributeTypes?.let { types ->
-                when (it) {
-                    is SubjectCredentialStore.StoreEntry.Iso -> it.issuerSigned.namespaces?.keys?.any { it in types }
-                    is SubjectCredentialStore.StoreEntry.Vc -> it.vc.vc.type.any { it in types }
-                }
-            } ?: true
-        }
+        credentials.filter { it.discloseItem(requiredAttributeTypes) }
     )
+
+    private fun SubjectCredentialStore.StoreEntry.discloseItem(
+        requiredAttributeTypes: Collection<String>?
+    ) = if (requiredAttributeTypes?.isNotEmpty() == true) {
+        when (this) {
+            is SubjectCredentialStore.StoreEntry.Iso -> issuerSigned.namespaces?.keys?.any { it in requiredAttributeTypes }
+                ?: false
+
+            is SubjectCredentialStore.StoreEntry.Vc -> vc.vc.type.any { it in requiredAttributeTypes }
+        }
+    } else true
 
     override suspend fun getAttachment(name: String) =
         attachments.firstOrNull { it.name == name }?.data?.let { KmmResult.success(it) }

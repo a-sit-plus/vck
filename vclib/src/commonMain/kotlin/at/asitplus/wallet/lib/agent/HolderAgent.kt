@@ -12,11 +12,15 @@ import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceSigned
 import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.iso.IssuerSignedList
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import io.github.aakira.napier.Napier
+import kotlinx.serialization.cbor.ByteStringWrapper
 
 
 /**
@@ -184,25 +188,37 @@ class HolderAgent(
                 addKeyId = false
             ).getOrNull() ?: return null
                 .also { Napier.w("Could not create DeviceAuth for presentation") }
-            val doc = Document(
-                docType = DOC_TYPE_MDL,
-                issuerSigned = IssuerSigned(
-                    // TODO selective disclosure, i.e. only specify the requested keys of the stored items
-                    namespaces = validIsoCredential.namespaces,
-                    issuerAuth = validIsoCredential.issuerAuth
-                ),
-                deviceSigned = DeviceSigned(
-                    namespaces = byteArrayOf(),
-                    deviceAuth = DeviceAuth(
-                        deviceSignature = deviceSignature
+            val attributes = validIsoCredential.namespaces?.get(NAMESPACE_MDL)
+                ?: return null
+                    .also { Napier.w("Could not filter issuerSignedItems for $NAMESPACE_MDL") }
+            return Holder.CreatePresentationResult.Document(
+                Document(
+                    docType = DOC_TYPE_MDL,
+                    issuerSigned = IssuerSigned(
+                        namespaces = mapOf(NAMESPACE_MDL to IssuerSignedList(attributes.entries.filter {
+                            it.discloseItem(attributeTypes)
+                        })),
+                        issuerAuth = validIsoCredential.issuerAuth
+                    ),
+                    deviceSigned = DeviceSigned(
+                        namespaces = byteArrayOf(),
+                        deviceAuth = DeviceAuth(
+                            deviceSignature = deviceSignature
+                        )
                     )
                 )
             )
-            return Holder.CreatePresentationResult.Document(doc)
         }
         Napier.w("Got no valid credentials for $attributeTypes")
         return null
     }
+
+    private fun ByteStringWrapper<IssuerSignedItem>.discloseItem(attributeTypes: Collection<String>?) =
+        if (attributeTypes?.isNotEmpty() == true) {
+            value.elementIdentifier in attributeTypes
+        } else {
+            true
+        }
 
     /**
      * Creates a [VerifiablePresentation] with the given [validCredentials].
