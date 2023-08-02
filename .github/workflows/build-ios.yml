@@ -13,10 +13,8 @@ jobs:
           distribution: 'temurin'
           java-version: '11'
       - name: Build kotlinx.serialization
-        run: ./gradlew build :build -x :kotlinx-serialization-cbor:animalsnifferMain -x :kotlinx-serialization-cbor:jvmApiCheck -x :kotlinx-serialization-cbor:jsLegacyNode publishToMavenLocal
+        run: ./gradlew publishToMavenLocal
         working-directory: kotlinx.serialization
-      - name: Build klibs
-        run: ./gradlew iosArm64MainKlibrary iosX64MainKlibrary
       - name: Build XCFrameworks
         run: ./gradlew assembleVcLibKmmXCFramework assembleVcLibAriesKmmXCFramework assembleVcLibOpenIdKmmXCFramework
       - name: Upload debug XCFramework vclib

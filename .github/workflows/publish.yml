@@ -12,6 +12,9 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '11'
+      - name: Build kotlinx.serialization
+        run: ./gradlew publishToMavenLocal
+        working-directory: kotlinx.serialization
       - name: Publish to Sonatype
         run: ./gradlew clean publishToSonatype closeSonatypeStagingRepository
         env:
