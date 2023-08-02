@@ -222,6 +222,14 @@ class Validator(
                 .also { Napier.w("DeviceSignature not verified") }
         }
 
+        val deviceSignaturePayload = deviceSignature.payload
+            ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
+                .also { Napier.w("DeviceSignature does not contain challenge") }
+        if (!deviceSignaturePayload.contentEquals(challenge.encodeToByteArray())) {
+            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
+                .also { Napier.w("DeviceSignature does not contain correct challenge") }
+        }
+
         val issuerSignedItems = issuerSigned.namespaces?.get(NAMESPACE_MDL)
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
                 .also { Napier.w("No issuer signed items in ${issuerSigned.namespaces}") }

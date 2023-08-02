@@ -185,7 +185,7 @@ class HolderAgent(
             val deviceSignature = coseService.createSignedCose(
                 protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
                 unprotectedHeader = null,
-                payload = null, //TODO challenge
+                payload = challenge.encodeToByteArray(),
                 addKeyId = false
             ).getOrNull() ?: return null
                 .also { Napier.w("Could not create DeviceAuth for presentation") }
