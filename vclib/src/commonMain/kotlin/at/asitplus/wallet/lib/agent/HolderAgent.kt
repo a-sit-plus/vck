@@ -2,8 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.cbor.CoseHeader
-import at.asitplus.wallet.lib.cbor.CoseKey
-import at.asitplus.wallet.lib.cbor.CoseKeyType
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -100,8 +98,10 @@ class HolderAgent(
             }
         }
         credentialList.filterIsInstance<Holder.StoreCredentialInput.Iso>().forEach { cred ->
-            // TODO Where to get the ISO issuer key?
-            when (val result = validator.verifyIsoCred(cred.issuerSigned, CoseKey(type = CoseKeyType.EC2))) {
+            val issuerKey = cred.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.let {
+                CryptoUtils.extractCoseKeyFromX509Cert(it)
+            }
+            when (val result = validator.verifyIsoCred(cred.issuerSigned, issuerKey)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += result.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += result.input
                 is Verifier.VerifyCredentialResult.SuccessIso -> acceptedIso += result.issuerSigned

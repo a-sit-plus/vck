@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.jws.JweEncryption
 import at.asitplus.wallet.lib.jws.JwkType
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsExtensions.convertToAsn1Signature
+import io.ktor.http.content.ByteArrayContent
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.MemScope
@@ -61,6 +62,7 @@ actual class DefaultCryptoService : CryptoService {
     private val publicKey: SecKeyRef
     private val jsonWebKey: JsonWebKey
     private val coseKey: CoseKey
+    final override val certificate: ByteArray
 
     actual constructor() {
         val query = CFDictionaryCreateMutable(null, 2, null, null).apply {
@@ -73,6 +75,7 @@ actual class DefaultCryptoService : CryptoService {
         val data = CFBridgingRelease(publicKeyData) as NSData
         this.jsonWebKey = JsonWebKey.fromAnsiX963Bytes(JwkType.EC, EcCurve.SECP_256_R_1, data.toByteArray())!!
         this.coseKey = CoseKey.fromAnsiX963Bytes(CoseKeyType.EC2, CoseEllipticCurve.P256, data.toByteArray())!!
+        this.certificate = byteArrayOf() // TODO How to create a self-signed certificate in Kotlin/iOS?
     }
 
     override suspend fun sign(input: ByteArray): KmmResult<ByteArray> {
@@ -225,6 +228,17 @@ actual object CryptoUtils {
             val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
             val data = CFBridgingRelease(publicKeyData) as NSData
             return JsonWebKey.fromAnsiX963Bytes(JwkType.EC, EcCurve.SECP_256_R_1, data.toByteArray())
+        }
+    }
+
+    actual fun extractCoseKeyFromX509Cert(it: ByteArray): CoseKey? {
+        memScoped {
+            val certData = CFBridgingRetain(toData(it)) as CFDataRef
+            val certificate = SecCertificateCreateWithData(null, certData)
+            val publicKey = SecCertificateCopyKey(certificate)
+            val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
+            val data = CFBridgingRelease(publicKeyData) as NSData
+            return CoseKey.fromAnsiX963Bytes(CoseKeyType.EC2, CoseEllipticCurve.P256, data.toByteArray())
         }
     }
 

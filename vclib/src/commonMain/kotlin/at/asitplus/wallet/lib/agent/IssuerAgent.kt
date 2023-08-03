@@ -107,6 +107,7 @@ class IssuerAgent(
             is CredentialToBeIssued.Iso -> {
                 val expirationDate = credential.expiration
                 val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
+                // is unused, but needed to store the credential itself
                 val statusListIndex = issuerCredentialStore.storeGetNextIndex(
                     credential.issuerSignedItems,
                     issuanceDate,
@@ -139,9 +140,10 @@ class IssuerAgent(
                     ),
                     issuerAuth = coseService.createSignedCose(
                         protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
-                        unprotectedHeader = null, // TODO transport issuer certificate
+                        unprotectedHeader = null,
                         payload = mso.serializeForIssuerAuth(),
                         addKeyId = false,
+                        addCertificate = true,
                     ).getOrThrow()
                 )
                 return Issuer.IssuedCredentialResult(
