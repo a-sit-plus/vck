@@ -8,9 +8,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Build kotlinx.serialization
-        run: ./gradlew build :build -x :kotlinx-serialization-cbor:animalsnifferMain -x :kotlinx-serialization-cbor:jvmApiCheck -x :kotlinx-serialization-cbor:jsLegacyNode publishToMavenLocal
-        working-directory: kotlinx.serialization
       - name: Build jar
         run: ./gradlew assemble
       - name: Upload jar vclib
