@@ -57,8 +57,8 @@ sealed class CryptoPublicKey {
                 )
             }
 
-            fun fromAnsiX963Bytes(type: JwkType, curve: EcCurve, it: ByteArray): CryptoPublicKey? {
-                if (type != JwkType.EC || curve != EcCurve.SECP_256_R_1) {
+            fun fromAnsiX963Bytes(curve: EcCurve, it: ByteArray): CryptoPublicKey? {
+                if (curve != EcCurve.SECP_256_R_1) {
                     return null
                 }
                 if (it.size != 1 + 32 + 32 || it[0] != 0x04.toByte()) {
@@ -76,13 +76,8 @@ sealed class CryptoPublicKey {
                 )
             }
 
-            fun fromCoordinates(
-                type: JwkType,
-                curve: EcCurve,
-                x: ByteArray,
-                y: ByteArray
-            ): CryptoPublicKey? {
-                if (type != JwkType.EC || curve != EcCurve.SECP_256_R_1) {
+            fun fromCoordinates(curve: EcCurve, x: ByteArray, y: ByteArray): CryptoPublicKey? {
+                if (curve != EcCurve.SECP_256_R_1) {
                     return null
                 }
                 val keyId = MultibaseHelper.calcKeyId(curve, x, y)

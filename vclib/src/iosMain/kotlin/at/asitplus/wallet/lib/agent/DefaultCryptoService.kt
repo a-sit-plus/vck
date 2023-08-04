@@ -14,8 +14,6 @@ import at.asitplus.wallet.lib.jws.JweEncryption
 import at.asitplus.wallet.lib.jws.JwkType
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsExtensions.convertToAsn1Signature
-import at.asitplus.wallet.lib.jws.MultibaseHelper
-import io.ktor.http.content.ByteArrayContent
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.MemScope
@@ -62,8 +60,6 @@ actual class DefaultCryptoService : CryptoService {
     override val coseAlgorithm = CoseAlgorithm.ES256
     private val privateKey: SecKeyRef
     private val publicKey: SecKeyRef
-    private val jsonWebKey: JsonWebKey
-    private val coseKey: CoseKey
     private val cryptoPublicKey: CryptoPublicKey
     final override val certificate: ByteArray
 
@@ -76,10 +72,7 @@ actual class DefaultCryptoService : CryptoService {
         publicKey = SecKeyCopyPublicKey(privateKey)!!
         val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
-        this.jsonWebKey = JsonWebKey.fromAnsiX963Bytes(JwkType.EC, EcCurve.SECP_256_R_1, data.toByteArray())!!
-        this.coseKey = CoseKey.fromAnsiX963Bytes(CoseKeyType.EC2, CoseEllipticCurve.P256, data.toByteArray())!!
-        val keyId = MultibaseHelper.calcKeyId(EcCurve.SECP_256_R_1, keyX, keyY)!!
-        this.cryptoPublicKey = CryptoPublicKey.Ec(curve = EcCurve.SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
+        this.cryptoPublicKey = CryptoPublicKey.Ec.fromAnsiX963Bytes(EcCurve.SECP_256_R_1, data.toByteArray())!!
         this.certificate = byteArrayOf() // TODO How to create a self-signed certificate in Kotlin/iOS?
     }
 
@@ -149,10 +142,6 @@ actual class DefaultCryptoService : CryptoService {
     override fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray> {
         return KmmResult.success(input)
     }
-
-    override fun toJsonWebKey() = jsonWebKey
-
-    override fun toCoseKey() = coseKey
 
     override fun toPublicKey() = cryptoPublicKey
 }

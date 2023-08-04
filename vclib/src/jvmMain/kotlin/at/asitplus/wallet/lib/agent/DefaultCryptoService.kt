@@ -54,8 +54,6 @@ actual open class DefaultCryptoService : CryptoService {
     private val ecCurve: EcCurve = SECP_256_R_1
     private val keyPair: KeyPair
     private val cryptoPublicKey: CryptoPublicKey
-    private val jsonWebKey: JsonWebKey
-    private val coseKey: CoseKey
     final override val certificate: ByteArray
 
     actual constructor() {
@@ -63,8 +61,6 @@ actual open class DefaultCryptoService : CryptoService {
         val ecPublicKey = keyPair.public as ECPublicKey
         val keyX = ecPublicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        this.jsonWebKey = JsonWebKey.fromCoordinates(type = EC, curve = SECP_256_R_1, x = keyX, y = keyY)!!
-        this.coseKey = CoseKey.fromCoordinates(type = EC2, curve = P256, x = keyX, y = keyY)!!
         val keyId = MultibaseHelper.calcKeyId(SECP_256_R_1, keyX, keyY)!!
         this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
         this.certificate = generateSelfSignedCertificate()
@@ -75,8 +71,6 @@ actual open class DefaultCryptoService : CryptoService {
         val ecPublicKey = keyPair.public as ECPublicKey
         val keyX = ecPublicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        this.jsonWebKey = JsonWebKey.fromCoordinates(type = EC, curve = SECP_256_R_1, x = keyX, y = keyY)!!
-        this.coseKey = CoseKey.fromCoordinates(type = EC2, curve = P256, x = keyX, y = keyY)!!
         val keyId = MultibaseHelper.calcKeyId(SECP_256_R_1, keyX, keyY)!!
         this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
         this.certificate = generateSelfSignedCertificate()
@@ -87,8 +81,6 @@ actual open class DefaultCryptoService : CryptoService {
         val ecPublicKey = keyPair.public as ECPublicKey
         val keyX = ecPublicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        this.jsonWebKey = JsonWebKey.fromCoordinates(type = EC, curve = SECP_256_R_1, x = keyX, y = keyY)!!
-        this.coseKey = CoseKey.fromCoordinates(type = EC2, curve = P256, x = keyX, y = keyY)!!
         val keyId = MultibaseHelper.calcKeyId(SECP_256_R_1, keyX, keyY)!!
         this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
         this.certificate = certificate.encoded
@@ -115,10 +107,6 @@ actual open class DefaultCryptoService : CryptoService {
     override val jwsAlgorithm = JwsAlgorithm.ES256
 
     override val coseAlgorithm = CoseAlgorithm.ES256
-
-    override fun toJsonWebKey() = jsonWebKey
-
-    override fun toCoseKey() = coseKey
 
     override fun toPublicKey() = cryptoPublicKey
 

@@ -80,7 +80,7 @@ class OidcSiopVerifier(
         ) = OidcSiopVerifier(
             verifier = verifier,
             relyingPartyUrl = relyingPartyUrl,
-            agentPublicKey = cryptoService.toJsonWebKey(),
+            agentPublicKey = cryptoService.toPublicKey().toJsonWebKey(),
             jwsService = jwsService,
             verifierJwsService = verifierJwsService,
             timeLeewaySeconds = timeLeewaySeconds,

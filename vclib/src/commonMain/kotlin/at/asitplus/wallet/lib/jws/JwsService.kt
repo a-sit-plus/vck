@@ -67,7 +67,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): String? {
         val jwsHeader = JwsHeader(
             algorithm = cryptoService.jwsAlgorithm,
-            keyId = cryptoService.toJsonWebKey().keyId,
+            keyId = cryptoService.toPublicKey().toJsonWebKey().keyId,
             type = type,
             contentType = contentType
         )
@@ -76,8 +76,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
     override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): String? {
         if (header.algorithm != cryptoService.jwsAlgorithm
-            || header.keyId?.let { it != cryptoService.toJsonWebKey().keyId } == true
-            || header.jsonWebKey?.let { it != cryptoService.toJsonWebKey() } == true
+            || header.keyId?.let { it != cryptoService.toPublicKey().toJsonWebKey().keyId } == true
+            || header.jsonWebKey?.let { it != cryptoService.toPublicKey().toJsonWebKey() } == true
         ) {
             return null.also { Napier.w("Algorithm or keyId not matching to cryptoService") }
         }
@@ -100,9 +100,9 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): String? {
         var copy = header.copy(algorithm = cryptoService.jwsAlgorithm)
         if (addKeyId)
-            copy = copy.copy(keyId = cryptoService.toJsonWebKey().keyId)
+            copy = copy.copy(keyId = cryptoService.toPublicKey().toJsonWebKey().keyId)
         if (addJsonWebKey)
-            copy = copy.copy(jsonWebKey = cryptoService.toJsonWebKey())
+            copy = copy.copy(jsonWebKey = cryptoService.toPublicKey().toJsonWebKey())
         return createSignedJws(copy, payload)
     }
 
@@ -159,7 +159,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val jweHeader = JweHeader(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
-            jsonWebKey = cryptoService.toJsonWebKey(),
+            jsonWebKey = cryptoService.toPublicKey().toJsonWebKey(),
             type = type,
             contentType = contentType,
             ephemeralKeyPair = ephemeralKeyPair.toPublicJsonWebKey()
