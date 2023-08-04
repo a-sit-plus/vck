@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
@@ -18,7 +19,6 @@ import at.asitplus.wallet.lib.data.dif.SchemaReference
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
@@ -54,7 +54,7 @@ import kotlin.time.toDuration
 class OidcSiopVerifier(
     private val verifier: Verifier,
     private val relyingPartyUrl: String,
-    private val agentPublicKey: JsonWebKey,
+    private val agentPublicKey: CryptoPublicKey,
     private val jwsService: JwsService,
     private val verifierJwsService: VerifierJwsService,
     timeLeewaySeconds: Long = 300L,
@@ -80,7 +80,7 @@ class OidcSiopVerifier(
         ) = OidcSiopVerifier(
             verifier = verifier,
             relyingPartyUrl = relyingPartyUrl,
-            agentPublicKey = cryptoService.toPublicKey().toJsonWebKey(),
+            agentPublicKey = cryptoService.toPublicKey(),
             jwsService = jwsService,
             verifierJwsService = verifierJwsService,
             timeLeewaySeconds = timeLeewaySeconds,
@@ -175,7 +175,7 @@ class OidcSiopVerifier(
         )
         val metadata = RelyingPartyMetadata(
             redirectUris = arrayOf(relyingPartyUrl),
-            jsonWebKeySet = JsonWebKeySet(arrayOf(agentPublicKey)),
+            jsonWebKeySet = JsonWebKeySet(arrayOf(agentPublicKey.toJsonWebKey())),
             subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
             vpFormats = vpFormats,
         )

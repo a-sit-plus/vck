@@ -78,8 +78,7 @@ interface VerifierCryptoService {
 }
 
 expect object CryptoUtils {
-    fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey?
-    fun extractCoseKeyFromX509Cert(it: ByteArray): CoseKey?
+    fun extractPublicKeyFromX509Cert(it: ByteArray): CryptoPublicKey?
 }
 
 data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteArray) {

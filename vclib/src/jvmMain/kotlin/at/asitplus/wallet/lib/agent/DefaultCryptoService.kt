@@ -247,14 +247,9 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
 
 actual object CryptoUtils {
 
-    actual fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? = kotlin.runCatching {
+    actual fun extractPublicKeyFromX509Cert(it: ByteArray): CryptoPublicKey? = kotlin.runCatching {
         val pubKey = CertificateFactory.getInstance("X.509").generateCertificate(it.inputStream()).publicKey
-        if (pubKey is ECPublicKey) JsonWebKey.fromJcaKey(pubKey, SECP_256_R_1) else null
-    }.getOrNull()
-
-    actual fun extractCoseKeyFromX509Cert(it: ByteArray): CoseKey? = kotlin.runCatching {
-        val pubKey = CertificateFactory.getInstance("X.509").generateCertificate(it.inputStream()).publicKey
-        if (pubKey is ECPublicKey) CoseKey.fromJcaKey(pubKey, P256) else null
+        if (pubKey is ECPublicKey) CryptoPublicKey.Ec.Companion.fromJcaKey(pubKey, SECP_256_R_1) else null
     }.getOrNull()
 
 }
@@ -329,9 +324,8 @@ fun JsonWebKey.Companion.fromJcaKey(publicKey: ECPublicKey, ecCurve: EcCurve) =
         publicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
     )
 
-fun CoseKey.Companion.fromJcaKey(publicKey: ECPublicKey, ecCurve: CoseEllipticCurve) =
+fun CryptoPublicKey.Ec.Companion.fromJcaKey(publicKey: ECPublicKey, ecCurve: EcCurve) =
     fromCoordinates(
-        EC2,
         ecCurve,
         publicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes),
         publicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)

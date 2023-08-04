@@ -79,7 +79,7 @@ data class JwsHeader(
     val publicKey: JsonWebKey? by lazy {
         jsonWebKey
             ?: keyId?.let { JsonWebKey.fromKeyId(it) }
-            ?: certificateChain?.firstOrNull()?.let { CryptoUtils.extractPublicKeyFromX509Cert(it) }
+            ?: certificateChain?.firstOrNull()?.let { CryptoUtils.extractPublicKeyFromX509Cert(it)?.toJsonWebKey() }
     }
 
     companion object {

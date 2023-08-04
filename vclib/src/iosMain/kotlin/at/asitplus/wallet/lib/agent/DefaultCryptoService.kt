@@ -216,25 +216,14 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
 @Suppress("UNCHECKED_CAST")
 actual object CryptoUtils {
 
-    actual fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? {
+    actual fun extractPublicKeyFromX509Cert(it: ByteArray): CryptoPublicKey? {
         memScoped {
             val certData = CFBridgingRetain(toData(it)) as CFDataRef
             val certificate = SecCertificateCreateWithData(null, certData)
             val publicKey = SecCertificateCopyKey(certificate)
             val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
             val data = CFBridgingRelease(publicKeyData) as NSData
-            return JsonWebKey.fromAnsiX963Bytes(JwkType.EC, EcCurve.SECP_256_R_1, data.toByteArray())
-        }
-    }
-
-    actual fun extractCoseKeyFromX509Cert(it: ByteArray): CoseKey? {
-        memScoped {
-            val certData = CFBridgingRetain(toData(it)) as CFDataRef
-            val certificate = SecCertificateCreateWithData(null, certData)
-            val publicKey = SecCertificateCopyKey(certificate)
-            val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
-            val data = CFBridgingRelease(publicKeyData) as NSData
-            return CoseKey.fromAnsiX963Bytes(CoseKeyType.EC2, CoseEllipticCurve.P256, data.toByteArray())
+            return CryptoPublicKey.Ec.fromAnsiX963Bytes(EcCurve.SECP_256_R_1, data.toByteArray())
         }
     }
 

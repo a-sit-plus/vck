@@ -196,7 +196,7 @@ class Validator(
         val issuerAuth = issuerSigned.issuerAuth
 
         val issuerKey = issuerAuth.unprotectedHeader?.certificateChain?.let {
-            CryptoUtils.extractCoseKeyFromX509Cert(it)
+            CryptoUtils.extractPublicKeyFromX509Cert(it)?.toCoseKey()
         } ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
             .also { Napier.w("Got no issuer key in $issuerAuth") }
 

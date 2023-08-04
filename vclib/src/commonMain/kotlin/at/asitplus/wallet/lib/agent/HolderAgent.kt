@@ -99,7 +99,7 @@ class HolderAgent(
         }
         credentialList.filterIsInstance<Holder.StoreCredentialInput.Iso>().forEach { cred ->
             val issuerKey = cred.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.let {
-                CryptoUtils.extractCoseKeyFromX509Cert(it)
+                CryptoUtils.extractPublicKeyFromX509Cert(it)?.toCoseKey()
             }
             when (val result = validator.verifyIsoCred(cred.issuerSigned, issuerKey)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += result.input
