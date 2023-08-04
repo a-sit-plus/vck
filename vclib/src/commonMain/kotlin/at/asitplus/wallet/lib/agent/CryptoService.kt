@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.jws.EcCurve
@@ -55,6 +56,8 @@ interface CryptoService {
     val certificate: ByteArray
 
     fun toJsonWebKey(): JsonWebKey
+
+    fun toPublicKey(): CryptoPublicKey
 
     fun toCoseKey(): CoseKey
 

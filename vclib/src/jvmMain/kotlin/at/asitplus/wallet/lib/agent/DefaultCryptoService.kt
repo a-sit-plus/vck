@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
 import at.asitplus.wallet.lib.cbor.CoseEllipticCurve.P256
@@ -15,6 +16,7 @@ import at.asitplus.wallet.lib.jws.JwkType.EC
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsExtensions.convertToAsn1Signature
 import at.asitplus.wallet.lib.jws.JwsExtensions.ensureSize
+import at.asitplus.wallet.lib.jws.MultibaseHelper
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
 import org.bouncycastle.cert.X509v3CertificateBuilder
@@ -51,6 +53,7 @@ actual open class DefaultCryptoService : CryptoService {
 
     private val ecCurve: EcCurve = SECP_256_R_1
     private val keyPair: KeyPair
+    private val cryptoPublicKey: CryptoPublicKey
     private val jsonWebKey: JsonWebKey
     private val coseKey: CoseKey
     final override val certificate: ByteArray
@@ -62,6 +65,8 @@ actual open class DefaultCryptoService : CryptoService {
         val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         this.jsonWebKey = JsonWebKey.fromCoordinates(type = EC, curve = SECP_256_R_1, x = keyX, y = keyY)!!
         this.coseKey = CoseKey.fromCoordinates(type = EC2, curve = P256, x = keyX, y = keyY)!!
+        val keyId = MultibaseHelper.calcKeyId(SECP_256_R_1, keyX, keyY)!!
+        this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
         this.certificate = generateSelfSignedCertificate()
     }
 
@@ -72,6 +77,8 @@ actual open class DefaultCryptoService : CryptoService {
         val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         this.jsonWebKey = JsonWebKey.fromCoordinates(type = EC, curve = SECP_256_R_1, x = keyX, y = keyY)!!
         this.coseKey = CoseKey.fromCoordinates(type = EC2, curve = P256, x = keyX, y = keyY)!!
+        val keyId = MultibaseHelper.calcKeyId(SECP_256_R_1, keyX, keyY)!!
+        this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
         this.certificate = generateSelfSignedCertificate()
     }
 
@@ -82,6 +89,8 @@ actual open class DefaultCryptoService : CryptoService {
         val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         this.jsonWebKey = JsonWebKey.fromCoordinates(type = EC, curve = SECP_256_R_1, x = keyX, y = keyY)!!
         this.coseKey = CoseKey.fromCoordinates(type = EC2, curve = P256, x = keyX, y = keyY)!!
+        val keyId = MultibaseHelper.calcKeyId(SECP_256_R_1, keyX, keyY)!!
+        this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
         this.certificate = certificate.encoded
     }
 
@@ -110,6 +119,8 @@ actual open class DefaultCryptoService : CryptoService {
     override fun toJsonWebKey() = jsonWebKey
 
     override fun toCoseKey() = coseKey
+
+    override fun toPublicKey() = cryptoPublicKey
 
     override suspend fun sign(input: ByteArray): KmmResult<ByteArray> =
         try {

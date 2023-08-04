@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
 import at.asitplus.wallet.lib.cbor.CoseKey
@@ -13,6 +14,7 @@ import at.asitplus.wallet.lib.jws.JweEncryption
 import at.asitplus.wallet.lib.jws.JwkType
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsExtensions.convertToAsn1Signature
+import at.asitplus.wallet.lib.jws.MultibaseHelper
 import io.ktor.http.content.ByteArrayContent
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
@@ -62,6 +64,7 @@ actual class DefaultCryptoService : CryptoService {
     private val publicKey: SecKeyRef
     private val jsonWebKey: JsonWebKey
     private val coseKey: CoseKey
+    private val cryptoPublicKey: CryptoPublicKey
     final override val certificate: ByteArray
 
     actual constructor() {
@@ -75,6 +78,8 @@ actual class DefaultCryptoService : CryptoService {
         val data = CFBridgingRelease(publicKeyData) as NSData
         this.jsonWebKey = JsonWebKey.fromAnsiX963Bytes(JwkType.EC, EcCurve.SECP_256_R_1, data.toByteArray())!!
         this.coseKey = CoseKey.fromAnsiX963Bytes(CoseKeyType.EC2, CoseEllipticCurve.P256, data.toByteArray())!!
+        val keyId = MultibaseHelper.calcKeyId(EcCurve.SECP_256_R_1, keyX, keyY)!!
+        this.cryptoPublicKey = CryptoPublicKey.Ec(curve = EcCurve.SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
         this.certificate = byteArrayOf() // TODO How to create a self-signed certificate in Kotlin/iOS?
     }
 
@@ -148,6 +153,8 @@ actual class DefaultCryptoService : CryptoService {
     override fun toJsonWebKey() = jsonWebKey
 
     override fun toCoseKey() = coseKey
+
+    override fun toPublicKey() = cryptoPublicKey
 }
 
 @Suppress("UNCHECKED_CAST")
