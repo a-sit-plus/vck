@@ -95,7 +95,15 @@ class DefaultVerifierCoseService(
 
         val algorithm = coseSigned.protectedHeader.value.algorithm
             ?: return KmmResult.failure(IllegalArgumentException("Algorithm not specified"))
-        val verified = cryptoService.verify(signatureInput, coseSigned.signature, algorithm, signer)
+        val publicKey = signer.toCryptoPublicKey()
+            ?: return KmmResult.failure(IllegalArgumentException("Signer not convertibale"))
+                .also { Napier.w("Could not convert signer to public key: $signer") }
+        val verified = cryptoService.verify(
+            input = signatureInput,
+            signature = coseSigned.signature,
+            algorithm = algorithm.toJwsAlgorithm(),
+            publicKey = publicKey
+        )
         val result = verified.getOrElse {
             Napier.w("No verification from native code", it)
             return KmmResult.failure(it)

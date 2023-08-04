@@ -3,9 +3,6 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
-import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
-import at.asitplus.wallet.lib.cbor.CoseKey
-import at.asitplus.wallet.lib.cbor.CoseKeyType
 import io.matthewnelson.component.base64.encodeBase64
 import at.asitplus.wallet.lib.jws.EcCurve
 import at.asitplus.wallet.lib.jws.JsonWebKey
@@ -153,8 +150,11 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
         input: ByteArray,
         signature: ByteArray,
         algorithm: JwsAlgorithm,
-        publicKey: JsonWebKey
+        publicKey: CryptoPublicKey
     ): KmmResult<Boolean> {
+        if (publicKey !is CryptoPublicKey.Ec) {
+            return KmmResult.failure(IllegalArgumentException("Public key is not an EC key"))
+        }
         memScoped {
             val ansix962 = publicKey.toAnsiX963ByteArray().getOrElse {
                 return KmmResult.failure(it)
@@ -180,37 +180,6 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
         }
     }
 
-
-    override fun verify(
-        input: ByteArray,
-        signature: ByteArray,
-        algorithm: CoseAlgorithm,
-        publicKey: CoseKey
-    ): KmmResult<Boolean> {
-        memScoped {
-            val ansix962 = publicKey.toAnsiX963ByteArray().getOrElse {
-                return KmmResult.failure(it)
-            }
-            val keyData = CFBridgingRetain(toData(ansix962)) as CFDataRef
-            val attributes = CFDictionaryCreateMutable(null, 3, null, null).apply {
-                CFDictionaryAddValue1(this, kSecAttrKeyClass, kSecAttrKeyClassPublic)
-                CFDictionaryAddValue1(this, kSecAttrKeyType, kSecAttrKeyTypeEC)
-                CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
-            }
-            val secKey = SecKeyCreateWithData(keyData, attributes, null)
-                ?: return KmmResult.failure(IllegalArgumentException())
-            val inputData = CFBridgingRetain(toData(input)) as CFDataRef
-            val signatureData = CFBridgingRetain(toData(signature.convertToAsn1Signature(32))) as CFDataRef
-            val verified = SecKeyVerifySignature(
-                secKey,
-                kSecKeyAlgorithmECDSASignatureMessageX962SHA256,
-                inputData,
-                signatureData,
-                null
-            )
-            return KmmResult.success(verified)
-        }
-    }
 }
 
 @Suppress("UNCHECKED_CAST")

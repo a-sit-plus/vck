@@ -5,8 +5,6 @@ import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
 import at.asitplus.wallet.lib.cbor.CoseEllipticCurve.P256
-import at.asitplus.wallet.lib.cbor.CoseKey
-import at.asitplus.wallet.lib.cbor.CoseKeyType.EC2
 import at.asitplus.wallet.lib.jws.EcCurve
 import at.asitplus.wallet.lib.jws.EcCurve.SECP_256_R_1
 import at.asitplus.wallet.lib.jws.JsonWebKey
@@ -212,10 +210,13 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
         input: ByteArray,
         signature: ByteArray,
         algorithm: JwsAlgorithm,
-        publicKey: JsonWebKey
+        publicKey: CryptoPublicKey,
     ): KmmResult<Boolean> {
+        if (publicKey !is CryptoPublicKey.Ec) {
+            return KmmResult.failure(IllegalArgumentException("Public key is not an EC key"))
+        }
         return try {
-            val asn1Signature = signature.convertToAsn1Signature(publicKey.curve?.signatureLengthBytes ?: 32)
+            val asn1Signature = signature.convertToAsn1Signature(publicKey.curve.signatureLengthBytes)
             val result = Signature.getInstance(algorithm.jcaName).apply {
                 initVerify(publicKey.getPublicKey())
                 update(input)
@@ -226,23 +227,6 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
         }
     }
 
-    override fun verify(
-        input: ByteArray,
-        signature: ByteArray,
-        algorithm: CoseAlgorithm,
-        publicKey: CoseKey
-    ): KmmResult<Boolean> {
-        return try {
-            val asn1Signature = signature.convertToAsn1Signature(publicKey.curve?.signatureLengthBytes ?: 32)
-            val result = Signature.getInstance(algorithm.jcaName).apply {
-                initVerify(publicKey.getPublicKey())
-                update(input)
-            }.verify(asn1Signature)
-            KmmResult.success(result)
-        } catch (e: Throwable) {
-            KmmResult.failure(e)
-        }
-    }
 }
 
 actual object CryptoUtils {
@@ -257,14 +241,9 @@ actual object CryptoUtils {
 val JwsAlgorithm.jcaName
     get() = when (this) {
         JwsAlgorithm.ES256 -> "SHA256withECDSA"
-    }
-
-val CoseAlgorithm.jcaName
-    get() = when (this) {
-        CoseAlgorithm.ES256 -> "SHA256withECDSA"
-        CoseAlgorithm.ES384 -> "SHA384withECDSA"
-        CoseAlgorithm.ES512 -> "SHA512withECDSA"
-        CoseAlgorithm.HMAC256_256 -> "HmacSHA256"
+        JwsAlgorithm.ES384 -> "SHA384withECDSA"
+        JwsAlgorithm.ES512 -> "SHA512withECDSA"
+        JwsAlgorithm.HMAC256 -> "HmacSHA256"
     }
 
 val Digest.jcaName
@@ -290,6 +269,8 @@ val JweAlgorithm.jcaName
 val EcCurve.jcaName
     get() = when (this) {
         SECP_256_R_1 -> "secp256r1"
+        EcCurve.SECP_384_R_1 -> "secp384r1"
+        EcCurve.SECP_521_R_1 -> "secp521r1"
     }
 
 val CoseEllipticCurve.jcaName
@@ -303,8 +284,8 @@ fun JsonWebKey.getPublicKey(): PublicKey {
     return toPublicKey(curve?.jcaName, x, y)
 }
 
-fun CoseKey.getPublicKey(): PublicKey {
-    return toPublicKey(curve?.jcaName, x, y)
+fun CryptoPublicKey.Ec.getPublicKey(): PublicKey {
+    return toPublicKey(curve.jcaName, x, y)
 }
 
 private fun toPublicKey(curveName: String?, xCoordinate: ByteArray?, yCoordinate: ByteArray?): JCEECPublicKey {

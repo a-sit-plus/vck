@@ -117,4 +117,6 @@ sealed class CryptoPublicKey {
 
 private fun EcCurve.toCoseCurve(): CoseEllipticCurve = when (this) {
     EcCurve.SECP_256_R_1 -> CoseEllipticCurve.P256
+    EcCurve.SECP_384_R_1 -> CoseEllipticCurve.P384
+    EcCurve.SECP_521_R_1 -> CoseEllipticCurve.P521
 }

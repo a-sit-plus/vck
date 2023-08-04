@@ -213,14 +213,14 @@ class DefaultVerifierJwsService(
      */
     override fun verifyJwsObject(jwsObject: JwsSigned, serialized: String?): Boolean {
         val header = jwsObject.header
-        val publicKey = header.publicKey
+        val publicKey = header.publicKey?.toCryptoPublicKey()
             ?: return false
                 .also { Napier.w("Could not extract PublicKey from header: $header") }
         val verified = cryptoService.verify(
             jwsObject.plainSignatureInput.encodeToByteArray(),
             jwsObject.signature,
             header.algorithm,
-            publicKey
+            publicKey,
         )
         return verified.getOrElse {
             Napier.w("No verification from native code")
@@ -232,11 +232,14 @@ class DefaultVerifierJwsService(
      * Verifiers the signature of [jwsObject] by using [signer].
      */
     override fun verifyJws(jwsObject: JwsSigned, signer: JsonWebKey): Boolean {
+        val publicKey = signer.toCryptoPublicKey()
+            ?: return false
+                .also { Napier.w("Could not convert signer to public key: $signer") }
         val verified = cryptoService.verify(
             jwsObject.plainSignatureInput.encodeToByteArray(),
             jwsObject.signature,
             jwsObject.header.algorithm,
-            signer
+            publicKey,
         )
         return verified.getOrElse {
             Napier.w("No verification from native code")
