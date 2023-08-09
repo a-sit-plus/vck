@@ -7,7 +7,7 @@ plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("at.asitplus.gradle.vclib-conventions")
-    id("org.jetbrains.dokka")
+    //id("org.jetbrains.dokka")
     id("signing")
 }
 
@@ -15,7 +15,7 @@ plugins {
 val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
-
+/*
 val dokkaOutputDir = "$buildDir/dokka"
 tasks.dokkaHtml {
     dependsOn(":vclib:transformIosMainCInteropDependenciesMetadataForIde") //task dependency bug workaround
@@ -30,7 +30,7 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
     archiveClassifier.set("javadoc")
     from(dokkaOutputDir)
 }
-
+*/
 val signingTasks: TaskCollection<Sign> = tasks.withType<Sign>()
 tasks.withType<PublishToMavenRepository>().configureEach {
     mustRunAfter(signingTasks)
@@ -65,7 +65,8 @@ kotlin {
 }
 
 repositories {
-    mavenLocal()
+    maven(uri(rootProject.layout.projectDirectory.dir("kotlinx.serialization").dir("repo")))
+//    mavenLocal()
     mavenCentral()
 }
 
@@ -73,7 +74,7 @@ repositories {
 publishing {
     publications {
         withType<MavenPublication> {
-            artifact(javadocJar)
+            //artifact(javadocJar)
             pom {
                 name.set("KmmVcLibAries")
                 description.set("Kotlin Multiplatform library implementing the W3C VC Data Model, with ARIES protocol implementations")
