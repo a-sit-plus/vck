@@ -5,7 +5,7 @@ plugins {
     kotlin("plugin.serialization")
 
     id("at.asitplus.gradle.vclib-conventions")
-    //id("org.jetbrains.dokka")
+    id("org.jetbrains.dokka")
     id("signing")
 }
 
@@ -13,10 +13,10 @@ plugins {
 val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
-/*
+
 val dokkaOutputDir = "$buildDir/dokka"
 tasks.dokkaHtml {
-    dependsOn("transformIosMainCInteropDependenciesMetadataForIde") //wor around bug
+//    dependsOn("transformIosMainCInteropDependenciesMetadataForIde") //work around bug
     outputDirectory.set(file(dokkaOutputDir))
 }
 val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") {
@@ -26,7 +26,7 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
     dependsOn(deleteDokkaOutputDir, tasks.dokkaHtml)
     archiveClassifier.set("javadoc")
     from(dokkaOutputDir)
-}*/
+}
 
 val signingTasks: TaskCollection<Sign> = tasks.withType<Sign>()
 tasks.withType<PublishToMavenRepository>().configureEach {
@@ -97,7 +97,7 @@ repositories {
 publishing {
     publications {
         withType<MavenPublication> {
-         //   artifact(javadocJar)
+            artifact(javadocJar)
             pom {
                 name.set("KmmVcLib")
                 description.set("Kotlin Multiplatform library implementing the W3C VC Data Model")

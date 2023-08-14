@@ -15,11 +15,11 @@ plugins {
 val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
-/*
+
 val dokkaOutputDir = "$buildDir/dokka"
 tasks.dokkaHtml {
-    dependsOn(":vclib:transformIosMainCInteropDependenciesMetadataForIde") //task dependency bug workaround
-    dependsOn(":vclib-aries:transformIosMainCInteropDependenciesMetadataForIde") //task dependency bug workaround
+//    dependsOn(":vclib:transformIosMainCInteropDependenciesMetadataForIde") //task dependency bug workaround
+//    dependsOn(":vclib-aries:transformIosMainCInteropDependenciesMetadataForIde") //task dependency bug workaround
     outputDirectory.set(file(dokkaOutputDir))
 }
 val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") {
@@ -30,7 +30,7 @@ val javadocJar = tasks.register<Jar>("javadocJar") {
     archiveClassifier.set("javadoc")
     from(dokkaOutputDir)
 }
-*/
+
 val signingTasks: TaskCollection<Sign> = tasks.withType<Sign>()
 tasks.withType<PublishToMavenRepository>().configureEach {
     mustRunAfter(signingTasks)
@@ -74,7 +74,7 @@ repositories {
 publishing {
     publications {
         withType<MavenPublication> {
-            //artifact(javadocJar)
+            artifact(javadocJar)
             pom {
                 name.set("KmmVcLibOpenId")
                 description.set("Kotlin Multiplatform library implementing the W3C VC Data Model, with OpenId protocol implementations")

@@ -15,6 +15,7 @@ dependencies {
 }
 
 repositories {
+    maven("https://maven.pkg.jetbrains.space/kotlin/p/dokka/dev")
     mavenCentral()
     gradlePluginPortal()
 }
