@@ -24,24 +24,7 @@ kotlin {
             dependencies {
                 commonImplementationDependencies()
                 api(datetime())
-                api(serialization("cbor")) {
-                    rootProject.layout.projectDirectory.dir("kotlinx.serialization").dir("repo").asFile.let {
-                        if (it.exists() && it.isDirectory && it.listFiles()!!.isNotEmpty()) {
-                            logger.info("assuming serialization maven artifact present")
-                        } else {
-                            exec {
-                                workingDir = rootProject.layout.projectDirectory.dir("kotlinx.serialization").asFile
-                                println("descending into ${workingDir.absolutePath}")
-                                logger.lifecycle("Rebuilding serialization maven artifacts")
-                                commandLine(
-                                    "./gradlew",
-                                    "-Pnative.deploy=true",
-                                    "publishAllPublicationsToLocalRepository"
-                                )
-                            }
-                        }
-                    }
-                }
+                api(serialization("cbor"))
                 api("at.asitplus:kmmresult:${VcLibVersions.resultlib}")
                 api("io.matthewnelson.kotlin-components:encoding-base16:${VcLibVersions.encoding}")
                 api("io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}")
@@ -66,12 +49,6 @@ kotlin {
         }
     }
 }
-
-repositories {
-    maven(uri(rootProject.layout.projectDirectory.dir("kotlinx.serialization").dir("repo")))
-    mavenCentral()
-}
-
 
 val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/main/", multiModuleDoc = true)
 

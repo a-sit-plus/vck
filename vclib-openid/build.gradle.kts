@@ -41,11 +41,6 @@ kotlin {
     }
 }
 
-repositories {
-    maven(uri(rootProject.layout.projectDirectory.dir("kotlinx.serialization").dir("repo")))
-    mavenCentral()
-}
-
 val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/main/", multiModuleDoc = true)
 
 publishing {
