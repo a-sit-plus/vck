@@ -10,6 +10,5 @@ val cborSerializer by lazy {
         alwaysUseByteString = true
         encodeDefaults = false
         writeDefiniteLengths = true
-        explicitNulls = true
     }
 }

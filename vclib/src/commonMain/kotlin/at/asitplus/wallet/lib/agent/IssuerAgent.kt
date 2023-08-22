@@ -106,8 +106,8 @@ class IssuerAgent(
         when (credential) {
             is CredentialToBeIssued.Iso -> {
                 val expirationDate = credential.expiration
-                val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-                // is unused, but needed to store the credential itself
+                //TODO: we are not going to store anything ATM since we will first need a clear stance on what to store
+                /*val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
                 val statusListIndex = issuerCredentialStore.storeGetNextIndex(
                     credential.issuerSignedItems,
                     issuanceDate,
@@ -117,7 +117,7 @@ class IssuerAgent(
                     failed = listOf(
                         Issuer.FailedAttribute(credential.attributeType, DataSourceProblem("no statusListIndex"))
                     )
-                ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }
+                ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }*/
                 val mso = MobileSecurityObject(
                     version = VERSION_1_0,
                     digestAlgorithm = DIGEST_SHA_256,

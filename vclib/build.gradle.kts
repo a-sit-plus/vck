@@ -14,39 +14,24 @@ val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
 
-val dokkaOutputDir = "$buildDir/dokka"
-tasks.dokkaHtml {
-    dependsOn("transformIosMainCInteropDependenciesMetadataForIde") //wor around bug
-    outputDirectory.set(file(dokkaOutputDir))
-}
-val deleteDokkaOutputDir by tasks.register<Delete>("deleteDokkaOutputDirectory") {
-    delete(dokkaOutputDir)
-}
-val javadocJar = tasks.register<Jar>("javadocJar") {
-    dependsOn(deleteDokkaOutputDir, tasks.dokkaHtml)
-    archiveClassifier.set("javadoc")
-    from(dokkaOutputDir)
-}
-
-val signingTasks: TaskCollection<Sign> = tasks.withType<Sign>()
-tasks.withType<PublishToMavenRepository>().configureEach {
-    mustRunAfter(signingTasks)
-}
-
 exportIosFramework("VcLibKmm", *commonIosExports())
 kotlin {
 
+
     sourceSets {
+
         val commonMain by getting {
             dependencies {
                 commonImplementationDependencies()
                 api(datetime())
+                api(serialization("cbor"))
                 api("at.asitplus:kmmresult:${VcLibVersions.resultlib}")
                 api("io.matthewnelson.kotlin-components:encoding-base16:${VcLibVersions.encoding}")
                 api("io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}")
-                api("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.5.3-SNAPSHOT")
             }
         }
+
+
         val commonTest by getting
 
         val iosMain by getting
@@ -65,11 +50,7 @@ kotlin {
     }
 }
 
-repositories {
-    mavenLocal()
-    mavenCentral()
-}
-
+val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/main/", multiModuleDoc = true)
 
 publishing {
     publications {
@@ -124,3 +105,4 @@ signing {
     useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
     sign(publishing.publications)
 }
+

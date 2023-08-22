@@ -3,4 +3,4 @@
 	url = https://github.com/a-sit-plus/gradle-conventions-plugin.git
 [submodule "kotlinx.serialization"]
 	path = kotlinx.serialization
-	url = git@github.com:a-sit-plus/kotlinx.serialization.git
+	url = https://github.com/a-sit-plus/kotlinx.serialization.git

@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package at.asitplus.wallet.lib
 
 import at.asitplus.wallet.lib.agent.toByteArray

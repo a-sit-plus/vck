@@ -15,6 +15,7 @@ dependencies {
 }
 
 repositories {
+    maven("https://maven.pkg.jetbrains.space/kotlin/p/dokka/dev")
     mavenCentral()
     gradlePluginPortal()
 }
@@ -22,6 +23,10 @@ kotlin {
     jvmToolchain {
         (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(11/*TODO share*/))
     }
+    /*compilerOptions {
+        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9)
+        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9)
+    }*/
 }
 
 gradlePlugin {
