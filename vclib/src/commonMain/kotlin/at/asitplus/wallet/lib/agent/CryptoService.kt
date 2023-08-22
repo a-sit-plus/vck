@@ -49,6 +49,11 @@ interface CryptoService {
 
     val coseAlgorithm: CoseAlgorithm
 
+    /**
+     * May be used in [at.asitplus.wallet.lib.cbor.CoseService] to transport the signing key for a COSE structure
+     */
+    val certificate: ByteArray
+
     fun toJsonWebKey(): JsonWebKey
 
     fun toCoseKey(): CoseKey
@@ -75,6 +80,7 @@ interface VerifierCryptoService {
 
 expect object CryptoUtils {
     fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey?
+    fun extractCoseKeyFromX509Cert(it: ByteArray): CoseKey?
 }
 
 data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteArray) {

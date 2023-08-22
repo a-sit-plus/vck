@@ -140,9 +140,10 @@ class IssuerAgent(
                     ),
                     issuerAuth = coseService.createSignedCose(
                         protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
-                        unprotectedHeader = null, // TODO transport issuer certificate
+                        unprotectedHeader = null,
                         payload = mso.serializeForIssuerAuth(),
                         addKeyId = false,
+                        addCertificate = true,
                     ).getOrThrow()
                 )
                 return Issuer.IssuedCredentialResult(

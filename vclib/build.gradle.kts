@@ -38,7 +38,7 @@ kotlin {
         val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
         val jvmMain by getting {
             dependencies {
-                implementation(bouncycastle("bcprov"))
+                implementation(bouncycastle("bcpkix"))
             }
         }
         val jvmTest by getting {

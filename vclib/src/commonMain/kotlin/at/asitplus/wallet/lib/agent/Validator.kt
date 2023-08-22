@@ -194,11 +194,16 @@ class Validator(
         }
         val issuerSigned = doc.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
-        // TODO Get Issuer Key somewhere
-        //        if (verifierCoseService.verifyCose(issuerAuth, CoseKey(CoseKeyType.EC2)).getOrNull() != true) {
-        //            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
-        //                .also { Napier.w("IssuerAuth not verified: $issuerAuth") }
-        //        }
+
+        val issuerKey = issuerAuth.unprotectedHeader?.certificateChain?.let {
+            CryptoUtils.extractCoseKeyFromX509Cert(it)
+        } ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
+            .also { Napier.w("Got no issuer key in $issuerAuth") }
+
+        if (verifierCoseService.verifyCose(issuerAuth, issuerKey).getOrNull() != true) {
+            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
+                .also { Napier.w("IssuerAuth not verified: $issuerAuth") }
+        }
 
         val mso = issuerSigned.getIssuerAuthPayloadAsMso()
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
@@ -215,7 +220,6 @@ class Validator(
         val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
                 .also { Napier.w("DeviceSignature is null: ${doc.deviceSigned.deviceAuth}") }
-        // TODO Does the challenge need to be included in deviceSignature somehow?
 
         if (verifierCoseService.verifyCose(deviceSignature, walletKey).getOrNull() != true) {
             return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeBase16())
@@ -295,14 +299,17 @@ class Validator(
      *
      * @param it The [IssuerSigned] structure from ISO 18013-5
      */
-    fun verifyIsoCred(it: IssuerSigned, issuerKey: CoseKey): Verifier.VerifyCredentialResult {
+    fun verifyIsoCred(it: IssuerSigned, issuerKey: CoseKey?): Verifier.VerifyCredentialResult {
         Napier.d("Verifying ISO Cred $it")
+        if (issuerKey == null) {
+            Napier.w("ISO: No issuer key")
+            return Verifier.VerifyCredentialResult.InvalidStructure(it.serialize().encodeBase16())
+        }
         val result = verifierCoseService.verifyCose(it.issuerAuth, issuerKey)
-        // TODO How to get the correct issuer key!?
-        //if (result.getOrNull() != true) {
-        //    Napier.w("ISO: Could not verify credential", result.exceptionOrNull())
-        //    return Verifier.VerifyCredentialResult.InvalidStructure(it.serialize().encodeBase16())
-        //}
+        if (result.getOrNull() != true) {
+            Napier.w("ISO: Could not verify credential", result.exceptionOrNull())
+            return Verifier.VerifyCredentialResult.InvalidStructure(it.serialize().encodeBase16())
+        }
         return Verifier.VerifyCredentialResult.SuccessIso(it)
     }
 
