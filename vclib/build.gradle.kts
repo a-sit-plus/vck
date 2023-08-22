@@ -17,7 +17,6 @@ version = artifactVersion
 exportIosFramework("VcLibKmm", *commonIosExports())
 kotlin {
 
-
     sourceSets {
 
         val commonMain by getting {
@@ -30,7 +29,6 @@ kotlin {
                 api("io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}")
             }
         }
-
 
         val commonTest by getting
 

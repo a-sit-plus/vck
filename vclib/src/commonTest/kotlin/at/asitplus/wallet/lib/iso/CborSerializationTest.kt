@@ -162,7 +162,7 @@ class CborSerializationTest : FreeSpec({
     }
 
     // From ISO/IEC 18013-5:2021(E), D4.1.2, page 116
-    "mdoc response" {
+    "!mdoc response" {
         /**
          * a3                                      # map(3)
          *    67                                   # text(7)
@@ -416,7 +416,8 @@ class CborSerializationTest : FreeSpec({
         deserialized.expiryDate shouldBe LocalDate.parse("2024-10-20")
     }
 
-    "Date in IssuerSignedItem from ISO example" {
+
+    "!Date in IssuerSignedItem from ISO example" {
         val input = """
             a4686469676573744944036672616e646f6d5820b23f627e8999c706df0c0a4ed98ad74af988af619b4bb078b89058553f44615d7165
             6c656d656e744964656e7469666965726a69737375655f646174656c656c656d656e7456616c7565d903ec6a323031392d31302d3230
