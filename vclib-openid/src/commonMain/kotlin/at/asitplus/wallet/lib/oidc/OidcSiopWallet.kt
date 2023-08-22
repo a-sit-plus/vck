@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
@@ -8,7 +9,6 @@ import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
@@ -48,7 +48,7 @@ import kotlin.time.Duration.Companion.seconds
  */
 class OidcSiopWallet(
     private val holder: Holder,
-    private val agentPublicKey: JsonWebKey,
+    private val agentPublicKey: CryptoPublicKey,
     private val jwsService: JwsService,
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val clock: Clock = Clock.System,
@@ -65,7 +65,7 @@ class OidcSiopWallet(
             clientId: String = "https://wallet.a-sit.at/"
         ) = OidcSiopWallet(
             holder = holder,
-            agentPublicKey = cryptoService.toJsonWebKey(),
+            agentPublicKey = cryptoService.toPublicKey(),
             jwsService = jwsService,
             verifierJwsService = verifierJwsService,
             clock = clock,
@@ -218,9 +218,9 @@ class OidcSiopWallet(
         val now = clock.now()
         // we'll assume jwk-thumbprint
         val idToken = IdToken(
-            issuer = agentPublicKey.jwkThumbprint,
-            subject = agentPublicKey.jwkThumbprint,
-            subjectJwk = agentPublicKey,
+            issuer = agentPublicKey.toJsonWebKey().jwkThumbprint,
+            subject = agentPublicKey.toJsonWebKey().jwkThumbprint,
+            subjectJwk = agentPublicKey.toJsonWebKey(),
             audience = params.redirectUrl,
             issuedAt = now,
             expiration = now + 60.seconds,

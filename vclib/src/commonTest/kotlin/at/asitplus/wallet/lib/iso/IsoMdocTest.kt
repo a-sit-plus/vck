@@ -45,7 +45,7 @@ class IsoMdocTest : FreeSpec({
 
         val verifierRequest = verifier.buildDeviceRequest()
         val walletResponse = wallet.buildDeviceResponse(verifierRequest)
-        verifier.verifyResponse(walletResponse, issuer.cryptoService.toCoseKey())
+        verifier.verifyResponse(walletResponse, issuer.cryptoService.toPublicKey().toCoseKey())
     }
 
 })
@@ -56,7 +56,7 @@ class Wallet {
     val coseService = DefaultCoseService(cryptoService)
 
     val deviceKeyInfo = DeviceKeyInfo(
-        deviceKey = cryptoService.toCoseKey(),
+        deviceKey = cryptoService.toPublicKey().toCoseKey(),
     )
 
     var storedMdl: MobileDrivingLicence? = null

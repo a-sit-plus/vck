@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.wallet.lib.jws.EcCurve
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -14,6 +15,12 @@ enum class CoseEllipticCurve(val value: Int) {
     P256(1),
     P384(2),
     P521(3);
+
+    fun toJwkCurve() = when (this) {
+        P256 -> EcCurve.SECP_256_R_1
+        P384 -> EcCurve.SECP_384_R_1
+        P521 -> EcCurve.SECP_521_R_1
+    }
     //X25519(4),
     //X448(5),
     //Ed25519(6),

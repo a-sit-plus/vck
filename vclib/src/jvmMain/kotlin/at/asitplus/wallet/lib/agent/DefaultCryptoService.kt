@@ -1,11 +1,10 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
 import at.asitplus.wallet.lib.cbor.CoseEllipticCurve.P256
-import at.asitplus.wallet.lib.cbor.CoseKey
-import at.asitplus.wallet.lib.cbor.CoseKeyType.EC2
 import at.asitplus.wallet.lib.jws.EcCurve
 import at.asitplus.wallet.lib.jws.EcCurve.SECP_256_R_1
 import at.asitplus.wallet.lib.jws.JsonWebKey
@@ -15,6 +14,7 @@ import at.asitplus.wallet.lib.jws.JwkType.EC
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsExtensions.convertToAsn1Signature
 import at.asitplus.wallet.lib.jws.JwsExtensions.ensureSize
+import at.asitplus.wallet.lib.jws.MultibaseHelper
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
 import org.bouncycastle.cert.X509v3CertificateBuilder
@@ -51,8 +51,7 @@ actual open class DefaultCryptoService : CryptoService {
 
     private val ecCurve: EcCurve = SECP_256_R_1
     private val keyPair: KeyPair
-    private val jsonWebKey: JsonWebKey
-    private val coseKey: CoseKey
+    private val cryptoPublicKey: CryptoPublicKey
     final override val certificate: ByteArray
 
     actual constructor() {
@@ -60,8 +59,8 @@ actual open class DefaultCryptoService : CryptoService {
         val ecPublicKey = keyPair.public as ECPublicKey
         val keyX = ecPublicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        this.jsonWebKey = JsonWebKey.fromCoordinates(type = EC, curve = SECP_256_R_1, x = keyX, y = keyY)!!
-        this.coseKey = CoseKey.fromCoordinates(type = EC2, curve = P256, x = keyX, y = keyY)!!
+        val keyId = MultibaseHelper.calcKeyId(SECP_256_R_1, keyX, keyY)!!
+        this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
         this.certificate = generateSelfSignedCertificate()
     }
 
@@ -70,8 +69,8 @@ actual open class DefaultCryptoService : CryptoService {
         val ecPublicKey = keyPair.public as ECPublicKey
         val keyX = ecPublicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        this.jsonWebKey = JsonWebKey.fromCoordinates(type = EC, curve = SECP_256_R_1, x = keyX, y = keyY)!!
-        this.coseKey = CoseKey.fromCoordinates(type = EC2, curve = P256, x = keyX, y = keyY)!!
+        val keyId = MultibaseHelper.calcKeyId(SECP_256_R_1, keyX, keyY)!!
+        this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
         this.certificate = generateSelfSignedCertificate()
     }
 
@@ -80,8 +79,8 @@ actual open class DefaultCryptoService : CryptoService {
         val ecPublicKey = keyPair.public as ECPublicKey
         val keyX = ecPublicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        this.jsonWebKey = JsonWebKey.fromCoordinates(type = EC, curve = SECP_256_R_1, x = keyX, y = keyY)!!
-        this.coseKey = CoseKey.fromCoordinates(type = EC2, curve = P256, x = keyX, y = keyY)!!
+        val keyId = MultibaseHelper.calcKeyId(SECP_256_R_1, keyX, keyY)!!
+        this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
         this.certificate = certificate.encoded
     }
 
@@ -107,9 +106,7 @@ actual open class DefaultCryptoService : CryptoService {
 
     override val coseAlgorithm = CoseAlgorithm.ES256
 
-    override fun toJsonWebKey() = jsonWebKey
-
-    override fun toCoseKey() = coseKey
+    override fun toPublicKey() = cryptoPublicKey
 
     override suspend fun sign(input: ByteArray): KmmResult<ByteArray> =
         try {
@@ -213,10 +210,13 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
         input: ByteArray,
         signature: ByteArray,
         algorithm: JwsAlgorithm,
-        publicKey: JsonWebKey
+        publicKey: CryptoPublicKey,
     ): KmmResult<Boolean> {
+        if (publicKey !is CryptoPublicKey.Ec) {
+            return KmmResult.failure(IllegalArgumentException("Public key is not an EC key"))
+        }
         return try {
-            val asn1Signature = signature.convertToAsn1Signature(publicKey.curve?.signatureLengthBytes ?: 32)
+            val asn1Signature = signature.convertToAsn1Signature(publicKey.curve.signatureLengthBytes)
             val result = Signature.getInstance(algorithm.jcaName).apply {
                 initVerify(publicKey.getPublicKey())
                 update(input)
@@ -227,35 +227,13 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
         }
     }
 
-    override fun verify(
-        input: ByteArray,
-        signature: ByteArray,
-        algorithm: CoseAlgorithm,
-        publicKey: CoseKey
-    ): KmmResult<Boolean> {
-        return try {
-            val asn1Signature = signature.convertToAsn1Signature(publicKey.curve?.signatureLengthBytes ?: 32)
-            val result = Signature.getInstance(algorithm.jcaName).apply {
-                initVerify(publicKey.getPublicKey())
-                update(input)
-            }.verify(asn1Signature)
-            KmmResult.success(result)
-        } catch (e: Throwable) {
-            KmmResult.failure(e)
-        }
-    }
 }
 
 actual object CryptoUtils {
 
-    actual fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? = kotlin.runCatching {
+    actual fun extractPublicKeyFromX509Cert(it: ByteArray): CryptoPublicKey? = kotlin.runCatching {
         val pubKey = CertificateFactory.getInstance("X.509").generateCertificate(it.inputStream()).publicKey
-        if (pubKey is ECPublicKey) JsonWebKey.fromJcaKey(pubKey, SECP_256_R_1) else null
-    }.getOrNull()
-
-    actual fun extractCoseKeyFromX509Cert(it: ByteArray): CoseKey? = kotlin.runCatching {
-        val pubKey = CertificateFactory.getInstance("X.509").generateCertificate(it.inputStream()).publicKey
-        if (pubKey is ECPublicKey) CoseKey.fromJcaKey(pubKey, P256) else null
+        if (pubKey is ECPublicKey) CryptoPublicKey.Ec.Companion.fromJcaKey(pubKey, SECP_256_R_1) else null
     }.getOrNull()
 
 }
@@ -263,14 +241,9 @@ actual object CryptoUtils {
 val JwsAlgorithm.jcaName
     get() = when (this) {
         JwsAlgorithm.ES256 -> "SHA256withECDSA"
-    }
-
-val CoseAlgorithm.jcaName
-    get() = when (this) {
-        CoseAlgorithm.ES256 -> "SHA256withECDSA"
-        CoseAlgorithm.ES384 -> "SHA384withECDSA"
-        CoseAlgorithm.ES512 -> "SHA512withECDSA"
-        CoseAlgorithm.HMAC256_256 -> "HmacSHA256"
+        JwsAlgorithm.ES384 -> "SHA384withECDSA"
+        JwsAlgorithm.ES512 -> "SHA512withECDSA"
+        JwsAlgorithm.HMAC256 -> "HmacSHA256"
     }
 
 val Digest.jcaName
@@ -296,6 +269,8 @@ val JweAlgorithm.jcaName
 val EcCurve.jcaName
     get() = when (this) {
         SECP_256_R_1 -> "secp256r1"
+        EcCurve.SECP_384_R_1 -> "secp384r1"
+        EcCurve.SECP_521_R_1 -> "secp521r1"
     }
 
 val CoseEllipticCurve.jcaName
@@ -309,8 +284,8 @@ fun JsonWebKey.getPublicKey(): PublicKey {
     return toPublicKey(curve?.jcaName, x, y)
 }
 
-fun CoseKey.getPublicKey(): PublicKey {
-    return toPublicKey(curve?.jcaName, x, y)
+fun CryptoPublicKey.Ec.getPublicKey(): PublicKey {
+    return toPublicKey(curve.jcaName, x, y)
 }
 
 private fun toPublicKey(curveName: String?, xCoordinate: ByteArray?, yCoordinate: ByteArray?): JCEECPublicKey {
@@ -330,9 +305,8 @@ fun JsonWebKey.Companion.fromJcaKey(publicKey: ECPublicKey, ecCurve: EcCurve) =
         publicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
     )
 
-fun CoseKey.Companion.fromJcaKey(publicKey: ECPublicKey, ecCurve: CoseEllipticCurve) =
+fun CryptoPublicKey.Ec.Companion.fromJcaKey(publicKey: ECPublicKey, ecCurve: EcCurve) =
     fromCoordinates(
-        EC2,
         ecCurve,
         publicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes),
         publicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)

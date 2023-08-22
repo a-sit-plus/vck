@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
-import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.jws.EcCurve
 import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.jws.JweAlgorithm
@@ -43,7 +43,7 @@ interface CryptoService {
     fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray>
 
     val identifier: String
-        get() = toJsonWebKey().identifier
+        get() = toPublicKey().toJsonWebKey().identifier
 
     val jwsAlgorithm: JwsAlgorithm
 
@@ -54,9 +54,7 @@ interface CryptoService {
      */
     val certificate: ByteArray
 
-    fun toJsonWebKey(): JsonWebKey
-
-    fun toCoseKey(): CoseKey
+    fun toPublicKey(): CryptoPublicKey
 
 }
 
@@ -66,21 +64,13 @@ interface VerifierCryptoService {
         input: ByteArray,
         signature: ByteArray,
         algorithm: JwsAlgorithm,
-        publicKey: JsonWebKey
-    ): KmmResult<Boolean>
-
-    fun verify(
-        input: ByteArray,
-        signature: ByteArray,
-        algorithm: CoseAlgorithm,
-        publicKey: CoseKey
+        publicKey: CryptoPublicKey,
     ): KmmResult<Boolean>
 
 }
 
 expect object CryptoUtils {
-    fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey?
-    fun extractCoseKeyFromX509Cert(it: ByteArray): CoseKey?
+    fun extractPublicKeyFromX509Cert(it: ByteArray): CryptoPublicKey?
 }
 
 data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteArray) {

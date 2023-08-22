@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.iso.cborSerializer
 import at.asitplus.wallet.lib.jws.EcCurve
 import at.asitplus.wallet.lib.jws.JsonWebKey
@@ -170,6 +171,16 @@ data class CoseKey(
         result = 31 * result + (y?.contentHashCode() ?: 0)
         result = 31 * result + (d?.contentHashCode() ?: 0)
         return result
+    }
+
+    fun toCryptoPublicKey(): CryptoPublicKey? {
+        if (this.type != CoseKeyType.EC2 || this.curve == null || this.keyId == null || this.x == null || this.y == null) return null
+        return CryptoPublicKey.Ec(
+            curve = curve.toJwkCurve(),
+            keyId = keyId.decodeToString(),
+            x = x,
+            y = y,
+        )
     }
 
 

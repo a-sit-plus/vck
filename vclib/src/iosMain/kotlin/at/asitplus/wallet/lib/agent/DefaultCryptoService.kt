@@ -3,10 +3,8 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
-import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
-import at.asitplus.wallet.lib.cbor.CoseKey
-import at.asitplus.wallet.lib.cbor.CoseKeyType
 import io.matthewnelson.component.base64.encodeBase64
 import at.asitplus.wallet.lib.jws.EcCurve
 import at.asitplus.wallet.lib.jws.JsonWebKey
@@ -15,7 +13,6 @@ import at.asitplus.wallet.lib.jws.JweEncryption
 import at.asitplus.wallet.lib.jws.JwkType
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsExtensions.convertToAsn1Signature
-import io.ktor.http.content.ByteArrayContent
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.MemScope
@@ -62,8 +59,7 @@ actual class DefaultCryptoService : CryptoService {
     override val coseAlgorithm = CoseAlgorithm.ES256
     private val privateKey: SecKeyRef
     private val publicKey: SecKeyRef
-    private val jsonWebKey: JsonWebKey
-    private val coseKey: CoseKey
+    private val cryptoPublicKey: CryptoPublicKey
     final override val certificate: ByteArray
 
     actual constructor() {
@@ -75,8 +71,7 @@ actual class DefaultCryptoService : CryptoService {
         publicKey = SecKeyCopyPublicKey(privateKey)!!
         val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
-        this.jsonWebKey = JsonWebKey.fromAnsiX963Bytes(JwkType.EC, EcCurve.SECP_256_R_1, data.toByteArray())!!
-        this.coseKey = CoseKey.fromAnsiX963Bytes(CoseKeyType.EC2, CoseEllipticCurve.P256, data.toByteArray())!!
+        this.cryptoPublicKey = CryptoPublicKey.Ec.fromAnsiX963Bytes(EcCurve.SECP_256_R_1, data.toByteArray())!!
         this.certificate = byteArrayOf() // TODO How to create a self-signed certificate in Kotlin/iOS?
     }
 
@@ -147,9 +142,7 @@ actual class DefaultCryptoService : CryptoService {
         return KmmResult.success(input)
     }
 
-    override fun toJsonWebKey() = jsonWebKey
-
-    override fun toCoseKey() = coseKey
+    override fun toPublicKey() = cryptoPublicKey
 }
 
 @Suppress("UNCHECKED_CAST")
@@ -159,8 +152,11 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
         input: ByteArray,
         signature: ByteArray,
         algorithm: JwsAlgorithm,
-        publicKey: JsonWebKey
+        publicKey: CryptoPublicKey
     ): KmmResult<Boolean> {
+        if (publicKey !is CryptoPublicKey.Ec) {
+            return KmmResult.failure(IllegalArgumentException("Public key is not an EC key"))
+        }
         memScoped {
             val ansix962 = publicKey.toAnsiX963ByteArray().getOrElse {
                 return KmmResult.failure(it)
@@ -186,61 +182,19 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
         }
     }
 
-
-    override fun verify(
-        input: ByteArray,
-        signature: ByteArray,
-        algorithm: CoseAlgorithm,
-        publicKey: CoseKey
-    ): KmmResult<Boolean> {
-        memScoped {
-            val ansix962 = publicKey.toAnsiX963ByteArray().getOrElse {
-                return KmmResult.failure(it)
-            }
-            val keyData = CFBridgingRetain(toData(ansix962)) as CFDataRef
-            val attributes = CFDictionaryCreateMutable(null, 3, null, null).apply {
-                CFDictionaryAddValue1(this, kSecAttrKeyClass, kSecAttrKeyClassPublic)
-                CFDictionaryAddValue1(this, kSecAttrKeyType, kSecAttrKeyTypeEC)
-                CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
-            }
-            val secKey = SecKeyCreateWithData(keyData, attributes, null)
-                ?: return KmmResult.failure(IllegalArgumentException())
-            val inputData = CFBridgingRetain(toData(input)) as CFDataRef
-            val signatureData = CFBridgingRetain(toData(signature.convertToAsn1Signature(32))) as CFDataRef
-            val verified = SecKeyVerifySignature(
-                secKey,
-                kSecKeyAlgorithmECDSASignatureMessageX962SHA256,
-                inputData,
-                signatureData,
-                null
-            )
-            return KmmResult.success(verified)
-        }
-    }
 }
 
 @Suppress("UNCHECKED_CAST")
 actual object CryptoUtils {
 
-    actual fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? {
+    actual fun extractPublicKeyFromX509Cert(it: ByteArray): CryptoPublicKey? {
         memScoped {
             val certData = CFBridgingRetain(toData(it)) as CFDataRef
             val certificate = SecCertificateCreateWithData(null, certData)
             val publicKey = SecCertificateCopyKey(certificate)
             val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
             val data = CFBridgingRelease(publicKeyData) as NSData
-            return JsonWebKey.fromAnsiX963Bytes(JwkType.EC, EcCurve.SECP_256_R_1, data.toByteArray())
-        }
-    }
-
-    actual fun extractCoseKeyFromX509Cert(it: ByteArray): CoseKey? {
-        memScoped {
-            val certData = CFBridgingRetain(toData(it)) as CFDataRef
-            val certificate = SecCertificateCreateWithData(null, certData)
-            val publicKey = SecCertificateCopyKey(certificate)
-            val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
-            val data = CFBridgingRelease(publicKeyData) as NSData
-            return CoseKey.fromAnsiX963Bytes(CoseKeyType.EC2, CoseEllipticCurve.P256, data.toByteArray())
+            return CryptoPublicKey.Ec.fromAnsiX963Bytes(EcCurve.SECP_256_R_1, data.toByteArray())
         }
     }
 

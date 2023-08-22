@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -15,6 +16,13 @@ enum class CoseAlgorithm(val value: Int) {
     ES384(-35),
     ES512(-36),
     HMAC256_256(5);
+
+    fun toJwsAlgorithm() = when(this) {
+        ES256 -> JwsAlgorithm.ES256
+        ES384 -> JwsAlgorithm.ES384
+        ES512 -> JwsAlgorithm.ES512
+        HMAC256_256 -> JwsAlgorithm.HMAC256
+    }
 
     val signatureValueLength
         get() = when (this) {
