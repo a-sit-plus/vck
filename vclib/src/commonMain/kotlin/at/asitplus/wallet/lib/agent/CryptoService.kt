@@ -50,9 +50,10 @@ interface CryptoService {
     val coseAlgorithm: CoseAlgorithm
 
     /**
-     * May be used in [at.asitplus.wallet.lib.cbor.CoseService] to transport the signing key for a COSE structure
+     * May be used in [at.asitplus.wallet.lib.cbor.CoseService] to transport the signing key for a COSE structure.
+     * a `null` value signifies that raw public keys are used and no certificate is present
      */
-    val certificate: ByteArray
+    val certificate: ByteArray?
 
     fun toPublicKey(): CryptoPublicKey
 
