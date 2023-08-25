@@ -222,9 +222,10 @@ class DefaultVerifierJwsService(
             header.algorithm,
             publicKey,
         )
+        val falseVar = false //workaround kotlin bug for linking xcframework
         return verified.getOrElse {
             Napier.w("No verification from native code")
-            false
+            falseVar
         }
     }
 
@@ -241,9 +242,10 @@ class DefaultVerifierJwsService(
             jwsObject.header.algorithm,
             publicKey,
         )
+        val falseVar = false //workaround kotlin bug for linking xcframework
         return verified.getOrElse {
             Napier.w("No verification from native code")
-            return false
+            return falseVar
         }
     }
 
