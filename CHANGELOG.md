@@ -1,10 +1,10 @@
 # Changelog
 
-Release 2.1.0:
- - Creating, issung, managing and verifying ISO/IEC 18013-5:2021 credentials
- - Kotlin 1.9
+Release 3.0.0:
+ - Creating, issuing, managing and verifying ISO/IEC 18013-5:2021 credentials
+ - Kotlin 1.9.10
  - Generic structure for public keys
- - kotlinx.serialization fork with CBOR enhancements for COSE support
+ - `kotlinx.serialization` fork with CBOR enhancements for COSE support
 
 Release 2.0.2:
  - `vclib-openid`: Add response modes for query and fragment, i.e. Wallet may return the authentication response in query params or as fragment params on a SIOPv2 call
