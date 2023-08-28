@@ -1,13 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.wallet.lib.LibraryInitializer
-import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
@@ -40,16 +34,14 @@ class OidcSiopProtocolTest : FreeSpec({
     lateinit var holderSiop: OidcSiopWallet
     lateinit var verifierSiop: OidcSiopVerifier
 
-    beforeSpec {
-        LibraryInitializer.registerExtensionLibrary(LibraryInitializer.ExtensionLibraryInfo(
-            credentialScheme = TestCredentialScheme,
-            serializersModule = kotlinx.serialization.modules.SerializersModule {
-                polymorphic(CredentialSubject::class) {
-                    subclass(TestCredential::class)
-                }
+    LibraryInitializer.registerExtensionLibrary(LibraryInitializer.ExtensionLibraryInfo(
+        credentialScheme = TestCredentialScheme,
+        serializersModule = kotlinx.serialization.modules.SerializersModule {
+            polymorphic(CredentialSubject::class) {
+                subclass(TestCredential::class)
             }
-        ))
-    }
+        }
+    ))
 
     beforeEach {
         holderCryptoService = DefaultCryptoService()
