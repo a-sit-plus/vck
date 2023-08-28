@@ -5,6 +5,8 @@ package at.asitplus.wallet.lib.iso
 import at.asitplus.wallet.lib.cbor.CoseKey
 import io.github.aakira.napier.Napier
 import io.matthewnelson.component.encoding.base16.encodeBase16
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
@@ -104,7 +106,7 @@ data class ValueDigest(
     }
 
     override fun toString(): String {
-        return "MobileSecurityObjectNamespaceEntry(key=$key, value=${value.encodeBase16()})"
+        return "MobileSecurityObjectNamespaceEntry(key=$key, value=${value.encodeToString(Base16())})"
     }
 
     companion object {

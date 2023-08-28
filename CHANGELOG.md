@@ -1,5 +1,13 @@
 # Changelog
 
+Version Next
+ - Dependency Updates
+   - OKIO 3.5.0
+   - UUID 0.8.1
+   - Encodings 1.2.3
+   - JOSE+JWT 9.31
+   - JSON 20230618
+
 Release 3.0.0:
  - Creating, issuing, managing and verifying ISO/IEC 18013-5:2021 credentials
  - Kotlin 1.9.10

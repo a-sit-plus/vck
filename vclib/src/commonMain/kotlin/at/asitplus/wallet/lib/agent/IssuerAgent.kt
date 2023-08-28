@@ -29,6 +29,8 @@ import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.component.base64.encodeBase64
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.plus
@@ -219,7 +221,7 @@ class IssuerAgent(
         issuerCredentialStore.getRevokedStatusListIndexList(timePeriod)
             .forEach { bitset[it] = true }
         val input = bitset.toByteArray()
-        return zlibService.compress(input)?.encodeBase64()
+        return zlibService.compress(input)?.encodeToString(Base64())
     }
 
     /**

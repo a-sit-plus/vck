@@ -6,6 +6,8 @@ import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.jws.JwsSigned
 import io.github.aakira.napier.Napier
 import io.matthewnelson.component.encoding.base16.decodeBase16ToArray
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 
 
 /**
@@ -56,7 +58,7 @@ class VerifierAgent private constructor(
             return validator.verifyVpJws(it, challenge, identifier)
         }
         val document =
-            runCatching { it.decodeBase16ToArray()?.let { bytes -> Document.deserialize(bytes) } }.getOrNull()
+            runCatching { it.decodeToByteArrayOrNull(Base16())?.let { bytes -> Document.deserialize(bytes) } }.getOrNull()
         if (document != null) {
             return validator.verifyDocument(document, challenge)
         }

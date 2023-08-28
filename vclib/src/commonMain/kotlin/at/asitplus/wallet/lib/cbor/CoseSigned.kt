@@ -1,21 +1,19 @@
+@file:OptIn(ExperimentalUnsignedTypes::class)
+
 package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.wallet.lib.iso.cborSerializer
 import io.github.aakira.napier.Napier
-import io.matthewnelson.component.encoding.base16.encodeBase16
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.*
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.ByteStringWrapper
-import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.cbor.CborArray
-import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
@@ -64,8 +62,8 @@ data class CoseSigned(
     override fun toString(): String {
         return "CoseSigned(protectedHeader=${protectedHeader.value}," +
                 " unprotectedHeader=$unprotectedHeader," +
-                " payload=${payload?.encodeBase16()}," +
-                " signature=${signature.encodeBase16()})"
+                " payload=${payload?.encodeToString(Base16())}," +
+                " signature=${signature.encodeToString(Base16())})"
     }
 
     companion object {
@@ -121,8 +119,8 @@ data class CoseSignatureInput(
     override fun toString(): String {
         return "CoseSignatureInput(contextString='$contextString'," +
                 " protectedHeader=${protectedHeader.value}," +
-                " externalAad=${externalAad.encodeBase16()}," +
-                " payload=${payload?.encodeBase16()})"
+                " externalAad=${externalAad.encodeToString(Base16())}," +
+                " payload=${payload?.encodeToString(Base16())})"
     }
 
 
