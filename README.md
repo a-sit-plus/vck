@@ -1,12 +1,13 @@
 # KMM VC Library
 [![GitHub license](https://img.shields.io/badge/license-Apache%20License%202.0-brightgreen.svg?style=flat)](http://www.apache.org/licenses/LICENSE-2.0)
 [![Kotlin](https://img.shields.io/badge/kotlin-multiplatform--mobile-orange.svg?logo=kotlin)](http://kotlinlang.org)
-[![Kotlin](https://img.shields.io/badge/kotlin-1.9.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
-![Java](https://img.shields.io/badge/java-11-blue.svg?logo=OPENJDK)
+[![Kotlin](https://img.shields.io/badge/kotlin-1.9.10-blue.svg?logo=kotlin)](http://kotlinlang.org)
+[![Java]](https://img.shields.io/badge/java-11-blue.svg?logo=OPENJDK)
 [![Maven Central](https://img.shields.io/maven-central/v/at.asitplus.wallet/vclib)](https://mvnrepository.com/artifact/at.asitplus.wallet/vclib/)
 
 This [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html) library implements the [W3C VC Data Model](https://w3c.github.io/vc-data-model/) to support several use cases of verifiable credentials, verifiable presentations, and validation thereof. This library may be shared between Wallet Apps, Verifier Apps and a Backend Service issuing credentials.
 
+In addition to the W3C VC Data Model, mobile driving licences from [ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html) have been implemented.
 
 ## Architecture
 
@@ -14,7 +15,7 @@ This library was built with [Kotlin Multiplatform](https://kotlinlang.org/docs/m
 
  - Code interfacing with client implementations uses the return type `KmmResult` to transport the `Success` case (i.e. a custom data type) as well as potential errors from native implementations as a `Failure`.
  - Native implementations can be plugged in by implementing interfaces, e.g. `CryptoService`, as opposed to callback functions.
- - Use of primitve data types for constructor properties instead of e.g. kotlinx datetime types.
+ - Use of primitive data types for constructor properties instead of e.g. kotlinx datetime types.
  - This library provides some "default" implementations, e.g. `DefaultCryptoService` to test as much code as possible from the `commonMain` module.
  - Some classes feature additional constructors or factory methods with a shorter argument list because the default arguments are lost when called from Swift.
  
@@ -22,16 +23,20 @@ Notable features for multiplatform are:
 
  - Use of [Napier](https://github.com/AAkira/Napier) as the logging framework
  - Use of [Kotest](https://kotest.io/) for unit tests
+ - Use of [kotlinx-datetime](https://github.com/Kotlin/kotlinx-datetime) for date classes
+ - Use of [kotlinx-serialization](https://github.com/Kotlin/kotlinx.serialization) for serialization from/to JSON and CBOR
  - Implementation of a BitSet in pure Kotlin, see `KmmBitSet`
  - Implementation of a ZLIB service in Kotlin with native parts, see `ZlibService`
  - Implementation of JWS and JWE operations in pure Kotlin (delegating to native crypto), see `JwsService`
  - Abstraction of several cryptographic primitives, to be implemented in native code, see `CryptoService`
+ - Implementation of COSE operations in pure Kotlin (delegating to native crypto), see `CoseService`
+ - Extended CBOR functionality in a fork of [kotlinx.serialization](https://github.com/a-sit-plus/kotlinx.serialization/)
 
 The main entry point for applications is an instance of `HolderAgent`, `VerifierAgent` or `IssuerAgent`, according to the nomenclature from the [W3C VC Data Model](https://w3c.github.io/vc-data-model/).
 
 We implement protocols for issuing credentials and presenting proofs from ARIES, i.e. [ARIES RFC 0453 Issue Credential V2](https://github.com/hyperledger/aries-rfcs/tree/main/features/0453-issue-credential-v2) and [ARIES RFC 0454 Present Proof V2](https://github.com/hyperledger/aries-rfcs/tree/main/features/0454-present-proof-v2). A single run of a protocol is implemented by the `*Protocol` classes, whereas the `*Messenger` classes should be used by applications to manage several runs of a protocol. These classes reside in the artifact `vclib-aries`.
 
-There is also a simple implementation of [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), see `OidcSiopProtocol`. In addition, [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) has been implemented, see `at.asitplus.wallet.lib.oidvci.WalletService` in the artifact `vclib-openid`.
+There is also an implementation of [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), see `OidcSiopProtocol` as well as [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), see `at.asitplus.wallet.lib.oidvci.WalletService`. Most code resides in the artifact/subdirectory `vclib-openid`. Both protocols are able to transport W3C credentials (any form) and ISO credentials (mobile driving licence).
 
 Many classes define several constructor parameters, some of them with default values, to enable a simple form of dependency injection. Implementers are advised to specify the parameter names of arguments passed to increase readability and prepare for future extensions.
 
@@ -41,7 +46,7 @@ See also [DEVELOPMENT.md](DEVELOPMENT.md)
 
  - For Verifiable Credentials and Presentations, only the JWT proof mechanism is implemented.
  - Json Web Keys always use a `kid` of `did:key:mEpA...` with a custom, uncompressed representation of `secp256r1` keys.
- - Several parts of the W3C VC Data Model have not been fully implemented, i.e. everything around resolving cryptographic material.
+ - Several parts of the W3C VC Data Model have not been fully implemented, i.e. everything around resolving cryptographic key material.
  - Cryptographic operations are implemented for EC cryptography on the `secp256r1` curve to fully support hardware-backed keys on Android and iOS. However, the enum classes for cryptographic primitives may be extended to support other algorithms.
 
 ## iOS Implementation
@@ -77,6 +82,7 @@ at.asitplus.wallet.lib.LibraryInitializer.registerExtensionLibrary(
             override val credentialDefinitionName: String = "yourcredential"
             override val schemaUri: String = "https://example.com/schemas/1.0.0/yourcredential.json"
             override val vcType: String = "YourCredential2023"
+            override val credentialFormat: at.asitplus.wallet.lib.data.ConstantIndex.CredentialFormat = at.asitplus.wallet.lib.data.ConstantIndex.CredentialFormat.W3C_VC
         },
         serializersModule = kotlinx.serialization.modules.SerializersModule {
             kotlinx.serialization.modules.polymorphic(CredentialSubject::class) {
