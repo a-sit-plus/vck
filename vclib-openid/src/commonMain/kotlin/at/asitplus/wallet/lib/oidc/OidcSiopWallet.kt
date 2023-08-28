@@ -114,7 +114,7 @@ class OidcSiopWallet(
         val params = kotlin.runCatching {
             Url(it).parameters.flattenEntries().toMap().decodeFromUrlQuery<AuthenticationRequestParameters>()
         }.getOrNull()
-            ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+            ?: return KmmResult.failure<AuthenticationResponseResult>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("Could not parse authentication request") }
         return extractRequestObject(params)
             ?.let { createAuthnResponse(it) }
@@ -190,29 +190,29 @@ class OidcSiopWallet(
         params: AuthenticationRequestParameters
     ): KmmResult<AuthenticationResponseParameters> {
         val audience = params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.identifier
-            ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+            ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("Could not parse audience") }
         if (URN_TYPE_JWK_THUMBPRINT !in params.clientMetadata.subjectSyntaxTypesSupported)
-            return KmmResult.failure(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
+            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
         if (params.clientId != params.redirectUrl)
-            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("client_id does not match redirect_uri") }
         if (params.responseType?.contains(ID_TOKEN) != true)
-            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("response_type is not \"$ID_TOKEN\"") }
         if (!params.responseType.contains(VP_TOKEN) && params.presentationDefinition == null)
-            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("vp_token not requested") }
         // TODO Client shall send the client_id_scheme, which needs to be supported by the Wallet
         if (params.clientMetadata.vpFormats == null)
-            return KmmResult.failure(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
+            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
         if (params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains(JwsAlgorithm.ES256.text) != true)
-            return KmmResult.failure(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
+            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible JWT algorithms") }
         if (params.nonce == null)
-            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("nonce is null") }
 
         val now = clock.now()
@@ -229,7 +229,7 @@ class OidcSiopWallet(
         val jwsPayload = idToken.serialize().encodeToByteArray()
         val jwsHeader = JwsHeader(JwsAlgorithm.ES256)
         val signedIdToken = jwsService.createSignedJwsAddingParams(jwsHeader, jwsPayload)
-            ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
+            ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not sign id_token") }
 
         val requestedScopes = params.scope?.split(" ")
@@ -243,7 +243,7 @@ class OidcSiopWallet(
             ?.map { it.removePrefix("\$.mdoc.") }
             ?: listOf()
         val vp = holder.createPresentation(params.nonce, audience, requestedScopes, requestedClaims)
-            ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
+            ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not create presentation") }
 
         when (vp) {
@@ -297,7 +297,7 @@ class OidcSiopWallet(
             }
 
             else -> {
-                return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
+                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
                     .also { Napier.w("Could not create presentation") }
             }
         }
