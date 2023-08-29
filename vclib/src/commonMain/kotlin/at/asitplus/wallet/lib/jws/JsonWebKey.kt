@@ -4,7 +4,8 @@ import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.data.jsonSerializer
 import io.github.aakira.napier.Napier
-import io.matthewnelson.component.base64.encodeBase64
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -135,7 +136,9 @@ data class JsonWebKey(
     }
 
     override fun toString(): String {
-        return "JsonWebKey(type=$type, curve=$curve, keyId=$keyId, x=${x?.encodeBase64()}, y=${y?.encodeBase64()})"
+        return "JsonWebKey(type=$type, curve=$curve, keyId=$keyId, x=${x?.encodeToString(Base64())}, y=${
+            y?.encodeToString(Base64())
+        })"
     }
 
     fun toCryptoPublicKey(): CryptoPublicKey? {

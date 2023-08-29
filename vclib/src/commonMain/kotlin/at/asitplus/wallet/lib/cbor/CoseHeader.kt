@@ -4,6 +4,8 @@ import at.asitplus.wallet.lib.iso.cborSerializer
 import io.github.aakira.napier.Napier
 import io.ktor.http.content.ByteArrayContent
 import io.matthewnelson.component.encoding.base16.encodeBase16
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -93,10 +95,10 @@ data class CoseHeader(
         return "CoseHeader(algorithm=$algorithm," +
                 " criticalHeaders=$criticalHeaders," +
                 " contentType=$contentType," +
-                " kid=${kid?.encodeBase16()}," +
-                " iv=${iv?.encodeBase16()}," +
-                " partialIv=${partialIv?.encodeBase16()}," +
-                " certificateChain=${certificateChain?.encodeBase16()})"
+                " kid=${kid?.encodeToString(Base16())}," +
+                " iv=${iv?.encodeToString(Base16())}," +
+                " partialIv=${partialIv?.encodeToString(Base16())}," +
+                " certificateChain=${certificateChain?.encodeToString(Base16())})"
     }
 
     companion object {

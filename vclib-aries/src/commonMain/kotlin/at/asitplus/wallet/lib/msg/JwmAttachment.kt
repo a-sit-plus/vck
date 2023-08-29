@@ -5,6 +5,9 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.component.base64.decodeBase64ToArray
 import io.matthewnelson.component.base64.encodeBase64
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -30,7 +33,7 @@ data class JwmAttachment(
 
     fun decodeString(): String? {
         if (data.base64 != null)
-            return data.base64.decodeBase64ToArray()?.decodeToString()
+            return data.base64.decodeToByteArrayOrNull(Base64())?.decodeToString()
         if (data.jws != null)
             return data.jws
         return null
@@ -39,7 +42,7 @@ data class JwmAttachment(
 
     fun decodeBinary(): ByteArray? {
         if (data.base64 != null)
-            return data.base64.decodeBase64ToArray()
+            return data.base64.decodeToByteArrayOrNull(Base64())
         return null
             .also { Napier.w("Could not binary decode JWM attachment") }
     }
@@ -57,7 +60,7 @@ data class JwmAttachment(
             id = uuid4().toString(),
             mediaType = "application/base64",
             data = JwmAttachmentData(
-                base64 = data.encodeToByteArray().encodeBase64()
+                base64 = data.encodeToByteArray().encodeToString(Base64())
             )
         )
 
@@ -65,7 +68,7 @@ data class JwmAttachment(
             id = uuid4().toString(),
             mediaType = "application/base64",
             data = JwmAttachmentData(
-                base64 = data.encodeBase64()
+                base64 = data.encodeToString(Base64())
             )
         )
 
@@ -75,7 +78,7 @@ data class JwmAttachment(
             filename = filename,
             parent = parent,
             data = JwmAttachmentData(
-                base64 = data.encodeBase64()
+                base64 = data.encodeToString(Base64())
             )
         )
 

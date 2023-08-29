@@ -3,6 +3,9 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
 import io.matthewnelson.component.base64.decodeBase64ToArray
 import io.matthewnelson.component.base64.encodeBase64
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
 
 object MultibaseHelper {
@@ -41,11 +44,11 @@ object MultibaseHelper {
         return decodeP256Key(multicodecDecode(multibaseDecode(stripped)))
     }
 
-    private fun multibaseWrapBase64(it: ByteArray) = "m${it.encodeBase64()}"
+    private fun multibaseWrapBase64(it: ByteArray) = "m${it.encodeToString(Base64())}"
 
     private fun multibaseDecode(it: String?) =
         if (it != null && it.startsWith("m")) {
-            it.removePrefix("m").decodeBase64ToArray()
+            it.removePrefix("m").decodeToByteArrayOrNull(Base64())
         } else null
 
     // 0x1200 would be with compression, so we'll use 0x1290

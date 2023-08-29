@@ -10,6 +10,8 @@ import at.asitplus.wallet.lib.jws.MultibaseHelper
 import io.github.aakira.napier.Napier
 import io.matthewnelson.component.base64.encodeBase64
 import io.matthewnelson.component.encoding.base16.encodeBase16
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -113,14 +115,14 @@ data class CoseKey(
 
     override fun toString(): String {
         return "CoseKey(type=$type," +
-                " keyId=${keyId?.encodeBase16()}," +
+                " keyId=${keyId?.encodeToString(Base16())}," +
                 " algorithm=$algorithm," +
                 " operations=${operations?.contentToString()}," +
-                " baseIv=${baseIv?.encodeBase16()}," +
+                " baseIv=${baseIv?.encodeToString(Base16())}," +
                 " curve=$curve," +
-                " x=${x?.encodeBase16()}," +
-                " y=${y?.encodeBase16()}," +
-                " d=${d?.encodeBase16()})"
+                " x=${x?.encodeToString(Base16())}," +
+                " y=${y?.encodeToString(Base16())}," +
+                " d=${d?.encodeToString(Base16())})"
     }
 
     override fun equals(other: Any?): Boolean {

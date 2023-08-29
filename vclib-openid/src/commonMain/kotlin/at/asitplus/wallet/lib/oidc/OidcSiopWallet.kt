@@ -35,6 +35,8 @@ import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import io.ktor.util.flattenEntries
 import io.matthewnelson.component.encoding.base16.encodeBase16
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlin.time.Duration.Companion.seconds
 
@@ -290,7 +292,7 @@ class OidcSiopWallet(
                     AuthenticationResponseParameters(
                         idToken = signedIdToken,
                         state = params.state,
-                        vpToken = vp.document.serialize().encodeBase16(),
+                        vpToken = vp.document.serialize().encodeToString(Base16()),
                         presentationSubmission = presentationSubmission,
                     )
                 )
