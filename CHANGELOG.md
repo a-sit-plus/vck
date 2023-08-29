@@ -1,6 +1,6 @@
 # Changelog
 
-Version Next
+Release 3.0.1
  - Dependency Updates
    - OKIO 3.5.0
    - UUID 0.8.1
