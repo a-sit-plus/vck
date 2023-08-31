@@ -22,23 +22,15 @@ object TestCredentialScheme : ConstantIndex.CredentialScheme {
 
 @Serializable
 @SerialName("TestCredential")
-class TestCredential : CredentialSubject {
+data class TestCredential (
+    override val id: String,
+
     @SerialName("name")
-    val name: String
+    val name: String,
 
     @SerialName("value")
     val value: String
-
-    constructor(id: String, name: String, value: String) : super(id = id) {
-        this.name = name
-        this.value = value
-    }
-
-    override fun toString(): String {
-        return "TestCredential(id='$id', name='$name', value='$value')"
-    }
-
-}
+) : CredentialSubject()
 
 class TestCredentialDataProvider(
     private val clock: Clock = Clock.System,
