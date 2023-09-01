@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.wallet.lib.LibraryInitializer
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
@@ -33,15 +34,6 @@ class OidcSiopProtocolTest : FreeSpec({
 
     lateinit var holderSiop: OidcSiopWallet
     lateinit var verifierSiop: OidcSiopVerifier
-
-    LibraryInitializer.registerExtensionLibrary(LibraryInitializer.ExtensionLibraryInfo(
-        credentialScheme = TestCredentialScheme,
-        serializersModule = kotlinx.serialization.modules.SerializersModule {
-            polymorphic(CredentialSubject::class) {
-                subclass(TestCredential::class)
-            }
-        }
-    ))
 
     beforeEach {
         holderCryptoService = DefaultCryptoService()
@@ -165,16 +157,7 @@ class OidcSiopProtocolTest : FreeSpec({
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
-            credentialScheme = TestCredentialScheme
-        )
-        holderAgent.storeCredentials(
-            IssuerAgent.newDefaultInstance(
-                DefaultCryptoService(),
-                dataProvider = TestCredentialDataProvider(),
-            ).issueCredentialWithTypes(
-                holderAgent.identifier,
-                attributeTypes = listOf(TestCredentialScheme.vcType)
-            ).toStoreCredentialInput()
+            credentialScheme = ConstantIndex.AtomicAttribute2023
         )
 
         val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl)
@@ -188,7 +171,7 @@ class OidcSiopProtocolTest : FreeSpec({
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
-            it.vc.credentialSubject.shouldBeInstanceOf<TestCredential>()
+            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
         }
     }
 })
