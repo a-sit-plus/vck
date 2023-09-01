@@ -22,11 +22,11 @@ data class JweEncrypted(
         get() = JweHeader.deserialize(headerAsParsed.decodeToString())
 
     fun serialize(): String {
-        return headerAsParsed.encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false }) +
-                ".${encryptedKey?.encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false }) ?: ""}" +
-                ".${iv.encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false })}" +
-                ".${ciphertext.encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false })}" +
-                ".${authTag.encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false })}"
+        return headerAsParsed.encodeToString(Base64.UrlSafe) +
+                ".${encryptedKey?.encodeToString(Base64.UrlSafe) ?: ""}" +
+                ".${iv.encodeToString(Base64.UrlSafe)}" +
+                ".${ciphertext.encodeToString(Base64.UrlSafe)}" +
+                ".${authTag.encodeToString(Base64.UrlSafe)}"
     }
 
     override fun equals(other: Any?): Boolean {

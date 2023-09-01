@@ -15,11 +15,7 @@ data class JwsSigned(
     val plainSignatureInput: String,
 ) {
     fun serialize(): String {
-        return "${plainSignatureInput}.${
-            signature.encodeToString(Base64 {
-                encodeToUrlSafe = true; padEncoded = false
-            })
-        }"
+        return "${plainSignatureInput}.${signature.encodeToString(Base64.UrlSafe)}"
     }
 
     override fun equals(other: Any?): Boolean {

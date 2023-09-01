@@ -81,9 +81,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         ) {
             return null.also { Napier.w("Algorithm or keyId not matching to cryptoService") }
         }
-        val signatureInput = header.serialize().encodeToByteArray()
-            .encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false }) +
-                "." + payload.encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false })
+        val signatureInput = header.serialize().encodeToByteArray().encodeToString(Base64.UrlSafe) +
+                "." + payload.encodeToString(Base64.UrlSafe)
         val signatureInputBytes = signatureInput.encodeToByteArray()
         val signature = cryptoService.sign(signatureInputBytes).getOrElse {
             Napier.w("No signature from native code", it)
@@ -131,7 +130,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             return null
         }
         val iv = jweObject.iv
-        val aad = jweObject.headerAsParsed.encodeToByteArray(Base64 { encodeToUrlSafe = true; padEncoded = false })
+        val aad = jweObject.headerAsParsed.encodeToByteArray(Base64.UrlSafe)
         val ciphertext = jweObject.ciphertext
         val authTag = jweObject.authTag
         val plaintext =
@@ -178,7 +177,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val iv = Random.Default.nextBytes(jweEncryption.ivLengthBits / 8)
         val headerSerialized = jweHeader.serialize()
         val aad = headerSerialized.encodeToByteArray()
-        val aadForCipher = aad.encodeToByteArray(Base64 { encodeToUrlSafe = true; padEncoded = false })
+        val aadForCipher = aad.encodeToByteArray(Base64.UrlSafe)
         val ciphertext =
             cryptoService.encrypt(key, iv, aadForCipher, payload, jweEncryption).getOrElse {
                 Napier.w("No ciphertext from native code", it)
