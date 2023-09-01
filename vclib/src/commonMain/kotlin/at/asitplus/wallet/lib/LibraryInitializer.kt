@@ -36,7 +36,7 @@ object LibraryInitializer {
     fun registerExtensionLibrary(data: ExtensionLibraryInfo) {
         ConstantIndex.Parser.registerGoalCode(data.credentialScheme)
         AttributeIndex.registerAttributeType(data.credentialScheme)
-        registerSerializersModule(data.serializersModule)
+        registerSerializersModule(data.credentialScheme, data.serializersModule)
     }
 
 }
