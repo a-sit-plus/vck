@@ -22,7 +22,8 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.matthewnelson.component.encoding.base16.encodeBase16
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.cbor.ByteStringWrapper
@@ -277,8 +278,8 @@ class Verifier {
         val issuerHash = mdlItems.entries.first { it.key == issuerSignedItem.value.digestId }
         issuerHash.shouldNotBeNull()
         val verifierHash = issuerSignedItem.serialized.sha256()
-        verifierHash.encodeBase16() shouldBe issuerHash.value.encodeBase16()
-        println("Verifier got $key with value $elementValue and correct hash ${verifierHash.encodeBase16()}")
+        verifierHash.encodeToString(Base16(strict = true)) shouldBe issuerHash.value.encodeToString(Base16(strict = true))
+        println("Verifier got $key with value $elementValue and correct hash ${verifierHash.encodeToString(Base16(strict = true))}")
     }
 }
 

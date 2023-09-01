@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.sha256
-import io.matthewnelson.component.encoding.base16.encodeBase16
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Instant
@@ -47,7 +46,7 @@ class InMemoryIssuerCredentialStore : IssuerCredentialStore {
         val list = map.getOrPut(timePeriod) { mutableListOf() }
         val newIndex = (list.maxOfOrNull { it.statusListIndex } ?: 0) + 1
         list += Credential(
-            vcId = issuerSignedItemList.toString().encodeToByteArray().sha256().encodeToString(Base16()),
+            vcId = issuerSignedItemList.toString().encodeToByteArray().sha256().encodeToString(Base16(strict = true)),
             statusListIndex = newIndex,
             revoked = false,
             expirationDate = expirationDate

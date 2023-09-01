@@ -5,7 +5,8 @@ import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.matthewnelson.component.encoding.base16.encodeBase16
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 
 class CoseServiceTest : FreeSpec({
@@ -30,7 +31,7 @@ class CoseServiceTest : FreeSpec({
             addKeyId = true
         ).getOrThrow()
         signed.shouldNotBeNull()
-        println(signed.serialize().encodeBase16())
+        println(signed.serialize().encodeToString(Base16(strict = true)))
 
         signed.payload shouldBe randomPayload
         signed.signature.shouldNotBeNull()
@@ -50,7 +51,7 @@ class CoseServiceTest : FreeSpec({
             addKeyId = true
         ).getOrThrow()
         signed.shouldNotBeNull()
-        println(signed.serialize().encodeBase16())
+        println(signed.serialize().encodeToString(Base16(strict = true)))
 
         signed.payload shouldBe null
         signed.signature.shouldNotBeNull()

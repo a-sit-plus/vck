@@ -3,13 +3,8 @@ package at.asitplus.wallet.lib.cbor
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.iso.cborSerializer
-import at.asitplus.wallet.lib.jws.EcCurve
-import at.asitplus.wallet.lib.jws.JsonWebKey
-import at.asitplus.wallet.lib.jws.JwkType
 import at.asitplus.wallet.lib.jws.MultibaseHelper
 import io.github.aakira.napier.Napier
-import io.matthewnelson.component.base64.encodeBase64
-import io.matthewnelson.component.encoding.base16.encodeBase16
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -115,14 +110,14 @@ data class CoseKey(
 
     override fun toString(): String {
         return "CoseKey(type=$type," +
-                " keyId=${keyId?.encodeToString(Base16())}," +
+                " keyId=${keyId?.encodeToString(Base16(strict = true))}," +
                 " algorithm=$algorithm," +
                 " operations=${operations?.contentToString()}," +
-                " baseIv=${baseIv?.encodeToString(Base16())}," +
+                " baseIv=${baseIv?.encodeToString(Base16(strict = true))}," +
                 " curve=$curve," +
-                " x=${x?.encodeToString(Base16())}," +
-                " y=${y?.encodeToString(Base16())}," +
-                " d=${d?.encodeToString(Base16())})"
+                " x=${x?.encodeToString(Base16(strict = true))}," +
+                " y=${y?.encodeToString(Base16(strict = true))}," +
+                " d=${d?.encodeToString(Base16(strict = true))})"
     }
 
     override fun equals(other: Any?): Boolean {

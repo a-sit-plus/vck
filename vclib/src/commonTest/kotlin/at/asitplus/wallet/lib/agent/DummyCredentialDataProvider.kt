@@ -4,7 +4,8 @@ import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import io.matthewnelson.component.encoding.base16.encodeBase16
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
@@ -57,6 +58,6 @@ class DummyCredentialDataProvider(
         )
     }
 
-    private fun randomValue() = Random.nextBytes(32).encodeBase16()
+    private fun randomValue() = Random.nextBytes(32).encodeToString(Base16(strict = true))
 
 }

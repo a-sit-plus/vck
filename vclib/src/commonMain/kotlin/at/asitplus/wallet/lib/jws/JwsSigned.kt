@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.jws
 
 import io.github.aakira.napier.Napier
-import io.matthewnelson.component.base64.decodeBase64ToArray
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
