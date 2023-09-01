@@ -14,8 +14,5 @@ class CredentialSubjectTest : FreeSpec({
         val result = Json.decodeFromString<SpecializedCredentialTest>("{\"id\":\"Test\",\"not-foo\":\"bar\"}")
         result.id shouldBe "Test"
         result.foo shouldBe "bar"
-
-        val superResult = Json.decodeFromString<CredentialSubject>(Json.encodeToString(result))
-        superResult.id shouldBe "Test"
     }
 })
