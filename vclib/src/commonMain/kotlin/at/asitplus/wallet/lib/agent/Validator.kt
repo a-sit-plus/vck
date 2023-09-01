@@ -88,7 +88,7 @@ class Validator(
             return false
                 .also { Napier.d("credentialSubject invalid") }
         val encodedList = parsedVc.jws.vc.credentialSubject.encodedList
-        this.revocationList = encodedList.decodeToByteArrayOrNull(Base64())?.let {
+        this.revocationList = encodedList.decodeToByteArrayOrNull(Base64(strict = true))?.let {
             zlibService.decompress(it)?.toBitSet() ?: return false.also { Napier.d("Invalid ZLIB") }
         } ?: return false.also { Napier.d("Invalid Base64") }
         Napier.d("Revocation list is valid")

@@ -30,7 +30,7 @@ data class JwmAttachment(
 
     fun decodeString(): String? {
         if (data.base64 != null)
-            return data.base64.decodeToByteArrayOrNull(Base64())?.decodeToString()
+            return data.base64.decodeToByteArrayOrNull(Base64(strict = true))?.decodeToString()
         if (data.jws != null)
             return data.jws
         return null
@@ -39,7 +39,7 @@ data class JwmAttachment(
 
     fun decodeBinary(): ByteArray? {
         if (data.base64 != null)
-            return data.base64.decodeToByteArrayOrNull(Base64())
+            return data.base64.decodeToByteArrayOrNull(Base64(strict = true))
         return null
             .also { Napier.w("Could not binary decode JWM attachment") }
     }
@@ -57,7 +57,7 @@ data class JwmAttachment(
             id = uuid4().toString(),
             mediaType = "application/base64",
             data = JwmAttachmentData(
-                base64 = data.encodeToByteArray().encodeToString(Base64())
+                base64 = data.encodeToByteArray().encodeToString(Base64(strict = true))
             )
         )
 
@@ -65,7 +65,7 @@ data class JwmAttachment(
             id = uuid4().toString(),
             mediaType = "application/base64",
             data = JwmAttachmentData(
-                base64 = data.encodeToString(Base64())
+                base64 = data.encodeToString(Base64(strict = true))
             )
         )
 
@@ -75,7 +75,7 @@ data class JwmAttachment(
             filename = filename,
             parent = parent,
             data = JwmAttachmentData(
-                base64 = data.encodeToString(Base64())
+                base64 = data.encodeToString(Base64(strict = true))
             )
         )
 

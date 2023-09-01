@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.data
 
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.base64.Base64ConfigBuilder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
@@ -28,3 +30,10 @@ val jsonSerializer by lazy {
         }
     }
 }
+
+val Base64Url = Base64(config = Base64ConfigBuilder().apply {
+    lineBreakInterval = 0
+    encodeToUrlSafe = true
+    isLenient = true
+    padEncoded = false
+}.build())

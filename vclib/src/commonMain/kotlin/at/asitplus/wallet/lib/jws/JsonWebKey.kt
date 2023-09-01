@@ -136,8 +136,8 @@ data class JsonWebKey(
     }
 
     override fun toString(): String {
-        return "JsonWebKey(type=$type, curve=$curve, keyId=$keyId, x=${x?.encodeToString(Base64())}, y=${
-            y?.encodeToString(Base64())
+        return "JsonWebKey(type=$type, curve=$curve, keyId=$keyId, x=${x?.encodeToString(Base64(strict = true))}, y=${
+            y?.encodeToString(Base64(strict = true))
         })"
     }
 

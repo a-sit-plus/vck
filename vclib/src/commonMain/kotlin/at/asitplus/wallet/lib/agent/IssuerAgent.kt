@@ -218,7 +218,7 @@ class IssuerAgent(
         issuerCredentialStore.getRevokedStatusListIndexList(timePeriod)
             .forEach { bitset[it] = true }
         val input = bitset.toByteArray()
-        return zlibService.compress(input)?.encodeToString(Base64())
+        return zlibService.compress(input)?.encodeToString(Base64(strict = true))
     }
 
     /**

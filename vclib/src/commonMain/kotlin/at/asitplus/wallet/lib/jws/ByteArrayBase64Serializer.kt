@@ -16,11 +16,11 @@ object ByteArrayBase64Serializer : KSerializer<ByteArray> {
         PrimitiveSerialDescriptor("ByteArrayBase64Serializer", PrimitiveKind.STRING)
 
     override fun serialize(encoder: Encoder, value: ByteArray) {
-        encoder.encodeString(value.encodeToString(Base64()))
+        encoder.encodeString(value.encodeToString(Base64(strict = true)))
     }
 
     override fun deserialize(decoder: Decoder): ByteArray {
-        return decoder.decodeString().decodeToByteArrayOrNull(Base64()) ?: byteArrayOf()
+        return decoder.decodeString().decodeToByteArrayOrNull(Base64(strict = true)) ?: byteArrayOf()
     }
 
 }
