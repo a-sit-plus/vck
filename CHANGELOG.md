@@ -1,5 +1,8 @@
 # Changelog
 
+Release 3.0.2
+ - tbd
+
 Release 3.0.1
  - Dependency Updates
    - OKIO 3.5.0
