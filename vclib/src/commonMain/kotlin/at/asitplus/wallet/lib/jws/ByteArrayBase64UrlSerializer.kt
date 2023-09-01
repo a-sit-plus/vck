@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.jws
 
-import at.asitplus.wallet.lib.data.Base64Url
+import at.asitplus.wallet.lib.data.Base64UrlStrict
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.KSerializer
@@ -16,11 +16,11 @@ object ByteArrayBase64UrlSerializer : KSerializer<ByteArray> {
         PrimitiveSerialDescriptor("ByteArrayBase64UrlSerializer", PrimitiveKind.STRING)
 
     override fun serialize(encoder: Encoder, value: ByteArray) {
-        encoder.encodeString(value.encodeToString(Base64Url))
+        encoder.encodeString(value.encodeToString(Base64UrlStrict))
     }
 
     override fun deserialize(decoder: Decoder): ByteArray {
-        return decoder.decodeString().decodeToByteArrayOrNull(Base64Url) ?: byteArrayOf()
+        return decoder.decodeString().decodeToByteArrayOrNull(Base64UrlStrict) ?: byteArrayOf()
     }
 
 }
