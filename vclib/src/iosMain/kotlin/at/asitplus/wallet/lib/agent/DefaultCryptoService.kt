@@ -5,7 +5,6 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
-import io.matthewnelson.component.base64.encodeBase64
 import at.asitplus.wallet.lib.jws.EcCurve
 import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.jws.JweAlgorithm
@@ -13,6 +12,8 @@ import at.asitplus.wallet.lib.jws.JweEncryption
 import at.asitplus.wallet.lib.jws.JwkType
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsExtensions.convertToAsn1Signature
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.MemScope
@@ -95,7 +96,7 @@ actual class DefaultCryptoService : CryptoService {
         return KmmResult.success(
             AuthenticatedCiphertext(
                 input.reversedArray(),
-                "authtag-${key.encodeBase64()}".encodeToByteArray()
+                "authtag-${key.encodeToString(Base64())}".encodeToByteArray()
             )
         )
     }
@@ -108,7 +109,7 @@ actual class DefaultCryptoService : CryptoService {
         authTag: ByteArray,
         algorithm: JweEncryption
     ): KmmResult<ByteArray> {
-        return if (authTag.contentEquals("authtag-${key.encodeBase64()}".encodeToByteArray()))
+        return if (authTag.contentEquals("authtag-${key.encodeToString(Base64())}".encodeToByteArray()))
             KmmResult.success(input.reversedArray())
         else
             KmmResult.failure(IllegalArgumentException())

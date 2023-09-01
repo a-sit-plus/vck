@@ -22,7 +22,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_PREFIX_BEARER
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
-import io.ktor.http.*
+import io.ktor.http.URLBuilder
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.coroutines.cancellation.CancellationException
@@ -167,8 +167,7 @@ class IssuerService(
         return when (val issuedCredential = issuedCredentialResult.successful.first()) {
             is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
                 format = CredentialFormatEnum.MSO_MDOC,
-                credential = issuedCredential.issuerSigned.serialize()
-                    .encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false })
+                credential = issuedCredential.issuerSigned.serialize().encodeToString(Base64.UrlSafe)
             )
 
             is Issuer.IssuedCredential.Vc -> CredentialResponseParameters(
