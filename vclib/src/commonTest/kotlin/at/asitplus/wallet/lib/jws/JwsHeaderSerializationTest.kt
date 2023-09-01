@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.jws
 
 
+import at.asitplus.wallet.lib.data.Base64Strict
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 
@@ -28,8 +28,8 @@ class JwsHeaderSerializationTest : FreeSpec({
 
         val serialized = header.serialize()
 
-        serialized shouldContain """"${first.encodeToString(Base64(strict = true))}""""
-        serialized shouldContain """"${second.encodeToString(Base64(strict = true))}""""
+        serialized shouldContain """"${first.encodeToString(Base64Strict)}""""
+        serialized shouldContain """"${second.encodeToString(Base64Strict)}""""
         serialized shouldContain """"$kid""""
     }
 
@@ -44,8 +44,7 @@ class JwsHeaderSerializationTest : FreeSpec({
             | "alg": "${algorithm.text}",
             | "kid": "$kid",
             | "typ": "$type",
-            | "x5c":["${first.encodeToString(Base64(strict = true))}",
-            | "${second.encodeToString(Base64(strict = true))}"]}
+            | "x5c":["${first.encodeToString(Base64Strict)}","${second.encodeToString(Base64Strict)}"]}
             | """.trimMargin()
 
         val parsed = JwsHeader.deserialize(serialized)

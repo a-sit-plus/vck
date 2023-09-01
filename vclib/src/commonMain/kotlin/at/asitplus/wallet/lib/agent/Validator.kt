@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
+import at.asitplus.wallet.lib.data.Base64Strict
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -25,7 +26,6 @@ import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.toBitSet
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
-import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.cbor.ByteStringWrapper
@@ -88,7 +88,7 @@ class Validator(
             return false
                 .also { Napier.d("credentialSubject invalid") }
         val encodedList = parsedVc.jws.vc.credentialSubject.encodedList
-        this.revocationList = encodedList.decodeToByteArrayOrNull(Base64(strict = true))?.let {
+        this.revocationList = encodedList.decodeToByteArrayOrNull(Base64Strict)?.let {
             zlibService.decompress(it)?.toBitSet() ?: return false.also { Napier.d("Invalid ZLIB") }
         } ?: return false.also { Napier.d("Invalid Base64") }
         Napier.d("Revocation list is valid")
@@ -188,10 +188,14 @@ class Validator(
      */
     fun verifyDocument(doc: Document, challenge: String): Verifier.VerifyPresentationResult {
         if (doc.docType != DOC_TYPE_MDL)
-            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeToString(Base16(strict = true)))
+            return Verifier.VerifyPresentationResult.InvalidStructure(
+                doc.serialize().encodeToString(Base16(strict = true))
+            )
                 .also { Napier.w("Invalid docType: ${doc.docType}") }
         if (doc.errors != null) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeToString(Base16(strict = true)))
+            return Verifier.VerifyPresentationResult.InvalidStructure(
+                doc.serialize().encodeToString(Base16(strict = true))
+            )
                 .also { Napier.w("Document has errors: ${doc.errors}") }
         }
         val issuerSigned = doc.issuerSigned
@@ -199,45 +203,65 @@ class Validator(
 
         val issuerKey = issuerAuth.unprotectedHeader?.certificateChain?.let {
             CryptoUtils.extractPublicKeyFromX509Cert(it)?.toCoseKey()
-        } ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeToString(Base16(strict = true)))
+        } ?: return Verifier.VerifyPresentationResult.InvalidStructure(
+            doc.serialize().encodeToString(Base16(strict = true))
+        )
             .also { Napier.w("Got no issuer key in $issuerAuth") }
 
         if (verifierCoseService.verifyCose(issuerAuth, issuerKey).getOrNull() != true) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeToString(Base16(strict = true)))
+            return Verifier.VerifyPresentationResult.InvalidStructure(
+                doc.serialize().encodeToString(Base16(strict = true))
+            )
                 .also { Napier.w("IssuerAuth not verified: $issuerAuth") }
         }
 
         val mso = issuerSigned.getIssuerAuthPayloadAsMso()
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeToString(Base16(strict = true)))
+            ?: return Verifier.VerifyPresentationResult.InvalidStructure(
+                doc.serialize().encodeToString(Base16(strict = true))
+            )
                 .also { Napier.w("MSO is null: ${issuerAuth.payload?.encodeToString(Base16(strict = true))}") }
         if (mso.docType != DOC_TYPE_MDL) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeToString(Base16(strict = true)))
+            return Verifier.VerifyPresentationResult.InvalidStructure(
+                doc.serialize().encodeToString(Base16(strict = true))
+            )
                 .also { Napier.w("Invalid docType in MSO: ${mso.docType}") }
         }
         val mdlItems = mso.valueDigests[NAMESPACE_MDL]
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeToString(Base16(strict = true)))
+            ?: return Verifier.VerifyPresentationResult.InvalidStructure(
+                doc.serialize().encodeToString(Base16(strict = true))
+            )
                 .also { Napier.w("mdlItems are null in MSO: ${mso.valueDigests}") }
 
         val walletKey = mso.deviceKeyInfo.deviceKey
         val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeToString(Base16(strict = true)))
+            ?: return Verifier.VerifyPresentationResult.InvalidStructure(
+                doc.serialize().encodeToString(Base16(strict = true))
+            )
                 .also { Napier.w("DeviceSignature is null: ${doc.deviceSigned.deviceAuth}") }
 
         if (verifierCoseService.verifyCose(deviceSignature, walletKey).getOrNull() != true) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeToString(Base16(strict = true)))
+            return Verifier.VerifyPresentationResult.InvalidStructure(
+                doc.serialize().encodeToString(Base16(strict = true))
+            )
                 .also { Napier.w("DeviceSignature not verified") }
         }
 
         val deviceSignaturePayload = deviceSignature.payload
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeToString(Base16(strict = true)))
+            ?: return Verifier.VerifyPresentationResult.InvalidStructure(
+                doc.serialize().encodeToString(Base16(strict = true))
+            )
                 .also { Napier.w("DeviceSignature does not contain challenge") }
         if (!deviceSignaturePayload.contentEquals(challenge.encodeToByteArray())) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeToString(Base16(strict = true)))
+            return Verifier.VerifyPresentationResult.InvalidStructure(
+                doc.serialize().encodeToString(Base16(strict = true))
+            )
                 .also { Napier.w("DeviceSignature does not contain correct challenge") }
         }
 
         val issuerSignedItems = issuerSigned.namespaces?.get(NAMESPACE_MDL)
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(doc.serialize().encodeToString(Base16(strict = true)))
+            ?: return Verifier.VerifyPresentationResult.InvalidStructure(
+                doc.serialize().encodeToString(Base16(strict = true))
+            )
                 .also { Napier.w("No issuer signed items in ${issuerSigned.namespaces}") }
 
         val validatedItems = issuerSignedItems.entries.associateWith { it.verify(mdlItems) }
@@ -253,7 +277,9 @@ class Validator(
         val issuerHash = mdlItems.entries.first { it.key == value.digestId }
         // TODO analyze usages of tag wrapping
         val verifierHash = serialized.wrapInCborTag(24).sha256()
-        if (!verifierHash.encodeToString(Base16(strict = true)).contentEquals(issuerHash.value.encodeToString(Base16(strict = true)))) {
+        if (!verifierHash.encodeToString(Base16(strict = true))
+                .contentEquals(issuerHash.value.encodeToString(Base16(strict = true)))
+        ) {
             Napier.w("Could not verify hash of value for ${value.elementIdentifier}")
             return false
         }
@@ -305,12 +331,16 @@ class Validator(
         Napier.d("Verifying ISO Cred $it")
         if (issuerKey == null) {
             Napier.w("ISO: No issuer key")
-            return Verifier.VerifyCredentialResult.InvalidStructure(it.serialize().encodeToString(Base16(strict = true)))
+            return Verifier.VerifyCredentialResult.InvalidStructure(
+                it.serialize().encodeToString(Base16(strict = true))
+            )
         }
         val result = verifierCoseService.verifyCose(it.issuerAuth, issuerKey)
         if (result.getOrNull() != true) {
             Napier.w("ISO: Could not verify credential", result.exceptionOrNull())
-            return Verifier.VerifyCredentialResult.InvalidStructure(it.serialize().encodeToString(Base16(strict = true)))
+            return Verifier.VerifyCredentialResult.InvalidStructure(
+                it.serialize().encodeToString(Base16(strict = true))
+            )
         }
         return Verifier.VerifyCredentialResult.SuccessIso(it)
     }

@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.Base64Url
+import at.asitplus.wallet.lib.data.Base64UrlStrict
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.VerifiableCredential
@@ -18,7 +18,6 @@ import io.kotest.datatest.withData
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -402,8 +401,8 @@ class ValidatorVcTest : FreeSpec() {
         )
         val jwsPayload = vcJws.serialize().encodeToByteArray()
         val signatureInput =
-            jwsHeader.serialize().encodeToByteArray().encodeToString(Base64Url) +
-                    "." + jwsPayload.encodeToString(Base64Url)
+            jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
+                    "." + jwsPayload.encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
         val signature = issuerCryptoService.sign(signatureInputBytes)
             .getOrElse { return null }

@@ -31,9 +31,17 @@ val jsonSerializer by lazy {
     }
 }
 
-val Base64Url = Base64(config = Base64ConfigBuilder().apply {
+val Base64UrlStrict = Base64(config = Base64ConfigBuilder().apply {
     lineBreakInterval = 0
     encodeToUrlSafe = true
     isLenient = true
     padEncoded = false
+}.build())
+
+
+val Base64Strict = Base64(config = Base64ConfigBuilder().apply {
+    lineBreakInterval = 0
+    encodeToUrlSafe = false
+    isLenient = true
+    padEncoded = true
 }.build())

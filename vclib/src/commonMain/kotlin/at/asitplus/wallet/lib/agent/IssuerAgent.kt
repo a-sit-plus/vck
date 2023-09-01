@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.cbor.CoseHeader
 import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
+import at.asitplus.wallet.lib.data.Base64Strict
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
@@ -218,7 +219,7 @@ class IssuerAgent(
         issuerCredentialStore.getRevokedStatusListIndexList(timePeriod)
             .forEach { bitset[it] = true }
         val input = bitset.toByteArray()
-        return zlibService.compress(input)?.encodeToString(Base64(strict = true))
+        return zlibService.compress(input)?.encodeToString(Base64Strict)
     }
 
     /**
