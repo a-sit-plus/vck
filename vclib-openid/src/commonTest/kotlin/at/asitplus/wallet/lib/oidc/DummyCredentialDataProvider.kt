@@ -11,7 +11,8 @@ import at.asitplus.wallet.lib.iso.DrivingPrivilege
 import at.asitplus.wallet.lib.iso.ElementValue
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import io.matthewnelson.component.encoding.base16.encodeBase16
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
@@ -91,7 +92,7 @@ class DummyCredentialDataProvider(
         return KmmResult.success(listOfAttributes)
     }
 
-    private fun randomValue() = Random.nextBytes(32).encodeBase16()
+    private fun randomValue() = Random.nextBytes(32).encodeToString(Base16(strict = true))
 
     fun buildIssuerSignedItem(elementIdentifier: String, elementValue: String, digestId: UInt) = IssuerSignedItem(
         digestId = digestId,

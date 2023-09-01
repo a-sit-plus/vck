@@ -5,7 +5,6 @@ package at.asitplus.wallet.lib.iso
 import at.asitplus.wallet.lib.cbor.CoseSigned
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import io.github.aakira.napier.Napier
-import io.matthewnelson.component.encoding.base16.encodeBase16
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
@@ -409,7 +408,7 @@ data class IssuerSignedItem(
 
     override fun toString(): String {
         return "IssuerSignedItem(digestId=$digestId," +
-                " random=${random.encodeToString(Base16())}," +
+                " random=${random.encodeToString(Base16(strict = true))}," +
                 " elementIdentifier='$elementIdentifier'," +
                 " elementValue=$elementValue)"
     }
@@ -439,7 +438,7 @@ data class ElementValue(
     fun serialize() = cborSerializer.encodeToByteArray(this)
 
     override fun toString(): String {
-        return "ElementValue(bytes=${bytes?.encodeToString(Base16())}," +
+        return "ElementValue(bytes=${bytes?.encodeToString(Base16(strict = true))}," +
                 " date=${date}," +
                 " string=$string," +
                 " drivingPrivilege=$drivingPrivilege)"

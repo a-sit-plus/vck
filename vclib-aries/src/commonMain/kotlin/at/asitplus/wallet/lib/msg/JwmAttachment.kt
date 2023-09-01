@@ -3,14 +3,11 @@ package at.asitplus.wallet.lib.msg
 import at.asitplus.wallet.lib.aries.jsonSerializer
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.matthewnelson.component.base64.decodeBase64ToArray
-import io.matthewnelson.component.base64.encodeBase64
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
 /**
