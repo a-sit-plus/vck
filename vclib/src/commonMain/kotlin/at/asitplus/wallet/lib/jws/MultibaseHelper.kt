@@ -42,11 +42,11 @@ object MultibaseHelper {
         return decodeP256Key(multicodecDecode(multibaseDecode(stripped)))
     }
 
-    private fun multibaseWrapBase64(it: ByteArray) = "m${it.encodeToString(Base64())}"
+    private fun multibaseWrapBase64(it: ByteArray) = "m${it.encodeToString(Base64(strict = true))}"
 
     private fun multibaseDecode(it: String?) =
         if (it != null && it.startsWith("m")) {
-            it.removePrefix("m").decodeToByteArrayOrNull(Base64())
+            it.removePrefix("m").decodeToByteArrayOrNull(Base64(strict = true))
         } else null
 
     // 0x1200 would be with compression, so we'll use 0x1290

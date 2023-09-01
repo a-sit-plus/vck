@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.Base64Url
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.VerifiableCredential
@@ -401,8 +402,8 @@ class ValidatorVcTest : FreeSpec() {
         )
         val jwsPayload = vcJws.serialize().encodeToByteArray()
         val signatureInput =
-            jwsHeader.serialize().encodeToByteArray().encodeToString(Base64.UrlSafe) +
-                    "." + jwsPayload.encodeToString(Base64.UrlSafe)
+            jwsHeader.serialize().encodeToByteArray().encodeToString(Base64Url) +
+                    "." + jwsPayload.encodeToString(Base64Url)
         val signatureInputBytes = signatureInput.encodeToByteArray()
         val signature = issuerCryptoService.sign(signatureInputBytes)
             .getOrElse { return null }

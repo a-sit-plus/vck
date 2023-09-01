@@ -28,8 +28,8 @@ class JwsHeaderSerializationTest : FreeSpec({
 
         val serialized = header.serialize()
 
-        serialized shouldContain """"${first.encodeToString(Base64())}""""
-        serialized shouldContain """"${second.encodeToString(Base64())}""""
+        serialized shouldContain """"${first.encodeToString(Base64(strict = true))}""""
+        serialized shouldContain """"${second.encodeToString(Base64(strict = true))}""""
         serialized shouldContain """"$kid""""
     }
 
@@ -44,8 +44,8 @@ class JwsHeaderSerializationTest : FreeSpec({
             | "alg": "${algorithm.text}",
             | "kid": "$kid",
             | "typ": "$type",
-            | "x5c":["${first.encodeToString(Base64())}",
-            | "${second.encodeToString(Base64())}"]}
+            | "x5c":["${first.encodeToString(Base64(strict = true))}",
+            | "${second.encodeToString(Base64(strict = true))}"]}
             | """.trimMargin()
 
         val parsed = JwsHeader.deserialize(serialized)

@@ -4,6 +4,7 @@ import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
 import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.cbor.CoseKeyType
+import at.asitplus.wallet.lib.data.Base64Url
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
@@ -167,7 +168,7 @@ class IssuerService(
         return when (val issuedCredential = issuedCredentialResult.successful.first()) {
             is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
                 format = CredentialFormatEnum.MSO_MDOC,
-                credential = issuedCredential.issuerSigned.serialize().encodeToString(Base64.UrlSafe)
+                credential = issuedCredential.issuerSigned.serialize().encodeToString(Base64Url)
             )
 
             is Issuer.IssuedCredential.Vc -> CredentialResponseParameters(

@@ -96,7 +96,7 @@ actual class DefaultCryptoService : CryptoService {
         return KmmResult.success(
             AuthenticatedCiphertext(
                 input.reversedArray(),
-                "authtag-${key.encodeToString(Base64())}".encodeToByteArray()
+                "authtag-${key.encodeToString(Base64(strict = true))}".encodeToByteArray()
             )
         )
     }
@@ -109,7 +109,7 @@ actual class DefaultCryptoService : CryptoService {
         authTag: ByteArray,
         algorithm: JweEncryption
     ): KmmResult<ByteArray> {
-        return if (authTag.contentEquals("authtag-${key.encodeToString(Base64())}".encodeToByteArray()))
+        return if (authTag.contentEquals("authtag-${key.encodeToString(Base64(strict = true))}".encodeToByteArray()))
             KmmResult.success(input.reversedArray())
         else
             KmmResult.failure(IllegalArgumentException())
