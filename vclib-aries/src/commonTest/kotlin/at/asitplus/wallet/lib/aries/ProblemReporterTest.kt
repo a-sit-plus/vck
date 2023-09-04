@@ -15,7 +15,7 @@ class ProblemReporterTest : FreeSpec({
     val problemReporter = ProblemReporter()
 
     "sorter" - {
-        withData(ProblemReportSorter.values().asList()) {
+        withData(ProblemReportSorter.entries) {
             val report = ProblemReport(
                 body = ProblemReportBody(
                     sorter = it,
@@ -36,7 +36,7 @@ class ProblemReporterTest : FreeSpec({
     }
 
     "scope" - {
-        withData(ProblemReportScope.values().asList()) {
+        withData(ProblemReportScope.entries) {
             val report = ProblemReport(
                 body = ProblemReportBody(
                     sorter = ProblemReportSorter.WARNING,
@@ -57,7 +57,7 @@ class ProblemReporterTest : FreeSpec({
     }
 
     "descriptor" - {
-        withData(ProblemReportDescriptor.values().asList()) {
+        withData(ProblemReportDescriptor.entries) {
             val report = ProblemReport(
                 body = ProblemReportBody(
                     sorter = ProblemReportSorter.WARNING,
