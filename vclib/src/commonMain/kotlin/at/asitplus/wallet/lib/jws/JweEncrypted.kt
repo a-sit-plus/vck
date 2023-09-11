@@ -1,7 +1,8 @@
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.wallet.lib.data.Base64Strict
+import at.asitplus.wallet.lib.data.Base64UrlStrict
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
@@ -22,11 +23,11 @@ data class JweEncrypted(
         get() = JweHeader.deserialize(headerAsParsed.decodeToString())
 
     fun serialize(): String {
-        return headerAsParsed.encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false }) +
-                ".${encryptedKey?.encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false }) ?: ""}" +
-                ".${iv.encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false })}" +
-                ".${ciphertext.encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false })}" +
-                ".${authTag.encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false })}"
+        return headerAsParsed.encodeToString(Base64UrlStrict) +
+                ".${encryptedKey?.encodeToString(Base64UrlStrict) ?: ""}" +
+                ".${iv.encodeToString(Base64UrlStrict)}" +
+                ".${ciphertext.encodeToString(Base64UrlStrict)}" +
+                ".${authTag.encodeToString(Base64UrlStrict)}"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -61,14 +62,14 @@ data class JweEncrypted(
         fun parse(it: String): JweEncrypted? {
             val stringList = it.replace("[^A-Za-z0-9-_.]".toRegex(), "").split(".")
             if (stringList.size != 5) return null.also { Napier.w("Could not parse JWE: $it") }
-            val headerAsParsed = stringList[0].decodeToByteArrayOrNull(Base64())
+            val headerAsParsed = stringList[0].decodeToByteArrayOrNull(Base64Strict)
                 ?: return null.also { Napier.w("Could not parse JWE: $it") }
-            val encryptedKey = stringList[1].decodeToByteArrayOrNull(Base64())
-            val iv = stringList[2].decodeToByteArrayOrNull(Base64())
+            val encryptedKey = stringList[1].decodeToByteArrayOrNull(Base64Strict)
+            val iv = stringList[2].decodeToByteArrayOrNull(Base64Strict)
                 ?: return null.also { Napier.w("Could not parse JWE: $it") }
-            val ciphertext = stringList[3].decodeToByteArrayOrNull(Base64())
+            val ciphertext = stringList[3].decodeToByteArrayOrNull(Base64Strict)
                 ?: return null.also { Napier.w("Could not parse JWE: $it") }
-            val authTag = stringList[4].decodeToByteArrayOrNull(Base64())
+            val authTag = stringList[4].decodeToByteArrayOrNull(Base64Strict)
                 ?: return null.also { Napier.w("Could not parse JWE: $it") }
             return JweEncrypted(headerAsParsed, encryptedKey, iv, ciphertext, authTag)
         }

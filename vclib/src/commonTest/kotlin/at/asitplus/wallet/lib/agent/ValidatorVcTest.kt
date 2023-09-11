@@ -1,15 +1,24 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.wallet.lib.data.*
-import at.asitplus.wallet.lib.jws.*
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.Base64UrlStrict
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.CredentialStatus
+import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsAlgorithm
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsHeader
+import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.JwsSigned
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.matthewnelson.component.base64.Base64
-import io.matthewnelson.component.base64.encodeBase64
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlin.time.Duration.Companion.hours
@@ -410,8 +419,9 @@ class ValidatorVcTest : FreeSpec() {
             type = JwsContentTypeConstants.JWT
         )
         val jwsPayload = vcJws.serialize().encodeToByteArray()
-        val signatureInput = jwsHeader.serialize().encodeToByteArray().encodeBase64(Base64.UrlSafe()) +
-                "." + jwsPayload.encodeBase64(Base64.UrlSafe())
+        val signatureInput =
+            jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
+                    "." + jwsPayload.encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
         val signature = issuerCryptoService.sign(signatureInputBytes)
             .getOrElse { return null }

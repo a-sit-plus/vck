@@ -4,11 +4,11 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Digest
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
+import at.asitplus.wallet.lib.data.Base64UrlStrict
 import at.asitplus.wallet.lib.jws.JwsExtensions.encodeToByteArray
 import at.asitplus.wallet.lib.jws.JwsExtensions.encodeWithLength
 import at.asitplus.wallet.lib.jws.JwsExtensions.extractSignatureValues
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
@@ -81,9 +81,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         ) {
             return null.also { Napier.w("Algorithm or keyId not matching to cryptoService") }
         }
-        val signatureInput = header.serialize().encodeToByteArray()
-            .encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false }) +
-                "." + payload.encodeToString(Base64 { encodeToUrlSafe = true; padEncoded = false })
+        val signatureInput = header.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
+                "." + payload.encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
         val signature = cryptoService.sign(signatureInputBytes).getOrElse {
             Napier.w("No signature from native code", it)
@@ -131,7 +130,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             return null
         }
         val iv = jweObject.iv
-        val aad = jweObject.headerAsParsed.encodeToByteArray(Base64 { encodeToUrlSafe = true; padEncoded = false })
+        val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
         val ciphertext = jweObject.ciphertext
         val authTag = jweObject.authTag
         val plaintext =
@@ -178,7 +177,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val iv = Random.Default.nextBytes(jweEncryption.ivLengthBits / 8)
         val headerSerialized = jweHeader.serialize()
         val aad = headerSerialized.encodeToByteArray()
-        val aadForCipher = aad.encodeToByteArray(Base64 { encodeToUrlSafe = true; padEncoded = false })
+        val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
         val ciphertext =
             cryptoService.encrypt(key, iv, aadForCipher, payload, jweEncryption).getOrElse {
                 Napier.w("No ciphertext from native code", it)

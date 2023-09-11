@@ -62,8 +62,8 @@ data class CoseSigned(
     override fun toString(): String {
         return "CoseSigned(protectedHeader=${protectedHeader.value}," +
                 " unprotectedHeader=$unprotectedHeader," +
-                " payload=${payload?.encodeToString(Base16())}," +
-                " signature=${signature.encodeToString(Base16())})"
+                " payload=${payload?.encodeToString(Base16(strict = true))}," +
+                " signature=${signature.encodeToString(Base16(strict = true))})"
     }
 
     companion object {
@@ -119,8 +119,8 @@ data class CoseSignatureInput(
     override fun toString(): String {
         return "CoseSignatureInput(contextString='$contextString'," +
                 " protectedHeader=${protectedHeader.value}," +
-                " externalAad=${externalAad.encodeToString(Base16())}," +
-                " payload=${payload?.encodeToString(Base16())})"
+                " externalAad=${externalAad.encodeToString(Base16(strict = true))}," +
+                " payload=${payload?.encodeToString(Base16(strict = true))})"
     }
 
 
