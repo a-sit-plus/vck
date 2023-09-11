@@ -5,10 +5,10 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 
-private val serializersModules = mutableListOf<SerializersModule>()
+private val serializersModules = mutableMapOf<ConstantIndex.CredentialScheme, SerializersModule>()
 
-internal fun registerSerializersModule(module: SerializersModule) {
-    serializersModules += module
+internal fun registerSerializersModule(scheme: ConstantIndex.CredentialScheme, module: SerializersModule) {
+    serializersModules[scheme] = module
 }
 
 val jsonSerializer by lazy {
@@ -23,7 +23,7 @@ val jsonSerializer by lazy {
                 subclass(RevocationListSubject::class)
             }
             serializersModules.forEach {
-                include(it)
+                include(it.value)
             }
         }
     }
