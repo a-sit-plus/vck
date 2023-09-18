@@ -1,13 +1,14 @@
+import java.io.FileInputStream
+import java.util.*
+
 plugins {
     `kotlin-dsl`
     idea
 }
 group = "at.asitplus.gradle"
 
-idea {
-    project {
-        jdkName = "11" //TODO use from ASP conventions plugin?
-    }
+private val versions = Properties().apply {
+    kotlin.runCatching { load(FileInputStream(rootProject.file("gradle-conventions-plugin/src/main/resources/versions.properties"))) }
 }
 
 dependencies {
@@ -18,15 +19,6 @@ repositories {
     maven("https://maven.pkg.jetbrains.space/kotlin/p/dokka/dev")
     mavenCentral()
     gradlePluginPortal()
-}
-kotlin {
-    jvmToolchain {
-        (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(11/*TODO share*/))
-    }
-    /*compilerOptions {
-        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9)
-        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9)
-    }*/
 }
 
 gradlePlugin {

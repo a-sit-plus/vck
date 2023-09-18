@@ -20,6 +20,7 @@ data class AtomicAttribute2023 (
 
     @SerialName("mime-type")
     val mimeType: String,
+
 ) : CredentialSubject() {
 
     constructor(id: String, name: String, value: String) : this(id, name, value, "application/text")
