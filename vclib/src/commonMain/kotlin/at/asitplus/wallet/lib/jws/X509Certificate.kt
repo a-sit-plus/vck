@@ -91,13 +91,13 @@ private fun Instant.encodeToDer(): ByteArray {
     val matchResult =
         Regex("[0-9]{2}([0-9]{2})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})\\.([0-9]+)Z")
             .matchEntire(toString())
-            ?: throw IllegalArgumentException("instant serialization failed")
-    val year = matchResult.groups[1]?.value ?: throw IllegalArgumentException("instant serialization failed")
-    val month = matchResult.groups[2]?.value ?: throw IllegalArgumentException("instant serialization failed")
-    val day = matchResult.groups[3]?.value ?: throw IllegalArgumentException("instant serialization failed")
-    val hour = matchResult.groups[4]?.value ?: throw IllegalArgumentException("instant serialization failed")
-    val minute = matchResult.groups[5]?.value ?: throw IllegalArgumentException("instant serialization failed")
-    val seconds = matchResult.groups[6]?.value ?: throw IllegalArgumentException("instant serialization failed")
+            ?: throw IllegalArgumentException("instant serialization failed: $this")
+    val year = matchResult.groups[1]?.value ?: throw IllegalArgumentException("instant serialization year failed: $this")
+    val month = matchResult.groups[2]?.value ?: throw IllegalArgumentException("instant serialization month failed: $this")
+    val day = matchResult.groups[3]?.value ?: throw IllegalArgumentException("instant serialization day failed: $this")
+    val hour = matchResult.groups[4]?.value ?: throw IllegalArgumentException("instant serialization hour failed: $this")
+    val minute = matchResult.groups[5]?.value ?: throw IllegalArgumentException("instant serialization minute failed: $this")
+    val seconds = matchResult.groups[6]?.value ?: throw IllegalArgumentException("instant serialization seconds failed: $this")
     val string = "$year$month$day$hour$minute${seconds}Z"
     return string.encodeToByteArray().wrapInAsn1Tag(0x17)
 }
