@@ -61,7 +61,7 @@ actual class DefaultCryptoService : CryptoService {
     private val privateKey: SecKeyRef
     private val publicKey: SecKeyRef
     private val cryptoPublicKey: CryptoPublicKey
-    final override val certificate: ByteArray
+    override val certificate: ByteArray
 
     actual constructor() {
         val query = CFDictionaryCreateMutable(null, 2, null, null).apply {
@@ -189,6 +189,7 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
 actual object CryptoUtils {
 
     actual fun extractPublicKeyFromX509Cert(it: ByteArray): CryptoPublicKey? {
+        if (it.isEmpty()) return null
         memScoped {
             val certData = CFBridgingRetain(toData(it)) as CFDataRef
             val certificate = SecCertificateCreateWithData(null, certData)
