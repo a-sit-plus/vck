@@ -10,11 +10,12 @@ import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants
 import com.benasher44.uuid.uuid4
+import io.github.aakira.napier.DebugAntilog
+import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
-import io.kotest.matchers.collections.shouldMatchEach
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
@@ -34,6 +35,8 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
+        Napier.takeLogarithm()
+        Napier.base(DebugAntilog())
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"

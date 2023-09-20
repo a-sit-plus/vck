@@ -6,13 +6,9 @@ import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.data.Base64Strict
-import at.asitplus.wallet.lib.jws.EcCurve
-import at.asitplus.wallet.lib.jws.JsonWebKey
-import at.asitplus.wallet.lib.jws.JweAlgorithm
-import at.asitplus.wallet.lib.jws.JweEncryption
-import at.asitplus.wallet.lib.jws.JwkType
-import at.asitplus.wallet.lib.jws.JwsAlgorithm
+import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.jws.JwsExtensions.convertToAsn1Signature
+import io.ktor.util.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
@@ -21,6 +17,10 @@ import kotlinx.cinterop.allocArrayOf
 import kotlinx.cinterop.get
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.reinterpret
+import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.plus
 import platform.CoreFoundation.CFDataRef
 import platform.CoreFoundation.CFDictionaryCreateMutable
 import platform.Foundation.CFBridgingRelease
@@ -73,17 +73,23 @@ actual class DefaultCryptoService : CryptoService {
         val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
         this.cryptoPublicKey = CryptoPublicKey.Ec.fromAnsiX963Bytes(EcCurve.SECP_256_R_1, data.toByteArray())!!
-        this.certificate = byteArrayOf() // TODO How to create a self-signed certificate in Kotlin/iOS?
+        val tbsCertificate = TbsCertificate(version = 2, serialNumber = 3, signatureAlgorithm = JwsAlgorithm.ES256, issuer = "SelfSigned", validFrom = Clock.System.now(), validUntil = Clock.System.now().plus(10, DateTimeUnit.MINUTE), subject = "SelfSigned", subjectPublicKey = cryptoPublicKey)
+        val signature = signInt(tbsCertificate.encodeToDer())
+        this.certificate = X509Certificate(tbsCertificate = tbsCertificate, signatureAlgorithm = JwsAlgorithm.ES256, signature = signature).encodeToDer()
     }
 
-    override suspend fun sign(input: ByteArray): KmmResult<ByteArray> {
+    private fun signInt(input: ByteArray): ByteArray {
         memScoped {
             val inputData = CFBridgingRetain(toData(input)) as CFDataRef
             val signature =
                 SecKeyCreateSignature(privateKey, kSecKeyAlgorithmECDSASignatureMessageX962SHA256, inputData, null)
             val data = CFBridgingRelease(signature) as NSData
-            return KmmResult.success(data.toByteArray())
+            return data.toByteArray()
         }
+    }
+
+    override suspend fun sign(input: ByteArray): KmmResult<ByteArray> {
+        return KmmResult.success(signInt(input))
     }
 
     override fun encrypt(
