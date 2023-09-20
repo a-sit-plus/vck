@@ -67,6 +67,15 @@ object JwsExtensions {
         byteArrayOf((this ushr 24).toByte(), (this ushr 16).toByte(), (this ushr 8).toByte(), (this).toByte())
 
     /**
+     * Encode as a four-byte array
+     */
+    fun Long.encodeToByteArray(): ByteArray =
+        byteArrayOf(
+            (this ushr 56).toByte(), (this ushr 48).toByte(), (this ushr 40).toByte(), (this ushr 32).toByte(),
+            (this ushr 24).toByte(), (this ushr 16).toByte(), (this ushr 8).toByte(), (this).toByte()
+        )
+
+    /**
      * Strips the leading 0x00 byte of an ASN.1-encoded Integer,
      * that will be there if the first bit of the value is set,
      * i.e. it is over 0x7F (or < 0 if it is signed)
