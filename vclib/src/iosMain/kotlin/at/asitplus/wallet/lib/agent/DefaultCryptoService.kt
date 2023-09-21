@@ -71,6 +71,7 @@ actual class DefaultCryptoService : CryptoService {
         publicKey = SecKeyCopyPublicKey(privateKey)!!
         val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
+        // TODO RSA
         this.cryptoPublicKey = CryptoPublicKey.Ec.fromAnsiX963Bytes(EcCurve.SECP_256_R_1, data.toByteArray())!!
         val tbsCertificate = TbsCertificate(
             version = 2,
@@ -173,6 +174,7 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
         algorithm: JwsAlgorithm,
         publicKey: CryptoPublicKey
     ): KmmResult<Boolean> {
+        // TODO RSA
         if (publicKey !is CryptoPublicKey.Ec) {
             return KmmResult.failure(IllegalArgumentException("Public key is not an EC key"))
         }
@@ -209,6 +211,7 @@ actual object CryptoUtils {
     actual fun extractPublicKeyFromX509Cert(it: ByteArray): CryptoPublicKey? {
         if (it.isEmpty()) return null
         memScoped {
+            // TODO RSA
             val certData = CFBridgingRetain(toData(it)) as CFDataRef
             val certificate = SecCertificateCreateWithData(null, certData)
             val publicKey = SecCertificateCopyKey(certificate)

@@ -16,6 +16,75 @@ sealed class CryptoPublicKey {
     abstract fun toCoseKey(): CoseKey
     abstract fun toJsonWebKey(): JsonWebKey
 
+    data class Rsa(
+        val keyId: String,
+        val n: ByteArray,
+        val e: ByteArray,
+    ) : CryptoPublicKey() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || this::class != other::class) return false
+
+            other as Rsa
+
+            if (keyId != other.keyId) return false
+            if (!n.contentEquals(other.n)) return false
+            if (!e.contentEquals(other.e)) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = keyId.hashCode()
+            result = 31 * result + n.contentHashCode()
+            result = 31 * result + e.contentHashCode()
+            return result
+        }
+
+        companion object {
+
+            fun fromKeyId(it: String): CryptoPublicKey? {
+                // TODO RSA
+                return null
+            }
+
+            fun fromAnsiX963Bytes(it: ByteArray): CryptoPublicKey? {
+                // TODO RSA
+                return null
+            }
+
+            fun fromModulus(n: ByteArray, e: ByteArray): CryptoPublicKey {
+                // TODO RSA
+                return CryptoPublicKey.Rsa(
+                    keyId = "TODO",
+                    n = n,
+                    e = e
+                )
+            }
+        }
+
+        fun toAnsiX963ByteArray(): KmmResult<ByteArray> {
+            // TODO RSA
+            return KmmResult.success(byteArrayOf())
+        }
+
+        override fun toCoseKey() = CoseKey(
+            type = CoseKeyType.RSA,
+            keyId = keyId.encodeToByteArray(),
+            algorithm = CoseAlgorithm.ES256,
+            x = n,
+            y = e
+            // TODO RSA
+        )
+
+        override fun toJsonWebKey() = JsonWebKey(
+            type = JwkType.RSA,
+            keyId = keyId,
+            n = n,
+            e = e,
+        )
+    }
+
     data class Ec(
         val curve: EcCurve,
         val keyId: String,

@@ -37,9 +37,11 @@ data class CoseKey(
     val baseIv: ByteArray? = null,
     @SerialLabel(-1)
     @SerialName("crv")
+    // TODO RSA this may also be the RSA modulus n, see https://www.iana.org/assignments/cose/cose.xhtml#key-type-parameters
     val curve: CoseEllipticCurve? = null,
     @SerialLabel(-2)
     @SerialName("x")
+    // TODO RSA this may also be the RSA exponent e, see https://www.iana.org/assignments/cose/cose.xhtml#key-type-parameters
     val x: ByteArray? = null,
     @SerialLabel(-3)
     @SerialName("y") // TODO might also be bool
@@ -66,6 +68,7 @@ data class CoseKey(
         }
 
         fun fromAnsiX963Bytes(type: CoseKeyType, curve: CoseEllipticCurve, it: ByteArray): CoseKey? {
+            // TODO RSA
             if (type != CoseKeyType.EC2 || curve != CoseEllipticCurve.P256) {
                 return null
             }
@@ -86,26 +89,6 @@ data class CoseKey(
             )
         }
 
-        fun fromCoordinates(
-            type: CoseKeyType,
-            curve: CoseEllipticCurve,
-            x: ByteArray,
-            y: ByteArray
-        ): CoseKey? {
-            if (type != CoseKeyType.EC2 || curve != CoseEllipticCurve.P256) {
-                return null
-            }
-            val keyId = MultibaseHelper.calcKeyId(curve, x, y)
-                ?: return null
-            return CoseKey(
-                type = type,
-                keyId = keyId.encodeToByteArray(),
-                algorithm = CoseAlgorithm.ES256,
-                curve = curve,
-                x = x,
-                y = y
-            )
-        }
     }
 
     override fun toString(): String {
@@ -171,6 +154,7 @@ data class CoseKey(
     }
 
     fun toCryptoPublicKey(): CryptoPublicKey? {
+        // TODO RSA
         if (this.type != CoseKeyType.EC2 || this.curve == null || this.keyId == null || this.x == null || this.y == null) return null
         return CryptoPublicKey.Ec(
             curve = curve.toJwkCurve(),

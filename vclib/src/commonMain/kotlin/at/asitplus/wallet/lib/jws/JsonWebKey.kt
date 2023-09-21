@@ -26,38 +26,14 @@ data class JsonWebKey(
     @SerialName("y")
     @Serializable(with = ByteArrayBase64UrlSerializer::class)
     val y: ByteArray? = null,
+    @SerialName("n")
+    @Serializable(with = ByteArrayBase64UrlSerializer::class)
+    val n: ByteArray? = null,
+    @SerialName("e")
+    @Serializable(with = ByteArrayBase64UrlSerializer::class)
+    val e: ByteArray? = null,
 ) {
     fun serialize() = jsonSerializer.encodeToString(this)
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as JsonWebKey
-
-        if (type != other.type) return false
-        if (curve != other.curve) return false
-        if (keyId != other.keyId) return false
-        if (x != null) {
-            if (other.x == null) return false
-            if (!x.contentEquals(other.x)) return false
-        } else if (other.x != null) return false
-        if (y != null) {
-            if (other.y == null) return false
-            if (!y.contentEquals(other.y)) return false
-        } else if (other.y != null) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = type?.hashCode() ?: 0
-        result = 31 * result + (curve?.hashCode() ?: 0)
-        result = 31 * result + (keyId?.hashCode() ?: 0)
-        result = 31 * result + (x?.contentHashCode() ?: 0)
-        result = 31 * result + (y?.contentHashCode() ?: 0)
-        return result
-    }
 
     companion object {
 
@@ -69,6 +45,7 @@ data class JsonWebKey(
         }
 
         fun fromKeyId(it: String): JsonWebKey? {
+            // TODO RSA
             val (xCoordinate, yCoordinate) = MultibaseHelper.calcPublicKey(it)
                 ?: return null
             return JsonWebKey(
@@ -81,6 +58,7 @@ data class JsonWebKey(
         }
 
         fun fromAnsiX963Bytes(type: JwkType, curve: EcCurve, it: ByteArray): JsonWebKey? {
+            // TODO RSA
             if (type != JwkType.EC || curve != EcCurve.SECP_256_R_1) {
                 return null
             }
@@ -106,6 +84,7 @@ data class JsonWebKey(
             x: ByteArray,
             y: ByteArray
         ): JsonWebKey? {
+            // TODO RSA
             if (type != JwkType.EC || curve != EcCurve.SECP_256_R_1) {
                 return null
             }
@@ -142,13 +121,68 @@ data class JsonWebKey(
     }
 
     fun toCryptoPublicKey(): CryptoPublicKey? {
-        if (this.type != JwkType.EC || this.curve == null || this.x == null || this.y == null) return null
-        return CryptoPublicKey.Ec(
-            curve = this.curve,
-            keyId = identifier,
-            x = x,
-            y = y,
-        )
+        return when (this.type) {
+            JwkType.EC -> {
+                if (this.curve == null || this.x == null || this.y == null) return null
+                CryptoPublicKey.Ec(
+                    curve = this.curve,
+                    keyId = identifier,
+                    x = x,
+                    y = y,
+                )
+            }
+
+            JwkType.RSA -> {
+                if (this.n == null || this.e == null) return null
+                CryptoPublicKey.Rsa(
+                    keyId = identifier,
+                    n = n,
+                    e = e
+                )
+            }
+
+            null -> null
+        }
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as JsonWebKey
+
+        if (curve != other.curve) return false
+        if (type != other.type) return false
+        if (keyId != other.keyId) return false
+        if (x != null) {
+            if (other.x == null) return false
+            if (!x.contentEquals(other.x)) return false
+        } else if (other.x != null) return false
+        if (y != null) {
+            if (other.y == null) return false
+            if (!y.contentEquals(other.y)) return false
+        } else if (other.y != null) return false
+        if (n != null) {
+            if (other.n == null) return false
+            if (!n.contentEquals(other.n)) return false
+        } else if (other.n != null) return false
+        if (e != null) {
+            if (other.e == null) return false
+            if (!e.contentEquals(other.e)) return false
+        } else if (other.e != null) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = curve?.hashCode() ?: 0
+        result = 31 * result + (type?.hashCode() ?: 0)
+        result = 31 * result + (keyId?.hashCode() ?: 0)
+        result = 31 * result + (x?.contentHashCode() ?: 0)
+        result = 31 * result + (y?.contentHashCode() ?: 0)
+        result = 31 * result + (n?.contentHashCode() ?: 0)
+        result = 31 * result + (e?.contentHashCode() ?: 0)
+        return result
     }
 
 

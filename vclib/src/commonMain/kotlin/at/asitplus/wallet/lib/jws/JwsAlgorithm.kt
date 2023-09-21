@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable(with = JwsAlgorithmSerializer::class)
 enum class JwsAlgorithm(val text: String) {
 
+    // TODO RSA Add RSA algorithms with SHA256 at least
     ES256("ES256"),
     ES384("ES384"),
     ES512("ES512"),

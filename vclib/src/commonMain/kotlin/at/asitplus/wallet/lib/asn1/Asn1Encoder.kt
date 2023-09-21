@@ -32,6 +32,7 @@ fun commonName(block: () -> String) = oid { "550403" } + utf8String { block() }
 
 fun subjectPublicKey(block: () -> CryptoPublicKey) = when (val value = block()) {
     is CryptoPublicKey.Ec -> value.encodeToDer()
+    is CryptoPublicKey.Rsa -> TODO()
 }
 
 fun utcTime(block: () -> Instant): ByteArray {

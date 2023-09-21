@@ -13,6 +13,8 @@ enum class CoseKeyType(val value: Int) {
 
     OKP(1),
     EC2(2),
+    // TODO RSA check usages of other enum members
+    RSA(3),
     SYMMETRIC(4),
     RESERVED(0);
 

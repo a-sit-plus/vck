@@ -6,7 +6,7 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
-
+// TODO RSA Support RSA-Publickey with Prefix 0x1205, then DER-encoded ASN.1 type RSAPublicKey in PKCS#1/RFC8017
 object MultibaseHelper {
 
     private const val PREFIX_DID_KEY = "did:key"

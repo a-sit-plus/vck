@@ -42,6 +42,7 @@ class X509CertificateJvmTest : FreeSpec({
         val keyX = ecPublicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyId = MultibaseHelper.calcKeyId(ecCurve, keyX, keyY)!!
+        // TODO RSA Test
         val cryptoPublicKey = CryptoPublicKey.Ec(curve = ecCurve, keyId = keyId, x = keyX, y = keyY)
 
         // create certificate with bouncycastle

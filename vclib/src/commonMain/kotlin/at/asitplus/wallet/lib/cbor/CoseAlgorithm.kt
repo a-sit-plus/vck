@@ -12,6 +12,7 @@ import kotlinx.serialization.encoding.Encoder
 @Serializable(with = CoseAlgorithmSerializer::class)
 enum class CoseAlgorithm(val value: Int) {
 
+    // TODO RSA add at least algorithm with SHA256
     ES256(-7),
     ES384(-35),
     ES512(-36),

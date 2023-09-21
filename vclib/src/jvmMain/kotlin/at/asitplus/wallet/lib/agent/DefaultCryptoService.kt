@@ -35,6 +35,8 @@ import java.security.Signature
 import java.security.cert.Certificate
 import java.security.cert.CertificateFactory
 import java.security.interfaces.ECPublicKey
+import java.security.interfaces.RSAPublicKey
+import java.security.spec.RSAPublicKeySpec
 import java.security.spec.X509EncodedKeySpec
 import java.time.Instant
 import java.util.Date
@@ -60,6 +62,7 @@ actual open class DefaultCryptoService : CryptoService {
         val keyX = ecPublicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyId = MultibaseHelper.calcKeyId(SECP_256_R_1, keyX, keyY)!!
+        // TODO RSA Test
         this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
         this.certificate = generateSelfSignedCertificate()
     }
@@ -70,6 +73,7 @@ actual open class DefaultCryptoService : CryptoService {
         val keyX = ecPublicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyId = MultibaseHelper.calcKeyId(SECP_256_R_1, keyX, keyY)!!
+        // TODO RSA Test
         this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
         this.certificate = generateSelfSignedCertificate()
     }
@@ -80,6 +84,7 @@ actual open class DefaultCryptoService : CryptoService {
         val keyX = ecPublicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val keyId = MultibaseHelper.calcKeyId(SECP_256_R_1, keyX, keyY)!!
+        // TODO RSA Test
         this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, keyId = keyId, x = keyX, y = keyY)
         this.certificate = certificate.encoded
     }
@@ -212,6 +217,7 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
         algorithm: JwsAlgorithm,
         publicKey: CryptoPublicKey,
     ): KmmResult<Boolean> {
+        // TODO RSA
         if (publicKey !is CryptoPublicKey.Ec) {
             return KmmResult.failure(IllegalArgumentException("Public key is not an EC key"))
         }
@@ -232,8 +238,11 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
 actual object CryptoUtils {
 
     actual fun extractPublicKeyFromX509Cert(it: ByteArray): CryptoPublicKey? = kotlin.runCatching {
-        val pubKey = CertificateFactory.getInstance("X.509").generateCertificate(it.inputStream()).publicKey
-        if (pubKey is ECPublicKey) CryptoPublicKey.Ec.Companion.fromJcaKey(pubKey, SECP_256_R_1) else null
+        when (val pubKey = CertificateFactory.getInstance("X.509").generateCertificate(it.inputStream()).publicKey) {
+            is ECPublicKey -> CryptoPublicKey.Ec.Companion.fromJcaKey(pubKey, SECP_256_R_1)
+            is RSAPublicKey -> CryptoPublicKey.Rsa.Companion.fromJcaKey(pubKey)
+            else -> null
+        }
     }.getOrNull()
 
 }
@@ -281,6 +290,7 @@ val CoseEllipticCurve.jcaName
     }
 
 fun JsonWebKey.getPublicKey(): PublicKey {
+    // TODO RSA
     return toPublicKey(curve?.jcaName, x, y)
 }
 
@@ -297,6 +307,11 @@ private fun toPublicKey(curveName: String?, xCoordinate: ByteArray?, yCoordinate
     return JCEECPublicKey("EC", ecPublicKeySpec)
 }
 
+fun CryptoPublicKey.Rsa.getPublicKey(): PublicKey {
+    // TODO RSA Verify transformation into BigInteger
+    return KeyFactory.getInstance("RSA").generatePublic(RSAPublicKeySpec(BigInteger(n), BigInteger(e)))
+}
+
 fun JsonWebKey.Companion.fromJcaKey(publicKey: ECPublicKey, ecCurve: EcCurve) =
     fromCoordinates(
         EC,
@@ -311,6 +326,10 @@ fun CryptoPublicKey.Ec.Companion.fromJcaKey(publicKey: ECPublicKey, ecCurve: EcC
         publicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes),
         publicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
     )
+
+fun CryptoPublicKey.Rsa.Companion.fromJcaKey(publicKey: RSAPublicKey) =
+    // TODO RSA Verify byte arrays do not start with 0 or sign bit or something
+    fromModulus(publicKey.modulus.toByteArray(), publicKey.publicExponent.toByteArray())
 
 open class JvmEphemeralKeyHolder(private val ecCurve: EcCurve) : EphemeralKeyHolder {
 
