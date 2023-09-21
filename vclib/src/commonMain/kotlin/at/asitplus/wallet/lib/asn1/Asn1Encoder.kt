@@ -8,36 +8,72 @@ import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.datetime.Instant
 
+class SequenceBuilder {
 
-fun tag(tag: Int, block: () -> ByteArray): ByteArray {
-    val value = block()
-    return byteArrayOf(tag.toByte()) + value.size.encodeLength() + value
+    internal val elements = mutableListOf<ByteArray>()
+
+    fun long(block: () -> Long) = apply { elements += block().encodeToAsn1() }
+
+    fun bitString(block: () -> ByteArray) = apply { elements += block().encodeToBitString() }
+
+    fun oid(block: () -> String) = apply { elements += block().encodeToOid() }
+
+    fun utf8String(block: () -> String) = apply { elements += asn1Tag(0x0c, block().encodeToByteArray()) }
+
+    fun version(block: () -> Int) = apply { elements += asn1Tag(0xA0, block().encodeToAsn1()) }
+
+    fun commonName(block: () -> String) = apply {
+        oid { "550403" }
+        utf8String { block() }
+    }
+
+    fun subjectPublicKey(block: () -> CryptoPublicKey) = apply { elements += block().encodeToAsn1() }
+
+    fun tbsCertificate(block: () -> TbsCertificate) = apply { elements += block().encodeToDer() }
+
+    fun sigAlg(block: () -> JwsAlgorithm) = apply { elements += block().encodeToAsn1() }
+
+    fun utcTime(block: () -> Instant) = apply { elements += block().encodeToAsn1() }
+
+    fun sequence(init: SequenceBuilder.() -> Unit) = apply {
+        val seq = SequenceBuilder()
+        seq.init()
+        elements += asn1Tag(0x30, seq.elements.fold(byteArrayOf()) { acc, bytes -> acc + bytes })
+    }
+
+    fun set(init: SequenceBuilder.() -> Unit) = apply {
+        val seq = SequenceBuilder()
+        seq.init()
+        elements += asn1Tag(0x31, seq.elements.fold(byteArrayOf()) { acc, bytes -> acc + bytes })
+    }
 }
 
-fun long(block: () -> Long) = tag(0x02) { block().encodeToByteArray().dropWhile { it == 0.toByte() }.toByteArray() }
 
-fun int(block: () -> Int) = tag(0x02) { block().encodeToByteArray().dropWhile { it == 0.toByte() }.toByteArray() }
-
-fun bitString(block: () -> ByteArray) = tag(0x03) { (byteArrayOf(0x00) + block()) }
-
-fun oid(block: () -> String): ByteArray = tag(0x06) { block().decodeToByteArray(Base16()) }
-
-fun sequence(block: () -> List<ByteArray>) = tag(0x30) { block().fold(byteArrayOf()) { acc, bytes -> acc + bytes } }
-
-fun set(block: () -> List<ByteArray>) = tag(0x31) { block().fold(byteArrayOf()) { acc, bytes -> acc + bytes } }
-
-fun utf8String(block: () -> String) = tag(0x0c) { block().encodeToByteArray() }
-
-fun commonName(block: () -> String) = oid { "550403" } + utf8String { block() }
-
-fun subjectPublicKey(block: () -> CryptoPublicKey) = when (val value = block()) {
-    is CryptoPublicKey.Ec -> value.encodeToDer()
+fun sequence(init: SequenceBuilder.() -> Unit): ByteArray {
+    val seq = SequenceBuilder()
+    seq.init()
+    return asn1Tag(0x30, seq.elements.fold(byteArrayOf()) { acc, bytes -> acc + bytes })
 }
 
-fun utcTime(block: () -> Instant): ByteArray {
-    val value = block()
+private fun Int.encodeToAsn1() = asn1Tag(0x02, encodeToDer())
+
+private fun Int.encodeToDer() = encodeToByteArray().dropWhile { it == 0.toByte() }.toByteArray()
+
+private fun Long.encodeToAsn1() = asn1Tag(0x02, encodeToDer())
+
+private fun Long.encodeToDer() = encodeToByteArray().dropWhile { it == 0.toByte() }.toByteArray()
+
+private fun ByteArray.encodeToBitString() = asn1Tag(0x03, (byteArrayOf(0x00) + this))
+
+private fun asn1Tag(tag: Int, value: ByteArray) = byteArrayOf(tag.toByte()) + value.size.encodeLength() + value
+
+private fun String.encodeToOid() = asn1Tag(0x06, decodeToByteArray(Base16()))
+
+private fun Instant.encodeToAsn1(): ByteArray {
+    val value = this.toString()
+    if (value.isEmpty()) return asn1Tag(0x17, byteArrayOf())
     val matchResult = Regex("[0-9]{2}([0-9]{2})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})")
-        .matchAt(value.toString(), 0)
+        .matchAt(value, 0)
         ?: throw IllegalArgumentException("instant serialization failed: ${value}")
     val year = matchResult.groups[1]?.value
         ?: throw IllegalArgumentException("instant serialization year failed: ${value}")
@@ -51,21 +87,22 @@ fun utcTime(block: () -> Instant): ByteArray {
         ?: throw IllegalArgumentException("instant serialization minute failed: ${value}")
     val seconds = matchResult.groups[6]?.value
         ?: throw IllegalArgumentException("instant serialization seconds failed: ${value}")
-    return tag(0x17) { "$year$month$day$hour$minute${seconds}Z".encodeToByteArray() }
+    return asn1Tag(0x17, "$year$month$day$hour$minute${seconds}Z".encodeToByteArray())
 }
 
-fun tbsCertificate(block: () -> TbsCertificate) = block().encodeToDer()
-
-fun sigAlg(block: () -> JwsAlgorithm): ByteArray = when (val value = block()) {
-    JwsAlgorithm.ES256 -> sequence { listOf(oid { "2A8648CE3D040302" }) }
-    else -> throw IllegalArgumentException("sigAlg: $value")
+private fun JwsAlgorithm.encodeToAsn1() = when (this) {
+    JwsAlgorithm.ES256 -> sequence { oid { "2A8648CE3D040302" } }
+    else -> throw IllegalArgumentException("sigAlg: $this")
 }
 
-private fun CryptoPublicKey.Ec.encodeToDer(): ByteArray {
-    val ecKeyTag = oid { "2A8648CE3D0201" }
-    val ecEncryptionNullTag = oid { "2A8648CE3D030107" }
-    val content = bitString { (byteArrayOf(0x04.toByte()) + x + y) }
-    return sequence { listOf(sequence { listOf(ecKeyTag, ecEncryptionNullTag) }, content) }
+private fun CryptoPublicKey.encodeToAsn1() = when (this) {
+    is CryptoPublicKey.Ec -> sequence {
+        sequence {
+            oid { "2A8648CE3D0201" }
+            oid { "2A8648CE3D030107" }
+        }
+        bitString { (byteArrayOf(0x04.toByte()) + x + y) }
+    }
 }
 
 private fun Int.encodeLength(): ByteArray {

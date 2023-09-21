@@ -1,17 +1,7 @@
 package at.asitplus.wallet.lib.jws
 
 import at.asitplus.wallet.lib.CryptoPublicKey
-import at.asitplus.wallet.lib.asn1.bitString
-import at.asitplus.wallet.lib.asn1.commonName
-import at.asitplus.wallet.lib.asn1.int
-import at.asitplus.wallet.lib.asn1.long
 import at.asitplus.wallet.lib.asn1.sequence
-import at.asitplus.wallet.lib.asn1.set
-import at.asitplus.wallet.lib.asn1.sigAlg
-import at.asitplus.wallet.lib.asn1.subjectPublicKey
-import at.asitplus.wallet.lib.asn1.tag
-import at.asitplus.wallet.lib.asn1.tbsCertificate
-import at.asitplus.wallet.lib.asn1.utcTime
 import kotlinx.datetime.Instant
 
 /**
@@ -29,36 +19,29 @@ data class TbsCertificate(
     val publicKey: CryptoPublicKey
 ) {
     fun encodeToDer() = sequence {
-        listOf(
-            tag(0xA0) {
-                int { version }
-            },
-            long { serialNumber },
-            sigAlg { signatureAlgorithm },
-            sequence {
-                listOf(set {
-                    listOf(sequence {
-                        listOf(commonName { issuerCommonName })
-                    })
-                })
-            },
-            sequence {
-                listOf(
-                    utcTime { validFrom },
-                    utcTime { validUntil }
-                )
-            },
-            sequence {
-                listOf(set {
-                    listOf(sequence {
-                        listOf(commonName { subjectCommonName })
-                    })
-                })
-            },
-            subjectPublicKey { publicKey }
-        )
+        version { version }
+        long { serialNumber }
+        sigAlg { signatureAlgorithm }
+        sequence {
+            set {
+                sequence {
+                    commonName { issuerCommonName }
+                }
+            }
+        }
+        sequence {
+            utcTime { validFrom }
+            utcTime { validUntil }
+        }
+        sequence {
+            set {
+                sequence {
+                    commonName { subjectCommonName }
+                }
+            }
+        }
+        subjectPublicKey { publicKey }
     }
-
 }
 
 /**
@@ -70,11 +53,9 @@ data class X509Certificate(
     val signature: ByteArray
 ) {
     fun encodeToDer() = sequence {
-        listOf(
-            tbsCertificate { tbsCertificate },
-            sigAlg { signatureAlgorithm },
-            bitString { signature }
-        )
+        tbsCertificate { tbsCertificate }
+        sigAlg { signatureAlgorithm }
+        bitString { signature }
     }
 
     override fun equals(other: Any?): Boolean {
