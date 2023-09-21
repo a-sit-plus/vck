@@ -17,7 +17,6 @@ import kotlinx.cinterop.allocArrayOf
 import kotlinx.cinterop.get
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.reinterpret
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.plus
@@ -73,9 +72,22 @@ actual class DefaultCryptoService : CryptoService {
         val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
         this.cryptoPublicKey = CryptoPublicKey.Ec.fromAnsiX963Bytes(EcCurve.SECP_256_R_1, data.toByteArray())!!
-        val tbsCertificate = TbsCertificate(version = 2, serialNumber = 3, signatureAlgorithm = JwsAlgorithm.ES256, issuer = "SelfSigned", validFrom = Clock.System.now(), validUntil = Clock.System.now().plus(10, DateTimeUnit.MINUTE), subject = "SelfSigned", subjectPublicKey = cryptoPublicKey)
+        val tbsCertificate = TbsCertificate(
+            version = 2,
+            serialNumber = 3,
+            signatureAlgorithm = JwsAlgorithm.ES256,
+            issuerCommonName = "SelfSigned",
+            validFrom = Clock.System.now(),
+            validUntil = Clock.System.now().plus(10, DateTimeUnit.MINUTE),
+            subjectCommonName = "SelfSigned",
+            publicKey = cryptoPublicKey
+        )
         val signature = signInt(tbsCertificate.encodeToDer())
-        this.certificate = X509Certificate(tbsCertificate = tbsCertificate, signatureAlgorithm = JwsAlgorithm.ES256, signature = signature).encodeToDer()
+        this.certificate = X509Certificate(
+            tbsCertificate = tbsCertificate,
+            signatureAlgorithm = JwsAlgorithm.ES256,
+            signature = signature
+        ).encodeToDer()
     }
 
     private fun signInt(input: ByteArray): ByteArray {
