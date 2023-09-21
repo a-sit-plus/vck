@@ -36,29 +36,22 @@ fun subjectPublicKey(block: () -> CryptoPublicKey) = when (val value = block()) 
 
 fun utcTime(block: () -> Instant): ByteArray {
     val value = block()
-    val matchResult =
-        Regex("[0-9]{2}([0-9]{2})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})\\.([0-9]+)Z")
-            .matchEntire(value.toString())
-            ?: throw IllegalArgumentException("instant serialization failed: ${value}")
-    val year =
-        matchResult.groups[1]?.value
-            ?: throw IllegalArgumentException("instant serialization year failed: ${value}")
-    val month =
-        matchResult.groups[2]?.value
-            ?: throw IllegalArgumentException("instant serialization month failed: ${value}")
-    val day =
-        matchResult.groups[3]?.value ?: throw IllegalArgumentException("instant serialization day failed: ${value}")
-    val hour =
-        matchResult.groups[4]?.value
-            ?: throw IllegalArgumentException("instant serialization hour failed: ${value}")
-    val minute =
-        matchResult.groups[5]?.value
-            ?: throw IllegalArgumentException("instant serialization minute failed: ${value}")
-    val seconds =
-        matchResult.groups[6]?.value
-            ?: throw IllegalArgumentException("instant serialization seconds failed: ${value}")
-    val string = "$year$month$day$hour$minute${seconds}Z"
-    return tag(0x17) { string.encodeToByteArray() }
+    val matchResult = Regex("[0-9]{2}([0-9]{2})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})")
+        .matchAt(value.toString(), 0)
+        ?: throw IllegalArgumentException("instant serialization failed: ${value}")
+    val year = matchResult.groups[1]?.value
+        ?: throw IllegalArgumentException("instant serialization year failed: ${value}")
+    val month = matchResult.groups[2]?.value
+        ?: throw IllegalArgumentException("instant serialization month failed: ${value}")
+    val day = matchResult.groups[3]?.value
+        ?: throw IllegalArgumentException("instant serialization day failed: ${value}")
+    val hour = matchResult.groups[4]?.value
+        ?: throw IllegalArgumentException("instant serialization hour failed: ${value}")
+    val minute = matchResult.groups[5]?.value
+        ?: throw IllegalArgumentException("instant serialization minute failed: ${value}")
+    val seconds = matchResult.groups[6]?.value
+        ?: throw IllegalArgumentException("instant serialization seconds failed: ${value}")
+    return tag(0x17) { "$year$month$day$hour$minute${seconds}Z".encodeToByteArray() }
 }
 
 fun tbsCertificate(block: () -> TbsCertificate) = block().encodeToDer()
