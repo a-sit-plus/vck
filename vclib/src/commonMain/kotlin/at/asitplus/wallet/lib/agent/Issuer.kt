@@ -14,8 +14,18 @@ interface Issuer {
 
     data class FailedAttribute(val attributeName: String, val reason: Throwable)
 
+    /**
+     * A credential issued by an [Issuer], in a specific format
+     */
     sealed class IssuedCredential {
-        data class Vc(val vcJws: String, val attachments: List<Attachment>? = null) : IssuedCredential()
+        /**
+         * Issued credential in W3C Verifiable Credentials JWT representation
+         */
+        data class VcJwt(val vcJws: String, val attachments: List<Attachment>? = null) : IssuedCredential()
+
+        /**
+         * Issued credential in ISO 18013-5 format
+         */
         data class Iso(val issuerSigned: IssuerSigned) : IssuedCredential()
     }
 
@@ -26,7 +36,7 @@ interface Issuer {
         fun toStoreCredentialInput() = successful.map {
             when (it) {
                 is IssuedCredential.Iso -> Holder.StoreCredentialInput.Iso(it.issuerSigned)
-                is IssuedCredential.Vc -> Holder.StoreCredentialInput.Vc(it.vcJws, it.attachments)
+                is IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(it.vcJws, it.attachments)
             }
         }
     }

@@ -29,7 +29,6 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlin.time.Duration
@@ -186,7 +185,7 @@ class IssuerAgent(
                     ).also { Napier.w("Could not wrap credential in JWS") }
 
                 return Issuer.IssuedCredentialResult(
-                    successful = listOf(Issuer.IssuedCredential.Vc(vcInJws, credential.attachments))
+                    successful = listOf(Issuer.IssuedCredential.VcJwt(vcInJws, credential.attachments))
                 )
             }
         }

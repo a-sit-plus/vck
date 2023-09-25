@@ -170,7 +170,7 @@ class IssuerService(
                 credential = issuedCredential.issuerSigned.serialize().encodeToString(Base64UrlStrict)
             )
 
-            is Issuer.IssuedCredential.Vc -> CredentialResponseParameters(
+            is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
                 format = CredentialFormatEnum.JWT_VC,
                 credential = issuedCredential.vcJws
             )

@@ -88,13 +88,13 @@ class AgentTest : FreeSpec({
         )
         if (credentials.failed.isNotEmpty()) fail("no issued credentials")
         issuer.revokeCredentials(
-            credentials.successful.filterIsInstance<Issuer.IssuedCredential.Vc>().map { it.vcJws }) shouldBe true
+            credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }) shouldBe true
 
         val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
         revocationListCredential.shouldNotBeNull()
         verifier.setRevocationList(revocationListCredential) shouldBe true
 
-        credentials.successful.filterIsInstance<Issuer.IssuedCredential.Vc>().map { it.vcJws }.forEach {
+        credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }.forEach {
             verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
         }
     }
@@ -108,7 +108,7 @@ class AgentTest : FreeSpec({
             )
             if (credentials.failed.isNotEmpty()) fail("no issued credentials")
             issuer.revokeCredentials(
-                credentials.successful.filterIsInstance<Issuer.IssuedCredential.Vc>().map { it.vcJws }) shouldBe true
+                credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }) shouldBe true
             val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
             revocationListCredential.shouldNotBeNull()
             holder.setRevocationList(revocationListCredential) shouldBe true
@@ -133,7 +133,7 @@ class AgentTest : FreeSpec({
             storedCredentials.notVerified.shouldBeEmpty()
 
             issuer.revokeCredentials(
-                credentials.successful.filterIsInstance<Issuer.IssuedCredential.Vc>().map { it.vcJws }) shouldBe true
+                credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }) shouldBe true
             val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
             revocationListCredential.shouldNotBeNull()
             holder.setRevocationList(revocationListCredential) shouldBe true
@@ -191,7 +191,7 @@ class AgentTest : FreeSpec({
             storedCredentials.notVerified.shouldBeEmpty()
 
             issuer.revokeCredentials(
-                credentials.successful.filterIsInstance<Issuer.IssuedCredential.Vc>().map { it.vcJws }) shouldBe true
+                credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }) shouldBe true
             val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
             revocationListCredential.shouldNotBeNull()
             holder.setRevocationList(revocationListCredential) shouldBe true
@@ -241,7 +241,7 @@ class AgentTest : FreeSpec({
             attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
         )
         if (credentialsToRevoke.failed.isNotEmpty()) fail("no issued credentials")
-        issuer.revokeCredentials(credentialsToRevoke.successful.filterIsInstance<Issuer.IssuedCredential.Vc>()
+        issuer.revokeCredentials(credentialsToRevoke.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>()
             .map { it.vcJws }) shouldBe true
         val revocationList = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
         revocationList.shouldNotBeNull()

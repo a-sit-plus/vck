@@ -249,7 +249,7 @@ class IssueCredentialProtocol(
 
         val fulfillmentAttachments = mutableListOf<JwmAttachment>()
         val binaryAttachments = mutableListOf<JwmAttachment>()
-        issuedCredentials.successful.filterIsInstance<Issuer.IssuedCredential.Vc>().forEach { cred ->
+        issuedCredentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().forEach { cred ->
             val fulfillment = JwmAttachment.encodeJws(cred.vcJws)
             val binary = cred.attachments?.map {
                 JwmAttachment.encode(

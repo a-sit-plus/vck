@@ -1,7 +1,8 @@
 # Changelog
 
 Release 3.1.0
- - tbd
+ - Support representing credentials in [SD-JWT](https://drafts.oauth.net/oauth-selective-disclosure-jwt/draft-ietf-oauth-selective-disclosure-jwt.html) format
+ - Rename class `Issuer.IssuedCredential.Vc` to `Issuer.IssuedCredential.VcJwt`
 
 Release 3.0.1
  - Dependency Updates

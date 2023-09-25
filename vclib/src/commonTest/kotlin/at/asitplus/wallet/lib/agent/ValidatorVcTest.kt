@@ -51,7 +51,7 @@ class ValidatorVcTest : FreeSpec() {
             issuer.issueCredentialWithTypes(
                 verifier.identifier,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
-            ).successful.filterIsInstance<Issuer.IssuedCredential.Vc>().map { it.vcJws }
+            ).successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }
                 .forEach {
                     verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
                 }
@@ -62,7 +62,7 @@ class ValidatorVcTest : FreeSpec() {
                 verifier.identifier,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).successful
-                .filterIsInstance<Issuer.IssuedCredential.Vc>()
+                .filterIsInstance<Issuer.IssuedCredential.VcJwt>()
                 .map { it.vcJws }
                 .map { it to verifier.verifyVcJws(it) }.forEach {
                     val value = it.second
@@ -86,7 +86,7 @@ class ValidatorVcTest : FreeSpec() {
                 uuid4().toString(),
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).successful
-                .filterIsInstance<Issuer.IssuedCredential.Vc>()
+                .filterIsInstance<Issuer.IssuedCredential.VcJwt>()
                 .map { it.vcJws }.forEach {
                     verifier.verifyVcJws(it)
                         .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
@@ -98,7 +98,7 @@ class ValidatorVcTest : FreeSpec() {
                 verifier.identifier,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).successful
-                .filterIsInstance<Issuer.IssuedCredential.Vc>()
+                .filterIsInstance<Issuer.IssuedCredential.VcJwt>()
                 .map { it.vcJws }
                 .map { it.replaceFirstChar { "f" } }.forEach {
                     verifier.verifyVcJws(it)

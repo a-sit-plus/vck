@@ -58,7 +58,7 @@ class AgentRevocationTest : FreeSpec({
         )
         if (result.failed.isNotEmpty()) fail("no issued credentials")
 
-        result.successful.filterIsInstance<Issuer.IssuedCredential.Vc>().map { it.vcJws }.forEach {
+        result.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }.forEach {
             val vcJws = verifier.verifyVcJws(it)
             vcJws.shouldBeInstanceOf<Success>()
             val credentialStatus = vcJws.jws.vc.credentialStatus
