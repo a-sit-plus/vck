@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.data.Base64Strict
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -35,6 +36,7 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 
@@ -214,6 +216,7 @@ class IssuerAgent(
                             Issuer.FailedAttribute(credential.attributeType, RuntimeException("signing failed"))
                         )
                     ).also { Napier.w("Could not wrap credential in SD-JWT") }
+                // TODO When to serialize SD-JWT with disclosures appended
 
                 return Issuer.IssuedCredentialResult(
                     successful = listOf(Issuer.IssuedCredential.VcSdJwt(vcInSdJwt))
@@ -284,7 +287,16 @@ class IssuerAgent(
     }
 
     private suspend fun wrapVcInSdJwt(vc: VerifiableCredential): String? {
-        val jwsPayload = vc.toSdJwt().serialize().encodeToByteArray()
+        val claims = vc.credentialSubject.getClaims()
+        val jwsPayload = VerifiableCredentialSdJwt(
+            vc = vc, // TODO Decide on correct integration with VC
+            subject = vc.credentialSubject.id,
+            notBefore = vc.issuanceDate,
+            issuer = vc.issuer,
+            expiration = vc.expirationDate,
+            jwtId = vc.id,
+            selectiveDisclosures = claims.map { SelectiveDisclosureItem(Random.nextBytes(32), it.name, it.value) }
+        ).serialize().encodeToByteArray()
         // TODO Which content type to use for SD-JWT inside an JWS?
         return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
     }
@@ -299,16 +311,6 @@ class IssuerAgent(
         issuer = issuer,
         expiration = expirationDate,
         jwtId = id
-    )
-
-    private fun VerifiableCredential.toSdJwt() = VerifiableCredentialSdJwt(
-        vc = this,
-        subject = credentialSubject.id,
-        notBefore = issuanceDate,
-        issuer = issuer,
-        expiration = expirationDate,
-        jwtId = id,
-        selectiveDisclosures = arrayOf() // TODO fill this array
     )
 
 

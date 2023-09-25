@@ -13,4 +13,11 @@ abstract class CredentialSubject {
      */
     @SerialName("id")
     abstract val id: String
+
+    /**
+     * Return list of claims, to process further when building selective disclosure items
+     */
+    abstract fun getClaims(): List<Claim>
+
+    data class Claim(val name: String, val value: String)
 }

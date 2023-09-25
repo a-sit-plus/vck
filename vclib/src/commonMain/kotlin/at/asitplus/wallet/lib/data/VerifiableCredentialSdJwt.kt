@@ -4,7 +4,6 @@ import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
 /**
@@ -12,7 +11,6 @@ import kotlinx.serialization.encodeToString
  */
 @Serializable
 data class VerifiableCredentialSdJwt(
-    // TODO Decide on correct integration with VC
     @SerialName("vc")
     val vc: VerifiableCredential,
     @SerialName("sub")
@@ -28,7 +26,7 @@ data class VerifiableCredentialSdJwt(
     @SerialName("jti")
     val jwtId: String,
     @SerialName("_sd")
-    val selectiveDisclosures: Array<String>,
+    val selectiveDisclosures: List<SelectiveDisclosureItem>,
 ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)
@@ -45,7 +43,7 @@ data class VerifiableCredentialSdJwt(
         if (issuer != other.issuer) return false
         if (expiration != other.expiration) return false
         if (jwtId != other.jwtId) return false
-        if (!selectiveDisclosures.contentEquals(other.selectiveDisclosures)) return false
+        if (selectiveDisclosures != other.selectiveDisclosures) return false
 
         return true
     }
@@ -57,7 +55,7 @@ data class VerifiableCredentialSdJwt(
         result = 31 * result + issuer.hashCode()
         result = 31 * result + (expiration?.hashCode() ?: 0)
         result = 31 * result + jwtId.hashCode()
-        result = 31 * result + selectiveDisclosures.contentHashCode()
+        result = 31 * result + selectiveDisclosures.hashCode()
         return result
     }
 
