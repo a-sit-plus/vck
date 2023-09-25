@@ -4,6 +4,7 @@ import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.jws.JwsSigned
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
@@ -52,6 +53,10 @@ class VerifierAgent private constructor(
      * Verifies a presentation of some credentials that a holder issued with that [challenge] we sent before.
      */
     override fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
+        val sdJwtSigned = runCatching { SdJwtSigned.parse(it) }.getOrNull()
+        if (sdJwtSigned != null) {
+            return validator.verifyVpSdJwt(it, challenge, identifier, sdJwtSigned.disclosures)
+        }
         val jwsSigned = runCatching { JwsSigned.parse(it) }.getOrNull()
         if (jwsSigned != null) {
             return validator.verifyVpJws(it, challenge, identifier)

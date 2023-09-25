@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.Base64Strict
+import at.asitplus.wallet.lib.data.Base64UrlStrict
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
@@ -31,11 +32,14 @@ import at.asitplus.wallet.lib.iso.ValueDigestList
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.JwsSigned
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import okio.ByteString.Companion.toByteString
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
@@ -95,7 +99,7 @@ class IssuerAgent(
         result.exceptionOrNull()?.let { failure ->
             return Issuer.IssuedCredentialResult(failed = attributeTypes.map { Issuer.FailedAttribute(it, failure) })
         }
-        val issuedCredentials = result.getOrThrow().map { issueCredential(it) }
+        val issuedCredentials = result.getOrThrow().map { issueCredential(it, representation) }
         return Issuer.IssuedCredentialResult(
             successful = issuedCredentials.flatMap { it.successful },
             failed = issuedCredentials.flatMap { it.failed })
@@ -203,7 +207,6 @@ class IssuerAgent(
                             Issuer.FailedAttribute(credential.attributeType, RuntimeException("signing failed"))
                         )
                     ).also { Napier.w("Could not wrap credential in JWS") }
-
                 return Issuer.IssuedCredentialResult(
                     successful = listOf(Issuer.IssuedCredential.VcJwt(vcInJws, credential.attachments))
                 )
@@ -216,8 +219,6 @@ class IssuerAgent(
                             Issuer.FailedAttribute(credential.attributeType, RuntimeException("signing failed"))
                         )
                     ).also { Napier.w("Could not wrap credential in SD-JWT") }
-                // TODO When to serialize SD-JWT with disclosures appended
-
                 return Issuer.IssuedCredentialResult(
                     successful = listOf(Issuer.IssuedCredential.VcSdJwt(vcInSdJwt))
                 )
@@ -288,17 +289,26 @@ class IssuerAgent(
 
     private suspend fun wrapVcInSdJwt(vc: VerifiableCredential): String? {
         val claims = vc.credentialSubject.getClaims()
+        val disclosures = claims
+            .map { SelectiveDisclosureItem(Random.nextBytes(32), it.name, it.value) }
+        val disclosureDigests = disclosures
+            .map { it.serialize() }
+            .map { it.encodeToByteArray().encodeToString(Base64UrlStrict) }
+            .map { it.encodeToByteArray().toByteString().sha256().base64Url() }
         val jwsPayload = VerifiableCredentialSdJwt(
-            vc = vc, // TODO Decide on correct integration with VC
             subject = vc.credentialSubject.id,
             notBefore = vc.issuanceDate,
             issuer = vc.issuer,
             expiration = vc.expirationDate,
             jwtId = vc.id,
-            selectiveDisclosures = claims.map { SelectiveDisclosureItem(Random.nextBytes(32), it.name, it.value) }
+            disclosureDigests = disclosureDigests,
+            type = vc.type,
+            selectiveDisclosureAlgorithm = "sha-256",
         ).serialize().encodeToByteArray()
         // TODO Which content type to use for SD-JWT inside an JWS?
-        return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+            ?: return null
+        return SdJwtSigned(JwsSigned.parse(jws)!!, disclosures).serialize()
     }
 
     private fun getRevocationListUrlFor(timePeriod: Int) =

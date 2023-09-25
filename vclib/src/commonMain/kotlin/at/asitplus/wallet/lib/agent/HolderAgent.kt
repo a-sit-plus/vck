@@ -4,6 +4,7 @@ import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.cbor.CoseHeader
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
@@ -104,7 +105,7 @@ class HolderAgent(
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.SuccessSdJwt -> acceptedSdJwt += vc.sdJwt
-                    .also { subjectCredentialStore.storeCredentialSd(it, cred.vcSdJwt) }
+                    .also { subjectCredentialStore.storeCredentialSd(it, cred.vcSdJwt, vc.disclosures) }
 
                 else -> {}
             }
@@ -173,7 +174,7 @@ class HolderAgent(
 
     /**
      * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,
-     * that match [attributeTypes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO case).
+     * that match [attributeTypes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO or SD-JWT case).
      *
      * May return null if no valid credentials (i.e. non-revoked, matching attribute name) are available.
      */
@@ -227,9 +228,30 @@ class HolderAgent(
                 )
             )
         }
+        val validSdJwtCredentials = credentials
+            .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
+        // TODO Revocation check for SD-JWT
+        if (validSdJwtCredentials.isNotEmpty()) {
+            val vp = VerifiablePresentation(validSdJwtCredentials.map { it.vcSerialized }.toTypedArray())
+            val vpSerialized = vp.toJws(challenge, identifier, audienceId).serialize()
+            val jwsPayload = vpSerialized.encodeToByteArray()
+            val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+                ?: return null
+                    .also { Napier.w("Could not create JWS for presentation") }
+            val disclosures = validSdJwtCredentials.flatMap { it.disclosures }
+                .filter { it.discloseItem(requestedClaims) }
+            return Holder.CreatePresentationResult.SdJwt(jws, disclosures)
+        }
         Napier.w("Got no valid credentials for $attributeTypes")
         return null
     }
+
+    private fun SelectiveDisclosureItem.discloseItem(requestedClaims: Collection<String>?) =
+        if (requestedClaims?.isNotEmpty() == true) {
+            claimName in requestedClaims
+        } else {
+            true
+        }
 
     private fun ByteStringWrapper<IssuerSignedItem>.discloseItem(requestedClaims: Collection<String>?) =
         if (requestedClaims?.isNotEmpty() == true) {

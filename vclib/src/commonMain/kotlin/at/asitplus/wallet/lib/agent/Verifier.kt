@@ -1,9 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
 
@@ -49,7 +51,9 @@ interface Verifier {
 
     sealed class VerifyCredentialResult {
         data class SuccessJwt(val jws: VerifiableCredentialJws) : VerifyCredentialResult()
-        data class SuccessSdJwt(val sdJwt: VerifiableCredentialSdJwt) : VerifyCredentialResult()
+        data class SuccessSdJwt(val sdJwt: VerifiableCredentialSdJwt, val disclosures: List<SelectiveDisclosureItem>) :
+            VerifyCredentialResult()
+
         data class SuccessIso(val issuerSigned: IssuerSigned) : VerifyCredentialResult()
         data class Revoked(val input: String, val jws: VerifiableCredentialJws) : VerifyCredentialResult()
         data class InvalidStructure(val input: String) : VerifyCredentialResult()

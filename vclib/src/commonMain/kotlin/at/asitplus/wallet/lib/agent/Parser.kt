@@ -121,41 +121,19 @@ class Parser(
      * @param it the JWS enclosing the VC, in compact representation
      */
     fun parseSdJwt(it: String, sdJwt: VerifiableCredentialSdJwt, kid: String? = null): ParseVcResult {
-        // TODO Unify with parseVcJws
         if (kid != null && sdJwt.issuer != kid)
             return ParseVcResult.InvalidStructure(it)
                 .also { Napier.d("iss invalid") }
-        if (sdJwt.issuer != sdJwt.vc.issuer)
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.d("iss invalid") }
-        if (sdJwt.jwtId != sdJwt.vc.id)
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.d("jti invalid") }
-        if (sdJwt.subject != sdJwt.vc.credentialSubject.id)
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.d("sub invalid") }
-        if (!sdJwt.vc.type.contains(VERIFIABLE_CREDENTIAL))
+        if (!sdJwt.type.contains(VERIFIABLE_CREDENTIAL))
             return ParseVcResult.InvalidStructure(it)
                 .also { Napier.d("type invalid") }
         if (sdJwt.expiration != null && sdJwt.expiration < (clock.now() - timeLeeway))
             return ParseVcResult.InvalidStructure(it)
                 .also { Napier.d("exp invalid") }
-        if (sdJwt.vc.expirationDate != null && sdJwt.vc.expirationDate < (clock.now() - timeLeeway))
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.d("expirationDate invalid") }
-        if (sdJwt.expiration?.epochSeconds != sdJwt.vc.expirationDate?.epochSeconds)
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.d("exp invalid") }
         if (sdJwt.notBefore > (clock.now() + timeLeeway))
             return ParseVcResult.InvalidStructure(it)
                 .also { Napier.d("nbf invalid") }
-        if (sdJwt.vc.issuanceDate > (clock.now() + timeLeeway))
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.d("issuanceDate invalid") }
-        if (sdJwt.notBefore.epochSeconds != sdJwt.vc.issuanceDate.epochSeconds)
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.d("nbf invalid") }
-        Napier.d("VC is valid")
+        Napier.d("SD-JWT is valid")
         return ParseVcResult.SuccessSdJwt(sdJwt)
     }
 

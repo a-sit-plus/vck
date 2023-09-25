@@ -11,8 +11,6 @@ import kotlinx.serialization.encodeToString
  */
 @Serializable
 data class VerifiableCredentialSdJwt(
-    @SerialName("vc")
-    val vc: VerifiableCredential,
     @SerialName("sub")
     val subject: String,
     @SerialName("nbf")
@@ -26,7 +24,11 @@ data class VerifiableCredentialSdJwt(
     @SerialName("jti")
     val jwtId: String,
     @SerialName("_sd")
-    val selectiveDisclosures: List<SelectiveDisclosureItem>,
+    val disclosureDigests: List<String>,
+    @SerialName("type")
+    val type: Array<String>,
+    @SerialName("_sd_alg")
+    val selectiveDisclosureAlgorithm: String,
 ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)
@@ -37,25 +39,27 @@ data class VerifiableCredentialSdJwt(
 
         other as VerifiableCredentialSdJwt
 
-        if (vc != other.vc) return false
         if (subject != other.subject) return false
         if (notBefore != other.notBefore) return false
         if (issuer != other.issuer) return false
         if (expiration != other.expiration) return false
         if (jwtId != other.jwtId) return false
-        if (selectiveDisclosures != other.selectiveDisclosures) return false
+        if (disclosureDigests != other.disclosureDigests) return false
+        if (!type.contentEquals(other.type)) return false
+        if (selectiveDisclosureAlgorithm != other.selectiveDisclosureAlgorithm) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = vc.hashCode()
-        result = 31 * result + subject.hashCode()
+        var result = subject.hashCode()
         result = 31 * result + notBefore.hashCode()
         result = 31 * result + issuer.hashCode()
         result = 31 * result + (expiration?.hashCode() ?: 0)
         result = 31 * result + jwtId.hashCode()
-        result = 31 * result + selectiveDisclosures.hashCode()
+        result = 31 * result + disclosureDigests.hashCode()
+        result = 31 * result + type.contentHashCode()
+        result = 31 * result + selectiveDisclosureAlgorithm.hashCode()
         return result
     }
 

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
@@ -133,6 +134,13 @@ interface Holder {
          * [jws] contains a valid, serialized, Verifiable Presentation that can be parsed by [Verifier.verifyPresentation]
          */
         data class Signed(val jws: String) : CreatePresentationResult()
+
+        /**
+         * [vpJws] contains a valid, serialized, Verifiable Presentation containing an SD-JWT credential,
+         * that can be parsed by [Verifier.verifyPresentation].
+         * [disclosures] contains the concrete values for disclosed claims.
+         */
+        data class SdJwt(val vpJws: String, val disclosures: List<SelectiveDisclosureItem>) : CreatePresentationResult()
 
         /**
          * [document] contains a valid ISO 18013 [Document] with [IssuerSigned] and [DeviceSigned] structures
