@@ -114,7 +114,7 @@ class AgentTest : FreeSpec({
             holder.setRevocationList(revocationListCredential) shouldBe true
 
             val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
-            storedCredentials.accepted.shouldBeEmpty()
+            storedCredentials.acceptedVcJwt.shouldBeEmpty()
             storedCredentials.rejected shouldHaveSize credentials.successful.size
             storedCredentials.notVerified.shouldBeEmpty()
 
@@ -128,7 +128,7 @@ class AgentTest : FreeSpec({
             )
             if (credentials.failed.isNotEmpty()) fail("no issued credentials")
             val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
-            storedCredentials.accepted shouldHaveSize credentials.successful.size
+            storedCredentials.acceptedVcJwt shouldHaveSize credentials.successful.size
             storedCredentials.rejected.shouldBeEmpty()
             storedCredentials.notVerified.shouldBeEmpty()
 
@@ -157,7 +157,7 @@ class AgentTest : FreeSpec({
             )
             if (credentials.failed.isNotEmpty()) fail("no issued credentials")
             val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
-            storedCredentials.accepted shouldHaveSize credentials.successful.size
+            storedCredentials.acceptedVcJwt shouldHaveSize credentials.successful.size
             storedCredentials.rejected.shouldBeEmpty()
             storedCredentials.notVerified.shouldBeEmpty()
 
@@ -186,7 +186,7 @@ class AgentTest : FreeSpec({
             )
             if (credentials.failed.isNotEmpty()) fail("no issued credentials")
             val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
-            storedCredentials.accepted shouldHaveSize credentials.successful.size
+            storedCredentials.acceptedVcJwt shouldHaveSize credentials.successful.size
             storedCredentials.rejected.shouldBeEmpty()
             storedCredentials.notVerified.shouldBeEmpty()
 

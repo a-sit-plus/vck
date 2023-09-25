@@ -85,16 +85,16 @@ class IssueCredentialMessengerTest : FreeSpec() {
     }
 
     private fun assertAtomicVc(issuedCredentials: IssueCredentialProtocolResult) {
-        issuedCredentials.accepted.shouldNotBeEmpty()
-        issuedCredentials.accepted.map { it.vc.credentialSubject }.forEach {
+        issuedCredentials.acceptedVcJwt.shouldNotBeEmpty()
+        issuedCredentials.acceptedVcJwt.map { it.vc.credentialSubject }.forEach {
             it.shouldBeInstanceOf<AtomicAttribute2023>()
         }
         issuedCredentials.rejected.shouldBeEmpty()
     }
 
     private fun assertAttachment(issuedCredentials: IssueCredentialProtocolResult, attributeName: String) {
-        issuedCredentials.accepted.shouldNotBeEmpty()
-        issuedCredentials.accepted.map { it.vc.credentialSubject }
+        issuedCredentials.acceptedVcJwt.shouldNotBeEmpty()
+        issuedCredentials.acceptedVcJwt.map { it.vc.credentialSubject }
             .filterIsInstance<AtomicAttribute2023>()
             .filter { it.name == attributeName }
             .shouldNotBeEmpty()
@@ -102,7 +102,7 @@ class IssueCredentialMessengerTest : FreeSpec() {
     }
 
     private fun assertEmptyVc(issuedCredentials: IssueCredentialProtocolResult) {
-        issuedCredentials.accepted.shouldBeEmpty()
+        issuedCredentials.acceptedVcJwt.shouldBeEmpty()
         issuedCredentials.rejected.shouldNotBeEmpty()
     }
 

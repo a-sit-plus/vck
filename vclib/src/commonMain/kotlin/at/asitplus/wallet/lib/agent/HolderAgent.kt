@@ -5,6 +5,7 @@ import at.asitplus.wallet.lib.cbor.CoseHeader
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceSigned
@@ -77,7 +78,8 @@ class HolderAgent(
      * Note: Revocation credentials should not be stored, but set with [setRevocationList].
      */
     override suspend fun storeCredentials(credentialList: List<Holder.StoreCredentialInput>): Holder.StoredCredentialsResult {
-        val accepted = mutableListOf<VerifiableCredentialJws>()
+        val acceptedVcJwt = mutableListOf<VerifiableCredentialJws>()
+        val acceptedSdJwt = mutableListOf<VerifiableCredentialSdJwt>()
         val acceptedIso = mutableListOf<IssuerSigned>()
         val rejected = mutableListOf<String>()
         val attachments = mutableListOf<Holder.StoredAttachmentResult>()
@@ -85,7 +87,7 @@ class HolderAgent(
             when (val vc = validator.verifyVcJws(cred.vcJws, identifier)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
-                is Verifier.VerifyCredentialResult.Success -> accepted += vc.jws
+                is Verifier.VerifyCredentialResult.SuccessJwt -> acceptedVcJwt += vc.jws
                     .also { subjectCredentialStore.storeCredential(it, cred.vcJws) }
                     .also {
                         cred.attachments?.forEach { attachment ->
@@ -93,6 +95,16 @@ class HolderAgent(
                                 .also { attachments += Holder.StoredAttachmentResult(attachment.name, attachment.data) }
                         }
                     }
+
+                else -> {}
+            }
+        }
+        credentialList.filterIsInstance<Holder.StoreCredentialInput.SdJwt>().forEach { cred ->
+            when (val vc = validator.verifySdJwt(cred.vcSdJwt, identifier)) {
+                is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
+                is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
+                is Verifier.VerifyCredentialResult.SuccessSdJwt -> acceptedSdJwt += vc.sdJwt
+                    .also { subjectCredentialStore.storeCredentialSd(it, cred.vcSdJwt) }
 
                 else -> {}
             }
@@ -111,7 +123,8 @@ class HolderAgent(
             }
         }
         return Holder.StoredCredentialsResult(
-            accepted = accepted,
+            acceptedVcJwt = acceptedVcJwt,
+            acceptedSdJwt = acceptedSdJwt,
             acceptedIso = acceptedIso,
             rejected = rejected,
             attachments = attachments
@@ -149,6 +162,10 @@ class HolderAgent(
                     it.vcSerialized,
                     it.vc,
                     validator.checkRevocationStatus(it.vc)
+                )
+
+                is SubjectCredentialStore.StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
+                    it.vcSerialized, it.sdJwt, Validator.RevocationStatus.VALID // TODO validation check
                 )
             }
         }

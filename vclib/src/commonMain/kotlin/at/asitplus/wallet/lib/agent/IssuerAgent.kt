@@ -258,7 +258,7 @@ class IssuerAgent(
      */
     override fun revokeCredentials(credentialsToRevoke: List<String>): Boolean =
         credentialsToRevoke.map { validator.verifyVcJws(it, null) }
-            .filterIsInstance<Verifier.VerifyCredentialResult.Success>()
+            .filterIsInstance<Verifier.VerifyCredentialResult.SuccessJwt>()
             .all {
                 issuerCredentialStore.revoke(
                     it.jws.vc.id,

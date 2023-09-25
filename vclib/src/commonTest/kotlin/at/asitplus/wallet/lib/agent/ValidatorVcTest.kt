@@ -53,7 +53,7 @@ class ValidatorVcTest : FreeSpec() {
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }
                 .forEach {
-                    verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
+                    verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                 }
         }
 
@@ -66,7 +66,7 @@ class ValidatorVcTest : FreeSpec() {
                 .map { it.vcJws }
                 .map { it to verifier.verifyVcJws(it) }.forEach {
                     val value = it.second
-                    value.shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
+                    value.shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                     issuerCredentialStore.revoke(value.jws.vc.id, FixedTimePeriodProvider.timePeriod) shouldBe true
                     val revocationListCredential =
                         issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
@@ -118,7 +118,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
                     ?.let {
-                        verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
+                        verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                     }
             }
         }
@@ -252,7 +252,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
                     ?.let {
-                        verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
+                        verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                     }
             }
         }

@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.data.Base64Strict
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.iso.Document
@@ -164,7 +165,7 @@ class Validator(
         val parsedVcList = parsedVp.jws.vp.verifiableCredential
             .map { verifyVcJws(it, null) }
         val validVcList = parsedVcList
-            .filterIsInstance<Verifier.VerifyCredentialResult.Success>()
+            .filterIsInstance<Verifier.VerifyCredentialResult.SuccessJwt>()
             .map { it.jws }
         val revokedVcList = parsedVcList
             .filterIsInstance<Verifier.VerifyCredentialResult.Revoked>()
@@ -293,7 +294,7 @@ class Validator(
      * @param localId Optionally the local keyId, to verify VC was issued to correct subject
      */
     fun verifyVcJws(it: String, localId: String?): Verifier.VerifyCredentialResult {
-        Napier.d("Verifying VC $it")
+        Napier.d("Verifying VC-JWS $it")
         val jws = JwsSigned.parse(it)
             ?: return Verifier.VerifyCredentialResult.InvalidStructure(it)
                 .also { Napier.w("VC: Could not parse JWS") }
@@ -317,7 +318,51 @@ class Validator(
             is Parser.ParseVcResult.InvalidStructure -> Verifier.VerifyCredentialResult.InvalidStructure(it)
                 .also { Napier.d("VC: Invalid structure from Parser") }
 
-            is Parser.ParseVcResult.Success -> Verifier.VerifyCredentialResult.Success(vcJws)
+            is Parser.ParseVcResult.Success -> Verifier.VerifyCredentialResult.SuccessJwt(vcJws)
+                .also { Napier.d("VC: Valid") }
+
+            is Parser.ParseVcResult.SuccessSdJwt -> Verifier.VerifyCredentialResult.SuccessJwt(vcJws)
+                .also { Napier.d("VC: Valid") }
+        }
+    }
+
+    /**
+     * Validates the content of a SD-JWT, expected to contain a Verifiable Credential.
+     *
+     * @param it SD-JWT in compact representation
+     * @param localId Optionally the local keyId, to verify VC was issued to correct subject
+     */
+    fun verifySdJwt(it: String, localId: String?): Verifier.VerifyCredentialResult {
+        Napier.d("Verifying SD-JWT $it")
+        // TODO Probably the JWT itself is only the part before the first `~` character
+        val jws = JwsSigned.parse(it)
+            ?: return Verifier.VerifyCredentialResult.InvalidStructure(it)
+                .also { Napier.w("VC: Could not parse JWS") }
+        if (!verifierJwsService.verifyJwsObject(jws, it))
+            return Verifier.VerifyCredentialResult.InvalidStructure(it)
+                .also { Napier.w("VC: Signature invalid") }
+        val payload = jws.payload.decodeToString()
+        val sdJwt = VerifiableCredentialSdJwt.deserialize(payload)
+            ?: return Verifier.VerifyCredentialResult.InvalidStructure(it)
+                .also { Napier.w("VC: Could not parse payload") }
+        localId?.let {
+            if (sdJwt.subject != it)
+                return Verifier.VerifyCredentialResult.InvalidStructure(it)
+                    .also { Napier.d("VC: sub invalid") }
+        }
+        // TODO Revocation Check
+        //        if (checkRevocationStatus(sdJwt) == RevocationStatus.REVOKED)
+        //            return Verifier.VerifyCredentialResult.Revoked(it, sdJwt)
+        //                .also { Napier.d("VC: revoked") }
+        val kid = jws.header.keyId
+        return when (parser.parseSdJwt(it, sdJwt, kid)) {
+            is Parser.ParseVcResult.InvalidStructure -> Verifier.VerifyCredentialResult.InvalidStructure(it)
+                .also { Napier.d("VC: Invalid structure from Parser") }
+
+            is Parser.ParseVcResult.Success -> Verifier.VerifyCredentialResult.SuccessSdJwt(sdJwt)
+                .also { Napier.d("VC: Valid") }
+
+            is Parser.ParseVcResult.SuccessSdJwt -> Verifier.VerifyCredentialResult.SuccessSdJwt(sdJwt)
                 .also { Napier.d("VC: Valid") }
         }
     }

@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
@@ -39,7 +40,8 @@ interface Holder {
     suspend fun storeCredentials(credentialList: List<StoreCredentialInput>): StoredCredentialsResult
 
     data class StoredCredentialsResult(
-        val accepted: List<VerifiableCredentialJws> = listOf(),
+        val acceptedVcJwt: List<VerifiableCredentialJws> = listOf(),
+        val acceptedSdJwt: List<VerifiableCredentialSdJwt> = listOf(),
         val acceptedIso: List<IssuerSigned> = listOf(),
         val rejected: List<String> = listOf(),
         val notVerified: List<String> = listOf(),
@@ -88,6 +90,12 @@ interface Holder {
         data class Vc(
             val vcSerialized: String,
             val vc: VerifiableCredentialJws,
+            val status: Validator.RevocationStatus
+        ) : StoredCredential()
+
+        data class SdJwt(
+            val vcSerialized: String,
+            val sdJwt: VerifiableCredentialSdJwt,
             val status: Validator.RevocationStatus
         ) : StoredCredential()
 

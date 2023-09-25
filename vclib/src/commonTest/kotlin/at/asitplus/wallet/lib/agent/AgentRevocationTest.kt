@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.KmmBitSet
-import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.Success
+import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessJwt
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.toBitSet
@@ -60,7 +60,7 @@ class AgentRevocationTest : FreeSpec({
 
         result.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }.forEach {
             val vcJws = verifier.verifyVcJws(it)
-            vcJws.shouldBeInstanceOf<Success>()
+            vcJws.shouldBeInstanceOf<SuccessJwt>()
             val credentialStatus = vcJws.jws.vc.credentialStatus
             credentialStatus.shouldNotBeNull()
             credentialStatus.index.shouldNotBeNull()
