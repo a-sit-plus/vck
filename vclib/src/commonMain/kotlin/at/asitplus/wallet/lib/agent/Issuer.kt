@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.cbor.CoseKey
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
@@ -24,6 +25,11 @@ interface Issuer {
         data class VcJwt(val vcJws: String, val attachments: List<Attachment>? = null) : IssuedCredential()
 
         /**
+         * Issued credential in SD-JWT representation
+         */
+        data class VcSdJwt(val vcSdJwt: String) : IssuedCredential()
+
+        /**
          * Issued credential in ISO 18013-5 format
          */
         data class Iso(val issuerSigned: IssuerSigned) : IssuedCredential()
@@ -36,6 +42,7 @@ interface Issuer {
         fun toStoreCredentialInput() = successful.map {
             when (it) {
                 is IssuedCredential.Iso -> Holder.StoreCredentialInput.Iso(it.issuerSigned)
+                is IssuedCredential.VcSdJwt -> Holder.StoreCredentialInput.SdJwt(it.vcSdJwt)
                 is IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(it.vcJws, it.attachments)
             }
         }
@@ -55,14 +62,20 @@ interface Issuer {
     suspend fun issueCredentialWithTypes(
         subjectId: String,
         subjectPublicKey: CoseKey? = null,
-        attributeTypes: Collection<String>
+        attributeTypes: Collection<String>,
+        // TODO Which format does the holder want?
+        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
     ): IssuedCredentialResult
 
     /**
      * Wraps [credential] in a single [VerifiableCredential],
      * returns a JWS representation of that VC.
      */
-    suspend fun issueCredential(credential: CredentialToBeIssued): IssuedCredentialResult
+    suspend fun issueCredential(
+        credential: CredentialToBeIssued,
+        // TODO Which format does the holder want?
+        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+    ): IssuedCredentialResult
 
     /**
      * Wraps the revocation information into a VC,

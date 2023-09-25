@@ -10,10 +10,13 @@ import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.Base64Strict
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
 import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.DeviceKeyInfo
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DIGEST_SHA_256
@@ -31,6 +34,7 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 
@@ -82,7 +86,8 @@ class IssuerAgent(
     override suspend fun issueCredentialWithTypes(
         subjectId: String,
         subjectPublicKey: CoseKey?,
-        attributeTypes: Collection<String>
+        attributeTypes: Collection<String>,
+        representation: ConstantIndex.CredentialRepresentation,
     ): Issuer.IssuedCredentialResult {
         val result = dataProvider.getCredentialWithType(subjectId, subjectPublicKey, attributeTypes)
         result.exceptionOrNull()?.let { failure ->
@@ -100,6 +105,7 @@ class IssuerAgent(
      */
     override suspend fun issueCredential(
         credential: CredentialToBeIssued,
+        representation: ConstantIndex.CredentialRepresentation,
     ): Issuer.IssuedCredentialResult {
         val issuanceDate = clock.now()
         when (credential) {
@@ -151,32 +157,44 @@ class IssuerAgent(
             }
 
             is CredentialToBeIssued.Vc -> {
-                val vcId = "urn:uuid:${uuid4()}"
-                val expirationDate = credential.expiration
-                val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-                val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-                    vcId,
-                    credential.subject,
-                    issuanceDate,
-                    expirationDate,
-                    timePeriod
-                ) ?: return Issuer.IssuedCredentialResult(
-                    failed = listOf(
-                        Issuer.FailedAttribute(credential.attributeType, DataSourceProblem("vcId internal mismatch"))
-                    )
-                ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }
+                return issueVc(credential, representation, issuanceDate)
+            }
+        }
+    }
 
-                val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
-                val vc = VerifiableCredential(
-                    id = vcId,
-                    issuer = identifier,
-                    issuanceDate = issuanceDate,
-                    expirationDate = expirationDate,
-                    credentialStatus = credentialStatus,
-                    credentialSubject = credential.subject,
-                    credentialType = credential.attributeType,
-                )
+    private suspend fun issueVc(
+        credential: CredentialToBeIssued.Vc,
+        representation: ConstantIndex.CredentialRepresentation,
+        issuanceDate: Instant
+    ): Issuer.IssuedCredentialResult {
+        val vcId = "urn:uuid:${uuid4()}"
+        val expirationDate = credential.expiration
+        val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
+        val statusListIndex = issuerCredentialStore.storeGetNextIndex(
+            vcId,
+            credential.subject,
+            issuanceDate,
+            expirationDate,
+            timePeriod
+        ) ?: return Issuer.IssuedCredentialResult(
+            failed = listOf(
+                Issuer.FailedAttribute(credential.attributeType, DataSourceProblem("vcId internal mismatch"))
+            )
+        ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }
 
+        val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
+        val vc = VerifiableCredential(
+            id = vcId,
+            issuer = identifier,
+            issuanceDate = issuanceDate,
+            expirationDate = expirationDate,
+            credentialStatus = credentialStatus,
+            credentialSubject = credential.subject,
+            credentialType = credential.attributeType,
+        )
+
+        when (representation) {
+            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> {
                 val vcInJws = wrapVcInJws(vc)
                     ?: return Issuer.IssuedCredentialResult(
                         failed = listOf(
@@ -186,6 +204,19 @@ class IssuerAgent(
 
                 return Issuer.IssuedCredentialResult(
                     successful = listOf(Issuer.IssuedCredential.VcJwt(vcInJws, credential.attachments))
+                )
+            }
+
+            ConstantIndex.CredentialRepresentation.SD_JWT -> {
+                val vcInSdJwt = wrapVcInSdJwt(vc)
+                    ?: return Issuer.IssuedCredentialResult(
+                        failed = listOf(
+                            Issuer.FailedAttribute(credential.attributeType, RuntimeException("signing failed"))
+                        )
+                    ).also { Napier.w("Could not wrap credential in SD-JWT") }
+
+                return Issuer.IssuedCredentialResult(
+                    successful = listOf(Issuer.IssuedCredential.VcSdJwt(vcInSdJwt))
                 )
             }
         }
@@ -252,7 +283,33 @@ class IssuerAgent(
         return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
     }
 
+    private suspend fun wrapVcInSdJwt(vc: VerifiableCredential): String? {
+        val jwsPayload = vc.toSdJwt().serialize().encodeToByteArray()
+        // TODO Which content type to use for SD-JWT inside an JWS?
+        return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+    }
+
     private fun getRevocationListUrlFor(timePeriod: Int) =
         revocationListBaseUrl.let { it + (if (!it.endsWith('/')) "/" else "") + timePeriod }
+
+    private fun VerifiableCredential.toJws() = VerifiableCredentialJws(
+        vc = this,
+        subject = credentialSubject.id,
+        notBefore = issuanceDate,
+        issuer = issuer,
+        expiration = expirationDate,
+        jwtId = id
+    )
+
+    private fun VerifiableCredential.toSdJwt() = VerifiableCredentialSdJwt(
+        vc = this,
+        subject = credentialSubject.id,
+        notBefore = issuanceDate,
+        issuer = issuer,
+        expiration = expirationDate,
+        jwtId = id,
+        selectiveDisclosures = arrayOf() // TODO fill this array
+    )
+
 
 }

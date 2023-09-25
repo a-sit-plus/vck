@@ -167,12 +167,17 @@ class IssuerService(
         return when (val issuedCredential = issuedCredentialResult.successful.first()) {
             is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
                 format = CredentialFormatEnum.MSO_MDOC,
-                credential = issuedCredential.issuerSigned.serialize().encodeToString(Base64UrlStrict)
+                credential = issuedCredential.issuerSigned.serialize().encodeToString(Base64UrlStrict),
             )
 
             is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
                 format = CredentialFormatEnum.JWT_VC,
-                credential = issuedCredential.vcJws
+                credential = issuedCredential.vcJws,
+            )
+
+            is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
+                format = CredentialFormatEnum.JWT_VC, // TODO correct type
+                credential = issuedCredential.vcSdJwt,
             )
         }
     }

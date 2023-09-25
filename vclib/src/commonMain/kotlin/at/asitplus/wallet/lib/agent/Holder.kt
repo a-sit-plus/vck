@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
 /**
@@ -27,6 +26,7 @@ interface Holder {
 
     sealed class StoreCredentialInput {
         data class Vc(val vcJws: String, val attachments: List<Issuer.Attachment>? = null) : StoreCredentialInput()
+        data class SdJwt(val vcSdJwt: String) : StoreCredentialInput()
         data class Iso(val issuerSigned: IssuerSigned) : StoreCredentialInput()
     }
 
@@ -129,7 +129,7 @@ interface Holder {
         /**
          * [document] contains a valid ISO 18013 [Document] with [IssuerSigned] and [DeviceSigned] structures
          */
-        data class Document(val document: at.asitplus.wallet.lib.iso.Document): CreatePresentationResult()
+        data class Document(val document: at.asitplus.wallet.lib.iso.Document) : CreatePresentationResult()
     }
 
 }

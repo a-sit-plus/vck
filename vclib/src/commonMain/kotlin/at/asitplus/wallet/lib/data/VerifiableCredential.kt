@@ -85,15 +85,6 @@ data class VerifiableCredential(
         credentialSubject = credentialSubject,
     )
 
-    fun toJws() = VerifiableCredentialJws(
-        vc = this,
-        subject = credentialSubject.id,
-        notBefore = issuanceDate,
-        issuer = issuer,
-        expiration = expirationDate,
-        jwtId = id
-    )
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
