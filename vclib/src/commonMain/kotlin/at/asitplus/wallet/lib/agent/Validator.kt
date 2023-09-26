@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.data.Base64Strict
 import at.asitplus.wallet.lib.data.Base64UrlStrict
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -29,6 +30,7 @@ import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.toBitSet
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.cbor.ByteStringWrapper
@@ -138,31 +140,31 @@ class Validator(
     /**
      * Validates the content of a JWS, expected to contain a Verifiable Presentation.
      *
-     * @param it JWS in compact representation
+     * @param input JWS in compact representation
      * @param challenge Nonce that the verifier has sent to the holder
      * @param localId Local keyId of the verifier
      */
     fun verifyVpJws(
-        it: String,
+        input: String,
         challenge: String,
         localId: String
     ): Verifier.VerifyPresentationResult {
-        Napier.d("Verifying VP $it")
-        val jws = JwsSigned.parse(it)
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(it)
+        Napier.d("Verifying VP $input")
+        val jws = JwsSigned.parse(input)
+            ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("VP: Could not parse JWS") }
-        if (!verifierJwsService.verifyJwsObject(jws, it))
-            return Verifier.VerifyPresentationResult.InvalidStructure(it)
+        if (!verifierJwsService.verifyJwsObject(jws, input))
+            return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("VP: Signature invalid") }
         val payload = jws.payload.decodeToString()
         val kid = jws.header.keyId
         val vpJws =
             kotlin.runCatching { VerifiablePresentationJws.deserialize(payload) }.getOrNull()
-                ?: return Verifier.VerifyPresentationResult.InvalidStructure(it)
+                ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
                     .also { Napier.w("VP: Could not parse payload") }
-        val parsedVp = parser.parseVpJws(it, vpJws, kid, challenge, localId)
+        val parsedVp = parser.parseVpJws(input, vpJws, kid, challenge, localId)
         if (parsedVp !is Parser.ParseVpResult.Success) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(it)
+            return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.d("VP: Could not parse content") }
         }
         val parsedVcList = parsedVp.jws.vp.verifiableCredential
@@ -177,61 +179,48 @@ class Validator(
             .filterIsInstance<Verifier.VerifyCredentialResult.InvalidStructure>()
             .map { it.input }
         val vp = VerifiablePresentationParsed(
-            parsedVp.jws.vp.id,
-            parsedVp.jws.vp.type,
-            validVcList.toTypedArray(),
-            revokedVcList.toTypedArray(),
-            invalidVcList.toTypedArray(),
+            id = parsedVp.jws.vp.id,
+            type = parsedVp.jws.vp.type,
+            verifiableCredentials = validVcList.toTypedArray(),
+            revokedVerifiableCredentials = revokedVcList.toTypedArray(),
+            invalidVerifiableCredentials = invalidVcList.toTypedArray(),
         )
         Napier.d("VP: Valid")
         return Verifier.VerifyPresentationResult.Success(vp)
     }
 
     fun verifyVpSdJwt(
-        it: String,
+        input: String,
         challenge: String,
-        localId: String,
-        disclosures: List<SelectiveDisclosureItem>
+        localId: String
     ): Verifier.VerifyPresentationResult {
-        // TODO unify with verifyVpJws and also verify disclosures!
-        Napier.d("Verifying VP $it")
-        val jws = JwsSigned.parse(it)
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(it)
-                .also { Napier.w("VP: Could not parse JWS") }
-        if (!verifierJwsService.verifyJwsObject(jws, it))
-            return Verifier.VerifyPresentationResult.InvalidStructure(it)
-                .also { Napier.w("VP: Signature invalid") }
-        val payload = jws.payload.decodeToString()
-        val kid = jws.header.keyId
-        val vpJws =
-            kotlin.runCatching { VerifiablePresentationJws.deserialize(payload) }.getOrNull()
-                ?: return Verifier.VerifyPresentationResult.InvalidStructure(it)
-                    .also { Napier.w("VP: Could not parse payload") }
-        val parsedVp = parser.parseVpJws(it, vpJws, kid, challenge, localId)
-        if (parsedVp !is Parser.ParseVpResult.Success) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(it)
-                .also { Napier.d("VP: Could not parse content") }
+        Napier.d("verifyVpSdJwt: '$input', '$challenge', '$localId'")
+        val sdJwtResult = verifySdJwt(input, null)
+        if (sdJwtResult !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
+            return Verifier.VerifyPresentationResult.InvalidStructure(input)
+                .also { Napier.w("verifyVpSdJwt: Could not verify SD-JWT: $sdJwtResult") }
         }
-        val parsedVcList = parsedVp.jws.vp.verifiableCredential
-            .map { verifyVcJws(it, null) }
-        val validVcList = parsedVcList
-            .filterIsInstance<Verifier.VerifyCredentialResult.SuccessJwt>()
-            .map { it.jws }
-        val revokedVcList = parsedVcList
-            .filterIsInstance<Verifier.VerifyCredentialResult.Revoked>()
-            .map { it.jws }
-        val invalidVcList = parsedVcList
-            .filterIsInstance<Verifier.VerifyCredentialResult.InvalidStructure>()
-            .map { it.input }
-        val vp = VerifiablePresentationParsed(
-            parsedVp.jws.vp.id,
-            parsedVp.jws.vp.type,
-            validVcList.toTypedArray(),
-            revokedVcList.toTypedArray(),
-            invalidVcList.toTypedArray(),
+        val jwsKeyBindingParsed = JwsSigned.parse(input.substringAfterLast("~"))
+            ?: return Verifier.VerifyPresentationResult.NotVerified(input, challenge)
+                .also { Napier.w("verifyVpSdJwt: No key binding JWT") }
+        val keyBinding = KeyBindingJws.deserialize(jwsKeyBindingParsed.payload.decodeToString())
+            ?: return Verifier.VerifyPresentationResult.NotVerified(input, challenge)
+                .also { Napier.w("verifyVpSdJwt: No key binding JWT") }
+
+        if (keyBinding.challenge != challenge)
+            return Verifier.VerifyPresentationResult.InvalidStructure(input)
+                .also { Napier.w("verifyVpSdJwt: Challenge not correct: ${keyBinding.challenge}") }
+        if (keyBinding.audience != localId)
+            return Verifier.VerifyPresentationResult.InvalidStructure(input)
+                .also { Napier.w("verifyVpSdJwt: Audience not correct: ${keyBinding.audience}") }
+        // TODO Check Key Binding references correct key
+        // TODO Time Validity check
+
+        Napier.d("verifyVpSdJwt: Valid")
+        return Verifier.VerifyPresentationResult.SuccessSdJwt(
+            sdJwtResult.sdJwt,
+            sdJwtResult.disclosures.values.filterNotNull()
         )
-        Napier.d("VP: Valid")
-        return Verifier.VerifyPresentationResult.Success(vp)
     }
 
     /**
@@ -361,7 +350,6 @@ class Validator(
      */
     fun verifySdJwt(input: String, localId: String?): Verifier.VerifyCredentialResult {
         Napier.d("Verifying SD-JWT $input")
-        // TODO Probably the JWT itself is only the part before the first `~` character
         val jwsSerialized = input.substringBefore("~")
         val jws = JwsSigned.parse(jwsSerialized)
             ?: return Verifier.VerifyCredentialResult.InvalidStructure(input)
@@ -378,10 +366,12 @@ class Validator(
                 return Verifier.VerifyCredentialResult.InvalidStructure(it)
                     .also { Napier.d("verifySdJwt: sub invalid") }
         }
-        val disclosures = input.substringAfter("~").split("~")
-            .mapNotNull { SelectiveDisclosureItem.deserialize(it) }
-        val disclosureInputs = input.substringAfter("~").split("~")
-            .map { it.encodeToByteArray().encodeToString(Base64UrlStrict) }
+        val rawDisclosures = input.substringAfter("~").split("~").filterNot { it.contains(".") }
+        val disclosures = rawDisclosures.associateWith {
+            SelectiveDisclosureItem.deserialize(it.decodeToByteArray(Base64UrlStrict).decodeToString())
+        }.filterValues { it != null }
+        // it's important to read again from source string to prevent different formats in serialization
+        val disclosureInputs = rawDisclosures
             .map { it.encodeToByteArray().toByteString().sha256().base64Url() }
         disclosureInputs.forEach {
             if (!sdJwt.disclosureDigests.contains(it)) {

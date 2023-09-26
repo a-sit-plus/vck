@@ -19,7 +19,7 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
     override suspend fun storeCredentialSd(
         vc: VerifiableCredentialSdJwt,
         vcSerialized: String,
-        disclosures: List<SelectiveDisclosureItem>
+        disclosures: Map<String, SelectiveDisclosureItem?>
     ) {
         credentials += SubjectCredentialStore.StoreEntry.SdJwt(vcSerialized, vc, disclosures)
     }

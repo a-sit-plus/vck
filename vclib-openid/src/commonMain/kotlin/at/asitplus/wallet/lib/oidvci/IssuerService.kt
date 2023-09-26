@@ -153,11 +153,7 @@ class IssuerService(
 
         val issuedCredentialResult = issuer.issueCredentialWithTypes(
             subjectId = subjectPublicKey.identifier,
-            subjectPublicKey = CoseKey.fromAnsiX963Bytes(
-                CoseKeyType.EC2,
-                CoseEllipticCurve.P256,
-                subjectPublicKey.toAnsiX963ByteArray().getOrThrow()
-            ),
+            subjectPublicKey = subjectPublicKey.toCryptoPublicKey(),
             attributeTypes = params.types.toList()
         )
         if (issuedCredentialResult.successful.isEmpty()) {

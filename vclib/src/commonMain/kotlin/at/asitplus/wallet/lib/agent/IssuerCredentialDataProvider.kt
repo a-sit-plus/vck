@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
@@ -18,7 +19,7 @@ interface IssuerCredentialDataProvider {
      */
     fun getCredentialWithType(
         subjectId: String,
-        subjectPublicKey: CoseKey? = null,
+        subjectPublicKey: CryptoPublicKey? = null,
         attributeTypes: Collection<String>
     ): KmmResult<List<CredentialToBeIssued>>
 

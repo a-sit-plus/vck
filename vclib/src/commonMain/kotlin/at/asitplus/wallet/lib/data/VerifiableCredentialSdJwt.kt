@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.wallet.lib.jws.JsonWebKey
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
@@ -29,6 +30,8 @@ data class VerifiableCredentialSdJwt(
     val type: Array<String>,
     @SerialName("_sd_alg")
     val selectiveDisclosureAlgorithm: String,
+    @SerialName("cnf")
+    val confirmationKey: JsonWebKey? = null,
 ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)
@@ -47,6 +50,7 @@ data class VerifiableCredentialSdJwt(
         if (disclosureDigests != other.disclosureDigests) return false
         if (!type.contentEquals(other.type)) return false
         if (selectiveDisclosureAlgorithm != other.selectiveDisclosureAlgorithm) return false
+        if (confirmationKey != other.confirmationKey) return false
 
         return true
     }
@@ -60,6 +64,7 @@ data class VerifiableCredentialSdJwt(
         result = 31 * result + disclosureDigests.hashCode()
         result = 31 * result + type.contentHashCode()
         result = 31 * result + selectiveDisclosureAlgorithm.hashCode()
+        result = 31 * result + (confirmationKey?.hashCode() ?: 0)
         return result
     }
 

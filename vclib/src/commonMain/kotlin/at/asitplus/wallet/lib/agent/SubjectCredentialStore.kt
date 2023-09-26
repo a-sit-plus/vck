@@ -31,7 +31,7 @@ interface SubjectCredentialStore {
     suspend fun storeCredentialSd(
         vc: VerifiableCredentialSdJwt,
         vcSerialized: String,
-        disclosures: List<SelectiveDisclosureItem>
+        disclosures: Map<String, SelectiveDisclosureItem?>
     )
 
     /**
@@ -73,7 +73,10 @@ interface SubjectCredentialStore {
         data class SdJwt(
             val vcSerialized: String,
             val sdJwt: VerifiableCredentialSdJwt,
-            val disclosures: List<SelectiveDisclosureItem>
+            /**
+             * Map of original serialized disclosure item to parsed item
+             */
+            val disclosures: Map<String, SelectiveDisclosureItem?>
         ) : StoreEntry()
 
         data class Iso(val issuerSigned: IssuerSigned) : StoreEntry()

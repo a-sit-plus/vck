@@ -45,14 +45,17 @@ class AgentSdJwtTest : FreeSpec({
             it.acceptedSdJwt.shouldNotBeEmpty()
             it.notVerified.shouldBeEmpty()
             it.rejected.shouldBeEmpty()
+            it.acceptedSdJwt.forEach { println(it) }
         }
 
         val vp = holder.createPresentation(challenge, verifier.identifier).also {
             it.shouldNotBeNull()
         }
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
-        val verified = verifier.verifyPresentation(vp.vpJws, challenge)
-        verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+        println("Presentation: " + vp.sdJwt)
+
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+        verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
     }
 
 })

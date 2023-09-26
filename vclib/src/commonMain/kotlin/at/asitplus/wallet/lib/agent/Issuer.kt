@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredential
@@ -61,7 +62,7 @@ interface Issuer {
      */
     suspend fun issueCredentialWithTypes(
         subjectId: String,
-        subjectPublicKey: CoseKey? = null,
+        subjectPublicKey: CryptoPublicKey? = null,
         attributeTypes: Collection<String>,
         // TODO Which format does the holder want?
         representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -73,6 +74,7 @@ interface Issuer {
      */
     suspend fun issueCredential(
         credential: CredentialToBeIssued,
+        subjectPublicKey: CryptoPublicKey? = null,
         // TODO Which format does the holder want?
         representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
     ): IssuedCredentialResult

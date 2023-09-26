@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.cbor.CoseHeader
-import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.Base64Strict
@@ -32,8 +32,6 @@ import at.asitplus.wallet.lib.iso.ValueDigestList
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.JwsSigned
-import at.asitplus.wallet.lib.jws.SdJwtSigned
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -91,7 +89,7 @@ class IssuerAgent(
      */
     override suspend fun issueCredentialWithTypes(
         subjectId: String,
-        subjectPublicKey: CoseKey?,
+        subjectPublicKey: CryptoPublicKey?,
         attributeTypes: Collection<String>,
         representation: ConstantIndex.CredentialRepresentation,
     ): Issuer.IssuedCredentialResult {
@@ -99,7 +97,7 @@ class IssuerAgent(
         result.exceptionOrNull()?.let { failure ->
             return Issuer.IssuedCredentialResult(failed = attributeTypes.map { Issuer.FailedAttribute(it, failure) })
         }
-        val issuedCredentials = result.getOrThrow().map { issueCredential(it, representation) }
+        val issuedCredentials = result.getOrThrow().map { issueCredential(it, subjectPublicKey, representation) }
         return Issuer.IssuedCredentialResult(
             successful = issuedCredentials.flatMap { it.successful },
             failed = issuedCredentials.flatMap { it.failed })
@@ -111,6 +109,7 @@ class IssuerAgent(
      */
     override suspend fun issueCredential(
         credential: CredentialToBeIssued,
+        subjectPublicKey: CryptoPublicKey?,
         representation: ConstantIndex.CredentialRepresentation,
     ): Issuer.IssuedCredentialResult {
         val issuanceDate = clock.now()
@@ -163,13 +162,14 @@ class IssuerAgent(
             }
 
             is CredentialToBeIssued.Vc -> {
-                return issueVc(credential, representation, issuanceDate)
+                return issueVc(credential, subjectPublicKey, representation, issuanceDate)
             }
         }
     }
 
     private suspend fun issueVc(
         credential: CredentialToBeIssued.Vc,
+        subjectPublicKey: CryptoPublicKey?,
         representation: ConstantIndex.CredentialRepresentation,
         issuanceDate: Instant
     ): Issuer.IssuedCredentialResult {
@@ -213,7 +213,7 @@ class IssuerAgent(
             }
 
             ConstantIndex.CredentialRepresentation.SD_JWT -> {
-                val vcInSdJwt = wrapVcInSdJwt(vc)
+                val vcInSdJwt = wrapVcInSdJwt(vc, subjectPublicKey)
                     ?: return Issuer.IssuedCredentialResult(
                         failed = listOf(
                             Issuer.FailedAttribute(credential.attributeType, RuntimeException("signing failed"))
@@ -287,13 +287,13 @@ class IssuerAgent(
         return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
     }
 
-    private suspend fun wrapVcInSdJwt(vc: VerifiableCredential): String? {
+    private suspend fun wrapVcInSdJwt(vc: VerifiableCredential, subjectPublicKey: CryptoPublicKey?): String? {
         val claims = vc.credentialSubject.getClaims()
         val disclosures = claims
             .map { SelectiveDisclosureItem(Random.nextBytes(32), it.name, it.value) }
-        val disclosureDigests = disclosures
             .map { it.serialize() }
             .map { it.encodeToByteArray().encodeToString(Base64UrlStrict) }
+        val disclosureDigests = disclosures
             .map { it.encodeToByteArray().toByteString().sha256().base64Url() }
         val jwsPayload = VerifiableCredentialSdJwt(
             subject = vc.credentialSubject.id,
@@ -304,11 +304,12 @@ class IssuerAgent(
             disclosureDigests = disclosureDigests,
             type = vc.type,
             selectiveDisclosureAlgorithm = "sha-256",
+            confirmationKey = subjectPublicKey?.toJsonWebKey(),
         ).serialize().encodeToByteArray()
         // TODO Which content type to use for SD-JWT inside an JWS?
         val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
             ?: return null
-        return SdJwtSigned(JwsSigned.parse(jws)!!, disclosures).serialize()
+        return (listOf(jws) + disclosures).joinToString("~")
     }
 
     private fun getRevocationListUrlFor(timePeriod: Int) =

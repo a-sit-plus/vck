@@ -55,14 +55,16 @@ class VerifierAgent private constructor(
     override fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
         val sdJwtSigned = runCatching { SdJwtSigned.parse(it) }.getOrNull()
         if (sdJwtSigned != null) {
-            return validator.verifyVpSdJwt(it, challenge, identifier, sdJwtSigned.disclosures)
+            return validator.verifyVpSdJwt(it, challenge, identifier)
         }
         val jwsSigned = runCatching { JwsSigned.parse(it) }.getOrNull()
         if (jwsSigned != null) {
             return validator.verifyVpJws(it, challenge, identifier)
         }
         val document =
-            runCatching { it.decodeToByteArrayOrNull(Base16(strict = true))?.let { bytes -> Document.deserialize(bytes) } }.getOrNull()
+            runCatching {
+                it.decodeToByteArrayOrNull(Base16(strict = true))?.let { bytes -> Document.deserialize(bytes) }
+            }.getOrNull()
         if (document != null) {
             return validator.verifyDocument(document, challenge)
         }

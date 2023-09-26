@@ -4,6 +4,7 @@ import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.cbor.CoseHeader
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
+import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -20,6 +21,7 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import io.github.aakira.napier.Napier
+import kotlinx.datetime.Clock
 import kotlinx.serialization.cbor.ByteStringWrapper
 
 
@@ -232,23 +234,30 @@ class HolderAgent(
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
         // TODO Revocation check for SD-JWT
         if (validSdJwtCredentials.isNotEmpty()) {
-            val vp = VerifiablePresentation(validSdJwtCredentials.map { it.vcSerialized }.toTypedArray())
-            val vpSerialized = vp.toJws(challenge, identifier, audienceId).serialize()
-            val jwsPayload = vpSerialized.encodeToByteArray()
-            val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+            // TODO can only be one credential at a time
+            val keyBindingJws = KeyBindingJws(
+                issuedAt = Clock.System.now(),
+                audience = audienceId,
+                challenge = challenge
+            )
+            val jwsPayload = keyBindingJws.serialize().encodeToByteArray()
+            val keyBinding = jwsService.createSignedJwt(JwsContentTypeConstants.KB_JWT, jwsPayload)
                 ?: return null
                     .also { Napier.w("Could not create JWS for presentation") }
-            val disclosures = validSdJwtCredentials.flatMap { it.disclosures }
-                .filter { it.discloseItem(requestedClaims) }
-            return Holder.CreatePresentationResult.SdJwt(jws, disclosures)
+            val first = validSdJwtCredentials.first()
+            val filteredDisclosures = first.disclosures
+                .filter { it.discloseItem(requestedClaims) }.keys
+            val sdJwt = (listOf(first.vcSerialized) + filteredDisclosures + keyBinding)
+                .joinToString("~")
+            return Holder.CreatePresentationResult.SdJwt(sdJwt)
         }
         Napier.w("Got no valid credentials for $attributeTypes")
         return null
     }
 
-    private fun SelectiveDisclosureItem.discloseItem(requestedClaims: Collection<String>?) =
+    private fun Map.Entry<String, SelectiveDisclosureItem?>.discloseItem(requestedClaims: Collection<String>?) =
         if (requestedClaims?.isNotEmpty() == true) {
-            claimName in requestedClaims
+            value?.let { it.claimName in requestedClaims } ?: false
         } else {
             true
         }

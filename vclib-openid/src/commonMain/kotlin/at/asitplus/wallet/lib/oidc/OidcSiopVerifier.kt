@@ -6,6 +6,8 @@ import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.Constraint
@@ -260,6 +262,15 @@ class OidcSiopVerifier(
         data class Success(val vp: VerifiablePresentationParsed, val state: String?) : AuthnResponseResult()
 
         /**
+         * Successfully decoded and validated the response from the Wallet (W3C credential in SD-JWT)
+         */
+        data class SuccessSdJwt(
+            val sdJwt: VerifiableCredentialSdJwt,
+            val disclosures: List<SelectiveDisclosureItem>,
+            val state: String?
+        ) : AuthnResponseResult()
+
+        /**
          * Successfully decoded and validated the response from the Wallet (ISO credential)
          */
         data class SuccessIso(val document: IsoDocumentParsed, val state: String?) : AuthnResponseResult()
@@ -340,32 +351,37 @@ class OidcSiopVerifier(
                 .also { Napier.w("No VP in response") }
         val format = descriptor.format
 
-        val verificationResult = when (format) {
+        val result = when (format) {
             ClaimFormatEnum.JWT_VP -> verifier.verifyPresentation(vp, idToken.nonce)
             ClaimFormatEnum.MSO_MDOC -> verifier.verifyPresentation(vp, idToken.nonce)
             else -> null
         } ?: return AuthnResponseResult.ValidationError("descriptor format not known", params.state)
             .also { Napier.w("Descriptor format not known: $format") }
 
-        return when (verificationResult) {
+        return when (result) {
             is Verifier.VerifyPresentationResult.InvalidStructure -> {
-                Napier.w("VP error: $verificationResult")
+                Napier.w("VP error: $result")
                 AuthnResponseResult.Error("parse vp failed", params.state)
             }
 
             is Verifier.VerifyPresentationResult.Success -> {
-                Napier.i("VP success: $verificationResult")
-                AuthnResponseResult.Success(verificationResult.vp, params.state)
+                Napier.i("VP success: $result")
+                AuthnResponseResult.Success(result.vp, params.state)
             }
 
             is Verifier.VerifyPresentationResult.NotVerified -> {
-                Napier.w("VP error: $verificationResult")
+                Napier.w("VP error: $result")
                 AuthnResponseResult.ValidationError("vpToken", params.state)
             }
 
             is Verifier.VerifyPresentationResult.SuccessIso -> {
-                Napier.i("VP success: $verificationResult")
-                AuthnResponseResult.SuccessIso(verificationResult.document, params.state)
+                Napier.i("VP success: $result")
+                AuthnResponseResult.SuccessIso(result.document, params.state)
+            }
+
+            is Verifier.VerifyPresentationResult.SuccessSdJwt -> {
+                Napier.i("VP success: $result")
+                AuthnResponseResult.SuccessSdJwt(result.sdJwt, result.disclosures, params.state)
             }
         }
     }

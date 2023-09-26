@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -18,7 +19,7 @@ class DummyCredentialDataProvider(
 
     override fun getCredentialWithType(
         subjectId: String,
-        subjectPublicKey: CoseKey?,
+        subjectPublicKey: CryptoPublicKey?,
         attributeTypes: Collection<String>
     ): KmmResult<List<CredentialToBeIssued>> {
         val attributeType = ConstantIndex.AtomicAttribute2023.vcType
