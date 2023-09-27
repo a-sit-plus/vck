@@ -87,7 +87,7 @@ class PresentProofMessengerTest : FreeSpec() {
             val expectedSubject = randomCredential(holder.identifier)
             val subject = expectedSubject.subject
             val attributeName = (subject as AtomicAttribute2023).name
-            val attributeValue = subject.value
+            val attributeValue = (subject as AtomicAttribute2023).value
             val expectedVc = issuer.issueCredential(expectedSubject)
             holder.storeCredentials(expectedVc.toStoreCredentialInput())
 

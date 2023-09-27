@@ -7,10 +7,6 @@ plugins {
 }
 group = "at.asitplus.gradle"
 
-private val versions = Properties().apply {
-    kotlin.runCatching { load(FileInputStream(rootProject.file("gradle-conventions-plugin/src/main/resources/versions.properties"))) }
-}
-
 dependencies {
     api("at.asitplus.gradle:conventions")
 }
