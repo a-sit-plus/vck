@@ -22,6 +22,8 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 commonImplementationDependencies()
+                api("at.asitplus.crypto:datatypes-cose:${VcLibVersions.kmpcrypto}")
+                api("at.asitplus.crypto:datatypes-jws:${VcLibVersions.kmpcrypto}")
                 api(datetime())
                 api(serialization("cbor"))
                 api("at.asitplus:kmmresult:${VcLibVersions.resultlib}")
