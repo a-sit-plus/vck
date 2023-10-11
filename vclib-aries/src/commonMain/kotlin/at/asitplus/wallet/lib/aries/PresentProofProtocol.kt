@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.aries
 
+import at.asitplus.crypto.datatypes.JwsAlgorithm
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -12,8 +14,6 @@ import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.SchemaReference
-import at.asitplus.wallet.lib.jws.JsonWebKey
-import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.msg.AttachmentFormatReference
 import at.asitplus.wallet.lib.msg.JsonWebMessage
 import at.asitplus.wallet.lib.msg.JwmAttachment
@@ -216,7 +216,7 @@ class PresentProofProtocol(
                 )
             ),
             formats = FormatHolder(
-                jwtVp = FormatContainerJwt(arrayOf(JwsAlgorithm.ES256.text))
+                jwtVp = FormatContainerJwt(arrayOf(JwsAlgorithm.ES256.identifier))
             )
         )
         val requestPresentation = RequestPresentationAttachment(

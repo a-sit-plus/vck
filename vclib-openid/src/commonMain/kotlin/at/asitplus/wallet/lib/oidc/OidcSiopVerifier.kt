@@ -1,28 +1,21 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.wallet.lib.CryptoPublicKey
+import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.JwsAlgorithm
+import at.asitplus.crypto.datatypes.jws.JwsHeader
+import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
-import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
-import at.asitplus.wallet.lib.data.dif.Constraint
-import at.asitplus.wallet.lib.data.dif.ConstraintField
-import at.asitplus.wallet.lib.data.dif.ConstraintFilter
-import at.asitplus.wallet.lib.data.dif.FormatContainerJwt
-import at.asitplus.wallet.lib.data.dif.FormatHolder
-import at.asitplus.wallet.lib.data.dif.InputDescriptor
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.data.dif.SchemaReference
+import at.asitplus.wallet.lib.data.dif.*
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.JwsAlgorithm
-import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.REDIRECT_URI
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
@@ -36,8 +29,7 @@ import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
+import io.ktor.http.*
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlin.time.DurationUnit
@@ -170,8 +162,8 @@ class OidcSiopVerifier(
     ): AuthenticationRequestParameters {
         val vpFormats = FormatHolder(
             msoMdoc = if (credentialScheme?.credentialFormat == ConstantIndex.CredentialFormat.ISO_18013)
-                FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text)) else null,
-            jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text)),
+                FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.identifier)) else null,
+            jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.identifier)),
         )
         val metadata = RelyingPartyMetadata(
             redirectUris = arrayOf(relyingPartyUrl),

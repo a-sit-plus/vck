@@ -1,10 +1,14 @@
 package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.KmmResult
+import at.asitplus.crypto.datatypes.cose.CoseHeader
+import at.asitplus.crypto.datatypes.cose.CoseKey
+import at.asitplus.crypto.datatypes.cose.CoseSignatureInput
+import at.asitplus.crypto.datatypes.cose.CoseSigned
+import at.asitplus.crypto.datatypes.jws.JwsExtensions.extractSignatureValues
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
-import at.asitplus.wallet.lib.jws.JwsExtensions.extractSignatureValues
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.cbor.ByteStringWrapper
 

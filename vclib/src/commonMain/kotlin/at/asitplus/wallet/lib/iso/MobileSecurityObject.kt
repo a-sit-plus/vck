@@ -2,7 +2,7 @@
 
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.wallet.lib.cbor.CoseKey
+import at.asitplus.crypto.datatypes.cose.CoseKey
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString

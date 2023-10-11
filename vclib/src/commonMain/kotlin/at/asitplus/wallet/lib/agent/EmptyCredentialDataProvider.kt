@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.cbor.CoseKey
+import at.asitplus.crypto.datatypes.cose.CoseKey
 
 object EmptyCredentialDataProvider : IssuerCredentialDataProvider {
 

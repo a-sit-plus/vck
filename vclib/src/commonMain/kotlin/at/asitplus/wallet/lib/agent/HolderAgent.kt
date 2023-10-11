@@ -1,21 +1,18 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.wallet.lib.cbor.CoseAlgorithm
-import at.asitplus.wallet.lib.cbor.CoseHeader
+import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
+import at.asitplus.crypto.datatypes.cose.CoseHeader
+import at.asitplus.crypto.datatypes.cose.toCoseKey
+import at.asitplus.crypto.datatypes.jws.JwsContentTypeConstants
+import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.iso.DeviceAuth
-import at.asitplus.wallet.lib.iso.DeviceSigned
-import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.iso.IssuerSignedList
 import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.cbor.ByteStringWrapper
@@ -99,7 +96,7 @@ class HolderAgent(
         }
         credentialList.filterIsInstance<Holder.StoreCredentialInput.Iso>().forEach { cred ->
             val issuerKey = cred.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.let {
-                CryptoUtils.extractPublicKeyFromX509Cert(it)?.toCoseKey()
+                runCatching { X509Certificate.derDecode(it) }.getOrNull()?.publicKey?.toCoseKey()
             }
             when (val result = validator.verifyIsoCred(cred.issuerSigned, issuerKey)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += result.input

@@ -1,7 +1,11 @@
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.crypto.datatypes.EcCurve
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
+import at.asitplus.crypto.datatypes.jws.JwkType
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -35,15 +39,13 @@ class JwkSerializationTest : FreeSpec({
         parsed.keyId shouldBe kid
     }
 
-    "Deserialization with unknown curve is correct" {
+    "Deserialization with unknown curve fails" {
         val kid = uuid4().toString()
         val serialized = """{"kty": "EC", "crv": "P-111", "kid": "$kid"}"""
 
         val parsed = JsonWebKey.deserialize(serialized)
 
-        parsed.shouldNotBeNull()
-        parsed.curve shouldBe null
-        parsed.keyId shouldBe kid
+        parsed.shouldBeNull()
     }
 
 })

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DOCUMENT_NUMBER
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DRIVING_PRIVILEGES
@@ -8,7 +9,6 @@ import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.FAMILY_NAME
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUE_DATE
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.PORTRAIT
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
-import at.asitplus.wallet.lib.jws.JwsSigned
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec

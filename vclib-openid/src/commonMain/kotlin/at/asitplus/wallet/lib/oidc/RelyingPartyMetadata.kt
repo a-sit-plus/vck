@@ -1,11 +1,10 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.wallet.lib.data.dif.FormatHolder
-import at.asitplus.wallet.lib.jws.JsonWebKey
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
 @Serializable
@@ -39,7 +38,7 @@ data class RelyingPartyMetadata(
     @SerialName("client_id_scheme")
     val clientIdScheme: String? = "pre-registered",
 
-) {
+    ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)
 

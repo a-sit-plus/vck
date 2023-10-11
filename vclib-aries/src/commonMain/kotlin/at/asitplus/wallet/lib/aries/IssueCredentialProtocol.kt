@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.aries
 
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Issuer
@@ -10,7 +11,6 @@ import at.asitplus.wallet.lib.data.dif.CredentialDefinition
 import at.asitplus.wallet.lib.data.dif.CredentialManifest
 import at.asitplus.wallet.lib.data.dif.SchemaReference
 import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.msg.AttachmentFormatReference
 import at.asitplus.wallet.lib.msg.IssueCredential
 import at.asitplus.wallet.lib.msg.IssueCredentialBody

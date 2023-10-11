@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.jws.JwsSigned
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
@@ -57,7 +57,9 @@ class VerifierAgent private constructor(
             return validator.verifyVpJws(it, challenge, identifier)
         }
         val document =
-            runCatching { it.decodeToByteArrayOrNull(Base16(strict = true))?.let { bytes -> Document.deserialize(bytes) } }.getOrNull()
+            runCatching {
+                it.decodeToByteArrayOrNull(Base16(strict = true))?.let { bytes -> Document.deserialize(bytes) }
+            }.getOrNull()
         if (document != null) {
             return validator.verifyDocument(document, challenge)
         }

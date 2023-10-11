@@ -1,27 +1,19 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.crypto.datatypes.cose.CoseKey
+import at.asitplus.crypto.datatypes.cose.toCoseKey
+import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.ZlibService
-import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
-import at.asitplus.wallet.lib.data.Base64Strict
-import at.asitplus.wallet.lib.data.IsoDocumentParsed
-import at.asitplus.wallet.lib.data.RevocationListSubject
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
-import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.iso.ValueDigestList
-import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.iso.wrapInCborTag
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.toBitSet
 import io.github.aakira.napier.Napier
@@ -202,7 +194,7 @@ class Validator(
         val issuerAuth = issuerSigned.issuerAuth
 
         val issuerKey = issuerAuth.unprotectedHeader?.certificateChain?.let {
-            CryptoUtils.extractPublicKeyFromX509Cert(it)?.toCoseKey()
+            runCatching { X509Certificate.derDecode(it) }.getOrNull()?.publicKey?.toCoseKey()
         } ?: return Verifier.VerifyPresentationResult.InvalidStructure(
             doc.serialize().encodeToString(Base16(strict = true))
         )

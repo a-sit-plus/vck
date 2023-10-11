@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.wallet.lib.cbor.CoseSigned
+import at.asitplus.crypto.datatypes.cose.CoseSigned
 import at.asitplus.wallet.lib.data.jsonSerializer
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DOCUMENT_NUMBER
@@ -607,7 +607,7 @@ class CborSerializationTest : FreeSpec({
 
         val coseSigned = CoseSigned.deserialize(input.decodeToByteArray(Base16(strict = true)))
         coseSigned.shouldNotBeNull()
-        println(coseSigned)
+        println(coseSigned.toString())
 
         val payload = coseSigned.payload
         payload.shouldNotBeNull()

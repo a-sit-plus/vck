@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.jws.JwsSigned
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlin.time.DurationUnit

@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.wallet.lib.cbor.CoseKey
+import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.iso.IssuerSigned
 

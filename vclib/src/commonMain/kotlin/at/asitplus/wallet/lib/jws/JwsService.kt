@@ -1,13 +1,14 @@
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.crypto.datatypes.Digest
+import at.asitplus.crypto.datatypes.asn1.encodeToByteArray
+import at.asitplus.crypto.datatypes.jws.*
+import at.asitplus.crypto.datatypes.jws.JwsExtensions.encodeWithLength
+import at.asitplus.crypto.datatypes.jws.JwsExtensions.extractSignatureValues
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
-import at.asitplus.wallet.lib.agent.Digest
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import at.asitplus.wallet.lib.data.Base64UrlStrict
-import at.asitplus.wallet.lib.jws.JwsExtensions.encodeToByteArray
-import at.asitplus.wallet.lib.jws.JwsExtensions.encodeWithLength
-import at.asitplus.wallet.lib.jws.JwsExtensions.extractSignatureValues
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -112,16 +113,16 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): JweDecrypted? {
         val header = jweObject.header ?: return null
             .also { Napier.w("Could not parse JWE header") }
-        if (header.algorithm == null) return null.also { Napier.w("No algorithm in JWE header") }
-        if (header.encryption == null) return null.also { Napier.w("No encryption in JWE header") }
-        val z = cryptoService.performKeyAgreement(header.ephemeralKeyPair!!, header.algorithm)
+       val alg =header.algorithm?: return null.also { Napier.w("No algorithm in JWE header") }
+        val enc = header.encryption?: return null.also { Napier.w("No encryption in JWE header") }
+        val z = cryptoService.performKeyAgreement(header.ephemeralKeyPair!!, alg)
             .getOrElse {
                 Napier.w("No Z value from native code", it)
                 return null
             }
         val kdfInput = prependWithAdditionalInfo(
             z,
-            header.encryption,
+            enc,
             header.agreementPartyUInfo,
             header.agreementPartyVInfo
         )
@@ -134,7 +135,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val ciphertext = jweObject.ciphertext
         val authTag = jweObject.authTag
         val plaintext =
-            cryptoService.decrypt(key, iv, aad, ciphertext, authTag, header.encryption).getOrElse {
+            cryptoService.decrypt(key, iv, aad, ciphertext, authTag, enc).getOrElse {
                 Napier.w("No plaintext from native code", it)
                 return null
             }
@@ -149,10 +150,9 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         jweAlgorithm: JweAlgorithm,
         jweEncryption: JweEncryption
     ): String? {
-        if (recipientKey.curve == null)
-            return null.also { Napier.w("No curve in recipient key") }
+        val crv=recipientKey.curve?:            return null.also { Napier.w("No curve in recipient key") }
         val ephemeralKeyPair =
-            cryptoService.generateEphemeralKeyPair(recipientKey.curve).getOrElse {
+            cryptoService.generateEphemeralKeyPair(crv).getOrElse {
                 Napier.w("No ephemeral key pair from native code", it)
                 return null
             }

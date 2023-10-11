@@ -1,7 +1,11 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.CryptoPublicKey
+import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.JwsAlgorithm
+import at.asitplus.crypto.datatypes.jws.JwsHeader
+import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
@@ -9,10 +13,7 @@ import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.JwsAlgorithm
-import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
@@ -24,16 +25,11 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
-import at.asitplus.wallet.lib.oidvci.IssuerMetadata
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
-import io.ktor.util.flattenEntries
+import io.ktor.http.*
+import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -98,8 +94,8 @@ class OidcSiopWallet(
             responseTypesSupported = arrayOf(ID_TOKEN),
             scopesSupported = arrayOf(SCOPE_OPENID),
             subjectTypesSupported = arrayOf("pairwise", "public"),
-            idTokenSigningAlgorithmsSupported = arrayOf(JwsAlgorithm.ES256.text),
-            requestObjectSigningAlgorithmsSupported = arrayOf(JwsAlgorithm.ES256.text),
+            idTokenSigningAlgorithmsSupported = arrayOf(JwsAlgorithm.ES256.identifier),
+            requestObjectSigningAlgorithmsSupported = arrayOf(JwsAlgorithm.ES256.identifier),
             subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
             idTokenTypesSupported = arrayOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,
@@ -209,7 +205,7 @@ class OidcSiopWallet(
         if (params.clientMetadata.vpFormats == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
-        if (params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains(JwsAlgorithm.ES256.text) != true)
+        if (params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains(JwsAlgorithm.ES256.identifier) != true)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible JWT algorithms") }
         if (params.nonce == null)

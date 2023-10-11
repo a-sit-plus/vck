@@ -1,15 +1,10 @@
 package at.asitplus.wallet.lib.aries
 
+import at.asitplus.crypto.datatypes.jws.*
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.JsonWebKey
-import at.asitplus.wallet.lib.jws.JweAlgorithm
-import at.asitplus.wallet.lib.jws.JweEncrypted
-import at.asitplus.wallet.lib.jws.JweEncryption
-import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.msg.JsonWebMessage
 import io.github.aakira.napier.Napier

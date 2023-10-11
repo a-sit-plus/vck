@@ -1,12 +1,11 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.wallet.lib.data.InstantLongSerializer
-import at.asitplus.wallet.lib.jws.JsonWebKey
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
 /**

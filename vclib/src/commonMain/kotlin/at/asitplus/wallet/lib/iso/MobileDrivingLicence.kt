@@ -2,6 +2,7 @@
 
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.crypto.datatypes.io.ByteArrayBase64UrlSerializer
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ADMINISTRATIVE_NUMBER
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.AGE_BIRTH_YEAR
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.AGE_IN_YEARS
@@ -34,17 +35,12 @@ import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.SEX
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.SIGNATURE_USUAL_MARK
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.UN_DISTINGUISHING_SIGN
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.WEIGHT
-import at.asitplus.wallet.lib.jws.ByteArrayBase64UrlSerializer
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
 import kotlinx.serialization.cbor.ByteString
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToByteArray
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mDL (7.2.1)

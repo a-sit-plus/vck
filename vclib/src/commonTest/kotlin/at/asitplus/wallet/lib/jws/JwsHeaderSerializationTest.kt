@@ -1,6 +1,9 @@
 package at.asitplus.wallet.lib.jws
 
 
+import at.asitplus.crypto.datatypes.JwsAlgorithm
+import at.asitplus.crypto.datatypes.jws.JwsContentTypeConstants
+import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.wallet.lib.data.Base64Strict
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -41,7 +44,7 @@ class JwsHeaderSerializationTest : FreeSpec({
         val type = JwsContentTypeConstants.JWT
 
         val serialized = """{
-            | "alg": "${algorithm.text}",
+            | "alg": "${algorithm.identifier}",
             | "kid": "$kid",
             | "typ": "$type",
             | "x5c":["${first.encodeToString(Base64Strict)}","${second.encodeToString(Base64Strict)}"]}

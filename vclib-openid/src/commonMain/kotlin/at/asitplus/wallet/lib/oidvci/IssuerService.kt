@@ -1,18 +1,18 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.crypto.datatypes.JwsAlgorithm
+import at.asitplus.crypto.datatypes.cose.CoseEllipticCurve
+import at.asitplus.crypto.datatypes.cose.CoseKey
+import at.asitplus.crypto.datatypes.cose.CoseKeyType
+import at.asitplus.crypto.datatypes.jws.JsonWebToken
+import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
-import at.asitplus.wallet.lib.cbor.CoseKey
-import at.asitplus.wallet.lib.cbor.CoseKeyType
 import at.asitplus.wallet.lib.data.Base64UrlStrict
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
-import at.asitplus.wallet.lib.jws.JsonWebToken
-import at.asitplus.wallet.lib.jws.JwsAlgorithm
-import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.BINDING_METHOD_COSE_KEY
@@ -67,7 +67,7 @@ class IssuerService(
                         )
                     ),
                     supportedBindingMethods = arrayOf(BINDING_METHOD_COSE_KEY),
-                    supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
+                    supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.identifier),
                 )
 
                 ConstantIndex.CredentialFormat.W3C_VC -> SupportedCredentialFormat(
@@ -75,7 +75,7 @@ class IssuerService(
                     id = it.vcType,
                     types = arrayOf(VERIFIABLE_CREDENTIAL, it.vcType),
                     supportedBindingMethods = arrayOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
-                    supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
+                    supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.identifier),
                 )
             }
         }

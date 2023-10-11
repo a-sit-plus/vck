@@ -1,17 +1,12 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.wallet.lib.data.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.Base64UrlStrict
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.CredentialStatus
-import at.asitplus.wallet.lib.data.VerifiableCredential
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.crypto.datatypes.JwsAlgorithm
+import at.asitplus.crypto.datatypes.jws.JwsContentTypeConstants
+import at.asitplus.crypto.datatypes.jws.JwsHeader
+import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.JwsAlgorithm
-import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.JwsSigned
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.datatest.withData

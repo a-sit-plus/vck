@@ -1,10 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.crypto.datatypes.cose.*
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.cbor.CoseAlgorithm
-import at.asitplus.wallet.lib.cbor.CoseHeader
-import at.asitplus.wallet.lib.cbor.CoseKey
-import at.asitplus.wallet.lib.cbor.CoseSigned
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
