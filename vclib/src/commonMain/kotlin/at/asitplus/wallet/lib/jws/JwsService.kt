@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.jws
 
 import at.asitplus.crypto.datatypes.Digest
-import at.asitplus.crypto.datatypes.asn1.encodeToByteArray
+import at.asitplus.crypto.datatypes.asn1.encodeTo4Bytes
 import at.asitplus.crypto.datatypes.jws.*
-import at.asitplus.crypto.datatypes.jws.JwsExtensions.encodeWithLength
+import at.asitplus.crypto.datatypes.jws.JwsExtensions.prependWith4BytesSize
 import at.asitplus.crypto.datatypes.jws.JwsExtensions.extractSignatureValues
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
@@ -192,11 +192,11 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         apu: ByteArray?,
         apv: ByteArray?
     ): ByteArray {
-        val counterValue = 1.encodeToByteArray() // it depends ...
-        val algId = jweEncryption.text.encodeToByteArray().encodeWithLength()
-        val apuEncoded = apu.encodeWithLength()
-        val apvEncoded = apv.encodeWithLength()
-        val keyLength = jweEncryption.encryptionKeyLength.encodeToByteArray()
+        val counterValue = 1.encodeTo4Bytes() // it depends ...
+        val algId = jweEncryption.text.encodeToByteArray().prependWith4BytesSize()
+        val apuEncoded = apu?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
+        val apvEncoded = apv?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
+        val keyLength = jweEncryption.encryptionKeyLength.encodeTo4Bytes()
         val otherInfo = algId + apuEncoded + apvEncoded + keyLength + byteArrayOf()
         return counterValue + z + otherInfo
     }
