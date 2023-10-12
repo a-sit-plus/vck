@@ -46,14 +46,7 @@ class WalletService(
                 docType = DOC_TYPE_MDL,
                 types = arrayOf(credentialScheme.vcType),
                 claims = mapOf(
-                    IsoDataModelConstants.NAMESPACE_MDL to mapOf(
-                        DataElements.GIVEN_NAME to RequestedCredentialClaimSpecification(),
-                        DataElements.FAMILY_NAME to RequestedCredentialClaimSpecification(),
-                        DataElements.DOCUMENT_NUMBER to RequestedCredentialClaimSpecification(),
-                        DataElements.ISSUE_DATE to RequestedCredentialClaimSpecification(),
-                        DataElements.EXPIRY_DATE to RequestedCredentialClaimSpecification(),
-                        DataElements.DRIVING_PRIVILEGES to RequestedCredentialClaimSpecification(),
-                    )
+                    IsoDataModelConstants.NAMESPACE_MDL to buildMdlRequestedClaims()
                 )
             )
 
@@ -110,14 +103,7 @@ class WalletService(
                 format = CredentialFormatEnum.MSO_MDOC,
                 docType = DOC_TYPE_MDL,
                 claims = mapOf(
-                    IsoDataModelConstants.NAMESPACE_MDL to mapOf(
-                        DataElements.GIVEN_NAME to RequestedCredentialClaimSpecification(),
-                        DataElements.FAMILY_NAME to RequestedCredentialClaimSpecification(),
-                        DataElements.DOCUMENT_NUMBER to RequestedCredentialClaimSpecification(),
-                        DataElements.ISSUE_DATE to RequestedCredentialClaimSpecification(),
-                        DataElements.EXPIRY_DATE to RequestedCredentialClaimSpecification(),
-                        DataElements.DRIVING_PRIVILEGES to RequestedCredentialClaimSpecification(),
-                    )
+                    IsoDataModelConstants.NAMESPACE_MDL to buildMdlRequestedClaims()
                 ),
                 types = arrayOf(credentialScheme.vcType),
                 proof = proof
@@ -130,5 +116,14 @@ class WalletService(
             )
         }
     }
+
+    private fun buildMdlRequestedClaims() = listOf(
+        DataElements.GIVEN_NAME,
+        DataElements.FAMILY_NAME,
+        DataElements.DOCUMENT_NUMBER,
+        DataElements.ISSUE_DATE,
+        DataElements.EXPIRY_DATE,
+        DataElements.DRIVING_PRIVILEGES
+    ).associateWith { RequestedCredentialClaimSpecification() }
 
 }
