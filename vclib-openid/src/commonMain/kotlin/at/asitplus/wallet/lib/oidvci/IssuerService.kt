@@ -54,14 +54,7 @@ class IssuerService(
                     types = arrayOf(it.vcType),
                     docType = DOC_TYPE_MDL,
                     claims = mapOf(
-                        NAMESPACE_MDL to mapOf(
-                            DataElements.GIVEN_NAME to RequestedCredentialClaimSpecification(),
-                            DataElements.FAMILY_NAME to RequestedCredentialClaimSpecification(),
-                            DataElements.DOCUMENT_NUMBER to RequestedCredentialClaimSpecification(),
-                            DataElements.ISSUE_DATE to RequestedCredentialClaimSpecification(),
-                            DataElements.EXPIRY_DATE to RequestedCredentialClaimSpecification(),
-                            DataElements.DRIVING_PRIVILEGES to RequestedCredentialClaimSpecification(),
-                        )
+                        NAMESPACE_MDL to buildMdlSupportedClaims()
                     ),
                     supportedBindingMethods = arrayOf(BINDING_METHOD_COSE_KEY),
                     supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
@@ -89,6 +82,16 @@ class IssuerService(
                 .toTypedArray()
         )
     }
+
+    // TODO do we need to specify all available claims here?
+    private fun buildMdlSupportedClaims() = listOf(
+        DataElements.GIVEN_NAME,
+        DataElements.FAMILY_NAME,
+        DataElements.DOCUMENT_NUMBER,
+        DataElements.ISSUE_DATE,
+        DataElements.EXPIRY_DATE,
+        DataElements.DRIVING_PRIVILEGES
+    ).associateWith { RequestedCredentialClaimSpecification() }
 
     /**
      * Send this result as HTTP Header `Location` in a 302 response to the client.

@@ -233,17 +233,12 @@ class OidcSiopVerifier(
         )
     }
 
-    private fun createConstraints(attributeTypes: List<String>): Array<ConstraintField> {
-        if (credentialScheme?.credentialFormat != ConstantIndex.CredentialFormat.ISO_18013)
-            return arrayOf()
-
-        return attributeTypes.map {
-            ConstraintField(
-                path = arrayOf("\$.mdoc.$it"),
-                intentToRetain = false,
-            )
-        }.toTypedArray()
-    }
+    private fun createConstraints(attributeTypes: List<String>): Array<ConstraintField> =
+        if (credentialScheme?.credentialFormat == ConstantIndex.CredentialFormat.ISO_18013)
+            attributeTypes.map {
+                ConstraintField(path = arrayOf("\$.mdoc.$it"), intentToRetain = false)
+            }.toTypedArray()
+        else arrayOf()
 
     sealed class AuthnResponseResult {
         /**

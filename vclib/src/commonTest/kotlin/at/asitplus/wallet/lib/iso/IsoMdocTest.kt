@@ -55,11 +55,7 @@ class Wallet {
 
     val cryptoService = DefaultCryptoService()
     val coseService = DefaultCoseService(cryptoService)
-
-    val deviceKeyInfo = DeviceKeyInfo(
-        deviceKey = cryptoService.toPublicKey().toCoseKey(),
-    )
-
+    val deviceKeyInfo = DeviceKeyInfo(cryptoService.toPublicKey().toCoseKey())
     var storedMdl: MobileDrivingLicence? = null
     var storedIssuerAuth: CoseSigned? = null
     var storedMdlItems: IssuerSignedList? = null
