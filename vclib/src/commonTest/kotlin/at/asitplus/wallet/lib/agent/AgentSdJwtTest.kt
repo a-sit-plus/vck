@@ -39,6 +39,7 @@ class AgentSdJwtTest : FreeSpec({
         ).also {
             it.failed.shouldBeEmpty()
             it.successful.shouldNotBeEmpty()
+            it.successful.forEach { println(it) }
         }
 
         holder.storeCredentials(vcList.toStoreCredentialInput()).also {

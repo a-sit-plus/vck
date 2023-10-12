@@ -22,7 +22,7 @@ class OidvciProcessTest : FunSpec({
         credentialSchemes = listOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023)
     )
 
-    test("process with W3C VC") {
+    test("process with W3C VC JWT") {
         val client = WalletService(credentialScheme = ConstantIndex.AtomicAttribute2023)
         val metadata = issuer.metadata
         val authnRequest = client.createAuthRequest()
@@ -35,6 +35,22 @@ class OidvciProcessTest : FunSpec({
         val credentialRequest = client.createCredentialRequest(token, metadata)
         val credential = issuer.credential(OpenIdConstants.TOKEN_PREFIX_BEARER + token.accessToken, credentialRequest)
         credential.format shouldBe CredentialFormatEnum.JWT_VC
+        credential.credential.shouldNotBeNull()
+    }
+
+    test("process with W3C VC SD-JWT") {
+        val client = WalletService(credentialScheme = ConstantIndex.AtomicAttribute2023, credentialFormat = CredentialFormatEnum.JWT_VC_SD)
+        val metadata = issuer.metadata
+        val authnRequest = client.createAuthRequest()
+        val codeUrl = issuer.authorize(authnRequest)
+        codeUrl.shouldNotBeNull()
+        val code = Url(codeUrl).parameters[GRANT_TYPE_CODE]
+        code.shouldNotBeNull()
+        val tokenRequest = client.createTokenRequestParameters(code)
+        val token = issuer.token(tokenRequest)
+        val credentialRequest = client.createCredentialRequest(token, metadata)
+        val credential = issuer.credential(OpenIdConstants.TOKEN_PREFIX_BEARER + token.accessToken, credentialRequest)
+        credential.format shouldBe CredentialFormatEnum.JWT_VC_SD
         credential.credential.shouldNotBeNull()
     }
 

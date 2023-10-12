@@ -25,6 +25,7 @@ import kotlinx.datetime.Clock
  */
 class WalletService(
     private val credentialScheme: ConstantIndex.CredentialScheme,
+    private val credentialFormat: CredentialFormatEnum = CredentialFormatEnum.JWT_VC,
     private val clientId: String = "https://wallet.a-sit.at/app",
     private val redirectUrl: String = "$clientId/callback",
     private val cryptoService: CryptoService = DefaultCryptoService(),
@@ -58,7 +59,7 @@ class WalletService(
 
             ConstantIndex.CredentialFormat.W3C_VC -> AuthorizationDetails(
                 type = CREDENTIAL_TYPE_OPENID,
-                format = CredentialFormatEnum.JWT_VC,
+                format = credentialFormat,
                 types = arrayOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
             )
         },
@@ -123,7 +124,7 @@ class WalletService(
             )
 
             ConstantIndex.CredentialFormat.W3C_VC -> CredentialRequestParameters(
-                format = CredentialFormatEnum.JWT_VC,
+                format = credentialFormat,
                 types = arrayOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
                 proof = proof
             )

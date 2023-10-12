@@ -64,7 +64,6 @@ interface Issuer {
         subjectId: String,
         subjectPublicKey: CryptoPublicKey? = null,
         attributeTypes: Collection<String>,
-        // TODO Which format does the holder want?
         representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
     ): IssuedCredentialResult
 
@@ -75,7 +74,6 @@ interface Issuer {
     suspend fun issueCredential(
         credential: CredentialToBeIssued,
         subjectPublicKey: CryptoPublicKey? = null,
-        // TODO Which format does the holder want?
         representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
     ): IssuedCredentialResult
 

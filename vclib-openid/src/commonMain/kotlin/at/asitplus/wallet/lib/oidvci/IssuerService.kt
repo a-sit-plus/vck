@@ -1,9 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
-import at.asitplus.wallet.lib.cbor.CoseKey
-import at.asitplus.wallet.lib.cbor.CoseKeyType
 import at.asitplus.wallet.lib.data.Base64UrlStrict
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
@@ -154,7 +151,8 @@ class IssuerService(
         val issuedCredentialResult = issuer.issueCredentialWithTypes(
             subjectId = subjectPublicKey.identifier,
             subjectPublicKey = subjectPublicKey.toCryptoPublicKey(),
-            attributeTypes = params.types.toList()
+            attributeTypes = params.types.toList(),
+            representation = params.format.toRepresentation(),
         )
         if (issuedCredentialResult.successful.isEmpty()) {
             throw OAuth2Exception(Errors.INVALID_REQUEST)
@@ -172,12 +170,17 @@ class IssuerService(
             )
 
             is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
-                format = CredentialFormatEnum.JWT_VC, // TODO correct type
+                format = CredentialFormatEnum.JWT_VC_SD,
                 credential = issuedCredential.vcSdJwt,
             )
         }
     }
 
+}
+
+private fun CredentialFormatEnum.toRepresentation() = when (this) {
+    CredentialFormatEnum.JWT_VC_SD -> ConstantIndex.CredentialRepresentation.SD_JWT
+    else -> ConstantIndex.CredentialRepresentation.PLAIN_JWT
 }
 
 class OAuth2Exception(val error: String, val errorDescription: String? = null) : Throwable(error) {
