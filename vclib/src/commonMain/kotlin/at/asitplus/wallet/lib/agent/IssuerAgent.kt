@@ -137,7 +137,7 @@ class IssuerAgent(
                         })
                     ),
                     deviceKeyInfo = DeviceKeyInfo(credential.subjectPublicKey),
-                    docType = IsoDataModelConstants.DOC_TYPE_MDL,
+                    docType = credential.scheme.isoDocType,
                     validityInfo = ValidityInfo(
                         signed = issuanceDate,
                         validFrom = issuanceDate,

@@ -12,8 +12,6 @@ import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceSigned
 import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.IssuerSignedList
@@ -188,62 +186,78 @@ class HolderAgent(
         val validIsoCredential = credentials
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Iso>()
             // no revocation check
-            .map { it.issuerSigned }
             .firstOrNull()
         if (validIsoCredential != null) {
-            val deviceSignature = coseService.createSignedCose(
-                protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
-                unprotectedHeader = null,
-                payload = challenge.encodeToByteArray(),
-                addKeyId = false
-            ).getOrNull() ?: return null
-                .also { Napier.w("Could not create DeviceAuth for presentation") }
-            // TODO use iso namespace of scheme
-            val attributes = validIsoCredential.namespaces?.get(NAMESPACE_MDL)
-                ?: return null
-                    .also { Napier.w("Could not filter issuerSignedItems for $NAMESPACE_MDL") }
-            return Holder.CreatePresentationResult.Document(
-                Document(
-                    docType = DOC_TYPE_MDL,
-                    issuerSigned = IssuerSigned(
-                        namespaces = mapOf(NAMESPACE_MDL to IssuerSignedList(attributes.entries.filter {
-                            it.discloseItem(requestedClaims)
-                        })),
-                        issuerAuth = validIsoCredential.issuerAuth
-                    ),
-                    deviceSigned = DeviceSigned(
-                        namespaces = byteArrayOf(),
-                        deviceAuth = DeviceAuth(
-                            deviceSignature = deviceSignature
-                        )
-                    )
-                )
-            )
+            return createIsoPresentation(challenge, validIsoCredential, requestedClaims)
         }
         val validSdJwtCredentials = credentials
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
             .filter { validator.checkRevocationStatus(it.sdJwt) != Validator.RevocationStatus.REVOKED }
         if (validSdJwtCredentials.isNotEmpty()) {
-            // TODO can only be one credential at a time
-            val keyBindingJws = KeyBindingJws(
-                issuedAt = Clock.System.now(),
-                audience = audienceId,
-                challenge = challenge
-            )
-            val jwsPayload = keyBindingJws.serialize().encodeToByteArray()
-            val keyBinding = jwsService.createSignedJwt(JwsContentTypeConstants.KB_JWT, jwsPayload)
-                ?: return null
-                    .also { Napier.w("Could not create JWS for presentation") }
-            val first = validSdJwtCredentials.first()
-            val filteredDisclosures = first.disclosures
-                .filter { it.discloseItem(requestedClaims) }.keys
-            val sdJwt = (listOf(first.vcSerialized.substringBefore("~")) + filteredDisclosures + keyBinding)
-                .joinToString("~")
-            return Holder.CreatePresentationResult.SdJwt(sdJwt)
+            return createSdJwtPresentation(audienceId, challenge, validSdJwtCredentials, requestedClaims)
         }
         Napier.w("Got no valid credentials for $attributeTypes")
         return null
     }
+
+    private suspend fun createIsoPresentation(
+        challenge: String,
+        credential: SubjectCredentialStore.StoreEntry.Iso,
+        requestedClaims: Collection<String>?
+    ): Holder.CreatePresentationResult.Document? {
+        val deviceSignature = coseService.createSignedCose(
+            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
+            unprotectedHeader = null,
+            payload = challenge.encodeToByteArray(),
+            addKeyId = false
+        ).getOrNull() ?: return null
+            .also { Napier.w("Could not create DeviceAuth for presentation") }
+        val attributes = credential.issuerSigned.namespaces?.get(credential.scheme.isoNamespace)
+            ?: return null
+                .also { Napier.w("Could not filter issuerSignedItems for ${credential.scheme.isoNamespace}") }
+        return Holder.CreatePresentationResult.Document(
+            Document(
+                docType = credential.scheme.isoDocType,
+                issuerSigned = IssuerSigned(
+                    namespaces = mapOf(credential.scheme.isoNamespace to
+                            IssuerSignedList(attributes.entries.filter { it.discloseItem(requestedClaims) })
+                    ),
+                    issuerAuth = credential.issuerSigned.issuerAuth
+                ),
+                deviceSigned = DeviceSigned(
+                    namespaces = byteArrayOf(),
+                    deviceAuth = DeviceAuth(
+                        deviceSignature = deviceSignature
+                    )
+                )
+            )
+        )
+    }
+
+    private suspend fun createSdJwtPresentation(
+        audienceId: String,
+        challenge: String,
+        validSdJwtCredentials: List<SubjectCredentialStore.StoreEntry.SdJwt>,
+        requestedClaims: Collection<String>?
+    ): Holder.CreatePresentationResult.SdJwt? {
+        // TODO can only be one credential at a time
+        val keyBindingJws = KeyBindingJws(
+            issuedAt = Clock.System.now(),
+            audience = audienceId,
+            challenge = challenge
+        )
+        val jwsPayload = keyBindingJws.serialize().encodeToByteArray()
+        val keyBinding = jwsService.createSignedJwt(JwsContentTypeConstants.KB_JWT, jwsPayload)
+            ?: return null
+                .also { Napier.w("Could not create JWS for presentation") }
+        val first = validSdJwtCredentials.first()
+        val filteredDisclosures = first.disclosures
+            .filter { it.discloseItem(requestedClaims) }.keys
+        val sdJwt = (listOf(first.vcSerialized.substringBefore("~")) + filteredDisclosures + keyBinding)
+            .joinToString("~")
+        return Holder.CreatePresentationResult.SdJwt(sdJwt)
+    }
+
 
     private fun Map.Entry<String, SelectiveDisclosureItem?>.discloseItem(requestedClaims: Collection<String>?) =
         if (requestedClaims?.isNotEmpty() == true) {

@@ -2,11 +2,6 @@ package at.asitplus.wallet.lib.iso
 
 object IsoDataModelConstants {
 
-    // can be used to further define any other doctypes, with reverse domain notation
-    const val DOC_TYPE_MDL = "org.iso.18013.5.1.mDL"
-
-    const val NAMESPACE_MDL = "org.iso.18013.5.1"
-
     const val DIGEST_SHA_256 = "SHA-256"
 
     const val VERSION_1_0 = "1.0"

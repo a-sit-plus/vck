@@ -3,7 +3,6 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.wallet.lib.cbor.CoseSigned
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -526,7 +525,7 @@ data class DeviceSigned(
 
 // TODO see if we really need this class
 data class DeviceNameSpaces(
-    @SerialName(NAMESPACE_MDL)
+    @SerialName("org.iso.18013.5.1")
     val entries: Map<String, ElementValue>
 ) {
     fun serialize() = cborSerializer.encodeToByteArray(this)
