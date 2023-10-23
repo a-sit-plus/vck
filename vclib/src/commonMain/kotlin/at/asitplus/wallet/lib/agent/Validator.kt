@@ -17,8 +17,6 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.ValueDigestList
@@ -244,10 +242,6 @@ class Validator(
      */
     fun verifyDocument(doc: Document, challenge: String): Verifier.VerifyPresentationResult {
         val docSerialized = doc.serialize().encodeToString(Base16(strict = true))
-        // TODO which doctype to load?
-        if (doc.docType != DOC_TYPE_MDL)
-            return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
-                .also { Napier.w("Invalid docType: ${doc.docType}") }
         if (doc.errors != null) {
             return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("Document has errors: ${doc.errors}") }
@@ -268,15 +262,10 @@ class Validator(
         val mso = issuerSigned.getIssuerAuthPayloadAsMso()
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("MSO is null: ${issuerAuth.payload?.encodeToString(Base16(strict = true))}") }
-        if (mso.docType != DOC_TYPE_MDL) {
+        if (mso.docType != doc.docType) {
             return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
-                .also { Napier.w("Invalid docType in MSO: ${mso.docType}") }
+                .also { Napier.w("Invalid MSO docType '${mso.docType}' does not match Doc docType '${doc.docType}") }
         }
-        // TODO which iso namespace to load?
-        val mdlItems = mso.valueDigests[NAMESPACE_MDL]
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
-                .also { Napier.w("mdlItems are null in MSO: ${mso.valueDigests}") }
-
         val walletKey = mso.deviceKeyInfo.deviceKey
         val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
@@ -295,22 +284,24 @@ class Validator(
                 .also { Napier.w("DeviceSignature does not contain correct challenge") }
         }
 
-        // TODO which iso namespace to load?
-        val issuerSignedItems = issuerSigned.namespaces?.get(NAMESPACE_MDL)
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
-                .also { Napier.w("No issuer signed items in ${issuerSigned.namespaces}") }
-
-        val validatedItems = issuerSignedItems.entries.associateWith { it.verify(mdlItems) }
+        val validItems = mutableListOf<IssuerSignedItem>()
+        val invalidItems = mutableListOf<IssuerSignedItem>()
+        issuerSigned.namespaces?.forEach { (namespace, issuerSignedItems) ->
+            issuerSignedItems.entries.forEach {
+                if (it.verify(mso.valueDigests[namespace])) {
+                    validItems += it.value
+                } else {
+                    invalidItems += it.value
+                }
+            }
+        }
         return Verifier.VerifyPresentationResult.SuccessIso(
-            IsoDocumentParsed(
-                validItems = validatedItems.filter { it.value }.map { it.key.value },
-                invalidItems = validatedItems.filter { !it.value }.map { it.key.value },
-            )
+            IsoDocumentParsed(validItems = validItems, invalidItems = invalidItems)
         )
     }
 
-    private fun ByteStringWrapper<IssuerSignedItem>.verify(mdlItems: ValueDigestList): Boolean {
-        val issuerHash = mdlItems.entries.first { it.key == value.digestId }
+    private fun ByteStringWrapper<IssuerSignedItem>.verify(mdlItems: ValueDigestList?): Boolean {
+        val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId } ?: return false
         // TODO analyze usages of tag wrapping
         val verifierHash = serialized.wrapInCborTag(24).sha256()
         if (!verifierHash.encodeToString(Base16(strict = true))
