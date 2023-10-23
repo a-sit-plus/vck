@@ -132,7 +132,7 @@ class IssuerAgent(
                     version = VERSION_1_0,
                     digestAlgorithm = DIGEST_SHA_256,
                     valueDigests = mapOf(
-                        IsoDataModelConstants.NAMESPACE_MDL to ValueDigestList(credential.issuerSignedItems.map {
+                        credential.scheme.isoNamespace to ValueDigestList(credential.issuerSignedItems.map {
                             ValueDigest.fromIssuerSigned(it)
                         })
                     ),
@@ -146,7 +146,7 @@ class IssuerAgent(
                 )
                 val issuerSigned = IssuerSigned(
                     namespaces = mapOf(
-                        IsoDataModelConstants.NAMESPACE_MDL to IssuerSignedList.withItems(credential.issuerSignedItems)
+                        credential.scheme.isoNamespace to IssuerSignedList.withItems(credential.issuerSignedItems)
                     ),
                     issuerAuth = coseService.createSignedCose(
                         protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),

@@ -244,6 +244,7 @@ class Validator(
      */
     fun verifyDocument(doc: Document, challenge: String): Verifier.VerifyPresentationResult {
         val docSerialized = doc.serialize().encodeToString(Base16(strict = true))
+        // TODO which doctype to load?
         if (doc.docType != DOC_TYPE_MDL)
             return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("Invalid docType: ${doc.docType}") }
@@ -271,6 +272,7 @@ class Validator(
             return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("Invalid docType in MSO: ${mso.docType}") }
         }
+        // TODO which iso namespace to load?
         val mdlItems = mso.valueDigests[NAMESPACE_MDL]
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("mdlItems are null in MSO: ${mso.valueDigests}") }
@@ -293,6 +295,7 @@ class Validator(
                 .also { Napier.w("DeviceSignature does not contain correct challenge") }
         }
 
+        // TODO which iso namespace to load?
         val issuerSignedItems = issuerSigned.namespaces?.get(NAMESPACE_MDL)
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("No issuer signed items in ${issuerSigned.namespaces}") }

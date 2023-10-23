@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.cbor.CoseKey
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.MobileSecurityObject
@@ -37,6 +38,6 @@ sealed class CredentialToBeIssued {
         val issuerSignedItems: List<IssuerSignedItem>,
         val subjectPublicKey: CoseKey,
         val expiration: Instant,
-        val attributeType: String,
+        val scheme: ConstantIndex.CredentialScheme,
     ) : CredentialToBeIssued()
 }

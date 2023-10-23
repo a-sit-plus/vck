@@ -85,7 +85,7 @@ class DummyCredentialDataProvider(
                     issuerSignedItems = issuerSignedItems,
                     subjectPublicKey = subjectPublicKey.toCoseKey(),
                     expiration = expiration,
-                    attributeType = ConstantIndex.MobileDrivingLicence2023.vcType,
+                    scheme = ConstantIndex.MobileDrivingLicence2023,
                 )
             )
         }
