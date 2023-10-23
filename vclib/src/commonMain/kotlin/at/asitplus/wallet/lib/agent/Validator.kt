@@ -213,7 +213,9 @@ class Validator(
         if (keyBinding.audience != localId)
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Audience not correct: ${keyBinding.audience}") }
-        // TODO Check Key Binding references correct key
+        if (jwsKeyBindingParsed.header.keyId != sdJwtResult.sdJwt.subject)
+            return Verifier.VerifyPresentationResult.InvalidStructure(input)
+                .also { Napier.w("verifyVpSdJwt: Key Binding does not prove possession of subject key: ${jwsKeyBindingParsed.header.keyId}") }
         // TODO Time Validity check
 
         Napier.d("verifyVpSdJwt: Valid")

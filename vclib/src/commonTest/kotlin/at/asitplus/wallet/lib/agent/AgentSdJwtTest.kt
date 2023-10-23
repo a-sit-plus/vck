@@ -4,7 +4,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.inspectors.forAll
-import io.kotest.inspectors.forAny
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -65,4 +64,53 @@ class AgentSdJwtTest : FreeSpec({
         verified.disclosures.forAll { it.claimName shouldBe "name" }
     }
 
+    "wrong key binding jwt" {
+        holder.storeCredentials(
+            issuer.issueCredentialWithTypes(
+                holder.identifier,
+                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+            ).toStoreCredentialInput()
+        )
+        val vp = holder.createPresentation(challenge, verifier.identifier, requestedClaims = listOf("name"))
+        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+        // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
+        val malformedVpSdJwt = vp.sdJwt.replaceAfterLast("~", createFreshSdJwtKeyBinding(challenge, verifier.identifier).substringAfterLast("~"))
+
+        val verified = verifier.verifyPresentation(malformedVpSdJwt, challenge)
+        verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
+    }
+
+    "wrong challenge in key binding jwt" {
+        holder.storeCredentials(
+            issuer.issueCredentialWithTypes(
+                holder.identifier,
+                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+            ).toStoreCredentialInput()
+        )
+        val malformedChallenge = challenge.reversed()
+        val vp = holder.createPresentation(malformedChallenge, verifier.identifier, requestedClaims = listOf("name"))
+        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+        verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
+    }
+
 })
+
+suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {
+    val issuer = IssuerAgent.newDefaultInstance(
+        dataProvider = DummyCredentialDataProvider(),
+    )
+    val holder = HolderAgent.newDefaultInstance()
+    holder.storeCredentials(
+        issuer.issueCredentialWithTypes(
+            holder.identifier,
+            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+        ).toStoreCredentialInput()
+    )
+    val vp = holder.createPresentation(challenge, verifierId)
+    return (vp as Holder.CreatePresentationResult.SdJwt).sdJwt
+}
