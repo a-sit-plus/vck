@@ -91,7 +91,7 @@ class HolderAgent(
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.SuccessJwt -> acceptedVcJwt += vc.jws
-                    .also { subjectCredentialStore.storeCredential(it, cred.vcJws) }
+                    .also { subjectCredentialStore.storeCredential(it, cred.vcJws, cred.scheme) }
                     .also {
                         cred.attachments?.forEach { attachment ->
                             subjectCredentialStore.storeAttachment(attachment.name, attachment.data, it.vc.id)
@@ -107,7 +107,7 @@ class HolderAgent(
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.SuccessSdJwt -> acceptedSdJwt += vc.sdJwt
-                    .also { subjectCredentialStore.storeCredentialSd(it, cred.vcSdJwt, vc.disclosures) }
+                    .also { subjectCredentialStore.storeCredential(it, cred.vcSdJwt, vc.disclosures, cred.scheme) }
 
                 else -> {}
             }
@@ -120,7 +120,7 @@ class HolderAgent(
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += result.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += result.input
                 is Verifier.VerifyCredentialResult.SuccessIso -> acceptedIso += result.issuerSigned
-                    .also { subjectCredentialStore.storeCredential(result.issuerSigned) }
+                    .also { subjectCredentialStore.storeCredential(result.issuerSigned, cred.scheme) }
 
                 else -> {}
             }
@@ -134,17 +134,6 @@ class HolderAgent(
         )
     }
 
-    /**
-     * Stores all verifiable credentials from [credentialList].
-     * _Does not validate the credentials!_
-     */
-    @Suppress("unused")
-    override suspend fun storeValidatedCredentials(credentialList: List<Holder.ValidatedVerifiableCredentialJws>): Boolean {
-        credentialList.forEach {
-            subjectCredentialStore.storeCredential(it.vc, it.serialized)
-        }
-        return true
-    }
 
     /**
      * Gets a list of all stored credentials, with a revocation status.

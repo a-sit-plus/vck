@@ -356,8 +356,8 @@ class ValidatorVcTest : FreeSpec() {
 
     private fun credentialNameFn(it: CredentialToBeIssued): String =
         when (it) {
-            is CredentialToBeIssued.Iso -> it.attributeType;is CredentialToBeIssued.Vc -> it.attributeType
-
+            is CredentialToBeIssued.Iso -> it.scheme.vcType
+            is CredentialToBeIssued.Vc -> it.scheme.vcType
         }
 
     private fun issueCredential(

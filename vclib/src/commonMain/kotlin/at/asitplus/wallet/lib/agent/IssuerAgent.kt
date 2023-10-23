@@ -157,7 +157,7 @@ class IssuerAgent(
                     ).getOrThrow()
                 )
                 return Issuer.IssuedCredentialResult(
-                    successful = listOf(Issuer.IssuedCredential.Iso(issuerSigned))
+                    successful = listOf(Issuer.IssuedCredential.Iso(issuerSigned, credential.scheme))
                 )
             }
 
@@ -184,7 +184,7 @@ class IssuerAgent(
             timePeriod
         ) ?: return Issuer.IssuedCredentialResult(
             failed = listOf(
-                Issuer.FailedAttribute(credential.attributeType, DataSourceProblem("vcId internal mismatch"))
+                Issuer.FailedAttribute(credential.scheme.vcType, DataSourceProblem("vcId internal mismatch"))
             )
         ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }
 
@@ -196,7 +196,7 @@ class IssuerAgent(
             expirationDate = expirationDate,
             credentialStatus = credentialStatus,
             credentialSubject = credential.subject,
-            credentialType = credential.attributeType,
+            credentialType = credential.scheme.vcType,
         )
 
         when (representation) {
@@ -204,11 +204,17 @@ class IssuerAgent(
                 val vcInJws = wrapVcInJws(vc)
                     ?: return Issuer.IssuedCredentialResult(
                         failed = listOf(
-                            Issuer.FailedAttribute(credential.attributeType, RuntimeException("signing failed"))
+                            Issuer.FailedAttribute(credential.scheme.vcType, RuntimeException("signing failed"))
                         )
                     ).also { Napier.w("Could not wrap credential in JWS") }
                 return Issuer.IssuedCredentialResult(
-                    successful = listOf(Issuer.IssuedCredential.VcJwt(vcInJws, credential.attachments))
+                    successful = listOf(
+                        Issuer.IssuedCredential.VcJwt(
+                            vcJws = vcInJws,
+                            scheme = credential.scheme,
+                            attachments = credential.attachments
+                        )
+                    )
                 )
             }
 
@@ -216,11 +222,11 @@ class IssuerAgent(
                 val vcInSdJwt = wrapVcInSdJwt(vc, subjectPublicKey)
                     ?: return Issuer.IssuedCredentialResult(
                         failed = listOf(
-                            Issuer.FailedAttribute(credential.attributeType, RuntimeException("signing failed"))
+                            Issuer.FailedAttribute(credential.scheme.vcType, RuntimeException("signing failed"))
                         )
                     ).also { Napier.w("Could not wrap credential in SD-JWT") }
                 return Issuer.IssuedCredentialResult(
-                    successful = listOf(Issuer.IssuedCredential.VcSdJwt(vcInSdJwt))
+                    successful = listOf(Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme))
                 )
             }
         }

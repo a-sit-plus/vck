@@ -8,13 +8,13 @@ import kotlinx.datetime.Instant
 
 
 /**
- * Summarizes operations for a Issuer in the sense of the [W3C VC Data Model](https://w3c.github.io/vc-data-model/).
+ * Summarizes operations for an Issuer in the sense of the [W3C VC Data Model](https://w3c.github.io/vc-data-model/).
  *
  * It can issue Verifiable Credentials, revoke credentials and build a revocation list.
  */
 interface Issuer {
 
-    data class FailedAttribute(val attributeName: String, val reason: Throwable)
+    data class FailedAttribute(val attributeType: String, val reason: Throwable)
 
     /**
      * A credential issued by an [Issuer], in a specific format
@@ -23,17 +23,27 @@ interface Issuer {
         /**
          * Issued credential in W3C Verifiable Credentials JWT representation
          */
-        data class VcJwt(val vcJws: String, val attachments: List<Attachment>? = null) : IssuedCredential()
+        data class VcJwt(
+            val vcJws: String,
+            val scheme: ConstantIndex.CredentialScheme,
+            val attachments: List<Attachment>? = null,
+        ) : IssuedCredential()
 
         /**
          * Issued credential in SD-JWT representation
          */
-        data class VcSdJwt(val vcSdJwt: String) : IssuedCredential()
+        data class VcSdJwt(
+            val vcSdJwt: String,
+            val scheme: ConstantIndex.CredentialScheme,
+        ) : IssuedCredential()
 
         /**
          * Issued credential in ISO 18013-5 format
          */
-        data class Iso(val issuerSigned: IssuerSigned) : IssuedCredential()
+        data class Iso(
+            val issuerSigned: IssuerSigned,
+            val scheme: ConstantIndex.CredentialScheme,
+        ) : IssuedCredential()
     }
 
     data class IssuedCredentialResult(
@@ -42,9 +52,9 @@ interface Issuer {
     ) {
         fun toStoreCredentialInput() = successful.map {
             when (it) {
-                is IssuedCredential.Iso -> Holder.StoreCredentialInput.Iso(it.issuerSigned)
-                is IssuedCredential.VcSdJwt -> Holder.StoreCredentialInput.SdJwt(it.vcSdJwt)
-                is IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(it.vcJws, it.attachments)
+                is IssuedCredential.Iso -> Holder.StoreCredentialInput.Iso(it.issuerSigned, it.scheme)
+                is IssuedCredential.VcSdJwt -> Holder.StoreCredentialInput.SdJwt(it.vcSdJwt, it.scheme)
+                is IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(it.vcJws, it.scheme, it.attachments)
             }
         }
     }

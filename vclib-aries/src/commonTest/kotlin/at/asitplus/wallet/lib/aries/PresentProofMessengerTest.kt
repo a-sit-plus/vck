@@ -141,14 +141,9 @@ class PresentProofMessengerTest : FreeSpec() {
     }
 
     private fun randomCredential(subjectId: String) = CredentialToBeIssued.Vc(
-        AtomicAttribute2023(
-            subjectId,
-            uuid4().toString(),
-            uuid4().toString(),
-            "application/text"
-        ),
-        Clock.System.now() + attributeLifetime,
-        ConstantIndex.AtomicAttribute2023.vcType
+        subject = AtomicAttribute2023(subjectId, uuid4().toString(), uuid4().toString()),
+        expiration = Clock.System.now() + attributeLifetime,
+        scheme = ConstantIndex.AtomicAttribute2023
     )
 
 }

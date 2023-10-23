@@ -36,30 +36,30 @@ class DummyCredentialDataProvider(
             listOfAttributes.addAll(
                 listOf(
                     CredentialToBeIssued.Vc(
-                        AtomicAttribute2023(subjectId, "given-name", "Susanne"),
-                        expiration,
-                        attributeType,
+                        subject = AtomicAttribute2023(subjectId, "given-name", "Susanne"),
+                        expiration = expiration,
+                        scheme = ConstantIndex.AtomicAttribute2023,
                     ),
                     CredentialToBeIssued.Vc(
-                        AtomicAttribute2023(subjectId, "family-name", "Meier"),
-                        expiration,
-                        attributeType,
+                        subject = AtomicAttribute2023(subjectId, "family-name", "Meier"),
+                        expiration = expiration,
+                        scheme = ConstantIndex.AtomicAttribute2023,
                     ),
                     CredentialToBeIssued.Vc(
-                        AtomicAttribute2023(subjectId, "date-of-birth", "1990-01-01"),
-                        expiration,
-                        attributeType,
+                        subject = AtomicAttribute2023(subjectId, "date-of-birth", "1990-01-01"),
+                        expiration = expiration,
+                        scheme = ConstantIndex.AtomicAttribute2023,
                     ),
                     CredentialToBeIssued.Vc(
-                        AtomicAttribute2023(subjectId, "identifier", randomValue()),
-                        expiration,
-                        attributeType,
+                        subject = AtomicAttribute2023(subjectId, "identifier", randomValue()),
+                        expiration = expiration,
+                        scheme = ConstantIndex.AtomicAttribute2023,
                     ),
                     CredentialToBeIssued.Vc(
-                        AtomicAttribute2023(subjectId, "picture", randomValue()),
-                        expiration,
-                        attributeType,
-                        listOf(Issuer.Attachment("picture", "image/webp", byteArrayOf(32)))
+                        subject = AtomicAttribute2023(subjectId, "picture", randomValue()),
+                        expiration = expiration,
+                        scheme = ConstantIndex.AtomicAttribute2023,
+                        attachments = listOf(Issuer.Attachment("picture", "image/webp", byteArrayOf(32)))
                     )
                 )
             )

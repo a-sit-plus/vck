@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -19,7 +20,11 @@ interface SubjectCredentialStore {
      * @param vc Instance of [VerifiableCredentialJws]
      * @param vcSerialized Serialized form of [VerifiableCredential]
      */
-    suspend fun storeCredential(vc: VerifiableCredentialJws, vcSerialized: String)
+    suspend fun storeCredential(
+        vc: VerifiableCredentialJws,
+        vcSerialized: String,
+        scheme: ConstantIndex.CredentialScheme,
+    )
 
     /**
      * Implementations should store the passed credential in a secure way.
@@ -28,10 +33,11 @@ interface SubjectCredentialStore {
      * @param vc Instance of [VerifiableCredentialSdJwt]
      * @param vcSerialized Serialized form of [VerifiableCredential]
      */
-    suspend fun storeCredentialSd(
+    suspend fun storeCredential(
         vc: VerifiableCredentialSdJwt,
         vcSerialized: String,
-        disclosures: Map<String, SelectiveDisclosureItem?>
+        disclosures: Map<String, SelectiveDisclosureItem?>,
+        scheme: ConstantIndex.CredentialScheme,
     )
 
     /**
@@ -40,7 +46,10 @@ interface SubjectCredentialStore {
      *
      * @param issuerSigned Instance of [IssuerSigned] (an ISO credential)
      */
-    suspend fun storeCredential(issuerSigned: IssuerSigned)
+    suspend fun storeCredential(
+        issuerSigned: IssuerSigned,
+        scheme: ConstantIndex.CredentialScheme,
+    )
 
     /**
      * Implementation should store the attachment in a secure way.
@@ -69,17 +78,26 @@ interface SubjectCredentialStore {
     suspend fun getAttachment(name: String, vcId: String): KmmResult<ByteArray>
 
     sealed class StoreEntry {
-        data class Vc(val vcSerialized: String, val vc: VerifiableCredentialJws) : StoreEntry()
+        data class Vc(
+            val vcSerialized: String,
+            val vc: VerifiableCredentialJws,
+            val scheme: ConstantIndex.CredentialScheme
+        ) : StoreEntry()
+
         data class SdJwt(
             val vcSerialized: String,
             val sdJwt: VerifiableCredentialSdJwt,
             /**
              * Map of original serialized disclosure item to parsed item
              */
-            val disclosures: Map<String, SelectiveDisclosureItem?>
+            val disclosures: Map<String, SelectiveDisclosureItem?>,
+            val scheme: ConstantIndex.CredentialScheme
         ) : StoreEntry()
 
-        data class Iso(val issuerSigned: IssuerSigned) : StoreEntry()
+        data class Iso(
+            val issuerSigned: IssuerSigned,
+            val scheme: ConstantIndex.CredentialScheme
+        ) : StoreEntry()
     }
 
     data class AttachmentEntry(val name: String, val data: ByteArray, val vcId: String) {
