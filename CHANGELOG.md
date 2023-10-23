@@ -1,5 +1,9 @@
 # Changelog
 
+Release 3.2.0
+ - Support representing credentials in both formats, ISO and W3C VC
+ - Drop `CredentialScheme.credentialDefinitionName`, is now automatically converted from `vcType`
+
 Release 3.1.0
  - Support representing credentials in [SD-JWT](https://drafts.oauth.net/oauth-selective-disclosure-jwt/draft-ietf-oauth-selective-disclosure-jwt.html) format
  - Rename class `Issuer.IssuedCredential.Vc` to `Issuer.IssuedCredential.VcJwt`

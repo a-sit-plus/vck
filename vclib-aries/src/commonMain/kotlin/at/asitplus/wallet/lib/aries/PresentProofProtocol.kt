@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.aries
 
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.data.AriesGoalCodeParser
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
 import at.asitplus.wallet.lib.data.dif.Constraint
@@ -161,7 +162,7 @@ class PresentProofProtocol(
             body = OutOfBandInvitationBody(
                 handshakeProtocols = arrayOf(SchemaIndex.PROT_PRESENT_PROOF),
                 acceptTypes = arrayOf("application/didcomm-encrypted+json"),
-                goalCode = "request-proof-${credentialScheme.credentialDefinitionName}",
+                goalCode = "request-proof-${AriesGoalCodeParser.getAriesName(credentialScheme)}",
                 services = arrayOf(
                     OutOfBandService(
                         type = "did-communication",
@@ -185,7 +186,7 @@ class PresentProofProtocol(
     }
 
     private fun createRequestPresentation(invitation: OutOfBandInvitation, senderKey: JsonWebKey): InternalNextMessage {
-        val credentialScheme = ConstantIndex.Parser.parseGoalCode(invitation.body.goalCode)
+        val credentialScheme = AriesGoalCodeParser.parseGoalCode(invitation.body.goalCode)
             ?: return problemReporter.problemLastMessage(invitation.threadId, "goal-code-unknown")
         val message = buildRequestPresentationMessage(credentialScheme, invitation.id)
             ?: return InternalNextMessage.IncorrectState("verifier")
@@ -208,7 +209,7 @@ class PresentProofProtocol(
         val presentationDefinition = PresentationDefinition(
             inputDescriptors = arrayOf(
                 InputDescriptor(
-                    name = credentialScheme.credentialDefinitionName,
+                    name = credentialScheme.vcType,
                     schema = SchemaReference(uri = credentialScheme.schemaUri),
                     constraints = Constraint(
                         fields = (constraintsExtraTypes + constraintsTypes).toTypedArray()

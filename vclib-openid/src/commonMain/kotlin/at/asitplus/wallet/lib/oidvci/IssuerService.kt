@@ -78,7 +78,7 @@ class IssuerService(
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
             supportedCredentialFormat = credentialFormats.toTypedArray(),
             displayProperties = credentialSchemes
-                .map { DisplayProperties(it.credentialDefinitionName, "en") }
+                .map { DisplayProperties(it.vcType, "en") }
                 .toTypedArray()
         )
     }

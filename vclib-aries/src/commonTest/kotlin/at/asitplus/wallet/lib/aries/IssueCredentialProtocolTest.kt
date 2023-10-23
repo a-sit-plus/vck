@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.data.AriesGoalCodeParser
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.msg.AttachmentFormatReference
 import at.asitplus.wallet.lib.msg.IssueCredential
@@ -50,15 +51,18 @@ class IssueCredentialProtocolTest : FreeSpec({
         oobInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val invitationMessage = oobInvitation.message
 
-        val parsedInvitation = holderProtocol.parseMessage(invitationMessage, issuerCryptoService.toPublicKey().toJsonWebKey())
+        val parsedInvitation =
+            holderProtocol.parseMessage(invitationMessage, issuerCryptoService.toPublicKey().toJsonWebKey())
         parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val requestCredential = parsedInvitation.message
 
-        val parsedRequestCredential = issuerProtocol.parseMessage(requestCredential, holderCryptoService.toPublicKey().toJsonWebKey())
+        val parsedRequestCredential =
+            issuerProtocol.parseMessage(requestCredential, holderCryptoService.toPublicKey().toJsonWebKey())
         parsedRequestCredential.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val issueCredential = parsedRequestCredential.message
 
-        val parsedIssueCredential = holderProtocol.parseMessage(issueCredential, issuerCryptoService.toPublicKey().toJsonWebKey())
+        val parsedIssueCredential =
+            holderProtocol.parseMessage(issueCredential, issuerCryptoService.toPublicKey().toJsonWebKey())
         parsedIssueCredential.shouldBeInstanceOf<InternalNextMessage.Finished>()
 
         val issuedCredential = parsedIssueCredential.lastMessage
@@ -74,7 +78,8 @@ class IssueCredentialProtocolTest : FreeSpec({
         parsedRequestCredential.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val issueCredential = parsedRequestCredential.message
 
-        val parsedIssueCredential = holderProtocol.parseMessage(issueCredential, issuerCryptoService.toPublicKey().toJsonWebKey())
+        val parsedIssueCredential =
+            holderProtocol.parseMessage(issueCredential, issuerCryptoService.toPublicKey().toJsonWebKey())
         parsedIssueCredential.shouldBeInstanceOf<InternalNextMessage.Finished>()
 
         val issuedCredential = parsedIssueCredential.lastMessage
@@ -98,14 +103,15 @@ class IssueCredentialProtocolTest : FreeSpec({
         oobInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val invitationMessage = oobInvitation.message
 
-        val parsedInvitation = holderProtocol.parseMessage(invitationMessage, issuerCryptoService.toPublicKey().toJsonWebKey())
+        val parsedInvitation =
+            holderProtocol.parseMessage(invitationMessage, issuerCryptoService.toPublicKey().toJsonWebKey())
         parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val requestCredential = parsedInvitation.message
 
         val wrongRequestCredential = RequestCredential(
             body = RequestCredentialBody(
                 comment = "something",
-                goalCode = "issue-vc-${ConstantIndex.AtomicAttribute2023.credentialDefinitionName}",
+                goalCode = "issue-vc-${AriesGoalCodeParser.getAriesName(ConstantIndex.AtomicAttribute2023)}",
                 formats = arrayOf()
             ),
             parentThreadId = requestCredential.parentThreadId!!,
