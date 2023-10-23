@@ -209,6 +209,7 @@ class HolderAgent(
                 addKeyId = false
             ).getOrNull() ?: return null
                 .also { Napier.w("Could not create DeviceAuth for presentation") }
+            // TODO use iso namespace of scheme
             val attributes = validIsoCredential.namespaces?.get(NAMESPACE_MDL)
                 ?: return null
                     .also { Napier.w("Could not filter issuerSignedItems for $NAMESPACE_MDL") }

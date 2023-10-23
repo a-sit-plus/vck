@@ -18,7 +18,6 @@ import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.SchemaReference
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
@@ -194,7 +193,7 @@ class OidcSiopVerifier(
                 path = arrayOf("$.mdoc.doctype"),
                 filter = ConstraintFilter(
                     type = "string",
-                    pattern = NAMESPACE_MDL,
+                    pattern = credentialScheme.isoNamespace,
                 )
             )
 

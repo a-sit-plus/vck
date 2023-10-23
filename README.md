@@ -85,6 +85,8 @@ at.asitplus.wallet.lib.LibraryInitializer.registerExtensionLibrary(
             override val schemaUri: String = "https://example.com/schemas/1.0.0/yourcredential.json"
             override val vcType: String = "YourCredential2023"
             override val credentialFormat: at.asitplus.wallet.lib.data.ConstantIndex.CredentialFormat = at.asitplus.wallet.lib.data.ConstantIndex.CredentialFormat.W3C_VC
+            override val isoNamespace: String = "com.example.your-credential"
+            override val isoDocType: String = "com.example.your-credential.iso"
         },
         serializersModule = kotlinx.serialization.modules.SerializersModule {
             kotlinx.serialization.modules.polymorphic(CredentialSubject::class) {

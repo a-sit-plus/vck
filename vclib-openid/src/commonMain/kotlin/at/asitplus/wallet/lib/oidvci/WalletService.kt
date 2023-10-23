@@ -4,8 +4,6 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JsonWebToken
@@ -43,11 +41,9 @@ class WalletService(
             ConstantIndex.CredentialFormat.ISO_18013 -> AuthorizationDetails(
                 type = CREDENTIAL_TYPE_OPENID,
                 format = CredentialFormatEnum.MSO_MDOC,
-                docType = DOC_TYPE_MDL,
+                docType = credentialScheme.isoDocType,
                 types = arrayOf(credentialScheme.vcType),
-                claims = mapOf(
-                    IsoDataModelConstants.NAMESPACE_MDL to buildMdlRequestedClaims()
-                )
+                claims = mapOf(credentialScheme.isoNamespace to buildMdlRequestedClaims())
             )
 
             ConstantIndex.CredentialFormat.W3C_VC -> AuthorizationDetails(
@@ -101,10 +97,8 @@ class WalletService(
         return when (credentialScheme.credentialFormat) {
             ConstantIndex.CredentialFormat.ISO_18013 -> CredentialRequestParameters(
                 format = CredentialFormatEnum.MSO_MDOC,
-                docType = DOC_TYPE_MDL,
-                claims = mapOf(
-                    IsoDataModelConstants.NAMESPACE_MDL to buildMdlRequestedClaims()
-                ),
+                docType = credentialScheme.isoDocType,
+                claims = mapOf(credentialScheme.isoNamespace to buildMdlRequestedClaims()),
                 types = arrayOf(credentialScheme.vcType),
                 proof = proof
             )

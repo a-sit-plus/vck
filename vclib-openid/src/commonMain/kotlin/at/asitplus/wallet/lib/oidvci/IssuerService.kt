@@ -4,9 +4,7 @@ import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.Base64UrlStrict
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import at.asitplus.wallet.lib.jws.JsonWebToken
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsSigned
@@ -52,9 +50,9 @@ class IssuerService(
                     format = CredentialFormatEnum.MSO_MDOC,
                     id = it.vcType,
                     types = arrayOf(it.vcType),
-                    docType = DOC_TYPE_MDL,
+                    docType = it.isoDocType,
                     claims = mapOf(
-                        NAMESPACE_MDL to buildMdlSupportedClaims()
+                        it.isoNamespace to buildMdlSupportedClaims()
                     ),
                     supportedBindingMethods = arrayOf(BINDING_METHOD_COSE_KEY),
                     supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
