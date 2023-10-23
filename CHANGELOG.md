@@ -1,6 +1,6 @@
 # Changelog
 
-Release 3.0.2
+Release 3.1.0
  - tbd
 
 Release 3.0.1
