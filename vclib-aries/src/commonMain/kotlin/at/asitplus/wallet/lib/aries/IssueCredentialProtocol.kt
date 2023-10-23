@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.aries
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.data.AriesGoalCodeParser
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
@@ -146,7 +147,7 @@ class IssueCredentialProtocol(
             body = OutOfBandInvitationBody(
                 handshakeProtocols = arrayOf(SchemaIndex.PROT_ISSUE_CRED),
                 acceptTypes = arrayOf("application/didcomm-signed+json"),
-                goalCode = "issue-vc-${credentialScheme.credentialDefinitionName}",
+                goalCode = "issue-vc-${AriesGoalCodeParser.getAriesName(credentialScheme)}",
                 services = arrayOf(
                     OutOfBandService(
                         type = "did-communication",
@@ -170,7 +171,7 @@ class IssueCredentialProtocol(
     }
 
     private fun createRequestCredential(invitation: OutOfBandInvitation, senderKey: JsonWebKey): InternalNextMessage {
-        val credentialScheme = ConstantIndex.Parser.parseGoalCode(invitation.body.goalCode)
+        val credentialScheme = AriesGoalCodeParser.parseGoalCode(invitation.body.goalCode)
             ?: return problemReporter.problemLastMessage(invitation.threadId, "goal-code-unknown")
         val message = buildRequestCredentialMessage(credentialScheme, invitation.id)
             ?: return InternalNextMessage.IncorrectState("holder")
@@ -192,7 +193,7 @@ class IssueCredentialProtocol(
             issuer = "somebody",
             subject = subject,
             credential = CredentialDefinition(
-                name = credentialScheme.credentialDefinitionName,
+                name = credentialScheme.vcType,
                 schema = SchemaReference(uri = credentialScheme.schemaUri),
             )
         )
@@ -203,7 +204,7 @@ class IssueCredentialProtocol(
         return RequestCredential(
             body = RequestCredentialBody(
                 comment = "Please issue some credentials",
-                goalCode = "issue-vc-${credentialScheme.credentialDefinitionName}",
+                goalCode = "issue-vc-${AriesGoalCodeParser.getAriesName(credentialScheme)}",
                 formats = arrayOf(
                     AttachmentFormatReference(
                         attachmentId = attachment.id,
