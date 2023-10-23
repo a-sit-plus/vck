@@ -3,9 +3,13 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.inspectors.forAll
+import io.kotest.inspectors.forAny
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 class AgentSdJwtTest : FreeSpec({
@@ -49,7 +53,7 @@ class AgentSdJwtTest : FreeSpec({
             it.acceptedSdJwt.forEach { println(it) }
         }
 
-        val vp = holder.createPresentation(challenge, verifier.identifier).also {
+        val vp = holder.createPresentation(challenge, verifier.identifier, requestedClaims = listOf("name")).also {
             it.shouldNotBeNull()
         }
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
@@ -57,6 +61,8 @@ class AgentSdJwtTest : FreeSpec({
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
         verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+        verified.disclosures shouldHaveSize 1
+        verified.disclosures.forAll { it.claimName shouldBe "name" }
     }
 
 })

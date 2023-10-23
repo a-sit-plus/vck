@@ -49,7 +49,7 @@ For SIOPv2 see `OidcSiopProtocol`, and for OpenId4VCI see `at.asitplus.wallet.li
  - For Verifiable Credentials and Presentations, only the JWT proof mechanism is implemented.
  - Json Web Keys always use a `kid` of `did:key:mEpA...` with a custom, uncompressed representation of `secp256r1` keys.
  - Several parts of the W3C VC Data Model have not been fully implemented, i.e. everything around resolving cryptographic key material.
- - Anything related to ledgers is out of scope.
+ - Anything related to ledgers (e.g. resolving DID documents) is out of scope.
  - Cryptographic operations are implemented for EC cryptography on the `secp256r1` curve to fully support hardware-backed keys on Android and iOS. However, the enum classes for cryptographic primitives may be extended to support other algorithms.
 
 ## iOS Implementation
@@ -94,6 +94,69 @@ at.asitplus.wallet.lib.LibraryInitializer.registerExtensionLibrary(
         },
     )
 )
+```
+
+### Representation
+
+Credentials in the form of the W3C VC Data Model may be represented as a plain JWT (with simple ECDSA signatures in it), or as a [Selective Disclosure JWT](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/). See `ConstantIndex.CredentialRepresentation` for the enum class in this library.
+
+#### SD-JWT
+
+To transport the information of SD-JWTs across our several protocols, we came up with the string `jwt_vc_sd` for use in OpenId protocols, see `at.asitplus.wallet.lib.oidvci.CredentialFormatEnum`. Please note that nested structures can not be represented for now, i.e. the credential needs to have direct attribute claims.
+
+Example from [AgentSdJwtTest], where a simple credential with `name`, `value` and `mime-type` (meaning three disclosures) is issued:
+
+```json
+eyJhbGciOiJFUzI1NiIsImtpZCI6ImRpZDprZXk6bUVwRGVlRmc1eXc0cWI0VHA4ek1QN2JlWXBWS2lUMkk2VTZ3TWlYNjl2S0VRWHV0cUx3NXVZaEVMdXhxVVVTRDhNZFR6cEN6emRtS0hoWG5COGZ5Y2tlSUgiLCJ0eXAiOiJqd3QifQ
+.eyJzdWIiOiJkaWQ6a2V5Om1FcENmR0E2NVprMCtHS2pOQUNweGdVOVhSNitza2tpeEdOLzV6RUpjUU0wVkVXbTlFRkJVK0l2dnE1bTdYNHJyKytIa3pqT1Q2N0NreTNZSk42TVA2bEM2IiwibmJmIjoxNjk4MDgyMjEyLCJpc3MiOiJkaWQ6a2V5Om1FcERlZUZnNXl3NHFiNFRwOHpNUDdiZVlwVktpVDJJNlU2d01pWDY5dktFUVh1dHFMdzV1WWhFTHV4cVVVU0Q4TWRUenBDenpkbUtIaFhuQjhmeWNrZUlIIiwiZXhwIjoxNjk4MDgyMjcyLCJqdGkiOiJ1cm46dXVpZDo0YjJjMWNjZC0zYTRhLTQ0OTItODZlZi1hZDM3YWE2MWM2OTYiLCJfc2QiOlsieTFfU3p4NGg0aEh2TG5TMS1pRGtKZ3hOV0x1Z1pFRF93ejhkUER1S2hlUT0iLCJfV0pVSE5EZlIxWkI3YjdJbFVsNl95dkxURlJ5V2JlRENpdDAzNTlXaHlvPSIsIjRNQ192Q1M5WDhpM2UzZzBWN2hpRTk0VHBPTlVoZWdydDJ2Y0VSQ3hzd289Il0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLCJBdG9taWNBdHRyaWJ1dGUyMDIzIl0sIl9zZF9hbGciOiJzaGEtMjU2In0
+.782vK3v64-RWD2NLLRiXkmKTwvcup6-Sph7FLMCjXE6c41E9bWsBTI1ICFo1gC9Igud1mus7Zdphmm5lpxalDw
+~WyJvell4TXVLbkVOZHlHR1MxOThqUDFobWdaUjlMVXhnUHRJb2NUa0xKcG9vIiwibmFtZSIsImdpdmVuLW5hbWUiXQ
+~WyJtY0lMNkxBTmZJbVdIb2FrNFQxNG5PRnV1SUxXY0ZicTJLblo3QmhwMmM4IiwidmFsdWUiLCJTdXNhbm5lIl0
+~WyIxQ1pfTXBFbEVjeFRwaEYtNmxLOHZvZmgtSnJuWkwzS0NWdkxDQXl0eTB3IiwibWltZS10eXBlIiwiYXBwbGljYXRpb24vdGV4dCJd
+```
+
+The JWT payload of the VC has no visible attributes, only the `_sd` entry (parsed from the JWT printed above):
+
+```json
+{
+  "sub": "did:key:mEpCfGA65Zk0+GKjNACpxgU9XR6+skkixGN/5zEJcQM0VEWm9EFBU+Ivvq5m7X4rr++HkzjOT67Cky3YJN6MP6lC6",
+  "nbf": 1698082212,
+  "iss": "did:key:mEpDeeFg5yw4qb4Tp8zMP7beYpVKiT2I6U6wMiX69vKEQXutqLw5uYhELuxqUUSD8MdTzpCzzdmKHhXnB8fyckeIH",
+  "exp": 1698082272,
+  "jti": "urn:uuid:4b2c1ccd-3a4a-4492-86ef-ad37aa61c696",
+  "_sd": [
+    "y1_Szx4h4hHvLnS1-iDkJgxNWLugZED_wz8dPDuKheQ=",
+    "_WJUHNDfR1ZB7b7IlUl6_yvLTFRyWbeDCit0359Whyo=",
+    "4MC_vCS9X8i3e3g0V7hiE94TpONUhegrt2vcERCxswo="
+  ],
+  "type": [
+    "VerifiableCredential",
+    "AtomicAttribute2023"
+  ],
+  "_sd_alg": "sha-256"
+}
+```
+
+The disclosures are stored by the holder to reveal them later on when requested, i.e. for `name` (parsed from the first disclosure printed above):
+
+```json
+[
+  "tC93k39JMbjrmJOfQUXhoQpz7Xv7NPjCHOws6dQwrtU", // salt
+  "name",                                        // key
+  "given-name"                                   // value
+]
+```
+
+The presentation from the holder to the verifier, disclosing the item `name` to have the value `given-name` is the following: the JWT is the same as issued, one disclosure is appended and a key binding JWT to prove possession of the holder key:
+
+```json
+eyJhbGciOiJFUzI1NiIsImtpZCI6ImRpZDprZXk6bUVwRGVlRmc1eXc0cWI0VHA4ek1QN2JlWXBWS2lUMkk2VTZ3TWlYNjl2S0VRWHV0cUx3NXVZaEVMdXhxVVVTRDhNZFR6cEN6emRtS0hoWG5COGZ5Y2tlSUgiLCJ0eXAiOiJqd3QifQ
+.eyJzdWIiOiJkaWQ6a2V5Om1FcENmR0E2NVprMCtHS2pOQUNweGdVOVhSNitza2tpeEdOLzV6RUpjUU0wVkVXbTlFRkJVK0l2dnE1bTdYNHJyKytIa3pqT1Q2N0NreTNZSk42TVA2bEM2IiwibmJmIjoxNjk4MDgyMjEyLCJpc3MiOiJkaWQ6a2V5Om1FcERlZUZnNXl3NHFiNFRwOHpNUDdiZVlwVktpVDJJNlU2d01pWDY5dktFUVh1dHFMdzV1WWhFTHV4cVVVU0Q4TWRUenBDenpkbUtIaFhuQjhmeWNrZUlIIiwiZXhwIjoxNjk4MDgyMjcyLCJqdGkiOiJ1cm46dXVpZDo0YjJjMWNjZC0zYTRhLTQ0OTItODZlZi1hZDM3YWE2MWM2OTYiLCJfc2QiOlsieTFfU3p4NGg0aEh2TG5TMS1pRGtKZ3hOV0x1Z1pFRF93ejhkUER1S2hlUT0iLCJfV0pVSE5EZlIxWkI3YjdJbFVsNl95dkxURlJ5V2JlRENpdDAzNTlXaHlvPSIsIjRNQ192Q1M5WDhpM2UzZzBWN2hpRTk0VHBPTlVoZWdydDJ2Y0VSQ3hzd289Il0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLCJBdG9taWNBdHRyaWJ1dGUyMDIzIl0sIl9zZF9hbGciOiJzaGEtMjU2In0
+.782vK3v64-RWD2NLLRiXkmKTwvcup6-Sph7FLMCjXE6c41E9bWsBTI1ICFo1gC9Igud1mus7Zdphmm5lpxalDw
+~WyJvell4TXVLbkVOZHlHR1MxOThqUDFobWdaUjlMVXhnUHRJb2NUa0xKcG9vIiwibmFtZSIsImdpdmVuLW5hbWUiXQ
+~eyJhbGciOiJFUzI1NiIsImtpZCI6ImRpZDprZXk6bUVwQ2ZHQTY1WmswK0dLak5BQ3B4Z1U5WFI2K3Nra2l4R04vNXpFSmNRTTBWRVdtOUVGQlUrSXZ2cTVtN1g0cnIrK0hrempPVDY3Q2t5M1lKTjZNUDZsQzYiLCJ0eXAiOiJrYitqd3QifQ
+.eyJpYXQiOjE2OTgwODIyMTMsImF1ZCI6ImRpZDprZXk6bUVwREcwQy9IOUpRRE1za0hreDZ1SW1wajkwRWpEaDlTWkQ0byt1bHRFK3pOeGRpTHc3QzRJSWJsd1ppWlN1Tnl3ekdQOElWR3N6Yk1SNjREMlFRa2dyN2oiLCJub25jZSI6Ijg3YmViMjJjLTNiYzUtNGI1ZC1hZDIwLTFhMTZkY2ViNTZiZiJ9
+.JJ5Y0ZAj44dyPRxbt4K3ws_PKFchcsZUukLRQWbx22KuQUEUQf12r3rgYqsGV3yVmXO-D-NnsaP-1iAmgNy4GQ
 ```
 
 <br>
