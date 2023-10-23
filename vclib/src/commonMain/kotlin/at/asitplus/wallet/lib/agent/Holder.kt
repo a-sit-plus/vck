@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
@@ -27,9 +27,21 @@ interface Holder {
     fun setRevocationList(it: String): Boolean
 
     sealed class StoreCredentialInput {
-        data class Vc(val vcJws: String, val attachments: List<Issuer.Attachment>? = null) : StoreCredentialInput()
-        data class SdJwt(val vcSdJwt: String) : StoreCredentialInput()
-        data class Iso(val issuerSigned: IssuerSigned) : StoreCredentialInput()
+        data class Vc(
+            val vcJws: String,
+            val scheme: ConstantIndex.CredentialScheme,
+            val attachments: List<Issuer.Attachment>? = null
+        ) : StoreCredentialInput()
+
+        data class SdJwt(
+            val vcSdJwt: String,
+            val scheme: ConstantIndex.CredentialScheme,
+        ) : StoreCredentialInput()
+
+        data class Iso(
+            val issuerSigned: IssuerSigned,
+            val scheme: ConstantIndex.CredentialScheme,
+        ) : StoreCredentialInput()
     }
 
     /**
@@ -68,14 +80,6 @@ interface Holder {
             return result
         }
     }
-
-    data class ValidatedVerifiableCredentialJws(val serialized: String, val vc: VerifiableCredentialJws)
-
-    /**
-     * Stores all verifiable credentials from [credentialList].
-     * _Does not validate the credentials!_
-     */
-    suspend fun storeValidatedCredentials(credentialList: List<ValidatedVerifiableCredentialJws>): Boolean
 
     /**
      * Gets a list of all stored credentials, with a revocation status.

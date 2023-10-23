@@ -27,13 +27,3 @@ object AriesGoalCodeParser {
         return builder.toString()
     }
 }
-
-val ConstantIndex.CredentialScheme.vcTypeAriesName: String
-    get() {
-        val builder = StringBuilder()
-        this.vcType.forEachIndexed { index, char ->
-            if (char.isUpperCase() && index > 0) builder.append("-").append(char.lowercaseChar())
-            else builder.append(char)
-        }
-        return builder.toString()
-    }

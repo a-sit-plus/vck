@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.CryptoPublicKey
-import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import io.matthewnelson.encoding.base16.Base16
@@ -30,30 +29,30 @@ class DummyCredentialDataProvider(
         return KmmResult.success(
             listOf(
                 CredentialToBeIssued.Vc(
-                    AtomicAttribute2023(subjectId, "given-name", "Susanne"),
-                    expiration,
-                    attributeType,
+                    subject = AtomicAttribute2023(subjectId, "given-name", "Susanne"),
+                    expiration = expiration,
+                    scheme = ConstantIndex.AtomicAttribute2023,
                 ),
                 CredentialToBeIssued.Vc(
-                    AtomicAttribute2023(subjectId, "family-name", "Meier"),
-                    expiration,
-                    attributeType,
+                    subject = AtomicAttribute2023(subjectId, "family-name", "Meier"),
+                    expiration = expiration,
+                    scheme = ConstantIndex.AtomicAttribute2023,
                 ),
                 CredentialToBeIssued.Vc(
-                    AtomicAttribute2023(subjectId, "date-of-birth", "1990-01-01"),
-                    expiration,
-                    attributeType,
+                    subject = AtomicAttribute2023(subjectId, "date-of-birth", "1990-01-01"),
+                    expiration = expiration,
+                    scheme = ConstantIndex.AtomicAttribute2023,
                 ),
                 CredentialToBeIssued.Vc(
-                    AtomicAttribute2023(subjectId, "identifier", randomValue()),
-                    expiration,
-                    attributeType,
+                    subject = AtomicAttribute2023(subjectId, "identifier", randomValue()),
+                    expiration = expiration,
+                    scheme = ConstantIndex.AtomicAttribute2023,
                 ),
                 CredentialToBeIssued.Vc(
-                    AtomicAttribute2023(subjectId, "picture", randomValue()),
-                    expiration,
-                    attributeType,
-                    listOf(Issuer.Attachment("picture", "image/webp", byteArrayOf(32)))
+                    subject = AtomicAttribute2023(subjectId, "picture", randomValue()),
+                    expiration = expiration,
+                    scheme = ConstantIndex.AtomicAttribute2023,
+                    attachments = listOf(Issuer.Attachment("picture", "image/webp", byteArrayOf(32)))
                 )
             )
         )

@@ -223,16 +223,14 @@ class IssueCredentialProtocol(
         val requestCredentialAttachment = lastJwmAttachment.decodeString()?.let {
             RequestCredentialAttachment.deserialize(it)
         } ?: return problemReporter.problemLastMessage(lastMessage.threadId, "attachments-format")
+
         val uri = requestCredentialAttachment.credentialManifest.credential.schema.uri
-
-        //default pupilID use case: binding key outside JWM, no subject in JWM. set subject to override
-        val subjectIdentifier = requestCredentialAttachment.credentialManifest.subject ?: senderKey.identifier
-
-        val requestedAttributeType = AttributeIndex.getTypeOfAttributeForSchemaUri(uri)
+        val requestedCredentialScheme = AttributeIndex.resolveSchemaUri(uri)
+        val requestedAttributeType = requestedCredentialScheme?.vcType
             ?: return problemReporter.problemLastMessage(lastMessage.threadId, "requested-attributes-empty")
 
         // TODO Is there a way to transport the format, i.e. JWT-VC or SD-JWT?
-        requestCredentialAttachment.credentialManifest.credential
+        val subjectIdentifier = requestCredentialAttachment.credentialManifest.subject ?: senderKey.identifier
         val issuedCredentials =
             issuer?.issueCredentialWithTypes(subjectIdentifier, attributeTypes = listOf(requestedAttributeType))
                 ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
@@ -252,22 +250,30 @@ class IssueCredentialProtocol(
 
         val fulfillmentAttachments = mutableListOf<JwmAttachment>()
         val binaryAttachments = mutableListOf<JwmAttachment>()
-        issuedCredentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().forEach { cred ->
-            val fulfillment = JwmAttachment.encodeJws(cred.vcJws)
-            val binary = cred.attachments?.map {
-                JwmAttachment.encode(
-                    data = it.data,
-                    filename = it.name,
-                    mediaType = it.mediaType,
-                    parent = fulfillment.id
-                )
-            } ?: listOf()
-            fulfillmentAttachments.add(fulfillment)
-            binaryAttachments.addAll(binary)
-        }
-        issuedCredentials.successful.filterIsInstance<Issuer.IssuedCredential.Iso>().forEach { cred ->
-            val fulfillment = JwmAttachment.encodeBase64(cred.issuerSigned.serialize())
-            fulfillmentAttachments.add(fulfillment)
+        issuedCredentials.successful.forEach { cred ->
+            when (cred) {
+                is Issuer.IssuedCredential.Iso -> {
+                    fulfillmentAttachments.add(JwmAttachment.encodeBase64(cred.issuerSigned.serialize()))
+                }
+
+                is Issuer.IssuedCredential.VcJwt -> {
+                    val fulfillment = JwmAttachment.encodeJws(cred.vcJws)
+                    val binary = cred.attachments?.map {
+                        JwmAttachment.encode(
+                            data = it.data,
+                            filename = it.name,
+                            mediaType = it.mediaType,
+                            parent = fulfillment.id
+                        )
+                    } ?: listOf()
+                    fulfillmentAttachments.add(fulfillment)
+                    binaryAttachments.addAll(binary)
+                }
+
+                is Issuer.IssuedCredential.VcSdJwt -> {
+                    fulfillmentAttachments.add(JwmAttachment.encodeJws(cred.vcSdJwt))
+                }
+            }
         }
         val message = IssueCredential(
             body = IssueCredentialBody(
@@ -316,10 +322,10 @@ class IssueCredentialProtocol(
             val attachmentList = binaryAttachments
                 .filter { it.parent == fulfillment.id }
                 .mapNotNull { extractBinaryAttachment(it) }
-            return Holder.StoreCredentialInput.Vc(decoded, attachmentList)
+            return Holder.StoreCredentialInput.Vc(decoded, credentialScheme, attachmentList)
         } ?: runCatching { fulfillment.decodeBinary() }.getOrNull()?.let { decoded ->
             IssuerSigned.deserialize(decoded)?.let { issuerSigned ->
-                return Holder.StoreCredentialInput.Iso(issuerSigned)
+                return Holder.StoreCredentialInput.Iso(issuerSigned, credentialScheme)
             }
         } ?: return null
     }

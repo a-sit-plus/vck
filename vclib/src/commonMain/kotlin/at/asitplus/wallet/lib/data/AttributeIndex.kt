@@ -16,8 +16,8 @@ object AttributeIndex {
     /**
      * May return an empty list, if the Schema is not known
      */
-    fun getTypeOfAttributeForSchemaUri(uri: String): String? {
-        return schemeSet.firstOrNull { it.schemaUri == uri }?.vcType
+    fun resolveSchemaUri(uri: String): ConstantIndex.CredentialScheme? {
+        return schemeSet.firstOrNull { it.schemaUri == uri }
     }
 
 }
