@@ -242,6 +242,7 @@ class OidcSiopWallet(
             ?.filter { it != "$.type" }
             ?.filter { it != "$.mdoc.doctype" }
             ?.map { it.removePrefix("\$.mdoc.") }
+            ?.map { it.removePrefix("\$.") }
             ?: listOf()
         val vp = holder.createPresentation(params.nonce, audience, requestedScopes, requestedClaims)
             ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
@@ -256,11 +257,11 @@ class OidcSiopWallet(
                         PresentationSubmissionDescriptor(
                             id = it.id,
                             format = ClaimFormatEnum.JWT_VP,
-                            path = "$",
+                            path = "\$",
                             nestedPath = PresentationSubmissionDescriptor(
                                 id = uuid4().toString(),
                                 format = ClaimFormatEnum.JWT_VC,
-                                path = "$.verifiableCredential[0]"
+                                path = "\$.verifiableCredential[0]"
                             ),
                         )
                     }?.toTypedArray()
@@ -274,7 +275,27 @@ class OidcSiopWallet(
                     )
                 )
             }
-
+            is Holder.CreatePresentationResult.SdJwt -> {
+                val presentationSubmission = PresentationSubmission(
+                    id = uuid4().toString(),
+                    definitionId = params.presentationDefinition?.id ?: uuid4().toString(),
+                    descriptorMap = params.presentationDefinition?.inputDescriptors?.map {
+                        PresentationSubmissionDescriptor(
+                            id = it.id,
+                            format = ClaimFormatEnum.JWT_SD,
+                            path = "\$",
+                        )
+                    }?.toTypedArray()
+                )
+                return KmmResult.success(
+                    AuthenticationResponseParameters(
+                        idToken = signedIdToken,
+                        state = params.state,
+                        vpToken = vp.sdJwt,
+                        presentationSubmission = presentationSubmission,
+                    )
+                )
+            }
             is Holder.CreatePresentationResult.Document -> {
                 val presentationSubmission = PresentationSubmission(
                     id = uuid4().toString(),
@@ -283,7 +304,7 @@ class OidcSiopWallet(
                         PresentationSubmissionDescriptor(
                             id = it.id,
                             format = ClaimFormatEnum.MSO_MDOC,
-                            path = "$",
+                            path = "\$",
                         )
                     }?.toTypedArray()
                 )
@@ -297,10 +318,6 @@ class OidcSiopWallet(
                 )
             }
 
-            else -> {
-                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
-                    .also { Napier.w("Could not create presentation") }
-            }
         }
     }
 

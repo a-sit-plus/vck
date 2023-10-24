@@ -44,27 +44,6 @@ class IssuerService(
      * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`
      */
     val metadata: IssuerMetadata by lazy {
-        val credentialFormats = credentialSchemes.map {
-            when (it.credentialFormat) {
-                ConstantIndex.CredentialFormat.ISO_18013 -> SupportedCredentialFormat(
-                    format = CredentialFormatEnum.MSO_MDOC,
-                    id = it.vcType,
-                    types = arrayOf(it.vcType),
-                    docType = it.isoDocType,
-                    claims = it.buildIsoClaims(),
-                    supportedBindingMethods = arrayOf(BINDING_METHOD_COSE_KEY),
-                    supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
-                )
-
-                ConstantIndex.CredentialFormat.W3C_VC -> SupportedCredentialFormat(
-                    format = CredentialFormatEnum.JWT_VC,
-                    id = it.vcType,
-                    types = arrayOf(VERIFIABLE_CREDENTIAL, it.vcType),
-                    supportedBindingMethods = arrayOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
-                    supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
-                )
-            }
-        }
         IssuerMetadata(
             issuer = publicContext,
             credentialIssuer = publicContext,
@@ -72,12 +51,38 @@ class IssuerService(
             authorizationEndpointUrl = "$publicContext$authorizationEndpointPath",
             tokenEndpointUrl = "$publicContext$tokenEndpointPath",
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
-            supportedCredentialFormat = credentialFormats.toTypedArray(),
+            supportedCredentialFormat = credentialSchemes.flatMap { it.toSupportedCredentialFormat() }.toTypedArray(),
             displayProperties = credentialSchemes
                 .map { DisplayProperties(it.vcType, "en") }
                 .toTypedArray()
         )
     }
+
+    private fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat() = listOf(
+        SupportedCredentialFormat(
+            format = CredentialFormatEnum.MSO_MDOC,
+            id = vcType,
+            types = arrayOf(vcType),
+            docType = isoDocType,
+            claims = buildIsoClaims(),
+            supportedBindingMethods = arrayOf(BINDING_METHOD_COSE_KEY),
+            supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
+        ),
+        SupportedCredentialFormat(
+            format = CredentialFormatEnum.JWT_VC,
+            id = vcType,
+            types = arrayOf(VERIFIABLE_CREDENTIAL, vcType),
+            supportedBindingMethods = arrayOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
+            supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
+        ),
+        SupportedCredentialFormat(
+            format = CredentialFormatEnum.JWT_VC_SD,
+            id = vcType,
+            types = arrayOf(VERIFIABLE_CREDENTIAL, vcType),
+            supportedBindingMethods = arrayOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
+            supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
+        )
+    )
 
     private fun ConstantIndex.CredentialScheme.buildIsoClaims() = mapOf(
         isoNamespace to DataElements.ALL_ELEMENTS.associateWith { RequestedCredentialClaimSpecification() }
@@ -151,23 +156,24 @@ class IssuerService(
         if (issuedCredentialResult.successful.isEmpty()) {
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
+        return issuedCredentialResult.successful.first().toCredentialResponseParameters()
+    }
 
-        return when (val issuedCredential = issuedCredentialResult.successful.first()) {
-            is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
-                format = CredentialFormatEnum.MSO_MDOC,
-                credential = issuedCredential.issuerSigned.serialize().encodeToString(Base64UrlStrict),
-            )
+    private fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
+        is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
+            format = CredentialFormatEnum.MSO_MDOC,
+            credential = issuerSigned.serialize().encodeToString(Base64UrlStrict),
+        )
 
-            is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
-                format = CredentialFormatEnum.JWT_VC,
-                credential = issuedCredential.vcJws,
-            )
+        is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
+            format = CredentialFormatEnum.JWT_VC,
+            credential = vcJws,
+        )
 
-            is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
-                format = CredentialFormatEnum.JWT_VC_SD,
-                credential = issuedCredential.vcSdJwt,
-            )
-        }
+        is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
+            format = CredentialFormatEnum.JWT_VC_SD,
+            credential = vcSdJwt,
+        )
     }
 
 }

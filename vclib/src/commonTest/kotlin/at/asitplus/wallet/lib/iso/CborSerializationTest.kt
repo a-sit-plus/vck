@@ -9,8 +9,6 @@ import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.EXPIRY_DATE
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.FAMILY_NAME
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUE_DATE
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.PORTRAIT
-import io.github.aakira.napier.DebugAntilog
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -25,10 +23,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.encodeToString
 
 class CborSerializationTest : FreeSpec({
-
-    beforeSpec {
-        Napier.base(DebugAntilog())
-    }
 
     "mDL" {
         val mdl = MobileDrivingLicence(
@@ -147,7 +141,8 @@ class CborSerializationTest : FreeSpec({
         docRequest.shouldNotBeNull()
 
         docRequest.itemsRequest.value.docType shouldBe ConstantIndex.MobileDrivingLicence2023.isoDocType
-        val itemsRequestList = docRequest.itemsRequest.value.namespaces[ConstantIndex.MobileDrivingLicence2023.isoNamespace]
+        val itemsRequestList =
+            docRequest.itemsRequest.value.namespaces[ConstantIndex.MobileDrivingLicence2023.isoNamespace]
         itemsRequestList.shouldNotBeNull()
         itemsRequestList.findItem(FAMILY_NAME) shouldBe true
         itemsRequestList.findItem(DOCUMENT_NUMBER) shouldBe true
@@ -334,7 +329,8 @@ class CborSerializationTest : FreeSpec({
         val document = deviceResponse.documents?.get(0)
         document.shouldNotBeNull()
         document.docType shouldBe ConstantIndex.MobileDrivingLicence2023.isoDocType
-        val issuerSignedList = document.issuerSigned.namespaces?.get(ConstantIndex.MobileDrivingLicence2023.isoNamespace)
+        val issuerSignedList =
+            document.issuerSigned.namespaces?.get(ConstantIndex.MobileDrivingLicence2023.isoNamespace)
         issuerSignedList.shouldNotBeNull()
         issuerSignedList.findItem(0U).elementIdentifier shouldBe FAMILY_NAME
         issuerSignedList.findItem(0U).elementValue.string shouldBe "Doe"

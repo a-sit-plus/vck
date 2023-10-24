@@ -1,10 +1,12 @@
 # Changelog
 
 Release 3.2.0
- - Support representing credentials in both formats, ISO and W3C VC
- - Drop `CredentialScheme.credentialDefinitionName`, is now automatically converted from `vcType`
- - Add `CredentialScheme.isoNamespace` and `CredentialScheme.isoDocType` to be used for representing custom credentials according to ISO 18013-5
- - Remove function `Holder.storeValidatedCredentials`, class `Holder.ValidatedVerifiableCredentialJws`
+ - Support representing credentials in all three representations: Plain JWT, SD-JWT and ISO MDOC
+ - Remove property `credentialFormat` from interface `CredentialScheme`, also enum `CredentialFormat`
+ - Remove property `credentialDefinitionName` from interface `CredentialScheme`, is now automatically converted from `vcType`
+ - Add properties `isoNamespace` and `isoDocType` to interface `CredentialScheme`, to be used for representing custom credentials according to ISO 18013-5
+ - Remove function `storeValidatedCredentials` from interface `Holder` and its implementation `HolderAgent`
+ - Remove class `Holder.ValidatedVerifiableCredentialJws`
  - Add member for `CredentialScheme` to various classes like `CredentialToBeIssued.Vc`, subclasses of `IssuedCredential`, subclasses of `StoreCredentialInput` and subclasses of `StoreEntry`
  - Add parameter for `CredentialScheme` to methods in `SubjectCredentialStore`
  - Remove function `getClaims()` from `CredentialSubject`, logic moved to `IssuerCredentialDataProvider`
@@ -15,6 +17,8 @@ Release 3.2.0
  - Remove function `getCredentialWithType(String, CryptoPublicKey?, Collection<String>, CredentialRepresentation` from interface `IssuerCredentialDataProvider`
  - Add function `getCredential(CryptoPublicKey, CredentialScheme, CredentialRepresentation)` to interface `IssuerCredentialDataProvider`
  - Refactor function `storeGetNextIndex()` in `IssuerCredentialStore` to accomodate all types of credentials
+ - Add constructor property `representation` to `OidcSiopVerifier` to select the representation of credentials
+ - Add constructor property `credentialRepresentation` to `WalletService` (OpenId4VerifiableCredentialIssuance) to select the representation of credentials
 
 Release 3.1.0
  - Support representing credentials in [SD-JWT](https://drafts.oauth.net/oauth-selective-disclosure-jwt/draft-ietf-oauth-selective-disclosure-jwt.html) format

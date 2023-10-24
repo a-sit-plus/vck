@@ -15,8 +15,6 @@ import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.FAMILY_NAME
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.GIVEN_NAME
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUE_DATE
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.PORTRAIT
-import io.github.aakira.napier.DebugAntilog
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -29,10 +27,6 @@ import kotlinx.serialization.cbor.ByteStringWrapper
 import kotlin.random.Random
 
 class IsoMdocTest : FreeSpec({
-
-    beforeSpec {
-        Napier.base(DebugAntilog())
-    }
 
     "issue, store, present, verify" {
         val wallet = Wallet()
