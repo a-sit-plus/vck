@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.cbor
 
-import io.github.aakira.napier.DebugAntilog
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -12,8 +10,6 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.cbor.ByteStringWrapper
 
 class CoseSerializationTest : FreeSpec({
-
-    Napier.base(DebugAntilog())
 
     "Serialization is correct" {
         val cose = CoseSigned(

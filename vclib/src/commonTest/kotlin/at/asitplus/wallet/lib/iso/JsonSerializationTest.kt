@@ -8,8 +8,6 @@ import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.FAMILY_NAME
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUE_DATE
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.PORTRAIT
 import at.asitplus.wallet.lib.jws.JwsSigned
-import io.github.aakira.napier.DebugAntilog
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
@@ -18,10 +16,6 @@ import io.kotest.matchers.shouldBe
 import kotlinx.datetime.LocalDate
 
 class JsonSerializationTest : FreeSpec({
-
-    beforeSpec {
-        Napier.base(DebugAntilog())
-    }
 
     // from ISO/IEC 18013-5:2021(E), D4.2.1.1, page 120
     "Server Request" {

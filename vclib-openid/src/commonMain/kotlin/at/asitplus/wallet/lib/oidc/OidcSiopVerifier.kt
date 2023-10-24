@@ -61,6 +61,7 @@ class OidcSiopVerifier(
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     private val credentialScheme: ConstantIndex.CredentialScheme? = null,
+    private val credentialRepresentation: ConstantIndex.CredentialRepresentation,
     private val requestedAttributes: List<String>? = null,
 ) {
 
@@ -77,6 +78,7 @@ class OidcSiopVerifier(
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
             credentialScheme: ConstantIndex.CredentialScheme? = null,
+            credentialRepresentation: ConstantIndex.CredentialRepresentation,
             requestedAttributes: List<String>? = null,
         ) = OidcSiopVerifier(
             verifier = verifier,
@@ -87,6 +89,7 @@ class OidcSiopVerifier(
             timeLeewaySeconds = timeLeewaySeconds,
             clock = clock,
             credentialScheme = credentialScheme,
+            credentialRepresentation = credentialRepresentation,
             requestedAttributes = requestedAttributes,
         )
     }
@@ -171,7 +174,7 @@ class OidcSiopVerifier(
     ): AuthenticationRequestParameters {
         val containerJwt = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text))
         val vpFormats = FormatHolder(
-            msoMdoc = if (schemeIsIso()) containerJwt else null,
+            msoMdoc = if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC) containerJwt else null,
             jwtVp = containerJwt,
         )
         val metadata = RelyingPartyMetadata(
@@ -180,10 +183,12 @@ class OidcSiopVerifier(
             subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
             vpFormats = vpFormats,
         )
-        val typeConstraint = when (credentialScheme?.credentialFormat) {
-            ConstantIndex.CredentialFormat.W3C_VC -> credentialScheme.vcConstraint()
-            ConstantIndex.CredentialFormat.ISO_18013 -> credentialScheme.isoConstraint()
-            else -> null
+        val typeConstraint = credentialScheme?.let {
+            when (credentialRepresentation) {
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.vcConstraint()
+                ConstantIndex.CredentialRepresentation.SD_JWT -> it.vcConstraint()
+                ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoConstraint()
+            }
         }
         val attributeConstraint = requestedAttributes?.let { createConstraints(it) } ?: arrayOf()
         val constraintFields = listOfNotNull(typeConstraint, *attributeConstraint).toTypedArray()
@@ -212,8 +217,6 @@ class OidcSiopVerifier(
         )
     }
 
-    private fun schemeIsIso() = credentialScheme?.credentialFormat == ConstantIndex.CredentialFormat.ISO_18013
-
     private fun ConstantIndex.CredentialScheme.vcConstraint() = ConstraintField(
         path = arrayOf("$.type"),
         filter = ConstraintFilter(
@@ -232,7 +235,7 @@ class OidcSiopVerifier(
 
     private fun createConstraints(attributeTypes: List<String>): Array<ConstraintField> =
         attributeTypes.map {
-            if (schemeIsIso())
+            if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
                 ConstraintField(path = arrayOf("\$.mdoc.$it"), intentToRetain = false)
             else
                 ConstraintField(path = arrayOf("\$.$it"))
@@ -348,6 +351,7 @@ class OidcSiopVerifier(
         val result = when (format) {
             ClaimFormatEnum.JWT_VP -> verifier.verifyPresentation(vp, idToken.nonce)
             ClaimFormatEnum.MSO_MDOC -> verifier.verifyPresentation(vp, idToken.nonce)
+            ClaimFormatEnum.JWT_SD -> verifier.verifyPresentation(vp, idToken.nonce)
             else -> null
         } ?: return AuthnResponseResult.ValidationError("descriptor format not known", params.state)
             .also { Napier.w("Descriptor format not known: $format") }
