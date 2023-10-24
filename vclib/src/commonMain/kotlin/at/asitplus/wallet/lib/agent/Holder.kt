@@ -1,8 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
 /**
@@ -27,6 +28,7 @@ interface Holder {
 
     sealed class StoreCredentialInput {
         data class Vc(val vcJws: String, val attachments: List<Issuer.Attachment>? = null) : StoreCredentialInput()
+        data class SdJwt(val vcSdJwt: String) : StoreCredentialInput()
         data class Iso(val issuerSigned: IssuerSigned) : StoreCredentialInput()
     }
 
@@ -39,7 +41,8 @@ interface Holder {
     suspend fun storeCredentials(credentialList: List<StoreCredentialInput>): StoredCredentialsResult
 
     data class StoredCredentialsResult(
-        val accepted: List<VerifiableCredentialJws> = listOf(),
+        val acceptedVcJwt: List<VerifiableCredentialJws> = listOf(),
+        val acceptedSdJwt: List<VerifiableCredentialSdJwt> = listOf(),
         val acceptedIso: List<IssuerSigned> = listOf(),
         val rejected: List<String> = listOf(),
         val notVerified: List<String> = listOf(),
@@ -91,6 +94,12 @@ interface Holder {
             val status: Validator.RevocationStatus
         ) : StoredCredential()
 
+        data class SdJwt(
+            val vcSerialized: String,
+            val sdJwt: VerifiableCredentialSdJwt,
+            val status: Validator.RevocationStatus
+        ) : StoredCredential()
+
         data class Iso(
             val issuerSigned: IssuerSigned
         ) : StoredCredential()
@@ -127,9 +136,15 @@ interface Holder {
         data class Signed(val jws: String) : CreatePresentationResult()
 
         /**
+         * [sdJwt] contains a serialized SD-JWT credential with disclosures and key binding JWT appended
+         * (separated with `~` as in the specification), that can be parsed by [Verifier.verifyPresentation].
+         */
+        data class SdJwt(val sdJwt: String) : CreatePresentationResult()
+
+        /**
          * [document] contains a valid ISO 18013 [Document] with [IssuerSigned] and [DeviceSigned] structures
          */
-        data class Document(val document: at.asitplus.wallet.lib.iso.Document): CreatePresentationResult()
+        data class Document(val document: at.asitplus.wallet.lib.iso.Document) : CreatePresentationResult()
     }
 
 }

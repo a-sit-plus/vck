@@ -1,7 +1,10 @@
 # Changelog
 
-Release 3.0.2
- - tbd
+Release 3.1.0
+ - Support representing credentials in [SD-JWT](https://drafts.oauth.net/oauth-selective-disclosure-jwt/draft-ietf-oauth-selective-disclosure-jwt.html) format
+ - Rename class `Issuer.IssuedCredential.Vc` to `Issuer.IssuedCredential.VcJwt`
+ - Several new classes for sealed classes like `Issuer.IssuedCredential`, `Issuer.IssuedCredentialResult`, `Holder.StoreCredentialInput`, `Holder.StoredCredential`, `Parser.ParseVcResult`, `SubjectCredentialStore.StoreEntry`, `Verifier.VerifyCredentialResult`
+ - Require implementations of `CredentialSubject` to implement `getClaims()` to process claims when issuing a credential with selective disclosures
 
 Release 3.0.1
  - Dependency Updates

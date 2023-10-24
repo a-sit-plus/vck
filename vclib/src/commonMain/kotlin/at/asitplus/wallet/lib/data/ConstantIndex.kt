@@ -7,6 +7,11 @@ object ConstantIndex {
         W3C_VC
     }
 
+    enum class CredentialRepresentation {
+        PLAIN_JWT,
+        SD_JWT,
+    }
+
     interface CredentialScheme {
         /**
          * Name of the credential definition, used in several protocols.

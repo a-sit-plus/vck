@@ -4,7 +4,10 @@ import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.cbor.CoseHeader
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
+import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceSigned
@@ -18,6 +21,7 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import io.github.aakira.napier.Napier
+import kotlinx.datetime.Clock
 import kotlinx.serialization.cbor.ByteStringWrapper
 
 
@@ -77,7 +81,8 @@ class HolderAgent(
      * Note: Revocation credentials should not be stored, but set with [setRevocationList].
      */
     override suspend fun storeCredentials(credentialList: List<Holder.StoreCredentialInput>): Holder.StoredCredentialsResult {
-        val accepted = mutableListOf<VerifiableCredentialJws>()
+        val acceptedVcJwt = mutableListOf<VerifiableCredentialJws>()
+        val acceptedSdJwt = mutableListOf<VerifiableCredentialSdJwt>()
         val acceptedIso = mutableListOf<IssuerSigned>()
         val rejected = mutableListOf<String>()
         val attachments = mutableListOf<Holder.StoredAttachmentResult>()
@@ -85,7 +90,7 @@ class HolderAgent(
             when (val vc = validator.verifyVcJws(cred.vcJws, identifier)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
-                is Verifier.VerifyCredentialResult.Success -> accepted += vc.jws
+                is Verifier.VerifyCredentialResult.SuccessJwt -> acceptedVcJwt += vc.jws
                     .also { subjectCredentialStore.storeCredential(it, cred.vcJws) }
                     .also {
                         cred.attachments?.forEach { attachment ->
@@ -93,6 +98,16 @@ class HolderAgent(
                                 .also { attachments += Holder.StoredAttachmentResult(attachment.name, attachment.data) }
                         }
                     }
+
+                else -> {}
+            }
+        }
+        credentialList.filterIsInstance<Holder.StoreCredentialInput.SdJwt>().forEach { cred ->
+            when (val vc = validator.verifySdJwt(cred.vcSdJwt, identifier)) {
+                is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
+                is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
+                is Verifier.VerifyCredentialResult.SuccessSdJwt -> acceptedSdJwt += vc.sdJwt
+                    .also { subjectCredentialStore.storeCredentialSd(it, cred.vcSdJwt, vc.disclosures) }
 
                 else -> {}
             }
@@ -111,7 +126,8 @@ class HolderAgent(
             }
         }
         return Holder.StoredCredentialsResult(
-            accepted = accepted,
+            acceptedVcJwt = acceptedVcJwt,
+            acceptedSdJwt = acceptedSdJwt,
             acceptedIso = acceptedIso,
             rejected = rejected,
             attachments = attachments
@@ -150,13 +166,17 @@ class HolderAgent(
                     it.vc,
                     validator.checkRevocationStatus(it.vc)
                 )
+
+                is SubjectCredentialStore.StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
+                    it.vcSerialized, it.sdJwt, Validator.RevocationStatus.VALID // TODO validation check
+                )
             }
         }
     }
 
     /**
      * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,
-     * that match [attributeTypes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO case).
+     * that match [attributeTypes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO or SD-JWT case).
      *
      * May return null if no valid credentials (i.e. non-revoked, matching attribute name) are available.
      */
@@ -210,9 +230,37 @@ class HolderAgent(
                 )
             )
         }
+        val validSdJwtCredentials = credentials
+            .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
+            .filter { validator.checkRevocationStatus(it.sdJwt) != Validator.RevocationStatus.REVOKED }
+        if (validSdJwtCredentials.isNotEmpty()) {
+            // TODO can only be one credential at a time
+            val keyBindingJws = KeyBindingJws(
+                issuedAt = Clock.System.now(),
+                audience = audienceId,
+                challenge = challenge
+            )
+            val jwsPayload = keyBindingJws.serialize().encodeToByteArray()
+            val keyBinding = jwsService.createSignedJwt(JwsContentTypeConstants.KB_JWT, jwsPayload)
+                ?: return null
+                    .also { Napier.w("Could not create JWS for presentation") }
+            val first = validSdJwtCredentials.first()
+            val filteredDisclosures = first.disclosures
+                .filter { it.discloseItem(requestedClaims) }.keys
+            val sdJwt = (listOf(first.vcSerialized.substringBefore("~")) + filteredDisclosures + keyBinding)
+                .joinToString("~")
+            return Holder.CreatePresentationResult.SdJwt(sdJwt)
+        }
         Napier.w("Got no valid credentials for $attributeTypes")
         return null
     }
+
+    private fun Map.Entry<String, SelectiveDisclosureItem?>.discloseItem(requestedClaims: Collection<String>?) =
+        if (requestedClaims?.isNotEmpty() == true) {
+            value?.let { it.claimName in requestedClaims } ?: false
+        } else {
+            true
+        }
 
     private fun ByteStringWrapper<IssuerSignedItem>.discloseItem(requestedClaims: Collection<String>?) =
         if (requestedClaims?.isNotEmpty() == true) {

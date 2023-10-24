@@ -230,6 +230,8 @@ class IssueCredentialProtocol(
         val requestedAttributeType = AttributeIndex.getTypeOfAttributeForSchemaUri(uri)
             ?: return problemReporter.problemLastMessage(lastMessage.threadId, "requested-attributes-empty")
 
+        // TODO Is there a way to transport the format, i.e. JWT-VC or SD-JWT?
+        requestCredentialAttachment.credentialManifest.credential
         val issuedCredentials =
             issuer?.issueCredentialWithTypes(subjectIdentifier, attributeTypes = listOf(requestedAttributeType))
                 ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
@@ -249,7 +251,7 @@ class IssueCredentialProtocol(
 
         val fulfillmentAttachments = mutableListOf<JwmAttachment>()
         val binaryAttachments = mutableListOf<JwmAttachment>()
-        issuedCredentials.successful.filterIsInstance<Issuer.IssuedCredential.Vc>().forEach { cred ->
+        issuedCredentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().forEach { cred ->
             val fulfillment = JwmAttachment.encodeJws(cred.vcJws)
             val binary = cred.attachments?.map {
                 JwmAttachment.encode(

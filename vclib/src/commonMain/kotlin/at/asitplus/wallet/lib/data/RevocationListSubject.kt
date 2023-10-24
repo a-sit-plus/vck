@@ -9,9 +9,11 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 @SerialName(VcDataModelConstants.REVOCATION_LIST_2020)
-data class RevocationListSubject (
+data class RevocationListSubject(
     override val id: String,
 
     @SerialName("encodedList")
     val encodedList: String,
-) : CredentialSubject()
+) : CredentialSubject() {
+    override fun getClaims(): List<Claim> = listOf()
+}

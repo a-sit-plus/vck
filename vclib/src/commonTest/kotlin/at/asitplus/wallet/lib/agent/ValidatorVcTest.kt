@@ -51,9 +51,9 @@ class ValidatorVcTest : FreeSpec() {
             issuer.issueCredentialWithTypes(
                 verifier.identifier,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
-            ).successful.filterIsInstance<Issuer.IssuedCredential.Vc>().map { it.vcJws }
+            ).successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }
                 .forEach {
-                    verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
+                    verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                 }
         }
 
@@ -62,11 +62,11 @@ class ValidatorVcTest : FreeSpec() {
                 verifier.identifier,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).successful
-                .filterIsInstance<Issuer.IssuedCredential.Vc>()
+                .filterIsInstance<Issuer.IssuedCredential.VcJwt>()
                 .map { it.vcJws }
                 .map { it to verifier.verifyVcJws(it) }.forEach {
                     val value = it.second
-                    value.shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
+                    value.shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                     issuerCredentialStore.revoke(value.jws.vc.id, FixedTimePeriodProvider.timePeriod) shouldBe true
                     val revocationListCredential =
                         issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
@@ -86,7 +86,7 @@ class ValidatorVcTest : FreeSpec() {
                 uuid4().toString(),
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).successful
-                .filterIsInstance<Issuer.IssuedCredential.Vc>()
+                .filterIsInstance<Issuer.IssuedCredential.VcJwt>()
                 .map { it.vcJws }.forEach {
                     verifier.verifyVcJws(it)
                         .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
@@ -98,7 +98,7 @@ class ValidatorVcTest : FreeSpec() {
                 verifier.identifier,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
             ).successful
-                .filterIsInstance<Issuer.IssuedCredential.Vc>()
+                .filterIsInstance<Issuer.IssuedCredential.VcJwt>()
                 .map { it.vcJws }
                 .map { it.replaceFirstChar { "f" } }.forEach {
                     verifier.verifyVcJws(it)
@@ -118,7 +118,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
                     ?.let {
-                        verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
+                        verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                     }
             }
         }
@@ -252,7 +252,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
                     ?.let {
-                        verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
+                        verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                     }
             }
         }

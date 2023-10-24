@@ -2,7 +2,9 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
 class InMemorySubjectCredentialStore : SubjectCredentialStore {
@@ -12,6 +14,14 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
 
     override suspend fun storeCredential(vc: VerifiableCredentialJws, vcSerialized: String) {
         credentials += SubjectCredentialStore.StoreEntry.Vc(vcSerialized, vc)
+    }
+
+    override suspend fun storeCredentialSd(
+        vc: VerifiableCredentialSdJwt,
+        vcSerialized: String,
+        disclosures: Map<String, SelectiveDisclosureItem?>
+    ) {
+        credentials += SubjectCredentialStore.StoreEntry.SdJwt(vcSerialized, vc, disclosures)
     }
 
     override suspend fun storeCredential(issuerSigned: IssuerSigned) {
@@ -34,6 +44,7 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
         when (this) {
             is SubjectCredentialStore.StoreEntry.Iso -> ConstantIndex.MobileDrivingLicence2023.vcType in requiredAttributeTypes
             is SubjectCredentialStore.StoreEntry.Vc -> vc.vc.type.any { it in requiredAttributeTypes }
+            is SubjectCredentialStore.StoreEntry.SdJwt -> sdJwt.type.any { it in requiredAttributeTypes }
         }
     } else true
 

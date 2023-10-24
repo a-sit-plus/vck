@@ -50,7 +50,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
                     dataProvider = DummyCredentialDataProvider(),
                 ).issueCredentialWithTypes(
                     holderAgent.identifier,
-                    subjectPublicKey = holderCryptoService.toPublicKey().toCoseKey(),
+                    subjectPublicKey = holderCryptoService.toPublicKey(),
                     attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
                 ).toStoreCredentialInput()
             )

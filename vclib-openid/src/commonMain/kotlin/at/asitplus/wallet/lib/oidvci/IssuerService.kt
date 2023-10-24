@@ -1,9 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.cbor.CoseEllipticCurve
-import at.asitplus.wallet.lib.cbor.CoseKey
-import at.asitplus.wallet.lib.cbor.CoseKeyType
 import at.asitplus.wallet.lib.data.Base64UrlStrict
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
@@ -153,12 +150,9 @@ class IssuerService(
 
         val issuedCredentialResult = issuer.issueCredentialWithTypes(
             subjectId = subjectPublicKey.identifier,
-            subjectPublicKey = CoseKey.fromAnsiX963Bytes(
-                CoseKeyType.EC2,
-                CoseEllipticCurve.P256,
-                subjectPublicKey.toAnsiX963ByteArray().getOrThrow()
-            ),
-            attributeTypes = params.types.toList()
+            subjectPublicKey = subjectPublicKey.toCryptoPublicKey(),
+            attributeTypes = params.types.toList(),
+            representation = params.format.toRepresentation(),
         )
         if (issuedCredentialResult.successful.isEmpty()) {
             throw OAuth2Exception(Errors.INVALID_REQUEST)
@@ -167,16 +161,26 @@ class IssuerService(
         return when (val issuedCredential = issuedCredentialResult.successful.first()) {
             is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
                 format = CredentialFormatEnum.MSO_MDOC,
-                credential = issuedCredential.issuerSigned.serialize().encodeToString(Base64UrlStrict)
+                credential = issuedCredential.issuerSigned.serialize().encodeToString(Base64UrlStrict),
             )
 
-            is Issuer.IssuedCredential.Vc -> CredentialResponseParameters(
+            is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
                 format = CredentialFormatEnum.JWT_VC,
-                credential = issuedCredential.vcJws
+                credential = issuedCredential.vcJws,
+            )
+
+            is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
+                format = CredentialFormatEnum.JWT_VC_SD,
+                credential = issuedCredential.vcSdJwt,
             )
         }
     }
 
+}
+
+private fun CredentialFormatEnum.toRepresentation() = when (this) {
+    CredentialFormatEnum.JWT_VC_SD -> ConstantIndex.CredentialRepresentation.SD_JWT
+    else -> ConstantIndex.CredentialRepresentation.PLAIN_JWT
 }
 
 class OAuth2Exception(val error: String, val errorDescription: String? = null) : Throwable(error) {

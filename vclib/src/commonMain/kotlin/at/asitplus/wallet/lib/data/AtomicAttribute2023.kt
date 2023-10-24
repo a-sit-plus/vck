@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 @SerialName("AtomicAttribute2023")
-data class AtomicAttribute2023 (
+data class AtomicAttribute2023(
     override val id: String,
 
     @SerialName("name")
@@ -24,4 +24,5 @@ data class AtomicAttribute2023 (
 
     constructor(id: String, name: String, value: String) : this(id, name, value, "application/text")
 
+    override fun getClaims() = listOf(Claim("name", name), Claim("value", value), Claim("mime-type", mimeType))
 }

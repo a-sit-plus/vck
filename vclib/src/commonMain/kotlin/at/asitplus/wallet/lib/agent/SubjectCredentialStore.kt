@@ -1,8 +1,10 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
 /**
@@ -18,6 +20,19 @@ interface SubjectCredentialStore {
      * @param vcSerialized Serialized form of [VerifiableCredential]
      */
     suspend fun storeCredential(vc: VerifiableCredentialJws, vcSerialized: String)
+
+    /**
+     * Implementations should store the passed credential in a secure way.
+     * Passed credentials have been validated before.
+     *
+     * @param vc Instance of [VerifiableCredentialSdJwt]
+     * @param vcSerialized Serialized form of [VerifiableCredential]
+     */
+    suspend fun storeCredentialSd(
+        vc: VerifiableCredentialSdJwt,
+        vcSerialized: String,
+        disclosures: Map<String, SelectiveDisclosureItem?>
+    )
 
     /**
      * Implementations should store the passed credential in a secure way.
@@ -55,6 +70,15 @@ interface SubjectCredentialStore {
 
     sealed class StoreEntry {
         data class Vc(val vcSerialized: String, val vc: VerifiableCredentialJws) : StoreEntry()
+        data class SdJwt(
+            val vcSerialized: String,
+            val sdJwt: VerifiableCredentialSdJwt,
+            /**
+             * Map of original serialized disclosure item to parsed item
+             */
+            val disclosures: Map<String, SelectiveDisclosureItem?>
+        ) : StoreEntry()
+
         data class Iso(val issuerSigned: IssuerSigned) : StoreEntry()
     }
 
