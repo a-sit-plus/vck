@@ -140,12 +140,13 @@ class IssuerService(
             throw OAuth2Exception(Errors.INVALID_PROOF)
         val subjectPublicKey = jwsSigned.header.publicKey
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
+        val cryptoPublicKey = subjectPublicKey.toCryptoPublicKey()
+            ?: throw OAuth2Exception(Errors.INVALID_PROOF)
 
-        val issuedCredentialResult = issuer.issueCredentialWithTypes(
-            subjectId = subjectPublicKey.identifier,
-            subjectPublicKey = subjectPublicKey.toCryptoPublicKey(),
+        val issuedCredentialResult = issuer.issueCredential(
+            subjectPublicKey = cryptoPublicKey,
             attributeTypes = params.types.toList(),
-            representation = params.format.toRepresentation(),
+            representation = params.format.toRepresentation()
         )
         if (issuedCredentialResult.successful.isEmpty()) {
             throw OAuth2Exception(Errors.INVALID_REQUEST)

@@ -48,10 +48,10 @@ class OidcSiopIsoProtocolTest : FreeSpec({
                 IssuerAgent.newDefaultInstance(
                     DefaultCryptoService(),
                     dataProvider = DummyCredentialDataProvider(),
-                ).issueCredentialWithTypes(
-                    holderAgent.identifier,
+                ).issueCredential(
                     subjectPublicKey = holderCryptoService.toPublicKey(),
-                    attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
+                    attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType),
+                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
                 ).toStoreCredentialInput()
             )
         }

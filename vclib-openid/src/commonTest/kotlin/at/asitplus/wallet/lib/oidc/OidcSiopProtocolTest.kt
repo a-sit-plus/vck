@@ -1,10 +1,14 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.wallet.lib.LibraryInitializer
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
@@ -18,8 +22,6 @@ import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 
 class OidcSiopProtocolTest : FreeSpec({
 
@@ -47,9 +49,10 @@ class OidcSiopProtocolTest : FreeSpec({
                 IssuerAgent.newDefaultInstance(
                     DefaultCryptoService(),
                     dataProvider = DummyCredentialDataProvider(),
-                ).issueCredentialWithTypes(
-                    holderAgent.identifier,
-                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                ).issueCredential(
+                    subjectPublicKey = holderCryptoService.toPublicKey(),
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+                    representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
                 ).toStoreCredentialInput()
             )
         }

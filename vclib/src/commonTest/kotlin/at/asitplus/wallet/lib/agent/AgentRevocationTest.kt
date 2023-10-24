@@ -22,6 +22,7 @@ class AgentRevocationTest : FreeSpec({
 
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var verifier: Verifier
+    lateinit var verifierCryptoService: CryptoService
     lateinit var issuer: Issuer
     lateinit var expectedRevokedIndexes: List<Long>
 
@@ -32,7 +33,8 @@ class AgentRevocationTest : FreeSpec({
             issuerCredentialStore = issuerCredentialStore,
             dataProvider = DummyCredentialDataProvider()
         )
-        verifier = VerifierAgent.newRandomInstance()
+        verifierCryptoService = DefaultCryptoService()
+        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
 
@@ -52,9 +54,10 @@ class AgentRevocationTest : FreeSpec({
     }
 
     "credentials should contain status information" {
-        val result = issuer.issueCredentialWithTypes(
-            verifier.identifier,
-            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
+        val result = issuer.issueCredential(
+            subjectPublicKey = verifierCryptoService.toPublicKey(),
+            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )
         if (result.failed.isNotEmpty()) fail("no issued credentials")
 

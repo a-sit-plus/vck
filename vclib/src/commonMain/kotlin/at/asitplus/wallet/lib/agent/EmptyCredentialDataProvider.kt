@@ -6,12 +6,10 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 
 object EmptyCredentialDataProvider : IssuerCredentialDataProvider {
 
-    override fun getCredentialWithType(
-        subjectId: String,
-        subjectPublicKey: CryptoPublicKey?,
-        attributeTypes: Collection<String>,
+    override fun getCredential(
+        subjectPublicKey: CryptoPublicKey,
+        credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation
-    ): KmmResult<List<CredentialToBeIssued>> =
-        KmmResult.failure(NotImplementedError())
+    ): KmmResult<List<CredentialToBeIssued>> = KmmResult.failure(NotImplementedError())
 
 }

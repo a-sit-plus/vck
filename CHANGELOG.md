@@ -10,6 +10,10 @@ Release 3.2.0
  - Remove function `getClaims()` from `CredentialSubject`, logic moved to `IssuerCredentialDataProvider`
  - Add parameter `representation` to method `getCredentialWithType` in interface `IssuerCredentialDataProvider`
  - Add function `storeGetNextIndex(String, String, Instant, Instant, Int)` to interface `IssuerCredentialStore`
+ - Remove function `issueCredentialWithTypes(String, CryptoPublicKey?, Collection<String>, CredentialRepresentation)` from interface `Issuer` and its implementation `IssuerAgent`
+ - Add function `issueCredential(CryptoPublicKey, Collection<String>, CredentialRepresentation)` to interface `Issuer` and its implementation `IssuerAgent`
+ - Remove function `getCredentialWithType(String, CryptoPublicKey?, Collection<String>, CredentialRepresentation` from interface `IssuerCredentialDataProvider`
+ - Add function `getCredential(CryptoPublicKey, CredentialScheme, CredentialRepresentation)` to interface `IssuerCredentialDataProvider`
 
 Release 3.1.0
  - Support representing credentials in [SD-JWT](https://drafts.oauth.net/oauth-selective-disclosure-jwt/draft-ietf-oauth-selective-disclosure-jwt.html) format

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.aries
 
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Issuer
@@ -230,10 +231,15 @@ class IssueCredentialProtocol(
             ?: return problemReporter.problemLastMessage(lastMessage.threadId, "requested-attributes-empty")
 
         // TODO Is there a way to transport the format, i.e. JWT-VC or SD-JWT?
-        val subjectIdentifier = requestCredentialAttachment.credentialManifest.subject ?: senderKey.identifier
-        val issuedCredentials =
-            issuer?.issueCredentialWithTypes(subjectIdentifier, attributeTypes = listOf(requestedAttributeType))
-                ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
+        val cryptoPublicKey =
+            requestCredentialAttachment.credentialManifest.subject?.let { CryptoPublicKey.Ec.fromKeyId(it) }
+                ?: senderKey.toCryptoPublicKey()
+                ?: return problemReporter.problemInternal(lastMessage.threadId, "no-sender-key")
+        val issuedCredentials = issuer?.issueCredential(
+            subjectPublicKey = cryptoPublicKey,
+            attributeTypes = listOf(requestedAttributeType),
+            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
+        ) ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
 
         //TODO: Pack this info into `args` or `comment`
         if (issuedCredentials.failed.isNotEmpty()) {
