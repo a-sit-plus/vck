@@ -52,7 +52,7 @@ class AgentSdJwtTest : FreeSpec({
             it.acceptedSdJwt.forEach { println(it) }
         }
 
-        val vp = holder.createPresentation(challenge, verifier.identifier, requestedClaims = listOf("name")).also {
+        val vp = holder.createPresentation(challenge, verifier.identifier, requestedClaims = listOf("given-name")).also {
             it.shouldNotBeNull()
         }
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
@@ -61,7 +61,7 @@ class AgentSdJwtTest : FreeSpec({
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
         verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         verified.disclosures shouldHaveSize 1
-        verified.disclosures.forAll { it.claimName shouldBe "name" }
+        verified.disclosures.forAll { it.claimName shouldBe "given-name" }
         verified.isRevoked shouldBe false
     }
 

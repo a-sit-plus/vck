@@ -93,7 +93,7 @@ class IssuerAgent(
         attributeTypes: Collection<String>,
         representation: ConstantIndex.CredentialRepresentation,
     ): Issuer.IssuedCredentialResult {
-        val result = dataProvider.getCredentialWithType(subjectId, subjectPublicKey, attributeTypes)
+        val result = dataProvider.getCredentialWithType(subjectId, subjectPublicKey, attributeTypes, representation)
         result.exceptionOrNull()?.let { failure ->
             return Issuer.IssuedCredentialResult(failed = attributeTypes.map { Issuer.FailedAttribute(it, failure) })
         }
@@ -228,7 +228,7 @@ class IssuerAgent(
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
             vcId,
-            credential.subject,
+            credential.subjectId,
             issuanceDate,
             expirationDate,
             timePeriod
@@ -246,7 +246,7 @@ class IssuerAgent(
         val disclosureDigests = disclosures
             .map { it.encodeToByteArray().toByteString().sha256().base64Url() }
         val jwsPayload = VerifiableCredentialSdJwt(
-            subject = credential.subject.id,
+            subject = credential.subjectId,
             notBefore = issuanceDate,
             issuer = identifier,
             expiration = expirationDate,

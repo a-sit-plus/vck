@@ -24,6 +24,19 @@ interface IssuerCredentialStore {
 
     /**
      * Called by the issuer when creating a new credential.
+     * Expected to return a new index to use as a `statusListIndex`
+     * Returns null if `vcId` is already registered
+     */
+    fun storeGetNextIndex(
+        vcId: String,
+        subjectId: String,
+        issuanceDate: Instant,
+        expirationDate: Instant,
+        timePeriod: Int
+    ): Long?
+
+    /**
+     * Called by the issuer when creating a new credential.
      * Expected to return a new index to use as something for ISO revocation?!
      * Returns null if `vcId` is already registered
      */

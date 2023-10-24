@@ -20,7 +20,8 @@ interface IssuerCredentialDataProvider {
     fun getCredentialWithType(
         subjectId: String,
         subjectPublicKey: CryptoPublicKey? = null,
-        attributeTypes: Collection<String>
+        attributeTypes: Collection<String>,
+        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
     ): KmmResult<List<CredentialToBeIssued>>
 
 }
@@ -34,7 +35,7 @@ sealed class CredentialToBeIssued {
     ) : CredentialToBeIssued()
 
     data class VcSd(
-        val subject: CredentialSubject,
+        val subjectId: String,
         val claims: Collection<ClaimToBeIssued>,
         val expiration: Instant,
         val scheme: ConstantIndex.CredentialScheme,

@@ -38,6 +38,24 @@ class InMemoryIssuerCredentialStore : IssuerCredentialStore {
     }
 
     override fun storeGetNextIndex(
+        vcId: String,
+        subjectId: String,
+        issuanceDate: Instant,
+        expirationDate: Instant,
+        timePeriod: Int
+    ): Long {
+        val list = map.getOrPut(timePeriod) { mutableListOf() }
+        val newIndex = (list.maxOfOrNull { it.statusListIndex } ?: 0) + 1
+        list += Credential(
+            vcId = vcId,
+            statusListIndex = newIndex,
+            revoked = false,
+            expirationDate = expirationDate
+        )
+        return newIndex
+    }
+
+    override fun storeGetNextIndex(
         issuerSignedItemList: List<IssuerSignedItem>,
         issuanceDate: Instant,
         expirationDate: Instant,
