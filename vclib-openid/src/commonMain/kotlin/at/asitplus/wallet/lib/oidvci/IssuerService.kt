@@ -51,9 +51,7 @@ class IssuerService(
                     id = it.vcType,
                     types = arrayOf(it.vcType),
                     docType = it.isoDocType,
-                    claims = mapOf(
-                        it.isoNamespace to buildMdlSupportedClaims()
-                    ),
+                    claims = it.buildIsoClaims(),
                     supportedBindingMethods = arrayOf(BINDING_METHOD_COSE_KEY),
                     supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.text),
                 )
@@ -81,15 +79,9 @@ class IssuerService(
         )
     }
 
-    // TODO do we need to specify all available claims here?
-    private fun buildMdlSupportedClaims() = listOf(
-        DataElements.GIVEN_NAME,
-        DataElements.FAMILY_NAME,
-        DataElements.DOCUMENT_NUMBER,
-        DataElements.ISSUE_DATE,
-        DataElements.EXPIRY_DATE,
-        DataElements.DRIVING_PRIVILEGES
-    ).associateWith { RequestedCredentialClaimSpecification() }
+    private fun ConstantIndex.CredentialScheme.buildIsoClaims() = mapOf(
+        isoNamespace to DataElements.ALL_ELEMENTS.associateWith { RequestedCredentialClaimSpecification() }
+    )
 
     /**
      * Send this result as HTTP Header `Location` in a 302 response to the client.
