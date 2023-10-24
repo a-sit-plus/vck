@@ -45,9 +45,10 @@ class ValidatorVpTest : FreeSpec({
         challenge = uuid4().toString()
         runBlocking {
             holder.storeCredentials(
-                issuer.issueCredentialWithTypes(
-                    holder.identifier,
-                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                issuer.issueCredential(
+                    subjectPublicKey = holderCryptoService.toPublicKey(),
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+                    representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).toStoreCredentialInput()
             )
         }

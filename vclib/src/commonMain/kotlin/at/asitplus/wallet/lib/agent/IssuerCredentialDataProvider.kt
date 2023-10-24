@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.CryptoPublicKey
-import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
@@ -14,39 +13,31 @@ import kotlinx.datetime.Instant
 interface IssuerCredentialDataProvider {
 
     /**
-     * Gets called with a list of credential types, i.e. some of
-     * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]
+     * Gets called with a resolved [credentialScheme], the holder key in [subjectPublicKey] and the requested
+     * credential [representation]
      */
-    fun getCredentialWithType(
-        subjectId: String,
-        subjectPublicKey: CryptoPublicKey? = null,
-        attributeTypes: Collection<String>,
-        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
+    fun getCredential(
+        subjectPublicKey: CryptoPublicKey,
+        credentialScheme: ConstantIndex.CredentialScheme,
+        representation: ConstantIndex.CredentialRepresentation,
     ): KmmResult<List<CredentialToBeIssued>>
-
 }
 
 sealed class CredentialToBeIssued {
-    data class Vc(
+    data class VcJwt(
         val subject: CredentialSubject,
         val expiration: Instant,
-        val scheme: ConstantIndex.CredentialScheme,
         val attachments: List<Issuer.Attachment>? = null
     ) : CredentialToBeIssued()
 
     data class VcSd(
-        val subjectId: String,
         val claims: Collection<ClaimToBeIssued>,
         val expiration: Instant,
-        val scheme: ConstantIndex.CredentialScheme,
-        val attachments: List<Issuer.Attachment>? = null
     ) : CredentialToBeIssued()
 
     data class Iso(
         val issuerSignedItems: List<IssuerSignedItem>,
-        val subjectPublicKey: CoseKey,
         val expiration: Instant,
-        val scheme: ConstantIndex.CredentialScheme,
     ) : CredentialToBeIssued()
 }
 

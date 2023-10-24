@@ -13,7 +13,7 @@ class PresentProofMessenger private constructor(
     private val serviceEndpoint: String? = null,
     private val challengeForPresentation: String = uuid4().toString(),
     createProtocolWhenNotActive: Boolean = true,
-    private val requestedAttributeTypes: Collection<String>? = null,
+    private val requestedClaims: Collection<String>? = null,
     private val credentialScheme: ConstantIndex.CredentialScheme,
 ) : ProtocolMessenger<PresentProofProtocol, PresentProofProtocolResult>(
     messageWrapper = messageWrapper,
@@ -26,7 +26,7 @@ class PresentProofMessenger private constructor(
     override fun createProtocolInstance() = PresentProofProtocol(
         verifier = verifier,
         holder = holder,
-        requestedAttributeTypes = requestedAttributeTypes,
+        requestedClaims = requestedClaims,
         credentialScheme = credentialScheme,
         serviceEndpoint = serviceEndpoint,
         challengeForPresentation = challengeForPresentation,
@@ -57,12 +57,12 @@ class PresentProofMessenger private constructor(
             verifier: Verifier,
             messageWrapper: MessageWrapper,
             credentialScheme: ConstantIndex.CredentialScheme,
-            requestedAttributeTypes: Collection<String>? = null,
+            requestedClaims: Collection<String>? = null,
             challengeForPresentation: String = uuid4().toString()
         ) = PresentProofMessenger(
             verifier = verifier,
             messageWrapper = messageWrapper,
-            requestedAttributeTypes = requestedAttributeTypes,
+            requestedClaims = requestedClaims,
             credentialScheme = credentialScheme,
             challengeForPresentation = challengeForPresentation,
         )

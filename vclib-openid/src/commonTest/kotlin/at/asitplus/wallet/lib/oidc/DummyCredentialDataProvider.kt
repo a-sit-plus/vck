@@ -24,15 +24,15 @@ class DummyCredentialDataProvider(
 
     private val defaultLifetime = 1.minutes
 
-    override fun getCredentialWithType(
-        subjectId: String,
-        subjectPublicKey: CryptoPublicKey?,
-        attributeTypes: Collection<String>,
+    override fun getCredential(
+        subjectPublicKey: CryptoPublicKey,
+        credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation
     ): KmmResult<List<CredentialToBeIssued>> {
         val expiration = clock.now() + defaultLifetime
         val credentials = mutableListOf<CredentialToBeIssued>()
-        if (attributeTypes.contains(ConstantIndex.AtomicAttribute2023.vcType)) {
+        if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
+            val subjectId = subjectPublicKey.toJsonWebKey().identifier
             val claims = listOf(
                 ClaimToBeIssued("given-name", "Susanne"),
                 ClaimToBeIssued("family-name", "Meier"),
@@ -41,23 +41,19 @@ class DummyCredentialDataProvider(
             credentials += when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
                     CredentialToBeIssued.VcSd(
-                        subjectId = subjectId,
                         claims = claims,
                         expiration = expiration,
-                        scheme = ConstantIndex.AtomicAttribute2023,
                     )
                 )
 
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> claims.map { claim ->
-                    CredentialToBeIssued.Vc(
+                    CredentialToBeIssued.VcJwt(
                         subject = AtomicAttribute2023(subjectId, claim.name, claim.value),
                         expiration = expiration,
-                        scheme = ConstantIndex.AtomicAttribute2023
                     )
-                } + CredentialToBeIssued.Vc(
+                } + CredentialToBeIssued.VcJwt(
                     subject = AtomicAttribute2023(subjectId, "picture", "foo"),
                     expiration = expiration,
-                    scheme = ConstantIndex.AtomicAttribute2023,
                     attachments = listOf(Issuer.Attachment("picture", "image/webp", byteArrayOf(32)))
                 )
 
@@ -66,15 +62,13 @@ class DummyCredentialDataProvider(
                         issuerSignedItems = claims.mapIndexed { index, claim ->
                             buildIssuerSignedItem(claim.name, claim.value, index.toUInt())
                         },
-                        subjectPublicKey = subjectPublicKey!!.toCoseKey(),
                         expiration = expiration,
-                        scheme = ConstantIndex.AtomicAttribute2023
                     )
                 )
             }
         }
 
-        if (attributeTypes.contains(ConstantIndex.MobileDrivingLicence2023.vcType) && subjectPublicKey != null) {
+        if (credentialScheme == ConstantIndex.MobileDrivingLicence2023) {
             val drivingPrivilege = DrivingPrivilege(
                 vehicleCategoryCode = "B",
                 issueDate = LocalDate.parse("2023-01-01"),
@@ -93,21 +87,20 @@ class DummyCredentialDataProvider(
             credentials.add(
                 CredentialToBeIssued.Iso(
                     issuerSignedItems = issuerSignedItems,
-                    subjectPublicKey = subjectPublicKey.toCoseKey(),
                     expiration = expiration,
-                    scheme = ConstantIndex.MobileDrivingLicence2023,
                 )
             )
         }
         return KmmResult.success(credentials)
     }
 
-    private fun buildIssuerSignedItem(elementIdentifier: String, elementValue: String, digestId: UInt) = IssuerSignedItem(
-        digestId = digestId,
-        random = Random.nextBytes(16),
-        elementIdentifier = elementIdentifier,
-        elementValue = ElementValue(string = elementValue)
-    )
+    private fun buildIssuerSignedItem(elementIdentifier: String, elementValue: String, digestId: UInt) =
+        IssuerSignedItem(
+            digestId = digestId,
+            random = Random.nextBytes(16),
+            elementIdentifier = elementIdentifier,
+            elementValue = ElementValue(string = elementValue)
+        )
 
     fun buildIssuerSignedItem(elementIdentifier: String, elementValue: DrivingPrivilege, digestId: UInt) =
         IssuerSignedItem(

@@ -20,16 +20,15 @@ class DummyCredentialDataProvider(
 
     private val defaultLifetime = 1.minutes
 
-    override fun getCredentialWithType(
-        subjectId: String,
-        subjectPublicKey: CryptoPublicKey?,
-        attributeTypes: Collection<String>,
+    override fun getCredential(
+        subjectPublicKey: CryptoPublicKey,
+        credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation
     ): KmmResult<List<CredentialToBeIssued>> {
-        val attributeType = ConstantIndex.AtomicAttribute2023.vcType
-        if (!attributeTypes.contains(attributeType)) {
+        if (credentialScheme != ConstantIndex.AtomicAttribute2023) {
             return KmmResult.failure(UnsupportedOperationException("no data"))
         }
+        val subjectId = subjectPublicKey.toJsonWebKey().identifier
         val expiration = clock.now() + defaultLifetime
         val claims = listOf(
             ClaimToBeIssued("given-name", "Susanne"),
@@ -39,23 +38,19 @@ class DummyCredentialDataProvider(
         val credentials = when (representation) {
             ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
                 CredentialToBeIssued.VcSd(
-                    subjectId = subjectId,
                     claims = claims,
                     expiration = expiration,
-                    scheme = ConstantIndex.AtomicAttribute2023,
                 )
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> claims.map { claim ->
-                CredentialToBeIssued.Vc(
+                CredentialToBeIssued.VcJwt(
                     subject = AtomicAttribute2023(subjectId, claim.name, claim.value),
                     expiration = expiration,
-                    scheme = ConstantIndex.AtomicAttribute2023
                 )
-            } + CredentialToBeIssued.Vc(
+            } + CredentialToBeIssued.VcJwt(
                 subject = AtomicAttribute2023(subjectId, "picture", "foo"),
                 expiration = expiration,
-                scheme = ConstantIndex.AtomicAttribute2023,
                 attachments = listOf(Issuer.Attachment("picture", "image/webp", byteArrayOf(32)))
             )
 
@@ -64,9 +59,7 @@ class DummyCredentialDataProvider(
                     issuerSignedItems = claims.mapIndexed { index, claim ->
                         buildIssuerSignedItem(claim.name, claim.value, index.toUInt())
                     },
-                    subjectPublicKey = subjectPublicKey!!.toCoseKey(),
                     expiration = expiration,
-                    scheme = ConstantIndex.AtomicAttribute2023
                 )
             )
         }

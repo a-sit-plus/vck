@@ -47,7 +47,7 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
         requiredAttributeTypes: Collection<String>?
     ) = if (requiredAttributeTypes?.isNotEmpty() == true) {
         when (this) {
-            is SubjectCredentialStore.StoreEntry.Iso -> ConstantIndex.MobileDrivingLicence2023.vcType in requiredAttributeTypes
+            is SubjectCredentialStore.StoreEntry.Iso -> this.scheme.vcType in requiredAttributeTypes
             is SubjectCredentialStore.StoreEntry.Vc -> vc.vc.type.any { it in requiredAttributeTypes }
             is SubjectCredentialStore.StoreEntry.SdJwt -> sdJwt.type.any { it in requiredAttributeTypes }
         }

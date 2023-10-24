@@ -67,24 +67,13 @@ interface Issuer {
 
     /**
      * Issues credentials for some [attributeTypes] (i.e. some of
-     * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with [subjectId]
-     * (which should be a URL of the cryptographic key of the holder) or with [subjectPublicKey].
-     */
-    suspend fun issueCredentialWithTypes(
-        subjectId: String,
-        subjectPublicKey: CryptoPublicKey? = null,
-        attributeTypes: Collection<String>,
-        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-    ): IssuedCredentialResult
-
-    /**
-     * Wraps [credential] in a single [VerifiableCredential],
-     * returns a JWS representation of that VC.
+     * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with its public
+     * key in [subjectPublicKey] in the format specified by [representation].
      */
     suspend fun issueCredential(
-        credential: CredentialToBeIssued,
-        subjectPublicKey: CryptoPublicKey? = null,
-        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+        subjectPublicKey: CryptoPublicKey,
+        attributeTypes: Collection<String>,
+        representation: ConstantIndex.CredentialRepresentation,
     ): IssuedCredentialResult
 
     /**

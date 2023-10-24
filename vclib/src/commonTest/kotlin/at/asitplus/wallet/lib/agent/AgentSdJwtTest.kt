@@ -4,7 +4,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.inspectors.forAll
-import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -18,6 +17,7 @@ class AgentSdJwtTest : FreeSpec({
     lateinit var verifier: Verifier
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
+    lateinit var holderCryptoService: CryptoService
     lateinit var challenge: String
 
     beforeEach {
@@ -27,34 +27,21 @@ class AgentSdJwtTest : FreeSpec({
             issuerCredentialStore = issuerCredentialStore,
             dataProvider = DummyCredentialDataProvider(),
         )
+        holderCryptoService = DefaultCryptoService()
         holder = HolderAgent.newDefaultInstance(
-            subjectCredentialStore = holderCredentialStore
+            subjectCredentialStore = holderCredentialStore,
+            cryptoService = holderCryptoService,
         )
         verifier = VerifierAgent.newRandomInstance()
         challenge = uuid4().toString()
     }
 
     "simple walk-through success" {
-        val vcList = issuer.issueCredentialWithTypes(
-            holder.identifier,
-            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-        ).also {
-            it.failed.shouldBeEmpty()
-            it.successful.shouldNotBeEmpty()
-            it.successful.forEach { println(it) }
-        }
-
-        holder.storeCredentials(vcList.toStoreCredentialInput()).also {
-            it.acceptedSdJwt.shouldNotBeEmpty()
-            it.notVerified.shouldBeEmpty()
-            it.rejected.shouldBeEmpty()
-            it.acceptedSdJwt.forEach { println(it) }
-        }
-
-        val vp = holder.createPresentation(challenge, verifier.identifier, requestedClaims = listOf("given-name")).also {
-            it.shouldNotBeNull()
-        }
+        issueDummyCredentials(holder, issuer, holderCryptoService)
+        val vp =
+            holder.createPresentation(challenge, verifier.identifier, requestedClaims = listOf("given-name")).also {
+                it.shouldNotBeNull()
+            }
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
         println("Presentation: " + vp.sdJwt)
 
@@ -66,13 +53,7 @@ class AgentSdJwtTest : FreeSpec({
     }
 
     "wrong key binding jwt" {
-        holder.storeCredentials(
-            issuer.issueCredentialWithTypes(
-                holder.identifier,
-                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-            ).toStoreCredentialInput()
-        )
+        issueDummyCredentials(holder, issuer, holderCryptoService)
         val vp = holder.createPresentation(challenge, verifier.identifier, requestedClaims = listOf("name"))
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
         // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
@@ -86,13 +67,7 @@ class AgentSdJwtTest : FreeSpec({
     }
 
     "wrong challenge in key binding jwt" {
-        holder.storeCredentials(
-            issuer.issueCredentialWithTypes(
-                holder.identifier,
-                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-            ).toStoreCredentialInput()
-        )
+        issueDummyCredentials(holder, issuer, holderCryptoService)
         val malformedChallenge = challenge.reversed()
         val vp = holder.createPresentation(malformedChallenge, verifier.identifier, requestedClaims = listOf("name"))
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
@@ -102,13 +77,7 @@ class AgentSdJwtTest : FreeSpec({
     }
 
     "revoked sd jwt" {
-        holder.storeCredentials(
-            issuer.issueCredentialWithTypes(
-                holder.identifier,
-                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-            ).toStoreCredentialInput()
-        )
+        issueDummyCredentials(holder, issuer, holderCryptoService)
         val vp = holder.createPresentation(challenge, verifier.identifier, requestedClaims = listOf("name"))
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
@@ -128,14 +97,23 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
     val issuer = IssuerAgent.newDefaultInstance(
         dataProvider = DummyCredentialDataProvider(),
     )
-    val holder = HolderAgent.newDefaultInstance()
-    holder.storeCredentials(
-        issuer.issueCredentialWithTypes(
-            holder.identifier,
-            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-        ).toStoreCredentialInput()
-    )
+    val holderCryptoService = DefaultCryptoService()
+    val holder = HolderAgent.newDefaultInstance(cryptoService = holderCryptoService)
+    issueDummyCredentials(holder, issuer, holderCryptoService)
     val vp = holder.createPresentation(challenge, verifierId)
     return (vp as Holder.CreatePresentationResult.SdJwt).sdJwt
+}
+
+suspend fun issueDummyCredentials(
+    holder: Holder,
+    issuer: Issuer,
+    holderCryptoService: CryptoService
+) {
+    val result = issuer.issueCredential(
+        subjectPublicKey = holderCryptoService.toPublicKey(),
+        attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+        representation = ConstantIndex.CredentialRepresentation.SD_JWT
+    )
+    result.successful.shouldNotBeEmpty()
+    holder.storeCredentials(result.toStoreCredentialInput())
 }

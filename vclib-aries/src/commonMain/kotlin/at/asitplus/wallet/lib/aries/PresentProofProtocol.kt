@@ -50,7 +50,7 @@ typealias PresentProofProtocolResult = Verifier.VerifyPresentationResult
 class PresentProofProtocol(
     private val holder: Holder? = null,
     private val verifier: Verifier? = null,
-    private val requestedAttributeTypes: Collection<String>? = null,
+    private val requestedClaims: Collection<String>? = null,
     private val credentialScheme: ConstantIndex.CredentialScheme,
     private val serviceEndpoint: String?,
     private val challengeForPresentation: String,
@@ -80,10 +80,10 @@ class PresentProofProtocol(
             verifier: Verifier,
             serviceEndpoint: String? = null,
             credentialScheme: ConstantIndex.CredentialScheme,
-            requestedAttributeTypes: Collection<String>? = null,
+            requestedClaims: Collection<String>? = null,
         ) = PresentProofProtocol(
             verifier = verifier,
-            requestedAttributeTypes = requestedAttributeTypes,
+            requestedClaims = requestedClaims,
             credentialScheme = credentialScheme,
             serviceEndpoint = serviceEndpoint,
             challengeForPresentation = uuid4().toString()
@@ -204,15 +204,15 @@ class PresentProofProtocol(
     ): RequestPresentation? {
         val verifierIdentifier = verifier?.identifier
             ?: return null
-        val constraintsExtraTypes = requestedAttributeTypes?.map(this::buildConstraintFieldForType) ?: listOf()
-        val constraintsTypes = buildConstraintFieldForType(credentialScheme.vcType)
+        val claimsConstraints = requestedClaims?.map(this::buildConstraintFieldForClaim) ?: listOf()
+        val typeConstraints = buildConstraintFieldForType(credentialScheme.vcType)
         val presentationDefinition = PresentationDefinition(
             inputDescriptors = arrayOf(
                 InputDescriptor(
                     name = credentialScheme.vcType,
                     schema = SchemaReference(uri = credentialScheme.schemaUri),
                     constraints = Constraint(
-                        fields = (constraintsExtraTypes + constraintsTypes).toTypedArray()
+                        fields = (claimsConstraints + typeConstraints).toTypedArray()
                     )
                 )
             ),
@@ -248,6 +248,11 @@ class PresentProofProtocol(
         filter = ConstraintFilter(type = "string", const = attributeType)
     )
 
+    private fun buildConstraintFieldForClaim(claimName: String) = ConstraintField(
+        path = arrayOf("\$.vc[*].name", "\$.type"),
+        filter = ConstraintFilter(type = "string", const = claimName)
+    )
+
     private suspend fun createPresentation(
         lastMessage: RequestPresentation,
         senderKey: JsonWebKey
@@ -262,17 +267,24 @@ class PresentProofProtocol(
             RequestPresentationAttachment.deserialize(it)
         } ?: return problemReporter.problemLastMessage(lastMessage.threadId, "attachments-format")
         // TODO Is ISO supported here?
-        val requestedTypes = requestPresentationAttachment.presentationDefinition.inputDescriptors
+        val constraintFields = requestPresentationAttachment.presentationDefinition.inputDescriptors
             .mapNotNull { it.constraints }
             .flatMap { it.fields?.toList() ?: listOf() }
+        val requestedTypes = constraintFields
             .filter { it.path.contains("\$.vc[*].type") }
             .mapNotNull { it.filter }
             .filter { it.type == "string" }
             .mapNotNull { it.const }
+        val requestedClaims = constraintFields
+            .filter { it.path.contains("\$.vc[*].name") }
+            .mapNotNull { it.filter }
+            .filter { it.type == "string" }
+            .mapNotNull { it.const }
         val vp = holder?.createPresentation(
-            requestPresentationAttachment.options.challenge,
-            requestPresentationAttachment.options.verifier ?: senderKey.identifier,
+            challenge = requestPresentationAttachment.options.challenge,
+            audienceId = requestPresentationAttachment.options.verifier ?: senderKey.identifier,
             attributeTypes = requestedTypes.ifEmpty { null },
+            requestedClaims = requestedClaims.ifEmpty { null },
         ) ?: return problemReporter.problemInternal(lastMessage.threadId, "vp-empty")
         // TODO is ISO supported here?
         if (vp !is Holder.CreatePresentationResult.Signed) {
