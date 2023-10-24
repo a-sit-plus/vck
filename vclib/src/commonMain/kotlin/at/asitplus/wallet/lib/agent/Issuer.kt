@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.CryptoPublicKey
-import at.asitplus.wallet.lib.cbor.CoseKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import kotlinx.datetime.Instant
 
 
 /**
@@ -82,19 +82,25 @@ interface Issuer {
      * returns a JWS representation of that.
      * @param timePeriod time Period to issue a revocation list for
      */
-    suspend fun issueRevocationListCredential(timePeriod: Int): String?
+    suspend fun issueRevocationListCredential(timePeriod: Int? = null): String?
 
     /**
      * Returns a Base64-encoded, zlib-compressed bitstring of revoked credentials, where
      * the entry at "revocationListIndex" (of the credential) is true iff it is revoked
      */
-    fun buildRevocationList(timePeriod: Int): String?
+    fun buildRevocationList(timePeriod: Int? = null): String?
 
     /**
      * Revokes all verifiable credentials from [credentialsToRevoke] list that parse and validate.
-     * It returns true if all revocations was successful. Note: only the issuer can revoke.
+     * It returns true if all revocations was successful.
      */
     fun revokeCredentials(credentialsToRevoke: List<String>): Boolean
+
+    /**
+     * Revokes all verifiable credentials with ids and issuance date from [credentialIdsToRevoke]
+     * It returns true if all revocations was successful.
+     */
+    fun revokeCredentialsWithId(credentialIdsToRevoke: Map<String, Instant>): Boolean
 
     fun compileCurrentRevocationLists(): List<String>
 

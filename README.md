@@ -104,13 +104,14 @@ Credentials in the form of the W3C VC Data Model may be represented as a plain J
 
 To transport the information of SD-JWTs across our several protocols, we came up with the string `jwt_vc_sd` for use in OpenId protocols, see implementation [CredentialFormatEnum](vclib-openid/src/commonMain/kotlin/at/asitplus/wallet/lib/oidvci/CredentialFormatEnum.kt).
 
+We also attach revocation information to the SD-JWT by adding a member called `credentialStatus` to it, same as for a VC represented as a plain JWT.
+
 There are several limitations with our implementation of this early draft of SD-JWT:
- - There is no revocation information attached to SD-JWTs in W3C VC format
  - Only attributes from one credential may be disclosed at once
  - We do not support disclosure of nested structures, i.e. the credential needs to have direct attributes
 
 
-Example from [AgentSdJwtTest], where a simple credential with `name`, `value` and `mime-type` (meaning three disclosures) is issued:
+Example from [AgentSdJwtTest](vclib/src/commonTest/kotlin/at/asitplus/wallet/lib/agent/AgentSdJwtTest.kt), where a simple credential with `name`, `value` and `mime-type` (meaning three disclosures) is issued:
 
 ```json
 eyJhbGciOiJFUzI1NiIsImtpZCI6ImRpZDprZXk6bUVwRGVlRmc1eXc0cWI0VHA4ek1QN2JlWXBWS2lUMkk2VTZ3TWlYNjl2S0VRWHV0cUx3NXVZaEVMdXhxVVVTRDhNZFR6cEN6emRtS0hoWG5COGZ5Y2tlSUgiLCJ0eXAiOiJqd3QifQ

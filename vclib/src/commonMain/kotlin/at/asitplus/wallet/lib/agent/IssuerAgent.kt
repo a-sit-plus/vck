@@ -230,9 +230,10 @@ class IssuerAgent(
      * Wraps the revocation information from [issuerCredentialStore] into a VC,
      * returns a JWS representation of that.
      */
-    override suspend fun issueRevocationListCredential(timePeriod: Int): String? {
-        val revocationListUrl = getRevocationListUrlFor(timePeriod)
-        val revocationList = buildRevocationList(timePeriod) ?: return null
+    override suspend fun issueRevocationListCredential(timePeriod: Int?): String? {
+        val revocationListUrl = getRevocationListUrlFor(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
+        val revocationList = buildRevocationList(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
+            ?: return null
         val subject = RevocationListSubject("$revocationListUrl#list", revocationList)
         val credential = VerifiableCredential(
             id = revocationListUrl,
@@ -248,27 +249,40 @@ class IssuerAgent(
      * Returns a Base64-encoded, zlib-compressed bitstring of revoked credentials, where
      * the entry at "revocationListIndex" (of the credential) is true iff it is revoked
      */
-    override fun buildRevocationList(timePeriod: Int): String? {
+    override fun buildRevocationList(timePeriod: Int?): String? {
         val bitset = KmmBitSet(REVOCATION_LIST_MIN_SIZE)
-        issuerCredentialStore.getRevokedStatusListIndexList(timePeriod)
-            .forEach { bitset[it] = true }
+        issuerCredentialStore.getRevokedStatusListIndexList(
+            timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock)
+        ).forEach { bitset[it] = true }
         val input = bitset.toByteArray()
         return zlibService.compress(input)?.encodeToString(Base64Strict)
     }
 
     /**
      * Revokes all verifiable credentials from [credentialsToRevoke] list that parse and validate.
-     * It returns true if all revocations were successful.
+     * It returns true if all revocations was successful.
      */
     override fun revokeCredentials(credentialsToRevoke: List<String>): Boolean =
         credentialsToRevoke.map { validator.verifyVcJws(it, null) }
             .filterIsInstance<Verifier.VerifyCredentialResult.SuccessJwt>()
             .all {
                 issuerCredentialStore.revoke(
-                    it.jws.vc.id,
-                    timePeriodProvider.getTimePeriodFor(it.jws.vc.issuanceDate)
+                    vcId = it.jws.vc.id,
+                    timePeriod = timePeriodProvider.getTimePeriodFor(it.jws.vc.issuanceDate)
                 )
             }
+
+    /**
+     * Revokes all verifiable credentials with ids from [credentialIdsToRevoke]
+     * It returns true if all revocations was successful.
+     */
+    override fun revokeCredentialsWithId(credentialIdsToRevoke: Map<String, Instant>): Boolean =
+        credentialIdsToRevoke.all {
+            issuerCredentialStore.revoke(
+                vcId = it.key,
+                timePeriod = timePeriodProvider.getTimePeriodFor(it.value)
+            )
+        }
 
     override fun compileCurrentRevocationLists(): List<String> {
         val list = mutableListOf<String>()
@@ -305,6 +319,7 @@ class IssuerAgent(
             type = vc.type,
             selectiveDisclosureAlgorithm = "sha-256",
             confirmationKey = subjectPublicKey?.toJsonWebKey(),
+            credentialStatus = vc.credentialStatus,
         ).serialize().encodeToByteArray()
         // TODO Which content type to use for SD-JWT inside an JWS?
         val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)

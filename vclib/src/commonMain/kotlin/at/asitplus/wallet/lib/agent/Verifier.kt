@@ -43,8 +43,11 @@ interface Verifier {
 
     sealed class VerifyPresentationResult {
         data class Success(val vp: VerifiablePresentationParsed) : VerifyPresentationResult()
-        data class SuccessSdJwt(val sdJwt: VerifiableCredentialSdJwt, val disclosures: List<SelectiveDisclosureItem>) :
-            VerifyPresentationResult()
+        data class SuccessSdJwt(
+            val sdJwt: VerifiableCredentialSdJwt,
+            val disclosures: List<SelectiveDisclosureItem>,
+            val isRevoked: Boolean
+        ) : VerifyPresentationResult()
 
         data class SuccessIso(val document: IsoDocumentParsed) : VerifyPresentationResult()
         data class InvalidStructure(val input: String) : VerifyPresentationResult()
@@ -58,7 +61,8 @@ interface Verifier {
             /**
              * Map of original serialized disclosure item to parsed item
              */
-            val disclosures: Map<String, SelectiveDisclosureItem?>
+            val disclosures: Map<String, SelectiveDisclosureItem?>,
+            val isRevoked: Boolean,
         ) : VerifyCredentialResult()
 
         data class SuccessIso(val issuerSigned: IssuerSigned) : VerifyCredentialResult()

@@ -28,6 +28,8 @@ data class VerifiableCredentialSdJwt(
     val disclosureDigests: List<String>,
     @SerialName("type")
     val type: Array<String>,
+    @SerialName("credentialStatus")
+    val credentialStatus: CredentialStatus? = null,
     @SerialName("_sd_alg")
     val selectiveDisclosureAlgorithm: String,
     @SerialName("cnf")
@@ -49,6 +51,7 @@ data class VerifiableCredentialSdJwt(
         if (jwtId != other.jwtId) return false
         if (disclosureDigests != other.disclosureDigests) return false
         if (!type.contentEquals(other.type)) return false
+        if (credentialStatus != other.credentialStatus) return false
         if (selectiveDisclosureAlgorithm != other.selectiveDisclosureAlgorithm) return false
         if (confirmationKey != other.confirmationKey) return false
 
@@ -63,6 +66,7 @@ data class VerifiableCredentialSdJwt(
         result = 31 * result + jwtId.hashCode()
         result = 31 * result + disclosureDigests.hashCode()
         result = 31 * result + type.contentHashCode()
+        result = 31 * result + (credentialStatus?.hashCode() ?: 0)
         result = 31 * result + selectiveDisclosureAlgorithm.hashCode()
         result = 31 * result + (confirmationKey?.hashCode() ?: 0)
         return result

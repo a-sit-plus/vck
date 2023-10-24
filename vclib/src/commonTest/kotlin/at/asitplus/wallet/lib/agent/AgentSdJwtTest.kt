@@ -62,6 +62,7 @@ class AgentSdJwtTest : FreeSpec({
         verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         verified.disclosures shouldHaveSize 1
         verified.disclosures.forAll { it.claimName shouldBe "name" }
+        verified.isRevoked shouldBe false
     }
 
     "wrong key binding jwt" {
@@ -75,7 +76,10 @@ class AgentSdJwtTest : FreeSpec({
         val vp = holder.createPresentation(challenge, verifier.identifier, requestedClaims = listOf("name"))
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
         // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
-        val malformedVpSdJwt = vp.sdJwt.replaceAfterLast("~", createFreshSdJwtKeyBinding(challenge, verifier.identifier).substringAfterLast("~"))
+        val malformedVpSdJwt = vp.sdJwt.replaceAfterLast(
+            "~",
+            createFreshSdJwtKeyBinding(challenge, verifier.identifier).substringAfterLast("~")
+        )
 
         val verified = verifier.verifyPresentation(malformedVpSdJwt, challenge)
         verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
@@ -95,6 +99,27 @@ class AgentSdJwtTest : FreeSpec({
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
         verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
+    }
+
+    "revoked sd jwt" {
+        holder.storeCredentials(
+            issuer.issueCredentialWithTypes(
+                holder.identifier,
+                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+            ).toStoreCredentialInput()
+        )
+        val vp = holder.createPresentation(challenge, verifier.identifier, requestedClaims = listOf("name"))
+        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+
+        issuer.revokeCredentialsWithId(
+            holderCredentialStore.getCredentials().getOrThrow()
+                .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
+                .associate { it.sdJwt.jwtId to it.sdJwt.notBefore }) shouldBe true
+        verifier.setRevocationList(issuer.issueRevocationListCredential()!!) shouldBe true
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+        verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+        verified.isRevoked shouldBe true
     }
 
 })

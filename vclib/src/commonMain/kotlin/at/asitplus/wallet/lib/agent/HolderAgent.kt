@@ -232,7 +232,7 @@ class HolderAgent(
         }
         val validSdJwtCredentials = credentials
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
-        // TODO Revocation check for SD-JWT
+            .filter { validator.checkRevocationStatus(it.sdJwt) != Validator.RevocationStatus.REVOKED }
         if (validSdJwtCredentials.isNotEmpty()) {
             // TODO can only be one credential at a time
             val keyBindingJws = KeyBindingJws(

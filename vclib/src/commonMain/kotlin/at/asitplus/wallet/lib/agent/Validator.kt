@@ -102,8 +102,20 @@ class Validator(
     }
 
     enum class RevocationStatus {
+        /**
+         * Either no revocation status list has been set (see [Validator.setRevocationList]),
+         * or there is no revocation lookup information attached to the credential.
+         */
         UNKNOWN,
+
+        /**
+         * Revocation status list is available, credential has been marked revoked in there.
+         */
         REVOKED,
+
+        /**
+         * Revocation status list is available, credential is not revoked.
+         */
         VALID;
     }
 
@@ -113,14 +125,16 @@ class Validator(
      * Be sure to call [setRevocationList] first, otherwise this method will return [RevocationStatus.UNKNOWN].
      */
     fun checkRevocationStatus(vcJws: VerifiableCredentialJws): RevocationStatus {
-        revocationList?.let { bitSet ->
-            vcJws.vc.credentialStatus?.let { status ->
-                if (bitSet.length() > status.index && bitSet[status.index])
-                    return RevocationStatus.REVOKED
-                return RevocationStatus.VALID
-            }
-        }
-        return RevocationStatus.UNKNOWN
+        return vcJws.vc.credentialStatus?.index?.let { checkRevocationStatus(it) } ?: RevocationStatus.UNKNOWN
+    }
+
+    /**
+     * Checks the revocation state of the passed Verifiable Credential.
+     *
+     * Be sure to call [setRevocationList] first, otherwise this method will return [RevocationStatus.UNKNOWN].
+     */
+    fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt): RevocationStatus {
+        return sdJwt.credentialStatus?.index?.let { checkRevocationStatus(it) } ?: RevocationStatus.UNKNOWN
     }
 
     /**
@@ -216,12 +230,12 @@ class Validator(
         if (jwsKeyBindingParsed.header.keyId != sdJwtResult.sdJwt.subject)
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Key Binding does not prove possession of subject key: ${jwsKeyBindingParsed.header.keyId}") }
-        // TODO Time Validity check
 
         Napier.d("verifyVpSdJwt: Valid")
         return Verifier.VerifyPresentationResult.SuccessSdJwt(
-            sdJwtResult.sdJwt,
-            sdJwtResult.disclosures.values.filterNotNull()
+            sdJwt = sdJwtResult.sdJwt,
+            disclosures = sdJwtResult.disclosures.values.filterNotNull(),
+            isRevoked = sdJwtResult.isRevoked,
         )
     }
 
@@ -368,6 +382,9 @@ class Validator(
                 return Verifier.VerifyCredentialResult.InvalidStructure(it)
                     .also { Napier.d("verifySdJwt: sub invalid") }
         }
+        val isRevoked = checkRevocationStatus(sdJwt) == RevocationStatus.REVOKED
+        if (isRevoked)
+            Napier.d("verifySdJwt: revoked")
         val rawDisclosures = input.substringAfter("~").split("~").filterNot { it.contains(".") }
         val disclosures = rawDisclosures.associateWith {
             SelectiveDisclosureItem.deserialize(it.decodeToByteArray(Base64UrlStrict).decodeToString())
@@ -381,20 +398,14 @@ class Validator(
                     .also { Napier.w("verifySdJwt: Digest of disclosure not contained in SD-JWT: $it") }
             }
         }
-        // TODO Revocation Check
-        //        if (checkRevocationStatus(sdJwt) == RevocationStatus.REVOKED)
-        //            return Verifier.VerifyCredentialResult.Revoked(it, sdJwt)
-        //                .also { Napier.d("VC: revoked") }
         val kid = jws.header.keyId
         return when (parser.parseSdJwt(input, sdJwt, kid)) {
-            is Parser.ParseVcResult.InvalidStructure -> Verifier.VerifyCredentialResult.InvalidStructure(input)
+            is Parser.ParseVcResult.SuccessSdJwt ->
+                Verifier.VerifyCredentialResult.SuccessSdJwt(sdJwt, disclosures, isRevoked)
+                    .also { Napier.d("verifySdJwt: Valid") }
+
+            else -> Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.d("verifySdJwt: Invalid structure from Parser") }
-
-            is Parser.ParseVcResult.Success -> Verifier.VerifyCredentialResult.SuccessSdJwt(sdJwt, disclosures)
-                .also { Napier.d("verifySdJwt: Valid") }
-
-            is Parser.ParseVcResult.SuccessSdJwt -> Verifier.VerifyCredentialResult.SuccessSdJwt(sdJwt, disclosures)
-                .also { Napier.d("verifySdJwt: Valid") }
         }
     }
 
