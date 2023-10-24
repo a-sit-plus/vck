@@ -14,6 +14,4 @@ data class RevocationListSubject(
 
     @SerialName("encodedList")
     val encodedList: String,
-) : CredentialSubject() {
-    override fun getClaims(): List<Claim> = listOf()
-}
+) : CredentialSubject()

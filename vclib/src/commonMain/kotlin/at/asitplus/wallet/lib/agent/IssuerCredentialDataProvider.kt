@@ -33,6 +33,14 @@ sealed class CredentialToBeIssued {
         val attachments: List<Issuer.Attachment>? = null
     ) : CredentialToBeIssued()
 
+    data class VcSd(
+        val subject: CredentialSubject,
+        val claims: Collection<ClaimToBeIssued>,
+        val expiration: Instant,
+        val scheme: ConstantIndex.CredentialScheme,
+        val attachments: List<Issuer.Attachment>? = null
+    ) : CredentialToBeIssued()
+
     data class Iso(
         val issuerSignedItems: List<IssuerSignedItem>,
         val subjectPublicKey: CoseKey,
@@ -40,3 +48,5 @@ sealed class CredentialToBeIssued {
         val scheme: ConstantIndex.CredentialScheme,
     ) : CredentialToBeIssued()
 }
+
+data class ClaimToBeIssued(val name: String, val value: String)

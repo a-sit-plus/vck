@@ -9,9 +9,8 @@ import kotlinx.serialization.json.Json
 class CredentialSubjectTest : FreeSpec({
     "Subclasses are correctly deserialized" {
         @Serializable
-        class SpecializedCredentialTest(override val id: String, @SerialName("not-foo") val foo: String): CredentialSubject() {
-            override fun getClaims(): List<Claim> = listOf()
-        }
+        class SpecializedCredentialTest(override val id: String, @SerialName("not-foo") val foo: String) :
+            CredentialSubject()
 
         val result = Json.decodeFromString<SpecializedCredentialTest>("{\"id\":\"Test\",\"not-foo\":\"bar\"}")
         result.id shouldBe "Test"

@@ -29,10 +29,9 @@ class DummyCredentialDataProvider(
         subjectPublicKey: CryptoPublicKey?,
         attributeTypes: Collection<String>
     ): KmmResult<List<CredentialToBeIssued>> {
-        val attributeType = ConstantIndex.AtomicAttribute2023.vcType
         val expiration = clock.now() + defaultLifetime
         val listOfAttributes = mutableListOf<CredentialToBeIssued>()
-        if (attributeTypes.contains(attributeType)) {
+        if (attributeTypes.contains(ConstantIndex.AtomicAttribute2023.vcType)) {
             listOfAttributes.addAll(
                 listOf(
                     CredentialToBeIssued.Vc(

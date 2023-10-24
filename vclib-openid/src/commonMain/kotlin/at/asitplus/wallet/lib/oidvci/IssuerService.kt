@@ -173,6 +173,7 @@ class IssuerService(
 
 private fun CredentialFormatEnum.toRepresentation() = when (this) {
     CredentialFormatEnum.JWT_VC_SD -> ConstantIndex.CredentialRepresentation.SD_JWT
+    CredentialFormatEnum.MSO_MDOC -> ConstantIndex.CredentialRepresentation.ISO_MDOC
     else -> ConstantIndex.CredentialRepresentation.PLAIN_JWT
 }
 

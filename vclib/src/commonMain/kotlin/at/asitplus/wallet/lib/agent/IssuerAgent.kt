@@ -15,12 +15,12 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.DeviceKeyInfo
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DIGEST_SHA_256
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.VERSION_1_0
 import at.asitplus.wallet.lib.iso.IssuerSigned
@@ -162,15 +162,17 @@ class IssuerAgent(
             }
 
             is CredentialToBeIssued.Vc -> {
-                return issueVc(credential, subjectPublicKey, representation, issuanceDate)
+                return issueVc(credential, issuanceDate)
+            }
+
+            is CredentialToBeIssued.VcSd -> {
+                return issueVcSd(credential, subjectPublicKey, issuanceDate)
             }
         }
     }
 
     private suspend fun issueVc(
         credential: CredentialToBeIssued.Vc,
-        subjectPublicKey: CryptoPublicKey?,
-        representation: ConstantIndex.CredentialRepresentation,
         issuanceDate: Instant
     ): Issuer.IssuedCredentialResult {
         val vcId = "urn:uuid:${uuid4()}"
@@ -199,37 +201,74 @@ class IssuerAgent(
             credentialType = credential.scheme.vcType,
         )
 
-        when (representation) {
-            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> {
-                val vcInJws = wrapVcInJws(vc)
-                    ?: return Issuer.IssuedCredentialResult(
-                        failed = listOf(
-                            Issuer.FailedAttribute(credential.scheme.vcType, RuntimeException("signing failed"))
-                        )
-                    ).also { Napier.w("Could not wrap credential in JWS") }
-                return Issuer.IssuedCredentialResult(
-                    successful = listOf(
-                        Issuer.IssuedCredential.VcJwt(
-                            vcJws = vcInJws,
-                            scheme = credential.scheme,
-                            attachments = credential.attachments
-                        )
-                    )
+        val vcInJws = wrapVcInJws(vc)
+            ?: return Issuer.IssuedCredentialResult(
+                failed = listOf(
+                    Issuer.FailedAttribute(credential.scheme.vcType, RuntimeException("signing failed"))
                 )
-            }
+            ).also { Napier.w("Could not wrap credential in JWS") }
+        return Issuer.IssuedCredentialResult(
+            successful = listOf(
+                Issuer.IssuedCredential.VcJwt(
+                    vcJws = vcInJws,
+                    scheme = credential.scheme,
+                    attachments = credential.attachments
+                )
+            )
+        )
+    }
 
-            ConstantIndex.CredentialRepresentation.SD_JWT -> {
-                val vcInSdJwt = wrapVcInSdJwt(vc, subjectPublicKey)
-                    ?: return Issuer.IssuedCredentialResult(
-                        failed = listOf(
-                            Issuer.FailedAttribute(credential.scheme.vcType, RuntimeException("signing failed"))
-                        )
-                    ).also { Napier.w("Could not wrap credential in SD-JWT") }
-                return Issuer.IssuedCredentialResult(
-                    successful = listOf(Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme))
+    private suspend fun issueVcSd(
+        credential: CredentialToBeIssued.VcSd,
+        subjectPublicKey: CryptoPublicKey?,
+        issuanceDate: Instant
+    ): Issuer.IssuedCredentialResult {
+        val vcId = "urn:uuid:${uuid4()}"
+        val expirationDate = credential.expiration
+        val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
+        val statusListIndex = issuerCredentialStore.storeGetNextIndex(
+            vcId,
+            credential.subject,
+            issuanceDate,
+            expirationDate,
+            timePeriod
+        ) ?: return Issuer.IssuedCredentialResult(
+            failed = listOf(
+                Issuer.FailedAttribute(credential.scheme.vcType, DataSourceProblem("vcId internal mismatch"))
+            )
+        ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }
+        val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
+
+        val disclosures = credential.claims
+            .map { SelectiveDisclosureItem(Random.nextBytes(32), it.name, it.value) }
+            .map { it.serialize() }
+            .map { it.encodeToByteArray().encodeToString(Base64UrlStrict) }
+        val disclosureDigests = disclosures
+            .map { it.encodeToByteArray().toByteString().sha256().base64Url() }
+        val jwsPayload = VerifiableCredentialSdJwt(
+            subject = credential.subject.id,
+            notBefore = issuanceDate,
+            issuer = identifier,
+            expiration = expirationDate,
+            jwtId = vcId,
+            disclosureDigests = disclosureDigests,
+            type = arrayOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, credential.scheme.vcType),
+            selectiveDisclosureAlgorithm = "sha-256",
+            confirmationKey = subjectPublicKey?.toJsonWebKey(),
+            credentialStatus = credentialStatus,
+        ).serialize().encodeToByteArray()
+        // TODO Which content type to use for SD-JWT inside an JWS?
+        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+            ?: return Issuer.IssuedCredentialResult(
+                failed = listOf(
+                    Issuer.FailedAttribute(credential.scheme.vcType, RuntimeException("signing failed"))
                 )
-            }
-        }
+            ).also { Napier.w("Could not wrap credential in SD-JWT") }
+        val vcInSdJwt = (listOf(jws) + disclosures).joinToString("~")
+
+        return Issuer.IssuedCredentialResult(
+            successful = listOf(Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme))
+        )
     }
 
     /**
@@ -305,32 +344,6 @@ class IssuerAgent(
     private suspend fun wrapVcInJws(vc: VerifiableCredential): String? {
         val jwsPayload = vc.toJws().serialize().encodeToByteArray()
         return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
-    }
-
-    private suspend fun wrapVcInSdJwt(vc: VerifiableCredential, subjectPublicKey: CryptoPublicKey?): String? {
-        val claims = vc.credentialSubject.getClaims()
-        val disclosures = claims
-            .map { SelectiveDisclosureItem(Random.nextBytes(32), it.name, it.value) }
-            .map { it.serialize() }
-            .map { it.encodeToByteArray().encodeToString(Base64UrlStrict) }
-        val disclosureDigests = disclosures
-            .map { it.encodeToByteArray().toByteString().sha256().base64Url() }
-        val jwsPayload = VerifiableCredentialSdJwt(
-            subject = vc.credentialSubject.id,
-            notBefore = vc.issuanceDate,
-            issuer = vc.issuer,
-            expiration = vc.expirationDate,
-            jwtId = vc.id,
-            disclosureDigests = disclosureDigests,
-            type = vc.type,
-            selectiveDisclosureAlgorithm = "sha-256",
-            confirmationKey = subjectPublicKey?.toJsonWebKey(),
-            credentialStatus = vc.credentialStatus,
-        ).serialize().encodeToByteArray()
-        // TODO Which content type to use for SD-JWT inside an JWS?
-        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
-            ?: return null
-        return (listOf(jws) + disclosures).joinToString("~")
     }
 
     private fun getRevocationListUrlFor(timePeriod: Int) =
