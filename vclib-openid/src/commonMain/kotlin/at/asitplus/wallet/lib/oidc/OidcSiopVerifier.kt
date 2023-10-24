@@ -149,9 +149,9 @@ class OidcSiopVerifier(
             requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
         )
         val signedJws = jwsService.createSignedJwsAddingParams(
-            JwsHeader(algorithm = JwsAlgorithm.ES256),
-            requestObjectSerialized.encodeToByteArray(),
-            true
+            header = JwsHeader(algorithm = JwsAlgorithm.ES256),
+            payload = requestObjectSerialized.encodeToByteArray(),
+            addKeyId = true
         )
         return AuthenticationRequestParameters(clientId = relyingPartyUrl, request = signedJws)
     }
@@ -169,10 +169,10 @@ class OidcSiopVerifier(
         responseMode: String? = null,
         state: String? = uuid4().toString(),
     ): AuthenticationRequestParameters {
+        val containerJwt = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text))
         val vpFormats = FormatHolder(
-            msoMdoc = if (credentialScheme?.credentialFormat == ConstantIndex.CredentialFormat.ISO_18013)
-                FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text)) else null,
-            jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text)),
+            msoMdoc = if (schemeIsIso()) containerJwt else null,
+            jwtVp = if (schemeIsW3C()) containerJwt else null,
         )
         val metadata = RelyingPartyMetadata(
             redirectUris = arrayOf(relyingPartyUrl),
@@ -180,31 +180,13 @@ class OidcSiopVerifier(
             subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
             vpFormats = vpFormats,
         )
-        val mainConstraint = when (credentialScheme?.credentialFormat) {
-            ConstantIndex.CredentialFormat.W3C_VC -> ConstraintField(
-                path = arrayOf("$.type"),
-                filter = ConstraintFilter(
-                    type = "string",
-                    pattern = credentialScheme.vcType,
-                )
-            )
-
-            ConstantIndex.CredentialFormat.ISO_18013 -> ConstraintField(
-                path = arrayOf("$.mdoc.doctype"),
-                filter = ConstraintFilter(
-                    type = "string",
-                    pattern = credentialScheme.isoNamespace,
-                )
-            )
-
-            else -> ConstraintField(
-                path = arrayOf("$.type"),
-                filter = ConstraintFilter(
-                    type = "string",
-                    pattern = "AnyCredential",
-                )
-            )
+        val typeConstraint = when (credentialScheme?.credentialFormat) {
+            ConstantIndex.CredentialFormat.W3C_VC -> credentialScheme.vcConstraint()
+            ConstantIndex.CredentialFormat.ISO_18013 -> credentialScheme.isoConstraint()
+            else -> null
         }
+        val attributeConstraint = requestedAttributes?.let { createConstraints(it) } ?: arrayOf()
+        val constraintFields = listOfNotNull(typeConstraint, *attributeConstraint).toTypedArray()
         return AuthenticationRequestParameters(
             responseType = "$ID_TOKEN $VP_TOKEN",
             clientId = relyingPartyUrl,
@@ -223,21 +205,40 @@ class OidcSiopVerifier(
                     InputDescriptor(
                         id = uuid4().toString(),
                         schema = arrayOf(SchemaReference(credentialScheme?.schemaUri ?: "https://example.com")),
-                        constraints = Constraint(
-                            fields = (requestedAttributes?.let { createConstraints(it) } ?: arrayOf()) + mainConstraint,
-                        ),
+                        constraints = Constraint(fields = constraintFields),
                     )
                 ),
             ),
         )
     }
 
+    private fun schemeIsW3C() = credentialScheme?.credentialFormat == ConstantIndex.CredentialFormat.W3C_VC
+    private fun schemeIsIso() = credentialScheme?.credentialFormat == ConstantIndex.CredentialFormat.ISO_18013
+
+    private fun ConstantIndex.CredentialScheme.vcConstraint() = ConstraintField(
+        path = arrayOf("$.type"),
+        filter = ConstraintFilter(
+            type = "string",
+            pattern = vcType,
+        )
+    )
+
+    private fun ConstantIndex.CredentialScheme.isoConstraint() = ConstraintField(
+        path = arrayOf("$.mdoc.doctype"),
+        filter = ConstraintFilter(
+            type = "string",
+            pattern = isoDocType,
+        )
+    )
+
     private fun createConstraints(attributeTypes: List<String>): Array<ConstraintField> =
-        if (credentialScheme?.credentialFormat == ConstantIndex.CredentialFormat.ISO_18013)
-            attributeTypes.map {
+        attributeTypes.map {
+            if (schemeIsIso())
                 ConstraintField(path = arrayOf("\$.mdoc.$it"), intentToRetain = false)
-            }.toTypedArray()
-        else arrayOf()
+            else
+                ConstraintField(path = arrayOf("\$.$it"))
+        }.toTypedArray()
+
 
     sealed class AuthnResponseResult {
         /**

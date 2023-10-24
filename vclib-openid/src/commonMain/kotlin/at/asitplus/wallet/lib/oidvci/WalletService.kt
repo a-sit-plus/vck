@@ -4,7 +4,7 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JsonWebToken
 import at.asitplus.wallet.lib.jws.JwsHeader
@@ -24,6 +24,10 @@ import kotlinx.datetime.Clock
 class WalletService(
     private val credentialScheme: ConstantIndex.CredentialScheme,
     private val credentialFormat: CredentialFormatEnum = CredentialFormatEnum.JWT_VC,
+    /**
+     * Pass names of attributes the credential shall contain, e.g. [at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements]
+     */
+    private val requestedAttributes: Collection<String>? = null,
     private val clientId: String = "https://wallet.a-sit.at/app",
     private val redirectUrl: String = "$clientId/callback",
     private val cryptoService: CryptoService = DefaultCryptoService(),
@@ -43,7 +47,7 @@ class WalletService(
                 format = CredentialFormatEnum.MSO_MDOC,
                 docType = credentialScheme.isoDocType,
                 types = arrayOf(credentialScheme.vcType),
-                claims = mapOf(credentialScheme.isoNamespace to buildMdlRequestedClaims())
+                claims = buildIsoRequestedClaims()
             )
 
             ConstantIndex.CredentialFormat.W3C_VC -> AuthorizationDetails(
@@ -76,7 +80,7 @@ class WalletService(
         tokenResponse: TokenResponseParameters,
         issuerMetadata: IssuerMetadata
     ): CredentialRequestParameters {
-        // TODO Specification is missing a proof type for binding method `cose_key`, so we'll use JWT
+        // NOTE: Specification is missing a proof type for binding method `cose_key`, so we'll use JWT
         val proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofTypes.JWT,
             jwt = jwsService.createSignedJwsAddingParams(
@@ -98,26 +102,22 @@ class WalletService(
             ConstantIndex.CredentialFormat.ISO_18013 -> CredentialRequestParameters(
                 format = CredentialFormatEnum.MSO_MDOC,
                 docType = credentialScheme.isoDocType,
-                claims = mapOf(credentialScheme.isoNamespace to buildMdlRequestedClaims()),
+                claims = buildIsoRequestedClaims(),
                 types = arrayOf(credentialScheme.vcType),
                 proof = proof
             )
 
             ConstantIndex.CredentialFormat.W3C_VC -> CredentialRequestParameters(
                 format = credentialFormat,
+                claims = buildIsoRequestedClaims(),
                 types = arrayOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
                 proof = proof
             )
         }
     }
 
-    private fun buildMdlRequestedClaims() = listOf(
-        DataElements.GIVEN_NAME,
-        DataElements.FAMILY_NAME,
-        DataElements.DOCUMENT_NUMBER,
-        DataElements.ISSUE_DATE,
-        DataElements.EXPIRY_DATE,
-        DataElements.DRIVING_PRIVILEGES
-    ).associateWith { RequestedCredentialClaimSpecification() }
+    private fun buildIsoRequestedClaims() = requestedAttributes?.let {
+        mapOf(credentialScheme.isoNamespace to it.associateWith { RequestedCredentialClaimSpecification() })
+    }
 
 }
