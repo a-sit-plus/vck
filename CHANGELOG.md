@@ -14,6 +14,7 @@ Release 3.2.0
  - Add function `issueCredential(CryptoPublicKey, Collection<String>, CredentialRepresentation)` to interface `Issuer` and its implementation `IssuerAgent`
  - Remove function `getCredentialWithType(String, CryptoPublicKey?, Collection<String>, CredentialRepresentation` from interface `IssuerCredentialDataProvider`
  - Add function `getCredential(CryptoPublicKey, CredentialScheme, CredentialRepresentation)` to interface `IssuerCredentialDataProvider`
+ - Refactor function `storeGetNextIndex()` in `IssuerCredentialStore` to accomodate all types of credentials
 
 Release 3.1.0
  - Support representing credentials in [SD-JWT](https://drafts.oauth.net/oauth-selective-disclosure-jwt/draft-ietf-oauth-selective-disclosure-jwt.html) format

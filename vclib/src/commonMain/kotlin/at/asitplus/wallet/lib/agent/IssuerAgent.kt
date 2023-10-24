@@ -70,8 +70,8 @@ class IssuerAgent(
             dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
         ): IssuerAgent = IssuerAgent(
             validator = Validator.newDefaultInstance(
-                verifierCryptoService,
-                Parser(clock.now().toEpochMilliseconds())
+                cryptoService = verifierCryptoService,
+                parser = Parser(clock.now().toEpochMilliseconds())
             ),
             issuerCredentialStore = issuerCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
@@ -102,11 +102,11 @@ class IssuerAgent(
                 continue
             }
             dataProvider.getCredential(subjectPublicKey, scheme, representation).fold(
-                onSuccess = {
-                    it.forEach { credentialToBeIssued ->
-                        issueCredential(credentialToBeIssued, subjectPublicKey, scheme).also {
-                            failed += it.failed
-                            successful += it.successful
+                onSuccess = { toBeIssued ->
+                    toBeIssued.forEach { credentialToBeIssued ->
+                        issueCredential(credentialToBeIssued, subjectPublicKey, scheme).also { result ->
+                            failed += result.failed
+                            successful += result.successful
                         }
                     }
                 },
@@ -124,21 +124,10 @@ class IssuerAgent(
         credential: CredentialToBeIssued,
         subjectPublicKey: CryptoPublicKey,
         scheme: ConstantIndex.CredentialScheme,
-    ): Issuer.IssuedCredentialResult {
-        val issuanceDate = clock.now()
-        when (credential) {
-            is CredentialToBeIssued.Iso -> {
-                return issueMdoc(credential, scheme, subjectPublicKey, issuanceDate)
-            }
-
-            is CredentialToBeIssued.VcJwt -> {
-                return issueVc(credential, scheme, issuanceDate)
-            }
-
-            is CredentialToBeIssued.VcSd -> {
-                return issueVcSd(credential, scheme, subjectPublicKey, issuanceDate)
-            }
-        }
+    ): Issuer.IssuedCredentialResult = when (credential) {
+        is CredentialToBeIssued.Iso -> issueMdoc(credential, scheme, subjectPublicKey, clock.now())
+        is CredentialToBeIssued.VcJwt -> issueVc(credential, scheme, subjectPublicKey, clock.now())
+        is CredentialToBeIssued.VcSd -> issueVcSd(credential, scheme, subjectPublicKey, clock.now())
     }
 
     private suspend fun issueMdoc(
@@ -148,18 +137,16 @@ class IssuerAgent(
         issuanceDate: Instant
     ): Issuer.IssuedCredentialResult {
         val expirationDate = credential.expiration
-        //TODO: we are not going to store anything ATM since we will first need a clear stance on what to store
-        /*val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-                val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-                    credential.issuerSignedItems,
-                    issuanceDate,
-                    expirationDate,
-                    timePeriod,
-                ) ?: return Issuer.IssuedCredentialResult(
-                    failed = listOf(
-                        Issuer.FailedAttribute(credential.attributeType, DataSourceProblem("no statusListIndex"))
-                    )
-                ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }*/
+        val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
+        issuerCredentialStore.storeGetNextIndex(
+            credential = IssuerCredentialStore.Credential.Iso(credential.issuerSignedItems),
+            subjectPublicKey = subjectPublicKey,
+            issuanceDate = issuanceDate,
+            expirationDate = expirationDate,
+            timePeriod = timePeriod,
+        ) ?: return Issuer.IssuedCredentialResult(
+            failed = listOf(Issuer.FailedAttribute(scheme.vcType, DataSourceProblem("vcId internal mismatch")))
+        ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }
         val mso = MobileSecurityObject(
             version = VERSION_1_0,
             digestAlgorithm = DIGEST_SHA_256,
@@ -188,29 +175,26 @@ class IssuerAgent(
                 addCertificate = true,
             ).getOrThrow()
         )
-        return Issuer.IssuedCredentialResult(
-            successful = listOf(Issuer.IssuedCredential.Iso(issuerSigned, scheme))
-        )
+        return Issuer.IssuedCredentialResult(successful = listOf(Issuer.IssuedCredential.Iso(issuerSigned, scheme)))
     }
 
     private suspend fun issueVc(
         credential: CredentialToBeIssued.VcJwt,
         scheme: ConstantIndex.CredentialScheme,
-        issuanceDate: Instant
+        subjectPublicKey: CryptoPublicKey,
+        issuanceDate: Instant,
     ): Issuer.IssuedCredentialResult {
         val vcId = "urn:uuid:${uuid4()}"
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            vcId,
-            credential.subject,
-            issuanceDate,
-            expirationDate,
-            timePeriod
+            credential = IssuerCredentialStore.Credential.VcJwt(vcId, credential.subject),
+            subjectPublicKey = subjectPublicKey,
+            issuanceDate = issuanceDate,
+            expirationDate = expirationDate,
+            timePeriod = timePeriod
         ) ?: return Issuer.IssuedCredentialResult(
-            failed = listOf(
-                Issuer.FailedAttribute(scheme.vcType, DataSourceProblem("vcId internal mismatch"))
-            )
+            failed = listOf(Issuer.FailedAttribute(scheme.vcType, DataSourceProblem("vcId internal mismatch")))
         ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }
 
         val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
@@ -226,9 +210,7 @@ class IssuerAgent(
 
         val vcInJws = wrapVcInJws(vc)
             ?: return Issuer.IssuedCredentialResult(
-                failed = listOf(
-                    Issuer.FailedAttribute(scheme.vcType, RuntimeException("signing failed"))
-                )
+                failed = listOf(Issuer.FailedAttribute(scheme.vcType, RuntimeException("signing failed")))
             ).also { Napier.w("Could not wrap credential in JWS") }
         return Issuer.IssuedCredentialResult(
             successful = listOf(
@@ -252,15 +234,13 @@ class IssuerAgent(
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val subjectId = subjectPublicKey.toJsonWebKey().identifier
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            vcId,
-            subjectId,
-            issuanceDate,
-            expirationDate,
-            timePeriod
+            credential = IssuerCredentialStore.Credential.VcSd(vcId, credential.claims),
+            subjectPublicKey = subjectPublicKey,
+            issuanceDate = issuanceDate,
+            expirationDate = expirationDate,
+            timePeriod = timePeriod
         ) ?: return Issuer.IssuedCredentialResult(
-            failed = listOf(
-                Issuer.FailedAttribute(scheme.vcType, DataSourceProblem("vcId internal mismatch"))
-            )
+            failed = listOf(Issuer.FailedAttribute(scheme.vcType, DataSourceProblem("vcId internal mismatch")))
         ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }
         val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
 
@@ -285,9 +265,7 @@ class IssuerAgent(
         // TODO Which content type to use for SD-JWT inside an JWS?
         val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
             ?: return Issuer.IssuedCredentialResult(
-                failed = listOf(
-                    Issuer.FailedAttribute(scheme.vcType, RuntimeException("signing failed"))
-                )
+                failed = listOf(Issuer.FailedAttribute(scheme.vcType, RuntimeException("signing failed")))
             ).also { Napier.w("Could not wrap credential in SD-JWT") }
         val vcInSdJwt = (listOf(jws) + disclosures).joinToString("~")
 
@@ -301,7 +279,8 @@ class IssuerAgent(
      * returns a JWS representation of that.
      */
     override suspend fun issueRevocationListCredential(timePeriod: Int?): String? {
-        val revocationListUrl = getRevocationListUrlFor(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
+        val revocationListUrl =
+            getRevocationListUrlFor(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
         val revocationList = buildRevocationList(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
             ?: return null
         val subject = RevocationListSubject("$revocationListUrl#list", revocationList)

@@ -131,8 +131,13 @@ private fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: L
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..16) {
         val vcId = uuid4().toString()
-        val revListIndex =
-            storeGetNextIndex(vcId, cred, issuanceDate, expirationDate, FixedTimePeriodProvider.timePeriod)!!
+        val revListIndex = storeGetNextIndex(
+            credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred),
+            subjectPublicKey = DefaultCryptoService().toPublicKey(),
+            issuanceDate = issuanceDate,
+            expirationDate = expirationDate,
+            timePeriod = FixedTimePeriodProvider.timePeriod
+        )!!
         if (revokedIndexes.contains(revListIndex)) {
             revoke(vcId, FixedTimePeriodProvider.timePeriod)
         }
@@ -146,8 +151,13 @@ private fun IssuerCredentialStore.revokeRandomCredentials(): MutableList<Long> {
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..256) {
         val vcId = uuid4().toString()
-        val revListIndex =
-            storeGetNextIndex(vcId, cred, issuanceDate, expirationDate, FixedTimePeriodProvider.timePeriod)!!
+        val revListIndex = storeGetNextIndex(
+            credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred),
+            subjectPublicKey = DefaultCryptoService().toPublicKey(),
+            issuanceDate = issuanceDate,
+            expirationDate = expirationDate,
+            timePeriod = FixedTimePeriodProvider.timePeriod
+        )!!
         if (Random.nextBoolean()) {
             expectedRevocationList += revListIndex
             revoke(vcId, FixedTimePeriodProvider.timePeriod)
