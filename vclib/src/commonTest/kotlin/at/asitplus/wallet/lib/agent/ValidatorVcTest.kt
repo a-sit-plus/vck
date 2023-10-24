@@ -384,14 +384,13 @@ class ValidatorVcTest : FreeSpec() {
         sub as AtomicAttribute2023
         val vcId = "urn:uuid:${uuid4()}"
         val exp = expirationDate ?: (Clock.System.now() + 60.seconds)
-        val statusListIndex =
-            issuerCredentialStore.storeGetNextIndex(
-                vcId,
-                sub,
-                issuanceDate,
-                exp,
-                FixedTimePeriodProvider.timePeriod
-            )!!
+        val statusListIndex = issuerCredentialStore.storeGetNextIndex(
+            credential = IssuerCredentialStore.Credential.VcJwt(vcId, sub),
+            subjectPublicKey = issuerCryptoService.toPublicKey(),
+            issuanceDate = issuanceDate,
+            expirationDate = exp,
+            timePeriod = FixedTimePeriodProvider.timePeriod
+        )!!
         val credentialStatus = CredentialStatus(revocationListUrl, statusListIndex)
         return VerifiableCredential(
             id = vcId,

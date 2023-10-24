@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import kotlinx.datetime.Instant
@@ -9,18 +10,11 @@ import kotlinx.datetime.Instant
  */
 interface IssuerCredentialStore {
 
-    /**
-     * Called by the issuer when creating a new credential.
-     * Expected to return a new index to use as a `statusListIndex`
-     * Returns null if `vcId` is already registered
-     */
-    fun storeGetNextIndex(
-        vcId: String,
-        credentialSubject: CredentialSubject,
-        issuanceDate: Instant,
-        expirationDate: Instant,
-        timePeriod: Int
-    ): Long?
+    sealed class Credential {
+        data class VcJwt(val vcId: String, val credentialSubject: CredentialSubject) : Credential()
+        data class VcSd(val vcId: String, val claims: Collection<ClaimToBeIssued>) : Credential()
+        data class Iso(val issuerSignedItemList: List<IssuerSignedItem>) : Credential()
+    }
 
     /**
      * Called by the issuer when creating a new credential.
@@ -28,23 +22,11 @@ interface IssuerCredentialStore {
      * Returns null if `vcId` is already registered
      */
     fun storeGetNextIndex(
-        vcId: String,
-        subjectId: String,
+        credential: Credential,
+        subjectPublicKey: CryptoPublicKey,
         issuanceDate: Instant,
         expirationDate: Instant,
         timePeriod: Int
-    ): Long?
-
-    /**
-     * Called by the issuer when creating a new credential.
-     * Expected to return a new index to use as something for ISO revocation?!
-     * Returns null if `vcId` is already registered
-     */
-    fun storeGetNextIndex(
-        issuerSignedItemList: List<IssuerSignedItem>,
-        issuanceDate: Instant,
-        expirationDate: Instant,
-        timePeriod: Int,
     ): Long?
 
     /**
