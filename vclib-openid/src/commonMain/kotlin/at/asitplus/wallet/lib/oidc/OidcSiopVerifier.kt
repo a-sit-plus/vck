@@ -172,7 +172,7 @@ class OidcSiopVerifier(
         val containerJwt = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.text))
         val vpFormats = FormatHolder(
             msoMdoc = if (schemeIsIso()) containerJwt else null,
-            jwtVp = if (schemeIsW3C()) containerJwt else null,
+            jwtVp = containerJwt,
         )
         val metadata = RelyingPartyMetadata(
             redirectUris = arrayOf(relyingPartyUrl),
@@ -212,7 +212,6 @@ class OidcSiopVerifier(
         )
     }
 
-    private fun schemeIsW3C() = credentialScheme?.credentialFormat == ConstantIndex.CredentialFormat.W3C_VC
     private fun schemeIsIso() = credentialScheme?.credentialFormat == ConstantIndex.CredentialFormat.ISO_18013
 
     private fun ConstantIndex.CredentialScheme.vcConstraint() = ConstraintField(

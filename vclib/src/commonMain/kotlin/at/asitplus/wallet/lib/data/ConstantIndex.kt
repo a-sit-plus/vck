@@ -10,7 +10,7 @@ object ConstantIndex {
     enum class CredentialRepresentation {
         PLAIN_JWT,
         SD_JWT,
-        // TODO ISO_MDOC,
+        ISO_MDOC,
     }
 
     interface CredentialScheme {
