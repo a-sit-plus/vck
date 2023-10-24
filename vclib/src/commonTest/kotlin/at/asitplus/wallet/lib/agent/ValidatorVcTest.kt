@@ -358,6 +358,7 @@ class ValidatorVcTest : FreeSpec() {
         when (it) {
             is CredentialToBeIssued.Iso -> it.scheme.vcType
             is CredentialToBeIssued.Vc -> it.scheme.vcType
+            is CredentialToBeIssued.VcSd -> it.scheme.vcType
         }
 
     private fun issueCredential(

@@ -7,6 +7,7 @@ Release 3.2.0
  - Remove function `Holder.storeValidatedCredentials`, class `Holder.ValidatedVerifiableCredentialJws`
  - Add member for `CredentialScheme` to various classes like `CredentialToBeIssued.Vc`, subclasses of `IssuedCredential`, subclasses of `StoreCredentialInput` and subclasses of `StoreEntry`
  - Add parameter for `CredentialScheme` to methods in `SubjectCredentialStore`
+ - Remove function `getClaims()` from `CredentialSubject`, logic moved to `IssuerCredentialDataProvider`
 
 Release 3.1.0
  - Support representing credentials in [SD-JWT](https://drafts.oauth.net/oauth-selective-disclosure-jwt/draft-ietf-oauth-selective-disclosure-jwt.html) format

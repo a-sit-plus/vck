@@ -24,5 +24,4 @@ data class AtomicAttribute2023(
 
     constructor(id: String, name: String, value: String) : this(id, name, value, "application/text")
 
-    override fun getClaims() = listOf(Claim("name", name), Claim("value", value), Claim("mime-type", mimeType))
 }
