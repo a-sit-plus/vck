@@ -1,7 +1,9 @@
 # Changelog
 
 Release 3.0.2
- - tbd
+ - Prevent serializers from getting registered twice
+ - Make class `CredentialSubject` abstract
+ - Create self-signed certificate for default iOS `CryptoService`
 
 Release 3.0.1
  - Dependency Updates
