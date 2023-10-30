@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DOCUMENT_NUMBER
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DRIVING_PRIVILEGES
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.EXPIRY_DATE
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.FAMILY_NAME
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUE_DATE
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.PORTRAIT
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.EXPIRY_DATE
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.FAMILY_NAME
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.ISSUE_DATE
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.PORTRAIT
 import at.asitplus.wallet.lib.jws.JwsSigned
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain

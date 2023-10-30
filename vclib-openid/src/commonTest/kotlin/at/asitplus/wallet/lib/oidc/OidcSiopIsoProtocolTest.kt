@@ -9,7 +9,7 @@ import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -96,7 +96,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     }
 
     "Selective Disclosure with mDL" {
-        val requestedClaim = IsoDataModelConstants.DataElements.FAMILY_NAME
+        val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,

@@ -11,8 +11,13 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.DrivingPrivilege
 import at.asitplus.wallet.lib.iso.DrivingPrivilegeCode
 import at.asitplus.wallet.lib.iso.ElementValue
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.EXPIRY_DATE
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.FAMILY_NAME
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.GIVEN_NAME
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.ISSUE_DATE
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
@@ -76,12 +81,12 @@ class DummyCredentialDataProvider(
                 codes = arrayOf(DrivingPrivilegeCode(code = "B"))
             )
             val issuerSignedItems = listOf(
-                buildIssuerSignedItem(DataElements.FAMILY_NAME, "Mustermann", 0U),
-                buildIssuerSignedItem(DataElements.GIVEN_NAME, "Max", 1U),
-                buildIssuerSignedItem(DataElements.DOCUMENT_NUMBER, "123456789", 2U),
-                buildIssuerSignedItem(DataElements.ISSUE_DATE, "2023-01-01", 3U),
-                buildIssuerSignedItem(DataElements.EXPIRY_DATE, "2033-01-31", 4U),
-                buildIssuerSignedItem(DataElements.DRIVING_PRIVILEGES, drivingPrivilege, 5U),
+                buildIssuerSignedItem(FAMILY_NAME, "Mustermann", 0U),
+                buildIssuerSignedItem(GIVEN_NAME, "Max", 1U),
+                buildIssuerSignedItem(DOCUMENT_NUMBER, "123456789", 2U),
+                buildIssuerSignedItem(ISSUE_DATE, "2023-01-01", 3U),
+                buildIssuerSignedItem(EXPIRY_DATE, "2033-01-31", 4U),
+                buildIssuerSignedItem(DRIVING_PRIVILEGES, drivingPrivilege, 5U),
             )
 
             credentials.add(

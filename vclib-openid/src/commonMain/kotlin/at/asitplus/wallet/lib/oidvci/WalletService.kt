@@ -24,7 +24,7 @@ class WalletService(
     private val credentialScheme: ConstantIndex.CredentialScheme,
     private val credentialRepresentation: ConstantIndex.CredentialRepresentation,
     /**
-     * Pass names of attributes the credential shall contain, e.g. [at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements]
+     * Pass names of attributes the credential shall contain, e.g. [at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements]
      */
     private val requestedAttributes: Collection<String>? = null,
     private val clientId: String = "https://wallet.a-sit.at/app",

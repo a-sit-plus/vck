@@ -4,7 +4,7 @@ import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.Base64UrlStrict
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.lib.jws.JsonWebToken
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsSigned
@@ -85,7 +85,7 @@ class IssuerService(
     )
 
     private fun ConstantIndex.CredentialScheme.buildIsoClaims() = mapOf(
-        isoNamespace to DataElements.ALL_ELEMENTS.associateWith { RequestedCredentialClaimSpecification() }
+        isoNamespace to MobileDrivingLicenceDataElements.ALL_ELEMENTS.associateWith { RequestedCredentialClaimSpecification() }
     )
 
     /**
