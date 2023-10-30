@@ -523,23 +523,6 @@ data class DeviceSigned(
     }
 }
 
-// TODO see if we really need this class
-data class DeviceNameSpaces(
-    @SerialName("org.iso.18013.5.1")
-    val entries: Map<String, ElementValue>
-) {
-    fun serialize() = cborSerializer.encodeToByteArray(this)
-
-    companion object {
-        fun deserialize(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray<DeviceNameSpaces>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
-    }
-}
-
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)

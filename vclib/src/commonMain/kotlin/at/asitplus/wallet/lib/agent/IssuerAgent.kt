@@ -22,8 +22,6 @@ import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.DeviceKeyInfo
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DIGEST_SHA_256
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.VERSION_1_0
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.IssuerSignedList
 import at.asitplus.wallet.lib.iso.MobileSecurityObject
@@ -148,8 +146,8 @@ class IssuerAgent(
             failed = listOf(Issuer.FailedAttribute(scheme.vcType, DataSourceProblem("vcId internal mismatch")))
         ).also { Napier.w("Got no statusListIndex from issuerCredentialStore, can't issue credential") }
         val mso = MobileSecurityObject(
-            version = VERSION_1_0,
-            digestAlgorithm = DIGEST_SHA_256,
+            version = "1.0",
+            digestAlgorithm = "SHA-256",
             valueDigests = mapOf(
                 scheme.isoNamespace to ValueDigestList(credential.issuerSignedItems.map {
                     ValueDigest.fromIssuerSigned(it)
