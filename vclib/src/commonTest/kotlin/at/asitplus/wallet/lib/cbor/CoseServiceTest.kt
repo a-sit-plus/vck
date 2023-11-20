@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
@@ -43,8 +44,8 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(signed.serialize())
         parsed.shouldNotBeNull()
 
-        val result = cryptoService.toPublicKey().toCoseKey()
-            .transform { verifierCoseService.verifyCose(parsed, it) }.getOrThrow()
+        cryptoService.coseKey shouldNotBe null
+        val result = verifierCoseService.verifyCose(parsed, cryptoService.coseKey!!).getOrNull()
         result shouldBe true
     }
 
@@ -64,8 +65,8 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(signed.serialize())
         parsed.shouldNotBeNull()
 
-        val result = cryptoService.toPublicKey().toCoseKey()
-            .transform { verifierCoseService.verifyCose(parsed, it) }.getOrThrow()
+        cryptoService.coseKey shouldNotBe null
+        val result = verifierCoseService.verifyCose(parsed, cryptoService.coseKey!!).getOrNull()
         result shouldBe true
     }
 

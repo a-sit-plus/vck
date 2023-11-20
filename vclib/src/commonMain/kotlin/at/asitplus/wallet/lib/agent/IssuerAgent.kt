@@ -61,7 +61,7 @@ class IssuerAgent(
             jwsService = DefaultJwsService(cryptoService),
             coseService = DefaultCoseService(cryptoService),
             dataProvider = dataProvider,
-            identifier = cryptoService.identifier,
+            identifier = cryptoService.jsonWebKey.identifier,
             timePeriodProvider = timePeriodProvider,
             clock = clock,
         )

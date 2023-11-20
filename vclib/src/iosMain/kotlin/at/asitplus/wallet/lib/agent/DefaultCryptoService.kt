@@ -3,7 +3,11 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.CryptoPublicKey
+import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.cose.CoseKey
+import at.asitplus.crypto.datatypes.cose.toCoseKey
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
+import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.data.Base64Strict
 import at.asitplus.wallet.lib.jws.*
@@ -58,7 +62,7 @@ actual class DefaultCryptoService : CryptoService {
     override val jwsAlgorithm = JwsAlgorithm.ES256
     override val coseAlgorithm = CoseAlgorithm.ES256
     private val privateKey: SecKeyRef
-    private val publicKey: SecKeyRef
+    private val publicKey1: SecKeyRef
     private val cryptoPublicKey: CryptoPublicKey
     override val certificate: ByteArray
 
@@ -68,8 +72,8 @@ actual class DefaultCryptoService : CryptoService {
             CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
         }
         privateKey = SecKeyCreateRandomKey(query, null)!!
-        publicKey = SecKeyCopyPublicKey(privateKey)!!
-        val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
+        publicKey1 = SecKeyCopyPublicKey(privateKey)!!
+        val publicKeyData = SecKeyCopyExternalRepresentation(publicKey1, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
         // TODO RSA
         this.cryptoPublicKey = CryptoPublicKey.Ec.fromAnsiX963Bytes(EcCurve.SECP_256_R_1, data.toByteArray())!!
@@ -162,7 +166,14 @@ actual class DefaultCryptoService : CryptoService {
         return KmmResult.success(input)
     }
 
-    override fun toPublicKey() = cryptoPublicKey
+    override val publicKey: CryptoPublicKey
+        get() = this.cryptoPublicKey
+
+    override val jsonWebKey: JsonWebKey
+        get() = cryptoPublicKey.toJsonWebKey().getOrNull()!!
+
+    override val coseKey: CoseKey
+        get() = cryptoPublicKey.toCoseKey(coseAlgorithm).getOrNull()!!
 }
 
 @Suppress("UNCHECKED_CAST")

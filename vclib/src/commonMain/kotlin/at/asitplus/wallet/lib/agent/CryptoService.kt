@@ -6,10 +6,12 @@ import at.asitplus.crypto.datatypes.Digest
 import at.asitplus.crypto.datatypes.EcCurve
 import at.asitplus.crypto.datatypes.JwsAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
+import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncryption
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import kotlin.jvm.Transient
 
 interface CryptoService {
 
@@ -44,13 +46,13 @@ interface CryptoService {
 
     fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray>
 
-    fun toPublicKey(): CryptoPublicKey
+    val publicKey: CryptoPublicKey
 
-    fun toJsonWebKey(): JsonWebKey
+    val jsonWebKey: JsonWebKey
 
-    val jwsAlgorithm: JwsAlgorithm
+    val algorithm: JwsAlgorithm
 
-    val coseAlgorithm: CoseAlgorithm
+    val coseKey: CoseKey
 
     /**
      * May be used in [at.asitplus.wallet.lib.cbor.CoseService] to transport the signing key for a COSE structure.
@@ -58,8 +60,8 @@ interface CryptoService {
      */
     val certificate: ByteArray?
 
-    val identifier: String
-        get() = toJsonWebKey().identifier
+//    val identifier: String
+//        get() = jsonWebKey.identifier
 
 }
 
@@ -96,7 +98,7 @@ data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteA
 }
 
 interface EphemeralKeyHolder {
-    fun toPublicJsonWebKey(): JsonWebKey?
+    val publicJsonWebKey: JsonWebKey?
 }
 
 expect class DefaultCryptoService() : CryptoService

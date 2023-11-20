@@ -40,7 +40,7 @@ class VerifierAgent private constructor(
          */
         fun newRandomInstance(): VerifierAgent = VerifierAgent(
             validator = Validator.newDefaultInstance(),
-            identifier = DefaultCryptoService().identifier,
+            identifier = DefaultCryptoService().jsonWebKey.identifier,
         )
     }
 

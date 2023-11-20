@@ -19,6 +19,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -43,7 +44,8 @@ class IsoMdocTest : FreeSpec({
 
         val verifierRequest = verifier.buildDeviceRequest()
         val walletResponse = wallet.buildDeviceResponse(verifierRequest)
-        verifier.verifyResponse(walletResponse, issuer.cryptoService.toPublicKey().toCoseKey().getOrThrow())
+        issuer.cryptoService.coseKey shouldNotBe null
+        verifier.verifyResponse(walletResponse, issuer.cryptoService.coseKey!!)
     }
 
 })
@@ -54,7 +56,7 @@ class Wallet {
     val coseService = DefaultCoseService(cryptoService)
 
     val deviceKeyInfo = DeviceKeyInfo(
-        deviceKey = cryptoService.toPublicKey().toCoseKey().getOrThrow(),
+        deviceKey = cryptoService.coseKey ?: throw IllegalArgumentException("Missing Cose Key"),
     )
 
     var storedMdl: MobileDrivingLicence? = null

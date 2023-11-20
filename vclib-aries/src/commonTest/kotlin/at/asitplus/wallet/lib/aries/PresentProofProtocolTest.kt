@@ -32,7 +32,7 @@ class PresentProofProtocolTest : FreeSpec({
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
         holder = HolderAgent.newDefaultInstance(holderCryptoService)
-        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
+        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
         holderProtocol = PresentProofProtocol.newHolderInstance(
             holder = holder,
             serviceEndpoint = "https://example.com/",
@@ -59,16 +59,16 @@ class PresentProofProtocolTest : FreeSpec({
         oobInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val invitationMessage = oobInvitation.message
 
-        val parsedInvitation = verifierProtocol.parseMessage(invitationMessage, holderCryptoService.toJsonWebKey())
+        val parsedInvitation = verifierProtocol.parseMessage(invitationMessage, holderCryptoService.jsonWebKey)
         parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val requestPresentation = parsedInvitation.message
 
         val parsedRequestPresentation =
-            holderProtocol.parseMessage(requestPresentation, verifierCryptoService.toJsonWebKey())
+            holderProtocol.parseMessage(requestPresentation, verifierCryptoService.jsonWebKey)
         parsedRequestPresentation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val presentation = parsedRequestPresentation.message
 
-        val parsedPresentation = verifierProtocol.parseMessage(presentation, holderCryptoService.toJsonWebKey())
+        val parsedPresentation = verifierProtocol.parseMessage(presentation, holderCryptoService.jsonWebKey)
         parsedPresentation.shouldBeInstanceOf<InternalNextMessage.Finished>()
 
         val receivedPresentation = parsedPresentation.lastMessage
@@ -90,11 +90,11 @@ class PresentProofProtocolTest : FreeSpec({
         requestPresentation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
 
         val parsedRequestPresentation =
-            holderProtocol.parseMessage(requestPresentation.message, verifierCryptoService.toJsonWebKey())
+            holderProtocol.parseMessage(requestPresentation.message, verifierCryptoService.jsonWebKey)
         parsedRequestPresentation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val presentation = parsedRequestPresentation.message
 
-        val parsedPresentation = verifierProtocol.parseMessage(presentation, holderCryptoService.toJsonWebKey())
+        val parsedPresentation = verifierProtocol.parseMessage(presentation, holderCryptoService.jsonWebKey)
         parsedPresentation.shouldBeInstanceOf<InternalNextMessage.Finished>()
 
         val receivedPresentation = parsedPresentation.lastMessage
@@ -108,7 +108,7 @@ class PresentProofProtocolTest : FreeSpec({
                 parentThreadId = uuid4().toString(),
                 attachment = JwmAttachment(id = uuid4().toString(), "mimeType", JwmAttachmentData())
             ),
-            holderCryptoService.toJsonWebKey()
+            holderCryptoService.jsonWebKey
         )
         parsed.shouldBeInstanceOf<InternalNextMessage.IncorrectState>()
     }
@@ -118,12 +118,12 @@ class PresentProofProtocolTest : FreeSpec({
         oobInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val invitationMessage = oobInvitation.message
 
-        val parsedInvitation = verifierProtocol.parseMessage(invitationMessage, holderCryptoService.toJsonWebKey())
+        val parsedInvitation = verifierProtocol.parseMessage(invitationMessage, holderCryptoService.jsonWebKey)
         parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val requestPresentation = parsedInvitation.message
 
         val parsedRequestPresentation =
-            holderProtocol.parseMessage(requestPresentation, verifierCryptoService.toJsonWebKey())
+            holderProtocol.parseMessage(requestPresentation, verifierCryptoService.jsonWebKey)
         parsedRequestPresentation.shouldBeInstanceOf<InternalNextMessage.SendProblemReport>()
         val problemReport = parsedRequestPresentation.message
 

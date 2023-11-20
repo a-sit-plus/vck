@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.JwsAlgorithm
 import at.asitplus.crypto.datatypes.cose.*
 import at.asitplus.crypto.datatypes.jws.JwsExtensions.extractSignatureValues
 import at.asitplus.wallet.lib.agent.CryptoService
@@ -52,9 +53,8 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         addKeyId: Boolean,
         addCertificate: Boolean,
     ): KmmResult<CoseSigned> {
-        var copyProtectedHeader = protectedHeader.copy(algorithm = cryptoService.coseAlgorithm)
-        if (addKeyId)
-            copyProtectedHeader = copyProtectedHeader.copy(kid = cryptoService.identifier.encodeToByteArray())
+        var copyProtectedHeader = protectedHeader.copy(algorithm = cryptoService.algorithm.toCoseAlgorithm())
+        if (addKeyId) copyProtectedHeader = copyProtectedHeader.copy(kid = cryptoService.jsonWebKey.identifier.encodeToByteArray())
 
         val copyUnprotectedHeader = if (addCertificate) {
             (unprotectedHeader ?: CoseHeader()).copy(certificateChain = cryptoService.certificate)
@@ -74,11 +74,16 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
             return KmmResult.failure(it)
         }
 
-        val rawSignature: ByteArray = when (cryptoService.coseAlgorithm) {
-            CoseAlgorithm.ES256, CoseAlgorithm.ES384, CoseAlgorithm.ES512 -> signature.extractSignatureValues(
-                (cryptoService.toPublicKey() as CryptoPublicKey.Ec).curve.signatureLengthBytes / 2u
+//        val rawSignature: ByteArray = when (cryptoService.algorithm.toCoseAlgorithm()) {
+//            CoseAlgorithm.ES256, CoseAlgorithm.ES384, CoseAlgorithm.ES512 -> signature.extractSignatureValues(
+//                (cryptoService.publicKey as CryptoPublicKey.Ec).curve.signatureLengthBytes / 2u)
+//
+//            else -> signature
+//        }
+        val rawSignature = when (cryptoService.algorithm) {
+            JwsAlgorithm.ES256, JwsAlgorithm.ES384, JwsAlgorithm.ES512 -> signature.extractSignatureValues(
+                (cryptoService.publicKey as CryptoPublicKey.Ec).curve.signatureLengthBytes / 2u
             )
-
             else -> signature
         }
 
@@ -103,8 +108,11 @@ class DefaultVerifierCoseService(
             payload = coseSigned.payload,
         ).serialize()
 
-        val algorithm = coseSigned.protectedHeader.value.algorithm
-            ?: return KmmResult.failure(IllegalArgumentException("Algorithm not specified"))
+        val algorithm = coseSigned.protectedHeader.value.algorithm ?: return KmmResult.failure(
+            IllegalArgumentException(
+                "Algorithm not specified"
+            )
+        )
         val publicKey = signer.toCryptoPublicKey().getOrElse {
             return KmmResult.failure<Boolean>(IllegalArgumentException("Signer not convertible"))
                 .also { Napier.w("Could not convert signer to public key: $signer") }

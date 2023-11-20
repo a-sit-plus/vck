@@ -41,14 +41,14 @@ class PresentProofMessengerTest : FreeSpec() {
             verifierCryptoService = DefaultCryptoService()
             issuerCryptoService = DefaultCryptoService()
             holder = HolderAgent.newDefaultInstance(holderCryptoService)
-            verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
+            verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
             issuer = IssuerAgent.newDefaultInstance(issuerCryptoService)
             verifierChallenge = uuid4().toString()
             holderServiceEndpoint = "https://example.com/present-proof?${uuid4()}"
         }
 
         "presentProof" {
-            val credentialSubject = randomCredential(holderCryptoService.identifier)
+            val credentialSubject = randomCredential(holderCryptoService.jsonWebKey.identifier)
             holder.storeCredentials(issuer.issueCredential(credentialSubject).toStoreCredentialInput())
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,

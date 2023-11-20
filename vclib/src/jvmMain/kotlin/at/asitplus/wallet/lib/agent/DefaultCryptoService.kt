@@ -6,6 +6,9 @@ import at.asitplus.crypto.datatypes.*
 import at.asitplus.crypto.datatypes.EcCurve.SECP_256_R_1
 import at.asitplus.crypto.datatypes.asn1.ensureSize
 import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
+import at.asitplus.crypto.datatypes.cose.CoseKey
+import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
+import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.jws.*
 import at.asitplus.crypto.datatypes.jws.JwsExtensions.convertToAsn1Signature
 import org.bouncycastle.asn1.x500.X500Name
@@ -22,6 +25,7 @@ import java.math.BigInteger
 import java.security.*
 import java.security.cert.Certificate
 import java.security.interfaces.ECPublicKey
+import java.security.interfaces.RSAPublicKey
 import java.security.spec.X509EncodedKeySpec
 import java.time.Instant
 import java.util.*
@@ -36,43 +40,47 @@ import kotlin.time.Duration.Companion.days
 
 actual open class DefaultCryptoService : CryptoService {
 
-    private val ecCurve: EcCurve = SECP_256_R_1
     private val keyPair: KeyPair
-    private val cryptoPublicKey: CryptoPublicKey
+
+    final override val publicKey: CryptoPublicKey
+
+    final override val jsonWebKey: JsonWebKey
+
+    final override val algorithm: JwsAlgorithm
+
+    final override val coseKey: CoseKey
+
     final override val certificate: ByteArray
 
+    /**
+     * Default constructor without arguments is ES256
+     */
     actual constructor() {
-        this.keyPair =
-            KeyPairGenerator.getInstance("EC").also { it.initialize(ecCurve.keyLengthBits.toInt()) }.genKeyPair()
-        val ecPublicKey = keyPair.public as ECPublicKey
-        val keyX = ecPublicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        // TODO RSA Test
-        this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, x = keyX, y = keyY)
-        this.certificate = generateSelfSignedCertificate()
+        this.keyPair = KeyPairGenerator.getInstance("EC")
+            .also { it.initialize(SECP_256_R_1.keyLengthBits.toInt()) }.genKeyPair()
+        this.publicKey = CryptoPublicKey.fromJcaKey(keyPair.public).getOrThrow()
+        this.algorithm = JwsAlgorithm.ES256
+        this.jsonWebKey = publicKey.toJsonWebKey().getOrThrow()
+        this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
+        this.certificate = generateSelfSignedCertificate(keyPair)
     }
 
-    constructor(keyPair: KeyPair) {
+    /**
+     * Constructor which allows all public keys implemented in `KMP-Crypto`
+     * Because RSA needs the algorithm parameter to be useful (as it cannot be inferred from the key)
+     * it's mandatory
+     * Also used for non-self-signed certificates
+     */
+    constructor(keyPair: KeyPair, algorithm: JwsAlgorithm, certificate: Certificate? = null) {
         this.keyPair = keyPair
-        val ecPublicKey = keyPair.public as ECPublicKey
-        val keyX = ecPublicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        // TODO RSA Test
-        this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, x = keyX, y = keyY)
-        this.certificate = generateSelfSignedCertificate()
+        this.publicKey = CryptoPublicKey.fromJcaKey(keyPair.public).getOrThrow()
+        this.jsonWebKey = publicKey.toJsonWebKey().getOrThrow()
+        this.algorithm = algorithm
+        this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
+        this.certificate = certificate?.encoded ?: generateSelfSignedCertificate(keyPair)
     }
 
-    constructor(keyPair: KeyPair, certificate: Certificate) {
-        this.keyPair = keyPair
-        val ecPublicKey = keyPair.public as ECPublicKey
-        val keyX = ecPublicKey.w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        val keyY = ecPublicKey.w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        // TODO RSA Test
-        this.cryptoPublicKey = CryptoPublicKey.Ec(curve = SECP_256_R_1, x = keyX, y = keyY)
-        this.certificate = certificate.encoded
-    }
-
-    private fun generateSelfSignedCertificate(): ByteArray {
+    private fun generateSelfSignedCertificate(keyPair: KeyPair): ByteArray {
         val notBeforeDate = Date.from(Instant.now())
         val notAfterDate = Date.from(Instant.now().plusSeconds(30.days.inWholeSeconds))
         val serialNumber: BigInteger = BigInteger.valueOf(Random.nextLong().absoluteValue)
@@ -85,22 +93,14 @@ actual open class DefaultCryptoService : CryptoService {
             /* subject = */ issuer,
             /* publicKeyInfo = */ SubjectPublicKeyInfo.getInstance(keyPair.public.encoded)
         )
-        val contentSigner: ContentSigner = JcaContentSignerBuilder(JwsAlgorithm.ES256.jcaName).build(keyPair.private)
+        val contentSigner: ContentSigner = JcaContentSignerBuilder(algorithm.jcaName).build(keyPair.private)
         val certificateHolder = builder.build(contentSigner)
         return certificateHolder.encoded
     }
 
-    override val jwsAlgorithm = JwsAlgorithm.ES256
-
-    override val coseAlgorithm = CoseAlgorithm.ES256
-
-    override fun toPublicKey() = cryptoPublicKey
-
-    override fun toJsonWebKey(): JsonWebKey = cryptoPublicKey.toJsonWebKey().getOrNull()!!
-
     override suspend fun sign(input: ByteArray): KmmResult<ByteArray> =
         try {
-            val signed = Signature.getInstance(jwsAlgorithm.jcaName).apply {
+            val signed = Signature.getInstance(algorithm.jcaName).apply {
                 initSign(keyPair.private)
                 update(input)
             }.sign()
@@ -229,8 +229,9 @@ open class JvmEphemeralKeyHolder(private val ecCurve: EcCurve) : EphemeralKeyHol
     val keyPair: KeyPair =
         KeyPairGenerator.getInstance("EC").also { it.initialize(ecCurve.keyLengthBits.toInt()) }.genKeyPair()
 
-    override fun toPublicJsonWebKey() =
+    override val publicJsonWebKey by lazy {
         CryptoPublicKey.fromJcaKey(keyPair.public).transform { it.toJsonWebKey() }.getOrNull()
+    }
 
 }
 

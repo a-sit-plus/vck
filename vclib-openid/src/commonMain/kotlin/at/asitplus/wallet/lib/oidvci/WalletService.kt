@@ -86,12 +86,12 @@ class WalletService(
         tokenResponse: TokenResponseParameters,
         issuerMetadata: IssuerMetadata
     ): CredentialRequestParameters {
-        // TODO Specification is missing a proof type for binding method `cose_key`, so we'll use JWT
+        // TODO() Specification is missing a proof type for binding method `cose_key`, so we'll use JWT
         val proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofTypes.JWT,
             jwt = jwsService.createSignedJwsAddingParams(
                 header = JwsHeader(
-                    algorithm = cryptoService.jwsAlgorithm,
+                    algorithm = cryptoService.algorithm,
                     type = OpenIdConstants.ProofTypes.JWT_HEADER_TYPE,
                 ),
                 payload = JsonWebToken(

@@ -62,7 +62,7 @@ class OidcSiopWallet(
             clientId: String = "https://wallet.a-sit.at/"
         ) = OidcSiopWallet(
             holder = holder,
-            agentPublicKey = cryptoService.toPublicKey(),
+            agentPublicKey = cryptoService.publicKey,
             jwsService = jwsService,
             verifierJwsService = verifierJwsService,
             clock = clock,
