@@ -194,7 +194,7 @@ class Validator(
         val issuerAuth = issuerSigned.issuerAuth
 
         val issuerKey = issuerAuth.unprotectedHeader?.certificateChain?.let {
-            runCatching { X509Certificate.derDecode(it) }.getOrNull()?.publicKey?.toCoseKey()
+            X509Certificate.decodeFromDerOrNull(it)?.publicKey?.toCoseKey()?.getOrNull()
         } ?: return Verifier.VerifyPresentationResult.InvalidStructure(
             doc.serialize().encodeToString(Base16(strict = true))
         )

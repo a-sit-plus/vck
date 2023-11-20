@@ -66,7 +66,7 @@ class JwsServiceTest : FreeSpec({
 
     "signed object with jsonWebKey can be verified" {
         val payload = randomPayload.encodeToByteArray()
-        val header = JwsHeader(JwsAlgorithm.ES256, jsonWebKey = cryptoService.toPublicKey().toJsonWebKey())
+        val header = JwsHeader(JwsAlgorithm.ES256, jsonWebKey = cryptoService.toJsonWebKey())
         val signed = jwsService.createSignedJws(header, payload)
         signed.shouldNotBeNull()
 
@@ -83,7 +83,7 @@ class JwsServiceTest : FreeSpec({
         val encrypted = jwsService.encryptJweObject(
             JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
             stringPayload.encodeToByteArray(),
-            cryptoService.toPublicKey().toJsonWebKey(),
+            cryptoService.toPublicKey().toJsonWebKey().getOrThrow(),
             JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
             JweAlgorithm.ECDH_ES,
             JweEncryption.A256GCM,

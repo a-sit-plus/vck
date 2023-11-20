@@ -26,7 +26,7 @@ inline fun KotlinDependencyHandler.commonImplementationDependencies() {
 
 fun commonIosExports() = arrayOf(
     datetime(),
-    "at.asitplus:kmmresult:${VcLibVersions.resultlib}",
+    kmmresult(),
     "io.matthewnelson.kotlin-components:encoding-base16:${VcLibVersions.encoding}",
     "io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}",
 )

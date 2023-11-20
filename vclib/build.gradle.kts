@@ -14,34 +14,33 @@ val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
 
-exportIosFramework("VcLibKmm", *commonIosExports())
 kotlin {
-
+    jvm()
+    iosArm64()
+    iosSimulatorArm64()
+    iosX64()
     sourceSets {
 
-        val commonMain by getting {
+        commonMain {
             dependencies {
                 commonImplementationDependencies()
                 api("at.asitplus.crypto:datatypes-cose:${VcLibVersions.kmpcrypto}")
                 api("at.asitplus.crypto:datatypes-jws:${VcLibVersions.kmpcrypto}")
                 api(datetime())
                 api(serialization("cbor"))
-                api("at.asitplus:kmmresult:${VcLibVersions.resultlib}")
+                api(kmmresult())
                 api("io.matthewnelson.kotlin-components:encoding-base16:${VcLibVersions.encoding}")
                 api("io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}")
             }
         }
 
-        val commonTest by getting
-
-        val iosMain by getting
-        val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
-        val jvmMain by getting {
+//        iosSimulatorArm64Main { dependsOn(iosMain) }
+        jvmMain {
             dependencies {
                 implementation(bouncycastle("bcpkix"))
             }
         }
-        val jvmTest by getting {
+        jvmTest {
             dependencies {
                 implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
@@ -49,6 +48,8 @@ kotlin {
         }
     }
 }
+
+exportIosFramework("VcLibKmm", *commonIosExports())
 
 val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/main/", multiModuleDoc = true)
 

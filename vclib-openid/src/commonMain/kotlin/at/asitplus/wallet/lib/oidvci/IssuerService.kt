@@ -1,11 +1,14 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.JwsAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseEllipticCurve
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.CoseKeyType
+import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.jws.JsonWebToken
 import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.Base64UrlStrict
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -142,22 +145,23 @@ class IssuerService(
             throw OAuth2Exception(Errors.INVALID_PROOF)
         val jwsSigned = JwsSigned.parse(proof.jwt)
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
-        val jwt = JsonWebToken.deserialize(jwsSigned.payload.decodeToString())
+        val jwt = JsonWebToken.deserialize(jwsSigned.payload.decodeToString()).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
         if (jwt.nonce == null || !clientNonceService.verifyAndRemoveNonce(jwt.nonce!!))
             throw OAuth2Exception(Errors.INVALID_PROOF)
         if (jwsSigned.header.type != ProofTypes.JWT_HEADER_TYPE)
             throw OAuth2Exception(Errors.INVALID_PROOF)
-        val subjectPublicKey = jwsSigned.header.publicKey
+        val subjectPublicKey = jwsSigned.header.publicKey?.toJsonWebKey()?.getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
 
         val issuedCredentialResult = issuer.issueCredentialWithTypes(
             subjectId = subjectPublicKey.identifier,
-            subjectPublicKey = CoseKey.fromAnsiX963Bytes(
-                CoseKeyType.EC2,
-                CoseEllipticCurve.P256,
-                subjectPublicKey.toAnsiX963ByteArray().getOrThrow()
-            ),
+//            subjectPublicKey = CoseKey.fromAnsiX963Bytes(
+//                CoseKeyType.EC2,
+//                CoseEllipticCurve.P256,
+//                subjectPublicKey.toAnsiX963ByteArray().getOrThrow()
+//            ),
+            subjectPublicKey = subjectPublicKey.toCryptoPublicKey().transform { it.toCoseKey() }.getOrThrow(),
             attributeTypes = params.types.toList()
         )
         if (issuedCredentialResult.successful.isEmpty()) {

@@ -44,8 +44,9 @@ interface CryptoService {
 
     fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray>
 
-    val identifier: String
-        get() = toPublicKey().toJsonWebKey().identifier
+    fun toPublicKey(): CryptoPublicKey
+
+    fun toJsonWebKey(): JsonWebKey
 
     val jwsAlgorithm: JwsAlgorithm
 
@@ -57,7 +58,8 @@ interface CryptoService {
      */
     val certificate: ByteArray?
 
-    fun toPublicKey(): CryptoPublicKey
+    val identifier: String
+        get() = toJsonWebKey().identifier
 
 }
 
@@ -94,7 +96,7 @@ data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteA
 }
 
 interface EphemeralKeyHolder {
-    fun toPublicJsonWebKey(): JsonWebKey
+    fun toPublicJsonWebKey(): JsonWebKey?
 }
 
 expect class DefaultCryptoService() : CryptoService

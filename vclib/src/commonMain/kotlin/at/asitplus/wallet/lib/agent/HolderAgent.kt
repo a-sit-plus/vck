@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseHeader
+import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.jws.JwsContentTypeConstants
 import at.asitplus.crypto.datatypes.pki.X509Certificate
@@ -95,9 +97,15 @@ class HolderAgent(
             }
         }
         credentialList.filterIsInstance<Holder.StoreCredentialInput.Iso>().forEach { cred ->
-            val issuerKey = cred.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.let {
-                runCatching { X509Certificate.derDecode(it) }.getOrNull()?.publicKey?.toCoseKey()
-            }
+            val issuerKey: CoseKey? = cred.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain
+                ?.let {
+                    runCatching { X509Certificate.decodeFromDer(it) }
+                        .getOrNull()
+                        ?.publicKey
+                        ?.toCoseKey()
+                        ?.getOrNull()
+                }
+
             when (val result = validator.verifyIsoCred(cred.issuerSigned, issuerKey)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += result.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += result.input

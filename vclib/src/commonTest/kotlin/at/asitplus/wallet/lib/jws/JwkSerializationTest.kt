@@ -32,9 +32,8 @@ class JwkSerializationTest : FreeSpec({
         val kid = uuid4().toString()
         val serialized = """{"kty": "EC", "crv": "${curve.jwkName}", "kid": "$kid"}"""
 
-        val parsed = JsonWebKey.deserialize(serialized)
+        val parsed = JsonWebKey.deserialize(serialized).getOrThrow()
 
-        parsed.shouldNotBeNull()
         parsed.curve shouldBe curve
         parsed.keyId shouldBe kid
     }
@@ -43,7 +42,7 @@ class JwkSerializationTest : FreeSpec({
         val kid = uuid4().toString()
         val serialized = """{"kty": "EC", "crv": "P-111", "kid": "$kid"}"""
 
-        val parsed = JsonWebKey.deserialize(serialized)
+        val parsed = JsonWebKey.deserialize(serialized).getOrNull()
 
         parsed.shouldBeNull()
     }

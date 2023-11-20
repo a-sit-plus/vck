@@ -1,10 +1,8 @@
 package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.KmmResult
-import at.asitplus.crypto.datatypes.cose.CoseHeader
-import at.asitplus.crypto.datatypes.cose.CoseKey
-import at.asitplus.crypto.datatypes.cose.CoseSignatureInput
-import at.asitplus.crypto.datatypes.cose.CoseSigned
+import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.cose.*
 import at.asitplus.crypto.datatypes.jws.JwsExtensions.extractSignatureValues
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
@@ -75,7 +73,15 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
             Napier.w("No signature from native code", it)
             return KmmResult.failure(it)
         }
-        val rawSignature = signature.extractSignatureValues(cryptoService.coseAlgorithm.signatureValueLength)
+
+        val rawSignature: ByteArray = when (cryptoService.coseAlgorithm) {
+            CoseAlgorithm.ES256, CoseAlgorithm.ES384, CoseAlgorithm.ES512 -> signature.extractSignatureValues(
+                (cryptoService.toPublicKey() as CryptoPublicKey.Ec).curve.signatureLengthBytes / 2u
+            )
+
+            else -> signature
+        }
+
         return KmmResult.success(
             CoseSigned(ByteStringWrapper(copyProtectedHeader), copyUnprotectedHeader, payload, rawSignature)
         )
@@ -99,9 +105,10 @@ class DefaultVerifierCoseService(
 
         val algorithm = coseSigned.protectedHeader.value.algorithm
             ?: return KmmResult.failure(IllegalArgumentException("Algorithm not specified"))
-        val publicKey = signer.toCryptoPublicKey()
-            ?: return KmmResult.failure<Boolean>(IllegalArgumentException("Signer not convertible"))
+        val publicKey = signer.toCryptoPublicKey().getOrElse {
+            return KmmResult.failure<Boolean>(IllegalArgumentException("Signer not convertible"))
                 .also { Napier.w("Could not convert signer to public key: $signer") }
+        }
         val verified = cryptoService.verify(
             input = signatureInput,
             signature = coseSigned.signature,

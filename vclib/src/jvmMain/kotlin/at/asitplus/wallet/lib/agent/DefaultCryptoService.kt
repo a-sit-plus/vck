@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.*
 import at.asitplus.crypto.datatypes.EcCurve.SECP_256_R_1
 import at.asitplus.crypto.datatypes.asn1.ensureSize
@@ -95,6 +96,8 @@ actual open class DefaultCryptoService : CryptoService {
 
     override fun toPublicKey() = cryptoPublicKey
 
+    override fun toJsonWebKey(): JsonWebKey = cryptoPublicKey.toJsonWebKey().getOrNull()!!
+
     override suspend fun sign(input: ByteArray): KmmResult<ByteArray> =
         try {
             val signed = Signature.getInstance(jwsAlgorithm.jcaName).apply {
@@ -158,7 +161,7 @@ actual open class DefaultCryptoService : CryptoService {
         return try {
             val secret = KeyAgreement.getInstance(algorithm.jcaName).also {
                 it.init(ephemeralKey.keyPair.private)
-                it.doPhase(recipientKey.toCryptoPublicKey()?.getPublicKey(), true)
+                it.doPhase(recipientKey.toCryptoPublicKey().getOrNull()?.getPublicKey(), true)
             }.generateSecret()
             KmmResult.success(secret)
         } catch (e: Throwable) {
@@ -204,7 +207,10 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
             return KmmResult.failure(IllegalArgumentException("Public key is not an EC key"))
         }
         return try {
-            val asn1Signature = signature.convertToAsn1Signature(publicKey.curve.signatureLengthBytes.toInt())
+            val asn1Signature = signature.convertToAsn1Signature(publicKey.curve.signatureLengthBytes.toInt() / 2)
+            //val asn1Signature = publicKey.encodeToDer()
+            //            val asn1Signature = publicKey.encodeToTlv()
+//            val derSig = asn1Signature.derEncoded
             val result = Signature.getInstance(algorithm.jcaName).apply {
                 initVerify(publicKey.getPublicKey())
                 update(input)
@@ -223,10 +229,8 @@ open class JvmEphemeralKeyHolder(private val ecCurve: EcCurve) : EphemeralKeyHol
     val keyPair: KeyPair =
         KeyPairGenerator.getInstance("EC").also { it.initialize(ecCurve.keyLengthBits.toInt()) }.genKeyPair()
 
-    override fun toPublicJsonWebKey(): JsonWebKey {
-        return CryptoPublicKey.fromJcaKey(keyPair.public)?.toJsonWebKey()
-            ?: throw IllegalArgumentException("Could not Convert Key")
-    }
+    override fun toPublicJsonWebKey() =
+        CryptoPublicKey.fromJcaKey(keyPair.public).transform { it.toJsonWebKey() }.getOrNull()
 
 }
 

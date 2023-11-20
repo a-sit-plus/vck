@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.EcCurve
 import at.asitplus.crypto.datatypes.asn1.ensureSize
+import at.asitplus.crypto.datatypes.io.MultibaseHelper
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import io.kotest.core.spec.style.FreeSpec
@@ -28,17 +29,15 @@ class JsonWebKeyJvmTest : FreeSpec({
     "JWK can be created from Coordinates" - {
         val xFromBc = (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val yFromBc = (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        val jsonWebKey = CryptoPublicKey.Ec.fromCoordinates(ecCurve, xFromBc, yFromBc).toJsonWebKey()
+        val jsonWebKey = JsonWebKey.fromCoordinates(ecCurve, xFromBc, yFromBc).getOrThrow()
 
-        jsonWebKey.shouldNotBeNull()
         jsonWebKey.x shouldBe xFromBc
         jsonWebKey.y shouldBe yFromBc
         jsonWebKey.keyId.shouldNotBeNull()
         jsonWebKey.keyId shouldHaveMinLength 32
 
         "it can be recreated" {
-            val recreatedJwk = JsonWebKey.fromKeyId(jsonWebKey.keyId!!)
-            recreatedJwk.shouldNotBeNull()
+            val recreatedJwk = JsonWebKey.fromKeyId(jsonWebKey.keyId!!).getOrThrow()
             recreatedJwk.keyId shouldBe jsonWebKey.keyId
             recreatedJwk.x shouldBe jsonWebKey.x
             recreatedJwk.y shouldBe jsonWebKey.y
@@ -49,18 +48,16 @@ class JsonWebKeyJvmTest : FreeSpec({
         val xFromBc = (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val yFromBc = (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         val ansiX962 = byteArrayOf(0x04) + xFromBc + yFromBc
-        val jsonWebKey = CryptoPublicKey.Ec.fromCoordinates(ecCurve, xFromBc, yFromBc).toJsonWebKey()
+        val jsonWebKey = JsonWebKey.fromCoordinates(ecCurve, xFromBc, yFromBc).getOrThrow()
 
-        jsonWebKey.shouldNotBeNull()
         jsonWebKey.x shouldBe xFromBc
         jsonWebKey.y shouldBe yFromBc
         jsonWebKey.keyId.shouldNotBeNull()
         jsonWebKey.keyId shouldHaveMinLength 32
-        jsonWebKey.toAnsiX963ByteArray().getOrThrow() shouldBe ansiX962
+        jsonWebKey.toCryptoPublicKey().getOrThrow().iosEncoded shouldBe  ansiX962
 
         "it can be recreated" {
-            val recreatedJwk = JsonWebKey.fromKeyId(jsonWebKey.keyId!!)
-            recreatedJwk.shouldNotBeNull()
+            val recreatedJwk = JsonWebKey.fromKeyId(jsonWebKey.keyId!!).getOrThrow()
             recreatedJwk.keyId shouldBe jsonWebKey.keyId
             recreatedJwk.x shouldBe jsonWebKey.x
             recreatedJwk.y shouldBe jsonWebKey.y

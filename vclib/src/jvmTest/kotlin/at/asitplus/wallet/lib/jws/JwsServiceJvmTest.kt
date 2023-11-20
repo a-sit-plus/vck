@@ -50,7 +50,7 @@ class JwsServiceJvmTest : FreeSpec({
         val stringPayload = jsonSerializer.encodeToString(randomPayload)
         val libHeader = JWSHeader.Builder(JWSAlgorithm.ES256)
             .type(JOSEObjectType("JWT"))
-            .keyID(cryptoService.toPublicKey().toJsonWebKey().keyId!!)
+            .keyID(cryptoService.toPublicKey().toJsonWebKey().getOrThrow().keyId!!)
             .build()
         val libObject = JWSObject(libHeader, Payload(stringPayload)).also {
             it.sign(ECDSASigner(keyPair.private as ECPrivateKey))
@@ -82,7 +82,7 @@ class JwsServiceJvmTest : FreeSpec({
         val libHeader = JWEHeader.Builder(JWEAlgorithm.ECDH_ES, EncryptionMethod.A256GCM)
             .type(JOSEObjectType(JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON))
             .contentType(JwsContentTypeConstants.DIDCOMM_PLAIN_JSON)
-            .keyID(cryptoService.toPublicKey().toJsonWebKey().keyId!!)
+            .keyID(cryptoService.toPublicKey().toJsonWebKey().getOrThrow().keyId!!)
             .build()
         val libObject = JWEObject(libHeader, Payload(stringPayload)).also {
             it.encrypt(ECDHEncrypter(keyPair.public as ECPublicKey))
@@ -101,7 +101,7 @@ class JwsServiceJvmTest : FreeSpec({
         val encrypted = jwsService.encryptJweObject(
             JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
             stringPayload.encodeToByteArray(),
-            cryptoService.toPublicKey().toJsonWebKey(),
+            cryptoService.toPublicKey().toJsonWebKey().getOrThrow(),
             JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
             JweAlgorithm.ECDH_ES,
             JweEncryption.A256GCM,
