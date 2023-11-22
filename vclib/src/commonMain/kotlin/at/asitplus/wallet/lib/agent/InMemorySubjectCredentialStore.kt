@@ -38,20 +38,18 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
     }
 
     override suspend fun getCredentials(
-        requiredAttributeTypes: Collection<String>?,
-    ) = KmmResult.success(
-        credentials.filter { it.discloseItem(requiredAttributeTypes) }
-    )
-
-    private fun SubjectCredentialStore.StoreEntry.discloseItem(
-        requiredAttributeTypes: Collection<String>?
-    ) = if (requiredAttributeTypes?.isNotEmpty() == true) {
-        when (this) {
-            is SubjectCredentialStore.StoreEntry.Iso -> this.scheme.vcType in requiredAttributeTypes
-            is SubjectCredentialStore.StoreEntry.Vc -> vc.vc.type.any { it in requiredAttributeTypes }
-            is SubjectCredentialStore.StoreEntry.SdJwt -> sdJwt.type.any { it in requiredAttributeTypes }
-        }
-    } else true
+        credentialSchemes: Collection<ConstantIndex.CredentialScheme>?,
+    ): KmmResult<List<SubjectCredentialStore.StoreEntry>> {
+        return credentialSchemes?.let { schemes ->
+            KmmResult.success(credentials.filter {
+                when (it) {
+                    is SubjectCredentialStore.StoreEntry.Iso -> it.scheme in schemes
+                    is SubjectCredentialStore.StoreEntry.SdJwt -> it.scheme in schemes
+                    is SubjectCredentialStore.StoreEntry.Vc -> it.scheme in schemes
+                }
+            }.toList())
+        } ?: KmmResult.success(credentials)
+    }
 
     override suspend fun getAttachment(name: String) =
         attachments.firstOrNull { it.name == name }?.data?.let { KmmResult.success(it) }

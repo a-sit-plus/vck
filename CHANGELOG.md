@@ -1,6 +1,9 @@
 # Changelog
 
-Release 3.2.0
+Release NEXT
+ - Change non-typed attribute types (i.e. Strings) to typed credential schemes (i.e. `ConstantIndex.CredentialScheme`), this includes methods `getCredentials`, `createPresentation` in interface `Holder`, and method `getCredentials` in interface `SubjectCredentialStore`
+
+Release 3.2.0:
  - Support representing credentials in all three representations: Plain JWT, SD-JWT and ISO MDOC
  - Remove property `credentialFormat` from interface `CredentialScheme`, also enum `CredentialFormat`
  - Remove property `credentialDefinitionName` from interface `CredentialScheme`, is now automatically converted from `vcType`
@@ -20,13 +23,13 @@ Release 3.2.0
  - Add constructor property `representation` to `OidcSiopVerifier` to select the representation of credentials
  - Add constructor property `credentialRepresentation` to `WalletService` (OpenId4VerifiableCredentialIssuance) to select the representation of credentials
 
-Release 3.1.0
+Release 3.1.0:
  - Support representing credentials in [SD-JWT](https://drafts.oauth.net/oauth-selective-disclosure-jwt/draft-ietf-oauth-selective-disclosure-jwt.html) format
  - Rename class `Issuer.IssuedCredential.Vc` to `Issuer.IssuedCredential.VcJwt`
  - Several new classes for sealed classes like `Issuer.IssuedCredential`, `Issuer.IssuedCredentialResult`, `Holder.StoreCredentialInput`, `Holder.StoredCredential`, `Parser.ParseVcResult`, `SubjectCredentialStore.StoreEntry`, `Verifier.VerifyCredentialResult`
  - Require implementations of `CredentialSubject` to implement `getClaims()` to process claims when issuing a credential with selective disclosures
 
-Release 3.0.1
+Release 3.0.1:
  - Dependency Updates
    - OKIO 3.5.0
    - UUID 0.8.1

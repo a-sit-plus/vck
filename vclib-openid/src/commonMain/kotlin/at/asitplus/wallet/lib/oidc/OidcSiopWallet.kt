@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.CryptoPublicKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
@@ -233,9 +234,10 @@ class OidcSiopWallet(
             ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not sign id_token") }
 
-        val requestedScopes = params.scope?.split(" ")
-            ?.filterNot { it == SCOPE_OPENID }?.filterNot { it == SCOPE_PROFILE }
-            ?.toList() ?: listOf()
+        val requestedScopes = (params.scope ?: "").split(" ")
+            .filterNot { it == SCOPE_OPENID }.filterNot { it == SCOPE_PROFILE }
+            .mapNotNull { AttributeIndex.resolveAttributeType(it) }
+            .toList()
         val requestedClaims = params.presentationDefinition?.inputDescriptors
             ?.mapNotNull { it.constraints }?.flatMap { it.fields?.toList() ?: listOf() }
             ?.flatMap { it.path.toList() }
@@ -244,9 +246,13 @@ class OidcSiopWallet(
             ?.map { it.removePrefix("\$.mdoc.") }
             ?.map { it.removePrefix("\$.") }
             ?: listOf()
-        val vp = holder.createPresentation(params.nonce, audience, requestedScopes, requestedClaims)
-            ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
-                .also { Napier.w("Could not create presentation") }
+        val vp = holder.createPresentation(
+            challenge = params.nonce,
+            audienceId = audience,
+            credentialSchemes = requestedScopes.ifEmpty { null },
+            requestedClaims = requestedClaims.ifEmpty { null }
+        ) ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
+            .also { Napier.w("Could not create presentation") }
 
         when (vp) {
             is Holder.CreatePresentationResult.Signed -> {
@@ -275,6 +281,7 @@ class OidcSiopWallet(
                     )
                 )
             }
+
             is Holder.CreatePresentationResult.SdJwt -> {
                 val presentationSubmission = PresentationSubmission(
                     id = uuid4().toString(),
@@ -296,6 +303,7 @@ class OidcSiopWallet(
                     )
                 )
             }
+
             is Holder.CreatePresentationResult.Document -> {
                 val presentationSubmission = PresentationSubmission(
                     id = uuid4().toString(),
