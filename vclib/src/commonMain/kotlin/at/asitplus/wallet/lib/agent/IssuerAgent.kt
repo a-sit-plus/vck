@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseHeader
 import at.asitplus.crypto.datatypes.cose.CoseKey
+import at.asitplus.crypto.datatypes.io.Base64Strict
 import at.asitplus.crypto.datatypes.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.DefaultZlibService
@@ -10,7 +11,6 @@ import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
-import at.asitplus.wallet.lib.data.Base64Strict
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE

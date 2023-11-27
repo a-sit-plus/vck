@@ -1,21 +1,16 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.Digest
-import at.asitplus.crypto.datatypes.EcCurve
-import at.asitplus.crypto.datatypes.JwsAlgorithm
-import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
+import at.asitplus.crypto.datatypes.*
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncryption
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
-import kotlin.jvm.Transient
+import at.asitplus.crypto.datatypes.pki.X509Certificate
 
 interface CryptoService {
 
-    suspend fun sign(input: ByteArray): KmmResult<ByteArray>
+    suspend fun sign(input: ByteArray): KmmResult<CryptoSignature>
 
     fun encrypt(
         key: ByteArray,
@@ -46,22 +41,20 @@ interface CryptoService {
 
     fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray>
 
+    val algorithm: JwsAlgorithm
+
     val publicKey: CryptoPublicKey
 
     val jsonWebKey: JsonWebKey
 
-    val algorithm: JwsAlgorithm
-
-    val coseKey: CoseKey
+    val coseKey: CoseKey //get() = this.publicKey.toCoseKey(this.algorithm.toCoseAlgorithm()).getOrNull()
 
     /**
      * May be used in [at.asitplus.wallet.lib.cbor.CoseService] to transport the signing key for a COSE structure.
      * a `null` value signifies that raw public keys are used and no certificate is present
      */
-    val certificate: ByteArray?
+    val certificate: X509Certificate
 
-//    val identifier: String
-//        get() = jsonWebKey.identifier
 
 }
 
@@ -69,7 +62,7 @@ interface VerifierCryptoService {
 
     fun verify(
         input: ByteArray,
-        signature: ByteArray,
+        signature: CryptoSignature,
         algorithm: JwsAlgorithm,
         publicKey: CryptoPublicKey,
     ): KmmResult<Boolean>

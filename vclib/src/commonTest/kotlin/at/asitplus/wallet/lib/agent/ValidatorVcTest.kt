@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.crypto.datatypes.JwsAlgorithm
+import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.JwsContentTypeConstants
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned

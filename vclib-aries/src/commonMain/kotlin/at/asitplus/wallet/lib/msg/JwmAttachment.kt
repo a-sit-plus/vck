@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.msg
 
+import at.asitplus.crypto.datatypes.io.Base64Strict
 import at.asitplus.wallet.lib.aries.jsonSerializer
-import at.asitplus.wallet.lib.data.Base64Strict
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull

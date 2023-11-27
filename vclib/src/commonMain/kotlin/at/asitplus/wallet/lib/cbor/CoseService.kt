@@ -1,10 +1,7 @@
 package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.KmmResult
-import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.JwsAlgorithm
 import at.asitplus.crypto.datatypes.cose.*
-import at.asitplus.crypto.datatypes.jws.JwsExtensions.extractSignatureValues
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
@@ -54,10 +51,11 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         addCertificate: Boolean,
     ): KmmResult<CoseSigned> {
         var copyProtectedHeader = protectedHeader.copy(algorithm = cryptoService.algorithm.toCoseAlgorithm())
-        if (addKeyId) copyProtectedHeader = copyProtectedHeader.copy(kid = cryptoService.jsonWebKey.identifier.encodeToByteArray())
+        if (addKeyId) copyProtectedHeader =
+            copyProtectedHeader.copy(kid = cryptoService.jsonWebKey.identifier.encodeToByteArray())
 
         val copyUnprotectedHeader = if (addCertificate) {
-            (unprotectedHeader ?: CoseHeader()).copy(certificateChain = cryptoService.certificate)
+            (unprotectedHeader ?: CoseHeader()).copy(certificateChain = cryptoService.certificate.encodeToDer())
         } else {
             unprotectedHeader
         }
@@ -80,15 +78,13 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
 //
 //            else -> signature
 //        }
-        val rawSignature = when (cryptoService.algorithm) {
-            JwsAlgorithm.ES256, JwsAlgorithm.ES384, JwsAlgorithm.ES512 -> signature.extractSignatureValues(
-                (cryptoService.publicKey as CryptoPublicKey.Ec).curve.signatureLengthBytes / 2u
-            )
-            else -> signature
-        }
-
         return KmmResult.success(
-            CoseSigned(ByteStringWrapper(copyProtectedHeader), copyUnprotectedHeader, payload, rawSignature)
+            CoseSigned(
+                ByteStringWrapper(copyProtectedHeader),
+                copyUnprotectedHeader,
+                payload,
+                signature
+            )
         )
     }
 }

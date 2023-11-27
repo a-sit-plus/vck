@@ -1,16 +1,12 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.JwsAlgorithm
-import at.asitplus.crypto.datatypes.cose.CoseEllipticCurve
-import at.asitplus.crypto.datatypes.cose.CoseKey
-import at.asitplus.crypto.datatypes.cose.CoseKeyType
 import at.asitplus.crypto.datatypes.cose.toCoseKey
+import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.JsonWebToken
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.data.Base64UrlStrict
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
@@ -26,7 +22,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_PREFIX_BEARER
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
-import io.ktor.http.URLBuilder
+import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.coroutines.cancellation.CancellationException
 

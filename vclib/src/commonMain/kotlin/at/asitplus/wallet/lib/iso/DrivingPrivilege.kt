@@ -4,14 +4,8 @@ package at.asitplus.wallet.lib.iso
 
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.cbor.KeyTags
+import kotlinx.serialization.*
 import kotlinx.serialization.cbor.ValueTags
-import kotlinx.serialization.cbor.ValueTags.Companion.REGEX
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToByteArray
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for Driving privileges (7.2.4)

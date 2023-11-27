@@ -6,7 +6,6 @@ import at.asitplus.crypto.datatypes.jws.JwkType
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 

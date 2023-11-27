@@ -4,22 +4,21 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.EcCurve
+import at.asitplus.crypto.datatypes.JwsAlgorithm
+import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseKey
+import at.asitplus.crypto.datatypes.io.Base64Strict
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
+import at.asitplus.crypto.datatypes.jws.JweAlgorithm
+import at.asitplus.crypto.datatypes.jws.JweEncryption
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
-import at.asitplus.wallet.lib.cbor.CoseAlgorithm
-import at.asitplus.wallet.lib.data.Base64Strict
-import at.asitplus.wallet.lib.jws.*
-import at.asitplus.wallet.lib.jws.JwsExtensions.convertToAsn1Signature
+import at.asitplus.crypto.datatypes.pki.TbsCertificate
+import at.asitplus.crypto.datatypes.pki.X509Certificate
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.cinterop.ByteVar
-import kotlinx.cinterop.CPointer
-import kotlinx.cinterop.MemScope
-import kotlinx.cinterop.allocArrayOf
-import kotlinx.cinterop.get
-import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.*
 import kotlinx.cinterop.reinterpret
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
@@ -190,9 +189,7 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
             return KmmResult.failure(IllegalArgumentException("Public key is not an EC key"))
         }
         memScoped {
-            val ansix962 = publicKey.toAnsiX963ByteArray().getOrElse {
-                return KmmResult.failure(it)
-            }
+            val ansix962 = publicKey.iosEncoded
             val keyData = CFBridgingRetain(toData(ansix962)) as CFDataRef
             val attributes = CFDictionaryCreateMutable(null, 3, null, null).apply {
                 CFDictionaryAddValue1(this, kSecAttrKeyClass, kSecAttrKeyClassPublic)

@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.data
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
 /**

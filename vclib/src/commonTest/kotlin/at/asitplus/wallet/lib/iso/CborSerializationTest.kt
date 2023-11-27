@@ -17,7 +17,7 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import io.ktor.utils.io.core.toByteArray
+import io.ktor.utils.io.core.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString

@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.cbor
 import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseHeader
 import at.asitplus.crypto.datatypes.cose.CoseSigned
-import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import io.kotest.core.spec.style.FreeSpec

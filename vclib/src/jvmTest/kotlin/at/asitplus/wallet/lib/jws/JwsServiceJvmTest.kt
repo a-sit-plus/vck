@@ -6,15 +6,7 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.data.jsonSerializer
 import com.benasher44.uuid.uuid4
-import com.nimbusds.jose.EncryptionMethod
-import com.nimbusds.jose.JOSEObjectType
-import com.nimbusds.jose.JWEAlgorithm
-import com.nimbusds.jose.JWEHeader
-import com.nimbusds.jose.JWEObject
-import com.nimbusds.jose.JWSAlgorithm
-import com.nimbusds.jose.JWSHeader
-import com.nimbusds.jose.JWSObject
-import com.nimbusds.jose.Payload
+import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.ECDHDecrypter
 import com.nimbusds.jose.crypto.ECDHEncrypter
 import com.nimbusds.jose.crypto.ECDSASigner

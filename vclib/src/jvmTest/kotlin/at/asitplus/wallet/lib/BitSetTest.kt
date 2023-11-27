@@ -9,7 +9,7 @@ import io.kotest.property.arbitrary.boolean
 import io.kotest.property.arbitrary.booleanArray
 import io.kotest.property.arbitrary.int
 import io.kotest.property.checkAll
-import java.util.BitSet
+import java.util.*
 
 class BitSetTest : FreeSpec({
 

@@ -1,17 +1,13 @@
 package at.asitplus.wallet.lib.jws
 
-import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.Digest
-import at.asitplus.crypto.datatypes.JwsAlgorithm
 import at.asitplus.crypto.datatypes.asn1.encodeTo4Bytes
+import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.*
 import at.asitplus.crypto.datatypes.jws.JwsExtensions.prependWith4BytesSize
-import at.asitplus.crypto.datatypes.jws.JwsExtensions.extractSignatureValues
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
-import at.asitplus.wallet.lib.data.Base64Strict
-import at.asitplus.wallet.lib.data.Base64UrlStrict
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -92,13 +88,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             Napier.w("No signature from native code", it)
             return null
         }
-        val rawSignature = when (cryptoService.algorithm) {
-            JwsAlgorithm.ES256, JwsAlgorithm.ES384, JwsAlgorithm.ES512 -> signature.extractSignatureValues(
-                (cryptoService.publicKey as CryptoPublicKey.Ec).curve.signatureLengthBytes / 2u
-            )
-            else -> signature
-        }
-        return JwsSigned(header, payload, rawSignature, signatureInput).serialize()
+        return JwsSigned(header, payload, signature, signatureInput).serialize()
     }
 
     override suspend fun createSignedJwsAddingParams(
