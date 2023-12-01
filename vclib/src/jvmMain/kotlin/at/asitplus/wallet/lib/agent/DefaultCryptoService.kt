@@ -125,7 +125,12 @@ actual open class DefaultCryptoService : CryptoService {
                 initSign(privateKey)
                 update(input)
             }.sign()
-        }.wrap().map { CryptoSignature.fromDerEncoded(it, algorithm) }
+        }.wrap().mapCatching {
+            when (algorithm) {
+                JwsAlgorithm.ES256, JwsAlgorithm.ES384, JwsAlgorithm.ES512 -> CryptoSignature.EC(it)
+                else -> CryptoSignature.RSAorHMAC(it)
+            }
+        }
 
     override fun encrypt(
         key: ByteArray, iv: ByteArray, aad: ByteArray, input: ByteArray, algorithm: JweEncryption
@@ -212,7 +217,7 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
             Signature.getInstance(algorithm.jcaName).apply {
                 initVerify(publicKey.getJcaPublicKey().getOrThrow())
                 update(input)
-            }.verify(signature.derEncoded)
+            }.verify(signature.rawByteArray)
         }.wrap()
 }
 

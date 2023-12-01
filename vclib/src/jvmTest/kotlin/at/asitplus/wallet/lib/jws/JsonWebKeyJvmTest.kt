@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.EcCurve
 import at.asitplus.crypto.datatypes.asn1.ensureSize
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
@@ -58,7 +59,7 @@ class JsonWebKeyJvmTest : FreeSpec({
             recreatedJwk.keyId shouldBe jsonWebKey.keyId
             recreatedJwk.x shouldBe jsonWebKey.x
             recreatedJwk.y shouldBe jsonWebKey.y
-            jsonWebKey.toAnsiX963ByteArray().getOrThrow() shouldBe ansiX962
+            jsonWebKey.toCryptoPublicKey().getOrThrow().iosEncoded shouldBe ansiX962
         }
     }
 

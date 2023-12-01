@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
@@ -219,7 +220,7 @@ class DefaultVerifierJwsService(
             input = jwsObject.plainSignatureInput.encodeToByteArray(),
             signature = jwsObject.signature,
             algorithm = header.algorithm,
-            publicKey = publicKey,
+            publicKey = publicKey
         )
         val falseVar = false //workaround kotlin bug for linking xcframework
         return verified.getOrElse {

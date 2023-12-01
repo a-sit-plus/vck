@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.crypto.datatypes.CryptoSignature
 import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseHeader
 import at.asitplus.crypto.datatypes.cose.CoseSigned
@@ -23,7 +24,7 @@ class CoseSerializationTest : FreeSpec({
             protectedHeader = ByteStringWrapper(CoseHeader(algorithm = CoseAlgorithm.ES256)),
             unprotectedHeader = CoseHeader(),
             payload = "This is the content.".encodeToByteArray(),
-            signature = "bar".encodeToByteArray()
+            signature = CryptoSignature.RSAorHMAC("bar".encodeToByteArray()) // plain Asn1 Element
         )
         val serialized = cose.serialize().encodeToString(Base16(strict = true)).uppercase()
 
