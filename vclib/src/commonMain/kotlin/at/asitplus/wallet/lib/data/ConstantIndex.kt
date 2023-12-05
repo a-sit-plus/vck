@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
+
 object ConstantIndex {
 
     enum class CredentialRepresentation {
@@ -38,6 +40,12 @@ object ConstantIndex {
          * following general format: `[Reverse Domain].[Domain Specific Extension]`.
          */
         val isoDocType: String
+
+        /**
+         * List of claims that may be issued separately when requested in format [CredentialRepresentation.SD_JWT]
+         * or [CredentialRepresentation.ISO_MDOC].
+         */
+        val claimNames: Collection<String>
     }
 
     object AtomicAttribute2023 : CredentialScheme {
@@ -45,6 +53,7 @@ object ConstantIndex {
         override val vcType: String = "AtomicAttribute2023"
         override val isoNamespace: String = "at.a-sit.wallet.atomic-attribute-2023"
         override val isoDocType: String = "at.a-sit.wallet.atomic-attribute-2023.iso"
+        override val claimNames: Collection<String> = listOf()
     }
 
     object MobileDrivingLicence2023 : CredentialScheme {
@@ -52,6 +61,7 @@ object ConstantIndex {
         override val vcType: String = "MobileDrivingLicence"
         override val isoNamespace: String = "org.iso.18013.5.1"
         override val isoDocType: String = "org.iso.18013.5.1.mDL"
+        override val claimNames: Collection<String> = MobileDrivingLicenceDataElements.ALL_ELEMENTS.toList()
     }
 
 }

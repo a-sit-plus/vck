@@ -14,12 +14,15 @@ interface IssuerCredentialDataProvider {
 
     /**
      * Gets called with a resolved [credentialScheme], the holder key in [subjectPublicKey] and the requested
-     * credential [representation]
+     * credential [representation].
+     * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
+     * [claimNames] to request only some claims (if supported by the representation).
      */
     fun getCredential(
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
+        claimNames: Collection<String>? = null,
     ): KmmResult<List<CredentialToBeIssued>>
 }
 

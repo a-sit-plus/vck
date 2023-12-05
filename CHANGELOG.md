@@ -1,8 +1,11 @@
 # Changelog
 
-Release NEXT
+Release 3.3.0:
  - Change non-typed attribute types (i.e. Strings) to typed credential schemes (i.e. `ConstantIndex.CredentialScheme`), this includes methods `getCredentials`, `createPresentation` in interface `Holder`, and method `getCredentials` in interface `SubjectCredentialStore`
- - Add `schem` to `Credential` stored in `IssuerCredentialStore`
+ - Add `scheme` to `Credential` stored in `IssuerCredentialStore`
+ - Add `claimNames` to `ConstantIndex.CredentialScheme` to list names of potential attributes (or claims) of the credential
+ - Add `claimNames` (a nullable list of requested claim names) to method `getCredential` in interface `IssuerCredentialDataProvider`, and to method `issueCredential` in interface `Issuer`
+ - Add functionality to request only specific claims to OID4VCI implementation
 
 Release 3.2.0:
  - Support representing credentials in all three representations: Plain JWT, SD-JWT and ISO MDOC

@@ -23,7 +23,8 @@ class DummyCredentialDataProvider(
     override fun getCredential(
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
-        representation: ConstantIndex.CredentialRepresentation
+        representation: ConstantIndex.CredentialRepresentation,
+        claimNames: Collection<String>?
     ): KmmResult<List<CredentialToBeIssued>> {
         if (credentialScheme != ConstantIndex.AtomicAttribute2023) {
             return KmmResult.failure(UnsupportedOperationException("no data"))
