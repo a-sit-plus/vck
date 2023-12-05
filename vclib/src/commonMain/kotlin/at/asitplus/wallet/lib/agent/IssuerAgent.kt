@@ -137,7 +137,7 @@ class IssuerAgent(
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.Iso(credential.issuerSignedItems),
+            credential = IssuerCredentialStore.Credential.Iso(credential.issuerSignedItems, scheme),
             subjectPublicKey = subjectPublicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
@@ -186,7 +186,7 @@ class IssuerAgent(
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcJwt(vcId, credential.subject),
+            credential = IssuerCredentialStore.Credential.VcJwt(vcId, credential.subject, scheme),
             subjectPublicKey = subjectPublicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
@@ -232,7 +232,7 @@ class IssuerAgent(
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val subjectId = subjectPublicKey.toJsonWebKey().identifier
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcSd(vcId, credential.claims),
+            credential = IssuerCredentialStore.Credential.VcSd(vcId, credential.claims, scheme),
             subjectPublicKey = subjectPublicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,

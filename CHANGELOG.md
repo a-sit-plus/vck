@@ -2,6 +2,7 @@
 
 Release NEXT
  - Change non-typed attribute types (i.e. Strings) to typed credential schemes (i.e. `ConstantIndex.CredentialScheme`), this includes methods `getCredentials`, `createPresentation` in interface `Holder`, and method `getCredentials` in interface `SubjectCredentialStore`
+ - Add `schem` to `Credential` stored in `IssuerCredentialStore`
 
 Release 3.2.0:
  - Support representing credentials in all three representations: Plain JWT, SD-JWT and ISO MDOC
