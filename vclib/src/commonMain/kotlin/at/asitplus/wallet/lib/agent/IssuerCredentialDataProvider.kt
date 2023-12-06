@@ -44,4 +44,4 @@ sealed class CredentialToBeIssued {
     ) : CredentialToBeIssued()
 }
 
-data class ClaimToBeIssued(val name: String, val value: String)
+data class ClaimToBeIssued(val name: String, val value: Any)

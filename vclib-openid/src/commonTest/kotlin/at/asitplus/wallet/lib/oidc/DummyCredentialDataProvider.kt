@@ -43,6 +43,7 @@ class DummyCredentialDataProvider(
                 optionalClaim(claimNames, "given-name", "Susanne"),
                 optionalClaim(claimNames, "family-name", "Meier"),
                 optionalClaim(claimNames, "date-of-birth", "1990-01-01"),
+                optionalClaim(claimNames, "is-active", true)
             )
             credentials += when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
@@ -54,7 +55,7 @@ class DummyCredentialDataProvider(
 
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> claims.map { claim ->
                     CredentialToBeIssued.VcJwt(
-                        subject = AtomicAttribute2023(subjectId, claim.name, claim.value),
+                        subject = AtomicAttribute2023(subjectId, claim.name, claim.value.toString()),
                         expiration = expiration,
                     )
                 } + CredentialToBeIssued.VcJwt(
@@ -110,23 +111,22 @@ class DummyCredentialDataProvider(
     private fun Collection<String>?.isNullOrContains(s: String) =
         this == null || contains(s)
 
-    private fun optionalClaim(claimNames: Collection<String>?, name: String, value: String) =
+    private fun optionalClaim(claimNames: Collection<String>?, name: String, value: Any) =
         if (claimNames.isNullOrContains(name)) ClaimToBeIssued(name, value) else null
 
-    private fun issuerSignedItem(elementIdentifier: String, elementValue: String, digestId: UInt) =
+
+    private fun issuerSignedItem(name: String, value: Any, digestId: UInt) =
         IssuerSignedItem(
             digestId = digestId,
             random = Random.nextBytes(16),
-            elementIdentifier = elementIdentifier,
-            elementValue = ElementValue(string = elementValue)
+            elementIdentifier = name,
+            elementValue = when (value) {
+                is String -> ElementValue(string = value)
+                is ByteArray -> ElementValue(bytes = value)
+                is LocalDate -> ElementValue(date = value)
+                is Boolean -> ElementValue(boolean = value)
+                is DrivingPrivilege -> ElementValue(drivingPrivilege = arrayOf(value))
+                else -> ElementValue(string = value.toString())
+            }
         )
-
-    fun issuerSignedItem(elementIdentifier: String, elementValue: DrivingPrivilege, digestId: UInt) =
-        IssuerSignedItem(
-            digestId = digestId,
-            random = Random.nextBytes(16),
-            elementIdentifier = elementIdentifier,
-            elementValue = ElementValue(drivingPrivilege = arrayOf(elementValue))
-        )
-
 }

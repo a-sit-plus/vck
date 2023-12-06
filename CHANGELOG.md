@@ -6,6 +6,7 @@ Release 3.3.0:
  - Add `claimNames` to `ConstantIndex.CredentialScheme` to list names of potential attributes (or claims) of the credential
  - Add `claimNames` (a nullable list of requested claim names) to method `getCredential` in interface `IssuerCredentialDataProvider`, and to method `issueCredential` in interface `Issuer`
  - Add functionality to request only specific claims to OID4VCI implementation
+ - Support issuing arbitrary data types in selective disclosure items (classes `ClaimToBeIssued` and `SelectiveDisclosureItem`)
 
 Release 3.2.0:
  - Support representing credentials in all three representations: Plain JWT, SD-JWT and ISO MDOC

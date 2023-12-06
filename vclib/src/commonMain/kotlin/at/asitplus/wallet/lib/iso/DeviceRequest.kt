@@ -426,6 +426,7 @@ data class IssuerSignedItem(
  * Convenience class to enable serialization of (nearly) "any" value in [IssuerSignedItem.elementValue]
  */
 // TODO Could this be anything else?
+// TODO Yes, can be boolean!
 @Serializable(with = ElementValueSerializer::class)
 data class ElementValue(
     val bytes: ByteArray? = null,
@@ -433,6 +434,7 @@ data class ElementValue(
     val date: LocalDate? = null,
     val string: String? = null,
     val drivingPrivilege: Array<DrivingPrivilege>? = null,
+    val boolean: Boolean? = null,
 ) {
     fun serialize() = cborSerializer.encodeToByteArray(this)
 
@@ -440,7 +442,8 @@ data class ElementValue(
         return "ElementValue(bytes=${bytes?.encodeToString(Base16(strict = true))}," +
                 " date=${date}," +
                 " string=$string," +
-                " drivingPrivilege=$drivingPrivilege)"
+                " drivingPrivilege=$drivingPrivilege," +
+                " boolean=$boolean)"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -459,6 +462,7 @@ data class ElementValue(
             if (other.drivingPrivilege == null) return false
             if (!drivingPrivilege.contentEquals(other.drivingPrivilege)) return false
         } else if (other.drivingPrivilege != null) return false
+        if (boolean != other.boolean) return false
 
         return true
     }
@@ -468,6 +472,7 @@ data class ElementValue(
         result = 31 * result + (date?.hashCode() ?: 0)
         result = 31 * result + (string?.hashCode() ?: 0)
         result = 31 * result + (drivingPrivilege?.contentHashCode() ?: 0)
+        result = 31 * result + (boolean?.hashCode() ?: 0)
         return result
     }
 
@@ -569,16 +574,25 @@ object ElementValueSerializer : KSerializer<ElementValue> {
             encoder.encodeString(it)
         } ?: value.drivingPrivilege?.let {
             encoder.encodeSerializableValue(ArraySerializer(DrivingPrivilege.serializer()), it)
+        } ?: value.boolean?.let {
+            encoder.encodeBoolean(it)
         } ?: throw IllegalArgumentException("No value exists")
     }
 
     override fun deserialize(decoder: Decoder): ElementValue {
         runCatching {
-            return ElementValue(bytes = decoder.decodeSerializableValue(ByteArraySerializer()))
+            return ElementValue(
+                bytes = decoder.decodeSerializableValue(ByteArraySerializer())
+            )
         }
         runCatching {
             return ElementValue(
                 drivingPrivilege = decoder.decodeSerializableValue(ArraySerializer(DrivingPrivilege.serializer()))
+            )
+        }
+        runCatching {
+            return ElementValue(
+                boolean = decoder.decodeBoolean()
             )
         }
         runCatching {
