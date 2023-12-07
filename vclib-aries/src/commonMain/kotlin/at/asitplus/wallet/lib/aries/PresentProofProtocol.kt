@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.aries
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.AriesGoalCodeParser
+import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
 import at.asitplus.wallet.lib.data.dif.Constraint
@@ -275,6 +276,7 @@ class PresentProofProtocol(
             .mapNotNull { it.filter }
             .filter { it.type == "string" }
             .mapNotNull { it.const }
+            .mapNotNull { AttributeIndex.resolveAttributeType(it) }
         val requestedClaims = constraintFields
             .filter { it.path.contains("\$.vc[*].name") }
             .mapNotNull { it.filter }
@@ -283,7 +285,7 @@ class PresentProofProtocol(
         val vp = holder?.createPresentation(
             challenge = requestPresentationAttachment.options.challenge,
             audienceId = requestPresentationAttachment.options.verifier ?: senderKey.identifier,
-            attributeTypes = requestedTypes.ifEmpty { null },
+            credentialSchemes = requestedTypes.ifEmpty { null },
             requestedClaims = requestedClaims.ifEmpty { null },
         ) ?: return problemReporter.problemInternal(lastMessage.threadId, "vp-empty")
         // TODO is ISO supported here?

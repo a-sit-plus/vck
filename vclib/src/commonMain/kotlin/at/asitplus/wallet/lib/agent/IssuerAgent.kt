@@ -85,11 +85,14 @@ class IssuerAgent(
      * Issues credentials for some [attributeTypes] (i.e. some of
      * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with its public
      * key in [subjectPublicKey] in the format specified by [representation].
+     * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
+     * [claimNames] to request only some claims (if supported by the representation).
      */
     override suspend fun issueCredential(
         subjectPublicKey: CryptoPublicKey,
         attributeTypes: Collection<String>,
-        representation: ConstantIndex.CredentialRepresentation
+        representation: ConstantIndex.CredentialRepresentation,
+        claimNames: Collection<String>?,
     ): Issuer.IssuedCredentialResult {
         val failed = mutableListOf<Issuer.FailedAttribute>()
         val successful = mutableListOf<Issuer.IssuedCredential>()
@@ -99,7 +102,7 @@ class IssuerAgent(
                 failed += Issuer.FailedAttribute(attributeType, IllegalArgumentException("type not resolved to scheme"))
                 continue
             }
-            dataProvider.getCredential(subjectPublicKey, scheme, representation).fold(
+            dataProvider.getCredential(subjectPublicKey, scheme, representation, claimNames).fold(
                 onSuccess = { toBeIssued ->
                     toBeIssued.forEach { credentialToBeIssued ->
                         issueCredential(credentialToBeIssued, subjectPublicKey, scheme).also { result ->
@@ -115,8 +118,8 @@ class IssuerAgent(
     }
 
     /**
-     * Wraps [credential] into a single [VerifiableCredential],
-     * returns a JWS representation of that VC.
+     * Wraps the credential-to-be-issued in [credential] into a single instance of [CredentialToBeIssued],
+     * according to the representation, i.e. it essentially signs the credential with the issuer key.
      */
     suspend fun issueCredential(
         credential: CredentialToBeIssued,
@@ -137,7 +140,7 @@ class IssuerAgent(
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.Iso(credential.issuerSignedItems),
+            credential = IssuerCredentialStore.Credential.Iso(credential.issuerSignedItems, scheme),
             subjectPublicKey = subjectPublicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
@@ -186,7 +189,7 @@ class IssuerAgent(
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcJwt(vcId, credential.subject),
+            credential = IssuerCredentialStore.Credential.VcJwt(vcId, credential.subject, scheme),
             subjectPublicKey = subjectPublicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
@@ -232,7 +235,7 @@ class IssuerAgent(
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val subjectId = subjectPublicKey.toJsonWebKey().identifier
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcSd(vcId, credential.claims),
+            credential = IssuerCredentialStore.Credential.VcSd(vcId, credential.claims, scheme),
             subjectPublicKey = subjectPublicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,

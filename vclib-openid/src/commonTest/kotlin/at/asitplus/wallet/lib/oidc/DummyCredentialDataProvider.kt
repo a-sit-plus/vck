@@ -32,16 +32,18 @@ class DummyCredentialDataProvider(
     override fun getCredential(
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
-        representation: ConstantIndex.CredentialRepresentation
+        representation: ConstantIndex.CredentialRepresentation,
+        claimNames: Collection<String>?
     ): KmmResult<List<CredentialToBeIssued>> {
         val expiration = clock.now() + defaultLifetime
         val credentials = mutableListOf<CredentialToBeIssued>()
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
             val subjectId = subjectPublicKey.toJsonWebKey().identifier
-            val claims = listOf(
-                ClaimToBeIssued("given-name", "Susanne"),
-                ClaimToBeIssued("family-name", "Meier"),
-                ClaimToBeIssued("date-of-birth", "1990-01-01"),
+            val claims = listOfNotNull(
+                optionalClaim(claimNames, "given-name", "Susanne"),
+                optionalClaim(claimNames, "family-name", "Meier"),
+                optionalClaim(claimNames, "date-of-birth", "1990-01-01"),
+                optionalClaim(claimNames, "is-active", true)
             )
             credentials += when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
@@ -53,7 +55,7 @@ class DummyCredentialDataProvider(
 
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> claims.map { claim ->
                     CredentialToBeIssued.VcJwt(
-                        subject = AtomicAttribute2023(subjectId, claim.name, claim.value),
+                        subject = AtomicAttribute2023(subjectId, claim.name, claim.value.toString()),
                         expiration = expiration,
                     )
                 } + CredentialToBeIssued.VcJwt(
@@ -65,7 +67,7 @@ class DummyCredentialDataProvider(
                 ConstantIndex.CredentialRepresentation.ISO_MDOC -> listOf(
                     CredentialToBeIssued.Iso(
                         issuerSignedItems = claims.mapIndexed { index, claim ->
-                            buildIssuerSignedItem(claim.name, claim.value, index.toUInt())
+                            issuerSignedItem(claim.name, claim.value, index.toUInt())
                         },
                         expiration = expiration,
                     )
@@ -80,13 +82,20 @@ class DummyCredentialDataProvider(
                 expiryDate = LocalDate.parse("2033-01-31"),
                 codes = arrayOf(DrivingPrivilegeCode(code = "B"))
             )
-            val issuerSignedItems = listOf(
-                buildIssuerSignedItem(FAMILY_NAME, "Mustermann", 0U),
-                buildIssuerSignedItem(GIVEN_NAME, "Max", 1U),
-                buildIssuerSignedItem(DOCUMENT_NUMBER, "123456789", 2U),
-                buildIssuerSignedItem(ISSUE_DATE, "2023-01-01", 3U),
-                buildIssuerSignedItem(EXPIRY_DATE, "2033-01-31", 4U),
-                buildIssuerSignedItem(DRIVING_PRIVILEGES, drivingPrivilege, 5U),
+            var digestId = 0U
+            val issuerSignedItems = listOfNotNull(
+                if (claimNames.isNullOrContains(FAMILY_NAME))
+                    issuerSignedItem(FAMILY_NAME, "Mustermann", digestId++) else null,
+                if (claimNames.isNullOrContains(GIVEN_NAME))
+                    issuerSignedItem(GIVEN_NAME, "Max", digestId++) else null,
+                if (claimNames.isNullOrContains(DOCUMENT_NUMBER))
+                    issuerSignedItem(DOCUMENT_NUMBER, "123456789", digestId++) else null,
+                if (claimNames.isNullOrContains(ISSUE_DATE))
+                    issuerSignedItem(ISSUE_DATE, "2023-01-01", digestId++) else null,
+                if (claimNames.isNullOrContains(EXPIRY_DATE))
+                    issuerSignedItem(EXPIRY_DATE, "2033-01-01", digestId++) else null,
+                if (claimNames.isNullOrContains(DRIVING_PRIVILEGES))
+                    issuerSignedItem(DRIVING_PRIVILEGES, drivingPrivilege, digestId++) else null,
             )
 
             credentials.add(
@@ -99,20 +108,25 @@ class DummyCredentialDataProvider(
         return KmmResult.success(credentials)
     }
 
-    private fun buildIssuerSignedItem(elementIdentifier: String, elementValue: String, digestId: UInt) =
+    private fun Collection<String>?.isNullOrContains(s: String) =
+        this == null || contains(s)
+
+    private fun optionalClaim(claimNames: Collection<String>?, name: String, value: Any) =
+        if (claimNames.isNullOrContains(name)) ClaimToBeIssued(name, value) else null
+
+
+    private fun issuerSignedItem(name: String, value: Any, digestId: UInt) =
         IssuerSignedItem(
             digestId = digestId,
             random = Random.nextBytes(16),
-            elementIdentifier = elementIdentifier,
-            elementValue = ElementValue(string = elementValue)
+            elementIdentifier = name,
+            elementValue = when (value) {
+                is String -> ElementValue(string = value)
+                is ByteArray -> ElementValue(bytes = value)
+                is LocalDate -> ElementValue(date = value)
+                is Boolean -> ElementValue(boolean = value)
+                is DrivingPrivilege -> ElementValue(drivingPrivilege = arrayOf(value))
+                else -> ElementValue(string = value.toString())
+            }
         )
-
-    fun buildIssuerSignedItem(elementIdentifier: String, elementValue: DrivingPrivilege, digestId: UInt) =
-        IssuerSignedItem(
-            digestId = digestId,
-            random = Random.nextBytes(16),
-            elementIdentifier = elementIdentifier,
-            elementValue = ElementValue(drivingPrivilege = arrayOf(elementValue))
-        )
-
 }

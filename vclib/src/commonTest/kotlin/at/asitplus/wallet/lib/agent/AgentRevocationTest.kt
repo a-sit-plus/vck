@@ -132,7 +132,7 @@ private fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: L
     for (i in 1..16) {
         val vcId = uuid4().toString()
         val revListIndex = storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred),
+            credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred, ConstantIndex.AtomicAttribute2023),
             subjectPublicKey = DefaultCryptoService().toPublicKey(),
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
@@ -152,7 +152,7 @@ private fun IssuerCredentialStore.revokeRandomCredentials(): MutableList<Long> {
     for (i in 1..256) {
         val vcId = uuid4().toString()
         val revListIndex = storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred),
+            credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred, ConstantIndex.AtomicAttribute2023),
             subjectPublicKey = DefaultCryptoService().toPublicKey(),
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,

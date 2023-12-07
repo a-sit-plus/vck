@@ -21,15 +21,35 @@ import kotlinx.datetime.Clock
  * Implemented from Draft `openid-4-verifiable-credential-issuance-1_0-11`, 2023-02-03.
  */
 class WalletService(
+    /**
+     * Credential to request from the issuer.
+     */
     private val credentialScheme: ConstantIndex.CredentialScheme,
+    /**
+     * Representation of the credential to request from the issuer.
+     */
     private val credentialRepresentation: ConstantIndex.CredentialRepresentation,
     /**
-     * Pass names of attributes the credential shall contain, e.g. [at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements]
+     * Pass names of attributes the credential shall contain, e.g. [ConstantIndex.CredentialScheme.claimNames].
      */
     private val requestedAttributes: Collection<String>? = null,
+    /**
+     * Used to create [AuthenticationRequestParameters], [TokenRequestParameters] and [CredentialRequestProof],
+     * typically a URI.
+     */
     private val clientId: String = "https://wallet.a-sit.at/app",
+    /**
+     * Used to create [AuthenticationRequestParameters] and [TokenRequestParameters].
+     */
     private val redirectUrl: String = "$clientId/callback",
+    /**
+     * Used to prove possession of the key material to create [CredentialRequestProof],
+     * i.e. the holder key.
+     */
     private val cryptoService: CryptoService = DefaultCryptoService(),
+    /**
+     * Used to prove possession of the key material to create [CredentialRequestProof].
+     */
     private val jwsService: JwsService = DefaultJwsService(cryptoService),
 ) {
 

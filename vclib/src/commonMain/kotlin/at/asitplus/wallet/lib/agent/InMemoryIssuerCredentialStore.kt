@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.CryptoPublicKey
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.sha256
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -12,7 +13,8 @@ class InMemoryIssuerCredentialStore : IssuerCredentialStore {
         val vcId: String,
         val statusListIndex: Long,
         var revoked: Boolean,
-        val expirationDate: Instant
+        val expirationDate: Instant,
+        val scheme: ConstantIndex.CredentialScheme,
     )
 
     private val map = mutableMapOf<Int, MutableList<Credential>>()
@@ -33,11 +35,17 @@ class InMemoryIssuerCredentialStore : IssuerCredentialStore {
             is IssuerCredentialStore.Credential.VcJwt -> credential.vcId
             is IssuerCredentialStore.Credential.VcSd -> credential.vcId
         }
+        val scheme = when (credential) {
+            is IssuerCredentialStore.Credential.Iso -> credential.scheme
+            is IssuerCredentialStore.Credential.VcJwt -> credential.scheme
+            is IssuerCredentialStore.Credential.VcSd -> credential.scheme
+        }
         list += Credential(
             vcId = vcId,
             statusListIndex = newIndex,
             revoked = false,
-            expirationDate = expirationDate
+            expirationDate = expirationDate,
+            scheme = scheme,
         )
         return newIndex
     }

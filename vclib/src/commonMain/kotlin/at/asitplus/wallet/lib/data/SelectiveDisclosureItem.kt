@@ -2,10 +2,8 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.wallet.lib.jws.SelectiveDisclosureItemSerializer
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Instant
-import kotlinx.serialization.SerialName
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
 /**
@@ -15,11 +13,11 @@ import kotlinx.serialization.encodeToString
 data class SelectiveDisclosureItem(
     val salt: ByteArray,
     val claimName: String,
-    val claimValue: String,
+    @Contextual
+    val claimValue: Any,
 ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false

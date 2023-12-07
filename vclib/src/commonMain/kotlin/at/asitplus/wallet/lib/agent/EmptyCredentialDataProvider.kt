@@ -9,7 +9,8 @@ object EmptyCredentialDataProvider : IssuerCredentialDataProvider {
     override fun getCredential(
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
-        representation: ConstantIndex.CredentialRepresentation
+        representation: ConstantIndex.CredentialRepresentation,
+        claimNames: Collection<String>?
     ): KmmResult<List<CredentialToBeIssued>> = KmmResult.failure(NotImplementedError())
 
 }

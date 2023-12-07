@@ -88,7 +88,7 @@ interface Holder {
      * has been set with [setRevocationList]
      */
     suspend fun getCredentials(
-        attributeTypes: Collection<String>? = null,
+        credentialSchemes: Collection<ConstantIndex.CredentialScheme>? = null,
     ): Collection<StoredCredential>?
 
     sealed class StoredCredential {
@@ -111,14 +111,14 @@ interface Holder {
 
     /**
      * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,
-     * that match the [attributeTypes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO case).
+     * that match the [credentialSchemes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO case).
      *
      * May return null if no valid credentials (i.e. non-revoked, matching attribute name) are available.
      */
     suspend fun createPresentation(
         challenge: String,
         audienceId: String,
-        attributeTypes: Collection<String>? = null,
+        credentialSchemes: Collection<ConstantIndex.CredentialScheme>? = null,
         requestedClaims: Collection<String>? = null,
     ): CreatePresentationResult?
 
@@ -127,6 +127,7 @@ interface Holder {
      *
      * Note: The caller is responsible that only valid credentials are passed to this function!
      */
+    // TODO dont make this public
     suspend fun createPresentation(
         validCredentials: List<String>,
         challenge: String,

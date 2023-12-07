@@ -4,7 +4,6 @@ import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.Base64UrlStrict
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.lib.jws.JsonWebToken
 import at.asitplus.wallet.lib.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.jws.JwsSigned
@@ -28,15 +27,48 @@ import kotlin.coroutines.cancellation.CancellationException
  * Implemented from Draft `openid-4-verifiable-credential-issuance-1_0-11`, 2023-02-03.
  */
 class IssuerService(
+    /**
+     * Used to actually issue the credential.
+     */
     private val issuer: Issuer,
+    /**
+     * List of supported schemes.
+     */
     private val credentialSchemes: Collection<ConstantIndex.CredentialScheme>,
+    /**
+     * Used to create and verify authorization codes during issuing.
+     */
     private val codeService: CodeService = DefaultCodeService(),
+    /**
+     * Used to create and verify bearer tokens during issuing.
+     */
     private val tokenService: TokenService = DefaultTokenService(),
+    /**
+     * Used to provide challenge to clients to include in proof of posession of key material.
+     */
     private val clientNonceService: NonceService = DefaultNonceService(),
+    /**
+     * Used as [IssuerMetadata.authorizationServer].
+     */
     private val authorizationServer: String? = null,
+    /**
+     * Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients.
+     */
     private val publicContext: String = "https://wallet.a-sit.at/",
+    /**
+     * Used to build [IssuerMetadata.authorizationEndpointUrl], i.e. implementers need to forward requests
+     * to that URI (which starts with [publicContext]) to [authorize].
+     */
     private val authorizationEndpointPath: String = "/authorize",
+    /**
+     * Used to build [IssuerMetadata.tokenEndpointUrl], i.e. implementers need to forward requests
+     * to that URI (which starts with [publicContext]) to [token].
+     */
     private val tokenEndpointPath: String = "/token",
+    /**
+     * Used to build [IssuerMetadata.credentialEndpointUrl], i.e. implementers need to forward requests
+     * to that URI (which starts with [publicContext]) to [credential].
+     */
     private val credentialEndpointPath: String = "/credential",
 ) {
 
@@ -85,7 +117,8 @@ class IssuerService(
     )
 
     private fun ConstantIndex.CredentialScheme.buildIsoClaims() = mapOf(
-        isoNamespace to MobileDrivingLicenceDataElements.ALL_ELEMENTS.associateWith { RequestedCredentialClaimSpecification() }
+        isoNamespace to ConstantIndex.MobileDrivingLicence2023.claimNames
+            .associateWith { RequestedCredentialClaimSpecification() }
     )
 
     /**
@@ -151,7 +184,8 @@ class IssuerService(
         val issuedCredentialResult = issuer.issueCredential(
             subjectPublicKey = cryptoPublicKey,
             attributeTypes = params.types.toList(),
-            representation = params.format.toRepresentation()
+            representation = params.format.toRepresentation(),
+            claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
         )
         if (issuedCredentialResult.successful.isEmpty()) {
             throw OAuth2Exception(Errors.INVALID_REQUEST)

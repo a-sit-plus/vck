@@ -4,6 +4,7 @@ import at.asitplus.wallet.lib.cbor.CoseAlgorithm
 import at.asitplus.wallet.lib.cbor.CoseHeader
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -140,9 +141,9 @@ class HolderAgent(
      * has been set with [setRevocationList]
      */
     override suspend fun getCredentials(
-        attributeTypes: Collection<String>?,
+        credentialSchemes: Collection<ConstantIndex.CredentialScheme>?,
     ): Collection<Holder.StoredCredential>? {
-        val credentials = subjectCredentialStore.getCredentials(attributeTypes).getOrNull()
+        val credentials = subjectCredentialStore.getCredentials(credentialSchemes).getOrNull()
             ?: return null
                 .also { Napier.w("Got no credentials from subjectCredentialStore") }
         return credentials.map {
@@ -163,19 +164,20 @@ class HolderAgent(
 
     /**
      * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,
-     * that match [attributeTypes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO or SD-JWT case).
+     * that match [credentialSchemes] (if specified).
+     * Optionally filters by [requestedClaims] (e.g. in ISO or SD-JWT case).
      *
      * May return null if no valid credentials (i.e. non-revoked, matching attribute name) are available.
      */
     override suspend fun createPresentation(
         challenge: String,
         audienceId: String,
-        attributeTypes: Collection<String>?,
+        credentialSchemes: Collection<ConstantIndex.CredentialScheme>?,
         requestedClaims: Collection<String>?,
     ): Holder.CreatePresentationResult? {
-        val credentials = subjectCredentialStore.getCredentials(attributeTypes).getOrNull()
+        val credentials = subjectCredentialStore.getCredentials(credentialSchemes).getOrNull()
             ?: return null
-                .also { Napier.w("Got no credentials from subjectCredentialStore") }
+                .also { Napier.w("Got no credentials from subjectCredentialStore for $credentialSchemes") }
         val validVcCredentials = credentials
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
             .filter { validator.checkRevocationStatus(it.vc) != Validator.RevocationStatus.REVOKED }
@@ -196,7 +198,7 @@ class HolderAgent(
         if (validSdJwtCredentials.isNotEmpty()) {
             return createSdJwtPresentation(audienceId, challenge, validSdJwtCredentials, requestedClaims)
         }
-        Napier.w("Got no valid credentials for $attributeTypes")
+        Napier.w("Got no valid credentials for $credentialSchemes")
         return null
     }
 
@@ -208,7 +210,7 @@ class HolderAgent(
         val deviceSignature = coseService.createSignedCose(
             protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
             unprotectedHeader = null,
-            payload = challenge.encodeToByteArray(),
+            payload = challenge. encodeToByteArray(),
             addKeyId = false
         ).getOrNull() ?: return null
             .also { Napier.w("Could not create DeviceAuth for presentation") }

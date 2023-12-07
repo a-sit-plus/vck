@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.CryptoPublicKey
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import kotlinx.datetime.Instant
@@ -11,9 +12,22 @@ import kotlinx.datetime.Instant
 interface IssuerCredentialStore {
 
     sealed class Credential {
-        data class VcJwt(val vcId: String, val credentialSubject: CredentialSubject) : Credential()
-        data class VcSd(val vcId: String, val claims: Collection<ClaimToBeIssued>) : Credential()
-        data class Iso(val issuerSignedItemList: List<IssuerSignedItem>) : Credential()
+        data class VcJwt(
+            val vcId: String,
+            val credentialSubject: CredentialSubject,
+            val scheme: ConstantIndex.CredentialScheme
+        ) : Credential()
+
+        data class VcSd(
+            val vcId: String,
+            val claims: Collection<ClaimToBeIssued>,
+            val scheme: ConstantIndex.CredentialScheme
+        ) : Credential()
+
+        data class Iso(
+            val issuerSignedItemList: List<IssuerSignedItem>,
+            val scheme: ConstantIndex.CredentialScheme
+        ) : Credential()
     }
 
     /**

@@ -69,11 +69,14 @@ interface Issuer {
      * Issues credentials for some [attributeTypes] (i.e. some of
      * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with its public
      * key in [subjectPublicKey] in the format specified by [representation].
+     * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
+     * [claimNames] to request only some claims (if supported by the representation).
      */
     suspend fun issueCredential(
         subjectPublicKey: CryptoPublicKey,
         attributeTypes: Collection<String>,
         representation: ConstantIndex.CredentialRepresentation,
+        claimNames: Collection<String>? = null,
     ): IssuedCredentialResult
 
     /**
