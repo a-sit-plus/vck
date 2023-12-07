@@ -3,16 +3,20 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.*
+import at.asitplus.crypto.datatypes.Digest
 import at.asitplus.crypto.datatypes.EcCurve.SECP_256_R_1
 import at.asitplus.crypto.datatypes.asn1.Asn1String
 import at.asitplus.crypto.datatypes.asn1.Asn1Time
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
+import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.*
 import at.asitplus.crypto.datatypes.pki.DistinguishedName
 import at.asitplus.crypto.datatypes.pki.TbsCertificate
 import at.asitplus.crypto.datatypes.pki.X509Certificate
+import io.ktor.util.*
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.toKotlinInstant
 import org.bouncycastle.jce.ECNamedCurveTable
@@ -64,7 +68,7 @@ actual open class DefaultCryptoService : CryptoService {
      * Constructor which allows all public keys implemented in `KMP-Crypto`
      * Because RSA needs the algorithm parameter to be useful (as it cannot be inferred from the key)
      * it's mandatory
-     * Also used for non-self-signed certificates
+     * Also used for custom certificates
      */
     constructor(keyPair: KeyPair, algorithm: JwsAlgorithm, certificate: Certificate? = null) {
         this.privateKey = keyPair.private
@@ -75,24 +79,6 @@ actual open class DefaultCryptoService : CryptoService {
         this.certificate =
             certificate?.let { X509Certificate.decodeFromDer(it.encoded) } ?: generateSelfSignedCertificate()
     }
-
-//    private fun generateSelfSignedCertificate(): ByteArray {
-//        val notBeforeDate = Date.from(Instant.now())
-//        val notAfterDate = Date.from(Instant.now().plusSeconds(30.days.inWholeSeconds))
-//        val serialNumber: BigInteger = BigInteger.valueOf(Random.nextLong().absoluteValue)
-//        val issuer = X500Name("CN=DefaultCryptoService")
-//        val builder = X509v3CertificateBuilder(
-//            /* issuer = */ issuer,
-//            /* serial = */ serialNumber,
-//            /* notBefore = */ notBeforeDate,
-//            /* notAfter = */ notAfterDate,
-//            /* subject = */ issuer,
-//            /* publicKeyInfo = */ SubjectPublicKeyInfo.getInstance(keyPair.public.encoded)
-//        )
-//        val contentSigner: ContentSigner = JcaContentSignerBuilder(algorithm.jcaName).build(keyPair.private)
-//        val certificateHolder = builder.build(contentSigner)
-//        return certificateHolder.encoded
-//    }
 
     private fun generateSelfSignedCertificate(): X509Certificate {
         val serialNumber: BigInteger = BigInteger.valueOf(Random.nextLong().absoluteValue)
@@ -119,18 +105,29 @@ actual open class DefaultCryptoService : CryptoService {
         return X509Certificate(tbsCertificate, algorithm, signature)
     }
 
+    //    override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> =
+//        runCatching {
+//            Signature.getInstance(algorithm.jcaName).apply {
+//                initSign(privateKey)
+//                update(input)
+//            }.sign()
+//        }.wrap().mapCatching {
+////            when (algorithm) {
+////                JwsAlgorithm.ES256, JwsAlgorithm.ES384, JwsAlgorithm.ES512 -> CryptoSignature.EC(it)
+////                else -> CryptoSignature.RSAorHMAC(it)
+////            }
+//            CryptoSignature.decodeFromDer(it)
+//        }
     override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> =
         runCatching {
-            Signature.getInstance(algorithm.jcaName).apply {
+            val sig = Signature.getInstance(algorithm.jcaName).apply {
                 initSign(privateKey)
                 update(input)
             }.sign()
-        }.wrap().mapCatching {
-            when (algorithm) {
-                JwsAlgorithm.ES256, JwsAlgorithm.ES384, JwsAlgorithm.ES512 -> CryptoSignature.EC(it)
-                else -> CryptoSignature.RSAorHMAC(it)
-            }
-        }
+            val test = sig.encodeToString(Base64UrlStrict)
+            println(test)
+            CryptoSignature.decodeFromDer(sig)
+        }.wrap().also { it.getOrThrow() }
 
     override fun encrypt(
         key: ByteArray, iv: ByteArray, aad: ByteArray, input: ByteArray, algorithm: JweEncryption
@@ -217,7 +214,7 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
             Signature.getInstance(algorithm.jcaName).apply {
                 initVerify(publicKey.getJcaPublicKey().getOrThrow())
                 update(input)
-            }.verify(signature.rawByteArray)
+            }.verify(signature.encodeToDer())
         }.wrap()
 }
 

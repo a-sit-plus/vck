@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.crypto.datatypes.JwsAlgorithm
-import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.JwsContentTypeConstants
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.crypto.datatypes.jws.prepareJwsSignatureInput
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -14,7 +14,6 @@ import io.kotest.datatest.withData
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlin.time.Duration.Companion.hours
@@ -243,10 +242,8 @@ class ValidatorVcTest : FreeSpec() {
                     verifier.identifier,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
-            ) {
-                issueCredential(it, expirationDate = null)
-                    .let { wrapVcInJws(it) }
-                    .let { signJws(it) }
+            ) { it ->
+                signJws(wrapVcInJws(issueCredential(it, expirationDate = null)))
                     ?.let {
                         verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
                     }
@@ -260,10 +257,13 @@ class ValidatorVcTest : FreeSpec() {
                     verifier.identifier,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
-            ) {
-                issueCredential(it, expirationDate = Clock.System.now() + 1.hours)
-                    .let { wrapVcInJws(it, expirationDate = Clock.System.now() - 1.hours) }
-                    .let { signJws(it) }
+            ) { it ->
+                signJws(
+                    wrapVcInJws(
+                        issueCredential(it, expirationDate = Clock.System.now() + 1.hours),
+                        expirationDate = Clock.System.now() - 1.hours
+                    )
+                )
                     ?.let {
                         verifier.verifyVcJws(it)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
@@ -278,18 +278,16 @@ class ValidatorVcTest : FreeSpec() {
                     verifier.identifier,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
-            ) {
-                it.let {
-                    issueCredential(it, expirationDate = Clock.System.now() + 1.hours)
+            ) { it ->
+                signJws(
+                    wrapVcInJws(
+                        issueCredential(it, expirationDate = Clock.System.now() + 1.hours),
+                        expirationDate = Clock.System.now() + 2.hours
+                    )
+                )?.let {
+                    verifier.verifyVcJws(it)
+                        .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                 }
-                    .let {
-                        wrapVcInJws(it, expirationDate = Clock.System.now() + 2.hours)
-                    }
-                    .let { signJws(it) }
-                    ?.let {
-                        verifier.verifyVcJws(it)
-                            .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
-                    }
             }
         }
 
@@ -300,12 +298,8 @@ class ValidatorVcTest : FreeSpec() {
                     verifier.identifier,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
-            ) {
-                it.let { issueCredential(it) }
-                    .let {
-                        wrapVcInJws(it, issuanceDate = Clock.System.now() + 2.hours)
-                    }
-                    .let { signJws(it) }
+            ) { it ->
+                signJws(wrapVcInJws(issueCredential(it), issuanceDate = Clock.System.now() + 2.hours))
                     ?.let {
                         verifier.verifyVcJws(it)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
@@ -338,10 +332,8 @@ class ValidatorVcTest : FreeSpec() {
                     verifier.identifier,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
                 ).getOrThrow()
-            ) {
-                issueCredential(it, issuanceDate = Clock.System.now() - 1.hours)
-                    .let { wrapVcInJws(it, issuanceDate = Clock.System.now()) }
-                    .let { signJws(it) }
+            ) { it ->
+                signJws(wrapVcInJws(issueCredential(it, issuanceDate = Clock.System.now() - 1.hours), issuanceDate = Clock.System.now()))
                     ?.let {
                         verifier.verifyVcJws(it)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
@@ -405,7 +397,7 @@ class ValidatorVcTest : FreeSpec() {
     private suspend fun signJws(vcJws: VerifiableCredentialJws): String? {
         val vcSerialized = vcJws.serialize()
         val jwsPayload = vcSerialized.encodeToByteArray()
-        return issuerJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+        return issuerJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)?.serialize()
     }
 
     private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String? {
@@ -415,13 +407,10 @@ class ValidatorVcTest : FreeSpec() {
             type = JwsContentTypeConstants.JWT
         )
         val jwsPayload = vcJws.serialize().encodeToByteArray()
-        val signatureInput =
-            jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
-                    "." + jwsPayload.encodeToString(Base64UrlStrict)
-        val signatureInputBytes = signatureInput.encodeToByteArray()
-        val signature = issuerCryptoService.sign(signatureInputBytes)
+        val signatureInput = prepareJwsSignatureInput(jwsHeader, jwsPayload).encodeToByteArray()
+        val signature = issuerCryptoService.sign(signatureInput)
             .getOrElse { return null }
-        return JwsSigned(jwsHeader, jwsPayload, signature, signatureInput).serialize()
+        return JwsSigned(jwsHeader, jwsPayload, signature).serialize()
     }
 
 }

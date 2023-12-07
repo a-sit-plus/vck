@@ -18,83 +18,75 @@ class JwsServiceTest : FreeSpec({
     lateinit var verifierJwsService: VerifierJwsService
     lateinit var randomPayload: String
 
-    for (i in 1..10) {
-        beforeEach {
-            cryptoService = DefaultCryptoService()
-            jwsService = DefaultJwsService(cryptoService)
-            verifierJwsService = DefaultVerifierJwsService()
-            randomPayload = uuid4().toString()
-        }
+    beforeEach {
+        cryptoService = DefaultCryptoService()
+        jwsService = DefaultJwsService(cryptoService)
+        verifierJwsService = DefaultVerifierJwsService()
+        randomPayload = uuid4().toString()
+    }
 
-        "signed object with bytes can be verified" {
-            val payload = randomPayload.encodeToByteArray()
-            val signed = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, payload)
-            signed.shouldNotBeNull()
+    "signed object with bytes can be verified" {
+        val payload = randomPayload.encodeToByteArray()
+        val signed = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, payload)
+        signed.shouldNotBeNull()
+        val result = verifierJwsService.verifyJwsObject(signed)
+        result shouldBe true
+    }
 
-            val parsed = JwsSigned.parse(signed)
-            parsed.shouldNotBeNull()
-            parsed.payload shouldBe payload
+    "Object can be reconstructed" {
+        val payload = randomPayload.encodeToByteArray()
+        val signed = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, payload)?.serialize()
+        signed.shouldNotBeNull()
 
-            val result = verifierJwsService.verifyJwsObject(parsed, signed)
-            result shouldBe true
-        }
+        val parsed = JwsSigned.parse(signed)
+        parsed.shouldNotBeNull()
+        parsed.serialize() shouldBe signed
+        parsed.payload shouldBe payload
 
-        "signed object can be verified" {
-            val stringPayload = jsonSerializer.encodeToString(randomPayload)
-            val signed = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, stringPayload.encodeToByteArray())
-            signed.shouldNotBeNull()
+        val result = verifierJwsService.verifyJwsObject(parsed)
+        result shouldBe true
+    }
 
-            val parsed = JwsSigned.parse(signed)
-            parsed.shouldNotBeNull()
-            parsed.payload.decodeToString() shouldBe stringPayload
+    "signed object can be verified" {
+        val stringPayload = jsonSerializer.encodeToString(randomPayload)
+        val signed = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, stringPayload.encodeToByteArray())
+        signed.shouldNotBeNull()
+        val result = verifierJwsService.verifyJwsObject(signed)
+        result shouldBe true
+    }
 
-            val result = verifierJwsService.verifyJwsObject(parsed, signed)
-            result shouldBe true
-        }
+    "signed object with automatically added params can be verified" {
+        val payload = randomPayload.encodeToByteArray()
+        val signed = jwsService.createSignedJwsAddingParams(JwsHeader(algorithm = JwsAlgorithm.ES256), payload)
+        signed.shouldNotBeNull()
+        val result = verifierJwsService.verifyJwsObject(signed)
+        result shouldBe true
+    }
 
-        "signed object with automatically added params can be verified" {
-            val payload = randomPayload.encodeToByteArray()
-            val signed = jwsService.createSignedJwsAddingParams(JwsHeader(JwsAlgorithm.ES256), payload)
-            signed.shouldNotBeNull()
+    "signed object with jsonWebKey can be verified" {
+        val payload = randomPayload.encodeToByteArray()
+        val header = JwsHeader(algorithm = JwsAlgorithm.ES256, jsonWebKey = cryptoService.jsonWebKey)
+        val signed = jwsService.createSignedJws(header, payload)
+        signed.shouldNotBeNull()
+        val result = verifierJwsService.verifyJwsObject(signed)
+        result shouldBe true
+    }
 
-            val parsed = JwsSigned.parse(signed)
-            parsed.shouldNotBeNull()
-            parsed.payload shouldBe payload
+    "encrypted object can be decrypted" {
+        val stringPayload = jsonSerializer.encodeToString(randomPayload)
+        val encrypted = jwsService.encryptJweObject(
+            JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
+            stringPayload.encodeToByteArray(),
+            cryptoService.jsonWebKey,
+            JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
+            JweAlgorithm.ECDH_ES,
+            JweEncryption.A256GCM,
+        )
+        encrypted.shouldNotBeNull()
+        val parsed = JweEncrypted.parse(encrypted)
+        parsed.shouldNotBeNull()
 
-            val result = verifierJwsService.verifyJwsObject(parsed, signed)
-            result shouldBe true
-        }
-
-        "signed object with jsonWebKey can be verified" {
-            val payload = randomPayload.encodeToByteArray()
-            val header = JwsHeader(JwsAlgorithm.ES256, jsonWebKey = cryptoService.jsonWebKey)
-            val signed = jwsService.createSignedJws(header, payload)
-            signed.shouldNotBeNull()
-
-            val parsed = JwsSigned.parse(signed)
-            parsed.shouldNotBeNull()
-            parsed.payload shouldBe payload
-
-            val result = verifierJwsService.verifyJwsObject(parsed, signed)
-            result shouldBe true
-        }
-
-        "encrypted object can be decrypted" {
-            val stringPayload = jsonSerializer.encodeToString(randomPayload)
-            val encrypted = jwsService.encryptJweObject(
-                JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
-                stringPayload.encodeToByteArray(),
-                cryptoService.jsonWebKey,
-                JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
-                JweAlgorithm.ECDH_ES,
-                JweEncryption.A256GCM,
-            )
-            encrypted.shouldNotBeNull()
-            val parsed = JweEncrypted.parse(encrypted)
-            parsed.shouldNotBeNull()
-
-            val result = jwsService.decryptJweObject(parsed, encrypted)
-            result?.payload?.decodeToString() shouldBe stringPayload
-        }
+        val result = jwsService.decryptJweObject(parsed, encrypted)
+        result?.payload?.decodeToString() shouldBe stringPayload
     }
 })

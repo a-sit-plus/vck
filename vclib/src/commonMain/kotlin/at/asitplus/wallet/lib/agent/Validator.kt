@@ -65,7 +65,7 @@ class Validator(
         val jws = JwsSigned.parse(it)
             ?: return false
                 .also { Napier.w("Revocation List: Could not parse JWS") }
-        if (!verifierJwsService.verifyJwsObject(jws, it))
+        if (!verifierJwsService.verifyJwsObject(jws))
             return false
                 .also { Napier.w("Revocation List: Signature invalid") }
         val payload = jws.payload.decodeToString()
@@ -140,7 +140,7 @@ class Validator(
         val jws = JwsSigned.parse(it)
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(it)
                 .also { Napier.w("VP: Could not parse JWS") }
-        if (!verifierJwsService.verifyJwsObject(jws, it))
+        if (!verifierJwsService.verifyJwsObject(jws))
             return Verifier.VerifyPresentationResult.InvalidStructure(it)
                 .also { Napier.w("VP: Signature invalid") }
         val payload = jws.payload.decodeToString()
@@ -290,7 +290,7 @@ class Validator(
         val jws = JwsSigned.parse(it)
             ?: return Verifier.VerifyCredentialResult.InvalidStructure(it)
                 .also { Napier.w("VC: Could not parse JWS") }
-        if (!verifierJwsService.verifyJwsObject(jws, it))
+        if (!verifierJwsService.verifyJwsObject(jws))
             return Verifier.VerifyCredentialResult.InvalidStructure(it)
                 .also { Napier.w("VC: Signature invalid") }
         val payload = jws.payload.decodeToString()

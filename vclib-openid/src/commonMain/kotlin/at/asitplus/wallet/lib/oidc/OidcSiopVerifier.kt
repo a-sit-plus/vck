@@ -143,7 +143,7 @@ class OidcSiopVerifier(
             JwsHeader(algorithm = JwsAlgorithm.ES256),
             requestObjectSerialized.encodeToByteArray(),
             true
-        )
+        )?.serialize()
         return AuthenticationRequestParameters(clientId = relyingPartyUrl, request = signedJws)
     }
 
@@ -293,7 +293,7 @@ class OidcSiopVerifier(
         val jwsSigned = JwsSigned.parse(idTokenJws)
             ?: return AuthnResponseResult.ValidationError("idToken", params.state)
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
-        if (!verifierJwsService.verifyJwsObject(jwsSigned, idTokenJws))
+        if (!verifierJwsService.verifyJwsObject(jwsSigned))
             return AuthnResponseResult.ValidationError("idToken", params.state)
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
         val idToken = IdToken.deserialize(jwsSigned.payload.decodeToString())

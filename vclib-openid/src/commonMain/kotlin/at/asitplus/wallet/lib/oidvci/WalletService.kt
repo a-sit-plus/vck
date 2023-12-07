@@ -102,7 +102,7 @@ class WalletService(
                 ).serialize().encodeToByteArray(),
                 addKeyId = true,
                 addJsonWebKey = true
-            )!!
+            )!!.serialize()
         )
         return when (credentialScheme.credentialFormat) {
             ConstantIndex.CredentialFormat.ISO_18013 -> CredentialRequestParameters(

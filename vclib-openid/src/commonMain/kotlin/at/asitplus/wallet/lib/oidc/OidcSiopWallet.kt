@@ -121,7 +121,7 @@ class OidcSiopWallet(
     private fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParameters? {
         params.request?.let { requestObject ->
             JwsSigned.parse(requestObject)?.let { jws ->
-                if (verifierJwsService.verifyJwsObject(jws, requestObject)) {
+                if (verifierJwsService.verifyJwsObject(jws)) {
                     return kotlin.runCatching {
                         jsonSerializer.decodeFromString<AuthenticationRequestParameters>(jws.payload.decodeToString())
                     }.getOrNull()
@@ -224,8 +224,8 @@ class OidcSiopWallet(
             nonce = params.nonce,
         )
         val jwsPayload = idToken.serialize().encodeToByteArray()
-        val jwsHeader = JwsHeader(JwsAlgorithm.ES256)
-        val signedIdToken = jwsService.createSignedJwsAddingParams(jwsHeader, jwsPayload)
+        val jwsHeader = JwsHeader(algorithm = JwsAlgorithm.ES256)
+        val signedIdToken = jwsService.createSignedJwsAddingParams(jwsHeader, jwsPayload)?.serialize()
             ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not sign id_token") }
 

@@ -135,7 +135,7 @@ class ValidatorVpTest : FreeSpec({
             audienceId = verifier.identifier,
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
-        val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+        val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)?.serialize()
         vpJws.shouldNotBeNull()
 
         verifier.verifyPresentation(vpJws, challenge)
@@ -156,7 +156,7 @@ class ValidatorVpTest : FreeSpec({
             jwtId = vp.id,
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
-        val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+        val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)?.serialize()
         vpJws.shouldNotBeNull()
 
         verifier.verifyPresentation(vpJws, challenge)
@@ -176,7 +176,7 @@ class ValidatorVpTest : FreeSpec({
             jwtId = "wrong_jwtId",
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
-        val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+        val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)?.serialize()
         vpJws.shouldNotBeNull()
 
         verifier.verifyPresentation(vpJws, challenge)
@@ -198,7 +198,7 @@ class ValidatorVpTest : FreeSpec({
             audienceId = verifier.identifier,
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
-        val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+        val vpJws = holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)?.serialize()
         vpJws.shouldNotBeNull()
 
         verifier.verifyPresentation(vpJws, challenge)

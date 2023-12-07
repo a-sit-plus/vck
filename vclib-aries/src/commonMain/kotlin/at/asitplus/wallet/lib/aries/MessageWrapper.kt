@@ -54,7 +54,7 @@ class MessageWrapper(
 
     private fun parseJwsMessage(joseObject: JwsSigned, serialized: String): ReceivedMessage {
         Napier.d("Parsing JWS ${joseObject.serialize()}")
-        if (!verifierJwsService.verifyJwsObject(joseObject, serialized))
+        if (!verifierJwsService.verifyJwsObject(joseObject))
             return ReceivedMessage.Error
                 .also { Napier.w("Signature invalid") }
         if (joseObject.header.contentType == JwsContentTypeConstants.DIDCOMM_PLAIN_JSON) {
@@ -99,7 +99,7 @@ class MessageWrapper(
             JwsContentTypeConstants.DIDCOMM_SIGNED_JSON,
             jwm.serialize().encodeToByteArray(),
             JwsContentTypeConstants.DIDCOMM_PLAIN_JSON
-        )
+        )?.serialize()
     }
 
 }

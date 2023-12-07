@@ -242,7 +242,7 @@ class IssuerAgent(
 
     private suspend fun wrapVcInJws(vc: VerifiableCredential): String? {
         val jwsPayload = vc.toJws().serialize().encodeToByteArray()
-        return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+        return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)?.serialize()
     }
 
     private fun getRevocationListUrlFor(timePeriod: Int) =

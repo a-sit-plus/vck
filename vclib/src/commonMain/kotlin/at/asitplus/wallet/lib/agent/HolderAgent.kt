@@ -242,7 +242,7 @@ class HolderAgent(
         val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
             ?: return null
                 .also { Napier.w("Could not create JWS for presentation") }
-        return Holder.CreatePresentationResult.Signed(jws)
+        return Holder.CreatePresentationResult.Signed(jws.serialize())
     }
 
 
