@@ -1,5 +1,8 @@
 # Changelog
 
+Release 3.4.0:
+ - tbd
+
 Release 3.3.0:
  - Change non-typed attribute types (i.e. Strings) to typed credential schemes (i.e. `ConstantIndex.CredentialScheme`), this includes methods `getCredentials`, `createPresentation` in interface `Holder`, and method `getCredentials` in interface `SubjectCredentialStore`
  - Add `scheme` to `Credential` stored in `IssuerCredentialStore`
