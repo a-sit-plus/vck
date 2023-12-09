@@ -1,10 +1,5 @@
 pluginManagement {
-    repositories {
-        google()
-        gradlePluginPortal()
-        mavenCentral()
-    }
+    includeBuild("conventions-vclib")
 }
-
 rootProject.name = "vclibrary"
 include(":vclib")
