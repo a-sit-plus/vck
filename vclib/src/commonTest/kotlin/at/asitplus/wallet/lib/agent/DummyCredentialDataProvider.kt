@@ -17,10 +17,10 @@ class DummyCredentialDataProvider(
     private val defaultLifetime = 1.minutes
 
     override fun getClaim(subjectId: String, attributeName: String) =
-        KmmResult.failure(UnsupportedOperationException("empty"))
+        KmmResult.failure<IssuerCredentialDataProvider.CredentialToBeIssued>(UnsupportedOperationException("empty"))
 
     override fun getCredential(subjectId: String, attributeType: String) =
-        KmmResult.failure(UnsupportedOperationException("empty"))
+        KmmResult.failure<IssuerCredentialDataProvider.CredentialToBeIssued>(UnsupportedOperationException("empty"))
 
     override fun getCredentialWithType(
         subjectId: String,

@@ -36,7 +36,7 @@ kotlin {
                 implementation(bouncycastle("bcpkix"))
             }
         }
-        jvmTest  {
+        jvmTest {
             dependencies {
                 implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
@@ -47,36 +47,7 @@ kotlin {
 
 exportIosFramework("VcLibKmm", *commonIosExports())
 
-val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/main/", multiModuleDoc = true)
-
-val gitLabPrivateToken: String? by extra
-val gitLabProjectId: String by extra
-val gitLabGroupId: String by extra
-
-repositories {
-    mavenLocal()
-    if (System.getenv("CI_JOB_TOKEN") != null || gitLabPrivateToken != null) {
-        maven {
-            name = "gitlab"
-            url = uri("https://gitlab.iaik.tugraz.at/api/v4/groups/$gitLabGroupId/-/packages/maven")
-            if (gitLabPrivateToken != null) {
-                credentials(HttpHeaderCredentials::class) {
-                    name = "Private-Token"
-                    value = gitLabPrivateToken
-                }
-            } else if (System.getenv("CI_JOB_TOKEN") != null) {
-                credentials(HttpHeaderCredentials::class) {
-                    name = "Job-Token"
-                    value = System.getenv("CI_JOB_TOKEN")
-                }
-            }
-            authentication {
-                create<HttpHeaderAuthentication>("header")
-            }
-        }
-    }
-    mavenCentral()
-}
+val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/backport/conventions")
 
 publishing {
     publications {
