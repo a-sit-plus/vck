@@ -26,7 +26,7 @@ kotlin {
                 commonImplementationDependencies()
                 api(datetime())
                 api(serialization("json"))
-                api("at.asitplus:kmmresult:${VcLibVersions.resultlib}")
+                api("at.asitplus:kmmresult:${AspVersions.kmmresult}")
                 api("io.matthewnelson.kotlin-components:encoding-base16:${VcLibVersions.encoding}")
                 api("io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}")
             }
