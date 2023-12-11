@@ -9,7 +9,7 @@ import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsContentType
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -30,13 +30,13 @@ class IssuerAgent constructor(
     private val revocationListLifetime: Duration = 48.hours,
     private val jwsService: JwsService,
     private val clock: Clock = Clock.System,
-    override val identifier: String,
+    private val keyId: String,
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
 ) : Issuer {
 
     companion object {
         fun newDefaultInstance(
-            cryptoService: CryptoService = DefaultCryptoService(),
+            cryptoService: CryptoService,
             verifierCryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
             issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
             clock: Clock = Clock.System,
@@ -50,7 +50,7 @@ class IssuerAgent constructor(
             issuerCredentialStore = issuerCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
             dataProvider = dataProvider,
-            identifier = cryptoService.identifier,
+            keyId = cryptoService.keyId,
             timePeriodProvider = timePeriodProvider,
             clock = clock,
         )
@@ -95,25 +95,6 @@ class IssuerAgent constructor(
     )
 
     /**
-     * Issues credentials for some [attributeTypes] (i.e. some of
-     * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with [subjectId]
-     * (which should be a URL of the cryptographic key of the holder)
-     */
-    override suspend fun issueCredentialWithTypes(
-        subjectId: String,
-        attributeTypes: Collection<String>
-    ): Issuer.IssuedCredentialResult {
-        val result = dataProvider.getCredentialWithType(subjectId, attributeTypes)
-        result.exceptionOrNull()?.let { failure ->
-            return Issuer.IssuedCredentialResult(failed = attributeTypes.map { Issuer.FailedAttribute(it, failure) })
-        }
-        val issuedCredentials = result.getOrThrow().map { issueCredential(it) }
-        return Issuer.IssuedCredentialResult(
-            successful = issuedCredentials.flatMap { it.successful },
-            failed = issuedCredentials.flatMap { it.failed })
-    }
-
-    /**
      * Wraps [credential] into a single [VerifiableCredential],
      * returns a JWS representation of that VC.
      */
@@ -140,7 +121,7 @@ class IssuerAgent constructor(
             CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
         val vc = VerifiableCredential(
             id = vcId,
-            issuer = identifier,
+            issuer = keyId,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             credentialStatus = credentialStatus,
@@ -168,7 +149,7 @@ class IssuerAgent constructor(
         val subject = RevocationListSubject("$revocationListUrl#list", revocationList)
         val credential = VerifiableCredential(
             id = revocationListUrl,
-            issuer = identifier,
+            issuer = keyId,
             issuanceDate = clock.now(),
             lifetime = revocationListLifetime,
             credentialSubject = subject
@@ -216,7 +197,7 @@ class IssuerAgent constructor(
 
     private suspend fun wrapVcInJws(vc: VerifiableCredential): String? {
         val jwsPayload = vc.toJws().serialize().encodeToByteArray()
-        return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+        return jwsService.createSignedJwt(JwsContentType.JWT, jwsPayload)
     }
 
     private fun getRevocationListUrlFor(timePeriod: Int) =

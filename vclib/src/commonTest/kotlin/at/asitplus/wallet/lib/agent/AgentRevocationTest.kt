@@ -4,7 +4,7 @@ import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.Success
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
-import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.toBitSet
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.fail
@@ -21,6 +21,7 @@ import kotlin.time.Duration.Companion.seconds
 class AgentRevocationTest : FreeSpec({
 
     lateinit var issuerCredentialStore: IssuerCredentialStore
+    lateinit var verifierCryptoService: CryptoService
     lateinit var verifier: Verifier
     lateinit var issuer: Issuer
     lateinit var expectedRevokedIndexes: List<Long>
@@ -32,7 +33,10 @@ class AgentRevocationTest : FreeSpec({
             issuerCredentialStore = issuerCredentialStore,
             dataProvider = DummyCredentialDataProvider()
         )
-        verifier = VerifierAgent.newRandomInstance()
+        verifierCryptoService = DefaultCryptoService()
+        verifier = VerifierAgent.newDefaultInstance(
+            keyId = verifierCryptoService.keyId,
+        )
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
 
@@ -52,11 +56,8 @@ class AgentRevocationTest : FreeSpec({
     }
 
     "credentials should contain status information" {
-        val result = issuer.issueCredentialWithTypes(
-            verifier.identifier,
-            listOf(ConstantIndex.Generic.vcType)
-        )
-        if (result.failed.isNotEmpty()) fail("no issued credentials")
+        val result = issuer.issueCredentials(verifierCryptoService.keyId, AttributeIndex.genericAttributes)
+        if (!result.failed.isEmpty()) fail("no issued credentials")
 
         result.successful.map { it.vcJws }.forEach {
             val vcJws = verifier.verifyVcJws(it)
@@ -73,6 +74,8 @@ class AgentRevocationTest : FreeSpec({
             cryptoService = DefaultCryptoService(),
             issuerCredentialStore = issuerCredentialStore,
         )
+        verifierCryptoService = DefaultCryptoService()
+        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 
@@ -92,6 +95,8 @@ class AgentRevocationTest : FreeSpec({
             cryptoService = DefaultCryptoService(),
             issuerCredentialStore = issuerCredentialStore,
         )
+        verifierCryptoService = DefaultCryptoService()
+        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 
@@ -128,8 +133,7 @@ private fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: L
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..16) {
         val vcId = uuid4().toString()
-        val revListIndex =
-            storeGetNextIndex(vcId, cred, issuanceDate, expirationDate, FixedTimePeriodProvider.timePeriod)!!
+        val revListIndex = storeGetNextIndex(vcId, cred, issuanceDate, expirationDate, FixedTimePeriodProvider.timePeriod)!!
         if (revokedIndexes.contains(revListIndex)) {
             revoke(vcId, FixedTimePeriodProvider.timePeriod)
         }

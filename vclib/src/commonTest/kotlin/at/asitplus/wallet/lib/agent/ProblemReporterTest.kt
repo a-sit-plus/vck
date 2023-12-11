@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.msg.*
+import at.asitplus.wallet.lib.nameHack
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.datatest.withData
@@ -11,7 +12,7 @@ class ProblemReporterTest : FreeSpec({
     val problemReporter = ProblemReporter()
 
     "sorter" - {
-        withData(ProblemReportSorter.values().asList()) {
+        withData(nameFn = ::nameHack, ProblemReportSorter.values().asList()) {
             val report = ProblemReport(
                 body = ProblemReportBody(
                     sorter = it,
@@ -32,7 +33,7 @@ class ProblemReporterTest : FreeSpec({
     }
 
     "scope" - {
-        withData(ProblemReportScope.values().asList()) {
+        withData(nameFn = ::nameHack, ProblemReportScope.values().asList()) {
             val report = ProblemReport(
                 body = ProblemReportBody(
                     sorter = ProblemReportSorter.WARNING,
@@ -53,7 +54,7 @@ class ProblemReporterTest : FreeSpec({
     }
 
     "descriptor" - {
-        withData(ProblemReportDescriptor.values().asList()) {
+        withData(nameFn = ::nameHack, ProblemReportDescriptor.values().asList()) {
             val report = ProblemReport(
                 body = ProblemReportBody(
                     sorter = ProblemReportSorter.WARNING,

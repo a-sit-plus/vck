@@ -34,11 +34,11 @@ class PresentProofMessengerTest : FreeSpec() {
             verifierCryptoService = DefaultCryptoService()
             issuerCryptoService = DefaultCryptoService()
             holder = HolderAgent.newDefaultInstance(holderCryptoService)
-            verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
+            verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
             issuer = IssuerAgent.newDefaultInstance(issuerCryptoService)
             verifierChallenge = uuid4().toString()
             holderServiceEndpoint = "https://example.com/present-proof?${uuid4()}"
-            val credentialSubject = randomCredential(holderCryptoService.identifier)
+            val credentialSubject = randomCredential(holderCryptoService.keyId)
             runBlocking {
                 holder.storeCredentials(issuer.issueCredential(credentialSubject).toStoreCredentialInput())
             }
@@ -47,11 +47,13 @@ class PresentProofMessengerTest : FreeSpec() {
         "presentProof" {
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
+                keyId = holderCryptoService.keyId,
                 messageWrapper = MessageWrapper(holderCryptoService),
                 serviceEndpoint = holderServiceEndpoint
             )
             val verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
+                keyId = verifierCryptoService.keyId,
                 messageWrapper = MessageWrapper(verifierCryptoService)
             )
 
@@ -77,7 +79,7 @@ class PresentProofMessengerTest : FreeSpec() {
         }
 
         "selectiveDisclosure" {
-            val expectedSubject = randomCredential(holder.identifier)
+            val expectedSubject = randomCredential(holderCryptoService.keyId)
             val attributeName = (expectedSubject.subject as AtomicAttributeCredential).name
             val attributeValue = (expectedSubject.subject as AtomicAttributeCredential).value
             val expectedVc = issuer.issueCredential(expectedSubject)
@@ -85,11 +87,13 @@ class PresentProofMessengerTest : FreeSpec() {
 
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
+                keyId = holderCryptoService.keyId,
                 messageWrapper = MessageWrapper(holderCryptoService),
                 serviceEndpoint = "https://example.com"
             )
             val verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
+                keyId = verifierCryptoService.keyId,
                 messageWrapper = MessageWrapper(verifierCryptoService),
                 challengeForPresentation = verifierChallenge,
                 requestedAttributeNames = listOf(attributeName)
@@ -115,7 +119,7 @@ class PresentProofMessengerTest : FreeSpec() {
         }
 
         "selectiveDisclosure_notFulfilled" {
-            val expectedSubject = randomCredential(holder.identifier)
+            val expectedSubject = randomCredential(holderCryptoService.keyId)
             val attributeName = (expectedSubject.subject as AtomicAttributeCredential).name
             val attributeValue = (expectedSubject.subject as AtomicAttributeCredential).value
             val expectedVc = issuer.issueCredential(expectedSubject).toStoreCredentialInput()
@@ -123,11 +127,13 @@ class PresentProofMessengerTest : FreeSpec() {
 
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
+                keyId = holderCryptoService.keyId,
                 messageWrapper = MessageWrapper(holderCryptoService),
                 serviceEndpoint = "https://example.com/"
             )
             var verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
+                keyId = verifierCryptoService.keyId,
                 messageWrapper = MessageWrapper(verifierCryptoService),
                 challengeForPresentation = verifierChallenge,
                 // subject is not expected to provide an attribute with this name
@@ -156,6 +162,7 @@ class PresentProofMessengerTest : FreeSpec() {
             // note that the subject messenger is not recreated, i.e. it expects another "requestPresentation" message
             verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
+                keyId = verifierCryptoService.keyId,
                 messageWrapper = MessageWrapper(verifierCryptoService),
                 challengeForPresentation = verifierChallenge,
                 requestedAttributeNames = listOf(attributeName)

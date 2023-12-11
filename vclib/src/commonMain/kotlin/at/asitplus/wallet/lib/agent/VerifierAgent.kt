@@ -9,33 +9,25 @@ import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
  */
 class VerifierAgent private constructor(
     private val validator: Validator,
-    override val identifier: String
+    private val keyId: String
 ) : Verifier {
 
     companion object {
         fun newDefaultInstance(
-            identifier: String,
+            keyId: String,
             cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
             validator: Validator = Validator.newDefaultInstance(cryptoService),
         ): VerifierAgent = VerifierAgent(
             validator = validator,
-            identifier = identifier
+            keyId = keyId
         )
 
         /**
          * Explicitly short argument list to use it from Swift
          */
-        fun newDefaultInstance(identifier: String): VerifierAgent = VerifierAgent(
+        fun newDefaultInstance(keyId: String): VerifierAgent = VerifierAgent(
             validator = Validator.newDefaultInstance(),
-            identifier = identifier
-        )
-
-        /**
-         * Creates a new verifier for a random `identifier`
-         */
-        fun newRandomInstance(): VerifierAgent = VerifierAgent(
-            validator = Validator.newDefaultInstance(),
-            identifier = DefaultCryptoService().identifier,
+            keyId = keyId
         )
     }
 
@@ -47,7 +39,7 @@ class VerifierAgent private constructor(
      * Verifies a presentation of some credentials that a holder issued with that [challenge] we sent before.
      */
     override fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
-        return validator.verifyVpJws(it, challenge, identifier)
+        return validator.verifyVpJws(it, challenge, keyId)
     }
 
     /**
@@ -65,7 +57,7 @@ class VerifierAgent private constructor(
     }
 
     override fun verifyVcJws(it: String): Verifier.VerifyCredentialResult {
-        return validator.verifyVcJws(it, identifier)
+        return validator.verifyVcJws(it, keyId)
     }
 
 }

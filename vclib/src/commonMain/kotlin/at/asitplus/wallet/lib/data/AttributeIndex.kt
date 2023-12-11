@@ -4,12 +4,17 @@ object AttributeIndex {
 
     private val schemeSet = mutableSetOf<ConstantIndex.CredentialScheme>()
 
-    init {
-        schemeSet += ConstantIndex.Generic
-    }
-
     internal fun registerAttributeType(scheme: ConstantIndex.CredentialScheme) {
         schemeSet += scheme
+    }
+
+    /**
+     * May return an empty list, if the Schema is not known,
+     * or it does not issue atomic credentials (see [getTypeOfAttributeForSchemaUri])
+     */
+    fun getListOfAttributesForSchemaUri(uri: String) = when (uri) {
+        SchemaIndex.CRED_GENERIC -> genericAttributes
+        else -> listOf()
     }
 
     /**

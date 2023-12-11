@@ -12,7 +12,7 @@ class JweSerializationTest : FreeSpec({
         val kid = uuid4().toString()
         val algorithm = JweAlgorithm.ECDH_ES
         val encryption = JweEncryption.A256GCM
-        val type = JwsContentTypeConstants.JWT
+        val type = JwsContentType.JWT
         val jweHeader = JweHeader(
             algorithm = algorithm,
             encryption = encryption,
@@ -25,15 +25,15 @@ class JweSerializationTest : FreeSpec({
         serialized shouldContain """"${algorithm.text}""""
         serialized shouldContain """"${encryption.text}""""
         serialized shouldContain """"$kid""""
-        serialized shouldContain """"$type""""
+        serialized shouldContain """"${type.text}""""
     }
 
     "Deserialization is correct" {
         val kid = uuid4().toString()
         val algorithm = JweAlgorithm.ECDH_ES
         val encryption = JweEncryption.A256GCM
-        val type = JwsContentTypeConstants.JWT
-        val serialized = """{"alg": "${algorithm.text}", "enc": "${encryption.text}", "kid": "$kid", "typ": "$type"}"""
+        val type = JwsContentType.JWT
+        val serialized = """{"alg": "${algorithm.text}", "enc": "${encryption.text}", "kid": "$kid", "typ": "${type.text}"}"""
 
         val parsed = JweHeader.deserialize(serialized)
 
@@ -47,8 +47,8 @@ class JweSerializationTest : FreeSpec({
     "Deserialization with unknown algorithm is correct" {
         val kid = uuid4().toString()
         val encryption = JweEncryption.A256GCM
-        val type = JwsContentTypeConstants.JWT
-        val serialized = """{"alg": "foo", "enc": "${encryption.text}", "kid": "$kid", "typ": "$type"}"""
+        val type = JwsContentType.JWT
+        val serialized = """{"alg": "foo", "enc": "${encryption.text}", "kid": "$kid", "typ": "${type.text}"}"""
 
         val parsed = JweHeader.deserialize(serialized)
 
@@ -62,8 +62,8 @@ class JweSerializationTest : FreeSpec({
     "Deserialization with unknown encryption is correct" {
         val kid = uuid4().toString()
         val algorithm = JweAlgorithm.ECDH_ES
-        val type = JwsContentTypeConstants.JWT
-        val serialized = """{"alg": "${algorithm.text}", "enc": "foo", "kid": "$kid", "typ": "$type"}"""
+        val type = JwsContentType.JWT
+        val serialized = """{"alg": "${algorithm.text}", "enc": "foo", "kid": "$kid", "typ": "${type.text}"}"""
 
         val parsed = JweHeader.deserialize(serialized)
 
@@ -78,8 +78,7 @@ class JweSerializationTest : FreeSpec({
         val kid = uuid4().toString()
         val algorithm = JweAlgorithm.ECDH_ES
         val encryption = JweEncryption.A256GCM
-        val type = uuid4().toString()
-        val serialized = """{"alg": "${algorithm.text}", "enc": "${encryption.text}", "kid": "$kid", "typ": "$type"}"""
+        val serialized = """{"alg": "${algorithm.text}", "enc": "${encryption.text}", "kid": "$kid", "typ": "foo"}"""
 
         val parsed = JweHeader.deserialize(serialized)
 
@@ -87,7 +86,7 @@ class JweSerializationTest : FreeSpec({
         parsed.algorithm shouldBe algorithm
         parsed.encryption shouldBe encryption
         parsed.keyId shouldBe kid
-        parsed.type shouldBe type
+        parsed.type shouldBe null
     }
 
 })

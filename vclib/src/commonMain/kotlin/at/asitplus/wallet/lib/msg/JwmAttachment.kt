@@ -5,6 +5,7 @@ import io.matthewnelson.component.base64.decodeBase64ToArray
 import io.matthewnelson.component.base64.encodeBase64
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.ktor.http.content.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString

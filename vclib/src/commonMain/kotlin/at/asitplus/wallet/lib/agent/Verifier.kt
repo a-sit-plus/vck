@@ -12,12 +12,6 @@ import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 interface Verifier {
 
     /**
-     * The identifier for this agent, typically the `keyId` from the cryptographic key,
-     * e.g. `did:key:mAB...` or `urn:ietf:params:oauth:jwk-thumbprint:sha256:...`
-     */
-    val identifier: String
-
-    /**
      * Set the revocation list to use for validating VCs (from [Issuer.issueRevocationListCredential])
      */
     fun setRevocationList(it: String): Boolean

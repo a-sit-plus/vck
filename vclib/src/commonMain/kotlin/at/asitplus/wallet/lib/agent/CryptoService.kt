@@ -40,8 +40,7 @@ interface CryptoService {
 
     fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray>
 
-    val identifier: String
-        get() = toJsonWebKey().getIdentifier()
+    val keyId: String
 
     val jwsAlgorithm: JwsAlgorithm
 
@@ -58,10 +57,8 @@ interface VerifierCryptoService {
         publicKey: JsonWebKey
     ): KmmResult<Boolean>
 
-}
-
-expect object CryptoUtils {
     fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey?
+
 }
 
 data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteArray) {

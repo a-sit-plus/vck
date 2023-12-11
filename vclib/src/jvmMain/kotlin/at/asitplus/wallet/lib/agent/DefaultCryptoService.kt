@@ -34,6 +34,7 @@ actual open class DefaultCryptoService : CryptoService {
     private val ecCurve: EcCurve = EcCurve.SECP_256_R_1
     private val keyPair: KeyPair
     private val jsonWebKey: JsonWebKey
+    override val keyId: String
 
     actual constructor() {
         this.keyPair = KeyPairGenerator.getInstance("EC").also { it.initialize(ecCurve.keyLengthBits) }.genKeyPair()
@@ -43,6 +44,7 @@ actual open class DefaultCryptoService : CryptoService {
             (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes),
             (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         )!!
+        this.keyId = jsonWebKey.keyId!!
     }
 
     constructor(keyPair: KeyPair) {
@@ -53,6 +55,7 @@ actual open class DefaultCryptoService : CryptoService {
             (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes),
             (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         )!!
+        this.keyId = jsonWebKey.keyId!!
     }
 
     override val jwsAlgorithm = JwsAlgorithm.ES256
@@ -175,17 +178,12 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
         }
     }
 
-}
-
-actual object CryptoUtils {
-
-    actual fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? = try {
+    override fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? = try {
         val pubKey = CertificateFactory.getInstance("X.509").generateCertificate(it.inputStream()).publicKey
         if (pubKey is ECPublicKey) JsonWebKey.fromJcaKey(pubKey, EcCurve.SECP_256_R_1) else null
     } catch (e: Throwable) {
         null
     }
-
 }
 
 val JwsAlgorithm.jcaName

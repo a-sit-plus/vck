@@ -25,7 +25,7 @@ class JwsServiceTest : FreeSpec({
 
     "signed object with bytes can be verified" {
         val payload = randomPayload.encodeToByteArray()
-        val signed = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, payload)
+        val signed = jwsService.createSignedJwt(JwsContentType.JWT, payload)
         signed.shouldNotBeNull()
 
         val parsed = JwsSigned.parse(signed)
@@ -38,7 +38,7 @@ class JwsServiceTest : FreeSpec({
 
     "signed object can be verified" {
         val stringPayload = jsonSerializer.encodeToString(randomPayload)
-        val signed = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, stringPayload.encodeToByteArray())
+        val signed = jwsService.createSignedJwt(JwsContentType.JWT, stringPayload.encodeToByteArray())
         signed.shouldNotBeNull()
 
         val parsed = JwsSigned.parse(signed)
@@ -79,10 +79,10 @@ class JwsServiceTest : FreeSpec({
     "encrypted object can be decrypted" {
         val stringPayload = jsonSerializer.encodeToString(randomPayload)
         val encrypted = jwsService.encryptJweObject(
-            JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
+            JwsContentType.DIDCOMM_ENCRYPTED_JSON,
             stringPayload.encodeToByteArray(),
-            cryptoService.toJsonWebKey(),
-            JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
+            JsonWebKey.fromKeyId(cryptoService.keyId)!!,
+            JwsContentType.DIDCOMM_PLAIN_JSON,
             JweAlgorithm.ECDH_ES,
             JweEncryption.A256GCM,
         )

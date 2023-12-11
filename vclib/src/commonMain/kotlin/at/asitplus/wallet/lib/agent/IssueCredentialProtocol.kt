@@ -3,11 +3,12 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.msg.RequestCredentialAttachment
 import at.asitplus.wallet.lib.data.SchemaIndex
+import at.asitplus.wallet.lib.msg.SchemaReference
 import at.asitplus.wallet.lib.data.dif.CredentialDefinition
 import at.asitplus.wallet.lib.data.dif.CredentialManifest
 import at.asitplus.wallet.lib.data.jsonSerializer
-import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.msg.AttachmentFormatReference
 import at.asitplus.wallet.lib.msg.IssueCredential
 import at.asitplus.wallet.lib.msg.IssueCredentialBody
@@ -17,9 +18,7 @@ import at.asitplus.wallet.lib.msg.OutOfBandInvitation
 import at.asitplus.wallet.lib.msg.OutOfBandInvitationBody
 import at.asitplus.wallet.lib.msg.OutOfBandService
 import at.asitplus.wallet.lib.msg.RequestCredential
-import at.asitplus.wallet.lib.msg.RequestCredentialAttachment
 import at.asitplus.wallet.lib.msg.RequestCredentialBody
-import at.asitplus.wallet.lib.msg.SchemaReference
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.encodeToString
 
@@ -40,6 +39,7 @@ typealias IssueCredentialProtocolResult = Holder.StoredCredentialsResult
 class IssueCredentialProtocol(
     private val issuer: Issuer? = null,
     private val holder: Holder? = null,
+    private val keyId: String,
     private val serviceEndpoint: String? = null,
     private val credentialScheme: ConstantIndex.CredentialScheme
 ) : ProtocolStateMachine<IssueCredentialProtocolResult> {
@@ -51,9 +51,11 @@ class IssueCredentialProtocol(
          */
         fun newHolderInstance(
             holder: Holder,
+            keyId: String,
             credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
         ) = IssueCredentialProtocol(
             holder = holder,
+            keyId = keyId,
             credentialScheme = credentialScheme,
         )
 
@@ -63,10 +65,12 @@ class IssueCredentialProtocol(
          */
         fun newIssuerInstance(
             issuer: Issuer,
+            keyId: String,
             serviceEndpoint: String? = null,
             credentialScheme: ConstantIndex.CredentialScheme = ConstantIndex.Generic,
         ) = IssueCredentialProtocol(
             issuer = issuer,
+            keyId = keyId,
             serviceEndpoint = serviceEndpoint,
             credentialScheme = credentialScheme,
         )
@@ -101,13 +105,13 @@ class IssueCredentialProtocol(
         return createRequestCredential()
     }
 
-    override suspend fun parseMessage(body: JsonWebMessage, senderKey: JsonWebKey): InternalNextMessage {
+    override suspend fun parseMessage(body: JsonWebMessage, senderKeyId: String): InternalNextMessage {
         when (this.state) {
             State.START -> {
                 if (body is OutOfBandInvitation)
-                    return createRequestCredential(body, senderKey)
+                    return createRequestCredential(body, senderKeyId)
                 if (body is RequestCredential)
-                    return issueCredential(body, senderKey)
+                    return issueCredential(body, senderKeyId)
                 return InternalNextMessage.IncorrectState("messageType")
                     .also { Napier.w("Unexpected messageType: ${body.type}") }
             }
@@ -119,7 +123,7 @@ class IssueCredentialProtocol(
                 if (body.parentThreadId != invitationId)
                     return InternalNextMessage.IncorrectState("parentThreadId")
                         .also { Napier.w("Unexpected parentThreadId: ${body.parentThreadId}") }
-                return issueCredential(body, senderKey)
+                return issueCredential(body, senderKeyId)
             }
 
             State.REQUEST_CREDENTIAL_SENT -> {
@@ -138,8 +142,6 @@ class IssueCredentialProtocol(
     }
 
     private fun createOobInvitation(): InternalNextMessage {
-        val recipientKey = issuer?.identifier
-            ?: return InternalNextMessage.IncorrectState("issuer")
         val message = OutOfBandInvitation(
             body = OutOfBandInvitationBody(
                 handshakeProtocols = arrayOf(SchemaIndex.PROT_ISSUE_CRED),
@@ -148,7 +150,7 @@ class IssueCredentialProtocol(
                 services = arrayOf(
                     OutOfBandService(
                         type = "did-communication",
-                        recipientKeys = arrayOf(recipientKey),
+                        recipientKeys = arrayOf(keyId),
                         serviceEndpoint = serviceEndpoint ?: "https://example.com",
                     )
                 )
@@ -161,21 +163,19 @@ class IssueCredentialProtocol(
 
     private fun createRequestCredential(): InternalNextMessage {
         val message = buildRequestCredentialMessage(credentialScheme)
-            ?: return InternalNextMessage.IncorrectState("holder")
         return InternalNextMessage.SendAndWrap(message)
             .also { this.threadId = message.threadId }
             .also { this.state = State.REQUEST_CREDENTIAL_SENT }
     }
 
-    private fun createRequestCredential(invitation: OutOfBandInvitation, senderKey: JsonWebKey): InternalNextMessage {
+    private fun createRequestCredential(invitation: OutOfBandInvitation, senderKeyId: String): InternalNextMessage {
         val credentialScheme = ConstantIndex.Parser.parseGoalCode(invitation.body.goalCode)
             ?: return problemReporter.problemLastMessage(invitation.threadId, "goal-code-unknown")
         val message = buildRequestCredentialMessage(credentialScheme, invitation.id)
-            ?: return InternalNextMessage.IncorrectState("holder")
         val serviceEndpoint = invitation.body.services?.let {
             if (it.isNotEmpty()) it[0].serviceEndpoint else null
         }
-        return InternalNextMessage.SendAndWrap(message, senderKey, serviceEndpoint)
+        return InternalNextMessage.SendAndWrap(message, senderKeyId, serviceEndpoint)
             .also { this.threadId = message.threadId }
             .also { this.state = State.REQUEST_CREDENTIAL_SENT }
     }
@@ -183,12 +183,10 @@ class IssueCredentialProtocol(
     private fun buildRequestCredentialMessage(
         credentialScheme: ConstantIndex.CredentialScheme,
         parentThreadId: String? = null,
-    ): RequestCredential? {
-        val subject = holder?.identifier
-            ?: return null
+    ): RequestCredential {
         val credentialManifest = CredentialManifest(
             issuer = "somebody",
-            subject = subject,
+            subject = keyId,
             credential = CredentialDefinition(
                 name = credentialScheme.credentialDefinitionName,
                 schema = SchemaReference(uri = credentialScheme.schemaUri),
@@ -214,7 +212,7 @@ class IssueCredentialProtocol(
         )
     }
 
-    private suspend fun issueCredential(lastMessage: RequestCredential, senderKey: JsonWebKey): InternalNextMessage {
+    private suspend fun issueCredential(lastMessage: RequestCredential, senderKeyId: String): InternalNextMessage {
         val lastJwmAttachment = lastMessage.attachments?.firstOrNull()
             ?: return problemReporter.problemLastMessage(lastMessage.threadId, "attachments-missing")
         val requestCredentialAttachment = lastJwmAttachment.decodeString()?.let {
@@ -223,13 +221,16 @@ class IssueCredentialProtocol(
         val uri = requestCredentialAttachment.credentialManifest.credential.schema.uri
 
         //default pupilID use case: binding key outside JWM, no subject in JWM. set subject to override
-        val subjectIdentifier = requestCredentialAttachment.credentialManifest.subject ?: senderKey.getIdentifier()
+        val subjectKeyId = requestCredentialAttachment.credentialManifest.subject ?: senderKeyId
 
         val requestedAttributeType = AttributeIndex.getTypeOfAttributeForSchemaUri(uri)
-            ?: return problemReporter.problemLastMessage(lastMessage.threadId, "requested-attributes-empty")
+        val requestedAttributes = AttributeIndex.getListOfAttributesForSchemaUri(uri)
 
-        val issuedCredentials = issuer?.issueCredentialWithTypes(subjectIdentifier, listOf(requestedAttributeType))
-            ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
+        val issuedCredentials = when {
+            requestedAttributeType != null -> issuer?.issueCredential(subjectKeyId, requestedAttributeType)
+            requestedAttributes.isNotEmpty() -> issuer?.issueCredentials(subjectKeyId, requestedAttributes)
+            else -> return problemReporter.problemLastMessage(lastMessage.threadId, "requested-attributes-empty")
+        } ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
 
         //TODO: Pack this info into `args` or `comment`
         if (issuedCredentials.failed.isNotEmpty()) {
@@ -272,7 +273,7 @@ class IssueCredentialProtocol(
             threadId = lastMessage.threadId!!, //is allowed to fail horribly
             attachments = (fulfillmentAttachments + binaryAttachments).toTypedArray()
         )
-        return InternalNextMessage.SendAndWrap(message, senderKey)
+        return InternalNextMessage.SendAndWrap(message, senderKeyId)
             .also { this.threadId = message.threadId }
             .also { this.state = State.FINISHED }
     }

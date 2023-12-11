@@ -51,6 +51,7 @@ import platform.CoreFoundation.CFDictionaryAddValue as CFDictionaryAddValue1
 @Suppress("UNCHECKED_CAST")
 actual class DefaultCryptoService : CryptoService {
 
+    override val keyId: String
     override val jwsAlgorithm = JwsAlgorithm.ES256
     private val privateKey: SecKeyRef
     private val publicKey: SecKeyRef
@@ -66,6 +67,7 @@ actual class DefaultCryptoService : CryptoService {
         val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
         this.jsonWebKey = JsonWebKey.fromAnsiX963Bytes(JwkType.EC, EcCurve.SECP_256_R_1, data.toByteArray())!!
+        this.keyId = jsonWebKey.keyId!!
     }
 
     override suspend fun sign(input: ByteArray): KmmResult<ByteArray> {
@@ -173,12 +175,7 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
         }
     }
 
-}
-
-@Suppress("UNCHECKED_CAST")
-actual object CryptoUtils {
-
-    actual fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? {
+    override fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? {
         memScoped {
             val certData = CFBridgingRetain(toData(it)) as CFDataRef
             val certificate = SecCertificateCreateWithData(null, certData)
@@ -188,7 +185,6 @@ actual object CryptoUtils {
             return JsonWebKey.fromAnsiX963Bytes(JwkType.EC, EcCurve.SECP_256_R_1, data.toByteArray())
         }
     }
-
 }
 
 data class DefaultEphemeralKeyHolder(val publicKey: SecKeyRef, val privateKey: SecKeyRef? = null) : EphemeralKeyHolder {

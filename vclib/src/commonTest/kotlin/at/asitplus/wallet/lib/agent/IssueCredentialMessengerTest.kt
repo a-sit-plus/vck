@@ -42,17 +42,30 @@ class IssueCredentialMessengerTest : FreeSpec() {
             assertAttachment(issuedCredential, "${SchemaIndex.ATTR_GENERIC_PREFIX}/$ATTRIBUTE_WITH_ATTACHMENT")
         }
 
-        // can't be created with a wrong keyId anymore, so that test was removed
+        "wrongKeyId" {
+            holderMessenger = IssueCredentialMessenger.newHolderInstance(
+                holder = holder,
+                keyId = issuerCryptoService.keyId,
+                messageWrapper = MessageWrapper(holderCryptoService),
+            )
+            issuerMessenger = initIssuerMessenger(ConstantIndex.Generic)
+
+            val issuedCredential = runProtocolFlow()
+
+            assertEmptyVc(issuedCredential)
+        }
     }
 
     private fun initHolderMessenger() = IssueCredentialMessenger.newHolderInstance(
         holder = holder,
+        keyId = holderCryptoService.keyId,
         messageWrapper = MessageWrapper(holderCryptoService),
     )
 
     private fun initIssuerMessenger(scheme: ConstantIndex.CredentialScheme) =
         IssueCredentialMessenger.newIssuerInstance(
             issuer = issuer,
+            keyId = issuerCryptoService.keyId,
             messageWrapper = MessageWrapper(issuerCryptoService),
             serviceEndpoint = issuerServiceEndpoint,
             credentialScheme = scheme,

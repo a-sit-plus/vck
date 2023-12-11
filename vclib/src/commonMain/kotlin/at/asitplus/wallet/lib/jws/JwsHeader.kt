@@ -2,11 +2,8 @@
 
 package at.asitplus.wallet.lib.jws
 
-import at.asitplus.wallet.lib.agent.CryptoUtils
-import at.asitplus.wallet.lib.data.InstantLongSerializer
 import at.asitplus.wallet.lib.data.jsonSerializer
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
@@ -23,20 +20,15 @@ data class JwsHeader(
     @SerialName("kid")
     val keyId: String? = null,
     @SerialName("typ")
-    val type: String? = null,
+    val type: JwsContentType? = null,
     @SerialName("cty")
-    val contentType: String? = null,
+    val contentType: JwsContentType? = null,
     @SerialName("x5c")
     val certificateChain: Array<ByteArray>? = null,
     @SerialName("nbf")
-    @Serializable(with = InstantLongSerializer::class)
-    val notBefore: Instant? = null,
-    @SerialName("iat")
-    @Serializable(with = InstantLongSerializer::class)
-    val issuedAt: Instant? = null,
+    val notBefore: Long? = null,
     @SerialName("exp")
-    @Serializable(with = InstantLongSerializer::class)
-    val expiration: Instant? = null,
+    val expires: Long? = null,
     @SerialName("jwk")
     val jsonWebKey: JsonWebKey? = null
 ) {
@@ -58,9 +50,10 @@ data class JwsHeader(
             if (!certificateChain.contentDeepEquals(other.certificateChain)) return false
         } else if (other.certificateChain != null) return false
         if (notBefore != other.notBefore) return false
-        if (issuedAt != other.issuedAt) return false
-        if (expiration != other.expiration) return false
-        return jsonWebKey == other.jsonWebKey
+        if (expires != other.expires) return false
+        if (jsonWebKey != other.jsonWebKey) return false
+
+        return true
     }
 
     override fun hashCode(): Int {
@@ -70,16 +63,9 @@ data class JwsHeader(
         result = 31 * result + (contentType?.hashCode() ?: 0)
         result = 31 * result + (certificateChain?.contentDeepHashCode() ?: 0)
         result = 31 * result + (notBefore?.hashCode() ?: 0)
-        result = 31 * result + (issuedAt?.hashCode() ?: 0)
-        result = 31 * result + (expiration?.hashCode() ?: 0)
+        result = 31 * result + (expires?.hashCode() ?: 0)
         result = 31 * result + (jsonWebKey?.hashCode() ?: 0)
         return result
-    }
-
-    fun getKey(): JsonWebKey? {
-        return jsonWebKey
-            ?: keyId?.let { JsonWebKey.fromKeyId(it) }
-            ?: certificateChain?.firstOrNull()?.let { CryptoUtils.extractPublicKeyFromX509Cert(it) }
     }
 
     companion object {

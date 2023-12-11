@@ -19,29 +19,23 @@ import kotlin.random.Random
 interface JwsService {
 
     suspend fun createSignedJwt(
-        type: String,
+        type: JwsContentType,
         payload: ByteArray,
-        contentType: String? = null
+        contentType: JwsContentType? = null
     ): String?
 
     suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): String?
 
     /**
-     * Appends correct values for [JweHeader.keyId], [JwsHeader.algorithm] and [JwsHeader.jsonWebKey],
-     * if the corresponding options are set
+     * Appends correct values for [JweHeader.keyId], [JwsHeader.algorithm] and [JwsHeader.jsonWebKey]
      */
-    suspend fun createSignedJwsAddingParams(
-        header: JwsHeader,
-        payload: ByteArray,
-        addKeyId: Boolean = true,
-        addJsonWebKey: Boolean = true
-    ): String?
+    suspend fun createSignedJwsAddingParams(header: JwsHeader, payload: ByteArray): String?
 
     fun encryptJweObject(
-        type: String,
+        type: JwsContentType,
         payload: ByteArray,
         recipientKey: JsonWebKey,
-        contentType: String? = null,
+        contentType: JwsContentType? = null,
         jweAlgorithm: JweAlgorithm,
         jweEncryption: JweEncryption
     ): String?
@@ -61,24 +55,17 @@ interface VerifierJwsService {
 class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
     override suspend fun createSignedJwt(
-        type: String,
+        type: JwsContentType,
         payload: ByteArray,
-        contentType: String?
+        contentType: JwsContentType?
     ): String? {
-        val jwsHeader = JwsHeader(
-            algorithm = cryptoService.jwsAlgorithm,
-            keyId = cryptoService.toJsonWebKey().keyId,
-            type = type,
-            contentType = contentType
-        )
+        val jwsHeader =
+            JwsHeader(cryptoService.jwsAlgorithm, cryptoService.keyId, type, contentType)
         return createSignedJws(jwsHeader, payload)
     }
 
     override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): String? {
-        if (header.algorithm != cryptoService.jwsAlgorithm
-            || header.keyId?.let { it != cryptoService.toJsonWebKey().keyId } == true
-            || header.jsonWebKey?.let { it != cryptoService.toJsonWebKey() } == true
-        ) {
+        if (header.algorithm != cryptoService.jwsAlgorithm || header.keyId?.let { it != cryptoService.keyId } == true) {
             return null.also { Napier.w("Algorithm or keyId not matching to cryptoService") }
         }
         val signatureInput = header.serialize().encodeToByteArray()
@@ -92,17 +79,12 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         return JwsSigned(header, payload, rawSignature, signatureInput).serialize()
     }
 
-    override suspend fun createSignedJwsAddingParams(
-        header: JwsHeader,
-        payload: ByteArray,
-        addKeyId: Boolean,
-        addJsonWebKey: Boolean
-    ): String? {
-        var copy = header.copy(algorithm = cryptoService.jwsAlgorithm)
-        if (addKeyId)
-            copy = copy.copy(keyId = cryptoService.toJsonWebKey().keyId)
-        if (addJsonWebKey)
-            copy = copy.copy(jsonWebKey = cryptoService.toJsonWebKey())
+    override suspend fun createSignedJwsAddingParams(header: JwsHeader, payload: ByteArray): String? {
+        val copy = header.copy(
+            algorithm = cryptoService.jwsAlgorithm,
+            keyId = cryptoService.keyId,
+            jsonWebKey = cryptoService.toJsonWebKey()
+        )
         return createSignedJws(copy, payload)
     }
 
@@ -119,12 +101,13 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
                 Napier.w("No Z value from native code", it)
                 return null
             }
-        val kdfInput = prependWithAdditionalInfo(
-            z,
-            header.encryption,
-            header.agreementPartyUInfo,
-            header.agreementPartyVInfo
-        )
+        val kdfInput =
+            prependWithAdditionalInfo(
+                z,
+                header.encryption,
+                header.agreementPartyUInfo,
+                header.agreementPartyVInfo
+            )
         val key = cryptoService.messageDigest(kdfInput, Digest.SHA256).getOrElse {
             Napier.w("No digest from native code", it)
             return null
@@ -142,10 +125,10 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     }
 
     override fun encryptJweObject(
-        type: String,
+        type: JwsContentType,
         payload: ByteArray,
         recipientKey: JsonWebKey,
-        contentType: String?,
+        contentType: JwsContentType?,
         jweAlgorithm: JweAlgorithm,
         jweEncryption: JweEncryption
     ): String? {
@@ -159,7 +142,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val jweHeader = JweHeader(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
-            jsonWebKey = cryptoService.toJsonWebKey(),
+            keyId = cryptoService.keyId,
             type = type,
             contentType = contentType,
             ephemeralKeyPair = ephemeralKeyPair.toPublicJsonWebKey()
@@ -213,7 +196,9 @@ class DefaultVerifierJwsService(
      */
     override fun verifyJwsObject(jwsObject: JwsSigned, serialized: String?): Boolean {
         val header = jwsObject.header
-        val publicKey = header.getKey()
+        val publicKey = header.keyId?.let { JsonWebKey.fromKeyId(it) }
+            ?: header.jsonWebKey
+            ?: header.certificateChain?.first()?.let { cryptoService.extractPublicKeyFromX509Cert(it) }
             ?: return false
                 .also { Napier.w("Could not extract PublicKey from header: $header") }
         val verified = cryptoService.verify(

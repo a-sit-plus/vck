@@ -5,14 +5,9 @@ import at.asitplus.KmmResult
 object EmptyCredentialDataProvider : IssuerCredentialDataProvider {
 
     override fun getClaim(subjectId: String, attributeName: String)
-            : KmmResult<IssuerCredentialDataProvider.CredentialToBeIssued> =
-        KmmResult.failure(NotImplementedError())
+        : KmmResult<IssuerCredentialDataProvider.CredentialToBeIssued> = KmmResult.failure(NullPointerException())
 
     override fun getCredential(subjectId: String, attributeType: String)
-            : KmmResult<IssuerCredentialDataProvider.CredentialToBeIssued> =
-        KmmResult.failure(NotImplementedError())
+        : KmmResult<IssuerCredentialDataProvider.CredentialToBeIssued> = KmmResult.failure(NullPointerException())
 
-    override fun getCredentialWithType(subjectId: String, attributeTypes: Collection<String>)
-            : KmmResult<List<IssuerCredentialDataProvider.CredentialToBeIssued>> =
-        KmmResult.failure(NotImplementedError())
 }

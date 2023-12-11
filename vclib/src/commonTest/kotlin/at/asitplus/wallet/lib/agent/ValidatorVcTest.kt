@@ -1,18 +1,19 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.AtomicAttributeCredential
-import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.JwsAlgorithm
-import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsContentType
 import at.asitplus.wallet.lib.jws.JwsHeader
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.JwsSigned
+import at.asitplus.wallet.lib.nameHack
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.core.spec.style.scopes.ContainerScope
 import io.kotest.datatest.withData
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -26,11 +27,12 @@ import kotlin.time.Duration.Companion.seconds
 
 class ValidatorVcTest : FreeSpec() {
 
-    private lateinit var issuer: Issuer
-    private lateinit var issuerCredentialStore: IssuerCredentialStore
-    private lateinit var issuerJwsService: JwsService
-    private lateinit var issuerCryptoService: CryptoService
-    private lateinit var verifier: Verifier
+    lateinit var issuer: Issuer
+    lateinit var issuerCredentialStore: IssuerCredentialStore
+    lateinit var issuerJwsService: JwsService
+    lateinit var issuerCryptoService: CryptoService
+    lateinit var verifier: Verifier
+    lateinit var verifierCryptoService: CryptoService
 
     private val dataProvider: IssuerCredentialDataProvider = DummyCredentialDataProvider()
     private val revocationListUrl: String = "https://wallet.a-sit.at/backend/credentials/status/1"
@@ -44,24 +46,20 @@ class ValidatorVcTest : FreeSpec() {
                 issuerCredentialStore = issuerCredentialStore,
             )
             issuerJwsService = DefaultJwsService(issuerCryptoService)
-            verifier = VerifierAgent.newRandomInstance()
+            verifierCryptoService = DefaultCryptoService()
+            verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.keyId)
         }
 
         "credentials are valid for" {
-            issuer.issueCredentialWithTypes(
-                verifier.identifier,
-                listOf(ConstantIndex.Generic.vcType)
-            ).successful.map { it.vcJws }
+            issuer.issueCredentials(verifierCryptoService.keyId, AttributeIndex.genericAttributes)
+                .successful.map { it.vcJws }
                 .forEach {
                     verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Success>()
                 }
         }
 
         "revoked credentials are not valid" {
-            issuer.issueCredentialWithTypes(
-                verifier.identifier,
-                listOf(ConstantIndex.Generic.vcType)
-            )
+            issuer.issueCredentials(verifierCryptoService.keyId, AttributeIndex.genericAttributes)
                 .successful
                 .map { it.vcJws }
                 .map { it to verifier.verifyVcJws(it) }.forEach {
@@ -82,7 +80,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "wrong subject keyId is not be valid" {
-            issuer.issueCredentialWithTypes(uuid4().toString(), listOf(ConstantIndex.Generic.vcType))
+            issuer.issueCredentials(uuid4().toString(), AttributeIndex.genericAttributes)
                 .successful.map { it.vcJws }.forEach {
                     verifier.verifyVcJws(it)
                         .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
@@ -90,10 +88,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "credential with invalid JWS format is not valid" {
-            issuer.issueCredentialWithTypes(
-                verifier.identifier,
-                listOf(ConstantIndex.Generic.vcType)
-            )
+            issuer.issueCredentials(verifierCryptoService.keyId, AttributeIndex.genericAttributes)
                 .successful.map { it.vcJws }
                 .map { it.replaceFirstChar { "f" } }.forEach {
                     verifier.verifyVcJws(it)
@@ -102,13 +97,9 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Manually created and valid credential is valid" - {
-            withData(
-                dataProvider.getCredentialWithType(
-                    verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
-                ).getOrThrow()
-            ) {
-                issueCredential(it)
+            withData(nameFn = ::vcName, AttributeIndex.genericAttributes) {
+                it.let { dataProvider.getClaim(verifierCryptoService.keyId, it).getOrThrow() }
+                    .let { issueCredential(it) }
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
                     ?.let {
@@ -118,13 +109,9 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Wrong key ends in wrong signature is not valid" - {
-            withData(
-                dataProvider.getCredentialWithType(
-                    verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
-                ).getOrThrow()
-            ) {
-                issueCredential(it)
+            withData(nameFn = ::vcName, AttributeIndex.genericAttributes) {
+                it.let { dataProvider.getClaim(verifierCryptoService.keyId, it).getOrThrow() }
+                    .let { issueCredential(it) }
                     .let { wrapVcInJws(it) }
                     .let { wrapVcInJwsWrongKey(it) }
                     ?.let {
@@ -135,13 +122,9 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid sub in credential is not valid" - {
-            withData(
-                dataProvider.getCredentialWithType(
-                    verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
-                ).getOrThrow()
-            ) {
-                issueCredential(it)
+            withData(nameFn = ::vcName, AttributeIndex.genericAttributes) {
+                it.let { dataProvider.getClaim(verifierCryptoService.keyId, it).getOrThrow() }
+                    .let { issueCredential(it) }
                     .let { wrapVcInJws(it, subject = "vc.id") }
                     .let { signJws(it) }
                     ?.let {
@@ -152,13 +135,9 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid issuer in credential is not valid" - {
-            withData(
-                dataProvider.getCredentialWithType(
-                    verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
-                ).getOrThrow()
-            ) {
-                issueCredential(it)
+            withData(nameFn = ::vcName, AttributeIndex.genericAttributes) {
+                it.let { dataProvider.getClaim(verifierCryptoService.keyId, it).getOrThrow() }
+                    .let { issueCredential(it) }
                     .let { wrapVcInJws(it, issuer = "vc.issuer") }
                     .let { signJws(it) }?.let {
                         verifier.verifyVcJws(it)
@@ -168,13 +147,9 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid jwtId in credential is not valid" - {
-            withData(
-                dataProvider.getCredentialWithType(
-                    verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
-                ).getOrThrow()
-            ) {
-                issueCredential(it)
+            withData(nameFn = ::vcName, AttributeIndex.genericAttributes) {
+                it.let { dataProvider.getClaim(verifierCryptoService.keyId, it).getOrThrow() }
+                    .let { issueCredential(it) }
                     .let { wrapVcInJws(it, jwtId = "vc.jwtId") }
                     .let { signJws(it) }
                     ?.let {
@@ -185,13 +160,9 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid type in credential is not valid" - {
-            withData(
-                dataProvider.getCredentialWithType(
-                    verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
-                ).getOrThrow()
-            ) {
-                issueCredential(it)
+            withData(nameFn = ::vcName, AttributeIndex.genericAttributes) {
+                it.let { dataProvider.getClaim(verifierCryptoService.keyId, it).getOrThrow() }
+                    .let { issueCredential(it) }
                     .also { it.type[0] = "fakeCredential" }
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
@@ -203,17 +174,13 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid expiration in credential is not valid" - {
-            withData(
-                dataProvider.getCredentialWithType(
-                    verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
-                ).getOrThrow()
-            ) {
-                issueCredential(it, expirationDate = Clock.System.now() - 1.hours)
+            withData(nameFn = ::vcName, AttributeIndex.genericAttributes) {
+                it.let { dataProvider.getClaim(verifierCryptoService.keyId, it).getOrThrow() }
+                    .let { issueCredential(it, expirationDate = Clock.System.now() - 1.hours) }
                     .let {
                         VerifiableCredentialJws(
                             vc = it,
-                            subject = verifier.identifier,
+                            subject = verifierCryptoService.keyId,
                             notBefore = it.issuanceDate,
                             issuer = it.issuer,
                             expiration = Clock.System.now() + 1.hours,
@@ -229,13 +196,9 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "No expiration date is valid" - {
-            withData(
-                dataProvider.getCredentialWithType(
-                    verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
-                ).getOrThrow()
-            ) {
-                issueCredential(it, expirationDate = null)
+            withData(nameFn = ::vcName, AttributeIndex.genericAttributes) {
+                it.let { dataProvider.getClaim(verifierCryptoService.keyId, it).getOrThrow() }
+                    .let { issueCredential(it, expirationDate = null) }
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
                     ?.let {
@@ -245,14 +208,14 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid jws-expiration in credential is not valid" - {
-            withData(
-                dataProvider.getCredentialWithType(
-                    verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
-                ).getOrThrow()
-            ) {
-                issueCredential(it, expirationDate = Clock.System.now() + 1.hours)
-                    .let { wrapVcInJws(it, expirationDate = Clock.System.now() - 1.hours) }
+            withData(nameFn = ::vcName, AttributeIndex.genericAttributes) {
+                it.let { dataProvider.getClaim(verifierCryptoService.keyId, it).getOrThrow() }
+                    .let {
+                        issueCredential(it, expirationDate = Clock.System.now() + 1.hours)
+                    }
+                    .let {
+                        wrapVcInJws(it, expirationDate = Clock.System.now() - 1.hours)
+                    }
                     .let { signJws(it) }
                     ?.let {
                         verifier.verifyVcJws(it)
@@ -262,15 +225,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Expiration not matching in credential is not valid" - {
-            withData(
-                dataProvider.getCredentialWithType(
-                    verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
-                ).getOrThrow()
-            ) {
-                it.let {
-                    issueCredential(it, expirationDate = Clock.System.now() + 1.hours)
-                }
+            withData(nameFn = ::vcName, AttributeIndex.genericAttributes) {
+                it.let { dataProvider.getClaim(verifierCryptoService.keyId, it).getOrThrow() }
+                    .let {
+                        issueCredential(it, expirationDate = Clock.System.now() + 1.hours)
+                    }
                     .let {
                         wrapVcInJws(it, expirationDate = Clock.System.now() + 2.hours)
                     }
@@ -283,13 +242,9 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid NotBefore in credential is not valid" - {
-            withData(
-                dataProvider.getCredentialWithType(
-                    verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
-                ).getOrThrow()
-            ) {
-                it.let { issueCredential(it) }
+            withData(nameFn = ::vcName, AttributeIndex.genericAttributes) {
+                it.let { dataProvider.getClaim(verifierCryptoService.keyId, it).getOrThrow() }
+                    .let { issueCredential(it) }
                     .let {
                         wrapVcInJws(it, issuanceDate = Clock.System.now() + 2.hours)
                     }
@@ -302,13 +257,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid issuance date in credential is not valid" - {
-            withData(
-                dataProvider.getCredentialWithType(
-                    verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
-                ).getOrThrow()
-            ) {
-                issueCredential(it, issuanceDate = Clock.System.now() + 1.hours)
+            withData(nameFn = ::vcName, AttributeIndex.genericAttributes) {
+                it.let { dataProvider.getClaim(verifierCryptoService.keyId, it).getOrThrow() }
+                    .let {
+                        issueCredential(it, issuanceDate = Clock.System.now() + 1.hours)
+                    }
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
                     ?.let {
@@ -319,13 +272,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Issuance date and not before not matching is not valid" - {
-            withData(
-                dataProvider.getCredentialWithType(
-                    verifier.identifier,
-                    listOf(ConstantIndex.Generic.vcType)
-                ).getOrThrow()
-            ) {
-                issueCredential(it, issuanceDate = Clock.System.now() - 1.hours)
+            withData(nameFn = ::vcName, AttributeIndex.genericAttributes) {
+                it.let { dataProvider.getClaim(verifierCryptoService.keyId, it).getOrThrow() }
+                    .let {
+                        issueCredential(it, issuanceDate = Clock.System.now() - 1.hours)
+                    }
                     .let { wrapVcInJws(it, issuanceDate = Clock.System.now()) }
                     .let { signJws(it) }
                     ?.let {
@@ -350,7 +301,7 @@ class ValidatorVcTest : FreeSpec() {
         val credentialStatus = CredentialStatus(revocationListUrl, statusListIndex)
         return VerifiableCredential(
             id = vcId,
-            issuer = issuer.identifier,
+            issuer = issuerCryptoService.keyId,
             credentialStatus = credentialStatus,
             credentialSubject = sub,
             issuanceDate = issuanceDate,
@@ -360,7 +311,7 @@ class ValidatorVcTest : FreeSpec() {
 
     private fun wrapVcInJws(
         it: VerifiableCredential,
-        subject: String = verifier.identifier,
+        subject: String = verifierCryptoService.keyId,
         issuer: String = it.issuer,
         jwtId: String = it.id,
         issuanceDate: Instant = it.issuanceDate,
@@ -377,18 +328,19 @@ class ValidatorVcTest : FreeSpec() {
     private suspend fun signJws(vcJws: VerifiableCredentialJws): String? {
         val vcSerialized = vcJws.serialize()
         val jwsPayload = vcSerialized.encodeToByteArray()
-        return issuerJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
+        return issuerJwsService.createSignedJwt(JwsContentType.JWT, jwsPayload)
     }
 
     private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String? {
         val jwsHeader = JwsHeader(
-            algorithm = JwsAlgorithm.ES256,
-            keyId = verifier.identifier,
-            type = JwsContentTypeConstants.JWT
+            verifierCryptoService.jwsAlgorithm,
+            verifierCryptoService.keyId,
+            JwsContentType.JWT
         )
         val jwsPayload = vcJws.serialize().encodeToByteArray()
-        val signatureInput = jwsHeader.serialize().encodeToByteArray().encodeBase64(Base64.UrlSafe()) +
-                "." + jwsPayload.encodeBase64(Base64.UrlSafe())
+        val signatureInput =
+            jwsHeader.serialize().encodeToByteArray().encodeBase64(Base64.UrlSafe(pad = false)) +
+                    "." + jwsPayload.encodeBase64(Base64.UrlSafe(pad = false))
         val signatureInputBytes = signatureInput.encodeToByteArray()
         val signature = issuerCryptoService.sign(signatureInputBytes)
             .getOrElse { return null }
@@ -396,3 +348,6 @@ class ValidatorVcTest : FreeSpec() {
     }
 
 }
+
+private fun ContainerScope.vcName(it: String) = nameHack(it.substring(it.lastIndexOf('/') + 1))
+

@@ -47,10 +47,8 @@ class JwsServiceJvmTest : FreeSpec({
 
     "signed object from ext. library can be verified" {
         val stringPayload = jsonSerializer.encodeToString(randomPayload)
-        val libHeader = JWSHeader.Builder(JWSAlgorithm.ES256)
-            .type(JOSEObjectType("JWT"))
-            .keyID(cryptoService.toJsonWebKey().keyId!!)
-            .build()
+        val libHeader =
+            JWSHeader.Builder(JWSAlgorithm.ES256).type(JOSEObjectType("JWT")).keyID(cryptoService.keyId).build()
         val libObject = JWSObject(libHeader, Payload(stringPayload)).also {
             it.sign(ECDSASigner(keyPair.private as ECPrivateKey))
         }
@@ -66,7 +64,7 @@ class JwsServiceJvmTest : FreeSpec({
 
     "signed object can be verified with ext. library" {
         val stringPayload = jsonSerializer.encodeToString(randomPayload)
-        val signed = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, stringPayload.encodeToByteArray())
+        val signed = jwsService.createSignedJwt(JwsContentType.JWT, stringPayload.encodeToByteArray())
 
         val parsed = JWSObject.parse(signed)
         parsed.shouldNotBeNull()
@@ -79,9 +77,9 @@ class JwsServiceJvmTest : FreeSpec({
     "encrypted object from ext. library can be decrypted" {
         val stringPayload = jsonSerializer.encodeToString(randomPayload)
         val libHeader = JWEHeader.Builder(JWEAlgorithm.ECDH_ES, EncryptionMethod.A256GCM)
-            .type(JOSEObjectType(JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON))
-            .contentType(JwsContentTypeConstants.DIDCOMM_PLAIN_JSON)
-            .keyID(cryptoService.toJsonWebKey().keyId!!)
+            .type(JOSEObjectType(JwsContentType.DIDCOMM_ENCRYPTED_JSON.text))
+            .contentType(JwsContentType.DIDCOMM_PLAIN_JSON.text)
+            .keyID(cryptoService.keyId)
             .build()
         val libObject = JWEObject(libHeader, Payload(stringPayload)).also {
             it.encrypt(ECDHEncrypter(keyPair.public as ECPublicKey))
@@ -98,10 +96,10 @@ class JwsServiceJvmTest : FreeSpec({
     "encrypted object can be decrypted with ext. library" {
         val stringPayload = jsonSerializer.encodeToString(randomPayload)
         val encrypted = jwsService.encryptJweObject(
-            JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
+            JwsContentType.DIDCOMM_ENCRYPTED_JSON,
             stringPayload.encodeToByteArray(),
             cryptoService.toJsonWebKey(),
-            JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
+            JwsContentType.DIDCOMM_PLAIN_JSON,
             JweAlgorithm.ECDH_ES,
             JweEncryption.A256GCM,
         )

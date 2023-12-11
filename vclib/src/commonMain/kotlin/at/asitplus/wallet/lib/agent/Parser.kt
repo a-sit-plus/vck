@@ -29,35 +29,36 @@ class Parser(
      *
      * @param it the JWS enclosing the VP, in compact representation
      * @param challenge the nonce sent from the verifier to the holder creating the VP
-     * @param localIdentifier the identifier (e.g. `keyId`) of the verifier that has requested the VP from the holder
+     * @param localKeyId the keyId of the verifier that has requested the VP from the holder
      */
-    fun parseVpJws(it: String, challenge: String, localIdentifier: String): ParseVpResult {
+    fun parseVpJws(it: String, challenge: String, localKeyId: String): ParseVpResult {
         Napier.d("Parsing VP $it")
         val jws = JwsSigned.parse(it)
             ?: return ParseVpResult.InvalidStructure(it)
                 .also { Napier.w("Could not parse JWS") }
         val payload = jws.payload.decodeToString()
-        val kid = jws.header.keyId
+        val kid = jws.header.keyId?: return ParseVpResult.InvalidStructure(it)
+            .also { Napier.d("no kid in header") }
         val vpJws = kotlin.runCatching { VerifiablePresentationJws.deserialize(payload) }.getOrNull()
             ?: return ParseVpResult.InvalidStructure(it)
                 .also { Napier.w("Could not parse payload") }
-        return parseVpJws(it, vpJws, kid, challenge, localIdentifier)
+        return parseVpJws(it, vpJws, kid, challenge, localKeyId)
     }
 
     fun parseVpJws(
         it: String,
         vpJws: VerifiablePresentationJws,
-        kid: String? = null,
+        kid: String,
         challenge: String,
-        localIdentifier: String
+        localKeyId: String
     ): ParseVpResult {
         if (vpJws.challenge != challenge)
             return ParseVpResult.InvalidStructure(it)
                 .also { Napier.d("nonce invalid") }
-        if (vpJws.audience != localIdentifier)
+        if (vpJws.audience != localKeyId)
             return ParseVpResult.InvalidStructure(it)
                 .also { Napier.d("aud invalid") }
-        if (kid != null && vpJws.issuer != kid)
+        if (vpJws.issuer != kid)
             return ParseVpResult.InvalidStructure(it)
                 .also { Napier.d("iss invalid") }
         if (vpJws.jwtId != vpJws.vp.id)
@@ -75,8 +76,8 @@ class Parser(
      *
      * @param it the JWS enclosing the VC, in compact representation
      */
-    fun parseVcJws(it: String, vcJws: VerifiableCredentialJws, kid: String? = null): ParseVcResult {
-        if (kid != null && vcJws.issuer != kid)
+    fun parseVcJws(it: String, vcJws: VerifiableCredentialJws, kid: String): ParseVcResult {
+        if (vcJws.issuer != kid)
             return ParseVcResult.InvalidStructure(it)
                 .also { Napier.d("iss invalid") }
         if (vcJws.issuer != vcJws.vc.issuer)

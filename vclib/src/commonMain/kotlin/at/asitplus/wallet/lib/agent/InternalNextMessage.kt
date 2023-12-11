@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.msg.JsonWebMessage
 
 
@@ -12,7 +11,7 @@ sealed class InternalNextMessage {
 
     data class SendAndWrap(
         val message: JsonWebMessage,
-        val senderKey: JsonWebKey? = null,
+        val senderKeyId: String? = null,
         val endpoint: String? = null
     ) : InternalNextMessage()
 
@@ -22,7 +21,7 @@ sealed class InternalNextMessage {
 
     data class SendProblemReport(
         val message: JsonWebMessage,
-        val senderKey: JsonWebKey? = null,
+        val senderKeyId: String? = null,
         val endpoint: String? = null
     ) : InternalNextMessage()
 }

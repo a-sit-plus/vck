@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import io.matthewnelson.component.base64.encodeBase64
 import at.asitplus.wallet.lib.data.jsonSerializer
 import io.github.aakira.napier.Napier
+import io.ktor.util.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -127,11 +128,6 @@ data class JsonWebKey(
     }
 
     fun toJwkThumbprint() = Json.encodeToString(this).encodeToByteArray().toByteString().sha256().base64Url()
-
-    fun getIdentifier(): String {
-        return keyId
-            ?: "urn:ietf:params:oauth:jwk-thumbprint:sha256:${toJwkThumbprint()}"
-    }
 
     override fun toString(): String {
         return "JsonWebKey(type=$type, curve=$curve, keyId=$keyId, x=${x?.encodeBase64()}, y=${y?.encodeBase64()})"

@@ -6,7 +6,7 @@ import at.asitplus.wallet.lib.jws.JsonWebKey
 import at.asitplus.wallet.lib.jws.JweAlgorithm
 import at.asitplus.wallet.lib.jws.JweEncrypted
 import at.asitplus.wallet.lib.jws.JweEncryption
-import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsContentType
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.JwsSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
@@ -41,17 +41,17 @@ class MessageWrapper(
             ?: return ReceivedMessage.Error
                 .also { Napier.w("Could not parse JWE") }
         val payloadString = joseObject.payload.decodeToString()
-        if (joseObject.header.contentType == JwsContentTypeConstants.DIDCOMM_SIGNED_JSON) {
+        if (joseObject.header.contentType == JwsContentType.DIDCOMM_SIGNED_JSON) {
             val parsed = JwsSigned.parse(payloadString)
                 ?: return ReceivedMessage.Error
                     .also { Napier.w("Could not parse inner JWS") }
             return parseJwsMessage(parsed, payloadString)
         }
-        if (joseObject.header.contentType == JwsContentTypeConstants.DIDCOMM_PLAIN_JSON) {
+        if (joseObject.header.contentType == JwsContentType.DIDCOMM_PLAIN_JSON) {
             val message = JsonWebMessage.deserialize(payloadString)
                 ?: return ReceivedMessage.Error
                     .also { Napier.w("Could not parse plain message") }
-            return ReceivedMessage.Success(message, joseObject.header.getKey())
+            return ReceivedMessage.Success(message, joseObject.header.keyId)
         }
         return ReceivedMessage.Error
             .also { Napier.w("ContentType not matching") }
@@ -62,38 +62,44 @@ class MessageWrapper(
         if (!verifierJwsService.verifyJwsObject(joseObject, serialized))
             return ReceivedMessage.Error
                 .also { Napier.w("Signature invalid") }
-        if (joseObject.header.contentType == JwsContentTypeConstants.DIDCOMM_PLAIN_JSON) {
+        if (joseObject.header.contentType == JwsContentType.DIDCOMM_PLAIN_JSON) {
             val payloadString = joseObject.payload.decodeToString()
             val message = JsonWebMessage.deserialize(payloadString)
                 ?: return ReceivedMessage.Error
                     .also { Napier.w("Could not parse plain message") }
-            return ReceivedMessage.Success(message, joseObject.header.getKey())
+            return ReceivedMessage.Success(message, joseObject.header.keyId)
         }
         return ReceivedMessage.Error
             .also { Napier.w("ContentType not matching") }
     }
 
-    fun createEncryptedJwe(jwm: JsonWebMessage, recipientKey: JsonWebKey): String? {
+    fun createEncryptedJwe(jwm: JsonWebMessage, recipientKeyId: String): String? {
         val jwePayload = jwm.serialize().encodeToByteArray()
+        val recipientKey = JsonWebKey.fromKeyId(recipientKeyId)
+            ?: return null
+                .also { Napier.w("Can not calc JWK from recipientKeyId: $recipientKeyId") }
         return jwsService.encryptJweObject(
-            JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
+            JwsContentType.DIDCOMM_ENCRYPTED_JSON,
             jwePayload,
             recipientKey,
-            JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
+            JwsContentType.DIDCOMM_PLAIN_JSON,
             JweAlgorithm.ECDH_ES,
             JweEncryption.A256GCM,
         )
     }
 
-    suspend fun createSignedAndEncryptedJwe(jwm: JsonWebMessage, recipientKey: JsonWebKey): String? {
+    suspend fun createSignedAndEncryptedJwe(jwm: JsonWebMessage, recipientKeyId: String): String? {
         val jwePayload = createSignedJwt(jwm)?.encodeToByteArray()
             ?: return null
                 .also { Napier.w("Can not create signed JWT for encryption") }
+        val recipientKey = JsonWebKey.fromKeyId(recipientKeyId)
+            ?: return null
+                .also { Napier.w("Can not calc JWK from recipientKeyId: $recipientKeyId") }
         return jwsService.encryptJweObject(
-            JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
+            JwsContentType.DIDCOMM_ENCRYPTED_JSON,
             jwePayload,
             recipientKey,
-            JwsContentTypeConstants.DIDCOMM_SIGNED_JSON,
+            JwsContentType.DIDCOMM_SIGNED_JSON,
             JweAlgorithm.ECDH_ES,
             JweEncryption.A256GCM,
         )
@@ -101,9 +107,9 @@ class MessageWrapper(
 
     suspend fun createSignedJwt(jwm: JsonWebMessage): String? {
         return jwsService.createSignedJwt(
-            JwsContentTypeConstants.DIDCOMM_SIGNED_JSON,
+            JwsContentType.DIDCOMM_SIGNED_JSON,
             jwm.serialize().encodeToByteArray(),
-            JwsContentTypeConstants.DIDCOMM_PLAIN_JSON
+            JwsContentType.DIDCOMM_PLAIN_JSON
         )
     }
 

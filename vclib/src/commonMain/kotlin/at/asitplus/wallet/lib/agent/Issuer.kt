@@ -25,29 +25,14 @@ interface Issuer {
     }
 
     /**
-     * The identifier for this agent, typically the `keyId` from the cryptographic key,
-     * e.g. `did:key:mAB...` or `urn:ietf:params:oauth:jwk-thumbprint:sha256:...`
-     */
-    val identifier: String
-
-    /**
      * Issues credentials for all [attributeNames] to [subjectId]
      */
-    @Deprecated(message = "Use attribute types only and call `issueCredentialWithTypes`")
     suspend fun issueCredentials(subjectId: String, attributeNames: List<String>): IssuedCredentialResult
 
     /**
      * Issues credential for [attributeType] to [subjectId]
      */
-    @Deprecated(message = "Use attribute types only and call `issueCredentialWithTypes`")
     suspend fun issueCredential(subjectId: String, attributeType: String): IssuedCredentialResult
-
-    /**
-     * Issues credentials for some [attributeTypes] (i.e. some of
-     * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with [subjectId]
-     * (which should be a URL of the cryptographic key of the holder)
-     */
-    suspend fun issueCredentialWithTypes(subjectId: String, attributeTypes: Collection<String>): IssuedCredentialResult
 
     /**
      * Wraps [credential] in a single [VerifiableCredential],
