@@ -4,7 +4,6 @@ import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsContentTypeConstants
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
-import at.asitplus.crypto.datatypes.jws.prepareJwsSignatureInput
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -407,10 +406,10 @@ class ValidatorVcTest : FreeSpec() {
             type = JwsContentTypeConstants.JWT
         )
         val jwsPayload = vcJws.serialize().encodeToByteArray()
-        val signatureInput = prepareJwsSignatureInput(jwsHeader, jwsPayload).encodeToByteArray()
-        val signature = issuerCryptoService.sign(signatureInput)
+        val signatureInput = JwsSigned.prepareJwsSignatureInput(jwsHeader, jwsPayload)
+        val signature = issuerCryptoService.sign(signatureInput.encodeToByteArray())
             .getOrElse { return null }
-        return JwsSigned(jwsHeader, jwsPayload, signature).serialize()
+        return JwsSigned(jwsHeader, jwsPayload, signature,signatureInput).serialize()
     }
 
 }

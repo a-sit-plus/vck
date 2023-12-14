@@ -3,20 +3,16 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.*
-import at.asitplus.crypto.datatypes.Digest
 import at.asitplus.crypto.datatypes.EcCurve.SECP_256_R_1
 import at.asitplus.crypto.datatypes.asn1.Asn1String
 import at.asitplus.crypto.datatypes.asn1.Asn1Time
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
-import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.*
 import at.asitplus.crypto.datatypes.pki.DistinguishedName
 import at.asitplus.crypto.datatypes.pki.TbsCertificate
 import at.asitplus.crypto.datatypes.pki.X509Certificate
-import io.ktor.util.*
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.toKotlinInstant
 import org.bouncycastle.jce.ECNamedCurveTable
@@ -107,11 +103,16 @@ actual open class DefaultCryptoService : CryptoService {
 
     override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> =
         runCatching {
+
             val sig = Signature.getInstance(algorithm.jcaName).apply {
+                this@DefaultCryptoService.algorithm.jcaParams?.let { setParameter(it) }
                 initSign(privateKey)
                 update(input)
             }.sign()
-            val res = if (algorithm.name.take(2) == "ES") CryptoSignature.decodeFromDer(sig) else CryptoSignature.RSAorHMAC(sig) //In Java EC signatures are returned as DER-encoded, RSA signatures however are raw bytearrays
+            val res =
+                if (algorithm.name.take(2) == "ES") CryptoSignature.decodeFromDer(sig) else CryptoSignature.RSAorHMAC(
+                    sig
+                ) //In Java EC signatures are returned as DER-encoded, RSA signatures however are raw bytearrays
             res
         }.wrap()
 
@@ -198,9 +199,10 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
     ): KmmResult<Boolean> =
         runCatching {
             Signature.getInstance(algorithm.jcaName).apply {
+                algorithm.jcaParams?.let { setParameter(it)}
                 initVerify(publicKey.getJcaPublicKey().getOrThrow())
                 update(input)
-            }.verify(signature.encodeToDer())
+            }.verify(signature.jcaSignatureBytes)
         }.wrap()
 }
 

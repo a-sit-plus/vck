@@ -5,14 +5,12 @@ import at.asitplus.crypto.datatypes.asn1.encodeTo4Bytes
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.*
 import at.asitplus.crypto.datatypes.jws.JwsExtensions.prependWith4BytesSize
+import at.asitplus.crypto.datatypes.jws.JwsSigned.Companion.prepareJwsSignatureInput
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
-import io.ktor.util.*
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 
 /**
@@ -84,12 +82,12 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             return null.also { Napier.w("Algorithm or keyId not matching to cryptoService") }
         }
 
-        val signatureInputBytes = prepareJwsSignatureInput(header, payload).encodeToByteArray()
-        val signature = cryptoService.sign(signatureInputBytes).getOrElse {
+        val plainSignatureInput = prepareJwsSignatureInput(header, payload)
+        val signature = cryptoService.sign(plainSignatureInput.encodeToByteArray()).getOrElse {
             Napier.w("No signature from native code", it)
             return null
         }
-        return JwsSigned(header, payload, signature)
+        return JwsSigned(header, payload, signature, plainSignatureInput)
     }
 
     override suspend fun createSignedJwsAddingParams(
