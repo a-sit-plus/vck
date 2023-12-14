@@ -116,7 +116,7 @@ class DefaultVerifierCoseService(
         val verified = cryptoService.verify(
             input = signatureInput,
             signature = coseSigned.signature,
-            algorithm = algorithm.toJwsAlgorithm(),
+            algorithm = algorithm.toCryptoAlgorithm(),
             publicKey = publicKey
         )
         val result = verified.getOrElse {

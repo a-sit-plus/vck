@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.crypto.datatypes.jws.JsonWebToken
 import at.asitplus.crypto.datatypes.jws.JwsHeader
+import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -91,7 +92,7 @@ class WalletService(
             proofType = OpenIdConstants.ProofTypes.JWT,
             jwt = jwsService.createSignedJwsAddingParams(
                 header = JwsHeader(
-                    algorithm = cryptoService.algorithm,
+                    algorithm = cryptoService.algorithm.toJwsAlgorithm(),
                     type = OpenIdConstants.ProofTypes.JWT_HEADER_TYPE,
                 ),
                 payload = JsonWebToken(

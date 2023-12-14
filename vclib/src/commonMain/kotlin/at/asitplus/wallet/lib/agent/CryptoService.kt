@@ -41,7 +41,7 @@ interface CryptoService {
 
     fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray>
 
-    val algorithm: JwsAlgorithm
+    val algorithm: CryptoAlgorithm
 
     val publicKey: CryptoPublicKey
 
@@ -63,7 +63,7 @@ interface VerifierCryptoService {
     fun verify(
         input: ByteArray,
         signature: CryptoSignature,
-        algorithm: JwsAlgorithm,
+        algorithm: CryptoAlgorithm,
         publicKey: CryptoPublicKey,
     ): KmmResult<Boolean>
 

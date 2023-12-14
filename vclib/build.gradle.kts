@@ -14,11 +14,17 @@ val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
 
+
+val iosDisabled: String? by extra
+
+
 kotlin {
     jvm()
-    iosArm64()
-    iosSimulatorArm64()
-    iosX64()
+    if (iosDisabled != "true") {
+        iosArm64()
+        iosSimulatorArm64()
+        iosX64()
+    }
     sourceSets {
 
         commonMain {
@@ -48,8 +54,7 @@ kotlin {
         }
     }
 }
-
-exportIosFramework("VcLibKmm", *commonIosExports())
+if (iosDisabled != "true") exportIosFramework("VcLibKmm", *commonIosExports())
 
 val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/main/", multiModuleDoc = true)
 

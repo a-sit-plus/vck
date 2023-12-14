@@ -68,7 +68,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         contentType: String?
     ): JwsSigned? {
         val jwsHeader = JwsHeader(
-            algorithm = cryptoService.algorithm,
+            algorithm = cryptoService.algorithm.toJwsAlgorithm(),
             keyId = cryptoService.publicKey.keyId,
             type = type,
             contentType = contentType
@@ -77,7 +77,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     }
 
     override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): JwsSigned? {
-        if (header.algorithm != cryptoService.algorithm
+        if (header.algorithm != cryptoService.algorithm.toJwsAlgorithm()
             || header.keyId?.let { it != cryptoService.publicKey.keyId } == true
             || header.jsonWebKey?.let { it != cryptoService.jsonWebKey } == true
         ) {
@@ -98,7 +98,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         addKeyId: Boolean,
         addJsonWebKey: Boolean
     ): JwsSigned? {
-        var copy = header.copy(algorithm = cryptoService.algorithm)
+        var copy = header.copy(algorithm = cryptoService.algorithm.toJwsAlgorithm())
         if (addKeyId)
             copy = copy.copy(keyId = cryptoService.publicKey.keyId)
         if (addJsonWebKey)
@@ -219,15 +219,14 @@ class DefaultVerifierJwsService(
         val verified = cryptoService.verify(
             input = jwsObject.plainSignatureInput.encodeToByteArray(),
             signature = jwsObject.signature,
-            algorithm = header.algorithm,
+            algorithm = header.algorithm.toCryptoAlgorithm(),
             publicKey = publicKey
         )
-//        val falseVar = false //workaround kotlin bug for linking xcframework
-//        return verified.getOrElse {
-//            Napier.w("No verification from native code", it)
-//            falseVar
-//        }
-        return verified.getOrThrow()
+        val falseVar = false //workaround kotlin bug for linking xcframework
+        return verified.getOrElse {
+            Napier.w("No verification from native code", it)
+            falseVar
+        }
     }
 
     /**
@@ -240,7 +239,7 @@ class DefaultVerifierJwsService(
         val verified = cryptoService.verify(
             jwsObject.plainSignatureInput.encodeToByteArray(),
             jwsObject.signature,
-            jwsObject.header.algorithm,
+            jwsObject.header.algorithm.toCryptoAlgorithm(),
             publicKey,
         )
         val falseVar = false //workaround kotlin bug for linking xcframework

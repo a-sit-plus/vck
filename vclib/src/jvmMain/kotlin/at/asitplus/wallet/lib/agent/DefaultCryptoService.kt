@@ -40,7 +40,7 @@ actual open class DefaultCryptoService : CryptoService {
 
     private val privateKey: PrivateKey
 
-    final override val algorithm: JwsAlgorithm
+    final override val algorithm: CryptoAlgorithm
 
     final override val publicKey: CryptoPublicKey
 
@@ -57,7 +57,7 @@ actual open class DefaultCryptoService : CryptoService {
         val keyPair =
             KeyPairGenerator.getInstance("EC").also { it.initialize(SECP_256_R_1.keyLengthBits.toInt()) }.genKeyPair()
         this.privateKey = keyPair.private
-        this.algorithm = JwsAlgorithm.ES256
+        this.algorithm = CryptoAlgorithm.ES256
         this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
         this.jsonWebKey = publicKey.toJsonWebKey().getOrThrow()
         this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
@@ -70,7 +70,7 @@ actual open class DefaultCryptoService : CryptoService {
      * it's mandatory
      * Also used for custom certificates
      */
-    constructor(keyPair: KeyPair, algorithm: JwsAlgorithm, certificate: Certificate? = null) {
+    constructor(keyPair: KeyPair, algorithm: CryptoAlgorithm, certificate: Certificate? = null) {
         this.privateKey = keyPair.private
         this.algorithm = algorithm
         this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
@@ -105,29 +105,15 @@ actual open class DefaultCryptoService : CryptoService {
         return X509Certificate(tbsCertificate, algorithm, signature)
     }
 
-    //    override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> =
-//        runCatching {
-//            Signature.getInstance(algorithm.jcaName).apply {
-//                initSign(privateKey)
-//                update(input)
-//            }.sign()
-//        }.wrap().mapCatching {
-////            when (algorithm) {
-////                JwsAlgorithm.ES256, JwsAlgorithm.ES384, JwsAlgorithm.ES512 -> CryptoSignature.EC(it)
-////                else -> CryptoSignature.RSAorHMAC(it)
-////            }
-//            CryptoSignature.decodeFromDer(it)
-//        }
     override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> =
         runCatching {
             val sig = Signature.getInstance(algorithm.jcaName).apply {
                 initSign(privateKey)
                 update(input)
             }.sign()
-            val test = sig.encodeToString(Base64UrlStrict)
-            println(test)
-            CryptoSignature.decodeFromDer(sig)
-        }.wrap().also { it.getOrThrow() }
+            val res = if (algorithm.name.take(2) == "ES") CryptoSignature.decodeFromDer(sig) else CryptoSignature.RSAorHMAC(sig) //In Java EC signatures are returned as DER-encoded, RSA signatures however are raw bytearrays
+            res
+        }.wrap()
 
     override fun encrypt(
         key: ByteArray, iv: ByteArray, aad: ByteArray, input: ByteArray, algorithm: JweEncryption
@@ -207,7 +193,7 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
     override fun verify(
         input: ByteArray,
         signature: CryptoSignature,
-        algorithm: JwsAlgorithm,
+        algorithm: CryptoAlgorithm,
         publicKey: CryptoPublicKey,
     ): KmmResult<Boolean> =
         runCatching {
