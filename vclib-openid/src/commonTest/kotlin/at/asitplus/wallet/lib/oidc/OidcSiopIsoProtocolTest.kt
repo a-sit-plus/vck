@@ -11,6 +11,8 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
 import com.benasher44.uuid.uuid4
+import io.github.aakira.napier.DebugAntilog
+import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -41,7 +43,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
-        verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
+        verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.keyId)
         runBlocking {
             val issuerAgent = IssuerAgent.newDefaultInstance(
                 DefaultCryptoService(),
@@ -49,14 +51,14 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             )
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(
-                    subjectPublicKey = holderCryptoService.toPublicKey(),
+                    subjectPublicKey = holderCryptoService.publicKey,
                     attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
                 ).toStoreCredentialInput()
             )
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(
-                    subjectPublicKey = holderCryptoService.toPublicKey(),
+                    subjectPublicKey = holderCryptoService.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
                 ).toStoreCredentialInput()
