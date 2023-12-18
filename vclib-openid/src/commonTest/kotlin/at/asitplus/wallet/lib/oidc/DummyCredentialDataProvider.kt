@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
-import at.asitplus.crypto.datatypes.cose.CoseKey
+import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
@@ -37,7 +39,7 @@ class DummyCredentialDataProvider(
         val expiration = clock.now() + defaultLifetime
         val credentials = mutableListOf<CredentialToBeIssued>()
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
-            val subjectId = subjectPublicKey.toJsonWebKey().identifier
+            val subjectId = subjectPublicKey.keyId
             val claims = listOfNotNull(
                 optionalClaim(claimNames, "given-name", "Susanne"),
                 optionalClaim(claimNames, "family-name", "Meier"),
