@@ -1,14 +1,16 @@
 package at.asitplus.wallet.lib.data
 
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.base64.Base64ConfigBuilder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 
-private val serializersModules = mutableListOf<SerializersModule>()
+private val serializersModules = mutableMapOf<ConstantIndex.CredentialScheme, SerializersModule>()
 
-internal fun registerSerializersModule(module: SerializersModule) {
-    serializersModules += module
+internal fun registerSerializersModule(scheme: ConstantIndex.CredentialScheme, module: SerializersModule) {
+    serializersModules[scheme] = module
 }
 
 val jsonSerializer by lazy {
@@ -23,23 +25,9 @@ val jsonSerializer by lazy {
                 subclass(RevocationListSubject::class)
             }
             serializersModules.forEach {
-                include(it)
+                include(it.value)
             }
         }
     }
 }
 
-//val Base64UrlStrict = Base64(config = Base64ConfigBuilder().apply {
-//    lineBreakInterval = 0
-//    encodeToUrlSafe = true
-//    isLenient = true
-//    padEncoded = false
-//}.build())
-//
-//
-//val Base64Strict = Base64(config = Base64ConfigBuilder().apply {
-//    lineBreakInterval = 0
-//    encodeToUrlSafe = false
-//    isLenient = true
-//    padEncoded = true
-//}.build())

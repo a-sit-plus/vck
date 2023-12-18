@@ -1,9 +1,11 @@
 package at.asitplus.wallet.lib.aries
 
+import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.data.AriesGoalCodeParser
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
@@ -146,7 +148,7 @@ class IssueCredentialProtocol(
             body = OutOfBandInvitationBody(
                 handshakeProtocols = arrayOf(SchemaIndex.PROT_ISSUE_CRED),
                 acceptTypes = arrayOf("application/didcomm-signed+json"),
-                goalCode = "issue-vc-${credentialScheme.credentialDefinitionName}",
+                goalCode = "issue-vc-${AriesGoalCodeParser.getAriesName(credentialScheme)}",
                 services = arrayOf(
                     OutOfBandService(
                         type = "did-communication",
@@ -170,7 +172,7 @@ class IssueCredentialProtocol(
     }
 
     private fun createRequestCredential(invitation: OutOfBandInvitation, senderKey: JsonWebKey): InternalNextMessage {
-        val credentialScheme = ConstantIndex.Parser.parseGoalCode(invitation.body.goalCode)
+        val credentialScheme = AriesGoalCodeParser.parseGoalCode(invitation.body.goalCode)
             ?: return problemReporter.problemLastMessage(invitation.threadId, "goal-code-unknown")
         val message = buildRequestCredentialMessage(credentialScheme, invitation.id)
             ?: return InternalNextMessage.IncorrectState("holder")
@@ -192,7 +194,7 @@ class IssueCredentialProtocol(
             issuer = "somebody",
             subject = subject,
             credential = CredentialDefinition(
-                name = credentialScheme.credentialDefinitionName,
+                name = credentialScheme.vcType,
                 schema = SchemaReference(uri = credentialScheme.schemaUri),
             )
         )
@@ -203,7 +205,7 @@ class IssueCredentialProtocol(
         return RequestCredential(
             body = RequestCredentialBody(
                 comment = "Please issue some credentials",
-                goalCode = "issue-vc-${credentialScheme.credentialDefinitionName}",
+                goalCode = "issue-vc-${AriesGoalCodeParser.getAriesName(credentialScheme)}",
                 formats = arrayOf(
                     AttachmentFormatReference(
                         attachmentId = attachment.id,
@@ -222,17 +224,22 @@ class IssueCredentialProtocol(
         val requestCredentialAttachment = lastJwmAttachment.decodeString()?.let {
             RequestCredentialAttachment.deserialize(it)
         } ?: return problemReporter.problemLastMessage(lastMessage.threadId, "attachments-format")
+
         val uri = requestCredentialAttachment.credentialManifest.credential.schema.uri
-
-        //default pupilID use case: binding key outside JWM, no subject in JWM. set subject to override
-        val subjectIdentifier = requestCredentialAttachment.credentialManifest.subject ?: senderKey.identifier
-
-        val requestedAttributeType = AttributeIndex.getTypeOfAttributeForSchemaUri(uri)
+        val requestedCredentialScheme = AttributeIndex.resolveSchemaUri(uri)
+        val requestedAttributeType = requestedCredentialScheme?.vcType
             ?: return problemReporter.problemLastMessage(lastMessage.threadId, "requested-attributes-empty")
 
-        val issuedCredentials =
-            issuer?.issueCredentialWithTypes(subjectIdentifier, attributeTypes = listOf(requestedAttributeType))
-                ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
+        // TODO Is there a way to transport the format, i.e. JWT-VC or SD-JWT?
+        val cryptoPublicKey =
+            requestCredentialAttachment.credentialManifest.subject?.let { kotlin.runCatching { CryptoPublicKey.fromKeyId(it) }.getOrNull()}
+                ?: senderKey.toCryptoPublicKey().getOrNull()
+                ?: return problemReporter.problemInternal(lastMessage.threadId, "no-sender-key")
+        val issuedCredentials = issuer?.issueCredential(
+            subjectPublicKey = cryptoPublicKey,
+            attributeTypes = listOf(requestedAttributeType),
+            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
+        ) ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
 
         //TODO: Pack this info into `args` or `comment`
         if (issuedCredentials.failed.isNotEmpty()) {
@@ -249,22 +256,30 @@ class IssueCredentialProtocol(
 
         val fulfillmentAttachments = mutableListOf<JwmAttachment>()
         val binaryAttachments = mutableListOf<JwmAttachment>()
-        issuedCredentials.successful.filterIsInstance<Issuer.IssuedCredential.Vc>().forEach { cred ->
-            val fulfillment = JwmAttachment.encodeJws(cred.vcJws)
-            val binary = cred.attachments?.map {
-                JwmAttachment.encode(
-                    data = it.data,
-                    filename = it.name,
-                    mediaType = it.mediaType,
-                    parent = fulfillment.id
-                )
-            } ?: listOf()
-            fulfillmentAttachments.add(fulfillment)
-            binaryAttachments.addAll(binary)
-        }
-        issuedCredentials.successful.filterIsInstance<Issuer.IssuedCredential.Iso>().forEach { cred ->
-            val fulfillment = JwmAttachment.encodeBase64(cred.issuerSigned.serialize())
-            fulfillmentAttachments.add(fulfillment)
+        issuedCredentials.successful.forEach { cred ->
+            when (cred) {
+                is Issuer.IssuedCredential.Iso -> {
+                    fulfillmentAttachments.add(JwmAttachment.encodeBase64(cred.issuerSigned.serialize()))
+                }
+
+                is Issuer.IssuedCredential.VcJwt -> {
+                    val fulfillment = JwmAttachment.encodeJws(cred.vcJws)
+                    val binary = cred.attachments?.map {
+                        JwmAttachment.encode(
+                            data = it.data,
+                            filename = it.name,
+                            mediaType = it.mediaType,
+                            parent = fulfillment.id
+                        )
+                    } ?: listOf()
+                    fulfillmentAttachments.add(fulfillment)
+                    binaryAttachments.addAll(binary)
+                }
+
+                is Issuer.IssuedCredential.VcSdJwt -> {
+                    fulfillmentAttachments.add(JwmAttachment.encodeJws(cred.vcSdJwt))
+                }
+            }
         }
         val message = IssueCredential(
             body = IssueCredentialBody(
@@ -313,10 +328,10 @@ class IssueCredentialProtocol(
             val attachmentList = binaryAttachments
                 .filter { it.parent == fulfillment.id }
                 .mapNotNull { extractBinaryAttachment(it) }
-            return Holder.StoreCredentialInput.Vc(decoded, attachmentList)
+            return Holder.StoreCredentialInput.Vc(decoded, credentialScheme, attachmentList)
         } ?: runCatching { fulfillment.decodeBinary() }.getOrNull()?.let { decoded ->
             IssuerSigned.deserialize(decoded)?.let { issuerSigned ->
-                return Holder.StoreCredentialInput.Iso(issuerSigned)
+                return Holder.StoreCredentialInput.Iso(issuerSigned, credentialScheme)
             }
         } ?: return null
     }

@@ -1,17 +1,12 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
-import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.JsonWebToken
 import at.asitplus.crypto.datatypes.jws.JwsSigned
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.BINDING_METHOD_COSE_KEY
@@ -22,7 +17,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_PREFIX_BEARER
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
-import io.ktor.http.*
+import io.ktor.http.URLBuilder
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -32,15 +27,48 @@ import kotlin.coroutines.cancellation.CancellationException
  * Implemented from Draft `openid-4-verifiable-credential-issuance-1_0-11`, 2023-02-03.
  */
 class IssuerService(
+    /**
+     * Used to actually issue the credential.
+     */
     private val issuer: Issuer,
+    /**
+     * List of supported schemes.
+     */
     private val credentialSchemes: Collection<ConstantIndex.CredentialScheme>,
+    /**
+     * Used to create and verify authorization codes during issuing.
+     */
     private val codeService: CodeService = DefaultCodeService(),
+    /**
+     * Used to create and verify bearer tokens during issuing.
+     */
     private val tokenService: TokenService = DefaultTokenService(),
+    /**
+     * Used to provide challenge to clients to include in proof of posession of key material.
+     */
     private val clientNonceService: NonceService = DefaultNonceService(),
+    /**
+     * Used as [IssuerMetadata.authorizationServer].
+     */
     private val authorizationServer: String? = null,
+    /**
+     * Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients.
+     */
     private val publicContext: String = "https://wallet.a-sit.at/",
+    /**
+     * Used to build [IssuerMetadata.authorizationEndpointUrl], i.e. implementers need to forward requests
+     * to that URI (which starts with [publicContext]) to [authorize].
+     */
     private val authorizationEndpointPath: String = "/authorize",
+    /**
+     * Used to build [IssuerMetadata.tokenEndpointUrl], i.e. implementers need to forward requests
+     * to that URI (which starts with [publicContext]) to [token].
+     */
     private val tokenEndpointPath: String = "/token",
+    /**
+     * Used to build [IssuerMetadata.credentialEndpointUrl], i.e. implementers need to forward requests
+     * to that URI (which starts with [publicContext]) to [credential].
+     */
     private val credentialEndpointPath: String = "/credential",
 ) {
 
@@ -48,36 +76,6 @@ class IssuerService(
      * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`
      */
     val metadata: IssuerMetadata by lazy {
-        val credentialFormats = credentialSchemes.map {
-            when (it.credentialFormat) {
-                ConstantIndex.CredentialFormat.ISO_18013 -> SupportedCredentialFormat(
-                    format = CredentialFormatEnum.MSO_MDOC,
-                    id = it.vcType,
-                    types = arrayOf(it.vcType),
-                    docType = DOC_TYPE_MDL,
-                    claims = mapOf(
-                        NAMESPACE_MDL to mapOf(
-                            DataElements.GIVEN_NAME to RequestedCredentialClaimSpecification(),
-                            DataElements.FAMILY_NAME to RequestedCredentialClaimSpecification(),
-                            DataElements.DOCUMENT_NUMBER to RequestedCredentialClaimSpecification(),
-                            DataElements.ISSUE_DATE to RequestedCredentialClaimSpecification(),
-                            DataElements.EXPIRY_DATE to RequestedCredentialClaimSpecification(),
-                            DataElements.DRIVING_PRIVILEGES to RequestedCredentialClaimSpecification(),
-                        )
-                    ),
-                    supportedBindingMethods = arrayOf(BINDING_METHOD_COSE_KEY),
-                    supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.identifier),
-                )
-
-                ConstantIndex.CredentialFormat.W3C_VC -> SupportedCredentialFormat(
-                    format = CredentialFormatEnum.JWT_VC,
-                    id = it.vcType,
-                    types = arrayOf(VERIFIABLE_CREDENTIAL, it.vcType),
-                    supportedBindingMethods = arrayOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
-                    supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.identifier),
-                )
-            }
-        }
         IssuerMetadata(
             issuer = publicContext,
             credentialIssuer = publicContext,
@@ -85,12 +83,43 @@ class IssuerService(
             authorizationEndpointUrl = "$publicContext$authorizationEndpointPath",
             tokenEndpointUrl = "$publicContext$tokenEndpointPath",
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
-            supportedCredentialFormat = credentialFormats.toTypedArray(),
+            supportedCredentialFormat = credentialSchemes.flatMap { it.toSupportedCredentialFormat() }.toTypedArray(),
             displayProperties = credentialSchemes
-                .map { DisplayProperties(it.credentialDefinitionName, "en") }
+                .map { DisplayProperties(it.vcType, "en") }
                 .toTypedArray()
         )
     }
+
+    private fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat() = listOf(
+        SupportedCredentialFormat(
+            format = CredentialFormatEnum.MSO_MDOC,
+            id = vcType,
+            types = arrayOf(vcType),
+            docType = isoDocType,
+            claims = buildIsoClaims(),
+            supportedBindingMethods = arrayOf(BINDING_METHOD_COSE_KEY),
+            supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.identifier),
+        ),
+        SupportedCredentialFormat(
+            format = CredentialFormatEnum.JWT_VC,
+            id = vcType,
+            types = arrayOf(VERIFIABLE_CREDENTIAL, vcType),
+            supportedBindingMethods = arrayOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
+            supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.identifier),
+        ),
+        SupportedCredentialFormat(
+            format = CredentialFormatEnum.JWT_VC_SD,
+            id = vcType,
+            types = arrayOf(VERIFIABLE_CREDENTIAL, vcType),
+            supportedBindingMethods = arrayOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
+            supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.identifier),
+        )
+    )
+
+    private fun ConstantIndex.CredentialScheme.buildIsoClaims() = mapOf(
+        isoNamespace to ConstantIndex.MobileDrivingLicence2023.claimNames
+            .associateWith { RequestedCredentialClaimSpecification() }
+    )
 
     /**
      * Send this result as HTTP Header `Location` in a 302 response to the client.
@@ -147,36 +176,44 @@ class IssuerService(
             throw OAuth2Exception(Errors.INVALID_PROOF)
         if (jwsSigned.header.type != ProofTypes.JWT_HEADER_TYPE)
             throw OAuth2Exception(Errors.INVALID_PROOF)
-        val subjectPublicKey = jwsSigned.header.publicKey?.toJsonWebKey()?.getOrNull()
+        val subjectPublicKey = jwsSigned.header.publicKey
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
 
-        val issuedCredentialResult = issuer.issueCredentialWithTypes(
-            subjectId = subjectPublicKey.identifier,
-//            subjectPublicKey = CoseKey.fromAnsiX963Bytes(
-//                CoseKeyType.EC2,
-//                CoseEllipticCurve.P256,
-//                subjectPublicKey.toAnsiX963ByteArray().getOrThrow()
-//            ),
-            subjectPublicKey = subjectPublicKey.toCryptoPublicKey().transform { it.toCoseKey() }.getOrThrow(),
-            attributeTypes = params.types.toList()
+        val issuedCredentialResult = issuer.issueCredential(
+            subjectPublicKey = subjectPublicKey,
+            attributeTypes = params.types.toList(),
+            representation = params.format.toRepresentation(),
+            claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
         )
         if (issuedCredentialResult.successful.isEmpty()) {
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
-
-        return when (val issuedCredential = issuedCredentialResult.successful.first()) {
-            is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
-                format = CredentialFormatEnum.MSO_MDOC,
-                credential = issuedCredential.issuerSigned.serialize().encodeToString(Base64UrlStrict)
-            )
-
-            is Issuer.IssuedCredential.Vc -> CredentialResponseParameters(
-                format = CredentialFormatEnum.JWT_VC,
-                credential = issuedCredential.vcJws
-            )
-        }
+        return issuedCredentialResult.successful.first().toCredentialResponseParameters()
     }
 
+    private fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
+        is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
+            format = CredentialFormatEnum.MSO_MDOC,
+            credential = issuerSigned.serialize().encodeToString(Base64UrlStrict),
+        )
+
+        is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
+            format = CredentialFormatEnum.JWT_VC,
+            credential = vcJws,
+        )
+
+        is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
+            format = CredentialFormatEnum.JWT_VC_SD,
+            credential = vcSdJwt,
+        )
+    }
+
+}
+
+private fun CredentialFormatEnum.toRepresentation() = when (this) {
+    CredentialFormatEnum.JWT_VC_SD -> ConstantIndex.CredentialRepresentation.SD_JWT
+    CredentialFormatEnum.MSO_MDOC -> ConstantIndex.CredentialRepresentation.ISO_MDOC
+    else -> ConstantIndex.CredentialRepresentation.PLAIN_JWT
 }
 
 class OAuth2Exception(val error: String, val errorDescription: String? = null) : Throwable(error) {

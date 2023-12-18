@@ -7,15 +7,14 @@ import at.asitplus.crypto.datatypes.cose.CoseSigned
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DOCUMENT_NUMBER
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DRIVING_PRIVILEGES
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.EXPIRY_DATE
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.FAMILY_NAME
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.GIVEN_NAME
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUE_DATE
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.PORTRAIT
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.EXPIRY_DATE
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.FAMILY_NAME
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.GIVEN_NAME
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.ISSUE_DATE
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.PORTRAIT
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
@@ -69,7 +68,7 @@ class Wallet {
     fun storeMdl(deviceResponse: DeviceResponse) {
         val document = deviceResponse.documents?.firstOrNull()
         document.shouldNotBeNull()
-        document.docType shouldBe DOC_TYPE_MDL
+        document.docType shouldBe ConstantIndex.MobileDrivingLicence2023.isoDocType
         val issuerAuth = document.issuerSigned.issuerAuth
         this.storedIssuerAuth = issuerAuth
         println("Wallet stored IssuerAuth: $issuerAuth")
@@ -77,10 +76,10 @@ class Wallet {
         issuerAuthPayload.shouldNotBeNull()
         val mso = document.issuerSigned.getIssuerAuthPayloadAsMso()
         mso.shouldNotBeNull()
-        val mdlItems = document.issuerSigned.namespaces?.get(NAMESPACE_MDL)
+        val mdlItems = document.issuerSigned.namespaces?.get(ConstantIndex.MobileDrivingLicence2023.isoNamespace)
         mdlItems.shouldNotBeNull()
         this.storedMdlItems = mdlItems
-        val valueDigests = mso.valueDigests[NAMESPACE_MDL]
+        val valueDigests = mso.valueDigests[ConstantIndex.MobileDrivingLicence2023.isoNamespace]
         valueDigests.shouldNotBeNull()
 
         val givenNameValue = extractDataString(mdlItems, GIVEN_NAME)
@@ -103,17 +102,18 @@ class Wallet {
     }
 
     suspend fun buildDeviceResponse(verifierRequest: DeviceRequest): DeviceResponse {
-        val isoNamespace = verifierRequest.docRequests[0].itemsRequest.value.namespaces[NAMESPACE_MDL]
+        val isoNamespace =
+            verifierRequest.docRequests[0].itemsRequest.value.namespaces[ConstantIndex.MobileDrivingLicence2023.isoNamespace]
         isoNamespace.shouldNotBeNull()
         val requestedKeys = isoNamespace.entries.filter { it.value }.map { it.key }
         return DeviceResponse(
             version = "1.0",
             documents = arrayOf(
                 Document(
-                    docType = DOC_TYPE_MDL,
+                    docType = ConstantIndex.MobileDrivingLicence2023.isoDocType,
                     issuerSigned = IssuerSigned(
                         namespaces = mapOf(
-                            NAMESPACE_MDL to IssuerSignedList(storedMdlItems!!.entries.filter {
+                            ConstantIndex.MobileDrivingLicence2023.isoNamespace to IssuerSignedList(storedMdlItems!!.entries.filter {
                                 it.value.elementIdentifier in requestedKeys
                             })
                         ),
@@ -165,12 +165,12 @@ class Issuer {
             version = "1.0",
             digestAlgorithm = "SHA-256",
             valueDigests = mapOf(
-                NAMESPACE_MDL to ValueDigestList(entries = issuerSigned.map {
+                ConstantIndex.MobileDrivingLicence2023.isoNamespace to ValueDigestList(entries = issuerSigned.map {
                     ValueDigest.fromIssuerSigned(it)
                 })
             ),
             deviceKeyInfo = walletKeyInfo,
-            docType = DOC_TYPE_MDL,
+            docType = ConstantIndex.MobileDrivingLicence2023.isoDocType,
             validityInfo = ValidityInfo(
                 signed = Clock.System.now(),
                 validFrom = Clock.System.now(),
@@ -182,10 +182,12 @@ class Issuer {
             version = "1.0",
             documents = arrayOf(
                 Document(
-                    docType = DOC_TYPE_MDL,
+                    docType = ConstantIndex.MobileDrivingLicence2023.isoDocType,
                     issuerSigned = IssuerSigned(
                         namespaces = mapOf(
-                            NAMESPACE_MDL to IssuerSignedList.withItems(issuerSigned)
+                            ConstantIndex.MobileDrivingLicence2023.isoNamespace to IssuerSignedList.withItems(
+                                issuerSigned
+                            )
                         ),
                         issuerAuth = coseService.createSignedCose(
                             protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
@@ -217,9 +219,9 @@ class Verifier {
             DocRequest(
                 itemsRequest = ByteStringWrapper(
                     value = ItemsRequest(
-                        docType = DOC_TYPE_MDL,
+                        docType = ConstantIndex.MobileDrivingLicence2023.isoDocType,
                         namespaces = mapOf(
-                            NAMESPACE_MDL to ItemsRequestList(
+                            ConstantIndex.MobileDrivingLicence2023.isoNamespace to ItemsRequestList(
                                 listOf(
                                     SingleItemsRequest(FAMILY_NAME, true),
                                     SingleItemsRequest(GIVEN_NAME, true),
@@ -243,7 +245,7 @@ class Verifier {
         val documents = deviceResponse.documents
         documents.shouldNotBeNull()
         val doc = documents.first()
-        doc.docType shouldBe DOC_TYPE_MDL
+        doc.docType shouldBe ConstantIndex.MobileDrivingLicence2023.isoDocType
         doc.errors.shouldBeNull()
         val issuerSigned = doc.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
@@ -252,8 +254,8 @@ class Verifier {
         issuerAuthPayload.shouldNotBeNull()
         val mso = issuerSigned.getIssuerAuthPayloadAsMso()
         mso.shouldNotBeNull()
-        mso.docType shouldBe DOC_TYPE_MDL
-        val mdlItems = mso.valueDigests[NAMESPACE_MDL]
+        mso.docType shouldBe ConstantIndex.MobileDrivingLicence2023.isoDocType
+        val mdlItems = mso.valueDigests[ConstantIndex.MobileDrivingLicence2023.isoNamespace]
         mdlItems.shouldNotBeNull()
 
         val walletKey = mso.deviceKeyInfo.deviceKey
@@ -262,7 +264,7 @@ class Verifier {
         verifierCoseService.verifyCose(deviceSignature, walletKey).getOrThrow().shouldBe(true)
         val namespaces = issuerSigned.namespaces
         namespaces.shouldNotBeNull()
-        val issuerSignedItems = namespaces[NAMESPACE_MDL]
+        val issuerSignedItems = namespaces[ConstantIndex.MobileDrivingLicence2023.isoNamespace]
         issuerSignedItems.shouldNotBeNull()
 
         extractAndVerifyData(issuerSignedItems, mdlItems, FAMILY_NAME)

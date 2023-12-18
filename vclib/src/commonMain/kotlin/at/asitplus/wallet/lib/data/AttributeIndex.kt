@@ -14,10 +14,17 @@ object AttributeIndex {
     }
 
     /**
-     * May return an empty list, if the Schema is not known
+     * Matches the passed [uri] against all known schemes from [ConstantIndex.CredentialScheme.schemaUri]
      */
-    fun getTypeOfAttributeForSchemaUri(uri: String): String? {
-        return schemeSet.firstOrNull { it.schemaUri == uri }?.vcType
+    fun resolveSchemaUri(uri: String): ConstantIndex.CredentialScheme? {
+        return schemeSet.firstOrNull { it.schemaUri == uri }
+    }
+
+    /**
+     * Matches the passed [type] against all known types from [ConstantIndex.CredentialScheme.vcType]
+     */
+    fun resolveAttributeType(type: String): ConstantIndex.CredentialScheme? {
+        return schemeSet.firstOrNull { it.vcType == type }
     }
 
 }

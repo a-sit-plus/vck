@@ -10,9 +10,18 @@ import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
-import at.asitplus.wallet.lib.data.dif.*
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
+import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
+import at.asitplus.wallet.lib.data.dif.Constraint
+import at.asitplus.wallet.lib.data.dif.ConstraintField
+import at.asitplus.wallet.lib.data.dif.ConstraintFilter
+import at.asitplus.wallet.lib.data.dif.FormatContainerJwt
+import at.asitplus.wallet.lib.data.dif.FormatHolder
+import at.asitplus.wallet.lib.data.dif.InputDescriptor
+import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.wallet.lib.data.dif.SchemaReference
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -29,7 +38,8 @@ import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.http.*
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlin.time.DurationUnit
@@ -52,6 +62,7 @@ class OidcSiopVerifier(
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     private val credentialScheme: ConstantIndex.CredentialScheme? = null,
+    private val credentialRepresentation: ConstantIndex.CredentialRepresentation,
     private val requestedAttributes: List<String>? = null,
 ) {
 
@@ -68,6 +79,7 @@ class OidcSiopVerifier(
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
             credentialScheme: ConstantIndex.CredentialScheme? = null,
+            credentialRepresentation: ConstantIndex.CredentialRepresentation,
             requestedAttributes: List<String>? = null,
         ) = OidcSiopVerifier(
             verifier = verifier,
@@ -78,6 +90,7 @@ class OidcSiopVerifier(
             timeLeewaySeconds = timeLeewaySeconds,
             clock = clock,
             credentialScheme = credentialScheme,
+            credentialRepresentation = credentialRepresentation,
             requestedAttributes = requestedAttributes,
         )
     }
@@ -140,11 +153,11 @@ class OidcSiopVerifier(
             requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
         )
         val signedJws = jwsService.createSignedJwsAddingParams(
-            JwsHeader(algorithm = JwsAlgorithm.ES256),
-            requestObjectSerialized.encodeToByteArray(),
-            true
-        )?.serialize()
-        return AuthenticationRequestParameters(clientId = relyingPartyUrl, request = signedJws)
+            header = JwsHeader(algorithm = JwsAlgorithm.ES256),
+            payload = requestObjectSerialized.encodeToByteArray(),
+            addKeyId = true
+        )
+        return AuthenticationRequestParameters(clientId = relyingPartyUrl, request = signedJws?.serialize())
     }
 
     /**
@@ -160,10 +173,10 @@ class OidcSiopVerifier(
         responseMode: String? = null,
         state: String? = uuid4().toString(),
     ): AuthenticationRequestParameters {
+        val containerJwt = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.identifier))
         val vpFormats = FormatHolder(
-            msoMdoc = if (credentialScheme?.credentialFormat == ConstantIndex.CredentialFormat.ISO_18013)
-                FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.identifier)) else null,
-            jwtVp = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.identifier)),
+            msoMdoc = if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC) containerJwt else null,
+            jwtVp = containerJwt,
         )
         val metadata = RelyingPartyMetadata(
             redirectUris = arrayOf(relyingPartyUrl),
@@ -171,31 +184,15 @@ class OidcSiopVerifier(
             subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
             vpFormats = vpFormats,
         )
-        val mainConstraint = when (credentialScheme?.credentialFormat) {
-            ConstantIndex.CredentialFormat.W3C_VC -> ConstraintField(
-                path = arrayOf("$.type"),
-                filter = ConstraintFilter(
-                    type = "string",
-                    pattern = credentialScheme.vcType,
-                )
-            )
-
-            ConstantIndex.CredentialFormat.ISO_18013 -> ConstraintField(
-                path = arrayOf("$.mdoc.doctype"),
-                filter = ConstraintFilter(
-                    type = "string",
-                    pattern = NAMESPACE_MDL,
-                )
-            )
-
-            else -> ConstraintField(
-                path = arrayOf("$.type"),
-                filter = ConstraintFilter(
-                    type = "string",
-                    pattern = "AnyCredential",
-                )
-            )
+        val typeConstraint = credentialScheme?.let {
+            when (credentialRepresentation) {
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.vcConstraint()
+                ConstantIndex.CredentialRepresentation.SD_JWT -> it.vcConstraint()
+                ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoConstraint()
+            }
         }
+        val attributeConstraint = requestedAttributes?.let { createConstraints(it) } ?: arrayOf()
+        val constraintFields = listOfNotNull(typeConstraint, *attributeConstraint).toTypedArray()
         return AuthenticationRequestParameters(
             responseType = "$ID_TOKEN $VP_TOKEN",
             clientId = relyingPartyUrl,
@@ -214,26 +211,37 @@ class OidcSiopVerifier(
                     InputDescriptor(
                         id = uuid4().toString(),
                         schema = arrayOf(SchemaReference(credentialScheme?.schemaUri ?: "https://example.com")),
-                        constraints = Constraint(
-                            fields = (requestedAttributes?.let { createConstraints(it) } ?: arrayOf()) + mainConstraint,
-                        ),
+                        constraints = Constraint(fields = constraintFields),
                     )
                 ),
             ),
         )
     }
 
-    private fun createConstraints(attributeTypes: List<String>): Array<ConstraintField> {
-        if (credentialScheme?.credentialFormat != ConstantIndex.CredentialFormat.ISO_18013)
-            return arrayOf()
+    private fun ConstantIndex.CredentialScheme.vcConstraint() = ConstraintField(
+        path = arrayOf("$.type"),
+        filter = ConstraintFilter(
+            type = "string",
+            pattern = vcType,
+        )
+    )
 
-        return attributeTypes.map {
-            ConstraintField(
-                path = arrayOf("\$.mdoc.$it"),
-                intentToRetain = false,
-            )
+    private fun ConstantIndex.CredentialScheme.isoConstraint() = ConstraintField(
+        path = arrayOf("$.mdoc.doctype"),
+        filter = ConstraintFilter(
+            type = "string",
+            pattern = isoDocType,
+        )
+    )
+
+    private fun createConstraints(attributeTypes: List<String>): Array<ConstraintField> =
+        attributeTypes.map {
+            if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
+                ConstraintField(path = arrayOf("\$.mdoc.$it"), intentToRetain = false)
+            else
+                ConstraintField(path = arrayOf("\$.$it"))
         }.toTypedArray()
-    }
+
 
     sealed class AuthnResponseResult {
         /**
@@ -250,6 +258,15 @@ class OidcSiopVerifier(
          * Successfully decoded and validated the response from the Wallet (W3C credential)
          */
         data class Success(val vp: VerifiablePresentationParsed, val state: String?) : AuthnResponseResult()
+
+        /**
+         * Successfully decoded and validated the response from the Wallet (W3C credential in SD-JWT)
+         */
+        data class SuccessSdJwt(
+            val sdJwt: VerifiableCredentialSdJwt,
+            val disclosures: List<SelectiveDisclosureItem>,
+            val state: String?
+        ) : AuthnResponseResult()
 
         /**
          * Successfully decoded and validated the response from the Wallet (ISO credential)
@@ -332,32 +349,38 @@ class OidcSiopVerifier(
                 .also { Napier.w("No VP in response") }
         val format = descriptor.format
 
-        val verificationResult = when (format) {
+        val result = when (format) {
             ClaimFormatEnum.JWT_VP -> verifier.verifyPresentation(vp, idToken.nonce)
             ClaimFormatEnum.MSO_MDOC -> verifier.verifyPresentation(vp, idToken.nonce)
+            ClaimFormatEnum.JWT_SD -> verifier.verifyPresentation(vp, idToken.nonce)
             else -> null
         } ?: return AuthnResponseResult.ValidationError("descriptor format not known", params.state)
             .also { Napier.w("Descriptor format not known: $format") }
 
-        return when (verificationResult) {
+        return when (result) {
             is Verifier.VerifyPresentationResult.InvalidStructure -> {
-                Napier.w("VP error: $verificationResult")
+                Napier.w("VP error: $result")
                 AuthnResponseResult.Error("parse vp failed", params.state)
             }
 
             is Verifier.VerifyPresentationResult.Success -> {
-                Napier.i("VP success: $verificationResult")
-                AuthnResponseResult.Success(verificationResult.vp, params.state)
+                Napier.i("VP success: $result")
+                AuthnResponseResult.Success(result.vp, params.state)
             }
 
             is Verifier.VerifyPresentationResult.NotVerified -> {
-                Napier.w("VP error: $verificationResult")
+                Napier.w("VP error: $result")
                 AuthnResponseResult.ValidationError("vpToken", params.state)
             }
 
             is Verifier.VerifyPresentationResult.SuccessIso -> {
-                Napier.i("VP success: $verificationResult")
-                AuthnResponseResult.SuccessIso(verificationResult.document, params.state)
+                Napier.i("VP success: $result")
+                AuthnResponseResult.SuccessIso(result.document, params.state)
+            }
+
+            is Verifier.VerifyPresentationResult.SuccessSdJwt -> {
+                Napier.i("VP success: $result")
+                AuthnResponseResult.SuccessSdJwt(result.sdJwt, result.disclosures, params.state)
             }
         }
     }

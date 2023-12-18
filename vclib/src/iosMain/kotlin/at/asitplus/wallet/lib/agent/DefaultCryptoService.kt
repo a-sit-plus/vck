@@ -18,7 +18,12 @@ import at.asitplus.crypto.datatypes.pki.TbsCertificate
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.cinterop.*
+import kotlinx.cinterop.ByteVar
+import kotlinx.cinterop.CPointer
+import kotlinx.cinterop.MemScope
+import kotlinx.cinterop.allocArrayOf
+import kotlinx.cinterop.get
+import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.reinterpret
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
@@ -61,7 +66,7 @@ actual class DefaultCryptoService : CryptoService {
     override val jwsAlgorithm = JwsAlgorithm.ES256
     override val coseAlgorithm = CoseAlgorithm.ES256
     private val privateKey: SecKeyRef
-    private val publicKey1: SecKeyRef
+    private val publicKey: SecKeyRef
     private val cryptoPublicKey: CryptoPublicKey
     override val certificate: ByteArray
 
@@ -71,8 +76,8 @@ actual class DefaultCryptoService : CryptoService {
             CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
         }
         privateKey = SecKeyCreateRandomKey(query, null)!!
-        publicKey1 = SecKeyCopyPublicKey(privateKey)!!
-        val publicKeyData = SecKeyCopyExternalRepresentation(publicKey1, null)
+        publicKey = SecKeyCopyPublicKey(privateKey)!!
+        val publicKeyData = SecKeyCopyExternalRepresentation(publicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
         // TODO RSA
         this.cryptoPublicKey = CryptoPublicKey.Ec.fromAnsiX963Bytes(EcCurve.SECP_256_R_1, data.toByteArray())!!

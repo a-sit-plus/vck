@@ -4,6 +4,8 @@ import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.data.AriesGoalCodeParser
+import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
 import at.asitplus.wallet.lib.data.dif.Constraint
@@ -49,7 +51,7 @@ typealias PresentProofProtocolResult = Verifier.VerifyPresentationResult
 class PresentProofProtocol(
     private val holder: Holder? = null,
     private val verifier: Verifier? = null,
-    private val requestedAttributeTypes: Collection<String>? = null,
+    private val requestedClaims: Collection<String>? = null,
     private val credentialScheme: ConstantIndex.CredentialScheme,
     private val serviceEndpoint: String?,
     private val challengeForPresentation: String,
@@ -79,10 +81,10 @@ class PresentProofProtocol(
             verifier: Verifier,
             serviceEndpoint: String? = null,
             credentialScheme: ConstantIndex.CredentialScheme,
-            requestedAttributeTypes: Collection<String>? = null,
+            requestedClaims: Collection<String>? = null,
         ) = PresentProofProtocol(
             verifier = verifier,
-            requestedAttributeTypes = requestedAttributeTypes,
+            requestedClaims = requestedClaims,
             credentialScheme = credentialScheme,
             serviceEndpoint = serviceEndpoint,
             challengeForPresentation = uuid4().toString()
@@ -161,7 +163,7 @@ class PresentProofProtocol(
             body = OutOfBandInvitationBody(
                 handshakeProtocols = arrayOf(SchemaIndex.PROT_PRESENT_PROOF),
                 acceptTypes = arrayOf("application/didcomm-encrypted+json"),
-                goalCode = "request-proof-${credentialScheme.credentialDefinitionName}",
+                goalCode = "request-proof-${AriesGoalCodeParser.getAriesName(credentialScheme)}",
                 services = arrayOf(
                     OutOfBandService(
                         type = "did-communication",
@@ -185,7 +187,7 @@ class PresentProofProtocol(
     }
 
     private fun createRequestPresentation(invitation: OutOfBandInvitation, senderKey: JsonWebKey): InternalNextMessage {
-        val credentialScheme = ConstantIndex.Parser.parseGoalCode(invitation.body.goalCode)
+        val credentialScheme = AriesGoalCodeParser.parseGoalCode(invitation.body.goalCode)
             ?: return problemReporter.problemLastMessage(invitation.threadId, "goal-code-unknown")
         val message = buildRequestPresentationMessage(credentialScheme, invitation.id)
             ?: return InternalNextMessage.IncorrectState("verifier")
@@ -203,15 +205,15 @@ class PresentProofProtocol(
     ): RequestPresentation? {
         val verifierIdentifier = verifier?.identifier
             ?: return null
-        val constraintsExtraTypes = requestedAttributeTypes?.map(this::buildConstraintFieldForType) ?: listOf()
-        val constraintsTypes = buildConstraintFieldForType(credentialScheme.vcType)
+        val claimsConstraints = requestedClaims?.map(this::buildConstraintFieldForClaim) ?: listOf()
+        val typeConstraints = buildConstraintFieldForType(credentialScheme.vcType)
         val presentationDefinition = PresentationDefinition(
             inputDescriptors = arrayOf(
                 InputDescriptor(
-                    name = credentialScheme.credentialDefinitionName,
+                    name = credentialScheme.vcType,
                     schema = SchemaReference(uri = credentialScheme.schemaUri),
                     constraints = Constraint(
-                        fields = (constraintsExtraTypes + constraintsTypes).toTypedArray()
+                        fields = (claimsConstraints + typeConstraints).toTypedArray()
                     )
                 )
             ),
@@ -247,6 +249,11 @@ class PresentProofProtocol(
         filter = ConstraintFilter(type = "string", const = attributeType)
     )
 
+    private fun buildConstraintFieldForClaim(claimName: String) = ConstraintField(
+        path = arrayOf("\$.vc[*].name", "\$.type"),
+        filter = ConstraintFilter(type = "string", const = claimName)
+    )
+
     private suspend fun createPresentation(
         lastMessage: RequestPresentation,
         senderKey: JsonWebKey
@@ -261,17 +268,25 @@ class PresentProofProtocol(
             RequestPresentationAttachment.deserialize(it)
         } ?: return problemReporter.problemLastMessage(lastMessage.threadId, "attachments-format")
         // TODO Is ISO supported here?
-        val requestedTypes = requestPresentationAttachment.presentationDefinition.inputDescriptors
+        val constraintFields = requestPresentationAttachment.presentationDefinition.inputDescriptors
             .mapNotNull { it.constraints }
             .flatMap { it.fields?.toList() ?: listOf() }
+        val requestedTypes = constraintFields
             .filter { it.path.contains("\$.vc[*].type") }
             .mapNotNull { it.filter }
             .filter { it.type == "string" }
             .mapNotNull { it.const }
+            .mapNotNull { AttributeIndex.resolveAttributeType(it) }
+        val requestedClaims = constraintFields
+            .filter { it.path.contains("\$.vc[*].name") }
+            .mapNotNull { it.filter }
+            .filter { it.type == "string" }
+            .mapNotNull { it.const }
         val vp = holder?.createPresentation(
-            requestPresentationAttachment.options.challenge,
-            requestPresentationAttachment.options.verifier ?: senderKey.identifier,
-            attributeTypes = requestedTypes.ifEmpty { null },
+            challenge = requestPresentationAttachment.options.challenge,
+            audienceId = requestPresentationAttachment.options.verifier ?: senderKey.identifier,
+            credentialSchemes = requestedTypes.ifEmpty { null },
+            requestedClaims = requestedClaims.ifEmpty { null },
         ) ?: return problemReporter.problemInternal(lastMessage.threadId, "vp-empty")
         // TODO is ISO supported here?
         if (vp !is Holder.CreatePresentationResult.Signed) {

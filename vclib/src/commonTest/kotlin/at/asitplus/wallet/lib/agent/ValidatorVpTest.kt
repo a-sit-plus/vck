@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.crypto.datatypes.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
@@ -45,9 +45,10 @@ class ValidatorVpTest : FreeSpec({
         challenge = uuid4().toString()
         runBlocking {
             holder.storeCredentials(
-                issuer.issueCredentialWithTypes(
-                    holder.identifier,
-                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                issuer.issueCredential(
+                    subjectPublicKey = holderCryptoService.publicKey,
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+                    representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).toStoreCredentialInput()
             )
         }

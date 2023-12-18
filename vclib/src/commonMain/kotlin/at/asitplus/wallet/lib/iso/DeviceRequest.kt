@@ -3,20 +3,37 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.crypto.datatypes.cose.CoseSigned
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.*
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ArraySerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.ByteStringWrapper
 import kotlinx.serialization.cbor.ValueTags
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.SerialKind
+import kotlinx.serialization.descriptors.StructureKind
+import kotlinx.serialization.descriptors.buildSerialDescriptor
+import kotlinx.serialization.descriptors.listSerialDescriptor
+import kotlinx.serialization.descriptors.mapSerialDescriptor
+import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.encoding.CompositeDecoder
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.encoding.decodeStructure
+import kotlinx.serialization.encoding.encodeCollection
+import kotlinx.serialization.encoding.encodeStructure
 import okio.ByteString.Companion.toByteString
 
 /**
@@ -409,6 +426,7 @@ data class IssuerSignedItem(
  * Convenience class to enable serialization of (nearly) "any" value in [IssuerSignedItem.elementValue]
  */
 // TODO Could this be anything else?
+// TODO Yes, can be boolean!
 @Serializable(with = ElementValueSerializer::class)
 data class ElementValue(
     val bytes: ByteArray? = null,
@@ -416,6 +434,7 @@ data class ElementValue(
     val date: LocalDate? = null,
     val string: String? = null,
     val drivingPrivilege: Array<DrivingPrivilege>? = null,
+    val boolean: Boolean? = null,
 ) {
     fun serialize() = cborSerializer.encodeToByteArray(this)
 
@@ -423,7 +442,8 @@ data class ElementValue(
         return "ElementValue(bytes=${bytes?.encodeToString(Base16(strict = true))}," +
                 " date=${date}," +
                 " string=$string," +
-                " drivingPrivilege=$drivingPrivilege)"
+                " drivingPrivilege=$drivingPrivilege," +
+                " boolean=$boolean)"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -442,6 +462,7 @@ data class ElementValue(
             if (other.drivingPrivilege == null) return false
             if (!drivingPrivilege.contentEquals(other.drivingPrivilege)) return false
         } else if (other.drivingPrivilege != null) return false
+        if (boolean != other.boolean) return false
 
         return true
     }
@@ -451,6 +472,7 @@ data class ElementValue(
         result = 31 * result + (date?.hashCode() ?: 0)
         result = 31 * result + (string?.hashCode() ?: 0)
         result = 31 * result + (drivingPrivilege?.contentHashCode() ?: 0)
+        result = 31 * result + (boolean?.hashCode() ?: 0)
         return result
     }
 
@@ -506,23 +528,6 @@ data class DeviceSigned(
     }
 }
 
-// TODO see if we really need this class
-data class DeviceNameSpaces(
-    @SerialName(NAMESPACE_MDL)
-    val entries: Map<String, ElementValue>
-) {
-    fun serialize() = cborSerializer.encodeToByteArray(this)
-
-    companion object {
-        fun deserialize(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray<DeviceNameSpaces>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
-    }
-}
-
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
@@ -569,16 +574,25 @@ object ElementValueSerializer : KSerializer<ElementValue> {
             encoder.encodeString(it)
         } ?: value.drivingPrivilege?.let {
             encoder.encodeSerializableValue(ArraySerializer(DrivingPrivilege.serializer()), it)
+        } ?: value.boolean?.let {
+            encoder.encodeBoolean(it)
         } ?: throw IllegalArgumentException("No value exists")
     }
 
     override fun deserialize(decoder: Decoder): ElementValue {
         runCatching {
-            return ElementValue(bytes = decoder.decodeSerializableValue(ByteArraySerializer()))
+            return ElementValue(
+                bytes = decoder.decodeSerializableValue(ByteArraySerializer())
+            )
         }
         runCatching {
             return ElementValue(
                 drivingPrivilege = decoder.decodeSerializableValue(ArraySerializer(DrivingPrivilege.serializer()))
+            )
+        }
+        runCatching {
+            return ElementValue(
+                boolean = decoder.decodeBoolean()
             )
         }
         runCatching {

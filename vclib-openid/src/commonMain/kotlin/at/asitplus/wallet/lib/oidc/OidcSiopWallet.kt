@@ -8,6 +8,7 @@ import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
@@ -25,11 +26,16 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
-import at.asitplus.wallet.lib.oidvci.*
+import at.asitplus.wallet.lib.oidvci.IssuerMetadata
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.http.*
-import io.ktor.util.*
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
+import io.ktor.util.flattenEntries
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -225,23 +231,29 @@ class OidcSiopWallet(
         )
         val jwsPayload = idToken.serialize().encodeToByteArray()
         val jwsHeader = JwsHeader(algorithm = JwsAlgorithm.ES256)
-        val signedIdToken = jwsService.createSignedJwsAddingParams(jwsHeader, jwsPayload)?.serialize()
+        val signedIdToken = jwsService.createSignedJwsAddingParams(jwsHeader, jwsPayload)
             ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not sign id_token") }
 
-        val requestedScopes = params.scope?.split(" ")
-            ?.filterNot { it == SCOPE_OPENID }?.filterNot { it == SCOPE_PROFILE }
-            ?.toList() ?: listOf()
+        val requestedScopes = (params.scope ?: "").split(" ")
+            .filterNot { it == SCOPE_OPENID }.filterNot { it == SCOPE_PROFILE }
+            .mapNotNull { AttributeIndex.resolveAttributeType(it) }
+            .toList()
         val requestedClaims = params.presentationDefinition?.inputDescriptors
             ?.mapNotNull { it.constraints }?.flatMap { it.fields?.toList() ?: listOf() }
             ?.flatMap { it.path.toList() }
             ?.filter { it != "$.type" }
             ?.filter { it != "$.mdoc.doctype" }
             ?.map { it.removePrefix("\$.mdoc.") }
+            ?.map { it.removePrefix("\$.") }
             ?: listOf()
-        val vp = holder.createPresentation(params.nonce, audience, requestedScopes, requestedClaims)
-            ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
-                .also { Napier.w("Could not create presentation") }
+        val vp = holder.createPresentation(
+            challenge = params.nonce,
+            audienceId = audience,
+            credentialSchemes = requestedScopes.ifEmpty { null },
+            requestedClaims = requestedClaims.ifEmpty { null }
+        ) ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
+            .also { Napier.w("Could not create presentation") }
 
         when (vp) {
             is Holder.CreatePresentationResult.Signed -> {
@@ -252,20 +264,42 @@ class OidcSiopWallet(
                         PresentationSubmissionDescriptor(
                             id = it.id,
                             format = ClaimFormatEnum.JWT_VP,
-                            path = "$",
+                            path = "\$",
                             nestedPath = PresentationSubmissionDescriptor(
                                 id = uuid4().toString(),
                                 format = ClaimFormatEnum.JWT_VC,
-                                path = "$.verifiableCredential[0]"
+                                path = "\$.verifiableCredential[0]"
                             ),
                         )
                     }?.toTypedArray()
                 )
                 return KmmResult.success(
                     AuthenticationResponseParameters(
-                        idToken = signedIdToken,
+                        idToken = signedIdToken.serialize(),
                         state = params.state,
                         vpToken = vp.jws,
+                        presentationSubmission = presentationSubmission,
+                    )
+                )
+            }
+
+            is Holder.CreatePresentationResult.SdJwt -> {
+                val presentationSubmission = PresentationSubmission(
+                    id = uuid4().toString(),
+                    definitionId = params.presentationDefinition?.id ?: uuid4().toString(),
+                    descriptorMap = params.presentationDefinition?.inputDescriptors?.map {
+                        PresentationSubmissionDescriptor(
+                            id = it.id,
+                            format = ClaimFormatEnum.JWT_SD,
+                            path = "\$",
+                        )
+                    }?.toTypedArray()
+                )
+                return KmmResult.success(
+                    AuthenticationResponseParameters(
+                        idToken = signedIdToken.serialize(),
+                        state = params.state,
+                        vpToken = vp.sdJwt,
                         presentationSubmission = presentationSubmission,
                     )
                 )
@@ -279,13 +313,13 @@ class OidcSiopWallet(
                         PresentationSubmissionDescriptor(
                             id = it.id,
                             format = ClaimFormatEnum.MSO_MDOC,
-                            path = "$",
+                            path = "\$",
                         )
                     }?.toTypedArray()
                 )
                 return KmmResult.success(
                     AuthenticationResponseParameters(
-                        idToken = signedIdToken,
+                        idToken = signedIdToken.serialize(),
                         state = params.state,
                         vpToken = vp.document.serialize().encodeToString(Base16(strict = true)),
                         presentationSubmission = presentationSubmission,
@@ -293,10 +327,6 @@ class OidcSiopWallet(
                 )
             }
 
-            else -> {
-                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
-                    .also { Napier.w("Could not create presentation") }
-            }
         }
     }
 

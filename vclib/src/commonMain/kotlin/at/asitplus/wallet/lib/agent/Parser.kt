@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
@@ -114,8 +115,31 @@ class Parser(
         return ParseVcResult.Success(vcJws)
     }
 
+    /**
+     * Parses a Verifiable Credential in SD-JWT format
+     *
+     * @param it the JWS enclosing the VC, in compact representation
+     */
+    fun parseSdJwt(it: String, sdJwt: VerifiableCredentialSdJwt, kid: String? = null): ParseVcResult {
+        if (kid != null && sdJwt.issuer != kid)
+            return ParseVcResult.InvalidStructure(it)
+                .also { Napier.d("iss invalid") }
+        if (!sdJwt.type.contains(VERIFIABLE_CREDENTIAL))
+            return ParseVcResult.InvalidStructure(it)
+                .also { Napier.d("type invalid") }
+        if (sdJwt.expiration != null && sdJwt.expiration < (clock.now() - timeLeeway))
+            return ParseVcResult.InvalidStructure(it)
+                .also { Napier.d("exp invalid") }
+        if (sdJwt.notBefore > (clock.now() + timeLeeway))
+            return ParseVcResult.InvalidStructure(it)
+                .also { Napier.d("nbf invalid") }
+        Napier.d("SD-JWT is valid")
+        return ParseVcResult.SuccessSdJwt(sdJwt)
+    }
+
     sealed class ParseVcResult {
         data class Success(val jws: VerifiableCredentialJws) : ParseVcResult()
+        data class SuccessSdJwt(val sdJwt: VerifiableCredentialSdJwt) : ParseVcResult()
         data class InvalidStructure(val input: String) : ParseVcResult()
     }
 

@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.aries
 
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
@@ -32,7 +31,7 @@ class PresentProofProtocolTest : FreeSpec({
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
         holder = HolderAgent.newDefaultInstance(holderCryptoService)
-        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
+        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.keyId)
         holderProtocol = PresentProofProtocol.newHolderInstance(
             holder = holder,
             serviceEndpoint = "https://example.com/",
@@ -49,9 +48,10 @@ class PresentProofProtocolTest : FreeSpec({
             IssuerAgent.newDefaultInstance(
                 DefaultCryptoService(),
                 dataProvider = DummyCredentialDataProvider(),
-            ).issueCredentialWithTypes(
-                holder.identifier,
-                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
+            ).issueCredential(
+                subjectPublicKey = holderCryptoService.publicKey,
+                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+                representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).toStoreCredentialInput()
         )
 
@@ -59,7 +59,8 @@ class PresentProofProtocolTest : FreeSpec({
         oobInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val invitationMessage = oobInvitation.message
 
-        val parsedInvitation = verifierProtocol.parseMessage(invitationMessage, holderCryptoService.jsonWebKey)
+        val parsedInvitation =
+            verifierProtocol.parseMessage(invitationMessage, holderCryptoService.jsonWebKey)
         parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val requestPresentation = parsedInvitation.message
 
@@ -68,7 +69,8 @@ class PresentProofProtocolTest : FreeSpec({
         parsedRequestPresentation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val presentation = parsedRequestPresentation.message
 
-        val parsedPresentation = verifierProtocol.parseMessage(presentation, holderCryptoService.jsonWebKey)
+        val parsedPresentation =
+            verifierProtocol.parseMessage(presentation, holderCryptoService.jsonWebKey)
         parsedPresentation.shouldBeInstanceOf<InternalNextMessage.Finished>()
 
         val receivedPresentation = parsedPresentation.lastMessage
@@ -80,9 +82,10 @@ class PresentProofProtocolTest : FreeSpec({
             IssuerAgent.newDefaultInstance(
                 DefaultCryptoService(),
                 dataProvider = DummyCredentialDataProvider(),
-            ).issueCredentialWithTypes(
-                holder.identifier,
-                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
+            ).issueCredential(
+                subjectPublicKey = holderCryptoService.publicKey,
+                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+                representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).toStoreCredentialInput()
         )
 
@@ -94,7 +97,8 @@ class PresentProofProtocolTest : FreeSpec({
         parsedRequestPresentation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val presentation = parsedRequestPresentation.message
 
-        val parsedPresentation = verifierProtocol.parseMessage(presentation, holderCryptoService.jsonWebKey)
+        val parsedPresentation =
+            verifierProtocol.parseMessage(presentation, holderCryptoService.jsonWebKey)
         parsedPresentation.shouldBeInstanceOf<InternalNextMessage.Finished>()
 
         val receivedPresentation = parsedPresentation.lastMessage
@@ -118,7 +122,8 @@ class PresentProofProtocolTest : FreeSpec({
         oobInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val invitationMessage = oobInvitation.message
 
-        val parsedInvitation = verifierProtocol.parseMessage(invitationMessage, holderCryptoService.jsonWebKey)
+        val parsedInvitation =
+            verifierProtocol.parseMessage(invitationMessage, holderCryptoService.jsonWebKey)
         parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val requestPresentation = parsedInvitation.message
 

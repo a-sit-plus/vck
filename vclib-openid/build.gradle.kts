@@ -19,11 +19,13 @@ val iosDisabled: String? by extra
 
 kotlin {
     jvm()
+
     if (iosDisabled != "true") {
         iosArm64()
         iosSimulatorArm64()
         iosX64()
     }
+
     sourceSets {
         commonMain {
             dependencies {
@@ -32,7 +34,7 @@ kotlin {
                 api(project(":vclib"))
             }
         }
-//        val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
+
         jvmMain {
             dependencies {
                 implementation(bouncycastle("bcprov"))

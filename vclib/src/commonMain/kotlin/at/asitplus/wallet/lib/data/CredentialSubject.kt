@@ -7,10 +7,11 @@ import kotlinx.serialization.Serializable
  * Base class for the subject of a [VerifiableCredential], see subclasses of this class, e.g. [AtomicAttribute2023].
  */
 @Serializable
-open class CredentialSubject(
+abstract class CredentialSubject {
     /**
      * This is the subjectId of the credential
      */
     @SerialName("id")
-    val id: String,
-)
+    abstract val id: String
+
+}

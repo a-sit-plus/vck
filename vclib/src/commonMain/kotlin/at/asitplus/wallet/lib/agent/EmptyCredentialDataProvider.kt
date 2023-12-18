@@ -1,15 +1,16 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.crypto.datatypes.cose.CoseKey
+import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.wallet.lib.data.ConstantIndex
 
 object EmptyCredentialDataProvider : IssuerCredentialDataProvider {
 
-    override fun getCredentialWithType(
-        subjectId: String,
-        subjectPublicKey: CoseKey?,
-        attributeTypes: Collection<String>
-    ): KmmResult<List<CredentialToBeIssued>> =
-        KmmResult.failure(NotImplementedError())
+    override fun getCredential(
+        subjectPublicKey: CryptoPublicKey,
+        credentialScheme: ConstantIndex.CredentialScheme,
+        representation: ConstantIndex.CredentialRepresentation,
+        claimNames: Collection<String>?
+    ): KmmResult<List<CredentialToBeIssued>> = KmmResult.failure(NotImplementedError())
 
 }

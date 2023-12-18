@@ -1,14 +1,13 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.crypto.datatypes.jws.JwsSigned
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DOCUMENT_NUMBER
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DRIVING_PRIVILEGES
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.EXPIRY_DATE
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.FAMILY_NAME
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUE_DATE
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.PORTRAIT
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.EXPIRY_DATE
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.FAMILY_NAME
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.ISSUE_DATE
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.PORTRAIT
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
@@ -52,8 +51,8 @@ class JsonSerializationTest : FreeSpec({
 
         serverRequest.version shouldBe "1.0"
         val docRequest = serverRequest.docRequests[0]
-        docRequest.docType shouldBe DOC_TYPE_MDL
-        val itemRequests = docRequest.namespaces[NAMESPACE_MDL]
+        docRequest.docType shouldBe ConstantIndex.MobileDrivingLicence2023.isoDocType
+        val itemRequests = docRequest.namespaces[ConstantIndex.MobileDrivingLicence2023.isoNamespace]
         itemRequests.shouldNotBeNull()
         itemRequests[FAMILY_NAME] shouldBe true
         itemRequests[DOCUMENT_NUMBER] shouldBe true
@@ -154,7 +153,7 @@ class JsonSerializationTest : FreeSpec({
         mdlJws.shouldNotBeNull()
         println(mdlJws)
 
-        mdlJws.doctype shouldBe DOC_TYPE_MDL
+        mdlJws.doctype shouldBe ConstantIndex.MobileDrivingLicence2023.isoDocType
         val mdl = mdlJws.namespaces.mdl
         mdl.familyName shouldBe "Doe"
         mdl.givenName shouldBe "Jane"

@@ -1,15 +1,14 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.crypto.datatypes.cose.CoseSigned
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.jsonSerializer
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DOC_TYPE_MDL
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DOCUMENT_NUMBER
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.DRIVING_PRIVILEGES
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.EXPIRY_DATE
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.FAMILY_NAME
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.ISSUE_DATE
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.DataElements.PORTRAIT
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants.NAMESPACE_MDL
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.EXPIRY_DATE
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.FAMILY_NAME
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.ISSUE_DATE
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.PORTRAIT
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
@@ -147,8 +146,9 @@ class CborSerializationTest : FreeSpec({
         val docRequest = deviceRequest.docRequests.first()
         docRequest.shouldNotBeNull()
 
-        docRequest.itemsRequest.value.docType shouldBe DOC_TYPE_MDL
-        val itemsRequestList = docRequest.itemsRequest.value.namespaces[NAMESPACE_MDL]
+        docRequest.itemsRequest.value.docType shouldBe ConstantIndex.MobileDrivingLicence2023.isoDocType
+        val itemsRequestList =
+            docRequest.itemsRequest.value.namespaces[ConstantIndex.MobileDrivingLicence2023.isoNamespace]
         itemsRequestList.shouldNotBeNull()
         itemsRequestList.findItem(FAMILY_NAME) shouldBe true
         itemsRequestList.findItem(DOCUMENT_NUMBER) shouldBe true
@@ -334,8 +334,9 @@ class CborSerializationTest : FreeSpec({
         deviceResponse.version shouldBe "1.0"
         val document = deviceResponse.documents?.get(0)
         document.shouldNotBeNull()
-        document.docType shouldBe DOC_TYPE_MDL
-        val issuerSignedList = document.issuerSigned.namespaces?.get(NAMESPACE_MDL)
+        document.docType shouldBe ConstantIndex.MobileDrivingLicence2023.isoDocType
+        val issuerSignedList =
+            document.issuerSigned.namespaces?.get(ConstantIndex.MobileDrivingLicence2023.isoNamespace)
         issuerSignedList.shouldNotBeNull()
         issuerSignedList.findItem(0U).elementIdentifier shouldBe FAMILY_NAME
         issuerSignedList.findItem(0U).elementValue.string shouldBe "Doe"
@@ -364,17 +365,17 @@ class CborSerializationTest : FreeSpec({
         mso.shouldNotBeNull()
         mso.version shouldBe "1.0"
         mso.digestAlgorithm shouldBe "SHA-256"
-        mso.docType shouldBe DOC_TYPE_MDL
+        mso.docType shouldBe ConstantIndex.MobileDrivingLicence2023.isoDocType
         mso.validityInfo.signed shouldBe Instant.parse("2020-10-01T13:30:02Z")
         mso.validityInfo.validFrom shouldBe Instant.parse("2020-10-01T13:30:02Z")
         mso.validityInfo.validUntil shouldBe Instant.parse("2021-10-01T13:30:02Z")
-        val valueDigestList = mso.valueDigests[NAMESPACE_MDL]
+        val valueDigestList = mso.valueDigests[ConstantIndex.MobileDrivingLicence2023.isoNamespace]
         valueDigestList.shouldNotBeNull()
         valueDigestList.findItem(0U) shouldBe "75167333B47B6C2BFB86ECCC1F438CF57AF055371AC55E1E359E20F254ADCEBF"
             .decodeToByteArray(Base16(strict = true))
         valueDigestList.findItem(1U) shouldBe "67E539D6139EBD131AEF441B445645DD831B2B375B390CA5EF6279B205ED4571"
             .decodeToByteArray(Base16(strict = true))
-        val valueDigestListUs = mso.valueDigests["$NAMESPACE_MDL.US"]
+        val valueDigestListUs = mso.valueDigests["${ConstantIndex.MobileDrivingLicence2023.isoNamespace}.US"]
         valueDigestListUs.shouldNotBeNull()
         valueDigestListUs.findItem(0U) shouldBe "D80B83D25173C484C5640610FF1A31C949C1D934BF4CF7F18D5223B15DD4F21C"
             .decodeToByteArray(Base16(strict = true))
@@ -607,7 +608,7 @@ class CborSerializationTest : FreeSpec({
 
         val coseSigned = CoseSigned.deserialize(input.decodeToByteArray(Base16(strict = true)))
         coseSigned.shouldNotBeNull()
-        println(coseSigned.toString())
+        println(coseSigned)
 
         val payload = coseSigned.payload
         payload.shouldNotBeNull()
@@ -616,17 +617,17 @@ class CborSerializationTest : FreeSpec({
         println(mso)
         mso.version shouldBe "1.0"
         mso.digestAlgorithm shouldBe "SHA-256"
-        mso.docType shouldBe DOC_TYPE_MDL
+        mso.docType shouldBe ConstantIndex.MobileDrivingLicence2023.isoDocType
         mso.validityInfo.signed shouldBe Instant.parse("2020-10-01T13:30:02Z")
         mso.validityInfo.validFrom shouldBe Instant.parse("2020-10-01T13:30:02Z")
         mso.validityInfo.validUntil shouldBe Instant.parse("2021-10-01T13:30:02Z")
-        val valueDigestList = mso.valueDigests[NAMESPACE_MDL]
+        val valueDigestList = mso.valueDigests[ConstantIndex.MobileDrivingLicence2023.isoNamespace]
         valueDigestList.shouldNotBeNull()
         valueDigestList.findItem(0U) shouldBe "75167333B47B6C2BFB86ECCC1F438CF57AF055371AC55E1E359E20F254ADCEBF"
             .decodeToByteArray(Base16(strict = true))
         valueDigestList.findItem(1U) shouldBe "67E539D6139EBD131AEF441B445645DD831B2B375B390CA5EF6279B205ED4571"
             .decodeToByteArray(Base16(strict = true))
-        val valueDigestListUs = mso.valueDigests["$NAMESPACE_MDL.US"]
+        val valueDigestListUs = mso.valueDigests["${ConstantIndex.MobileDrivingLicence2023.isoNamespace}.US"]
         valueDigestListUs.shouldNotBeNull()
         valueDigestListUs.findItem(0U) shouldBe "D80B83D25173C484C5640610FF1A31C949C1D934BF4CF7F18D5223B15DD4F21C"
             .decodeToByteArray(Base16(strict = true))

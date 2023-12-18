@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
@@ -25,8 +27,21 @@ interface Holder {
     fun setRevocationList(it: String): Boolean
 
     sealed class StoreCredentialInput {
-        data class Vc(val vcJws: String, val attachments: List<Issuer.Attachment>? = null) : StoreCredentialInput()
-        data class Iso(val issuerSigned: IssuerSigned) : StoreCredentialInput()
+        data class Vc(
+            val vcJws: String,
+            val scheme: ConstantIndex.CredentialScheme,
+            val attachments: List<Issuer.Attachment>? = null
+        ) : StoreCredentialInput()
+
+        data class SdJwt(
+            val vcSdJwt: String,
+            val scheme: ConstantIndex.CredentialScheme,
+        ) : StoreCredentialInput()
+
+        data class Iso(
+            val issuerSigned: IssuerSigned,
+            val scheme: ConstantIndex.CredentialScheme,
+        ) : StoreCredentialInput()
     }
 
     /**
@@ -38,7 +53,8 @@ interface Holder {
     suspend fun storeCredentials(credentialList: List<StoreCredentialInput>): StoredCredentialsResult
 
     data class StoredCredentialsResult(
-        val accepted: List<VerifiableCredentialJws> = listOf(),
+        val acceptedVcJwt: List<VerifiableCredentialJws> = listOf(),
+        val acceptedSdJwt: List<VerifiableCredentialSdJwt> = listOf(),
         val acceptedIso: List<IssuerSigned> = listOf(),
         val rejected: List<String> = listOf(),
         val notVerified: List<String> = listOf(),
@@ -65,14 +81,6 @@ interface Holder {
         }
     }
 
-    data class ValidatedVerifiableCredentialJws(val serialized: String, val vc: VerifiableCredentialJws)
-
-    /**
-     * Stores all verifiable credentials from [credentialList].
-     * _Does not validate the credentials!_
-     */
-    suspend fun storeValidatedCredentials(credentialList: List<ValidatedVerifiableCredentialJws>): Boolean
-
     /**
      * Gets a list of all stored credentials, with a revocation status.
      *
@@ -80,13 +88,19 @@ interface Holder {
      * has been set with [setRevocationList]
      */
     suspend fun getCredentials(
-        attributeTypes: Collection<String>? = null,
+        credentialSchemes: Collection<ConstantIndex.CredentialScheme>? = null,
     ): Collection<StoredCredential>?
 
     sealed class StoredCredential {
         data class Vc(
             val vcSerialized: String,
             val vc: VerifiableCredentialJws,
+            val status: Validator.RevocationStatus
+        ) : StoredCredential()
+
+        data class SdJwt(
+            val vcSerialized: String,
+            val sdJwt: VerifiableCredentialSdJwt,
             val status: Validator.RevocationStatus
         ) : StoredCredential()
 
@@ -97,14 +111,14 @@ interface Holder {
 
     /**
      * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,
-     * that match the [attributeTypes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO case).
+     * that match the [credentialSchemes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO case).
      *
      * May return null if no valid credentials (i.e. non-revoked, matching attribute name) are available.
      */
     suspend fun createPresentation(
         challenge: String,
         audienceId: String,
-        attributeTypes: Collection<String>? = null,
+        credentialSchemes: Collection<ConstantIndex.CredentialScheme>? = null,
         requestedClaims: Collection<String>? = null,
     ): CreatePresentationResult?
 
@@ -113,6 +127,7 @@ interface Holder {
      *
      * Note: The caller is responsible that only valid credentials are passed to this function!
      */
+    // TODO dont make this public
     suspend fun createPresentation(
         validCredentials: List<String>,
         challenge: String,
@@ -126,9 +141,15 @@ interface Holder {
         data class Signed(val jws: String) : CreatePresentationResult()
 
         /**
+         * [sdJwt] contains a serialized SD-JWT credential with disclosures and key binding JWT appended
+         * (separated with `~` as in the specification), that can be parsed by [Verifier.verifyPresentation].
+         */
+        data class SdJwt(val sdJwt: String) : CreatePresentationResult()
+
+        /**
          * [document] contains a valid ISO 18013 [Document] with [IssuerSigned] and [DeviceSigned] structures
          */
-        data class Document(val document: at.asitplus.wallet.lib.iso.Document): CreatePresentationResult()
+        data class Document(val document: at.asitplus.wallet.lib.iso.Document) : CreatePresentationResult()
     }
 
 }

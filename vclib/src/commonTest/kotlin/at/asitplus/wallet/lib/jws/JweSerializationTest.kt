@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncryption
 import at.asitplus.crypto.datatypes.jws.JweHeader
-import at.asitplus.crypto.datatypes.jws.JwsContentTypeConstants
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull

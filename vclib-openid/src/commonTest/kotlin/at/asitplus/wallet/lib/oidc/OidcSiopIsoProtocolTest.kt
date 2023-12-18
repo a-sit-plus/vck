@@ -1,12 +1,16 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.crypto.datatypes.cose.toCoseKey
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.iso.IsoDataModelConstants
+import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
 import com.benasher44.uuid.uuid4
-import io.github.aakira.napier.DebugAntilog
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -37,16 +41,24 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
-        verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
+        verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
         runBlocking {
+            val issuerAgent = IssuerAgent.newDefaultInstance(
+                DefaultCryptoService(),
+                dataProvider = DummyCredentialDataProvider(),
+            )
             holderAgent.storeCredentials(
-                IssuerAgent.newDefaultInstance(
-                    DefaultCryptoService(),
-                    dataProvider = DummyCredentialDataProvider(),
-                ).issueCredentialWithTypes(
-                    holderAgent.identifier,
-                    subjectPublicKey = holderCryptoService.coseKey,
-                    attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
+                issuerAgent.issueCredential(
+                    subjectPublicKey = holderCryptoService.toPublicKey(),
+                    attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType),
+                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
+                ).toStoreCredentialInput()
+            )
+            holderAgent.storeCredentials(
+                issuerAgent.issueCredential(
+                    subjectPublicKey = holderCryptoService.toPublicKey(),
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
                 ).toStoreCredentialInput()
             )
         }
@@ -55,53 +67,67 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             holder = holderAgent,
             cryptoService = holderCryptoService
         )
+    }
+
+    "test with Fragment for mDL" {
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
             credentialScheme = ConstantIndex.MobileDrivingLicence2023,
+            credentialRepresentation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
         )
-    }
+        val document = runProcess(verifierSiop, walletUrl, holderSiop)
 
-    "test with Fragment" {
-        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl)
-        println(authnRequest)
-
-        val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
-        println(authnResponse)
-
-        val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
-        val document = result.document
-        println(document)
         document.validItems.shouldNotBeEmpty()
         document.invalidItems.shouldBeEmpty()
     }
 
-    "Selective Disclosure" {
+    "test with Fragment for custom attributes" {
+        verifierSiop = OidcSiopVerifier.newInstance(
+            verifier = verifierAgent,
+            cryptoService = verifierCryptoService,
+            relyingPartyUrl = relyingPartyUrl,
+            credentialScheme = ConstantIndex.AtomicAttribute2023,
+            credentialRepresentation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+        )
+        val document = runProcess(verifierSiop, walletUrl, holderSiop)
+
+        document.validItems.shouldNotBeEmpty()
+        document.invalidItems.shouldBeEmpty()
+    }
+
+    "Selective Disclosure with mDL" {
+        val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
             credentialScheme = ConstantIndex.MobileDrivingLicence2023,
-            requestedAttributes = listOf(IsoDataModelConstants.DataElements.FAMILY_NAME),
+            credentialRepresentation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            requestedAttributes = listOf(requestedClaim),
         )
-        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl)
-        println(authnRequest)
+        val document = runProcess(verifierSiop, walletUrl, holderSiop)
 
-        val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
-        println(authnResponse)
-
-        val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
-        val document = result.document
-        println(document)
         document.validItems.shouldNotBeEmpty()
         document.validItems.shouldBeSingleton()
-        document.validItems.shouldHaveSingleElement { it.elementIdentifier == IsoDataModelConstants.DataElements.FAMILY_NAME }
+        document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
         document.invalidItems.shouldBeEmpty()
     }
 
 })
+
+private suspend fun runProcess(
+    verifierSiop: OidcSiopVerifier,
+    walletUrl: String,
+    holderSiop: OidcSiopWallet
+): IsoDocumentParsed {
+    val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl).also { println(it) }
+
+    val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
+    authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
+
+    val result = verifierSiop.validateAuthnResponse(authnResponse.url)
+    result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
+    return result.document.also { println(it) }
+}

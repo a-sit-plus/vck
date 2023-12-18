@@ -9,17 +9,9 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 @SerialName(VcDataModelConstants.REVOCATION_LIST_2020)
-class RevocationListSubject : CredentialSubject {
+data class RevocationListSubject(
+    override val id: String,
 
     @SerialName("encodedList")
-    val encodedList: String
-
-    constructor(id: String, encodedList: String) : super(id = id) {
-        this.encodedList = encodedList
-    }
-
-    override fun toString(): String {
-        return "RevocationListSubject(id='$id', encodedList='$encodedList')"
-    }
-
-}
+    val encodedList: String,
+) : CredentialSubject()

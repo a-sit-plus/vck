@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.KmmBitSet
-import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.Success
+import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessJwt
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.toBitSet
@@ -14,6 +14,8 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.component.base64.decodeBase64ToArray
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import kotlinx.datetime.Clock
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
@@ -22,6 +24,7 @@ class AgentRevocationTest : FreeSpec({
 
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var verifier: Verifier
+    lateinit var verifierCryptoService: CryptoService
     lateinit var issuer: Issuer
     lateinit var expectedRevokedIndexes: List<Long>
 
@@ -32,7 +35,8 @@ class AgentRevocationTest : FreeSpec({
             issuerCredentialStore = issuerCredentialStore,
             dataProvider = DummyCredentialDataProvider()
         )
-        verifier = VerifierAgent.newRandomInstance()
+        verifierCryptoService = DefaultCryptoService()
+        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.keyId)
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
 
@@ -52,15 +56,16 @@ class AgentRevocationTest : FreeSpec({
     }
 
     "credentials should contain status information" {
-        val result = issuer.issueCredentialWithTypes(
-            verifier.identifier,
-            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
+        val result = issuer.issueCredential(
+            subjectPublicKey = verifierCryptoService.publicKey,
+            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )
         if (result.failed.isNotEmpty()) fail("no issued credentials")
 
-        result.successful.filterIsInstance<Issuer.IssuedCredential.Vc>().map { it.vcJws }.forEach {
+        result.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }.forEach {
             val vcJws = verifier.verifyVcJws(it)
-            vcJws.shouldBeInstanceOf<Success>()
+            vcJws.shouldBeInstanceOf<SuccessJwt>()
             val credentialStatus = vcJws.jws.vc.credentialStatus
             credentialStatus.shouldNotBeNull()
             credentialStatus.index.shouldNotBeNull()
@@ -128,8 +133,13 @@ private fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: L
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..16) {
         val vcId = uuid4().toString()
-        val revListIndex =
-            storeGetNextIndex(vcId, cred, issuanceDate, expirationDate, FixedTimePeriodProvider.timePeriod)!!
+        val revListIndex = storeGetNextIndex(
+            credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred, ConstantIndex.AtomicAttribute2023),
+            subjectPublicKey = DefaultCryptoService().publicKey,
+            issuanceDate = issuanceDate,
+            expirationDate = expirationDate,
+            timePeriod = FixedTimePeriodProvider.timePeriod
+        )!!
         if (revokedIndexes.contains(revListIndex)) {
             revoke(vcId, FixedTimePeriodProvider.timePeriod)
         }
@@ -143,8 +153,13 @@ private fun IssuerCredentialStore.revokeRandomCredentials(): MutableList<Long> {
     val expirationDate = issuanceDate + 60.seconds
     for (i in 1..256) {
         val vcId = uuid4().toString()
-        val revListIndex =
-            storeGetNextIndex(vcId, cred, issuanceDate, expirationDate, FixedTimePeriodProvider.timePeriod)!!
+        val revListIndex = storeGetNextIndex(
+            credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred, ConstantIndex.AtomicAttribute2023),
+            subjectPublicKey = DefaultCryptoService().publicKey,
+            issuanceDate = issuanceDate,
+            expirationDate = expirationDate,
+            timePeriod = FixedTimePeriodProvider.timePeriod
+        )!!
         if (Random.nextBoolean()) {
             expectedRevocationList += revListIndex
             revoke(vcId, FixedTimePeriodProvider.timePeriod)
@@ -152,4 +167,3 @@ private fun IssuerCredentialStore.revokeRandomCredentials(): MutableList<Long> {
     }
     return expectedRevocationList
 }
-

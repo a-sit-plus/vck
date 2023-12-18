@@ -9,26 +9,19 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 @SerialName("AtomicAttribute2023")
-class AtomicAttribute2023 : CredentialSubject {
+data class AtomicAttribute2023(
+    override val id: String,
+
     @SerialName("name")
-    val name: String
+    val name: String,
 
     @SerialName("value")
-    val value: String
+    val value: String,
 
     @SerialName("mime-type")
-    val mimeType: String
-
-    constructor(id: String, name: String, value: String, mimeType: String) : super(id = id) {
-        this.name = name
-        this.value = value
-        this.mimeType = mimeType
-    }
+    val mimeType: String,
+) : CredentialSubject() {
 
     constructor(id: String, name: String, value: String) : this(id, name, value, "application/text")
-
-    override fun toString(): String {
-        return "AtomicAttribute2023(id='$id', name='$name', value='$value', mimeType='$mimeType')"
-    }
 
 }

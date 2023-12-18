@@ -1,8 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
 /**
@@ -17,7 +20,25 @@ interface SubjectCredentialStore {
      * @param vc Instance of [VerifiableCredentialJws]
      * @param vcSerialized Serialized form of [VerifiableCredential]
      */
-    suspend fun storeCredential(vc: VerifiableCredentialJws, vcSerialized: String)
+    suspend fun storeCredential(
+        vc: VerifiableCredentialJws,
+        vcSerialized: String,
+        scheme: ConstantIndex.CredentialScheme,
+    )
+
+    /**
+     * Implementations should store the passed credential in a secure way.
+     * Passed credentials have been validated before.
+     *
+     * @param vc Instance of [VerifiableCredentialSdJwt]
+     * @param vcSerialized Serialized form of [VerifiableCredential]
+     */
+    suspend fun storeCredential(
+        vc: VerifiableCredentialSdJwt,
+        vcSerialized: String,
+        disclosures: Map<String, SelectiveDisclosureItem?>,
+        scheme: ConstantIndex.CredentialScheme,
+    )
 
     /**
      * Implementations should store the passed credential in a secure way.
@@ -25,7 +46,10 @@ interface SubjectCredentialStore {
      *
      * @param issuerSigned Instance of [IssuerSigned] (an ISO credential)
      */
-    suspend fun storeCredential(issuerSigned: IssuerSigned)
+    suspend fun storeCredential(
+        issuerSigned: IssuerSigned,
+        scheme: ConstantIndex.CredentialScheme,
+    )
 
     /**
      * Implementation should store the attachment in a secure way.
@@ -39,9 +63,10 @@ interface SubjectCredentialStore {
 
     /**
      * Return all stored credentials.
-     * Selective Disclosure: Specify list of attribute types in [requiredAttributeTypes].
+     * Selective Disclosure: Specify list of credential schemes in [credentialSchemes].
      */
-    suspend fun getCredentials(requiredAttributeTypes: Collection<String>? = null): KmmResult<List<StoreEntry>>
+    suspend fun getCredentials(credentialSchemes: Collection<ConstantIndex.CredentialScheme>? = null)
+            : KmmResult<List<StoreEntry>>
 
     /**
      * Return attachments filtered by [name]
@@ -54,8 +79,26 @@ interface SubjectCredentialStore {
     suspend fun getAttachment(name: String, vcId: String): KmmResult<ByteArray>
 
     sealed class StoreEntry {
-        data class Vc(val vcSerialized: String, val vc: VerifiableCredentialJws) : StoreEntry()
-        data class Iso(val issuerSigned: IssuerSigned) : StoreEntry()
+        data class Vc(
+            val vcSerialized: String,
+            val vc: VerifiableCredentialJws,
+            val scheme: ConstantIndex.CredentialScheme
+        ) : StoreEntry()
+
+        data class SdJwt(
+            val vcSerialized: String,
+            val sdJwt: VerifiableCredentialSdJwt,
+            /**
+             * Map of original serialized disclosure item to parsed item
+             */
+            val disclosures: Map<String, SelectiveDisclosureItem?>,
+            val scheme: ConstantIndex.CredentialScheme
+        ) : StoreEntry()
+
+        data class Iso(
+            val issuerSigned: IssuerSigned,
+            val scheme: ConstantIndex.CredentialScheme
+        ) : StoreEntry()
     }
 
     data class AttachmentEntry(val name: String, val data: ByteArray, val vcId: String) {

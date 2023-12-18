@@ -1,10 +1,14 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.wallet.lib.LibraryInitializer
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
@@ -18,8 +22,6 @@ import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 
 class OidcSiopProtocolTest : FreeSpec({
 
@@ -41,15 +43,16 @@ class OidcSiopProtocolTest : FreeSpec({
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
-        verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
+        verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
         runBlocking {
             holderAgent.storeCredentials(
                 IssuerAgent.newDefaultInstance(
                     DefaultCryptoService(),
                     dataProvider = DummyCredentialDataProvider(),
-                ).issueCredentialWithTypes(
-                    holderAgent.identifier,
-                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType)
+                ).issueCredential(
+                    subjectPublicKey = holderCryptoService.toPublicKey(),
+                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
+                    representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
                 ).toStoreCredentialInput()
             )
         }
@@ -62,16 +65,16 @@ class OidcSiopProtocolTest : FreeSpec({
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
+            credentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         )
     }
 
     "test with Fragment" {
-        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl)
-        println(authnRequest)
+        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
-        println(authnResponse)
+        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
+
         authnResponse.url.shouldNotContain("?")
         authnResponse.url.shouldContain("#")
         authnResponse.url.shouldStartWith(relyingPartyUrl)
@@ -90,12 +93,10 @@ class OidcSiopProtocolTest : FreeSpec({
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl,
             responseMode = OpenIdConstants.ResponseModes.POST
-        )
-        println(authnRequest)
+        ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Post>()
-        println(authnResponse)
+        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Post>().also { println(it) }
         authnResponse.url.shouldBe(relyingPartyUrl)
 
         val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.content)
@@ -109,12 +110,11 @@ class OidcSiopProtocolTest : FreeSpec({
             walletUrl,
             responseMode = OpenIdConstants.ResponseModes.QUERY,
             state = expectedState
-        )
-        println(authnRequest)
+        ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
-        println(authnResponse)
+        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
+
         authnResponse.url.shouldContain("?")
         authnResponse.url.shouldNotContain("#")
         authnResponse.url.shouldStartWith(relyingPartyUrl)
@@ -126,8 +126,7 @@ class OidcSiopProtocolTest : FreeSpec({
     }
 
     "test with JAR" {
-        val authnRequest = verifierSiop.createAuthnRequestUrlWithRequestObject(walletUrl)
-        println(authnRequest)
+        val authnRequest = verifierSiop.createAuthnRequestUrlWithRequestObject(walletUrl).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
@@ -138,13 +137,11 @@ class OidcSiopProtocolTest : FreeSpec({
 
     "test with deserializing" {
         val authnRequest = verifierSiop.createAuthnRequest()
-        val authnRequestUrlParams = authnRequest.encodeToParameters().formUrlEncode()
-        println(authnRequestUrlParams)
+        val authnRequestUrlParams = authnRequest.encodeToParameters().formUrlEncode().also { println(it) }
 
         val parsedAuthnRequest: AuthenticationRequestParameters = authnRequestUrlParams.decodeFromUrlQuery()
         val authnResponse = holderSiop.createAuthnResponseParams(parsedAuthnRequest).getOrThrow()
-        val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode()
-        println(authnResponseParams)
+        val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode().also { println(it) }
 
         val parsedAuthnResponse: AuthenticationResponseParameters = authnResponseParams.decodeFromPostBody()
         val result = verifierSiop.validateAuthnResponse(parsedAuthnResponse)
@@ -157,15 +154,14 @@ class OidcSiopProtocolTest : FreeSpec({
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
-            credentialScheme = ConstantIndex.AtomicAttribute2023
+            credentialScheme = ConstantIndex.AtomicAttribute2023,
+            credentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         )
 
-        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl)
-        println(authnRequest)
+        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
-        println(authnResponse)
+        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()

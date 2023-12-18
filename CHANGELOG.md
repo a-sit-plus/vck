@@ -1,9 +1,43 @@
 # Changelog
 
-Release 3.0.2
+Release 3.4.0:
  - tbd
 
-Release 3.0.1
+Release 3.3.0:
+ - Change non-typed attribute types (i.e. Strings) to typed credential schemes (i.e. `ConstantIndex.CredentialScheme`), this includes methods `getCredentials`, `createPresentation` in interface `Holder`, and method `getCredentials` in interface `SubjectCredentialStore`
+ - Add `scheme` to `Credential` stored in `IssuerCredentialStore`
+ - Add `claimNames` to `ConstantIndex.CredentialScheme` to list names of potential attributes (or claims) of the credential
+ - Add `claimNames` (a nullable list of requested claim names) to method `getCredential` in interface `IssuerCredentialDataProvider`, and to method `issueCredential` in interface `Issuer`
+ - Add functionality to request only specific claims to OID4VCI implementation
+ - Support issuing arbitrary data types in selective disclosure items (classes `ClaimToBeIssued` and `SelectiveDisclosureItem`)
+
+Release 3.2.0:
+ - Support representing credentials in all three representations: Plain JWT, SD-JWT and ISO MDOC
+ - Remove property `credentialFormat` from interface `CredentialScheme`, also enum `CredentialFormat`
+ - Remove property `credentialDefinitionName` from interface `CredentialScheme`, is now automatically converted from `vcType`
+ - Add properties `isoNamespace` and `isoDocType` to interface `CredentialScheme`, to be used for representing custom credentials according to ISO 18013-5
+ - Remove function `storeValidatedCredentials` from interface `Holder` and its implementation `HolderAgent`
+ - Remove class `Holder.ValidatedVerifiableCredentialJws`
+ - Add member for `CredentialScheme` to various classes like `CredentialToBeIssued.Vc`, subclasses of `IssuedCredential`, subclasses of `StoreCredentialInput` and subclasses of `StoreEntry`
+ - Add parameter for `CredentialScheme` to methods in `SubjectCredentialStore`
+ - Remove function `getClaims()` from `CredentialSubject`, logic moved to `IssuerCredentialDataProvider`
+ - Add parameter `representation` to method `getCredentialWithType` in interface `IssuerCredentialDataProvider`
+ - Add function `storeGetNextIndex(String, String, Instant, Instant, Int)` to interface `IssuerCredentialStore`
+ - Remove function `issueCredentialWithTypes(String, CryptoPublicKey?, Collection<String>, CredentialRepresentation)` from interface `Issuer` and its implementation `IssuerAgent`
+ - Add function `issueCredential(CryptoPublicKey, Collection<String>, CredentialRepresentation)` to interface `Issuer` and its implementation `IssuerAgent`
+ - Remove function `getCredentialWithType(String, CryptoPublicKey?, Collection<String>, CredentialRepresentation` from interface `IssuerCredentialDataProvider`
+ - Add function `getCredential(CryptoPublicKey, CredentialScheme, CredentialRepresentation)` to interface `IssuerCredentialDataProvider`
+ - Refactor function `storeGetNextIndex()` in `IssuerCredentialStore` to accomodate all types of credentials
+ - Add constructor property `representation` to `OidcSiopVerifier` to select the representation of credentials
+ - Add constructor property `credentialRepresentation` to `WalletService` (OpenId4VerifiableCredentialIssuance) to select the representation of credentials
+
+Release 3.1.0:
+ - Support representing credentials in [SD-JWT](https://drafts.oauth.net/oauth-selective-disclosure-jwt/draft-ietf-oauth-selective-disclosure-jwt.html) format
+ - Rename class `Issuer.IssuedCredential.Vc` to `Issuer.IssuedCredential.VcJwt`
+ - Several new classes for sealed classes like `Issuer.IssuedCredential`, `Issuer.IssuedCredentialResult`, `Holder.StoreCredentialInput`, `Holder.StoredCredential`, `Parser.ParseVcResult`, `SubjectCredentialStore.StoreEntry`, `Verifier.VerifyCredentialResult`
+ - Require implementations of `CredentialSubject` to implement `getClaims()` to process claims when issuing a credential with selective disclosures
+
+Release 3.0.1:
  - Dependency Updates
    - OKIO 3.5.0
    - UUID 0.8.1

@@ -76,7 +76,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
     override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): JwsSigned? {
         if (header.algorithm != cryptoService.algorithm.toJwsAlgorithm()
-            || header.keyId?.let { it != cryptoService.publicKey.keyId } == true
+            || header.keyId?.let { it != cryptoService.jsonWebKey.keyId } == true
             || header.jsonWebKey?.let { it != cryptoService.jsonWebKey } == true
         ) {
             return null.also { Napier.w("Algorithm or keyId not matching to cryptoService") }
@@ -98,7 +98,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): JwsSigned? {
         var copy = header.copy(algorithm = cryptoService.algorithm.toJwsAlgorithm())
         if (addKeyId)
-            copy = copy.copy(keyId = cryptoService.publicKey.keyId)
+            copy = copy.copy(keyId = cryptoService.jsonWebKey.keyId)
         if (addJsonWebKey)
             copy = copy.copy(jsonWebKey = cryptoService.jsonWebKey)
         return createSignedJws(copy, payload)

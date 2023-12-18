@@ -20,9 +20,10 @@ kotlin {
     jvm()
     if (iosDisabled != "true") {
         iosArm64()
-    iosSimulatorArm64()
-    iosX64()
-}
+	iosSimulatorArm64()
+        iosX64()
+    }
+
     sourceSets {
         commonMain {
             dependencies {
@@ -31,7 +32,6 @@ kotlin {
             }
         }
 
-//        iosSimulatorArm64Main by getting { dependsOn(iosMain) }
         jvmMain {
             dependencies {
                 implementation(bouncycastle("bcprov"))
@@ -45,6 +45,7 @@ kotlin {
         }
     }
 }
+
 if (iosDisabled != "true") exportIosFramework("VcLibAriesKmm", *commonIosExports(), project(":vclib"))
 
 val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/main/", multiModuleDoc = true)

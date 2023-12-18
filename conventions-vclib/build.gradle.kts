@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.*
+
 plugins {
     `kotlin-dsl`
     idea
@@ -13,7 +16,6 @@ repositories {
     mavenCentral()
     gradlePluginPortal()
 }
-
 
 gradlePlugin {
     plugins.register("vclib-conventions") {

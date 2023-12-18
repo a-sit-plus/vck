@@ -27,7 +27,7 @@ kotlin {
     }
     sourceSets {
 
-        commonMain {
+         commonMain  {
             dependencies {
                 commonImplementationDependencies()
                 api("at.asitplus.crypto:datatypes-cose:${VcLibVersions.kmpcrypto}")
@@ -40,13 +40,13 @@ kotlin {
             }
         }
 
-//        iosSimulatorArm64Main { dependsOn(iosMain) }
-        jvmMain {
+
+         jvmMain {
             dependencies {
                 implementation(bouncycastle("bcpkix"))
             }
         }
-        jvmTest {
+         jvmTest  {
             dependencies {
                 implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
@@ -54,6 +54,7 @@ kotlin {
         }
     }
 }
+
 if (iosDisabled != "true") exportIosFramework("VcLibKmm", *commonIosExports())
 
 val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/main/", multiModuleDoc = true)

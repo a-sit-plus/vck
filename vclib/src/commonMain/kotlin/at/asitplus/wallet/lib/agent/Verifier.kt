@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
@@ -41,13 +43,28 @@ interface Verifier {
 
     sealed class VerifyPresentationResult {
         data class Success(val vp: VerifiablePresentationParsed) : VerifyPresentationResult()
+        data class SuccessSdJwt(
+            val sdJwt: VerifiableCredentialSdJwt,
+            val disclosures: List<SelectiveDisclosureItem>,
+            val isRevoked: Boolean
+        ) : VerifyPresentationResult()
+
         data class SuccessIso(val document: IsoDocumentParsed) : VerifyPresentationResult()
         data class InvalidStructure(val input: String) : VerifyPresentationResult()
         data class NotVerified(val input: String, val challenge: String) : VerifyPresentationResult()
     }
 
     sealed class VerifyCredentialResult {
-        data class Success(val jws: VerifiableCredentialJws) : VerifyCredentialResult()
+        data class SuccessJwt(val jws: VerifiableCredentialJws) : VerifyCredentialResult()
+        data class SuccessSdJwt(
+            val sdJwt: VerifiableCredentialSdJwt,
+            /**
+             * Map of original serialized disclosure item to parsed item
+             */
+            val disclosures: Map<String, SelectiveDisclosureItem?>,
+            val isRevoked: Boolean,
+        ) : VerifyCredentialResult()
+
         data class SuccessIso(val issuerSigned: IssuerSigned) : VerifyCredentialResult()
         data class Revoked(val input: String, val jws: VerifiableCredentialJws) : VerifyCredentialResult()
         data class InvalidStructure(val input: String) : VerifyCredentialResult()
