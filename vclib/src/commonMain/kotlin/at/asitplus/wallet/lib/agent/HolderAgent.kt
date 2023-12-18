@@ -255,7 +255,7 @@ class HolderAgent(
         val first = validSdJwtCredentials.first()
         val filteredDisclosures = first.disclosures
             .filter { it.discloseItem(requestedClaims) }.keys
-        val sdJwt = (listOf(first.vcSerialized.substringBefore("~")) + filteredDisclosures + keyBinding)
+        val sdJwt = (listOf(first.vcSerialized.substringBefore("~")) + filteredDisclosures + keyBinding.serialize())
             .joinToString("~")
         return Holder.CreatePresentationResult.SdJwt(sdJwt)
     }

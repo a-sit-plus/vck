@@ -278,7 +278,7 @@ class IssuerAgent(
             ?: return Issuer.IssuedCredentialResult(
                 failed = listOf(Issuer.FailedAttribute(scheme.vcType, RuntimeException("signing failed")))
             ).also { Napier.w("Could not wrap credential in SD-JWT") }
-        val vcInSdJwt = (listOf(jws) + disclosures).joinToString("~")
+        val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~")
 
         return Issuer.IssuedCredentialResult(
             successful = listOf(Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, scheme))
