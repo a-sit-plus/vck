@@ -47,7 +47,7 @@ class IsoMdocTest : FreeSpec({
         val verifierRequest = verifier.buildDeviceRequest()
         val walletResponse = wallet.buildDeviceResponse(verifierRequest)
         issuer.cryptoService.coseKey shouldNotBe null
-        verifier.verifyResponse(walletResponse, issuer.cryptoService.coseKey!!)
+        verifier.verifyResponse(walletResponse, issuer.cryptoService.coseKey)
     }
 
 })
@@ -58,7 +58,7 @@ class Wallet {
     val coseService = DefaultCoseService(cryptoService)
 
     val deviceKeyInfo = DeviceKeyInfo(
-        deviceKey = cryptoService.coseKey ?: throw IllegalArgumentException("Missing Cose Key"),
+        deviceKey = cryptoService.coseKey
     )
 
     var storedMdl: MobileDrivingLicence? = null
