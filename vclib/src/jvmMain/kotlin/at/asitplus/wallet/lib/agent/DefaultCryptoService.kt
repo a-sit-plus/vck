@@ -28,6 +28,9 @@ import at.asitplus.crypto.datatypes.pki.DistinguishedName
 import at.asitplus.crypto.datatypes.pki.TbsCertificate
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.plus
 import kotlinx.datetime.toKotlinInstant
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.JCEECPublicKey
@@ -97,14 +100,14 @@ actual open class DefaultCryptoService : CryptoService {
     private fun generateSelfSignedCertificate(): X509Certificate {
         val serialNumber: BigInteger = BigInteger.valueOf(Random.nextLong().absoluteValue)
         val commonName = "DefaultCryptoService"
-        val notBeforeDate = Date.from(Instant.now())
-        val notAfterDate = Date.from(Instant.now().plusSeconds(30.days.inWholeSeconds))
+        val notBeforeDate = Clock.System.now()
+        val notAfterDate = notBeforeDate.plus(30, DateTimeUnit.SECOND)
         val tbsCertificate = TbsCertificate(
             version = 2,
             serialNumber = serialNumber.toByteArray(),
             issuerName = listOf(DistinguishedName.CommonName(Asn1String.UTF8(commonName))),
-            validFrom = Asn1Time(notBeforeDate.toInstant().toKotlinInstant()),
-            validUntil = Asn1Time(notAfterDate.toInstant().toKotlinInstant()),
+            validFrom = Asn1Time(notBeforeDate),
+            validUntil = Asn1Time(notAfterDate),
             signatureAlgorithm = algorithm,
             subjectName = listOf(DistinguishedName.CommonName(Asn1String.UTF8(commonName))),
             publicKey = publicKey
