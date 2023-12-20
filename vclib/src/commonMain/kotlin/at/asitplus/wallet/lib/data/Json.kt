@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.data
 
-import io.matthewnelson.encoding.base64.Base64
-import io.matthewnelson.encoding.base64.Base64ConfigBuilder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic

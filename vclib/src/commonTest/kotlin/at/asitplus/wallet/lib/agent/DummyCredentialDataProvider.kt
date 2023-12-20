@@ -30,7 +30,7 @@ class DummyCredentialDataProvider(
             ClaimToBeIssued("family-name", "Meier"),
             ClaimToBeIssued("date-of-birth", "1990-01-01"),
         )
-        val subjectId = subjectPublicKey.keyId
+        val subjectId = subjectPublicKey.toJsonWebKey().getOrNull()!!.identifier
         val credentials = when (representation) {
             ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
                 CredentialToBeIssued.VcSd(

@@ -1,21 +1,9 @@
 package at.asitplus.wallet.lib.aries
 
-import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AriesGoalCodeParser
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.msg.AttachmentFormatReference
-import at.asitplus.wallet.lib.msg.IssueCredential
-import at.asitplus.wallet.lib.msg.JwmAttachment
-import at.asitplus.wallet.lib.msg.JwmAttachmentData
-import at.asitplus.wallet.lib.msg.Presentation
-import at.asitplus.wallet.lib.msg.PresentationBody
-import at.asitplus.wallet.lib.msg.RequestCredential
-import at.asitplus.wallet.lib.msg.RequestCredentialBody
+import at.asitplus.wallet.lib.msg.*
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldNotBe

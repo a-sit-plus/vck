@@ -47,8 +47,7 @@ interface CryptoService {
 
     val jsonWebKey: JsonWebKey
 
-    val coseKey: CoseKey //get() = this.publicKey.toCoseKey(this.algorithm.toCoseAlgorithm()).getOrNull()
-
+    val coseKey: CoseKey
     /**
      * May be used in [at.asitplus.wallet.lib.cbor.CoseService] to transport the signing key for a COSE structure.
      * a `null` value signifies that raw public keys are used and no certificate is present

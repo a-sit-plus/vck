@@ -220,9 +220,8 @@ class HolderAgent(
             Document(
                 docType = credential.scheme.isoDocType,
                 issuerSigned = IssuerSigned(
-                    namespaces = mapOf(
-                        credential.scheme.isoNamespace to
-                                IssuerSignedList(attributes.entries.filter { it.discloseItem(requestedClaims) })
+                    namespaces = mapOf(credential.scheme.isoNamespace to
+                            IssuerSignedList(attributes.entries.filter { it.discloseItem(requestedClaims) })
                     ),
                     issuerAuth = credential.issuerSigned.issuerAuth
                 ),
