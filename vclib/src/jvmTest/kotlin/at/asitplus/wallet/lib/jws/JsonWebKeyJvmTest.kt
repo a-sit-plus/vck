@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.jws
 
-import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.EcCurve
 import at.asitplus.crypto.datatypes.asn1.ensureSize
 import at.asitplus.crypto.datatypes.jws.JsonWebKey

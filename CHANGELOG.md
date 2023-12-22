@@ -2,6 +2,17 @@
 
 Release 3.4.0:
  - tbd
+ - Integrate `kmp-crypto` library
+ - Change signature parsing and return types to `CryptoSignature` class
+ - Change base public key class from`JsonWebKey` to `CryptoPublicKey`
+ - Change base algorithm class from `JwsAlgorithm` to `CryptoAlgorithm`
+ - Remove all ASN1 parsing to use `kmp-crypto` functionality instead
+ - Change X509 Certificates from ByteArray to `X509Certificate` class
+ - Refactor `CryptoService.identifier` to `CryptoService.jsonWebKey.identifier`
+ - Refactor `CryptoService.toPublicKey()` to `Crypto.publicKey`
+ - Add `CryptoService.coseKey` to `CryptoService`
+ - Support`ES384`, `ES512`, `RS256`, `RS384`, `RS512`, `PS256`, `PS384` and `PS512` in `DefaultCryptoService` Signature Services
+ - Change `DefaultCryptoService` constructor signature: When handing over a private/public keyPair the `CryptoAlgorithm` parameter is now mandatory
 
 Release 3.3.0:
  - Change non-typed attribute types (i.e. Strings) to typed credential schemes (i.e. `ConstantIndex.CredentialScheme`), this includes methods `getCredentials`, `createPresentation` in interface `Holder`, and method `getCredentials` in interface `SubjectCredentialStore`

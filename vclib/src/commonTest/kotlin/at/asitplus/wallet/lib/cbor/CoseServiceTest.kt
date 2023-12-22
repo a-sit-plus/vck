@@ -44,7 +44,7 @@ class CoseServiceTest : FreeSpec({
         parsed.shouldNotBeNull()
 
         cryptoService.coseKey shouldNotBe null
-        val result = verifierCoseService.verifyCose(parsed, cryptoService.coseKey!!).getOrNull()
+        val result = verifierCoseService.verifyCose(parsed, cryptoService.coseKey).getOrThrow()
         result shouldBe true
     }
 
@@ -65,7 +65,7 @@ class CoseServiceTest : FreeSpec({
         parsed.shouldNotBeNull()
 
         cryptoService.coseKey shouldNotBe null
-        val result = verifierCoseService.verifyCose(parsed, cryptoService.coseKey!!).getOrNull()
+        val result = verifierCoseService.verifyCose(parsed, cryptoService.coseKey).getOrThrow()
         result shouldBe true
     }
 

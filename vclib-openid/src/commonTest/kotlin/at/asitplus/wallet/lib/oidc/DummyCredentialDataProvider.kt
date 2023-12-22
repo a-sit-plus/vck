@@ -39,7 +39,7 @@ class DummyCredentialDataProvider(
         val expiration = clock.now() + defaultLifetime
         val credentials = mutableListOf<CredentialToBeIssued>()
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
-            val subjectId = subjectPublicKey.keyId
+            val subjectId = subjectPublicKey.toJsonWebKey().getOrNull()!!.identifier
             val claims = listOfNotNull(
                 optionalClaim(claimNames, "given-name", "Susanne"),
                 optionalClaim(claimNames, "family-name", "Meier"),

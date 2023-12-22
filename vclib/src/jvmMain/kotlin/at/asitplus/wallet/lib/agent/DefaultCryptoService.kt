@@ -2,28 +2,14 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.CryptoAlgorithm
-import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.CryptoSignature
-import at.asitplus.crypto.datatypes.Digest
-import at.asitplus.crypto.datatypes.EcCurve
+import at.asitplus.crypto.datatypes.*
 import at.asitplus.crypto.datatypes.EcCurve.SECP_256_R_1
 import at.asitplus.crypto.datatypes.asn1.Asn1String
 import at.asitplus.crypto.datatypes.asn1.Asn1Time
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
-import at.asitplus.crypto.datatypes.fromJcaPublicKey
-import at.asitplus.crypto.datatypes.getJcaPublicKey
-import at.asitplus.crypto.datatypes.jcaName
-import at.asitplus.crypto.datatypes.jcaParams
-import at.asitplus.crypto.datatypes.jcaSignatureBytes
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
-import at.asitplus.crypto.datatypes.jws.JweAlgorithm
-import at.asitplus.crypto.datatypes.jws.JweEncryption
-import at.asitplus.crypto.datatypes.jws.jcaKeySpecName
-import at.asitplus.crypto.datatypes.jws.jcaName
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import at.asitplus.crypto.datatypes.jws.*
 import at.asitplus.crypto.datatypes.pki.DistinguishedName
 import at.asitplus.crypto.datatypes.pki.TbsCertificate
 import at.asitplus.crypto.datatypes.pki.X509Certificate
@@ -36,14 +22,10 @@ import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.JCEECPublicKey
 import org.bouncycastle.jce.spec.ECPublicKeySpec
 import java.math.BigInteger
-import java.security.KeyPair
-import java.security.KeyPairGenerator
-import java.security.MessageDigest
-import java.security.PrivateKey
-import java.security.Signature
+import java.security.*
 import java.security.cert.Certificate
 import java.time.Instant
-import java.util.Date
+import java.util.*
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
 import javax.crypto.spec.GCMParameterSpec
@@ -128,9 +110,8 @@ actual open class DefaultCryptoService : CryptoService {
             initSign(privateKey)
             update(input)
         }.sign()
-        // TODO Condition on either "isEc" or something more stable than the names, e.g. OIDs
         //In Java EC signatures are returned as DER-encoded, RSA signatures however are raw bytearrays
-        if (algorithm.name.take(2) == "ES")
+        if (algorithm.isEc)
             CryptoSignature.decodeFromDer(sig)
         else
             CryptoSignature.RSAorHMAC(sig)
@@ -231,12 +212,3 @@ open class JvmEphemeralKeyHolder(private val ecCurve: EcCurve) : EphemeralKeyHol
     }
 
 }
-
-//fun loadDocSigner(str: InputStream): ECPublicKey {
-//    val factory = KeyFactory.getInstance("EC")
-//    val pem = PemReader(str.reader()).readPemObject()
-//    val encoded = pem.content
-//    val pubKeySpec = X509EncodedKeySpec(encoded)
-//    return factory.generatePublic(pubKeySpec) as ECPublicKey
-//
-//}

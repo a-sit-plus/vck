@@ -38,7 +38,7 @@ data class RelyingPartyMetadata(
     @SerialName("client_id_scheme")
     val clientIdScheme: String? = "pre-registered",
 
-    ) {
+) {
 
     fun serialize() = jsonSerializer.encodeToString(this)
 

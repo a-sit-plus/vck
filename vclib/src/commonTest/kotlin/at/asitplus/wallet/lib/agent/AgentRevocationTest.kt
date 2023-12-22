@@ -14,8 +14,6 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.component.base64.decodeBase64ToArray
-import io.matthewnelson.encoding.base64.Base64
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import kotlinx.datetime.Clock
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
@@ -36,7 +34,7 @@ class AgentRevocationTest : FreeSpec({
             dataProvider = DummyCredentialDataProvider()
         )
         verifierCryptoService = DefaultCryptoService()
-        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.keyId)
+        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
 

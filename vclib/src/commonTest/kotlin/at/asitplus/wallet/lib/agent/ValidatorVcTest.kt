@@ -42,7 +42,7 @@ class ValidatorVcTest : FreeSpec() {
             )
             issuerJwsService = DefaultJwsService(issuerCryptoService)
             verifierCryptoService = DefaultCryptoService()
-            verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.keyId)
+            verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
         }
 
         "credentials are valid for" {

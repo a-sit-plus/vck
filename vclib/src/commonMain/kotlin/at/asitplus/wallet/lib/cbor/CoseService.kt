@@ -72,12 +72,6 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
             return KmmResult.failure(it)
         }
 
-//        val rawSignature: ByteArray = when (cryptoService.algorithm.toCoseAlgorithm()) {
-//            CoseAlgorithm.ES256, CoseAlgorithm.ES384, CoseAlgorithm.ES512 -> signature.extractSignatureValues(
-//                (cryptoService.publicKey as CryptoPublicKey.Ec).curve.signatureLengthBytes / 2u)
-//
-//            else -> signature
-//        }
         return KmmResult.success(
             CoseSigned(
                 ByteStringWrapper(copyProtectedHeader),
