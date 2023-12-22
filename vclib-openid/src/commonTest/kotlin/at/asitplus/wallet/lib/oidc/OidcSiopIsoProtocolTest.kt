@@ -30,8 +30,6 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        Napier.takeLogarithm()
-        Napier.base(DebugAntilog())
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
