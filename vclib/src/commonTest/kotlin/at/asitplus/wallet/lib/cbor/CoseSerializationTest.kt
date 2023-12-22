@@ -17,7 +17,6 @@ import kotlinx.serialization.cbor.ByteStringWrapper
 
 class CoseSerializationTest : FreeSpec({
 
-    Napier.base(DebugAntilog())
 
     "Serialization is correct" {
         val cose = CoseSigned(

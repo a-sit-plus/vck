@@ -232,7 +232,7 @@ class IssueCredentialProtocol(
 
         // TODO Is there a way to transport the format, i.e. JWT-VC or SD-JWT?
         val cryptoPublicKey =
-            requestCredentialAttachment.credentialManifest.subject?.let { kotlin.runCatching { CryptoPublicKey.fromKeyId(it) }.getOrNull()}
+            requestCredentialAttachment.credentialManifest.subject?.let { kotlin.runCatching { CryptoPublicKey.fromDid(it) }.getOrNull()}
                 ?: senderKey.toCryptoPublicKey().getOrNull()
                 ?: return problemReporter.problemInternal(lastMessage.threadId, "no-sender-key")
         val issuedCredentials = issuer?.issueCredential(

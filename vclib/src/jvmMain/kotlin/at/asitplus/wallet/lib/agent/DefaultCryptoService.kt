@@ -58,7 +58,7 @@ actual open class DefaultCryptoService : CryptoService {
         this.privateKey = keyPair.private
         this.algorithm = CryptoAlgorithm.ES256
         this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
-        this.jsonWebKey = publicKey.toJsonWebKey().getOrThrow()
+        this.jsonWebKey = publicKey.toJsonWebKey()
         this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
         this.certificate = generateSelfSignedCertificate()
     }
@@ -73,7 +73,7 @@ actual open class DefaultCryptoService : CryptoService {
         this.privateKey = keyPair.private
         this.algorithm = algorithm
         this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
-        this.jsonWebKey = publicKey.toJsonWebKey().getOrThrow()
+        this.jsonWebKey = publicKey.toJsonWebKey()
         this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
         this.certificate =
             certificate?.let { X509Certificate.decodeFromDer(it.encoded) } ?: generateSelfSignedCertificate()
@@ -110,11 +110,7 @@ actual open class DefaultCryptoService : CryptoService {
             initSign(privateKey)
             update(input)
         }.sign()
-        //In Java EC signatures are returned as DER-encoded, RSA signatures however are raw bytearrays
-        if (algorithm.isEc)
-            CryptoSignature.decodeFromDer(sig)
-        else
-            CryptoSignature.RSAorHMAC(sig)
+        CryptoSignature.parseFromJca(sig, algorithm)
     }.wrap()
 
     override fun encrypt(
@@ -207,8 +203,8 @@ open class JvmEphemeralKeyHolder(private val ecCurve: EcCurve) : EphemeralKeyHol
     val keyPair: KeyPair =
         KeyPairGenerator.getInstance("EC").also { it.initialize(ecCurve.keyLengthBits.toInt()) }.genKeyPair()
 
-    override val publicJsonWebKey by lazy {
-        CryptoPublicKey.fromJcaPublicKey(keyPair.public).transform { it.toJsonWebKey() }.getOrNull()
+    override val publicJsonWebKey: JsonWebKey? by lazy {
+        CryptoPublicKey.fromJcaPublicKey(keyPair.public).map { it.toJsonWebKey() }.getOrNull()
     }
 
 }

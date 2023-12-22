@@ -21,7 +21,7 @@ class PresentProofProtocolTest : FreeSpec({
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
         holder = HolderAgent.newDefaultInstance(holderCryptoService)
-        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
+        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.didEncoded)
         holderProtocol = PresentProofProtocol.newHolderInstance(
             holder = holder,
             serviceEndpoint = "https://example.com/",

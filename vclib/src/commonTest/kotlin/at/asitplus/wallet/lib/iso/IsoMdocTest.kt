@@ -31,10 +31,6 @@ import kotlin.random.Random
 
 class IsoMdocTest : FreeSpec({
 
-    beforeSpec {
-        Napier.base(DebugAntilog())
-    }
-
     "issue, store, present, verify" {
         val wallet = Wallet()
         val verifier = Verifier()

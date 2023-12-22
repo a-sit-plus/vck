@@ -26,9 +26,6 @@ import kotlinx.serialization.encodeToString
 
 class CborSerializationTest : FreeSpec({
 
-    beforeSpec {
-        Napier.base(DebugAntilog())
-    }
 
     "mDL" {
         val mdl = MobileDrivingLicence(

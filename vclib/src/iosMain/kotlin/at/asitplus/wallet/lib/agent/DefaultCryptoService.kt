@@ -72,7 +72,7 @@ actual class DefaultCryptoService : CryptoService {
     override val certificate: X509Certificate
 
     override val jsonWebKey: JsonWebKey
-        get() = publicKey.toJsonWebKey().getOrNull()!!
+        get() = publicKey.toJsonWebKey()
 
     override val coseKey: CoseKey
         get() = publicKey.toCoseKey(CoseAlgorithm.ES256).getOrNull()!!
@@ -221,8 +221,7 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
 
 data class DefaultEphemeralKeyHolder(val publicKey: SecKeyRef, val privateKey: SecKeyRef? = null) : EphemeralKeyHolder {
 
-    override val publicJsonWebKey = CryptoPublicKey.Ec.fromAnsiX963Bytes((CFBridgingRelease(SecKeyCopyExternalRepresentation(publicKey, null)) as NSData).toByteArray()).toJsonWebKey().getOrThrow()
-
+    override val publicJsonWebKey = CryptoPublicKey.Ec.fromAnsiX963Bytes((CFBridgingRelease(SecKeyCopyExternalRepresentation(publicKey, null)) as NSData).toByteArray()).toJsonWebKey()
 }
 
 inline fun MemScope.toData(array: ByteArray): NSData =

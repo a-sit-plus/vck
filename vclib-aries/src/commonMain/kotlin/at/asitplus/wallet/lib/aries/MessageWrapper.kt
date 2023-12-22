@@ -59,7 +59,7 @@ class MessageWrapper(
             val message = JsonWebMessage.deserialize(payloadString)
                 ?: return ReceivedMessage.Error
                     .also { Napier.w("Could not parse plain message") }
-            return ReceivedMessage.Success(message, joseObject.header.publicKey?.toJsonWebKey()?.getOrNull()!!)
+            return ReceivedMessage.Success(message, joseObject.header.publicKey?.toJsonWebKey())
         }
         return ReceivedMessage.Error
             .also { Napier.w("ContentType not matching") }

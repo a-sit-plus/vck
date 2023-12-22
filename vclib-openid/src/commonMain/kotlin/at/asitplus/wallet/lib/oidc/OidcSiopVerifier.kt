@@ -180,7 +180,7 @@ class OidcSiopVerifier(
         )
         val metadata = RelyingPartyMetadata(
             redirectUris = arrayOf(relyingPartyUrl),
-            jsonWebKeySet = JsonWebKeySet(arrayOf(agentPublicKey.toJsonWebKey().getOrNull()!!)),
+            jsonWebKeySet = JsonWebKeySet(arrayOf(agentPublicKey.toJsonWebKey())),
             subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
             vpFormats = vpFormats,
         )

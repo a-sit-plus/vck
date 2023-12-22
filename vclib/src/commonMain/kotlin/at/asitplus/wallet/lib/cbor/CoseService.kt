@@ -52,7 +52,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
     ): KmmResult<CoseSigned> {
         var copyProtectedHeader = protectedHeader.copy(algorithm = cryptoService.algorithm.toCoseAlgorithm())
         if (addKeyId) copyProtectedHeader =
-            copyProtectedHeader.copy(kid = cryptoService.jsonWebKey.identifier.encodeToByteArray())
+            copyProtectedHeader.copy(kid = cryptoService.publicKey.didEncoded.encodeToByteArray())
 
         val copyUnprotectedHeader = if (addCertificate) {
             (unprotectedHeader ?: CoseHeader()).copy(certificateChain = cryptoService.certificate.encodeToDer())
