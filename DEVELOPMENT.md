@@ -1,5 +1,8 @@
 # Development
 
+IDEA has a bug when importing composite KMP builds. If you are not using a Mac for development, add `iosDisabled=true` to your
+`local.properties`.
+
 ## Publishing
 
 Create a GPG key with `gpg --gen-key`, and export it with `gpg --keyring secring.gpg --export-secret-keys > ~/.gnupg/secring.gpg`. Be sure to publish it with `gpg --keyserver keyserver.ubuntu.com --send-keys <your-key-id>`. See also the information in the [Gradle docs](https://docs.gradle.org/current/userguide/signing_plugin.html).

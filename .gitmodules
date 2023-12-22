@@ -3,4 +3,4 @@
 	url = https://github.com/a-sit-plus/gradle-conventions-plugin.git	
 [submodule "kmp-crypto"]
 	path = kmp-crypto
-	url = git@github.com:a-sit-plus/kmp-crypto.git
+	url = https://github.com/a-sit-plus/kmp-crypto.git
