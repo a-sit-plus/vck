@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.aries
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.jws.jwkId
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
@@ -31,8 +32,7 @@ class DummyCredentialDataProvider(
         if (credentialScheme != ConstantIndex.AtomicAttribute2023) {
             return KmmResult.failure(UnsupportedOperationException("no data"))
         }
-        val subjectId = subjectPublicKey.toJsonWebKey()
-            .fold(onSuccess = { it.keyId!! }, onFailure = { return KmmResult.failure(it) })
+        val subjectId = subjectPublicKey.didEncoded
         val expiration = clock.now() + defaultLifetime
         val claims = listOf(
             ClaimToBeIssued("given-name", "Susanne"),

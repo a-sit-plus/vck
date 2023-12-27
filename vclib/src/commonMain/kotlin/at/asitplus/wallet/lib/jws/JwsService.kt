@@ -67,7 +67,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): JwsSigned? {
         val jwsHeader = JwsHeader(
             algorithm = cryptoService.algorithm.toJwsAlgorithm(),
-            keyId = cryptoService.publicKey.keyId,
+            keyId = cryptoService.publicKey.didEncoded,
             type = type,
             contentType = contentType
         )

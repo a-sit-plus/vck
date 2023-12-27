@@ -39,7 +39,7 @@ class HolderAgent(
             subjectCredentialStore = subjectCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
             coseService = DefaultCoseService(cryptoService),
-            identifier = cryptoService.publicKey.keyId,
+            identifier = cryptoService.publicKey.didEncoded,
         )
 
         /**
@@ -53,7 +53,7 @@ class HolderAgent(
             subjectCredentialStore = subjectCredentialStore,
             jwsService = DefaultJwsService(cryptoService),
             coseService = DefaultCoseService(cryptoService),
-            identifier = cryptoService.publicKey.keyId,
+            identifier = cryptoService.publicKey.didEncoded,
         )
     }
 

@@ -63,7 +63,7 @@ class IssuerAgent(
             jwsService = DefaultJwsService(cryptoService),
             coseService = DefaultCoseService(cryptoService),
             dataProvider = dataProvider,
-            identifier = cryptoService.jsonWebKey.identifier,
+            identifier = cryptoService.publicKey.didEncoded,
             timePeriodProvider = timePeriodProvider,
             clock = clock,
         )
@@ -225,16 +225,7 @@ class IssuerAgent(
         val vcId = "urn:uuid:${uuid4()}"
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-        val subjectId = subjectPublicKey.toJsonWebKey().getOrElse {
-            return Issuer.IssuedCredentialResult(
-                failed = listOf(
-                    Issuer.FailedAttribute(
-                        scheme.vcType,
-                        DataSourceProblem("subjectPublicKey transformation error")
-                    )
-                )
-            ).also { Napier.w("subjectPublicKey could not be transformed to a JWK") }
-        }.keyId ?: return Issuer.IssuedCredentialResult(
+        val subjectId = subjectPublicKey.toJsonWebKey().keyId ?: return Issuer.IssuedCredentialResult(
             failed = listOf(
                 Issuer.FailedAttribute(
                     scheme.vcType,
@@ -268,9 +259,7 @@ class IssuerAgent(
             disclosureDigests = disclosureDigests,
             type = arrayOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, scheme.vcType),
             selectiveDisclosureAlgorithm = "sha-256",
-            confirmationKey = subjectPublicKey.toJsonWebKey().getOrElse { return Issuer.IssuedCredentialResult(
-                failed = listOf(Issuer.FailedAttribute(scheme.vcType, DataSourceProblem("confirmationKey transformation failed")))
-            ).also { Napier.w("Could not transform subjectPublicKey to JWK") } },
+            confirmationKey = subjectPublicKey.toJsonWebKey(),
             credentialStatus = credentialStatus,
         ).serialize().encodeToByteArray()
         // TODO Which content type to use for SD-JWT inside an JWS?
@@ -372,6 +361,4 @@ class IssuerAgent(
         expiration = expirationDate,
         jwtId = id
     )
-
-
 }

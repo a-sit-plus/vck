@@ -221,9 +221,9 @@ class OidcSiopWallet(
         val now = clock.now()
         // we'll assume jwk-thumbprint
         val idToken = IdToken(
-            issuer = agentPublicKey.toJsonWebKey().getOrNull()!!.jwkThumbprint,
-            subject = agentPublicKey.toJsonWebKey().getOrNull()!!.jwkThumbprint,
-            subjectJwk = agentPublicKey.toJsonWebKey().getOrNull()!!,
+            issuer = agentPublicKey.toJsonWebKey().jwkThumbprint,
+            subject = agentPublicKey.toJsonWebKey().jwkThumbprint,
+            subjectJwk = agentPublicKey.toJsonWebKey(),
             audience = params.redirectUrl,
             issuedAt = now,
             expiration = now + 60.seconds,
