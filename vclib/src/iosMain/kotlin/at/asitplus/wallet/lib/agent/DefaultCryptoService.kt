@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
