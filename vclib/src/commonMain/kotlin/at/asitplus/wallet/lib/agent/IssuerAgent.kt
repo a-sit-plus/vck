@@ -6,10 +6,10 @@ import at.asitplus.crypto.datatypes.cose.CoseHeader
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.io.Base64Strict
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
+import at.asitplus.crypto.datatypes.io.BitSet
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.DefaultZlibService
-import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
@@ -299,7 +299,7 @@ class IssuerAgent(
      * the entry at "revocationListIndex" (of the credential) is true iff it is revoked
      */
     override fun buildRevocationList(timePeriod: Int?): String? {
-        val bitset = KmmBitSet(REVOCATION_LIST_MIN_SIZE)
+        val bitset = BitSet(REVOCATION_LIST_MIN_SIZE)
         issuerCredentialStore.getRevokedStatusListIndexList(
             timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock)
         ).forEach { bitset[it] = true }
