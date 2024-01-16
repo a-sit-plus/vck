@@ -1,11 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.crypto.datatypes.io.BitSet
+import at.asitplus.crypto.datatypes.io.toBitSet
 import at.asitplus.wallet.lib.DefaultZlibService
-import at.asitplus.wallet.lib.KmmBitSet
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessJwt
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.toBitSet
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FreeSpec
@@ -108,7 +108,7 @@ class AgentRevocationTest : FreeSpec({
 
 })
 
-private fun decodeRevocationList(revocationList: String): KmmBitSet {
+private fun decodeRevocationList(revocationList: String): BitSet {
     val decodedBase64 = revocationList.decodeBase64ToArray()
     decodedBase64.shouldNotBeNull()
     val decompress = DefaultZlibService().decompress(decodedBase64)
@@ -116,7 +116,7 @@ private fun decodeRevocationList(revocationList: String): KmmBitSet {
     return decompress.toBitSet()
 }
 
-private fun verifyBitSet(bitSet: KmmBitSet, expectedRevokedIndexes: List<Long>) {
+private fun verifyBitSet(bitSet: BitSet, expectedRevokedIndexes: List<Long>) {
     var indexInBitSet: Long = bitSet.nextSetBit(0)
     while (indexInBitSet >= 0 && indexInBitSet < Int.MAX_VALUE) {
         expectedRevokedIndexes shouldContain indexInBitSet
