@@ -5,9 +5,14 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout
+      - name: Checkout
         uses: actions/checkout@v3
         with:
           submodules: recursive
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
       - name: Build klibs
         run: ./gradlew iosArm64MainKlibrary iosX64MainKlibrary
       - name: Build XCFramework
