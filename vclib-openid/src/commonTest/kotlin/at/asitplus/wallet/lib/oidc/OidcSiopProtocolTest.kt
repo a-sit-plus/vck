@@ -1,21 +1,34 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
 
 class OidcSiopProtocolTest : FreeSpec({
 
@@ -83,11 +96,35 @@ class OidcSiopProtocolTest : FreeSpec({
         ).shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
     }
 
+    "test with QR Code" {
+        val metadataUrlNonce = uuid4().toString()
+        val metadataUrl = "https://example.com/$metadataUrlNonce"
+        val requestUrlNonce = uuid4().toString()
+        val requestUrl = "https://example.com/$requestUrlNonce"
+        val qrcode = verifierSiop.createQrCodeUrl(walletUrl, metadataUrl, requestUrl)
+        qrcode shouldContain metadataUrlNonce
+        qrcode shouldContain requestUrlNonce
+
+        val metadataObject = verifierSiop.createSignedMetadata().getOrThrow()
+            .also { println(it) }
+        DefaultVerifierJwsService().verifyJwsObject(metadataObject).shouldBeTrue()
+
+        val authnRequest = verifierSiop.createAuthnRequestAsRequestObject().getOrThrow()
+        authnRequest.clientId shouldBe relyingPartyUrl
+        val jar = authnRequest.request
+        jar.shouldNotBeNull()
+        DefaultVerifierJwsService().verifyJwsObject(JwsSigned.parse(jar)!!).shouldBeTrue()
+
+        val authnResponse = holderSiop.createAuthnResponse(jar).getOrThrow()
+        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
+
+        val result = verifierSiop.validateAuthnResponse(authnResponse.url)
+        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+    }
+
     "test with POST" {
-        val authnRequest = verifierSiop.createAuthnRequestUrl(
-            walletUrl,
-            responseMode = OpenIdConstants.ResponseModes.POST
-        ).also { println(it) }
+        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl, responseMode = ResponseModes.POST)
+            .also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Post>().also { println(it) }
@@ -102,7 +139,7 @@ class OidcSiopProtocolTest : FreeSpec({
         val expectedState = uuid4().toString()
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl,
-            responseMode = OpenIdConstants.ResponseModes.QUERY,
+            responseMode = ResponseModes.QUERY,
             state = expectedState
         ).also { println(it) }
 
@@ -117,16 +154,6 @@ class OidcSiopProtocolTest : FreeSpec({
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.state.shouldBe(expectedState)
-    }
-
-    "test with JAR" {
-        val authnRequest = verifierSiop.createAuthnRequestUrlWithRequestObject(walletUrl).also { println(it) }
-
-        val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
-        val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
-        result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
 
     "test with deserializing" {
