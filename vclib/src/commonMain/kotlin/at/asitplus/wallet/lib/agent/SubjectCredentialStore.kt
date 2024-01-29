@@ -7,6 +7,8 @@ import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Stores all credentials that a subject has received
@@ -79,24 +81,36 @@ interface SubjectCredentialStore {
     suspend fun getAttachment(name: String, vcId: String): KmmResult<ByteArray>
 
     sealed class StoreEntry {
+        @Serializable
         data class Vc(
+            @SerialName("vc-serialized")
             val vcSerialized: String,
+            @SerialName("vc")
             val vc: VerifiableCredentialJws,
+            @SerialName("scheme")
             val scheme: ConstantIndex.CredentialScheme
         ) : StoreEntry()
 
+        @Serializable
         data class SdJwt(
+            @SerialName("vc-serialized")
             val vcSerialized: String,
+            @SerialName("sd-jwt")
             val sdJwt: VerifiableCredentialSdJwt,
             /**
              * Map of original serialized disclosure item to parsed item
              */
+            @SerialName("disclosures")
             val disclosures: Map<String, SelectiveDisclosureItem?>,
+            @SerialName("scheme")
             val scheme: ConstantIndex.CredentialScheme
         ) : StoreEntry()
 
+        @Serializable
         data class Iso(
+            @SerialName("issuer-signed")
             val issuerSigned: IssuerSigned,
+            @SerialName("scheme")
             val scheme: ConstantIndex.CredentialScheme
         ) : StoreEntry()
     }
