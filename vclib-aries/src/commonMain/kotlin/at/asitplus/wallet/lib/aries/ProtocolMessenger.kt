@@ -42,18 +42,22 @@ abstract class ProtocolMessenger<T : ProtocolStateMachine<U>, U>(
 
             is InternalNextMessage.SendAndWrap -> {
                 if (signInitialMessage) {
-                    val signedMessage = messageWrapper.createSignedJwt(next.message)
-                        ?: return NextMessage.SendProblemReport("Can't create signed message", next.endpoint)
-                    return NextMessage.Send(signedMessage, next.endpoint)
+                    val signedMessage = messageWrapper.createSignedJwt(next.message).getOrElse {
+                        Napier.w("Could not create signed JWT", it)
+                        return NextMessage.SendProblemReport("Can't create signed message", next.endpoint)
+                    }
+                    return NextMessage.Send(signedMessage.serialize(), next.endpoint)
                 }
                 return NextMessage.Send(next.message.serialize(), next.endpoint)
             }
 
             is InternalNextMessage.SendProblemReport -> {
                 if (signInitialMessage) {
-                    val signedMessage = messageWrapper.createSignedJwt(next.message)
-                        ?: return NextMessage.SendProblemReport("Could not sign message", next.endpoint)
-                    return NextMessage.SendProblemReport(signedMessage, next.endpoint)
+                    val signedMessage = messageWrapper.createSignedJwt(next.message).getOrElse {
+                        Napier.w("Could not create signed JWT", it)
+                        return NextMessage.SendProblemReport("Could not sign message", next.endpoint)
+                    }
+                    return NextMessage.SendProblemReport(signedMessage.serialize(), next.endpoint)
                 }
                 return NextMessage.SendProblemReport(next.message.serialize(), next.endpoint)
             }
@@ -113,28 +117,38 @@ abstract class ProtocolMessenger<T : ProtocolStateMachine<U>, U>(
 
     private suspend fun wrapNextMessage(next: InternalNextMessage.SendAndWrap): NextMessage {
         if (signAndEncryptFollowingMessages && next.senderKey != null) {
-            val signedAndEncryptedJwe = messageWrapper.createSignedAndEncryptedJwe(next.message, next.senderKey)
-                ?: return NextMessage.SendProblemReport("Could not sign message", next.endpoint)
-            return NextMessage.Send(signedAndEncryptedJwe, next.endpoint)
+            val signedAndEncryptedJwe =
+                messageWrapper.createSignedAndEncryptedJwe(next.message, next.senderKey).getOrElse {
+                    Napier.w("Could not create encrypted JWT", it)
+                    return NextMessage.SendProblemReport("Could not sign message", next.endpoint)
+                }
+            return NextMessage.Send(signedAndEncryptedJwe.serialize(), next.endpoint)
         }
         if (signFollowingMessages) {
-            val signedJwt = messageWrapper.createSignedJwt(next.message)
-                ?: return NextMessage.SendProblemReport("Could not sign message", next.endpoint)
-            return NextMessage.Send(signedJwt, next.endpoint)
+            val signedJwt = messageWrapper.createSignedJwt(next.message).getOrElse {
+                Napier.w("Could not create signed JWT", it)
+                return NextMessage.SendProblemReport("Could not sign message", next.endpoint)
+            }
+            return NextMessage.Send(signedJwt.serialize(), next.endpoint)
         }
         return NextMessage.Send(next.message.serialize(), next.endpoint)
     }
 
     private suspend fun wrapProblemReportMessage(next: InternalNextMessage.SendProblemReport): NextMessage {
         if (signAndEncryptFollowingMessages && next.senderKey != null) {
-            val signedAndEncryptedJwe = messageWrapper.createSignedAndEncryptedJwe(next.message, next.senderKey)
-                ?: return NextMessage.SendProblemReport("Could not sign message", next.endpoint)
-            return NextMessage.SendProblemReport(signedAndEncryptedJwe, next.endpoint)
+            val signedAndEncryptedJwe =
+                messageWrapper.createSignedAndEncryptedJwe(next.message, next.senderKey).getOrElse {
+                    Napier.w("Could not create encrypted JWT", it)
+                    return NextMessage.SendProblemReport("Could not sign message", next.endpoint)
+                }
+            return NextMessage.SendProblemReport(signedAndEncryptedJwe.serialize(), next.endpoint)
         }
         if (signFollowingMessages) {
-            val signedJwt = messageWrapper.createSignedJwt(next.message)
-                ?: return NextMessage.SendProblemReport(next.message.serialize(), next.endpoint)
-            return NextMessage.SendProblemReport(signedJwt, next.endpoint)
+            val signedJwt = messageWrapper.createSignedJwt(next.message).getOrElse {
+                Napier.w("Could not create signed JWT", it)
+                return NextMessage.SendProblemReport(next.message.serialize(), next.endpoint)
+            }
+            return NextMessage.SendProblemReport(signedJwt.serialize(), next.endpoint)
         }
         return NextMessage.SendProblemReport(next.message.serialize(), next.endpoint)
     }

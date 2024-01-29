@@ -144,6 +144,6 @@ private suspend fun runProcess(
     code.shouldNotBeNull()
     val tokenRequest = client.createTokenRequestParameters(code)
     val token = issuer.token(tokenRequest)
-    val credentialRequest = client.createCredentialRequest(token, metadata)
+    val credentialRequest = client.createCredentialRequest(token, metadata).getOrThrow()
     return issuer.credential(TOKEN_PREFIX_BEARER + token.accessToken, credentialRequest)
 }

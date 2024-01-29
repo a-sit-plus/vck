@@ -3,10 +3,7 @@
 Release 3.4.0:
  - tbd
  - target Java 17
- - updated dependencies from conventions
-   - BC 1.77
-   - Serialization 1.6.3-snapshot (fork)
-   - Naier 2.7.1
+ - updated dependencies from conventions: Bouncycastle 1.77, Serialization 1.6.3-snapshot (fork), Napier 2.7.1
  - Integrate `kmp-crypto` library
  - Change signature parsing and return types to `CryptoSignature` class
  - Change base public key class from`JsonWebKey` to `CryptoPublicKey`
@@ -18,6 +15,7 @@ Release 3.4.0:
  - Add `CryptoService.coseKey` to `CryptoService`
  - Support `ES384`, `ES512`, `RS256`, `RS384`, `RS512`, `PS256`, `PS384` and `PS512` in `DefaultCryptoService` Signature Services
  - Change `DefaultCryptoService` constructor signature: When handing over a private/public keyPair the `CryptoAlgorithm` parameter is now mandatory
+ - Change return type of methods in `JwsService` to `KmmResult<T>` to transport exceptions from native implementations
 
 Release 3.3.0:
  - Change non-typed attribute types (i.e. Strings) to typed credential schemes (i.e. `ConstantIndex.CredentialScheme`), this includes methods `getCredentials`, `createPresentation` in interface `Holder`, and method `getCredentials` in interface `SubjectCredentialStore`

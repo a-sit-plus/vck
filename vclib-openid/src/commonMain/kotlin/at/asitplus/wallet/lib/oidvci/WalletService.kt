@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.jws.JsonWebToken
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
@@ -85,26 +86,29 @@ class WalletService(
     suspend fun createCredentialRequest(
         tokenResponse: TokenResponseParameters,
         issuerMetadata: IssuerMetadata
-    ): CredentialRequestParameters {
+    ): KmmResult<CredentialRequestParameters> {
         // NOTE: Specification is missing a proof type for binding method `cose_key`, so we'll use JWT
+        val proofPayload = jwsService.createSignedJwsAddingParams(
+            header = JwsHeader(
+                algorithm = cryptoService.algorithm.toJwsAlgorithm(),
+                type = OpenIdConstants.ProofTypes.JWT_HEADER_TYPE,
+            ),
+            payload = JsonWebToken(
+                issuer = clientId,
+                audience = issuerMetadata.credentialIssuer,
+                issuedAt = Clock.System.now(),
+                nonce = tokenResponse.clientNonce,
+            ).serialize().encodeToByteArray(),
+            addKeyId = true,
+            addJsonWebKey = true
+        ).getOrElse {
+            return KmmResult.failure(it)
+        }
         val proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofTypes.JWT,
-            jwt = jwsService.createSignedJwsAddingParams(
-                header = JwsHeader(
-                    algorithm = cryptoService.algorithm.toJwsAlgorithm(),
-                    type = OpenIdConstants.ProofTypes.JWT_HEADER_TYPE,
-                ),
-                payload = JsonWebToken(
-                    issuer = clientId,
-                    audience = issuerMetadata.credentialIssuer,
-                    issuedAt = Clock.System.now(),
-                    nonce = tokenResponse.clientNonce,
-                ).serialize().encodeToByteArray(),
-                addKeyId = true,
-                addJsonWebKey = true
-            )?.serialize()!!
+            jwt = proofPayload.serialize()
         )
-        return credentialRepresentation.toCredentialRequestParameters(proof)
+        return KmmResult.success(credentialRepresentation.toCredentialRequestParameters(proof))
     }
 
     private fun ConstantIndex.CredentialRepresentation.toAuthorizationDetails() = when (this) {
