@@ -248,9 +248,10 @@ class HolderAgent(
             challenge = challenge
         )
         val jwsPayload = keyBindingJws.serialize().encodeToByteArray()
-        val keyBinding = jwsService.createSignedJwt(JwsContentTypeConstants.KB_JWT, jwsPayload)
-            ?: return null
-                .also { Napier.w("Could not create JWS for presentation") }
+        val keyBinding = jwsService.createSignedJwt(JwsContentTypeConstants.KB_JWT, jwsPayload).getOrElse {
+            Napier.w("Could not create JWS for presentation", it)
+            return null
+        }
         val first = validSdJwtCredentials.first()
         val filteredDisclosures = first.disclosures
             .filter { it.discloseItem(requestedClaims) }.keys
@@ -287,9 +288,10 @@ class HolderAgent(
         val vp = VerifiablePresentation(validCredentials.toTypedArray())
         val vpSerialized = vp.toJws(challenge, identifier, audienceId).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
-        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
-            ?: return null
-                .also { Napier.w("Could not create JWS for presentation") }
+        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrElse {
+            Napier.w("Could not create JWS for presentation", it)
+            return null
+        }
         return Holder.CreatePresentationResult.Signed(jws.serialize())
     }
 

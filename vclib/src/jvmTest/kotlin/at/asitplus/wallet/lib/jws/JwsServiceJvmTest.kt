@@ -9,8 +9,23 @@ import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.data.jsonSerializer
 import com.benasher44.uuid.uuid4
-import com.nimbusds.jose.*
-import com.nimbusds.jose.crypto.*
+import com.nimbusds.jose.EncryptionMethod
+import com.nimbusds.jose.JOSEObjectType
+import com.nimbusds.jose.JWEAlgorithm
+import com.nimbusds.jose.JWEHeader
+import com.nimbusds.jose.JWEObject
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.JWSObject
+import com.nimbusds.jose.Payload
+import com.nimbusds.jose.crypto.ECDHDecrypter
+import com.nimbusds.jose.crypto.ECDHEncrypter
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.crypto.ECDSAVerifier
+import com.nimbusds.jose.crypto.RSADecrypter
+import com.nimbusds.jose.crypto.RSAEncrypter
+import com.nimbusds.jose.crypto.RSASSASigner
+import com.nimbusds.jose.crypto.RSASSAVerifier
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -103,6 +118,7 @@ class JwsServiceJvmTest : FreeSpec({
                     val stringPayload = jsonSerializer.encodeToString(randomPayload)
                     val signed =
                         jwsService.createSignedJwt(JwsContentTypeConstants.JWT, stringPayload.encodeToByteArray())
+                            .getOrThrow()
                     signed.shouldNotBeNull()
                     val selfVerify = verifierJwsService.verifyJwsObject(signed)
                     withClue("$algo: Signature: ${signed.signature.serialize()}") {
@@ -146,6 +162,7 @@ class JwsServiceJvmTest : FreeSpec({
                     val stringPayload = jsonSerializer.encodeToString(randomPayload)
                     val signed =
                         jwsService.createSignedJwt(JwsContentTypeConstants.JWT, stringPayload.encodeToByteArray())
+                            .getOrThrow()
                     signed.shouldNotBeNull()
                     val parsed = JWSObject.parse(signed.serialize())
                     parsed.shouldNotBeNull()
@@ -159,7 +176,7 @@ class JwsServiceJvmTest : FreeSpec({
                 /**
                  * Encryption is currently only supported for EC-Keys see issue `https://github.com/a-sit-plus/kmm-vc-library/issues/29`
                  */
-                if(thisConfiguration.first == "EC") {
+                if (thisConfiguration.first == "EC") {
                     "Encrypted object from ext. library can be decrypted with int. library" {
                         val stringPayload = jsonSerializer.encodeToString(randomPayload)
                         val libJweHeader = JWEHeader.Builder(JWEAlgorithm(jweAlgorithm.text), EncryptionMethod.A256GCM)
@@ -175,11 +192,9 @@ class JwsServiceJvmTest : FreeSpec({
                         val parsedJwe = JweEncrypted.parse(encryptedJwe)
                         parsedJwe.shouldNotBeNull()
 
-                        val result = jwsService.decryptJweObject(
-                            parsedJwe, encryptedJwe
-                        )
+                        val result = jwsService.decryptJweObject(parsedJwe, encryptedJwe).getOrThrow()
 
-                        result?.payload?.decodeToString() shouldBe stringPayload
+                        result.payload.decodeToString() shouldBe stringPayload
                     }
 
                     "Encrypted object from int. library can be decrypted with ext. library" {
@@ -191,7 +206,7 @@ class JwsServiceJvmTest : FreeSpec({
                             JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
                             jweAlgorithm,
                             JweEncryption.A256GCM,
-                        )
+                        ).getOrThrow().serialize()
 
                         val parsed = JWEObject.parse(encrypted)
                         parsed.shouldNotBeNull()

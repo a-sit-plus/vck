@@ -418,7 +418,7 @@ class ValidatorVcTest : FreeSpec() {
     private suspend fun signJws(vcJws: VerifiableCredentialJws): String? {
         val vcSerialized = vcJws.serialize()
         val jwsPayload = vcSerialized.encodeToByteArray()
-        return issuerJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)?.serialize()
+        return issuerJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrThrow().serialize()
     }
 
     private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String? {

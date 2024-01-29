@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsHeader
@@ -38,8 +39,7 @@ import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
+import io.ktor.http.*
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlin.time.DurationUnit
@@ -92,6 +92,28 @@ class OidcSiopVerifier(
             credentialScheme = credentialScheme,
             credentialRepresentation = credentialRepresentation,
             requestedAttributes = requestedAttributes,
+        )
+    }
+
+    private val containerJwt = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.identifier))
+    private val vpFormats = FormatHolder(
+        msoMdoc = if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC) containerJwt else null,
+        jwtVp = containerJwt,
+    )
+    val metadata by lazy {
+        RelyingPartyMetadata(
+            redirectUris = arrayOf(relyingPartyUrl),
+            jsonWebKeySet = JsonWebKeySet(arrayOf(agentPublicKey.toJsonWebKey())),
+            subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
+            vpFormats = vpFormats,
+        )
+    }
+
+    suspend fun createSignedMetadata() = KmmResult.runCatching {
+        jwsService.createSignedJwsAddingParams(
+            header = JwsHeader(algorithm = JwsAlgorithm.ES256),
+            payload = metadata.serialize().encodeToByteArray(),
+            addKeyId = true
         )
     }
 
@@ -173,17 +195,6 @@ class OidcSiopVerifier(
         responseMode: String? = null,
         state: String? = uuid4().toString(),
     ): AuthenticationRequestParameters {
-        val containerJwt = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.identifier))
-        val vpFormats = FormatHolder(
-            msoMdoc = if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC) containerJwt else null,
-            jwtVp = containerJwt,
-        )
-        val metadata = RelyingPartyMetadata(
-            redirectUris = arrayOf(relyingPartyUrl),
-            jsonWebKeySet = JsonWebKeySet(arrayOf(agentPublicKey.toJsonWebKey())),
-            subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
-            vpFormats = vpFormats,
-        )
         val typeConstraint = credentialScheme?.let {
             when (credentialRepresentation) {
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.vcConstraint()

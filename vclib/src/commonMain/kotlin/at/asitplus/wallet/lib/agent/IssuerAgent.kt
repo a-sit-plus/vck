@@ -13,9 +13,23 @@ import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.CredentialStatus
+import at.asitplus.wallet.lib.data.RevocationListSubject
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
-import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.iso.DeviceKeyInfo
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.iso.IssuerSignedList
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.wallet.lib.iso.ValidityInfo
+import at.asitplus.wallet.lib.iso.ValueDigest
+import at.asitplus.wallet.lib.iso.ValueDigestList
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -146,7 +160,12 @@ class IssuerAgent(
             ),
             deviceKeyInfo = DeviceKeyInfo(subjectPublicKey.toCoseKey().getOrElse {
                 return Issuer.IssuedCredentialResult(
-                    failed = listOf(Issuer.FailedAttribute(scheme.vcType, DataSourceProblem("SubjectPublicKey transformation failed")))
+                    failed = listOf(
+                        Issuer.FailedAttribute(
+                            scheme.vcType,
+                            DataSourceProblem("SubjectPublicKey transformation failed")
+                        )
+                    )
                 ).also { Napier.w("Could not transform SubjectPublicKey to COSE Key") }
             }),
             docType = scheme.isoDocType,
@@ -263,10 +282,12 @@ class IssuerAgent(
             credentialStatus = credentialStatus,
         ).serialize().encodeToByteArray()
         // TODO Which content type to use for SD-JWT inside an JWS?
-        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)
-            ?: return Issuer.IssuedCredentialResult(
+        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrElse {
+            Napier.w("Could not wrap credential in SD-JWT", it)
+            return Issuer.IssuedCredentialResult(
                 failed = listOf(Issuer.FailedAttribute(scheme.vcType, RuntimeException("signing failed")))
-            ).also { Napier.w("Could not wrap credential in SD-JWT") }
+            )
+        }
         val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~")
 
         return Issuer.IssuedCredentialResult(
@@ -347,7 +368,10 @@ class IssuerAgent(
 
     private suspend fun wrapVcInJws(vc: VerifiableCredential): String? {
         val jwsPayload = vc.toJws().serialize().encodeToByteArray()
-        return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload)?.serialize()
+        return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrElse {
+            Napier.w("Could not wrapVcInJws", it)
+            return null
+        }.serialize()
     }
 
     private fun getRevocationListUrlFor(timePeriod: Int) =

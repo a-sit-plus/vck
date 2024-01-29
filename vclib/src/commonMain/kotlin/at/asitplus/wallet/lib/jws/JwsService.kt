@@ -1,11 +1,19 @@
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.Digest
 import at.asitplus.crypto.datatypes.asn1.encodeTo4Bytes
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
-import at.asitplus.crypto.datatypes.jws.*
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
+import at.asitplus.crypto.datatypes.jws.JweAlgorithm
+import at.asitplus.crypto.datatypes.jws.JweEncrypted
+import at.asitplus.crypto.datatypes.jws.JweEncryption
+import at.asitplus.crypto.datatypes.jws.JweHeader
 import at.asitplus.crypto.datatypes.jws.JwsExtensions.prependWith4BytesSize
+import at.asitplus.crypto.datatypes.jws.JwsHeader
+import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.JwsSigned.Companion.prepareJwsSignatureInput
+import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
@@ -22,9 +30,9 @@ interface JwsService {
         type: String,
         payload: ByteArray,
         contentType: String? = null
-    ): JwsSigned?
+    ): KmmResult<JwsSigned>
 
-    suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): JwsSigned?
+    suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): KmmResult<JwsSigned>
 
     /**
      * Appends correct values for [JweHeader.keyId], [JwsHeader.algorithm] and [JwsHeader.jsonWebKey],
@@ -35,7 +43,7 @@ interface JwsService {
         payload: ByteArray,
         addKeyId: Boolean = true,
         addJsonWebKey: Boolean = true
-    ): JwsSigned?
+    ): KmmResult<JwsSigned>
 
     fun encryptJweObject(
         type: String,
@@ -44,9 +52,9 @@ interface JwsService {
         contentType: String? = null,
         jweAlgorithm: JweAlgorithm,
         jweEncryption: JweEncryption
-    ): String?
+    ): KmmResult<JweEncrypted>
 
-    suspend fun decryptJweObject(jweObject: JweEncrypted, serialized: String): JweDecrypted?
+    suspend fun decryptJweObject(jweObject: JweEncrypted, serialized: String): KmmResult<JweDecrypted>
 
 }
 
@@ -64,30 +72,29 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         type: String,
         payload: ByteArray,
         contentType: String?
-    ): JwsSigned? {
-        val jwsHeader = JwsHeader(
+    ): KmmResult<JwsSigned> = createSignedJws(
+        JwsHeader(
             algorithm = cryptoService.algorithm.toJwsAlgorithm(),
             keyId = cryptoService.publicKey.didEncoded,
             type = type,
             contentType = contentType
-        )
-        return createSignedJws(jwsHeader, payload)
-    }
+        ), payload
+    )
 
-    override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): JwsSigned? {
+    override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): KmmResult<JwsSigned> {
         if (header.algorithm != cryptoService.algorithm.toJwsAlgorithm()
             || header.keyId?.let { it != cryptoService.jsonWebKey.keyId } == true
             || header.jsonWebKey?.let { it != cryptoService.jsonWebKey } == true
         ) {
-            return null.also { Napier.w("Algorithm or keyId not matching to cryptoService") }
+            return KmmResult.failure(IllegalArgumentException("Algorithm or keyId not matching to cryptoService"))
         }
 
         val plainSignatureInput = prepareJwsSignatureInput(header, payload)
         val signature = cryptoService.sign(plainSignatureInput.encodeToByteArray()).getOrElse {
             Napier.w("No signature from native code", it)
-            return null
+            return KmmResult.failure(it)
         }
-        return JwsSigned(header, payload, signature, plainSignatureInput)
+        return KmmResult.success(JwsSigned(header, payload, signature, plainSignatureInput))
     }
 
     override suspend fun createSignedJwsAddingParams(
@@ -95,7 +102,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         payload: ByteArray,
         addKeyId: Boolean,
         addJsonWebKey: Boolean
-    ): JwsSigned? {
+    ): KmmResult<JwsSigned> {
         var copy = header.copy(algorithm = cryptoService.algorithm.toJwsAlgorithm())
         if (addKeyId)
             copy = copy.copy(keyId = cryptoService.jsonWebKey.keyId)
@@ -107,36 +114,33 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     override suspend fun decryptJweObject(
         jweObject: JweEncrypted,
         serialized: String
-    ): JweDecrypted? {
-        val header = jweObject.header ?: return null
-            .also { Napier.w("Could not parse JWE header") }
-        val alg = header.algorithm ?: return null.also { Napier.w("No algorithm in JWE header") }
-        val enc = header.encryption ?: return null.also { Napier.w("No encryption in JWE header") }
-        val z = cryptoService.performKeyAgreement(header.ephemeralKeyPair!!, alg)
-            .getOrElse {
-                Napier.w("No Z value from native code", it)
-                return null
-            }
-        val kdfInput = prependWithAdditionalInfo(
-            z,
-            enc,
-            header.agreementPartyUInfo,
-            header.agreementPartyVInfo
-        )
+    ): KmmResult<JweDecrypted> {
+        val header = jweObject.header
+            ?: return KmmResult.failure(IllegalArgumentException("Could not parse JWE header"))
+        val alg = header.algorithm
+            ?: return KmmResult.failure(IllegalArgumentException("No algorithm in JWE header"))
+        val enc = header.encryption
+            ?: return KmmResult.failure(IllegalArgumentException("No encryption in JWE header"))
+        val epk = header.ephemeralKeyPair
+            ?: return KmmResult.failure(IllegalArgumentException("No epk in JWE header"))
+        val z = cryptoService.performKeyAgreement(epk, alg).getOrElse {
+            Napier.w("No Z value from native code", it)
+            return KmmResult.failure(it)
+        }
+        val kdfInput = prependWithAdditionalInfo(z, enc, header.agreementPartyUInfo, header.agreementPartyVInfo)
         val key = cryptoService.messageDigest(kdfInput, Digest.SHA256).getOrElse {
             Napier.w("No digest from native code", it)
-            return null
+            return KmmResult.failure(it)
         }
         val iv = jweObject.iv
         val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
         val ciphertext = jweObject.ciphertext
         val authTag = jweObject.authTag
-        val plaintext =
-            cryptoService.decrypt(key, iv, aad, ciphertext, authTag, enc).getOrElse {
-                Napier.w("No plaintext from native code", it)
-                return null
-            }
-        return JweDecrypted(header, plaintext)
+        val plaintext = cryptoService.decrypt(key, iv, aad, ciphertext, authTag, enc).getOrElse {
+            Napier.w("No plaintext from native code", it)
+            return KmmResult.failure(it)
+        }
+        return KmmResult.success(JweDecrypted(header, plaintext))
     }
 
     override fun encryptJweObject(
@@ -146,14 +150,13 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         contentType: String?,
         jweAlgorithm: JweAlgorithm,
         jweEncryption: JweEncryption
-    ): String? {
+    ): KmmResult<JweEncrypted> {
         val crv = recipientKey.curve
-            ?: return null.also { Napier.w("No curve in recipient key") }
-        val ephemeralKeyPair =
-            cryptoService.generateEphemeralKeyPair(crv).getOrElse {
-                Napier.w("No ephemeral key pair from native code", it)
-                return null
-            }
+            ?: return KmmResult.failure(IllegalArgumentException("No curve in recipient key"))
+        val ephemeralKeyPair = cryptoService.generateEphemeralKeyPair(crv).getOrElse {
+            Napier.w("No ephemeral key pair from native code", it)
+            return KmmResult.failure(it)
+        }
         val jweHeader = JweHeader(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
@@ -165,23 +168,22 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val z = cryptoService.performKeyAgreement(ephemeralKeyPair, recipientKey, jweAlgorithm)
             .getOrElse {
                 Napier.w("No Z value from native code", it)
-                return null
+                return KmmResult.failure(it)
             }
         val kdf = prependWithAdditionalInfo(z, jweEncryption, null, null)
         val key = cryptoService.messageDigest(kdf, Digest.SHA256).getOrElse {
             Napier.w("No digest from native code", it)
-            return null
+            return KmmResult.failure(it)
         }
         val iv = Random.Default.nextBytes(jweEncryption.ivLengthBits / 8)
         val headerSerialized = jweHeader.serialize()
         val aad = headerSerialized.encodeToByteArray()
         val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
-        val ciphertext =
-            cryptoService.encrypt(key, iv, aadForCipher, payload, jweEncryption).getOrElse {
-                Napier.w("No ciphertext from native code", it)
-                return null
-            }
-        return JweEncrypted(aad, null, iv, ciphertext.ciphertext, ciphertext.authtag).serialize()
+        val ciphertext = cryptoService.encrypt(key, iv, aadForCipher, payload, jweEncryption).getOrElse {
+            Napier.w("No ciphertext from native code", it)
+            return KmmResult.failure(it)
+        }
+        return KmmResult.success(JweEncrypted(aad, null, iv, ciphertext.ciphertext, ciphertext.authtag))
     }
 
     private fun prependWithAdditionalInfo(
