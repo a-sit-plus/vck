@@ -109,13 +109,33 @@ class OidcSiopVerifier(
         )
     }
 
-    suspend fun createSignedMetadata() = KmmResult.runCatching {
-        jwsService.createSignedJwsAddingParams(
-            header = JwsHeader(algorithm = JwsAlgorithm.ES256),
-            payload = metadata.serialize().encodeToByteArray(),
-            addKeyId = true
-        )
+    /**
+     * Create a URL to be displayed as a static QR code for Wallet initiation.
+     * URL is the [walletUrl], with query parameters appended for [relyingPartyUrl], [clientMetadataUrl], [requestUrl].
+     */
+    fun createQrCodeUrl(
+        walletUrl: String,
+        clientMetadataUrl: String,
+        requestUrl: String,
+    ): String {
+        val urlBuilder = URLBuilder(walletUrl)
+        AuthenticationRequestParameters(
+            clientId = relyingPartyUrl,
+            clientMetadataUri = clientMetadataUrl,
+            requestUri = requestUrl,
+        ).encodeToParameters()
+            .forEach { urlBuilder.parameters.append(it.key, it.value) }
+        return urlBuilder.buildString()
     }
+
+    /**
+     * Creates a JWS containing signed [metadata], to be served under a `client_metadata_uri` at the Verifier.
+     */
+    suspend fun createSignedMetadata(): KmmResult<JwsSigned> = jwsService.createSignedJwsAddingParams(
+        header = JwsHeader(algorithm = JwsAlgorithm.ES256),
+        payload = metadata.serialize().encodeToByteArray(),
+        addKeyId = true
+    )
 
     /**
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl].
@@ -147,14 +167,16 @@ class OidcSiopVerifier(
         walletUrl: String,
         responseMode: String? = null,
         state: String? = uuid4().toString(),
-    ): String {
+    ): KmmResult<String> {
         val urlBuilder = URLBuilder(walletUrl)
         createAuthnRequestAsRequestObject(
             responseMode = responseMode,
             state = state,
-        ).encodeToParameters()
+        ).getOrElse {
+            return KmmResult.failure(it)
+        }.encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
-        return urlBuilder.buildString()
+        return KmmResult.success(urlBuilder.buildString())
     }
 
     /**
@@ -166,7 +188,7 @@ class OidcSiopVerifier(
     suspend fun createAuthnRequestAsRequestObject(
         responseMode: String? = null,
         state: String? = uuid4().toString(),
-    ): AuthenticationRequestParameters {
+    ): KmmResult<AuthenticationRequestParameters> {
         val requestObject = createAuthnRequest(
             responseMode = responseMode,
             state = state,
@@ -178,8 +200,16 @@ class OidcSiopVerifier(
             header = JwsHeader(algorithm = JwsAlgorithm.ES256),
             payload = requestObjectSerialized.encodeToByteArray(),
             addKeyId = true
+        ).getOrElse {
+            Napier.w("Could not sign JWS form authnRequest", it)
+            return KmmResult.failure(it)
+        }
+        return KmmResult.success(
+            AuthenticationRequestParameters(
+                clientId = relyingPartyUrl,
+                request = signedJws.serialize()
+            )
         )
-        return AuthenticationRequestParameters(clientId = relyingPartyUrl, request = signedJws?.serialize())
     }
 
     /**

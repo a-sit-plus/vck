@@ -33,9 +33,8 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
-import io.ktor.util.flattenEntries
+import io.ktor.http.*
+import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -113,25 +112,30 @@ class OidcSiopWallet(
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun createAuthnResponse(it: String): KmmResult<AuthenticationResponseResult> {
+    suspend fun createAuthnResponse(input: String): KmmResult<AuthenticationResponseResult> {
         val params = kotlin.runCatching {
-            Url(it).parameters.flattenEntries().toMap().decodeFromUrlQuery<AuthenticationRequestParameters>()
-        }.getOrNull()
-            ?: return KmmResult.failure<AuthenticationResponseResult>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("Could not parse authentication request") }
-        return extractRequestObject(params)
-            ?.let { createAuthnResponse(it) }
+            Url(input).parameters.flattenEntries().toMap().decodeFromUrlQuery<AuthenticationRequestParameters>()
+        }.getOrElse {
+            parseRequestObjectJws(input)
+        } ?: return KmmResult.failure<AuthenticationResponseResult>(OAuth2Exception(Errors.INVALID_REQUEST))
+            .also { Napier.w("Could not parse authentication request") }
+        return extractRequestObject(params)?.let { createAuthnResponse(it) }
             ?: createAuthnResponse(params)
     }
 
     private fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParameters? {
         params.request?.let { requestObject ->
-            JwsSigned.parse(requestObject)?.let { jws ->
-                if (verifierJwsService.verifyJwsObject(jws)) {
-                    return kotlin.runCatching {
-                        jsonSerializer.decodeFromString<AuthenticationRequestParameters>(jws.payload.decodeToString())
-                    }.getOrNull()
-                }
+            parseRequestObjectJws(requestObject)
+        }
+        return null
+    }
+
+    private fun parseRequestObjectJws(requestObject: String): AuthenticationRequestParameters? {
+        JwsSigned.parse(requestObject)?.let { jws ->
+            if (verifierJwsService.verifyJwsObject(jws)) {
+                return kotlin.runCatching {
+                    jsonSerializer.decodeFromString<AuthenticationRequestParameters>(jws.payload.decodeToString())
+                }.getOrNull()
             }
         }
         return null
@@ -231,9 +235,10 @@ class OidcSiopWallet(
         )
         val jwsPayload = idToken.serialize().encodeToByteArray()
         val jwsHeader = JwsHeader(algorithm = JwsAlgorithm.ES256)
-        val signedIdToken = jwsService.createSignedJwsAddingParams(jwsHeader, jwsPayload)
-            ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
-                .also { Napier.w("Could not sign id_token") }
+        val signedIdToken = jwsService.createSignedJwsAddingParams(jwsHeader, jwsPayload).getOrElse {
+            Napier.w("Could not sign id_token", it)
+            return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
+        }
 
         val requestedScopes = (params.scope ?: "").split(" ")
             .filterNot { it == SCOPE_OPENID }.filterNot { it == SCOPE_PROFILE }
