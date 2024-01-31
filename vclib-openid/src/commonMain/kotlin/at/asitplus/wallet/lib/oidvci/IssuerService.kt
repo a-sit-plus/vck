@@ -4,6 +4,7 @@ import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.JsonWebToken
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
@@ -98,21 +99,21 @@ class IssuerService(
             docType = isoDocType,
             claims = buildIsoClaims(),
             supportedBindingMethods = arrayOf(BINDING_METHOD_COSE_KEY),
-            supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.identifier),
+            supportedCryptographicSuites = issuer.cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toTypedArray(),
         ),
         SupportedCredentialFormat(
             format = CredentialFormatEnum.JWT_VC,
             id = vcType,
             types = arrayOf(VERIFIABLE_CREDENTIAL, vcType),
             supportedBindingMethods = arrayOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
-            supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.identifier),
+            supportedCryptographicSuites = issuer.cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toTypedArray(),
         ),
         SupportedCredentialFormat(
             format = CredentialFormatEnum.JWT_VC_SD,
             id = vcType,
             types = arrayOf(VERIFIABLE_CREDENTIAL, vcType),
             supportedBindingMethods = arrayOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
-            supportedCryptographicSuites = arrayOf(JwsAlgorithm.ES256.identifier),
+            supportedCryptographicSuites = issuer.cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toTypedArray(),
         )
     )
 

@@ -98,8 +98,8 @@ class OidcSiopWallet(
             responseTypesSupported = arrayOf(ID_TOKEN),
             scopesSupported = arrayOf(SCOPE_OPENID),
             subjectTypesSupported = arrayOf("pairwise", "public"),
-            idTokenSigningAlgorithmsSupported = arrayOf(JwsAlgorithm.ES256.identifier),
-            requestObjectSigningAlgorithmsSupported = arrayOf(JwsAlgorithm.ES256.identifier),
+            idTokenSigningAlgorithmsSupported = arrayOf(jwsService.algorithm.identifier),
+            requestObjectSigningAlgorithmsSupported = arrayOf(jwsService.algorithm.identifier),
             subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
             idTokenTypesSupported = arrayOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,
@@ -214,7 +214,7 @@ class OidcSiopWallet(
         if (params.clientMetadata.vpFormats == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
-        if (params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains(JwsAlgorithm.ES256.identifier) != true)
+        if (params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible JWT algorithms") }
         if (params.nonce == null)
