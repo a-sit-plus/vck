@@ -184,6 +184,8 @@ actual class DefaultCryptoService : CryptoService {
 @Suppress("UNCHECKED_CAST")
 actual class DefaultVerifierCryptoService : VerifierCryptoService {
 
+    override val supportedAlgorithms: List<CryptoAlgorithm> = CryptoAlgorithm.entries.filter { it.isEc }
+
     override fun verify(
         input: ByteArray,
         signature: CryptoSignature,

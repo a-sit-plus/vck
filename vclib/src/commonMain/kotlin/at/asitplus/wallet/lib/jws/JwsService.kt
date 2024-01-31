@@ -9,6 +9,7 @@ import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncrypted
 import at.asitplus.crypto.datatypes.jws.JweEncryption
 import at.asitplus.crypto.datatypes.jws.JweHeader
+import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsExtensions.prependWith4BytesSize
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
@@ -60,6 +61,8 @@ interface JwsService {
 }
 
 interface VerifierJwsService {
+
+    val supportedAlgorithms: List<JwsAlgorithm>
 
     fun verifyJwsObject(jwsObject: JwsSigned): Boolean
 
@@ -208,6 +211,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 class DefaultVerifierJwsService(
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService()
 ) : VerifierJwsService {
+
+    override val supportedAlgorithms: List<JwsAlgorithm> = cryptoService.supportedAlgorithms.map { it.toJwsAlgorithm() }
 
     /**
      * Verifies the signature of [jwsObject], by extracting the public key from [JwsHeader.keyId] (`kid`),

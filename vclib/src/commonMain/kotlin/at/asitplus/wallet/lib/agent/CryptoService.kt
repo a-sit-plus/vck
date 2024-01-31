@@ -6,6 +6,7 @@ import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncryption
+import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 
 interface CryptoService {
@@ -58,6 +59,11 @@ interface CryptoService {
 }
 
 interface VerifierCryptoService {
+
+    /**
+     * List of algorithms, for which signatures can be verified in [verify].
+     */
+    val supportedAlgorithms: List<CryptoAlgorithm>
 
     fun verify(
         input: ByteArray,

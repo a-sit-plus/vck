@@ -2,8 +2,6 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
-import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
@@ -95,7 +93,9 @@ class OidcSiopVerifier(
         )
     }
 
-    private val containerJwt = FormatContainerJwt(algorithms = arrayOf(JwsAlgorithm.ES256.identifier))
+    private val containerJwt =
+        FormatContainerJwt(algorithms = verifierJwsService.supportedAlgorithms.map { it.identifier }.toTypedArray())
+
     private val vpFormats = FormatHolder(
         msoMdoc = if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC) containerJwt else null,
         jwtVp = containerJwt,
