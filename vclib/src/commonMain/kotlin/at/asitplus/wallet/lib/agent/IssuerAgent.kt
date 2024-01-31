@@ -183,8 +183,6 @@ class IssuerAgent(
                 scheme.isoNamespace to IssuerSignedList.withItems(credential.issuerSignedItems)
             ),
             issuerAuth = coseService.createSignedCose(
-                protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
-                unprotectedHeader = null,
                 payload = mso.serializeForIssuerAuth(),
                 addKeyId = false,
                 addCertificate = true,

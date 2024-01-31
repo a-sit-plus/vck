@@ -119,8 +119,6 @@ class Wallet {
                         namespaces = byteArrayOf(),
                         deviceAuth = DeviceAuth(
                             deviceSignature = coseService.createSignedCose(
-                                protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
-                                unprotectedHeader = null,
                                 payload = null,
                                 addKeyId = false
                             ).getOrThrow()
@@ -186,10 +184,9 @@ class Issuer {
                             )
                         ),
                         issuerAuth = coseService.createSignedCose(
-                            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
-                            unprotectedHeader = null, // TODO transport issuer certificate
                             payload = mso.serializeForIssuerAuth(),
                             addKeyId = false,
+                            addCertificate = true,
                         ).getOrThrow()
                     ),
                     deviceSigned = DeviceSigned(
@@ -228,10 +225,9 @@ class Verifier {
                     )
                 ),
                 readerAuth = coseService.createSignedCose(
-                    protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
                     unprotectedHeader = CoseHeader(),
                     payload = null,
-                    addKeyId = false
+                    addKeyId = false,
                 ).getOrThrow()
             )
         )

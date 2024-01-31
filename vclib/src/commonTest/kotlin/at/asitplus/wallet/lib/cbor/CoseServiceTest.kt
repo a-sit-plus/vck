@@ -29,7 +29,6 @@ class CoseServiceTest : FreeSpec({
 
     "signed object with bytes can be verified" {
         val signed = coseService.createSignedCose(
-            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
             unprotectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
             payload = randomPayload,
             addKeyId = true
@@ -50,7 +49,6 @@ class CoseServiceTest : FreeSpec({
 
     "signed object without payload can be verified" {
         val signed = coseService.createSignedCose(
-            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
             unprotectedHeader = null,
             payload = null,
             addKeyId = true
