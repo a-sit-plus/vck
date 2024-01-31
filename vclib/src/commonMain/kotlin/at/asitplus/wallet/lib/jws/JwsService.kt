@@ -27,6 +27,11 @@ import kotlin.random.Random
  */
 interface JwsService {
 
+    /**
+     * Algorithm which will be used to sign JWs in [createSignedJws], [createSignedJwt], [createSignedJwsAddingParams].
+     */
+    val algorithm: JwsAlgorithm
+
     suspend fun createSignedJwt(
         type: String,
         payload: ByteArray,
@@ -71,6 +76,8 @@ interface VerifierJwsService {
 }
 
 class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
+
+    override val algorithm: JwsAlgorithm = cryptoService.algorithm.toJwsAlgorithm()
 
     override suspend fun createSignedJwt(
         type: String,
