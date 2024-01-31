@@ -207,8 +207,6 @@ class HolderAgent(
         requestedClaims: Collection<String>?
     ): Holder.CreatePresentationResult.Document? {
         val deviceSignature = coseService.createSignedCose(
-            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
-            unprotectedHeader = null,
             payload = challenge.encodeToByteArray(),
             addKeyId = false
         ).getOrNull() ?: return null

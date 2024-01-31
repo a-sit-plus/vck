@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.cose.*
+import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
@@ -14,6 +15,11 @@ import kotlinx.serialization.cbor.ByteStringWrapper
 interface CoseService {
 
     /**
+     * Algorithm which will be used to sign COSE in [createSignedCose].
+     */
+    val algorithm: CoseAlgorithm
+
+    /**
      * Creates and signs a new [CoseSigned] object,
      * appends correct value for [CoseHeader.algorithm] into [protectedHeader].
      *
@@ -22,7 +28,7 @@ interface CoseService {
      *
      */
     suspend fun createSignedCose(
-        protectedHeader: CoseHeader,
+        protectedHeader: CoseHeader? = null,
         unprotectedHeader: CoseHeader? = null,
         payload: ByteArray? = null,
         addKeyId: Boolean = true,
@@ -43,14 +49,17 @@ private const val SIGNATURE1_STRING = "Signature1"
 
 class DefaultCoseService(private val cryptoService: CryptoService) : CoseService {
 
+    override val algorithm: CoseAlgorithm = cryptoService.algorithm.toCoseAlgorithm()
+
     override suspend fun createSignedCose(
-        protectedHeader: CoseHeader,
+        protectedHeader: CoseHeader?,
         unprotectedHeader: CoseHeader?,
         payload: ByteArray?,
         addKeyId: Boolean,
         addCertificate: Boolean,
     ): KmmResult<CoseSigned> {
-        var copyProtectedHeader = protectedHeader.copy(algorithm = cryptoService.algorithm.toCoseAlgorithm())
+        var copyProtectedHeader = protectedHeader?.copy(algorithm = algorithm)
+            ?: CoseHeader(algorithm = algorithm)
         if (addKeyId) copyProtectedHeader =
             copyProtectedHeader.copy(kid = cryptoService.publicKey.didEncoded.encodeToByteArray())
 
