@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
-import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
@@ -234,8 +233,7 @@ class OidcSiopWallet(
             nonce = params.nonce,
         )
         val jwsPayload = idToken.serialize().encodeToByteArray()
-        val jwsHeader = JwsHeader(algorithm = JwsAlgorithm.ES256)
-        val signedIdToken = jwsService.createSignedJwsAddingParams(jwsHeader, jwsPayload).getOrElse {
+        val signedIdToken = jwsService.createSignedJwsAddingParams(payload = jwsPayload).getOrElse {
             Napier.w("Could not sign id_token", it)
             return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
         }

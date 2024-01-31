@@ -132,7 +132,6 @@ class OidcSiopVerifier(
      * Creates a JWS containing signed [metadata], to be served under a `client_metadata_uri` at the Verifier.
      */
     suspend fun createSignedMetadata(): KmmResult<JwsSigned> = jwsService.createSignedJwsAddingParams(
-        header = JwsHeader(algorithm = JwsAlgorithm.ES256),
         payload = metadata.serialize().encodeToByteArray(),
         addKeyId = true
     )
@@ -197,7 +196,6 @@ class OidcSiopVerifier(
             requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
         )
         val signedJws = jwsService.createSignedJwsAddingParams(
-            header = JwsHeader(algorithm = JwsAlgorithm.ES256),
             payload = requestObjectSerialized.encodeToByteArray(),
             addKeyId = true
         ).getOrElse {
