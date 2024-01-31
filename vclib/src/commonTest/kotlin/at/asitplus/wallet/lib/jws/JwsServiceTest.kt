@@ -62,8 +62,7 @@ class JwsServiceTest : FreeSpec({
 
     "signed object with automatically added params can be verified" {
         val payload = randomPayload.encodeToByteArray()
-        val signed =
-            jwsService.createSignedJwsAddingParams(JwsHeader(algorithm = JwsAlgorithm.ES256), payload).getOrThrow()
+        val signed = jwsService.createSignedJwsAddingParams(payload = payload).getOrThrow()
         signed.shouldNotBeNull()
         val result = verifierJwsService.verifyJwsObject(signed)
         result shouldBe true

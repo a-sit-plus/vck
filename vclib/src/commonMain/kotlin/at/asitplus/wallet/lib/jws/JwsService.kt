@@ -35,11 +35,12 @@ interface JwsService {
     suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): KmmResult<JwsSigned>
 
     /**
-     * Appends correct values for [JweHeader.keyId], [JwsHeader.algorithm] and [JwsHeader.jsonWebKey],
-     * if the corresponding options are set
+     * Appends correct values for  [JwsHeader.algorithm],
+     * [JweHeader.keyId] (if `addKeyId` is `true`),
+     * and [JwsHeader.jsonWebKey] (if `addJsonWebKey` is `true`).
      */
     suspend fun createSignedJwsAddingParams(
-        header: JwsHeader,
+        header: JwsHeader? = null,
         payload: ByteArray,
         addKeyId: Boolean = true,
         addJsonWebKey: Boolean = true
@@ -98,12 +99,13 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     }
 
     override suspend fun createSignedJwsAddingParams(
-        header: JwsHeader,
+        header: JwsHeader?,
         payload: ByteArray,
         addKeyId: Boolean,
         addJsonWebKey: Boolean
     ): KmmResult<JwsSigned> {
-        var copy = header.copy(algorithm = cryptoService.algorithm.toJwsAlgorithm())
+        var copy = header?.copy(algorithm = cryptoService.algorithm.toJwsAlgorithm())
+            ?: JwsHeader(algorithm = cryptoService.algorithm.toJwsAlgorithm())
         if (addKeyId)
             copy = copy.copy(keyId = cryptoService.jsonWebKey.keyId)
         if (addJsonWebKey)
