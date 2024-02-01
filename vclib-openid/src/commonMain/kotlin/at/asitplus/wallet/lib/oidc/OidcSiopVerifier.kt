@@ -81,16 +81,6 @@ class OidcSiopVerifier(
     private val containerJwt =
         FormatContainerJwt(algorithms = verifierJwsService.supportedAlgorithms.map { it.identifier }.toTypedArray())
 
-    //    private val vpFormats =
-//    val metadata by lazy {
-//        RelyingPartyMetadata(
-//            redirectUris = arrayOf(relyingPartyUrl),
-//            jsonWebKeySet = JsonWebKeySet(arrayOf(agentPublicKey.toJsonWebKey())),
-//            subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
-//            vpFormats = vpFormats,
-//        )
-//    }
-
     private fun getVpFormats(credentialRepresentation: ConstantIndex.CredentialRepresentation) =
         FormatHolder(
             msoMdoc = if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC) containerJwt else null,
