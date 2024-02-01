@@ -5,8 +5,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
 import com.benasher44.uuid.uuid4
-import io.github.aakira.napier.DebugAntilog
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -69,9 +67,8 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
             credentialScheme = ConstantIndex.MobileDrivingLicence2023,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
         )
-        val document = runProcess(verifierSiop, walletUrl, holderSiop)
+        val document = runProcess(verifierSiop, walletUrl, ConstantIndex.CredentialRepresentation.ISO_MDOC, holderSiop)
 
         document.validItems.shouldNotBeEmpty()
         document.invalidItems.shouldBeEmpty()
@@ -83,9 +80,8 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
             credentialScheme = ConstantIndex.AtomicAttribute2023,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
         )
-        val document = runProcess(verifierSiop, walletUrl, holderSiop)
+        val document = runProcess(verifierSiop, walletUrl, ConstantIndex.CredentialRepresentation.ISO_MDOC, holderSiop)
 
         document.validItems.shouldNotBeEmpty()
         document.invalidItems.shouldBeEmpty()
@@ -98,10 +94,9 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
             credentialScheme = ConstantIndex.MobileDrivingLicence2023,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
             requestedAttributes = listOf(requestedClaim),
         )
-        val document = runProcess(verifierSiop, walletUrl, holderSiop)
+        val document = runProcess(verifierSiop, walletUrl, ConstantIndex.CredentialRepresentation.ISO_MDOC, holderSiop)
 
         document.validItems.shouldNotBeEmpty()
         document.validItems.shouldBeSingleton()
@@ -114,9 +109,12 @@ class OidcSiopIsoProtocolTest : FreeSpec({
 private suspend fun runProcess(
     verifierSiop: OidcSiopVerifier,
     walletUrl: String,
-    holderSiop: OidcSiopWallet
+    credentialRepresentation: ConstantIndex.CredentialRepresentation,
+    holderSiop: OidcSiopWallet,
 ): IsoDocumentParsed {
-    val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl).also { println(it) }
+    val authnRequest =
+        verifierSiop.createAuthnRequestUrl(walletUrl = walletUrl, credentialRepresentation = credentialRepresentation)
+            .also { println(it) }
 
     val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
     authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }

@@ -52,12 +52,14 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT,
         )
     }
 
     "test with Fragment" {
-        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl).also { println(it) }
+        val authnRequest = verifierSiop.createAuthnRequestUrl(
+            walletUrl = walletUrl,
+            credentialRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT
+        ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
@@ -67,7 +69,12 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         result.disclosures.shouldNotBeEmpty()
 
         verifierSiop.validateAuthnResponse(
-            (holderSiop.createAuthnResponse(verifierSiop.createAuthnRequestUrl(walletUrl))
+            (holderSiop.createAuthnResponse(
+                verifierSiop.createAuthnRequestUrl(
+                    walletUrl = walletUrl,
+                    credentialRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT
+                )
+            )
                 .getOrThrow() as OidcSiopWallet.AuthenticationResponseResult.Redirect).url
         ).shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
     }
@@ -79,10 +86,12 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
             credentialScheme = ConstantIndex.AtomicAttribute2023,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT,
             requestedAttributes = listOf(requestedClaim),
         )
-        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl).also { println(it) }
+        val authnRequest = verifierSiop.createAuthnRequestUrl(
+            walletUrl = walletUrl,
+            credentialRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT
+        ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }

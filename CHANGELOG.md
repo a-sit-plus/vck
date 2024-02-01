@@ -1,6 +1,7 @@
 # Changelog
 
 Release 3.4.0:
+ - Remove `OidcSiopVerifier.credentialRepresentation` parameter, now function parameter
  - Target Java 17
  - Updated dependencies from conventions: Bouncycastle 1.77, Serialization 1.6.3-snapshot (fork), Napier 2.7.1
  - Integrate `kmp-crypto` library
