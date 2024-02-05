@@ -1,6 +1,12 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -68,15 +74,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
         result.disclosures.shouldNotBeEmpty()
 
-        verifierSiop.validateAuthnResponse(
-            (holderSiop.createAuthnResponse(
-                verifierSiop.createAuthnRequestUrl(
-                    walletUrl = walletUrl,
-                    representation = ConstantIndex.CredentialRepresentation.SD_JWT
-                )
-            )
-                .getOrThrow() as OidcSiopWallet.AuthenticationResponseResult.Redirect).url
-        ).shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
+        assertSecondRun(verifierSiop, holderSiop, walletUrl)
     }
 
     "Selective Disclosure with custom credential" {
@@ -86,11 +84,11 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
             credentialScheme = ConstantIndex.AtomicAttribute2023,
-            requestedAttributes = listOf(requestedClaim),
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            representation = ConstantIndex.CredentialRepresentation.SD_JWT
+            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+            requestedAttributes = listOf(requestedClaim),
         ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
@@ -106,3 +104,18 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     }
 
 })
+
+private suspend fun assertSecondRun(
+    verifierSiop: OidcSiopVerifier,
+    holderSiop: OidcSiopWallet,
+    walletUrl: String
+) {
+    val authnRequestUrl = verifierSiop.createAuthnRequestUrl(
+        walletUrl = walletUrl,
+        representation = ConstantIndex.CredentialRepresentation.SD_JWT
+    )
+    val authnResponse = holderSiop.createAuthnResponse(authnRequestUrl)
+    val url = (authnResponse.getOrThrow() as OidcSiopWallet.AuthenticationResponseResult.Redirect).url
+    val validation = verifierSiop.validateAuthnResponse(url)
+    validation.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
+}

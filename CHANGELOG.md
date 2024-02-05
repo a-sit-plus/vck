@@ -1,7 +1,6 @@
 # Changelog
 
 Release 3.4.0:
- - Remove `OidcSiopVerifier.credentialRepresentation` parameter, now function parameter
  - Target Java 17
  - Updated dependencies from conventions: Bouncycastle 1.77, Serialization 1.6.3-snapshot (fork), Napier 2.7.1
  - Integrate `kmp-crypto` library
@@ -16,7 +15,8 @@ Release 3.4.0:
  - Support `ES384`, `ES512`, `RS256`, `RS384`, `RS512`, `PS256`, `PS384` and `PS512` signatures in `DefaultCryptoService`
  - Change `DefaultCryptoService` constructor signature: When handing over a private/public key pair, the `CryptoAlgorithm` parameter is now mandatory
  - Change return type of methods in `JwsService` to `KmmResult<T>` to transport exceptions from native implementations
- - Support static QR code use case for OIDC SIOPv2 flows
+ - Support static QR code use case for OIDC SIOPv2 flows in `OidcSiopVerifier`
+ - Move constructor parameters `credentialRepresentation`, `requestedAttributes` from `OidcSiopVerifier` into function calls
 
 Release 3.3.0:
  - Change non-typed attribute types (i.e. Strings) to typed credential schemes (i.e. `ConstantIndex.CredentialScheme`), this includes methods `getCredentials`, `createPresentation` in interface `Holder`, and method `getCredentials` in interface `SubjectCredentialStore`
