@@ -58,7 +58,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     "test with Fragment" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT
+            representation = ConstantIndex.CredentialRepresentation.SD_JWT
         ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
@@ -72,7 +72,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
             (holderSiop.createAuthnResponse(
                 verifierSiop.createAuthnRequestUrl(
                     walletUrl = walletUrl,
-                    credentialRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT
+                    representation = ConstantIndex.CredentialRepresentation.SD_JWT
                 )
             )
                 .getOrThrow() as OidcSiopWallet.AuthenticationResponseResult.Redirect).url
@@ -90,7 +90,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT
+            representation = ConstantIndex.CredentialRepresentation.SD_JWT
         ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()

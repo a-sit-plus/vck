@@ -119,7 +119,7 @@ private suspend fun runProcess(
     holderSiop: OidcSiopWallet,
 ): IsoDocumentParsed {
     val authnRequest =
-        verifierSiop.createAuthnRequestUrl(walletUrl = walletUrl, credentialRepresentation = credentialRepresentation)
+        verifierSiop.createAuthnRequestUrl(walletUrl = walletUrl, representation = credentialRepresentation)
             .also { println(it) }
 
     val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
