@@ -26,6 +26,8 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlin.time.DurationUnit
@@ -52,6 +54,7 @@ class OidcSiopVerifier(
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
+    private val challengeMutex = Mutex()
     private val challengeSet = mutableSetOf<String>()
 
     companion object {
@@ -237,14 +240,14 @@ class OidcSiopVerifier(
             redirectUrl = relyingPartyUrl,
             clientIdScheme = REDIRECT_URI,
             scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.vcType).joinToString(" "),
-            nonce = uuid4().toString().also { challengeSet += it },
-            clientMetadata = getMetaData(credentialRepresentation),
+            nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
+            clientMetadata = metadata,
             idTokenType = IdTokenType.SUBJECT_SIGNED.text,
             responseMode = responseMode,
             state = state,
             presentationDefinition = PresentationDefinition(
                 id = uuid4().toString(),
-                formats = getVpFormats(credentialRepresentation),
+                formats = representation.toFormatHolder(),
                 inputDescriptors = arrayOf(
                     InputDescriptor(
                         id = uuid4().toString(),
@@ -369,9 +372,11 @@ class OidcSiopVerifier(
         if (idToken.issuedAt > (clock.now() + timeLeeway))
             return AuthnResponseResult.ValidationError("iat", params.state)
                 .also { Napier.d("issuedAt after now: ${idToken.issuedAt}") }
-        if (!challengeSet.remove(idToken.nonce))
-            return AuthnResponseResult.ValidationError("nonce", params.state)
-                .also { Napier.d("nonce not valid: ${idToken.nonce}, not known to us") }
+        challengeMutex.withLock {
+            if (!challengeSet.remove(idToken.nonce))
+                return AuthnResponseResult.ValidationError("nonce", params.state)
+                    .also { Napier.d("nonce not valid: ${idToken.nonce}, not known to us") }
+        }
         if (idToken.subjectJwk == null)
             return AuthnResponseResult.ValidationError("nonce", params.state)
                 .also { Napier.d("sub_jwk is null") }
