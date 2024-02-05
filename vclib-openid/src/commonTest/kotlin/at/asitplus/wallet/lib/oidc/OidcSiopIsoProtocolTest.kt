@@ -100,9 +100,14 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
             credentialScheme = ConstantIndex.MobileDrivingLicence2023,
-            requestedAttributes = listOf(requestedClaim),
         )
-        val document = runProcess(verifierSiop, walletUrl, ConstantIndex.CredentialRepresentation.ISO_MDOC, holderSiop)
+        val document = runProcess(
+            verifierSiop,
+            walletUrl,
+            ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            holderSiop,
+            listOf(requestedClaim)
+        )
 
         document.validItems.shouldNotBeEmpty()
         document.validItems.shouldBeSingleton()
@@ -117,10 +122,13 @@ private suspend fun runProcess(
     walletUrl: String,
     credentialRepresentation: ConstantIndex.CredentialRepresentation,
     holderSiop: OidcSiopWallet,
+    requestedAttributes: List<String>? = null,
 ): IsoDocumentParsed {
-    val authnRequest =
-        verifierSiop.createAuthnRequestUrl(walletUrl = walletUrl, representation = credentialRepresentation)
-            .also { println(it) }
+    val authnRequest = verifierSiop.createAuthnRequestUrl(
+        walletUrl = walletUrl,
+        representation = credentialRepresentation,
+        requestedAttributes = requestedAttributes
+    ).also { println(it) }
 
     val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
     authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
