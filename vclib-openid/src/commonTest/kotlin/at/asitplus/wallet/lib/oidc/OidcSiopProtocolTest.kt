@@ -73,10 +73,8 @@ class OidcSiopProtocolTest : FreeSpec({
     }
 
     "test with Fragment" {
-        val authnRequest = verifierSiop.createAuthnRequestUrl(
-            walletUrl = walletUrl,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
-        ).also { println(it) }
+        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl = walletUrl)
+            .also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
@@ -89,15 +87,7 @@ class OidcSiopProtocolTest : FreeSpec({
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
 
-        verifierSiop.validateAuthnResponse(
-            (holderSiop.createAuthnResponse(
-                verifierSiop.createAuthnRequestUrl(
-                    walletUrl = walletUrl,
-                    credentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                )
-            )
-                .getOrThrow() as OidcSiopWallet.AuthenticationResponseResult.Redirect).url
-        ).shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+        verifySecondProtocolRun(verifierSiop, walletUrl, holderSiop)
     }
 
     "test with QR Code" {
@@ -129,7 +119,6 @@ class OidcSiopProtocolTest : FreeSpec({
     "test with POST" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             responseMode = OpenIdConstants.ResponseModes.POST
         ).also { println(it) }
 
@@ -146,7 +135,6 @@ class OidcSiopProtocolTest : FreeSpec({
         val expectedState = uuid4().toString()
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             responseMode = OpenIdConstants.ResponseModes.QUERY,
             state = expectedState
         ).also { println(it) }
@@ -186,10 +174,7 @@ class OidcSiopProtocolTest : FreeSpec({
             credentialScheme = ConstantIndex.AtomicAttribute2023,
         )
 
-        val authnRequest = verifierSiop.createAuthnRequestUrl(
-            walletUrl = walletUrl,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
-        ).also { println(it) }
+        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl = walletUrl).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
@@ -202,3 +187,16 @@ class OidcSiopProtocolTest : FreeSpec({
         }
     }
 })
+
+private suspend fun verifySecondProtocolRun(
+    verifierSiop: OidcSiopVerifier,
+    walletUrl: String,
+    holderSiop: OidcSiopWallet
+) {
+    val authnRequestUrl = verifierSiop.createAuthnRequestUrl(walletUrl = walletUrl)
+    val authnResponse = holderSiop.createAuthnResponse(authnRequestUrl)
+    val validation = verifierSiop.validateAuthnResponse(
+        (authnResponse.getOrThrow() as OidcSiopWallet.AuthenticationResponseResult.Redirect).url
+    )
+    validation.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+}

@@ -140,18 +140,18 @@ class OidcSiopVerifier(
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl].
      *
      * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
-     * @param credentialRepresentation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
+     * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
      */
     suspend fun createAuthnRequestUrl(
         walletUrl: String,
         responseMode: String? = null,
-        credentialRepresentation: ConstantIndex.CredentialRepresentation,
+        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         state: String? = uuid4().toString(),
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
         createAuthnRequest(
             responseMode = responseMode,
-            representation = credentialRepresentation,
+            representation = representation,
             state = state,
         ).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
