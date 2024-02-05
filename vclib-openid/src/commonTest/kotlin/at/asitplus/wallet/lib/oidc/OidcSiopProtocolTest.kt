@@ -1,7 +1,13 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.crypto.datatypes.jws.JwsSigned
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
@@ -103,11 +109,11 @@ class OidcSiopProtocolTest : FreeSpec({
         qrcode shouldContain metadataUrlNonce
         qrcode shouldContain requestUrlNonce
 
-        val metadataObject = verifierSiop.createSignedMetadata(ConstantIndex.CredentialRepresentation.PLAIN_JWT).getOrThrow()
+        val metadataObject = verifierSiop.createSignedMetadata().getOrThrow()
             .also { println(it) }
         DefaultVerifierJwsService().verifyJwsObject(metadataObject).shouldBeTrue()
 
-        val authnRequest = verifierSiop.createAuthnRequestAsRequestObject(credentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT).getOrThrow()
+        val authnRequest = verifierSiop.createAuthnRequestAsRequestObject().getOrThrow()
         authnRequest.clientId shouldBe relyingPartyUrl
         val jar = authnRequest.request
         jar.shouldNotBeNull()
@@ -159,8 +165,7 @@ class OidcSiopProtocolTest : FreeSpec({
     }
 
     "test with deserializing" {
-        val authnRequest =
-            verifierSiop.createAuthnRequest(credentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT)
+        val authnRequest = verifierSiop.createAuthnRequest()
         val authnRequestUrlParams = authnRequest.encodeToParameters().formUrlEncode().also { println(it) }
 
         val parsedAuthnRequest: AuthenticationRequestParameters = authnRequestUrlParams.decodeFromUrlQuery()
