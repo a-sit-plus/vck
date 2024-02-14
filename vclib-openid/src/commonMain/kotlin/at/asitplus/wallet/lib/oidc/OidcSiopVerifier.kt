@@ -101,6 +101,7 @@ class OidcSiopVerifier(
             vpFormats = FormatHolder(
                 msoMdoc = containerJwt,
                 jwtVp = containerJwt,
+                jwtSd = containerJwt,
             )
         )
     }
@@ -249,8 +250,7 @@ class OidcSiopVerifier(
                 ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoConstraint()
             }
         }
-        val attributeConstraint =
-            requestedAttributes?.let { createConstraints(representation, it) } ?: arrayOf()
+        val attributeConstraint = requestedAttributes?.let { createConstraints(representation, it) } ?: arrayOf()
         val constraintFields = listOfNotNull(typeConstraint, *attributeConstraint).toTypedArray()
         return AuthenticationRequestParameters(
             responseType = "$ID_TOKEN $VP_TOKEN",
@@ -277,10 +277,11 @@ class OidcSiopVerifier(
         )
     }
 
-    private fun ConstantIndex.CredentialRepresentation.toFormatHolder() = FormatHolder(
-        msoMdoc = if (this == ConstantIndex.CredentialRepresentation.ISO_MDOC) containerJwt else null,
-        jwtVp = containerJwt,
-    )
+    private fun ConstantIndex.CredentialRepresentation.toFormatHolder() = when (this) {
+        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
+        ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerJwt)
+        ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
+    }
 
     private fun ConstantIndex.CredentialScheme.vcConstraint() = ConstraintField(
         path = arrayOf("$.type"),
@@ -301,13 +302,12 @@ class OidcSiopVerifier(
     private fun createConstraints(
         credentialRepresentation: ConstantIndex.CredentialRepresentation,
         attributeTypes: List<String>,
-    ): Array<ConstraintField> =
-        attributeTypes.map {
-            if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-                ConstraintField(path = arrayOf("\$.mdoc.$it"), intentToRetain = false)
-            else
-                ConstraintField(path = arrayOf("\$.$it"))
-        }.toTypedArray()
+    ): Array<ConstraintField> = attributeTypes.map {
+        if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
+            ConstraintField(path = arrayOf("\$.mdoc.$it"), intentToRetain = false)
+        else
+            ConstraintField(path = arrayOf("\$.$it"))
+    }.toTypedArray()
 
 
     sealed class AuthnResponseResult {
@@ -427,30 +427,25 @@ class OidcSiopVerifier(
             .also { Napier.w("Descriptor format not known: $format") }
 
         return when (result) {
-            is Verifier.VerifyPresentationResult.InvalidStructure -> {
-                Napier.w("VP error: $result")
+            is Verifier.VerifyPresentationResult.InvalidStructure ->
                 AuthnResponseResult.Error("parse vp failed", params.state)
-            }
+                    .also { Napier.w("VP error: $result") }
 
-            is Verifier.VerifyPresentationResult.Success -> {
-                Napier.i("VP success: $result")
+            is Verifier.VerifyPresentationResult.Success ->
                 AuthnResponseResult.Success(result.vp, params.state)
-            }
+                    .also { Napier.i("VP success: $result") }
 
-            is Verifier.VerifyPresentationResult.NotVerified -> {
-                Napier.w("VP error: $result")
+            is Verifier.VerifyPresentationResult.NotVerified ->
                 AuthnResponseResult.ValidationError("vpToken", params.state)
-            }
+                    .also { Napier.w("VP error: $result") }
 
-            is Verifier.VerifyPresentationResult.SuccessIso -> {
-                Napier.i("VP success: $result")
+            is Verifier.VerifyPresentationResult.SuccessIso ->
                 AuthnResponseResult.SuccessIso(result.document, params.state)
-            }
+                    .also { Napier.i("VP success: $result") }
 
-            is Verifier.VerifyPresentationResult.SuccessSdJwt -> {
-                Napier.i("VP success: $result")
+            is Verifier.VerifyPresentationResult.SuccessSdJwt ->
                 AuthnResponseResult.SuccessSdJwt(result.sdJwt, result.disclosures, params.state)
-            }
+                    .also { Napier.i("VP success: $result") }
         }
     }
 

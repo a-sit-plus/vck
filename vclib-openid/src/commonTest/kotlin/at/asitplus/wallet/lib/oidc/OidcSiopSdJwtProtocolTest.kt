@@ -13,6 +13,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 
@@ -66,6 +67,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
             walletUrl = walletUrl,
             representation = ConstantIndex.CredentialRepresentation.SD_JWT
         ).also { println(it) }
+        authnRequest shouldContain "jwt_sd"
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
@@ -90,6 +92,8 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
             representation = ConstantIndex.CredentialRepresentation.SD_JWT,
             requestedAttributes = listOf(requestedClaim),
         ).also { println(it) }
+        authnRequest shouldContain "jwt_sd"
+        authnRequest shouldContain requestedClaim
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }

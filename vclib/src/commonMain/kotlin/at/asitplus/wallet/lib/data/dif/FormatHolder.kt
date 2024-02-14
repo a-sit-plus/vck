@@ -15,6 +15,8 @@ data class FormatHolder(
     val jwtVp: FormatContainerJwt? = null,
     @SerialName("jwt_vc")
     val jwtVc: FormatContainerJwt? = null,
+    @SerialName("jwt_sd") // NOTE This value is not official
+    val jwtSd: FormatContainerJwt? = null,
     @SerialName("ldp")
     val ldp: FormatContainerLdp? = null,
     @SerialName("ldp_vp")
