@@ -2,7 +2,7 @@
 
 Release 3.4.0:
  - Target Java 17
- - Updated dependencies from conventions: Bouncycastle 1.77, Serialization 1.6.3-snapshot (fork), Napier 2.7.1
+ - Updated dependencies from conventions: Bouncycastle 1.77, Serialization 1.6.3-snapshot (fork), Napier 2.7.1, KMP Crypto 2.3.0
  - Integrate `kmp-crypto` library
  - Change signature parsing and return types to `CryptoSignature` class
  - Change base public key class from`JsonWebKey` to `CryptoPublicKey`
