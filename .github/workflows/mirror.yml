@@ -1,0 +1,61 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Mirror
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  mirror:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - name: Configure git for user ${{ vars.MIRROR_USERNAME }} <${{ vars.MIRROR_EMAIL }}>
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        run: |
+          git config --global user.email "${{ vars.MIRROR_EMAIL }}"
+          git config --global user.name "${{ vars.MIRROR_USERNAME }}"
+          git config --local --unset-all "http.https://github.com/.extraheader"
+          git config -l
+      # Runs a set of commands using the runners shell
+      - name: Remove unwanted files
+        run: |
+          git rm .github/workflows/mirror.yml
+          git rm .github/workflows/publish-dry-run.yml
+          git rm .github/workflows/publish-pages-only.yml
+          git rm .github/workflows/publish.yml
+          git rm .github/workflows/publish-dry-run.yml
+      - name: Commit cleanup changes
+        run:  git commit -m "Prepare mirroring"
+      - name: Set destination to ${{ vars.MIRROR_REMOTE }}
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.MIRROR_API_TOKEN }}
+        run: |
+          git remote add mirror "https://x-access-token:$API_TOKEN_GITHUB@github.com/${{ vars.MIRROR_REMOTE }}.git"
+          git fetch mirror
+          git remote -v
+      - name: Mirror files locally to ${{ vars.MIRROR_REMOTE }}
+        run: |
+          SRC_REV=`git rev-parse HEAD`
+          echo source rev is $SRC_REV
+          git checkout -b forMirroring mirror/main
+          git rm -rf .
+          git checkout $SRC_REV .
+          git add .
+          git commit -m "Mirror latest release"
+      - name: pushing to mirror
+        run: git push mirror HEAD:main
