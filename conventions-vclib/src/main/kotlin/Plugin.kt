@@ -34,7 +34,7 @@ fun commonIosExports() = arrayOf(
 
 class VcLibConventions : Plugin<Project> {
     override fun apply(target: Project) {
-        target.plugins.apply("at.asitplus.gradle.conventions")
+        target.plugins.apply("at.asitplus.gradle.conventions-legacy")
     }
 }
 

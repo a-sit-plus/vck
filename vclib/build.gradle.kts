@@ -1,4 +1,6 @@
 import at.asitplus.gradle.*
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.tasks.KotlinNativeCompile
 
 plugins {
     kotlin("multiplatform")
@@ -17,13 +19,11 @@ version = artifactVersion
 
 
 kotlin {
-    jvm()
-    iosArm64()
+    ios()
     iosSimulatorArm64()
-    iosX64()
+    jvm()
     sourceSets {
-
-        commonMain {
+       val commonMain by getting {
             dependencies {
                 commonImplementationDependencies()
                 api("at.asitplus.crypto:datatypes-cose:${VcLibVersions.kmpcrypto}")
@@ -37,12 +37,16 @@ kotlin {
         }
 
 
-        jvmMain {
+        val commonTest by getting
+
+        val iosMain by getting
+        val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
+        val jvmMain by getting {
             dependencies {
                 implementation(bouncycastle("bcpkix"))
             }
         }
-        jvmTest {
+        val jvmTest by getting {
             dependencies {
                 implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
@@ -111,4 +115,3 @@ signing {
     useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
     sign(publishing.publications)
 }
-
