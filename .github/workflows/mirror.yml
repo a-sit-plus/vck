@@ -36,7 +36,6 @@ jobs:
           git rm .github/workflows/publish-dry-run.yml
           git rm .github/workflows/publish-pages-only.yml
           git rm .github/workflows/publish.yml
-          git rm .github/workflows/publish-dry-run.yml
           git rm .github/workflows/build-jvm.yml
           git rm .github/workflows/build-ios.yml
       - name: Commit cleanup changes
