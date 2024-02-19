@@ -27,11 +27,12 @@ kotlin {
                 api(project(":vclib"))
             }
         }
-
         val commonTest by getting
 
         val iosMain by getting
         val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
+        val iosTest by getting
+
         val jvmMain by getting {
             dependencies {
                 implementation(bouncycastle("bcprov"))
