@@ -32,7 +32,12 @@ jobs:
       # Runs a set of commands using the runners shell
       - name: Remove unwanted files
         run: |
-          git rm -r .github/workflows
+          git rm .github/workflows/mirror.yml
+          git rm .github/workflows/publish-dry-run.yml
+          git rm .github/workflows/publish-pages-only.yml
+          git rm .github/workflows/publish.yml
+          git rm .github/workflows/build-jvm.yml
+          git rm .github/workflows/build-ios.yml
       - name: Commit cleanup changes
         run:  git commit -m "Prepare mirroring"
       - name: Set destination to ${{ vars.MIRROR_REMOTE }}
