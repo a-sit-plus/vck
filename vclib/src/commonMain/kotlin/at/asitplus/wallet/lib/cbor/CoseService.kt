@@ -1,8 +1,12 @@
 package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.KmmResult
-import at.asitplus.crypto.datatypes.cose.*
-import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
+import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
+import at.asitplus.crypto.datatypes.cose.CoseHeader
+import at.asitplus.crypto.datatypes.cose.CoseKey
+import at.asitplus.crypto.datatypes.cose.CoseSignatureInput
+import at.asitplus.crypto.datatypes.cose.CoseSigned
+import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
@@ -63,8 +67,8 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         if (addKeyId) copyProtectedHeader =
             copyProtectedHeader.copy(kid = cryptoService.publicKey.didEncoded.encodeToByteArray())
 
-        val copyUnprotectedHeader = if (addCertificate) {
-            (unprotectedHeader ?: CoseHeader()).copy(certificateChain = cryptoService.certificate.encodeToDer())
+        val copyUnprotectedHeader = if (addCertificate && cryptoService.certificate != null) {
+            (unprotectedHeader ?: CoseHeader()).copy(certificateChain = cryptoService.certificate!!.encodeToDer())
         } else {
             unprotectedHeader
         }
