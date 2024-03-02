@@ -1,5 +1,12 @@
 # Changelog
 
+Release NEXT:
+- Update to latest KMP Crypto
+  - Introduces correct mulitbase encoding
+  - EC Point Compression
+  - **THIS IS A BREAKING CHANGE WRT. SOME ASPECTS OF SERIALIZATION**
+- Fix name shadowing of gradle plugins by renaming file `Plugin.kt` -> `VcLibConventions.kt`
+
 Release 3.4.0:
  - Target Java 17
  - Updated dependencies from conventions: Bouncycastle 1.77, Serialization 1.6.3-snapshot (fork), Napier 2.7.1, KMP Crypto 2.3.0
