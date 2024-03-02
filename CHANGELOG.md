@@ -7,13 +7,13 @@ Release NEXT:
   - **THIS IS A BREAKING CHANGE WRT. SERIALIZATION OF DID-ENCODED KEYS**
     - Given that all EC keys were previously uncompressed, different mutlicodec identifiers are now supported and the old encoding of uncompressed keys does not work anymore, as it was faulty.
     - In addition, the encoding of the mutlibase prefix has changed, since varint-Encoding is now used correctly. 
-- Fix name shadowing of gradle plugins by renaming file `Plugin.kt` -> `VcLibConventions.kt`
- - `CryptoService`: Make property `certificate` optional again
+ - Fix name shadowing of gradle plugins by renaming file `Plugin.kt` -> `VcLibConventions.kt`
  - Kotlin 1.9.23
  - Ktor 2.3.9
  - KMP-Crypto *INSERT VERSION HERE*
  - FIX: Add KMP-Crypto to iOS exports
  - Add switch to disable composite build (useful for publishing)
+
 
 Release 3.4.0:
  - Target Java 17
