@@ -183,9 +183,9 @@ class Validator(
         val vp = VerifiablePresentationParsed(
             id = parsedVp.jws.vp.id,
             type = parsedVp.jws.vp.type,
-            verifiableCredentials = validVcList.toTypedArray(),
-            revokedVerifiableCredentials = revokedVcList.toTypedArray(),
-            invalidVerifiableCredentials = invalidVcList.toTypedArray(),
+            verifiableCredentials = validVcList,
+            revokedVerifiableCredentials = revokedVcList,
+            invalidVerifiableCredentials = invalidVcList,
         )
         Napier.d("VP: Valid")
         return Verifier.VerifyPresentationResult.Success(vp)

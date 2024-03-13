@@ -14,10 +14,10 @@ data class VerifiablePresentation(
     @SerialName("type")
     val type: String,
     @SerialName("verifiableCredential")
-    val verifiableCredential: Array<String>,
+    val verifiableCredential: Collection<String>,
 ) {
 
-    constructor(verifiableCredential: Array<String>) : this(
+    constructor(verifiableCredential: Collection<String>) : this(
         id = "urn:uuid:${uuid4()}",
         type = "VerifiablePresentation",
         verifiableCredential = verifiableCredential
@@ -30,25 +30,4 @@ data class VerifiablePresentation(
         audience = audienceId,
         jwtId = id
     )
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as VerifiablePresentation
-
-        if (id != other.id) return false
-        if (type != other.type) return false
-        if (!verifiableCredential.contentEquals(other.verifiableCredential)) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = id.hashCode()
-        result = 31 * result + type.hashCode()
-        result = 31 * result + verifiableCredential.contentHashCode()
-        return result
-    }
-
 }

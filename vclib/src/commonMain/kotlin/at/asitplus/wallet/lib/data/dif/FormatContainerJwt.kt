@@ -10,20 +10,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class FormatContainerJwt(
     @SerialName("alg")
-    val algorithms: Array<String>,
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as FormatContainerJwt
-
-        if (!algorithms.contentEquals(other.algorithms)) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        return algorithms.contentHashCode()
-    }
-}
+    val algorithms: Collection<String>,
+)

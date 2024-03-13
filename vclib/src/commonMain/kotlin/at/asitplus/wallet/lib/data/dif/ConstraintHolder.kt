@@ -10,25 +10,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ConstraintHolder(
     @SerialName("field_id")
-    val fieldIds: Array<String>,
+    val fieldIds: Collection<String>,
     @SerialName("directive")
     val directive: RequirementEnum,
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as ConstraintHolder
-
-        if (!fieldIds.contentEquals(other.fieldIds)) return false
-        if (directive != other.directive) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = fieldIds.contentHashCode()
-        result = 31 * result + directive.hashCode()
-        return result
-    }
-}
+)

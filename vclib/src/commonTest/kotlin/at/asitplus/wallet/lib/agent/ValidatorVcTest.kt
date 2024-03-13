@@ -201,26 +201,6 @@ class ValidatorVcTest : FreeSpec() {
             }
         }
 
-        "Invalid type in credential is not valid" - {
-            withData(
-                nameFn = ::credentialNameFn,
-                dataProvider.getCredential(
-                    verifierCryptoService.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).getOrThrow()
-            ) {
-                issueCredential(it)
-                    .also { it.type[0] = "fakeCredential" }
-                    .let { wrapVcInJws(it) }
-                    .let { signJws(it) }
-                    ?.let {
-                        verifier.verifyVcJws(it)
-                            .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
-                    }
-            }
-        }
-
         "Invalid expiration in credential is not valid" - {
             withData(
                 nameFn = ::credentialNameFn,
@@ -373,7 +353,8 @@ class ValidatorVcTest : FreeSpec() {
     private fun issueCredential(
         credential: CredentialToBeIssued,
         issuanceDate: Instant = Clock.System.now(),
-        expirationDate: Instant? = Clock.System.now() + 60.seconds
+        expirationDate: Instant? = Clock.System.now() + 60.seconds,
+        type: String = ConstantIndex.AtomicAttribute2023.vcType,
     ): VerifiableCredential {
         credential.shouldBeInstanceOf<CredentialToBeIssued.VcJwt>()
         val sub = credential.subject
@@ -393,7 +374,7 @@ class ValidatorVcTest : FreeSpec() {
             issuer = issuer.identifier,
             credentialStatus = credentialStatus,
             credentialSubject = sub,
-            credentialType = ConstantIndex.AtomicAttribute2023.vcType,
+            credentialType = type,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
         )

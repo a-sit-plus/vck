@@ -195,7 +195,7 @@ class OidcSiopWallet(
     suspend fun createAuthnResponseParams(
         params: AuthenticationRequestParameters
     ): KmmResult<AuthenticationResponseParameters> {
-        val audience = params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.identifier
+        val audience = params.clientMetadata?.jsonWebKeySet?.keys?.firstOrNull()?.identifier
             ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("Could not parse audience") }
         if (URN_TYPE_JWK_THUMBPRINT !in params.clientMetadata.subjectSyntaxTypesSupported)
@@ -280,7 +280,7 @@ class OidcSiopWallet(
                                 path = "\$.verifiableCredential[0]"
                             ),
                         )
-                    }?.toTypedArray()
+                    }
                 )
                 return KmmResult.success(
                     AuthenticationResponseParameters(
@@ -302,7 +302,7 @@ class OidcSiopWallet(
                             format = ClaimFormatEnum.JWT_SD,
                             path = "\$",
                         )
-                    }?.toTypedArray()
+                    }
                 )
                 return KmmResult.success(
                     AuthenticationResponseParameters(
@@ -324,7 +324,7 @@ class OidcSiopWallet(
                             format = ClaimFormatEnum.MSO_MDOC,
                             path = "\$",
                         )
-                    }?.toTypedArray()
+                    }
                 )
                 return KmmResult.success(
                     AuthenticationResponseParameters(
