@@ -131,7 +131,7 @@ class OidcSiopWallet(
 
     private fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParameters? {
         params.request?.let { requestObject ->
-            parseRequestObjectJws(requestObject)
+            return parseRequestObjectJws(requestObject)
         }
         return null
     }
