@@ -10,6 +10,7 @@ Release NEXT:
 - Fix name shadowing of gradle plugins by renaming file `Plugin.kt` -> `VcLibConventions.kt`
  - Get rid of arrays in serializable types and use collections instead
  - Improve interoperability with verifiers and issuers from <https://github.com/eu-digital-identity-wallet/>
+ - `OidcSiopVerifier`: Move `credentialScheme` from constructor to `createAuthnRequest`
 
 Release 3.4.0:
  - Target Java 17

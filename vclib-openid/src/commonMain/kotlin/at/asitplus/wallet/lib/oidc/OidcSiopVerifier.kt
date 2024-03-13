@@ -61,7 +61,6 @@ class OidcSiopVerifier(
     private val verifierJwsService: VerifierJwsService,
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
-    private val credentialScheme: ConstantIndex.CredentialScheme? = null,
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
@@ -77,7 +76,6 @@ class OidcSiopVerifier(
             jwsService: JwsService = DefaultJwsService(cryptoService),
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
-            credentialScheme: ConstantIndex.CredentialScheme? = null,
         ) = OidcSiopVerifier(
             verifier = verifier,
             relyingPartyUrl = relyingPartyUrl,
@@ -86,7 +84,6 @@ class OidcSiopVerifier(
             verifierJwsService = verifierJwsService,
             timeLeewaySeconds = timeLeewaySeconds,
             clock = clock,
-            credentialScheme = credentialScheme,
         )
     }
 
@@ -139,6 +136,7 @@ class OidcSiopVerifier(
      *
      * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
      * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
+     * @param credentialScheme which credential type to request, or `null` to make no restrictions
      * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
      */
     suspend fun createAuthnRequestUrl(
@@ -146,6 +144,7 @@ class OidcSiopVerifier(
         responseMode: String? = null,
         representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         state: String? = uuid4().toString(),
+        credentialScheme: ConstantIndex.CredentialScheme? = null,
         requestedAttributes: List<String>? = null,
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
@@ -153,6 +152,7 @@ class OidcSiopVerifier(
             responseMode = responseMode,
             representation = representation,
             state = state,
+            credentialScheme = credentialScheme,
             requestedAttributes = requestedAttributes,
         ).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
@@ -173,6 +173,7 @@ class OidcSiopVerifier(
         responseMode: String? = null,
         representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         state: String? = uuid4().toString(),
+        credentialScheme: ConstantIndex.CredentialScheme? = null,
         requestedAttributes: List<String>? = null,
     ): KmmResult<String> {
         val urlBuilder = URLBuilder(walletUrl)
@@ -180,6 +181,7 @@ class OidcSiopVerifier(
             responseMode = responseMode,
             representation = representation,
             state = state,
+            credentialScheme = credentialScheme,
             requestedAttributes = requestedAttributes,
         ).getOrElse {
             return KmmResult.failure(it)
@@ -194,18 +196,21 @@ class OidcSiopVerifier(
      * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
      * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
      * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
+     * @param credentialScheme which credential type to request, or `null` to make no restrictions
      * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
      */
     suspend fun createAuthnRequestAsRequestObject(
         responseMode: String? = null,
         representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         state: String? = uuid4().toString(),
+        credentialScheme: ConstantIndex.CredentialScheme? = null,
         requestedAttributes: List<String>? = null,
     ): KmmResult<AuthenticationRequestParameters> {
         val requestObject = createAuthnRequest(
             responseMode = responseMode,
             representation = representation,
             state = state,
+            credentialScheme = credentialScheme,
             requestedAttributes = requestedAttributes,
         )
         val requestObjectSerialized = jsonSerializer.encodeToString(
@@ -235,12 +240,14 @@ class OidcSiopVerifier(
      * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
      * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
      * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
+     * @param credentialScheme which credential type to request, or `null` to make no restrictions
      * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
      */
     suspend fun createAuthnRequest(
         responseMode: String? = null,
         representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         state: String? = uuid4().toString(),
+        credentialScheme: ConstantIndex.CredentialScheme? = null,
         requestedAttributes: List<String>? = null,
     ): AuthenticationRequestParameters {
         val typeConstraint = credentialScheme?.let {

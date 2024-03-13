@@ -171,10 +171,12 @@ class OidcSiopProtocolTest : FreeSpec({
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
         )
 
-        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl = walletUrl).also { println(it) }
+        val authnRequest = verifierSiop.createAuthnRequestUrl(
+            walletUrl = walletUrl,
+            credentialScheme = ConstantIndex.AtomicAttribute2023
+        ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }

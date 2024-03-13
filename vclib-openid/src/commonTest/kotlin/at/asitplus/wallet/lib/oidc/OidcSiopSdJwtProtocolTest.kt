@@ -85,11 +85,11 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
             representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+            credentialScheme = ConstantIndex.AtomicAttribute2023,
             requestedAttributes = listOf(requestedClaim),
         ).also { println(it) }
         authnRequest shouldContain "jwt_sd"

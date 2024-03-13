@@ -72,9 +72,14 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
-            credentialScheme = ConstantIndex.MobileDrivingLicence2023,
         )
-        val document = runProcess(verifierSiop, walletUrl, ConstantIndex.CredentialRepresentation.ISO_MDOC, holderSiop)
+        val document = runProcess(
+            verifierSiop,
+            walletUrl,
+            ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            ConstantIndex.MobileDrivingLicence2023,
+            holderSiop
+        )
 
         document.validItems.shouldNotBeEmpty()
         document.invalidItems.shouldBeEmpty()
@@ -85,9 +90,14 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
         )
-        val document = runProcess(verifierSiop, walletUrl, ConstantIndex.CredentialRepresentation.ISO_MDOC, holderSiop)
+        val document = runProcess(
+            verifierSiop,
+            walletUrl,
+            ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            ConstantIndex.AtomicAttribute2023,
+            holderSiop
+        )
 
         document.validItems.shouldNotBeEmpty()
         document.invalidItems.shouldBeEmpty()
@@ -99,12 +109,12 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
-            credentialScheme = ConstantIndex.MobileDrivingLicence2023,
         )
         val document = runProcess(
             verifierSiop,
             walletUrl,
             ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            ConstantIndex.MobileDrivingLicence2023,
             holderSiop,
             listOf(requestedClaim)
         )
@@ -121,13 +131,15 @@ private suspend fun runProcess(
     verifierSiop: OidcSiopVerifier,
     walletUrl: String,
     credentialRepresentation: ConstantIndex.CredentialRepresentation,
+    credentialScheme: ConstantIndex.CredentialScheme,
     holderSiop: OidcSiopWallet,
     requestedAttributes: List<String>? = null,
 ): IsoDocumentParsed {
     val authnRequest = verifierSiop.createAuthnRequestUrl(
         walletUrl = walletUrl,
         representation = credentialRepresentation,
-        requestedAttributes = requestedAttributes
+        credentialScheme = credentialScheme,
+        requestedAttributes = requestedAttributes,
     ).also { println(it) }
 
     val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
