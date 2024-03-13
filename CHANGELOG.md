@@ -9,6 +9,7 @@ Release NEXT:
     - In addition, the encoding of the mutlibase prefix has changed, since varint-Encoding is now used correctly. 
 - Fix name shadowing of gradle plugins by renaming file `Plugin.kt` -> `VcLibConventions.kt`
  - Get rid of arrays in serializable types and use collections instead
+ - Improve interoperability with verifiers and issuers from <https://github.com/eu-digital-identity-wallet/>
 
 Release 3.4.0:
  - Target Java 17

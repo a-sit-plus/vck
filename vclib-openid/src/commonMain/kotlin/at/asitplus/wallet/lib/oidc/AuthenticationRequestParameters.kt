@@ -1,9 +1,13 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.wallet.lib.data.InstantLongSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.oidvci.AuthorizationDetails
+import io.github.aakira.napier.Napier
+import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 
 /**
  * Contents of an OIDC Authentication Request.
@@ -157,18 +161,25 @@ data class AuthenticationRequestParameters(
     val clientIdScheme: String? = null,
 
     /**
-     * May contain the Wallet's OIDC issuer URL, for discovery.
-     * Recommended in Dynamic Credential Request.
+     * OID4VP: OPTIONAL. String containing the Wallet's identifier. The Credential Issuer can use the discovery process
+     * defined in SIOPv2 to determine the Wallet's capabilities and endpoints, using the `wallet_issuer` value as the
+     * Issuer Identifier referred to in SIOPv2. This is RECOMMENDED in Dynamic Credential Requests.
      */
     @SerialName("wallet_issuer")
     val walletIssuer: String? = null,
 
     /**
-     * Recommended in Dynamic Credential Request
+     * OID4VP: OPTIONAL. String containing an opaque End-User hint that the Wallet MAY use in subsequent callbacks to
+     * optimize the End-User's experience. This is RECOMMENDED in Dynamic Credential Requests.
      */
     @SerialName("user_hint")
     val userHint: String? = null,
 
+    /**
+     * OID4VP: OPTIONAL. String value identifying a certain processing context at the Credential Issuer. A value for
+     * this parameter is typically passed in a Credential Offer from the Credential Issuer to the Wallet. This request
+     * parameter is used to pass the issuer_state value back to the Credential Issuer.
+     */
     @SerialName("issuer_state")
     val issuerState: String? = null,
 
@@ -209,4 +220,23 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("iss")
     val issuer: String? = null,
-)
+
+    /**
+     * OPTIONAL. Time at which the request was issued.
+     */
+    @SerialName("iat")
+    @Serializable(with = InstantLongSerializer::class)
+    val issuedAt: Instant? = null,
+) {
+
+    fun serialize() = jsonSerializer.encodeToString(this)
+
+    companion object {
+        fun deserialize(it: String) = kotlin.runCatching {
+            jsonSerializer.decodeFromString<AuthenticationRequestParameters>(it)
+        }.getOrElse {
+            Napier.w("deserialize failed", it)
+            null
+        }
+    }
+}
