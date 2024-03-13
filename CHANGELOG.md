@@ -4,7 +4,9 @@ Release NEXT:
 - Update to latest KMP Crypto
   - Introduces correct mulitbase encoding
   - EC Point Compression
-  - **THIS IS A BREAKING CHANGE WRT. SOME ASPECTS OF SERIALIZATION**
+  - **THIS IS A BREAKING CHANGE WRT. SERIALIZATION OF DID-ENCODED KEYS**
+    - Given that all EC keys were previously uncompressed, different mutlicodec identifiers are now supported and the old encoding of uncompressed keys does not work anymore, as it was faulty.
+    - In addition, the encoding of the mutlibase prefix has changed, since varint-Encoding is now used correctly. 
 - Fix name shadowing of gradle plugins by renaming file `Plugin.kt` -> `VcLibConventions.kt`
 
 Release 3.4.0:
