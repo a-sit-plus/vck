@@ -3,7 +3,7 @@ object VcLibVersions {
     const val resultlib = "1.5.3"
     const val encoding = "1.2.3"
     const val okio = "3.5.0"
-    const val kmpcrypto = "2.5.0-SNAPSHOT"
+    const val kmpcrypto = "2.5.0"
     const val bignum = "0.3.9"
 
     object Jvm {
