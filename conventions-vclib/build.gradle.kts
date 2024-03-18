@@ -8,7 +8,7 @@ plugins {
 group = "at.asitplus.gradle"
 
 dependencies {
-    api("at.asitplus.gradle:legacy")
+    api("at.asitplus.gradle:k2")
 }
 
 repositories {

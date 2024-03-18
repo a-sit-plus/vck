@@ -15,30 +15,27 @@ version = artifactVersion
 
 
 kotlin {
-    ios()
-    iosSimulatorArm64()
+
     jvm()
+    iosArm64()
+    iosSimulatorArm64()
+    iosX64()
     sourceSets {
 
-        val commonMain by getting {
+         commonMain {
             dependencies {
-                commonImplementationDependencies()
-                api("at.asitplus.crypto:datatypes-jws:${VcLibVersions.kmpcrypto}")
                 api(project(":vclib"))
+                commonImplementationDependencies()
             }
         }
-        val commonTest by getting
 
-        val iosMain by getting
-        val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
-        val iosTest by getting
-
-        val jvmMain by getting {
+         jvmMain {
             dependencies {
                 implementation(bouncycastle("bcprov"))
             }
         }
-        val jvmTest by getting {
+
+         jvmTest {
             dependencies {
                 implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
