@@ -13,6 +13,7 @@ Release NEXT:
  - Ktor 2.3.9
  - KMP-Crypto *INSERT VERSION HERE*
  - FIX: Add KMP-Crypto to iOS exports
+ - Add switch to disable composite build (useful for publishing)
 
 Release 3.4.0:
  - Target Java 17

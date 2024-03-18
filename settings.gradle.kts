@@ -8,14 +8,21 @@ pluginManagement {
     }
 }
 
-
-includeBuild("kmp-crypto") {
-    dependencySubstitution {
-        substitute(module("at.asitplus.crypto:datatypes")).using(project(":datatypes"))
-        substitute(module("at.asitplus.crypto:datatypes-jws")).using(project(":datatypes-jws"))
-        substitute(module("at.asitplus.crypto:datatypes-cose")).using(project(":datatypes-cose"))
+if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
+    includeBuild("kmp-crypto") {
+        dependencySubstitution {
+            substitute(module("at.asitplus.crypto:datatypes")).using(project(":datatypes"))
+            substitute(module("at.asitplus.crypto:datatypes-jws")).using(
+                project(
+                    ":datatypes-jws"
+                )
+            )
+            substitute(module("at.asitplus.crypto:datatypes-cose")).using(
+                project(":datatypes-cose")
+            )
+        }
     }
-}
+} else logger.lifecycle("Excluding KMP Crypto from this build")
 
 rootProject.name = "vclibrary"
 include(":vclib")

@@ -19,6 +19,9 @@ sonatypeUsername=<user-token-name>
 sonatypePassword=<user-token-password>
 ```
 
+In addition, it is highly recommended to set the System property `publishing.excludeIncludedBuilds` to `true`, to
+build artefacts for publishing, which **do no** depend on included builds.
+
 To run the pipeline from GitHub, export your GPG key with `gpg --export-secret-keys --armor <keyid> | tee <keyid>.asc` and set the following environment variables:
 
 ```shell
