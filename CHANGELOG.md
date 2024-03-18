@@ -1,7 +1,7 @@
 # Changelog
 
 Release NEXT:
-- Update to latest KMP Crypto
+- Update to latest KMP Crypto 2.5.0
   - Introduces correct mulitbase encoding
   - EC Point Compression
   - **THIS IS A BREAKING CHANGE WRT. SERIALIZATION OF DID-ENCODED KEYS**
@@ -11,7 +11,7 @@ Release NEXT:
  - Kotlin 1.9.23
  - Ktor 2.3.9
  - KMP-Crypto *INSERT VERSION HERE*
- - FIX: Add KMP-Crypto to iOS exports
+ - Fix: Add missing iOS exports
  - Add switch to disable composite build (useful for publishing)
 
 
