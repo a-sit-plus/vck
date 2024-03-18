@@ -8,25 +8,35 @@ import org.gradle.api.Project
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
 
 
-inline fun commonDependencies() = listOf(
+inline fun commonApiDependencies() = listOf(
     coroutines(),
     serialization("json"),
-    napier(),
+    serialization("cbor"),
+    "at.asitplus.crypto:datatypes-cose:${VcLibVersions.kmpcrypto}",
+    "at.asitplus.crypto:datatypes-jws:${VcLibVersions.kmpcrypto}",
+    datetime(),
     "com.benasher44:uuid:${VcLibVersions.uuid}",
-    "com.squareup.okio:okio:${VcLibVersions.okio}"
-
-
+    "com.squareup.okio:okio:${VcLibVersions.okio}",
+    "io.matthewnelson.kotlin-components:encoding-base16:${VcLibVersions.encoding}",
+    "io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}"
 )
 
+inline fun KotlinDependencyHandler.commonImplementationAndApiDependencies() {
+    commonApiDependencies().forEach { dep -> api(dep) }
+    commonImplementationDependencies()
+}
 inline fun KotlinDependencyHandler.commonImplementationDependencies() {
-    commonDependencies().forEach { dep -> implementation(dep) }
     implementation(ktor("http"))
+    implementation(napier())
     implementation(ktor("utils"))
 }
 
 fun commonIosExports() = arrayOf(
     datetime(),
     kmmresult(),
+    "at.asitplus.crypto:datatypes:${VcLibVersions.kmpcrypto}",
+    "at.asitplus.crypto:datatypes-cose:${VcLibVersions.kmpcrypto}",
+    "at.asitplus.crypto:datatypes-jws:${VcLibVersions.kmpcrypto}",
     "io.matthewnelson.kotlin-components:encoding-base16:${VcLibVersions.encoding}",
     "io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}",
 )

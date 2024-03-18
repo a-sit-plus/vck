@@ -1,5 +1,4 @@
 import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
-
 plugins {
     id("at.asitplus.gradle.vclib-conventions")
 }
@@ -8,7 +7,7 @@ plugins {
 apply(plugin = "org.jetbrains.dokka")
 tasks.getByName("dokkaHtmlMultiModule") {
     (this as DokkaMultiModuleTask)
-    outputDirectory.set(File("$buildDir/dokka"))
+    outputDirectory.set(layout.buildDirectory.dir("dokka").get().asFile)
     includes.from("README.md")
 }
 

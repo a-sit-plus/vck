@@ -1,6 +1,4 @@
 import at.asitplus.gradle.*
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jetbrains.kotlin.gradle.tasks.KotlinNativeCompile
 
 plugins {
     kotlin("multiplatform")
@@ -19,36 +17,24 @@ version = artifactVersion
 
 
 kotlin {
-    ios()
-    iosSimulatorArm64()
     jvm()
+    iosArm64()
+    iosSimulatorArm64()
+    iosX64()
     sourceSets {
-       val commonMain by getting {
+        commonMain {
             dependencies {
-                commonImplementationDependencies()
-                api("at.asitplus.crypto:datatypes-cose:${VcLibVersions.kmpcrypto}")
-                api("at.asitplus.crypto:datatypes-jws:${VcLibVersions.kmpcrypto}")
-                api(datetime())
-                api(serialization("cbor"))
-                api(kmmresult())
-                api("io.matthewnelson.kotlin-components:encoding-base16:${VcLibVersions.encoding}")
-                api("io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}")
+                commonImplementationAndApiDependencies()
             }
         }
 
 
-        val commonTest by getting
-
-        val iosMain by getting
-        val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
-        val iosTest by getting
-
-        val jvmMain by getting {
+        jvmMain {
             dependencies {
                 implementation(bouncycastle("bcpkix"))
             }
         }
-        val jvmTest by getting {
+        jvmTest {
             dependencies {
                 implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")

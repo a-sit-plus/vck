@@ -9,6 +9,10 @@ Release NEXT:
     - In addition, the encoding of the mutlibase prefix has changed, since varint-Encoding is now used correctly. 
 - Fix name shadowing of gradle plugins by renaming file `Plugin.kt` -> `VcLibConventions.kt`
  - `CryptoService`: Make property `certificate` optional again
+ - Kotlin 1.9.23
+ - Ktor 2.3.9
+ - KMP-Crypto *INSERT VERSION HERE*
+ - FIX: Add KMP-Crypto to iOS exports
 
 Release 3.4.0:
  - Target Java 17
