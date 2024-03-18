@@ -213,27 +213,21 @@ class OidcSiopWallet(
         if (URN_TYPE_JWK_THUMBPRINT !in params.clientMetadata.subjectSyntaxTypesSupported)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
+        if (params.clientIdScheme == OpenIdConstants.ClientIdSchemes.REDIRECT_URI && params.redirectUrl == null) {
+            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+                .also { Napier.w("client_id_scheme is redirect_uri, but that is not set") }
+        }
         if (params.redirectUrl != null) {
-            // TODO is this from eudi verifier correctly set, that the redirect_uri is not set?
             if (params.clientId != params.redirectUrl)
                 return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                     .also { Napier.w("client_id does not match redirect_uri") }
         }
-        // TODO EUDI Verifier doesn't set the value
-        //if (params.responseType?.contains(ID_TOKEN) != true)
-        //    return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-        //        .also { Napier.w("response_type is not \"$ID_TOKEN\"") }
         if (params.responseType == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("response_type is not specified") }
         if (!params.responseType.contains(VP_TOKEN) && params.presentationDefinition == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("vp_token not requested") }
-        // TODO Client shall send the client_id_scheme, which needs to be supported by the Wallet
-        // TODO EUDI Verifier doesn't set the value
-        //if (params.clientMetadata.vpFormats == null)
-        //    return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-        //        .also { Napier.w("Incompatible subject syntax types algorithms") }
         if (params.clientMetadata.vpFormats != null) {
             if (params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true)
                 return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
