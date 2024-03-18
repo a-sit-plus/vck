@@ -1,12 +1,15 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.crypto.datatypes.*
+import at.asitplus.crypto.datatypes.CryptoAlgorithm
+import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.CryptoSignature
+import at.asitplus.crypto.datatypes.Digest
+import at.asitplus.crypto.datatypes.EcCurve
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncryption
-import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 
 interface CryptoService {
@@ -49,12 +52,12 @@ interface CryptoService {
     val jsonWebKey: JsonWebKey
 
     val coseKey: CoseKey
+
     /**
      * May be used in [at.asitplus.wallet.lib.cbor.CoseService] to transport the signing key for a COSE structure.
      * a `null` value signifies that raw public keys are used and no certificate is present
      */
-    val certificate: X509Certificate
-
+    val certificate: X509Certificate?
 
 }
 
