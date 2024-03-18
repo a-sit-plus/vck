@@ -7,6 +7,7 @@ import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
@@ -55,10 +56,15 @@ class OidcSiopWallet(
     private val clientId: String = "https://wallet.a-sit.at/",
     /**
      * Need to implement if JSON web keys are not specified directly as `jwks` in authn requests,
-     * but need to be retrieved from the `jwks_uri`. Simply fetch the URL passed and return the content
-     * parsed as [JsonWebKeySet].
+     * but need to be retrieved from the `jwks_uri`. Implementations need to fetch the URL passed and return the
+     * content parsed as [JsonWebKeySet].
      */
-    private val jwkSetRetriever: (String) -> JsonWebKeySet? = { null }
+    private val jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
+    /**
+     * Need to implement if `request_uri` parameters are used, i.e. the actual authn request can be retrieved
+     * from that URL. Implementations need to fetch the URL and return the content.
+     */
+    private val requestRetriever: (String) -> String? = { null },
 ) {
 
     companion object {
@@ -69,7 +75,8 @@ class OidcSiopWallet(
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
             clock: Clock = Clock.System,
             clientId: String = "https://wallet.a-sit.at/",
-            jwkSetRetriever: (String) -> JsonWebKeySet? = { null }
+            jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
+            requestRetriever: (String) -> String? = { null },
         ) = OidcSiopWallet(
             holder = holder,
             agentPublicKey = cryptoService.publicKey,
@@ -77,7 +84,8 @@ class OidcSiopWallet(
             verifierJwsService = verifierJwsService,
             clock = clock,
             clientId = clientId,
-            jwkSetRetriever = jwkSetRetriever
+            jwkSetRetriever = jwkSetRetriever,
+            requestRetriever = requestRetriever,
         )
     }
 
@@ -132,6 +140,11 @@ class OidcSiopWallet(
     private fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParameters? {
         params.request?.let { requestObject ->
             return parseRequestObjectJws(requestObject)
+        }
+        params.requestUri?.let { uri ->
+            requestRetriever.invoke(uri)?.let { requestObject ->
+                return parseRequestObjectJws(requestObject)
+            }
         }
         return null
     }
@@ -245,10 +258,11 @@ class OidcSiopWallet(
 
         val now = clock.now()
         // we'll assume jwk-thumbprint
+        val agentJsonWebKey = agentPublicKey.toJsonWebKey()
         val idToken = IdToken(
-            issuer = agentPublicKey.toJsonWebKey().jwkThumbprint,
-            subject = agentPublicKey.toJsonWebKey().jwkThumbprint,
-            subjectJwk = agentPublicKey.toJsonWebKey(),
+            issuer = agentJsonWebKey.jwkThumbprint,
+            subject = agentJsonWebKey.jwkThumbprint,
+            subjectJwk = agentJsonWebKey,
             audience = params.redirectUrl ?: params.clientId,
             issuedAt = now,
             expiration = now + 60.seconds,
@@ -260,12 +274,28 @@ class OidcSiopWallet(
             return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
         }
 
-        val requestedScopes = (params.scope ?: "").split(" ")
+        val requestedAttributeTypes = (params.scope ?: "").split(" ")
             .filterNot { it == SCOPE_OPENID }.filterNot { it == SCOPE_PROFILE }
-            .mapNotNull { AttributeIndex.resolveAttributeType(it) }
-            .toList()
+            .filter { it.isNotEmpty() }
+        val requestedNamespace = params.presentationDefinition?.inputDescriptors
+            ?.mapNotNull { it.constraints }
+            ?.flatMap { it.fields?.toList() ?: listOf() }
+            ?.firstOrNull { it.path.toList().contains("$.mdoc.namespace") }
+            ?.filter?.const
+        val requestedSchemes = mutableListOf<ConstantIndex.CredentialScheme>()
+        if (requestedNamespace != null) {
+            requestedSchemes.add(AttributeIndex.resolveIsoNamespace(requestedNamespace)
+                ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
+                    .also { Napier.w("Could not resolve requested namespace $requestedNamespace") })
+            requestedAttributeTypes.forEach { requestedAttributeTyp ->
+                requestedSchemes.add(AttributeIndex.resolveAttributeType(requestedAttributeTyp)
+                    ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
+                        .also { Napier.w("Could not resolve requested attribute type $it") })
+            }
+        }
         val requestedClaims = params.presentationDefinition?.inputDescriptors
-            ?.mapNotNull { it.constraints }?.flatMap { it.fields?.toList() ?: listOf() }
+            ?.mapNotNull { it.constraints }
+            ?.flatMap { it.fields?.toList() ?: listOf() }
             ?.flatMap { it.path.toList() }
             ?.filter { it != "$.type" }
             ?.filter { it != "$.mdoc.doctype" }
@@ -275,7 +305,7 @@ class OidcSiopWallet(
         val vp = holder.createPresentation(
             challenge = params.nonce,
             audienceId = audience,
-            credentialSchemes = requestedScopes.ifEmpty { null },
+            credentialSchemes = requestedSchemes.toList().ifEmpty { null },
             requestedClaims = requestedClaims.ifEmpty { null }
         ) ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
             .also { Napier.w("Could not create presentation") }
@@ -354,4 +384,5 @@ class OidcSiopWallet(
 
         }
     }
+
 }

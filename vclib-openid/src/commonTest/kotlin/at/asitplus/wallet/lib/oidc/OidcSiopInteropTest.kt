@@ -2,33 +2,26 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
-import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.wallet.lib.LibraryInitializer
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.dif.ConstraintField
-import at.asitplus.wallet.lib.data.dif.ConstraintFilter
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.data.CredentialSubject
+import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeSingleton
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSingleElement
-import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
-import io.kotest.matchers.string.shouldNotContain
-import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
+import kotlinx.serialization.modules.subclass
 
 /**
  * Tests our SIOP implementation against EUDI Ref Impl.,
@@ -36,25 +29,26 @@ import kotlinx.datetime.Instant
  */
 class OidcSiopInteropTest : FreeSpec({
 
-    lateinit var relyingPartyUrl: String
-    lateinit var walletUrl: String
-
     lateinit var holderCryptoService: CryptoService
-    lateinit var verifierCryptoService: CryptoService
-
     lateinit var holderAgent: Holder
-    lateinit var verifierAgent: Verifier
-
     lateinit var holderSiop: OidcSiopWallet
-    lateinit var verifierSiop: OidcSiopVerifier
+
+    beforeSpec {
+        LibraryInitializer.registerExtensionLibrary(
+            LibraryInitializer.ExtensionLibraryInfo(
+                credentialScheme = EudiwPidCredentialScheme,
+                serializersModule = SerializersModule {
+                    polymorphic(CredentialSubject::class) {
+                        subclass(EudiwPid1::class)
+                    }
+                },
+            )
+        )
+    }
 
     beforeEach {
         holderCryptoService = DefaultCryptoService()
-        verifierCryptoService = DefaultCryptoService()
-        relyingPartyUrl = "https://example.com/rp/${uuid4()}"
-        walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
-        verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.didEncoded)
         runBlocking {
             holderAgent.storeCredentials(
                 IssuerAgent.newDefaultInstance(
@@ -62,33 +56,21 @@ class OidcSiopInteropTest : FreeSpec({
                     dataProvider = DummyCredentialDataProvider(),
                 ).issueCredential(
                     subjectPublicKey = holderCryptoService.publicKey,
-                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                    representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    attributeTypes = listOf(EudiwPidCredentialScheme.vcType),
+                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 ).toStoreCredentialInput()
             )
         }
-
-        holderSiop = OidcSiopWallet.newInstance(
-            holder = holderAgent,
-            cryptoService = holderCryptoService
-        )
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
-            cryptoService = verifierCryptoService,
-            relyingPartyUrl = relyingPartyUrl,
-        )
     }
 
-    "EUDI URL" {
+    "EUDI from URL" {
         val url = """
-            eudi-openid4vp://verifier-backend.eudiw.dev?client_id=verifier-backend.eudiw.dev&request_uri=https%3A%2F%2Fverifier-backend.eudiw.dev%2Fwallet%2Frequest.jwt%2FxgagB1vsIrWhMLixoJTCVZZvOHsZ8QrulEFxc0bjJdMRyzqO6j2-UB00gmOZraocfoknlxXY-kaoLlX8kygqxw
-        """.trimIndent()
+            eudi-openid4vp://verifier-backend.eudiw.dev?client_id=verifier-backend.eudiw.dev&request_uri=https%3A%2F%2F
+            verifier-backend.eudiw.dev%2Fwallet%2Frequest.jwt%2FWLFJEn9AGbJfAcEyaQTzzxueqmeRazmsHIkxMRTkGRL1zyI7un
+            -KJWaXtulrfiSS38LlU5ABDB9Zdsfq_11r8Q
+        """.trimIndent().replace("\n", "")
 
-        // TODO Relevant for Wallet Apps
-    }
-
-    "EUDI SIOP with Request Object" {
-        val requestJws = """
+        val requestObject = """
             eyJ4NWMiOlsiTFMwdExTMUNSVWRKVGlCRFJWSlVTVVpKUTBGVVJTMHRMUzB0Q2sxSlNVUkxha05EUVhKRFowRjNTVUpCWjBsVlpuazVkVFpU
             VEhSblRuVm1PVkJZV1dKb0wxRkVjWFZZZWpVd2QwTm5XVWxMYjFwSmVtb3dSVUYzU1hkWVJFVmxUVUozUjBFeFZVVkJkM2RXVlVWc1JVbEZi
             SHBqTTFac1kybENSRkZUUVhSSlJsWlZTVVJCZUUxVE1IZExkMWxFVmxGUlMwUkRVa1pXVlZKS1NVWmthR0pIZUd4a1EwSlRXbGRhYkdOdFZu
@@ -135,51 +117,82 @@ class OidcSiopInteropTest : FreeSpec({
             OiJXZSBuZWVkIHRvIHZlcmlmeSB5b3VyIGlkZW50aXR5IiwiY29uc3RyYWludHMiOnsiZmllbGRzIjpbeyJwYXRoIjpbIiQubWRvYy5kb2N0
             eXBlIl0sImZpbHRlciI6eyJ0eXBlIjoic3RyaW5nIiwiY29uc3QiOiJldS5ldXJvcGEuZWMuZXVkaXcucGlkLjEifX0seyJwYXRoIjpbIiQu
             bWRvYy5uYW1lc3BhY2UiXSwiZmlsdGVyIjp7InR5cGUiOiJzdHJpbmciLCJjb25zdCI6ImV1LmV1cm9wYS5lYy5ldWRpdy5waWQuMSJ9fSx7
-            InBhdGgiOlsiJC5tZG9jLmdpdmVuX25hbWUiXSwiaW50ZW50X3RvX3JldGFpbiI6ZmFsc2V9XX19XX0sInN0YXRlIjoieGdhZ0IxdnNJcldo
-            TUxpeG9KVENWWlp2T0hzWjhRcnVsRUZ4YzBiakpkTVJ5enFPNmoyLVVCMDBnbU9acmFvY2Zva25seFhZLWthb0xsWDhreWdxeHciLCJpYXQi
-            OjE3MTAzMTM1MzQsImNsaWVudF9tZXRhZGF0YSI6eyJhdXRob3JpemF0aW9uX2VuY3J5cHRlZF9yZXNwb25zZV9hbGciOiJFQ0RILUVTIiwi
-            YXV0aG9yaXphdGlvbl9lbmNyeXB0ZWRfcmVzcG9uc2VfZW5jIjoiQTEyOENCQy1IUzI1NiIsImlkX3Rva2VuX2VuY3J5cHRlZF9yZXNwb25z
-            ZV9hbGciOiJSU0EtT0FFUC0yNTYiLCJpZF90b2tlbl9lbmNyeXB0ZWRfcmVzcG9uc2VfZW5jIjoiQTEyOENCQy1IUzI1NiIsImp3a3NfdXJp
-            IjoiaHR0cHM6Ly92ZXJpZmllci1iYWNrZW5kLmV1ZGl3LmRldi93YWxsZXQvamFybS94Z2FnQjF2c0lyV2hNTGl4b0pUQ1ZaWnZPSHNaOFFy
-            dWxFRnhjMGJqSmRNUnl6cU82ajItVUIwMGdtT1pyYW9jZm9rbmx4WFkta2FvTGxYOGt5Z3F4dy9qd2tzLmpzb24iLCJzdWJqZWN0X3N5bnRh
-            eF90eXBlc19zdXBwb3J0ZWQiOlsidXJuOmlldGY6cGFyYW1zOm9hdXRoOmp3ay10aHVtYnByaW50Il0sImlkX3Rva2VuX3NpZ25lZF9yZXNw
-            b25zZV9hbGciOiJSUzI1NiJ9fQ.rRml4VbeWmX66ULMnLkCLjeqYaCLSMvuQjFvLejHxALcqvTgEJqMv34MN5TG74J8etFMZOdmtYGlfumty
-            O9xYQ
+            InBhdGgiOlsiJC5tZG9jLmZhbWlseV9uYW1lIl0sImludGVudF90b19yZXRhaW4iOmZhbHNlfSx7InBhdGgiOlsiJC5tZG9jLmdpdmVuX25h
+            bWUiXSwiaW50ZW50X3RvX3JldGFpbiI6ZmFsc2V9LHsicGF0aCI6WyIkLm1kb2MuYmlydGhfZGF0ZSJdLCJpbnRlbnRfdG9fcmV0YWluIjpm
+            YWxzZX0seyJwYXRoIjpbIiQubWRvYy5hZ2Vfb3Zlcl8xOCJdLCJpbnRlbnRfdG9fcmV0YWluIjpmYWxzZX0seyJwYXRoIjpbIiQubWRvYy5h
+            Z2VfaW5feWVhcnMiXSwiaW50ZW50X3RvX3JldGFpbiI6ZmFsc2V9LHsicGF0aCI6WyIkLm1kb2MuYWdlX2JpcnRoX3llYXIiXSwiaW50ZW50
+            X3RvX3JldGFpbiI6ZmFsc2V9LHsicGF0aCI6WyIkLm1kb2MuZmFtaWx5X25hbWVfYmlydGgiXSwiaW50ZW50X3RvX3JldGFpbiI6ZmFsc2V9
+            LHsicGF0aCI6WyIkLm1kb2MuZ2l2ZW5fbmFtZV9iaXJ0aCJdLCJpbnRlbnRfdG9fcmV0YWluIjpmYWxzZX0seyJwYXRoIjpbIiQubWRvYy5i
+            aXJ0aF9wbGFjZSJdLCJpbnRlbnRfdG9fcmV0YWluIjpmYWxzZX0seyJwYXRoIjpbIiQubWRvYy5iaXJ0aF9jb3VudHJ5Il0sImludGVudF90
+            b19yZXRhaW4iOmZhbHNlfSx7InBhdGgiOlsiJC5tZG9jLmJpcnRoX3N0YXRlIl0sImludGVudF90b19yZXRhaW4iOmZhbHNlfSx7InBhdGgi
+            OlsiJC5tZG9jLmJpcnRoX2NpdHkiXSwiaW50ZW50X3RvX3JldGFpbiI6ZmFsc2V9LHsicGF0aCI6WyIkLm1kb2MucmVzaWRlbnRfYWRkcmVz
+            cyJdLCJpbnRlbnRfdG9fcmV0YWluIjpmYWxzZX0seyJwYXRoIjpbIiQubWRvYy5yZXNpZGVudF9jb3VudHJ5Il0sImludGVudF90b19yZXRh
+            aW4iOmZhbHNlfSx7InBhdGgiOlsiJC5tZG9jLnJlc2lkZW50X3N0YXRlIl0sImludGVudF90b19yZXRhaW4iOmZhbHNlfSx7InBhdGgiOlsi
+            JC5tZG9jLnJlc2lkZW50X2NpdHkiXSwiaW50ZW50X3RvX3JldGFpbiI6ZmFsc2V9LHsicGF0aCI6WyIkLm1kb2MucmVzaWRlbnRfcG9zdGFs
+            X2NvZGUiXSwiaW50ZW50X3RvX3JldGFpbiI6ZmFsc2V9LHsicGF0aCI6WyIkLm1kb2MucmVzaWRlbnRfc3RyZWV0Il0sImludGVudF90b19y
+            ZXRhaW4iOmZhbHNlfSx7InBhdGgiOlsiJC5tZG9jLnJlc2lkZW50X2hvdXNlX251bWJlciJdLCJpbnRlbnRfdG9fcmV0YWluIjpmYWxzZX0s
+            eyJwYXRoIjpbIiQubWRvYy5nZW5kZXIiXSwiaW50ZW50X3RvX3JldGFpbiI6ZmFsc2V9LHsicGF0aCI6WyIkLm1kb2MubmF0aW9uYWxpdHki
+            XSwiaW50ZW50X3RvX3JldGFpbiI6ZmFsc2V9LHsicGF0aCI6WyIkLm1kb2MuaXNzdWFuY2VfZGF0ZSJdLCJpbnRlbnRfdG9fcmV0YWluIjpm
+            YWxzZX0seyJwYXRoIjpbIiQubWRvYy5leHBpcnlfZGF0ZSJdLCJpbnRlbnRfdG9fcmV0YWluIjpmYWxzZX0seyJwYXRoIjpbIiQubWRvYy5p
+            c3N1aW5nX2F1dGhvcml0eSJdLCJpbnRlbnRfdG9fcmV0YWluIjpmYWxzZX0seyJwYXRoIjpbIiQubWRvYy5kb2N1bWVudF9udW1iZXIiXSwi
+            aW50ZW50X3RvX3JldGFpbiI6ZmFsc2V9LHsicGF0aCI6WyIkLm1kb2MuYWRtaW5pc3RyYXRpdmVfbnVtYmVyIl0sImludGVudF90b19yZXRh
+            aW4iOmZhbHNlfSx7InBhdGgiOlsiJC5tZG9jLmlzc3VpbmdfY291bnRyeSJdLCJpbnRlbnRfdG9fcmV0YWluIjpmYWxzZX0seyJwYXRoIjpb
+            IiQubWRvYy5pc3N1aW5nX2p1cmlzZGljdGlvbiJdLCJpbnRlbnRfdG9fcmV0YWluIjpmYWxzZX1dfX1dfSwic3RhdGUiOiJXTEZKRW45QUdi
+            SmZBY0V5YVFUenp4dWVxbWVSYXptc0hJa3hNUlRrR1JMMXp5STd1bi1LSldhWHR1bHJmaVNTMzhMbFU1QUJEQjlaZHNmcV8xMXI4USIsImlh
+            dCI6MTcxMDc2NjI5NCwiY2xpZW50X21ldGFkYXRhIjp7ImF1dGhvcml6YXRpb25fZW5jcnlwdGVkX3Jlc3BvbnNlX2FsZyI6IkVDREgtRVMi
+            LCJhdXRob3JpemF0aW9uX2VuY3J5cHRlZF9yZXNwb25zZV9lbmMiOiJBMTI4Q0JDLUhTMjU2IiwiaWRfdG9rZW5fZW5jcnlwdGVkX3Jlc3Bv
+            bnNlX2FsZyI6IlJTQS1PQUVQLTI1NiIsImlkX3Rva2VuX2VuY3J5cHRlZF9yZXNwb25zZV9lbmMiOiJBMTI4Q0JDLUhTMjU2Iiwiandrc191
+            cmkiOiJodHRwczovL3ZlcmlmaWVyLWJhY2tlbmQuZXVkaXcuZGV2L3dhbGxldC9qYXJtL1dMRkpFbjlBR2JKZkFjRXlhUVR6enh1ZXFtZVJh
+            em1zSElreE1SVGtHUkwxenlJN3VuLUtKV2FYdHVscmZpU1MzOExsVTVBQkRCOVpkc2ZxXzExcjhRL2p3a3MuanNvbiIsInN1YmplY3Rfc3lu
+            dGF4X3R5cGVzX3N1cHBvcnRlZCI6WyJ1cm46aWV0ZjpwYXJhbXM6b2F1dGg6andrLXRodW1icHJpbnQiXSwiaWRfdG9rZW5fc2lnbmVkX3Jl
+            c3BvbnNlX2FsZyI6IlJTMjU2In19.a5UzXIoRZzNQFAWFblAhkYocrR05hB-GIO7nRdqRnFrqxjvBVP6HfFhPyASRmhSgE0vUe0TPN0-TbQk
+            Yh0-LeA
         """.trimIndent()
 
-        val jwkSet = """
+        val jwkset = """
             {
                 "keys": [
                     {
                         "alg": "ECDH-ES",
                         "crv": "P-256",
-                        "kid": "e43045d4-bf6d-43d4-a376-7ea0fe3bb593",
+                        "kid": "1835c633-bd3f-429e-8dfa-64596b83aa0c",
                         "kty": "EC",
                         "use": "enc",
-                        "x": "fm2OIDVr7NyQpZnjdDkEHyfVfUbK3ZgQhxorVB-jNJA",
-                        "y": "qAofF8snByfB1ST3RMaaK0IxN2n888CxhOT55P_vmLg"
+                        "x": "lBeONku60ShqCvndUdFVubOCCuvMjWTmElaxgHWbuMo",
+                        "y": "NHYLE--QpTqc9vGrTLoq1dm2c86AC6af6xiHiLpKjdk"
                     }
                 ]
             }
-        """.trimIndent()
 
-        val jwsObject = JwsSigned.parse(requestJws)!!
-        jwsObject.header.publicKey.shouldNotBeNull()
-        DefaultVerifierJwsService().verifyJwsObject(jwsObject).shouldBeTrue()
+        """.trimIndent()
 
         holderSiop = OidcSiopWallet.newInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
-            jwkSetRetriever = { JsonWebKeySet.deserialize(jwkSet) }
+            jwkSetRetriever = { it ->
+                if (it == "https://verifier-backend.eudiw.dev/wallet/jarm/" +
+                    "WLFJEn9AGbJfAcEyaQTzzxueqmeRazmsHIkxMRTkGRL1zyI7un-KJWaXtulrfiSS38LlU5ABDB9Zdsfq_11r8Q/jwks.json"
+                )
+                    JsonWebKeySet.deserialize(jwkset) else null
+            },
+            requestRetriever = { it ->
+                if (it == "https://verifier-backend.eudiw.dev/wallet/request.jwt/" +
+                    "WLFJEn9AGbJfAcEyaQTzzxueqmeRazmsHIkxMRTkGRL1zyI7un-KJWaXtulrfiSS38LlU5ABDB9Zdsfq_11r8Q"
+                )
+                    requestObject else null
+            }
         )
-        val authnResponse = holderSiop.createAuthnResponse(requestJws).getOrThrow()
-        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Post>()
-        // TODO Verify that response is empty, contains MDOC
-        println(authnResponse.url)
-        println(authnResponse.content)
+
+        val response = holderSiop.createAuthnResponse(url).getOrThrow()
+
+        response.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Post>()
+        val params = response.content.decodeFromPostBody<AuthenticationResponseParameters>()
+        params.presentationSubmission.shouldNotBeNull()
+        params.vpToken.shouldNotBeNull()
+        params.idToken.shouldNotBeNull()
     }
 
-    "EUDI AuthnRequest" {
+    "EUDI AuthnRequest can be parsed" {
         val input = """
             {
             "response_uri": "https://verifier-backend.eudiw.dev/wallet/direct_post",
@@ -278,7 +291,10 @@ class OidcSiopInteropTest : FreeSpec({
         cm.idTokenEncryptedResponseAlg shouldBe JweAlgorithm.RSA_OAEP_256
         cm.idTokenEncryptedResponseEncoding shouldBe "A128CBC-HS256"
         cm.idTokenSignedResponseAlg shouldBe JwsAlgorithm.RS256
-        cm.jsonWebKeySetUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/jarm/xgagB1vsIrWhMLixoJTCVZZvOHsZ8QrulEFxc0bjJdMRyzqO6j2-UB00gmOZraocfoknlxXY-kaoLlX8kygqxw/jwks.json"
+        cm.jsonWebKeySetUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/jarm/" +
+                "xgagB1vsIrWhMLixoJTCVZZvOHsZ8QrulEFxc0bjJdMRyzqO6j2-UB00gmOZraocfoknlxXY-kaoLlX8kygqxw/jwks.json"
     }
 
 })
+
+

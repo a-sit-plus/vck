@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.Issuer
@@ -105,6 +104,34 @@ class DummyCredentialDataProvider(
                     expiration = expiration,
                 )
             )
+        }
+
+        if (credentialScheme == EudiwPidCredentialScheme) {
+            val subjectId = subjectPublicKey.didEncoded
+            val claims = listOfNotNull(
+                optionalClaim(claimNames, "family_name", "someone"),
+            )
+            credentials += when (representation) {
+                ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
+                    CredentialToBeIssued.VcSd(claims = claims, expiration = expiration)
+                )
+
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> listOf(
+                    CredentialToBeIssued.VcJwt(
+                        subject = EudiwPid1(subjectId, "someone"),
+                        expiration = expiration,
+                    )
+                )
+
+                ConstantIndex.CredentialRepresentation.ISO_MDOC -> listOf(
+                    CredentialToBeIssued.Iso(
+                        issuerSignedItems = claims.mapIndexed { index, claim ->
+                            issuerSignedItem(claim.name, claim.value, index.toUInt())
+                        },
+                        expiration = expiration,
+                    )
+                )
+            }
         }
         return KmmResult.success(credentials)
     }
