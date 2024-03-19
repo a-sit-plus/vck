@@ -1,6 +1,9 @@
 # Changelog
 
-Release NEXT:
+Release 3.6.0:
+ - tbd
+
+Release 3.5.0:
 - Kotlin 1.9.23
 - Ktor 2.3.9
 - Update to latest KMP Crypto 2.5.0
