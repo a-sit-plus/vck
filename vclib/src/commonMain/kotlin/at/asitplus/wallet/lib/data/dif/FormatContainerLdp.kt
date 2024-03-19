@@ -10,20 +10,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class FormatContainerLdp(
     @SerialName("proof_type")
-    val proofType: Array<String>,
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as FormatContainerLdp
-
-        if (!proofType.contentEquals(other.proofType)) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        return proofType.contentHashCode()
-    }
-}
+    val proofType: Collection<String>,
+)

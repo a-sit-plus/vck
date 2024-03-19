@@ -27,4 +27,12 @@ object AttributeIndex {
         return schemeSet.firstOrNull { it.vcType == type }
     }
 
+    /**
+     * Matches the passed [namespace] against all known namespace from [ConstantIndex.CredentialScheme.isoNamespace]
+     */
+    fun resolveIsoNamespace(namespace: String): ConstantIndex.CredentialScheme? {
+        // allow for extension to the namespace by appending ".countryname" or anything else, according to spec
+        return schemeSet.firstOrNull { it.isoNamespace.startsWith(namespace) || namespace.startsWith(it.isoNamespace) }
+    }
+
 }

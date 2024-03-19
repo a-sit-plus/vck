@@ -12,7 +12,10 @@ Release NEXT:
  - Fix name shadowing of gradle plugins by renaming file `Plugin.kt` -> `VcLibConventions.kt`
  - Fix: Add missing iOS exports
  - Add switch to disable composite build (useful for publishing)
-
+ - Get rid of arrays in serializable types and use collections instead
+ - Improve interoperability with verifiers and issuers from <https://github.com/eu-digital-identity-wallet/>
+ - `OidcSiopVerifier`: Move `credentialScheme` from constructor to `createAuthnRequest`
+ - `OidcSiopWallet`: Add constructor parameter to fetch JSON Web Key Sets
 
 Release 3.4.0:
  - Target Java 17

@@ -283,7 +283,7 @@ class HolderAgent(
         challenge: String,
         audienceId: String,
     ): Holder.CreatePresentationResult? {
-        val vp = VerifiablePresentation(validCredentials.toTypedArray())
+        val vp = VerifiablePresentation(validCredentials)
         val vpSerialized = vp.toJws(challenge, identifier, audienceId).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
         val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrElse {

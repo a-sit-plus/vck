@@ -20,47 +20,18 @@ data class PresentationDefinition(
     @SerialName("purpose")
     val purpose: String? = null,
     @SerialName("input_descriptors")
-    val inputDescriptors: Array<InputDescriptor>,
+    val inputDescriptors: Collection<InputDescriptor>,
     @SerialName("format")
     val formats: FormatHolder? = null,
     @SerialName("submission_requirements")
-    val submissionRequirements: Array<SubmissionRequirement>? = null,
+    val submissionRequirements: Collection<SubmissionRequirement>? = null,
 ) {
     constructor(
-        inputDescriptors: Array<InputDescriptor>,
+        inputDescriptors: Collection<InputDescriptor>,
         formats: FormatHolder
     ) : this(id = uuid4().toString(), inputDescriptors = inputDescriptors, formats = formats)
 
     fun serialize() = jsonSerializer.encodeToString(this)
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as PresentationDefinition
-
-        if (id != other.id) return false
-        if (name != other.name) return false
-        if (purpose != other.purpose) return false
-        if (!inputDescriptors.contentEquals(other.inputDescriptors)) return false
-        if (formats != other.formats) return false
-        if (submissionRequirements != null) {
-            if (other.submissionRequirements == null) return false
-            if (!submissionRequirements.contentEquals(other.submissionRequirements)) return false
-        } else if (other.submissionRequirements != null) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = id.hashCode()
-        result = 31 * result + (name?.hashCode() ?: 0)
-        result = 31 * result + (purpose?.hashCode() ?: 0)
-        result = 31 * result + inputDescriptors.contentHashCode()
-        result = 31 * result + (formats?.hashCode() ?: 0)
-        result = 31 * result + (submissionRequirements?.contentHashCode() ?: 0)
-        return result
-    }
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {

@@ -208,17 +208,17 @@ class PresentProofProtocol(
         val claimsConstraints = requestedClaims?.map(this::buildConstraintFieldForClaim) ?: listOf()
         val typeConstraints = buildConstraintFieldForType(credentialScheme.vcType)
         val presentationDefinition = PresentationDefinition(
-            inputDescriptors = arrayOf(
+            inputDescriptors = listOf(
                 InputDescriptor(
                     name = credentialScheme.vcType,
                     schema = SchemaReference(uri = credentialScheme.schemaUri),
                     constraints = Constraint(
-                        fields = (claimsConstraints + typeConstraints).toTypedArray()
+                        fields = claimsConstraints + typeConstraints
                     )
                 )
             ),
             formats = FormatHolder(
-                jwtVp = FormatContainerJwt(arrayOf(JwsAlgorithm.ES256.identifier))
+                jwtVp = FormatContainerJwt(listOf(JwsAlgorithm.ES256.identifier))
             )
         )
         val requestPresentation = RequestPresentationAttachment(
@@ -245,12 +245,12 @@ class PresentProofProtocol(
     }
 
     private fun buildConstraintFieldForType(attributeType: String) = ConstraintField(
-        path = arrayOf("\$.vc[*].type", "\$.type"),
+        path = listOf("\$.vc[*].type", "\$.type"),
         filter = ConstraintFilter(type = "string", const = attributeType)
     )
 
     private fun buildConstraintFieldForClaim(claimName: String) = ConstraintField(
-        path = arrayOf("\$.vc[*].name", "\$.type"),
+        path = listOf("\$.vc[*].name", "\$.type"),
         filter = ConstraintFilter(type = "string", const = claimName)
     )
 

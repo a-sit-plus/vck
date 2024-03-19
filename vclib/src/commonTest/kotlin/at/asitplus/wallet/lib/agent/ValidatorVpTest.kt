@@ -129,7 +129,7 @@ class ValidatorVpTest : FreeSpec({
             .map { it.vcSerialized }
         (validCredentials.isEmpty()) shouldBe false
 
-        val vp = VerifiablePresentation(validCredentials.toTypedArray())
+        val vp = VerifiablePresentation(validCredentials)
         val vpSerialized = vp.toJws(
             challenge = challenge,
             issuerId = holder.identifier,
@@ -148,7 +148,7 @@ class ValidatorVpTest : FreeSpec({
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
             .map { it.vcSerialized }
 
-        val vp = VerifiablePresentation(credentials.toTypedArray())
+        val vp = VerifiablePresentation(credentials)
         val vpSerialized = VerifiablePresentationJws(
             vp = vp,
             challenge = challenge,
@@ -168,7 +168,7 @@ class ValidatorVpTest : FreeSpec({
         val credentials = holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
             .map { it.vcSerialized }
-        val vp = VerifiablePresentation(credentials.toTypedArray())
+        val vp = VerifiablePresentation(credentials)
         val vpSerialized = VerifiablePresentationJws(
             vp = vp,
             challenge = challenge,
@@ -191,7 +191,7 @@ class ValidatorVpTest : FreeSpec({
         val vp = VerifiablePresentation(
             id = "urn:uuid:${uuid4()}",
             type = "wrong_type",
-            verifiableCredential = credentials.toTypedArray()
+            verifiableCredential = credentials
         )
         val vpSerialized = vp.toJws(
             challenge = challenge,

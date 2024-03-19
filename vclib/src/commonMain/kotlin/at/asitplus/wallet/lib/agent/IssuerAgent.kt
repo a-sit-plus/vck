@@ -277,7 +277,7 @@ class IssuerAgent(
             expiration = expirationDate,
             jwtId = vcId,
             disclosureDigests = disclosureDigests,
-            type = arrayOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, scheme.vcType),
+            type = listOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, scheme.vcType),
             selectiveDisclosureAlgorithm = "sha-256",
             confirmationKey = subjectPublicKey.toJsonWebKey(),
             credentialStatus = credentialStatus,

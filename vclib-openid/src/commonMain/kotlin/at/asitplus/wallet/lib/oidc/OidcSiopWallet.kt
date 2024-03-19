@@ -2,12 +2,12 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
@@ -53,7 +53,18 @@ class OidcSiopWallet(
     private val jwsService: JwsService,
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val clock: Clock = Clock.System,
-    private val clientId: String = "https://wallet.a-sit.at/"
+    private val clientId: String = "https://wallet.a-sit.at/",
+    /**
+     * Need to implement if JSON web keys are not specified directly as `jwks` in authn requests,
+     * but need to be retrieved from the `jwks_uri`. Implementations need to fetch the URL passed and return the
+     * content parsed as [JsonWebKeySet].
+     */
+    private val jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
+    /**
+     * Need to implement if `request_uri` parameters are used, i.e. the actual authn request can be retrieved
+     * from that URL. Implementations need to fetch the URL and return the content.
+     */
+    private val requestRetriever: (String) -> String? = { null },
 ) {
 
     companion object {
@@ -63,7 +74,9 @@ class OidcSiopWallet(
             jwsService: JwsService = DefaultJwsService(cryptoService),
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
             clock: Clock = Clock.System,
-            clientId: String = "https://wallet.a-sit.at/"
+            clientId: String = "https://wallet.a-sit.at/",
+            jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
+            requestRetriever: (String) -> String? = { null },
         ) = OidcSiopWallet(
             holder = holder,
             agentPublicKey = cryptoService.publicKey,
@@ -71,6 +84,8 @@ class OidcSiopWallet(
             verifierJwsService = verifierJwsService,
             clock = clock,
             clientId = clientId,
+            jwkSetRetriever = jwkSetRetriever,
+            requestRetriever = requestRetriever,
         )
     }
 
@@ -126,6 +141,11 @@ class OidcSiopWallet(
         params.request?.let { requestObject ->
             return parseRequestObjectJws(requestObject)
         }
+        params.requestUri?.let { uri ->
+            requestRetriever.invoke(uri)?.let { requestObject ->
+                return parseRequestObjectJws(requestObject)
+            }
+        }
         return null
     }
 
@@ -133,7 +153,7 @@ class OidcSiopWallet(
         JwsSigned.parse(requestObject)?.let { jws ->
             if (verifierJwsService.verifyJwsObject(jws)) {
                 return kotlin.runCatching {
-                    jsonSerializer.decodeFromString<AuthenticationRequestParameters>(jws.payload.decodeToString())
+                    AuthenticationRequestParameters.deserialize(jws.payload.decodeToString())
                 }.getOrNull()
             }
         }
@@ -154,17 +174,17 @@ class OidcSiopWallet(
             if (!request.responseType.contains(ID_TOKEN) && !request.responseType.contains(VP_TOKEN)) {
                 return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
             }
-            if (request.responseMode?.contains(POST) == true) {
+            if (request.responseMode?.startsWith(POST) == true) {
                 if (request.redirectUrl == null)
                     return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 val body = responseParams.encodeToParameters().formUrlEncode()
-                KmmResult.success(AuthenticationResponseResult.Post(request.redirectUrl, body))
-            } else if (request.responseMode?.contains(DIRECT_POST) == true) {
+                return KmmResult.success(AuthenticationResponseResult.Post(request.redirectUrl, body))
+            } else if (request.responseMode?.startsWith(DIRECT_POST) == true) {
                 if (request.responseUrl == null || request.redirectUrl != null)
                     return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 val body = responseParams.encodeToParameters().formUrlEncode()
-                KmmResult.success(AuthenticationResponseResult.Post(request.responseUrl, body))
-            } else if (request.responseMode?.contains(QUERY) == true) {
+                return KmmResult.success(AuthenticationResponseResult.Post(request.responseUrl, body))
+            } else if (request.responseMode?.startsWith(QUERY) == true) {
                 if (request.redirectUrl == null)
                     return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 val url = URLBuilder(request.redirectUrl)
@@ -174,7 +194,7 @@ class OidcSiopWallet(
                         }
                     }
                     .buildString()
-                KmmResult.success(AuthenticationResponseResult.Redirect(url))
+                return KmmResult.success(AuthenticationResponseResult.Redirect(url))
             } else {
                 // default for vp_token and id_token is fragment
                 if (request.redirectUrl == null)
@@ -182,7 +202,7 @@ class OidcSiopWallet(
                 val url = URLBuilder(request.redirectUrl)
                     .apply { encodedFragment = responseParams.encodeToParameters().formUrlEncode() }
                     .buildString()
-                KmmResult.success(AuthenticationResponseResult.Redirect(url))
+                return KmmResult.success(AuthenticationResponseResult.Redirect(url))
             }
         }, {
             return KmmResult.failure(it)
@@ -195,45 +215,55 @@ class OidcSiopWallet(
     suspend fun createAuthnResponseParams(
         params: AuthenticationRequestParameters
     ): KmmResult<AuthenticationResponseParameters> {
-        val audience = params.clientMetadata?.jsonWebKeySet?.keys?.get(0)?.identifier
+        if (params.clientMetadata == null) {
+            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+                .also { Napier.w("client metadata is not specified") }
+        }
+        val audience = params.clientMetadata.jsonWebKeySet?.keys?.firstOrNull()?.identifier
+            ?: params.clientMetadata.jsonWebKeySetUrl?.let { jwkSetRetriever.invoke(it)?.keys?.firstOrNull()?.identifier }
             ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("Could not parse audience") }
         if (URN_TYPE_JWK_THUMBPRINT !in params.clientMetadata.subjectSyntaxTypesSupported)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
-        if (params.clientId != params.redirectUrl)
+        if (params.clientIdScheme == OpenIdConstants.ClientIdSchemes.REDIRECT_URI && params.redirectUrl == null) {
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("client_id does not match redirect_uri") }
-        if (params.responseType?.contains(ID_TOKEN) != true)
+                .also { Napier.w("client_id_scheme is redirect_uri, but that is not set") }
+        }
+        if (params.redirectUrl != null) {
+            if (params.clientId != params.redirectUrl)
+                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+                    .also { Napier.w("client_id does not match redirect_uri") }
+        }
+        if (params.responseType == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("response_type is not \"$ID_TOKEN\"") }
+                .also { Napier.w("response_type is not specified") }
         if (!params.responseType.contains(VP_TOKEN) && params.presentationDefinition == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("vp_token not requested") }
-        // TODO Client shall send the client_id_scheme, which needs to be supported by the Wallet
-        if (params.clientMetadata.vpFormats == null)
-            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                .also { Napier.w("Incompatible subject syntax types algorithms") }
-        if (params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true)
-            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                .also { Napier.w("Incompatible JWT algorithms") }
-        if (params.clientMetadata.vpFormats.jwtSd?.algorithms?.contains(jwsService.algorithm.identifier) != true)
-            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                .also { Napier.w("Incompatible JWT algorithms") }
-        if (params.clientMetadata.vpFormats.msoMdoc?.algorithms?.contains(jwsService.algorithm.identifier) != true)
-            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                .also { Napier.w("Incompatible JWT algorithms") }
+        if (params.clientMetadata.vpFormats != null) {
+            if (params.clientMetadata.vpFormats.jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true)
+                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
+                    .also { Napier.w("Incompatible JWT algorithms") }
+            if (params.clientMetadata.vpFormats.jwtSd?.algorithms?.contains(jwsService.algorithm.identifier) != true)
+                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
+                    .also { Napier.w("Incompatible JWT algorithms") }
+            if (params.clientMetadata.vpFormats.msoMdoc?.algorithms?.contains(jwsService.algorithm.identifier) != true)
+                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
+                    .also { Napier.w("Incompatible JWT algorithms") }
+        }
         if (params.nonce == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("nonce is null") }
 
         val now = clock.now()
         // we'll assume jwk-thumbprint
+        val agentJsonWebKey = agentPublicKey.toJsonWebKey()
         val idToken = IdToken(
-            issuer = agentPublicKey.toJsonWebKey().jwkThumbprint,
-            subject = agentPublicKey.toJsonWebKey().jwkThumbprint,
-            subjectJwk = agentPublicKey.toJsonWebKey(),
-            audience = params.redirectUrl,
+            issuer = agentJsonWebKey.jwkThumbprint,
+            subject = agentJsonWebKey.jwkThumbprint,
+            subjectJwk = agentJsonWebKey,
+            audience = params.redirectUrl ?: params.clientId,
             issuedAt = now,
             expiration = now + 60.seconds,
             nonce = params.nonce,
@@ -244,12 +274,28 @@ class OidcSiopWallet(
             return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
         }
 
-        val requestedScopes = (params.scope ?: "").split(" ")
+        val requestedAttributeTypes = (params.scope ?: "").split(" ")
             .filterNot { it == SCOPE_OPENID }.filterNot { it == SCOPE_PROFILE }
-            .mapNotNull { AttributeIndex.resolveAttributeType(it) }
-            .toList()
+            .filter { it.isNotEmpty() }
+        val requestedNamespace = params.presentationDefinition?.inputDescriptors
+            ?.mapNotNull { it.constraints }
+            ?.flatMap { it.fields?.toList() ?: listOf() }
+            ?.firstOrNull { it.path.toList().contains("$.mdoc.namespace") }
+            ?.filter?.const
+        val requestedSchemes = mutableListOf<ConstantIndex.CredentialScheme>()
+        if (requestedNamespace != null) {
+            requestedSchemes.add(AttributeIndex.resolveIsoNamespace(requestedNamespace)
+                ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
+                    .also { Napier.w("Could not resolve requested namespace $requestedNamespace") })
+            requestedAttributeTypes.forEach { requestedAttributeTyp ->
+                requestedSchemes.add(AttributeIndex.resolveAttributeType(requestedAttributeTyp)
+                    ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
+                        .also { Napier.w("Could not resolve requested attribute type $it") })
+            }
+        }
         val requestedClaims = params.presentationDefinition?.inputDescriptors
-            ?.mapNotNull { it.constraints }?.flatMap { it.fields?.toList() ?: listOf() }
+            ?.mapNotNull { it.constraints }
+            ?.flatMap { it.fields?.toList() ?: listOf() }
             ?.flatMap { it.path.toList() }
             ?.filter { it != "$.type" }
             ?.filter { it != "$.mdoc.doctype" }
@@ -259,7 +305,7 @@ class OidcSiopWallet(
         val vp = holder.createPresentation(
             challenge = params.nonce,
             audienceId = audience,
-            credentialSchemes = requestedScopes.ifEmpty { null },
+            credentialSchemes = requestedSchemes.toList().ifEmpty { null },
             requestedClaims = requestedClaims.ifEmpty { null }
         ) ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
             .also { Napier.w("Could not create presentation") }
@@ -280,7 +326,7 @@ class OidcSiopWallet(
                                 path = "\$.verifiableCredential[0]"
                             ),
                         )
-                    }?.toTypedArray()
+                    }
                 )
                 return KmmResult.success(
                     AuthenticationResponseParameters(
@@ -302,7 +348,7 @@ class OidcSiopWallet(
                             format = ClaimFormatEnum.JWT_SD,
                             path = "\$",
                         )
-                    }?.toTypedArray()
+                    }
                 )
                 return KmmResult.success(
                     AuthenticationResponseParameters(
@@ -324,7 +370,7 @@ class OidcSiopWallet(
                             format = ClaimFormatEnum.MSO_MDOC,
                             path = "\$",
                         )
-                    }?.toTypedArray()
+                    }
                 )
                 return KmmResult.success(
                     AuthenticationResponseParameters(
@@ -338,6 +384,5 @@ class OidcSiopWallet(
 
         }
     }
-
 
 }
