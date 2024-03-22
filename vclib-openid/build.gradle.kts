@@ -27,10 +27,6 @@ kotlin {
                 api(project(":vclib"))
                 commonImplementationDependencies()
                 implementation(ktor("client-core"))
-                implementation(ktor("client-cio"))
-                implementation(ktor("client-logging"))
-                implementation(ktor("client-content-negotiation"))
-                implementation(ktor("serialization-kotlinx-json"))
             }
         }
 
