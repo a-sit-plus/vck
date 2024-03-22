@@ -69,7 +69,7 @@ class OidcSiopWallet(
      * Need to implement if the request parameters need to be fetched, i.e. the actual authn request can
      * be retrieved from that URL. Implementations need to fetch the url and return request object candidates that have been retrieved.
      */
-    private val requestObjectCandidateRetriever: RequestObjectCandidateRetriever,
+    private val requestObjectCandidateRetriever: RequestObjectCandidateRetriever = { listOf() },
 ) {
     companion object {
         fun newInstance(
