@@ -172,10 +172,6 @@ class OidcSiopWallet(
                 .decodeFromUrlQuery<AuthenticationRequestParameters>()
         }.getOrNull() ?: kotlin.runCatching {
             // maybe it's a url that yields the request object in some other way
-            // currently supported in order of priority:
-            // 1. use redirect location as new starting point if available
-            // 2. use resonse body as new starting point
-            // - maybe it's just a jws that needs to be parsed, but let's also support a url there
             val url = Url(input)
             val candidates = requestObjectCandidateRetriever.invoke(url)
             var result: AuthenticationRequestParameters? = null
@@ -474,6 +470,9 @@ typealias RequestObjectCandidateRetriever = suspend (Url) -> List<String>
 
 private val HttpClient.asRequestObjectCandidateRetriever: RequestObjectCandidateRetriever
     get() = {
+        // currently supported in order of priority:
+        // 1. use redirect location as new starting point if available
+        // 2. use resonse body as new starting point
         val response = this.get(it)
         listOfNotNull(
             response.headers[HttpHeaders.Location],
