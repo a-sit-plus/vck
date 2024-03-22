@@ -67,7 +67,7 @@ class OidcSiopWallet(
     private val jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
     /**
      * Need to implement if the request parameters need to be fetched, i.e. the actual authn request can
-     * be retrieved from that URL. Implementations need to return candidates that can be retrieved from the input.
+     * be retrieved from that URL. Implementations need to fetch the url and return request object candidates that have been retrieved.
      */
     private val requestObjectCandidateRetriever: RequestObjectCandidateRetriever,
 ) {
@@ -92,7 +92,7 @@ class OidcSiopWallet(
             requestObjectCandidateRetriever = httpClient.asRequestObjectCandidateRetriever,
         )
 
-        // mark this as internal for testing purposes
+        // mark this as internal so it can be used for testing purposes
         // the request object candidate retriever should usually be derived from a http client as in the other constructor
         internal fun newInstance(
             holder: Holder,
@@ -171,11 +171,11 @@ class OidcSiopWallet(
             Url(input).parameters.flattenEntries().toMap()
                 .decodeFromUrlQuery<AuthenticationRequestParameters>()
         }.getOrNull() ?: kotlin.runCatching {
-            // maybe it's a url that yields the request body in some other way
+            // maybe it's a url that yields the request object in some other way
             // currently supported in order of priority:
             // 1. use redirect location as new starting point if available
             // 2. use resonse body as new starting point
-            // - maybe it's just a jws that needs to be parsed, but maybe not?
+            // - maybe it's just a jws that needs to be parsed, but let's also support a url there
             val url = Url(input)
             val candidates = requestObjectCandidateRetriever.invoke(url)
             var result: AuthenticationRequestParameters? = null
@@ -232,7 +232,7 @@ class OidcSiopWallet(
     suspend fun createAuthnResponse(
         request: AuthenticationRequestParameters
     ): KmmResult<AuthenticationResponseResult> = createAuthnResponseParams(request).fold(
-        { responseParams ->
+        onSuccess = { responseParams ->
             if (request.responseType == null) {
                 return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
             }
@@ -279,7 +279,8 @@ class OidcSiopWallet(
                     .buildString()
                 return KmmResult.success(AuthenticationResponseResult.Redirect(url))
             }
-        }, {
+        },
+        onFailure = {
             return KmmResult.failure(it)
         }
     )
