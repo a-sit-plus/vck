@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.oidc
 
-import io.ktor.client.HttpClient
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JwsSigned
@@ -33,11 +32,13 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.ktor.client.HttpClient
 import io.ktor.client.request.get
-import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.*
-import io.ktor.util.*
+import io.ktor.http.HttpHeaders
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
+import io.ktor.util.flattenEntries
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -65,10 +66,10 @@ class OidcSiopWallet(
      */
     private val jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
     /**
-     * Need to implement if the request parameters need to be fetched, i.e. the actual authn request
-     * can be retrieved from that URL. Implementations need to fetch the URL and return the response.
+     * Need to implement if the request parameters need to be fetched, i.e. the actual authn request can
+     * be retrieved from that URL. Implementations need to return candidates that can be retrieved from the input.
      */
-    private val httpResponseGetter: suspend (Url) -> HttpResponse,
+    private val requestObjectCandidateRetriever: RequestObjectCandidateRetriever,
 ) {
     companion object {
         fun newInstance(
@@ -77,10 +78,9 @@ class OidcSiopWallet(
             jwsService: JwsService = DefaultJwsService(cryptoService),
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
             clock: Clock = Clock.System,
-            client: HttpClient,
+            httpClient: HttpClient,
             clientId: String = "https://wallet.a-sit.at/",
             jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
-            requestRetriever: (String) -> String? = { null }
         ) = OidcSiopWallet(
             holder = holder,
             agentPublicKey = cryptoService.publicKey,
@@ -89,7 +89,29 @@ class OidcSiopWallet(
             clock = clock,
             clientId = clientId,
             jwkSetRetriever = jwkSetRetriever,
-            httpResponseGetter = client::get,
+            requestObjectCandidateRetriever = httpClient.asRequestObjectCandidateRetriever,
+        )
+
+        // mark this as internal for testing purposes
+        // the request object candidate retriever should usually be derived from a http client as in the other constructor
+        internal fun newInstance(
+            holder: Holder,
+            cryptoService: CryptoService,
+            jwsService: JwsService = DefaultJwsService(cryptoService),
+            verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+            clock: Clock = Clock.System,
+            clientId: String = "https://wallet.a-sit.at/",
+            jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
+            requestObjectCandidateRetriever: RequestObjectCandidateRetriever = { listOf() },
+        ) = OidcSiopWallet(
+            holder = holder,
+            agentPublicKey = cryptoService.publicKey,
+            jwsService = jwsService,
+            verifierJwsService = verifierJwsService,
+            clock = clock,
+            clientId = clientId,
+            jwkSetRetriever = jwkSetRetriever,
+            requestObjectCandidateRetriever = requestObjectCandidateRetriever,
         )
     }
 
@@ -155,11 +177,7 @@ class OidcSiopWallet(
             // 2. use resonse body as new starting point
             // - maybe it's just a jws that needs to be parsed, but maybe not?
             val url = Url(input)
-            val response = httpResponseGetter.invoke(url)
-            val candidates = listOfNotNull(
-                response.headers[HttpHeaders.Location],
-                response.bodyAsText()
-            )
+            val candidates = requestObjectCandidateRetriever.invoke(url)
             var result: AuthenticationRequestParameters? = null
             for (candidate in candidates) {
                 result = kotlin.runCatching {
@@ -450,3 +468,14 @@ class OidcSiopWallet(
     }
 
 }
+
+typealias RequestObjectCandidateRetriever = suspend (Url) -> List<String>
+
+private val HttpClient.asRequestObjectCandidateRetriever: RequestObjectCandidateRetriever
+    get() = {
+        val response = this.get(it)
+        listOfNotNull(
+            response.headers[HttpHeaders.Location],
+            response.bodyAsText(),
+        )
+    }
