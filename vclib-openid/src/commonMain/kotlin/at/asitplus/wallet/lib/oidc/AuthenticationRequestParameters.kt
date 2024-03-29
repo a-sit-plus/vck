@@ -26,13 +26,13 @@ data class AuthenticationRequestParameters(
      *
      * Optional when JAR (RFC9101) is used.
      */
-    @SerialName("response_type")
+    @SerialName(AuthenticationRequestConstants.SerialNames.responseType)
     val responseType: String? = null,
 
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      */
-    @SerialName("client_id")
+    @SerialName(AuthenticationRequestConstants.SerialNames.clientId)
     val clientId: String,
 
     /**
@@ -42,7 +42,7 @@ data class AuthenticationRequestParameters(
      *
      * Optional when JAR (RFC9101) is used.
      */
-    @SerialName("redirect_uri")
+    @SerialName(AuthenticationRequestConstants.SerialNames.redirectUrl)
     val redirectUrl: String? = null,
 
     /**
@@ -51,7 +51,7 @@ data class AuthenticationRequestParameters(
      * understood by an implementation SHOULD be ignored.
      * e.g. `profile` or `com.example.healthCardCredential`
      */
-    @SerialName("scope")
+    @SerialName(AuthenticationRequestConstants.SerialNames.scope)
     val scope: String? = null,
 
     /**
@@ -59,7 +59,7 @@ data class AuthenticationRequestParameters(
      * Cross-Site Request Forgery (CSRF, XSRF) mitigation is done by cryptographically binding the value of this
      * parameter with a browser cookie.
      */
-    @SerialName("state")
+    @SerialName(AuthenticationRequestConstants.SerialNames.state)
     val state: String? = null,
 
     /**
@@ -67,14 +67,14 @@ data class AuthenticationRequestParameters(
      * The value is passed through unmodified from the Authentication Request to the ID Token. Sufficient entropy MUST
      * be present in the nonce values used to prevent attackers from guessing values.
      */
-    @SerialName("nonce")
+    @SerialName(AuthenticationRequestConstants.SerialNames.nonce)
     val nonce: String? = null,
 
     /**
      * OIDC: OPTIONAL. This parameter is used to request that specific Claims be returned. The value is a JSON object
      * listing the requested Claims.
      */
-    @SerialName("claims")
+    @SerialName(AuthenticationRequestConstants.SerialNames.claims)
     val claims: AuthnRequestClaims? = null,
 
     /**
@@ -82,7 +82,7 @@ data class AuthenticationRequestParameters(
      * that would normally be provided to an OP during Dynamic RP Registration.
      * It MUST not be present if the RP uses OpenID Federation 1.0 Automatic Registration to pass its metadata.
      */
-    @SerialName("client_metadata")
+    @SerialName(AuthenticationRequestConstants.SerialNames.clientMetadata)
     val clientMetadata: RelyingPartyMetadata? = null,
 
     /**
@@ -90,7 +90,7 @@ data class AuthenticationRequestParameters(
      * that would normally be provided to an OP during Dynamic RP Registration.
      * It MUST not be present if the RP uses OpenID Federation 1.0 Automatic Registration to pass its metadata.
      */
-    @SerialName("client_metadata_uri")
+    @SerialName(AuthenticationRequestConstants.SerialNames.clientMetadataUri)
     val clientMetadataUri: String? = null,
 
     /**
@@ -99,7 +99,7 @@ data class AuthenticationRequestParameters(
      * logged in or is logged in by the request, then the Authorization Server returns a positive response; otherwise,
      * it SHOULD return an error, such as login_required.
      */
-    @SerialName("id_token_hint")
+    @SerialName(AuthenticationRequestConstants.SerialNames.idTokenHint)
     val idTokenHint: String? = null,
 
     /**
@@ -107,7 +107,7 @@ data class AuthenticationRequestParameters(
      * parameters stated in Section 4 of RFC6749 (OAuth 2.0). If this parameter is present in the authorization request,
      * `request_uri` MUST NOT be present.
      */
-    @SerialName("request")
+    @SerialName(AuthenticationRequestConstants.SerialNames.request)
     val request: String? = null,
 
     /**
@@ -115,7 +115,7 @@ data class AuthenticationRequestParameters(
      * Request Object URI referencing the authorization request parameters stated in Section 4 of RFC6749 (OAuth 2.0).
      * If this parameter is present in the authorization request, `request` MUST NOT be present.
      */
-    @SerialName("request_uri")
+    @SerialName(AuthenticationRequestConstants.SerialNames.requestUri)
     val requestUri: String? = null,
 
     /**
@@ -128,7 +128,7 @@ data class AuthenticationRequestParameters(
      *
      * See [IdTokenType] for valid values.
      */
-    @SerialName("id_token_type")
+    @SerialName(AuthenticationRequestConstants.SerialNames.idTokenType)
     val idTokenType: String? = null,
 
     /**
@@ -136,7 +136,7 @@ data class AuthenticationRequestParameters(
      * `presentation_definition_uri` parameter, or a `scope` value representing a Presentation Definition is not
      * present.
      */
-    @SerialName("presentation_definition")
+    @SerialName(AuthenticationRequestConstants.SerialNames.presentationDefinition)
     val presentationDefinition: PresentationDefinition? = null,
 
     /**
@@ -144,7 +144,7 @@ data class AuthenticationRequestParameters(
      * be retrieved. This parameter MUST be present when `presentation_definition` parameter, or a `scope` value
      * representing a Presentation Definition is not present.
      */
-    @SerialName("authorization_details")
+    @SerialName(AuthenticationRequestConstants.SerialNames.authorizationDetails)
     val authorizationDetails: AuthorizationDetails? = null,
 
     /**
@@ -157,7 +157,7 @@ data class AuthenticationRequestParameters(
      * Identifier schemes the Wallet supports prior to sending the Authorization Request in order to choose a supported
      * scheme.
      */
-    @SerialName("client_id_scheme")
+    @SerialName(AuthenticationRequestConstants.SerialNames.clientIdScheme)
     val clientIdScheme: String? = null,
 
     /**
@@ -165,14 +165,14 @@ data class AuthenticationRequestParameters(
      * defined in SIOPv2 to determine the Wallet's capabilities and endpoints, using the `wallet_issuer` value as the
      * Issuer Identifier referred to in SIOPv2. This is RECOMMENDED in Dynamic Credential Requests.
      */
-    @SerialName("wallet_issuer")
+    @SerialName(AuthenticationRequestConstants.SerialNames.walletIssuer)
     val walletIssuer: String? = null,
 
     /**
      * OID4VP: OPTIONAL. String containing an opaque End-User hint that the Wallet MAY use in subsequent callbacks to
      * optimize the End-User's experience. This is RECOMMENDED in Dynamic Credential Requests.
      */
-    @SerialName("user_hint")
+    @SerialName(AuthenticationRequestConstants.SerialNames.userHint)
     val userHint: String? = null,
 
     /**
@@ -180,7 +180,7 @@ data class AuthenticationRequestParameters(
      * this parameter is typically passed in a Credential Offer from the Credential Issuer to the Wallet. This request
      * parameter is used to pass the issuer_state value back to the Credential Issuer.
      */
-    @SerialName("issuer_state")
+    @SerialName(AuthenticationRequestConstants.SerialNames.issuerState)
     val issuerState: String? = null,
 
     /**
@@ -191,7 +191,7 @@ data class AuthenticationRequestParameters(
      * OIDC SIOPv2: This response mode `post` is used to request the Self-Issued OP to deliver the result of the
      * authentication process to a certain endpoint using the HTTP POST method.
      */
-    @SerialName("response_mode")
+    @SerialName(AuthenticationRequestConstants.SerialNames.responseMode)
     val responseMode: String? = null,
 
     /**
@@ -202,7 +202,7 @@ data class AuthenticationRequestParameters(
      * Request parameter is present when the Response Mode is `direct_post`, the Wallet MUST return an
      * `invalid_request` Authorization Response error.
      */
-    @SerialName("response_uri")
+    @SerialName(AuthenticationRequestConstants.SerialNames.responseUrl)
     val responseUrl: String? = null,
 
     /**
@@ -210,7 +210,7 @@ data class AuthenticationRequestParameters(
      * (audience) as members with their semantics being the same as defined in the JWT (RFC7519) specification. The
      * value of `aud` should be the value of the authorization server (AS) `issuer`, as defined in RFC 8414.
      */
-    @SerialName("aud")
+    @SerialName(AuthenticationRequestConstants.SerialNames.audience)
     val audience: String? = null,
 
     /**
@@ -218,13 +218,13 @@ data class AuthenticationRequestParameters(
      * (audience) as members with their semantics being the same as defined in the JWT (RFC7519) specification. The
      * value of `aud` should be the value of the authorization server (AS) `issuer`, as defined in RFC 8414.
      */
-    @SerialName("iss")
+    @SerialName(AuthenticationRequestConstants.SerialNames.issuer)
     val issuer: String? = null,
 
     /**
      * OPTIONAL. Time at which the request was issued.
      */
-    @SerialName("iat")
+    @SerialName(AuthenticationRequestConstants.SerialNames.issuedAt)
     @Serializable(with = InstantLongSerializer::class)
     val issuedAt: Instant? = null,
 ) {
@@ -238,5 +238,37 @@ data class AuthenticationRequestParameters(
             Napier.w("deserialize failed", it)
             null
         }
+    }
+}
+
+// restricted to internal as there is no reason to make this public for now
+object AuthenticationRequestConstants {
+    object SerialNames {
+
+        const val audience = "aud"
+        const val authorizationDetails = "authorization_details"
+        const val claims = "claims"
+        const val clientId = "client_id"
+        const val clientIdScheme = "client_id_scheme"
+        const val clientMetadata = "client_metadata"
+        const val clientMetadataUri = "client_metadata_uri"
+        const val idTokenHint = "id_token_hint"
+        const val idTokenType = "id_token_type"
+        const val issuedAt = "iat"
+        const val issuer = "iss"
+        const val issuerState = "issuer_state"
+        const val nonce = "nonce"
+        const val presentationDefinition = "presentation_definition"
+        const val presentationDefinitionUri = "presentation_definition_uri"
+        const val redirectUrl = "redirect_uri"
+        const val request = "request"
+        const val requestUri = "request_uri"
+        const val responseMode = "response_mode"
+        const val responseType = "response_type"
+        const val responseUrl = "response_uri"
+        const val scope = "scope"
+        const val state = "state"
+        const val userHint = "user_hint"
+        const val walletIssuer = "wallet_issuer"
     }
 }

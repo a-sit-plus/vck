@@ -22,20 +22,27 @@ kotlin {
     iosX64()
     sourceSets {
 
-         commonMain {
+        commonMain {
             dependencies {
                 api(project(":vclib"))
                 commonImplementationDependencies()
+                implementation(ktor("client-core"))
             }
         }
 
-         jvmMain {
+        commonTest {
+            dependencies {
+                implementation(ktor("client-mock"))
+            }
+        }
+
+        jvmMain {
             dependencies {
                 implementation(bouncycastle("bcprov"))
             }
         }
 
-         jvmTest {
+        jvmTest {
             dependencies {
                 implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")

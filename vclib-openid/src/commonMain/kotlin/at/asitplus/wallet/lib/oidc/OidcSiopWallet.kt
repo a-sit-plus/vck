@@ -32,8 +32,13 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.http.*
-import io.ktor.util.*
+import io.ktor.client.HttpClient
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
+import io.ktor.util.flattenEntries
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -61,12 +66,11 @@ class OidcSiopWallet(
      */
     private val jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
     /**
-     * Need to implement if `request_uri` parameters are used, i.e. the actual authn request can be retrieved
-     * from that URL. Implementations need to fetch the URL and return the content.
+     * Need to implement if the request parameters need to be fetched, i.e. the actual authn request can
+     * be retrieved from that URL. Implementations need to fetch the url and return request object candidates that have been retrieved.
      */
-    private val requestRetriever: (String) -> String? = { null },
+    private val requestObjectCandidateRetriever: RequestObjectCandidateRetriever = { listOf() },
 ) {
-
     companion object {
         fun newInstance(
             holder: Holder,
@@ -74,9 +78,9 @@ class OidcSiopWallet(
             jwsService: JwsService = DefaultJwsService(cryptoService),
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
             clock: Clock = Clock.System,
+            httpClient: HttpClient,
             clientId: String = "https://wallet.a-sit.at/",
             jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
-            requestRetriever: (String) -> String? = { null },
         ) = OidcSiopWallet(
             holder = holder,
             agentPublicKey = cryptoService.publicKey,
@@ -85,7 +89,29 @@ class OidcSiopWallet(
             clock = clock,
             clientId = clientId,
             jwkSetRetriever = jwkSetRetriever,
-            requestRetriever = requestRetriever,
+            requestObjectCandidateRetriever = httpClient.asRequestObjectCandidateRetriever,
+        )
+
+        // mark this as internal so it can be used for testing purposes
+        // the request object candidate retriever should usually be derived from a http client as in the other constructor
+        internal fun newInstance(
+            holder: Holder,
+            cryptoService: CryptoService,
+            jwsService: JwsService = DefaultJwsService(cryptoService),
+            verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+            clock: Clock = Clock.System,
+            clientId: String = "https://wallet.a-sit.at/",
+            jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
+            requestObjectCandidateRetriever: RequestObjectCandidateRetriever = { listOf() },
+        ) = OidcSiopWallet(
+            holder = holder,
+            agentPublicKey = cryptoService.publicKey,
+            jwsService = jwsService,
+            verifierJwsService = verifierJwsService,
+            clock = clock,
+            clientId = clientId,
+            jwkSetRetriever = jwkSetRetriever,
+            requestObjectCandidateRetriever = requestObjectCandidateRetriever,
         )
     }
 
@@ -123,28 +149,63 @@ class OidcSiopWallet(
 
     /**
      * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
-     * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
+     * to create [AuthenticationResponseResult] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
     suspend fun createAuthnResponse(input: String): KmmResult<AuthenticationResponseResult> {
-        val params = kotlin.runCatching {
-            Url(input).parameters.flattenEntries().toMap().decodeFromUrlQuery<AuthenticationRequestParameters>()
-        }.getOrElse {
+        val params = retrieveAuthenticationRequestParameters(input)
+        return createAuthnResponse(params)
+    }
+
+    /**
+     * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
+     * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
+     * [AuthenticationResponseResult].
+     */
+    suspend fun retrieveAuthenticationRequestParameters(input: String): AuthenticationRequestParameters {
+        val params = kotlin.run {
+            // maybe it's already a request jws?
             parseRequestObjectJws(input)
-        } ?: return KmmResult.failure<AuthenticationResponseResult>(OAuth2Exception(Errors.INVALID_REQUEST))
-            .also { Napier.w("Could not parse authentication request") }
-        return extractRequestObject(params)?.let { createAuthnResponse(it) }
-            ?: createAuthnResponse(params)
+        } ?: kotlin.runCatching {
+            // maybe it's a url that already encodes the authentication request as url parameters
+            Url(input).parameters.flattenEntries().toMap()
+                .decodeFromUrlQuery<AuthenticationRequestParameters>()
+        }.getOrNull() ?: kotlin.runCatching {
+            // maybe it's a url that yields the request object in some other way
+            val url = Url(input)
+            val candidates = requestObjectCandidateRetriever.invoke(url)
+            var result: AuthenticationRequestParameters? = null
+            for (candidate in candidates) {
+                result = kotlin.runCatching {
+                    retrieveAuthenticationRequestParameters(candidate)
+                }.getOrDefault(result)
+                if (result != null) break
+            }
+            result
+        }.getOrNull() ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            .also { Napier.w("Could not parse authentication request: $input") }
+
+        val requestParams = params.requestUri?.let {
+            // go down the rabbit hole following the request_uri parameters
+            retrieveAuthenticationRequestParameters(it).also { newParams ->
+                if (params.clientId != newParams.clientId) {
+                    throw OAuth2Exception(Errors.INVALID_REQUEST)
+                        .also { Napier.e("Client ids do not match: before: $params, after: $newParams") }
+                }
+            }
+        } ?: params
+
+        val authenticationRequestParameters = requestParams.let { extractRequestObject(it) ?: it }
+        if (authenticationRequestParameters.clientId != requestParams.clientId) {
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+                .also { Napier.w("Client ids do not match: outer: $requestParams, inner: $authenticationRequestParameters") }
+        }
+        return authenticationRequestParameters
     }
 
     private fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParameters? {
         params.request?.let { requestObject ->
             return parseRequestObjectJws(requestObject)
-        }
-        params.requestUri?.let { uri ->
-            requestRetriever.invoke(uri)?.let { requestObject ->
-                return parseRequestObjectJws(requestObject)
-            }
         }
         return null
     }
@@ -167,7 +228,7 @@ class OidcSiopWallet(
     suspend fun createAuthnResponse(
         request: AuthenticationRequestParameters
     ): KmmResult<AuthenticationResponseResult> = createAuthnResponseParams(request).fold(
-        { responseParams ->
+        onSuccess = { responseParams ->
             if (request.responseType == null) {
                 return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
             }
@@ -178,12 +239,22 @@ class OidcSiopWallet(
                 if (request.redirectUrl == null)
                     return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 val body = responseParams.encodeToParameters().formUrlEncode()
-                return KmmResult.success(AuthenticationResponseResult.Post(request.redirectUrl, body))
+                return KmmResult.success(
+                    AuthenticationResponseResult.Post(
+                        request.redirectUrl,
+                        body
+                    )
+                )
             } else if (request.responseMode?.startsWith(DIRECT_POST) == true) {
                 if (request.responseUrl == null || request.redirectUrl != null)
                     return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                 val body = responseParams.encodeToParameters().formUrlEncode()
-                return KmmResult.success(AuthenticationResponseResult.Post(request.responseUrl, body))
+                return KmmResult.success(
+                    AuthenticationResponseResult.Post(
+                        request.responseUrl,
+                        body
+                    )
+                )
             } else if (request.responseMode?.startsWith(QUERY) == true) {
                 if (request.redirectUrl == null)
                     return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
@@ -204,7 +275,8 @@ class OidcSiopWallet(
                     .buildString()
                 return KmmResult.success(AuthenticationResponseResult.Redirect(url))
             }
-        }, {
+        },
+        onFailure = {
             return KmmResult.failure(it)
         }
     )
@@ -285,11 +357,17 @@ class OidcSiopWallet(
         val requestedSchemes = mutableListOf<ConstantIndex.CredentialScheme>()
         if (requestedNamespace != null) {
             requestedSchemes.add(AttributeIndex.resolveIsoNamespace(requestedNamespace)
-                ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
+                ?: return KmmResult.failure<AuthenticationResponseParameters>(
+                    OAuth2Exception(
+                        Errors.USER_CANCELLED
+                    )
+                )
                     .also { Napier.w("Could not resolve requested namespace $requestedNamespace") })
             requestedAttributeTypes.forEach { requestedAttributeTyp ->
                 requestedSchemes.add(AttributeIndex.resolveAttributeType(requestedAttributeTyp)
-                    ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
+                    ?: return KmmResult.failure<AuthenticationResponseParameters>(
+                        OAuth2Exception(Errors.USER_CANCELLED)
+                    )
                         .also { Napier.w("Could not resolve requested attribute type $it") })
             }
         }
@@ -307,8 +385,9 @@ class OidcSiopWallet(
             audienceId = audience,
             credentialSchemes = requestedSchemes.toList().ifEmpty { null },
             requestedClaims = requestedClaims.ifEmpty { null }
-        ) ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
-            .also { Napier.w("Could not create presentation") }
+        )
+            ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
+                .also { Napier.w("Could not create presentation") }
 
         when (vp) {
             is Holder.CreatePresentationResult.Signed -> {
@@ -386,3 +465,17 @@ class OidcSiopWallet(
     }
 
 }
+
+typealias RequestObjectCandidateRetriever = suspend (Url) -> List<String>
+
+private val HttpClient.asRequestObjectCandidateRetriever: RequestObjectCandidateRetriever
+    get() = {
+        // currently supported in order of priority:
+        // 1. use redirect location as new starting point if available
+        // 2. use resonse body as new starting point
+        val response = this.get(it)
+        listOfNotNull(
+            response.headers[HttpHeaders.Location],
+            response.bodyAsText(),
+        )
+    }
