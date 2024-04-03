@@ -26,12 +26,12 @@ kotlin {
             dependencies {
                 api(project(":vclib"))
                 commonImplementationDependencies()
-                implementation(ktor("client-core"))
             }
         }
 
         commonTest {
             dependencies {
+                implementation(ktor("client-core"))
                 implementation(ktor("client-mock"))
             }
         }

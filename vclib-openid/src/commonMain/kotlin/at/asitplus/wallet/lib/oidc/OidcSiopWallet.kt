@@ -32,10 +32,6 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.client.HttpClient
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpHeaders
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import io.ktor.util.flattenEntries
@@ -73,28 +69,6 @@ class OidcSiopWallet(
 ) {
     companion object {
         fun newInstance(
-            holder: Holder,
-            cryptoService: CryptoService,
-            jwsService: JwsService = DefaultJwsService(cryptoService),
-            verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
-            clock: Clock = Clock.System,
-            httpClient: HttpClient,
-            clientId: String = "https://wallet.a-sit.at/",
-            jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
-        ) = OidcSiopWallet(
-            holder = holder,
-            agentPublicKey = cryptoService.publicKey,
-            jwsService = jwsService,
-            verifierJwsService = verifierJwsService,
-            clock = clock,
-            clientId = clientId,
-            jwkSetRetriever = jwkSetRetriever,
-            requestObjectCandidateRetriever = httpClient.asRequestObjectCandidateRetriever,
-        )
-
-        // mark this as internal so it can be used for testing purposes
-        // the request object candidate retriever should usually be derived from a http client as in the other constructor
-        internal fun newInstance(
             holder: Holder,
             cryptoService: CryptoService,
             jwsService: JwsService = DefaultJwsService(cryptoService),
@@ -467,15 +441,3 @@ class OidcSiopWallet(
 }
 
 typealias RequestObjectCandidateRetriever = suspend (Url) -> List<String>
-
-private val HttpClient.asRequestObjectCandidateRetriever: RequestObjectCandidateRetriever
-    get() = {
-        // currently supported in order of priority:
-        // 1. use redirect location as new starting point if available
-        // 2. use resonse body as new starting point
-        val response = this.get(it)
-        listOfNotNull(
-            response.headers[HttpHeaders.Location],
-            response.bodyAsText(),
-        )
-    }

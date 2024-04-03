@@ -32,6 +32,9 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondBadRequest
 import io.ktor.client.engine.mock.respondRedirect
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
@@ -246,7 +249,7 @@ class OidcSiopProtocolTest : FreeSpec({
         holderSiop = OidcSiopWallet.newInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
-            httpClient = httpClient,
+            requestObjectCandidateRetriever = httpClient.asRequestObjectCandidateRetriever()
         )
 
         val authnResponse =
@@ -303,7 +306,7 @@ class OidcSiopProtocolTest : FreeSpec({
         holderSiop = OidcSiopWallet.newInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
-            httpClient = httpClient,
+            requestObjectCandidateRetriever = httpClient.asRequestObjectCandidateRetriever()
         )
 
         val authnResponse =
@@ -365,7 +368,7 @@ class OidcSiopProtocolTest : FreeSpec({
         holderSiop = OidcSiopWallet.newInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
-            httpClient = httpClient,
+            requestObjectCandidateRetriever = httpClient.asRequestObjectCandidateRetriever()
         )
 
         val authnResponse =
@@ -393,4 +396,15 @@ private suspend fun verifySecondProtocolRun(
         (authnResponse.getOrThrow() as OidcSiopWallet.AuthenticationResponseResult.Redirect).url
     )
     validation.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+}
+
+private fun HttpClient.asRequestObjectCandidateRetriever(): RequestObjectCandidateRetriever = {
+    // currently supported in order of priority:
+    // 1. use redirect location as new starting point if available
+    // 2. use resonse body as new starting point
+    val response = this.get(it)
+    listOfNotNull(
+        response.headers[HttpHeaders.Location],
+        response.bodyAsText(),
+    )
 }
