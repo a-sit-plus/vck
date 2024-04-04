@@ -31,8 +31,6 @@ kotlin {
 
         commonTest {
             dependencies {
-                implementation(ktor("client-core"))
-                implementation(ktor("client-mock"))
             }
         }
 
