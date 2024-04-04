@@ -162,7 +162,7 @@ class OidcSiopVerifier(
 
     /**
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl],
-     * containing a JWS Authorization Request (JAR, RFC9101), containing the request parameters itself.
+     * containing a JWS Authorization Request (JAR, RFC9101) in `request`, containing the request parameters itself.
      *
      * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
      * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
@@ -177,8 +177,7 @@ class OidcSiopVerifier(
         credentialScheme: ConstantIndex.CredentialScheme? = null,
         requestedAttributes: List<String>? = null,
     ): KmmResult<String> {
-        val urlBuilder = URLBuilder(walletUrl)
-        createAuthnRequestAsRequestObject(
+        val jar = createAuthnRequestAsSignedRequestObject(
             responseMode = responseMode,
             representation = representation,
             state = state,
@@ -186,7 +185,12 @@ class OidcSiopVerifier(
             requestedAttributes = requestedAttributes,
         ).getOrElse {
             return KmmResult.failure(it)
-        }.encodeToParameters()
+        }
+        val urlBuilder = URLBuilder(walletUrl)
+        AuthenticationRequestParameters(
+            clientId = relyingPartyUrl,
+            request = jar.serialize(),
+        ).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
         return KmmResult.success(urlBuilder.buildString())
     }
@@ -194,19 +198,29 @@ class OidcSiopVerifier(
     /**
      * Creates an JWS Authorization Request (JAR, RFC9101), wrapping the usual [AuthenticationRequestParameters].
      *
+     * To use this for an Authentication Request with `request_uri`, use the following code,
+     * `jar` being the result of this function:
+     * ```
+     * val urlToSendToWallet = io.ktor.http.URLBuilder(walletUrl).apply {
+     *    parameters.append("client_id", relyingPartyUrl)
+     *    parameters.append("request_uri", requestUrl)
+     * }.buildString()
+     * // on an GET to requestUrl, return `jar.serialize()`
+     * ```
+     *
      * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
      * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
      * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
      * @param credentialScheme which credential type to request, or `null` to make no restrictions
      * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
      */
-    suspend fun createAuthnRequestAsRequestObject(
+    suspend fun createAuthnRequestAsSignedRequestObject(
         responseMode: String? = null,
         representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         state: String? = uuid4().toString(),
         credentialScheme: ConstantIndex.CredentialScheme? = null,
         requestedAttributes: List<String>? = null,
-    ): KmmResult<AuthenticationRequestParameters> {
+    ): KmmResult<JwsSigned> {
         val requestObject = createAuthnRequest(
             responseMode = responseMode,
             representation = representation,
@@ -224,12 +238,7 @@ class OidcSiopVerifier(
             Napier.w("Could not sign JWS form authnRequest", it)
             return KmmResult.failure(it)
         }
-        return KmmResult.success(
-            AuthenticationRequestParameters(
-                clientId = relyingPartyUrl,
-                request = signedJws.serialize()
-            )
-        )
+        return KmmResult.success(signedJws)
     }
 
     /**

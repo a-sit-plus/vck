@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
@@ -10,7 +11,6 @@ import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -23,24 +23,14 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.client.engine.mock.respondBadRequest
-import io.ktor.client.engine.mock.respondRedirect
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
-import io.ktor.utils.io.ByteReadChannel
+import io.ktor.http.*
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.runBlocking
+import kotlin.random.Random
 
 class OidcSiopProtocolTest : FreeSpec({
 
@@ -119,7 +109,8 @@ class OidcSiopProtocolTest : FreeSpec({
             .also { println(it) }
         DefaultVerifierJwsService().verifyJwsObject(metadataObject).shouldBeTrue()
 
-        val authnRequest = verifierSiop.createAuthnRequestAsRequestObject().getOrThrow()
+        val authnRequestUrl = verifierSiop.createAuthnRequestUrlWithRequestObject(walletUrl).getOrThrow()
+        val authnRequest: AuthenticationRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
         authnRequest.clientId shouldBe relyingPartyUrl
         val jar = authnRequest.request
         jar.shouldNotBeNull()
@@ -208,12 +199,6 @@ class OidcSiopProtocolTest : FreeSpec({
     }
 
     "test specific credential" {
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
-            cryptoService = verifierCryptoService,
-            relyingPartyUrl = relyingPartyUrl,
-        )
-
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
             credentialScheme = ConstantIndex.AtomicAttribute2023
@@ -231,45 +216,45 @@ class OidcSiopProtocolTest : FreeSpec({
         }
     }
 
-    "test with request object from request uri redirect" {
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
-            cryptoService = verifierCryptoService,
-            relyingPartyUrl = relyingPartyUrl,
-        )
+    "test with request object" {
+        val authnRequestWithRequestObject = verifierSiop.createAuthnRequestUrlWithRequestObject(
+            walletUrl = walletUrl,
+            credentialScheme = ConstantIndex.AtomicAttribute2023
+        ).getOrThrow().also { println(it) }
 
+        val authnResponse =
+            holderSiop.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
+        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
+            .also { println(it) }
+
+        val result = verifierSiop.validateAuthnResponse(authnResponse.url)
+        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+        result.vp.verifiableCredentials.shouldNotBeEmpty()
+        result.vp.verifiableCredentials.forEach {
+            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+        }
+    }
+
+    "test with request object from request_uri as URL query parameters" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
             credentialScheme = ConstantIndex.AtomicAttribute2023
         ).also { println(it) }
 
-        val clientId =
-            Url(authnRequest).parameters[AuthenticationRequestConstants.SerialNames.clientId].let {
-                it shouldNotBe null
-                it!!
-            }
+        val clientId = Url(authnRequest).parameters["client_id"]!!
+        val requestUrl = "http://www.example.com/request/${Random.nextBytes(32).encodeToString(Base64UrlStrict)}"
 
-        val requestUrl = "http://www.example.com/requestUrl"
-        val mockEngine = MockEngine { request ->
-            if (request.url.toString() == requestUrl) {
-                respondRedirect(authnRequest)
-            } else {
-                respondBadRequest()
-            }
-        }
-        val httpClient = HttpClient(mockEngine) {
-            followRedirects = false
-        }
-
-        val authRequestUrlWithRequestUri = URLBuilder("http://www.example.com/original").apply {
-            parameters.append(AuthenticationRequestConstants.SerialNames.clientId, clientId)
-            parameters.append(AuthenticationRequestConstants.SerialNames.requestUri, requestUrl)
+        val authRequestUrlWithRequestUri = URLBuilder(walletUrl).apply {
+            parameters.append("client_id", clientId)
+            parameters.append("request_uri", requestUrl)
         }.buildString()
 
         holderSiop = OidcSiopWallet.newInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
-            requestObjectCandidateRetriever = httpClient.asRequestObjectCandidateRetriever()
+            requestObjectCandidateRetriever = {
+                if (it.toString() == requestUrl) listOf(authnRequest) else listOf()
+            }
         )
 
         val authnResponse =
@@ -285,110 +270,23 @@ class OidcSiopProtocolTest : FreeSpec({
         }
     }
 
-    "test with request object from request uri response body if it is a url" {
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
-            cryptoService = verifierCryptoService,
-            relyingPartyUrl = relyingPartyUrl,
-        )
-
-        val authnRequest = verifierSiop.createAuthnRequestUrl(
-            walletUrl = walletUrl,
+    "test with request object from request_uri as JWS" {
+        val jar = verifierSiop.createAuthnRequestAsSignedRequestObject(
             credentialScheme = ConstantIndex.AtomicAttribute2023
-        ).also { println(it) }
+        ).getOrThrow().also { println(it.serialize()) }
 
-        val clientId =
-            Url(authnRequest).parameters[AuthenticationRequestConstants.SerialNames.clientId].let {
-                it shouldNotBe null
-                it!!
-            }
-
-        val requestUrl = "http://www.example.com/request"
-        val mockEngine = MockEngine { request ->
-            if (request.url.toString() == requestUrl) {
-                respond(
-                    content = ByteReadChannel(authnRequest),
-                    status = HttpStatusCode.OK,
-                )
-            } else {
-                respondBadRequest()
-            }
-        }
-        val httpClient = HttpClient(mockEngine) {
-            followRedirects = false
-        }
-
-        val authRequestUrlWithRequestUri = URLBuilder("http://www.example.com/original").apply {
-            parameters.append(AuthenticationRequestConstants.SerialNames.clientId, clientId)
-            parameters.append(AuthenticationRequestConstants.SerialNames.requestUri, requestUrl)
+        val requestUrl = "http://www.example.com/request/${Random.nextBytes(32).encodeToString(Base64UrlStrict)}"
+        val authRequestUrlWithRequestUri = URLBuilder(walletUrl).apply {
+            parameters.append("client_id", relyingPartyUrl)
+            parameters.append("request_uri", requestUrl)
         }.buildString()
 
         holderSiop = OidcSiopWallet.newInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
-            requestObjectCandidateRetriever = httpClient.asRequestObjectCandidateRetriever()
-        )
-
-        val authnResponse =
-            holderSiop.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
-        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
-            .also { println(it) }
-
-        val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
-        result.vp.verifiableCredentials.shouldNotBeEmpty()
-        result.vp.verifiableCredentials.forEach {
-            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
-        }
-    }
-
-    "test with request object from request uri response body if it is a jws" {
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
-            cryptoService = verifierCryptoService,
-            relyingPartyUrl = relyingPartyUrl,
-        )
-
-        val authnRequest = verifierSiop.createAuthnRequest(
-            credentialScheme = ConstantIndex.AtomicAttribute2023
-        ).also { println(it) }
-
-        val requestUrl = "http://www.example.com/request"
-        val mockEngine = MockEngine { request ->
-            if (request.url.toString() == requestUrl) {
-                val authnRequestObjectJws =
-                    DefaultJwsService(verifierCryptoService).createSignedJwsAddingParams(
-                        payload = authnRequest.serialize().encodeToByteArray(),
-                        addKeyId = true
-                    ).getOrNull().let {
-                        it shouldNotBe null
-                        it!!
-                    }
-
-                respond(
-                    content = ByteReadChannel(authnRequestObjectJws.serialize()),
-                    status = HttpStatusCode.OK,
-                )
-            } else {
-                respondBadRequest()
+            requestObjectCandidateRetriever = {
+                if (it.toString() == requestUrl) listOf(jar.serialize()) else listOf()
             }
-        }
-        val httpClient = HttpClient(mockEngine) {
-            followRedirects = false
-        }
-
-        val authRequestUrlWithRequestUri = URLBuilder("http://www.example.com/original").apply {
-            parameters.append(
-                AuthenticationRequestConstants.SerialNames.clientId,
-                authnRequest.clientId
-            )
-            parameters.append(AuthenticationRequestConstants.SerialNames.requestUri, requestUrl)
-        }.buildString()
-
-        holderSiop = OidcSiopWallet.newInstance(
-            holder = holderAgent,
-            cryptoService = holderCryptoService,
-            requestObjectCandidateRetriever = httpClient.asRequestObjectCandidateRetriever()
         )
 
         val authnResponse =
@@ -418,13 +316,3 @@ private suspend fun verifySecondProtocolRun(
     validation.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
 }
 
-private fun HttpClient.asRequestObjectCandidateRetriever(): RequestObjectCandidateRetriever = {
-    // currently supported in order of priority:
-    // 1. use redirect location as new starting point if available
-    // 2. use resonse body as new starting point
-    val response = this.get(it)
-    listOfNotNull(
-        response.headers[HttpHeaders.Location],
-        response.bodyAsText(),
-    )
-}
