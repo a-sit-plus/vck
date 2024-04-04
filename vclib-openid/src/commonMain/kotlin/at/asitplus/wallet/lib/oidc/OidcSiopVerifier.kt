@@ -381,7 +381,20 @@ class OidcSiopVerifier(
      * Validates [AuthenticationResponseParameters] from the Wallet
      */
     suspend fun validateAuthnResponse(params: AuthenticationResponseParameters): AuthnResponseResult {
+        if (params.response != null) {
+            JwsSigned.parse(params.response)?.let { jarmResponse ->
+                if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
+                    return AuthnResponseResult.ValidationError("response", params.state)
+                        .also { Napier.w { "JWS of response not verified: ${params.response}" } }
+                }
+                AuthenticationResponseParameters.deserialize(jarmResponse.payload.decodeToString())?.let {
+                    return validateAuthnResponse(it)
+                }
+            }
+        }
         val idTokenJws = params.idToken
+            ?: return AuthnResponseResult.ValidationError("idToken", params.state)
+                .also { Napier.w("Could not parse idToken: $params") }
         val jwsSigned = JwsSigned.parse(idTokenJws)
             ?: return AuthnResponseResult.ValidationError("idToken", params.state)
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }

@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
+import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.lib.LibraryInitializer
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
@@ -190,7 +191,11 @@ class OidcSiopInteropTest : FreeSpec({
         val response = holderSiop.createAuthnResponse(url).getOrThrow()
 
         response.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Post>()
-        val params = response.params.formUrlEncode().decodeFromPostBody<AuthenticationResponseParameters>()
+        val jarmParams = response.params.formUrlEncode().decodeFromPostBody<AuthenticationResponseParameters>()
+        val jarm = jarmParams.response
+        jarm.shouldNotBeNull()
+        val params = AuthenticationResponseParameters.deserialize(JwsSigned.parse(jarm)!!.payload.decodeToString())
+        params.shouldNotBeNull()
         params.presentationSubmission.shouldNotBeNull()
         params.vpToken.shouldNotBeNull()
         params.idToken.shouldNotBeNull()
