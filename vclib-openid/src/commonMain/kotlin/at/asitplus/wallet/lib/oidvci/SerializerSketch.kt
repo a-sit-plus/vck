@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
-import io.ktor.http.decodeURLQueryComponent
-import io.ktor.http.formUrlEncode
+import io.ktor.http.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
@@ -43,12 +42,15 @@ inline fun <reified T> String.decodeFromUrlQuery(): T = split("&")
     .decode()
 
 fun Parameters.formUrlEncode() = map { (k, v) -> k to v }.formUrlEncode()
+
 inline fun <reified T> T.encodeToParameters(): Parameters =
-    when (val tmp = json.encodeToJsonElement(this)) {
-        is JsonArray -> tmp.mapIndexed { i, v -> i.toString() to v }
-        is JsonObject -> tmp.map { (k, v) -> k to v }
+    when (val element = json.encodeToJsonElement(this)) {
+        is JsonArray -> element.mapIndexed { i, v -> i.toString() to v }
+        is JsonObject -> element.map { (k, v) -> k to v }
         else -> throw SerializationException("Literals are not supported")
-    }.associate { (k, v) -> k to if (v is JsonPrimitive) v.content else json.encodeToString(v) }
+    }.associate { (key, value) ->
+        key to if (value is JsonPrimitive) value.content else json.encodeToString(value)
+    }
 
 @OptIn(ExperimentalSerializationApi::class)
 val json by lazy {
