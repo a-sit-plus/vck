@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.JwkSetRetrieverFunction
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
@@ -57,10 +58,9 @@ class OidcSiopWallet(
     private val clientId: String = "https://wallet.a-sit.at/",
     /**
      * Need to implement if JSON web keys are not specified directly as `jwks` in authn requests,
-     * but need to be retrieved from the `jwks_uri`. Implementations need to fetch the URL passed and return the
-     * content parsed as [JsonWebKeySet].
+     * but need to be retrieved from the `jwks_uri`.
      */
-    private val jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
+    private val jwkSetRetriever: JwkSetRetrieverFunction = { null },
     /**
      * Need to implement if the request parameters need to be fetched, i.e. the actual authn request can
      * be retrieved from that URL. Implementations need to fetch the url and return request object candidates that have been retrieved.
@@ -75,7 +75,7 @@ class OidcSiopWallet(
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
             clock: Clock = Clock.System,
             clientId: String = "https://wallet.a-sit.at/",
-            jwkSetRetriever: (String) -> JsonWebKeySet? = { null },
+            jwkSetRetriever: JwkSetRetrieverFunction = { null },
             requestObjectCandidateRetriever: RequestObjectCandidateRetriever = { listOf() },
         ) = OidcSiopWallet(
             holder = holder,

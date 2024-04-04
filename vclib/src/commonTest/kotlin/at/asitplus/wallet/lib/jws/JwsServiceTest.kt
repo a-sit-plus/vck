@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.crypto.datatypes.io.Base64UrlStrict
+import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncrypted
 import at.asitplus.crypto.datatypes.jws.JweEncryption
@@ -13,7 +15,10 @@ import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.encodeToString
+import kotlin.random.Random
 
 class JwsServiceTest : FreeSpec({
 
@@ -75,6 +80,30 @@ class JwsServiceTest : FreeSpec({
         signed.shouldNotBeNull()
         val result = verifierJwsService.verifyJwsObject(signed)
         result shouldBe true
+    }
+
+    "signed object with kid from jku can be verified" {
+        val payload = randomPayload.encodeToByteArray()
+        val kid = Random.nextBytes(16).encodeToString(Base64())
+        val jku = "https://example.com/" + Random.nextBytes(16).encodeToString(Base64UrlStrict)
+        val header = JwsHeader(algorithm = JwsAlgorithm.ES256, keyId = kid, jsonWebKeySetUrl = jku)
+        val signed = jwsService.createSignedJws(header, payload).getOrThrow()
+        val validKey = cryptoService.jsonWebKey.copy(keyId = kid)
+        val jwkSetRetriever: JwkSetRetrieverFunction = { JsonWebKeySet(keys = listOf(validKey)) }
+        verifierJwsService = DefaultVerifierJwsService(jwkSetRetriever = jwkSetRetriever)
+        verifierJwsService.verifyJwsObject(signed) shouldBe true
+    }
+
+    "signed object with kid from jku, returning invalid key, can not be verified" {
+        val payload = randomPayload.encodeToByteArray()
+        val kid = Random.nextBytes(16).encodeToString(Base64())
+        val jku = "https://example.com/" + Random.nextBytes(16).encodeToString(Base64UrlStrict)
+        val header = JwsHeader(algorithm = JwsAlgorithm.ES256, keyId = kid, jsonWebKeySetUrl = jku)
+        val signed = jwsService.createSignedJws(header, payload).getOrThrow()
+        val invalidKey = DefaultCryptoService().jsonWebKey
+        val jwkSetRetriever: JwkSetRetrieverFunction = { JsonWebKeySet(keys = listOf(invalidKey)) }
+        verifierJwsService = DefaultVerifierJwsService(jwkSetRetriever = jwkSetRetriever)
+        verifierJwsService.verifyJwsObject(signed) shouldBe false
     }
 
     "encrypted object can be decrypted" {
