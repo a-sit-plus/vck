@@ -20,6 +20,7 @@ import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -131,16 +132,35 @@ class OidcSiopProtocolTest : FreeSpec({
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
     }
 
-    "test with POST" {
+    "test with direct_post" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            responseMode = OpenIdConstants.ResponseModes.POST
+            responseMode = OpenIdConstants.ResponseModes.DIRECT_POST
         ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Post>()
             .also { println(it) }
         authnResponse.url.shouldBe(relyingPartyUrl)
+
+        val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
+        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+        result.vp.verifiableCredentials.shouldNotBeEmpty()
+    }
+
+    "test with direct_post_jwt" {
+        val authnRequest = verifierSiop.createAuthnRequestUrl(
+            walletUrl = walletUrl,
+            responseMode = OpenIdConstants.ResponseModes.DIRECT_POST_JWT
+        ).also { println(it) }
+
+        val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
+        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Post>()
+            .also { println(it) }
+        authnResponse.url.shouldBe(relyingPartyUrl)
+        authnResponse.params.shouldHaveSize(1)
+        val jarmResponse = authnResponse.params.values.first()
+        DefaultVerifierJwsService().verifyJwsObject(JwsSigned.parse(jarmResponse)!!).shouldBeTrue()
 
         val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()

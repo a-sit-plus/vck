@@ -91,12 +91,12 @@ object OpenIdConstants {
         const val DIRECT_POST = "direct_post"
 
         /**
-         * SIOPv2: This response mode is used to request the Self-Issued OP to deliver the result of the authentication
-         * process to a certain endpoint using the HTTP POST method. The additional parameter `response_mode` is used
-         * to carry this value.
+         * OID4VP: The Response Mode `direct_post.jwt` causes the Wallet to send the Authorization Response using an
+         * HTTPS POST request instead of redirecting back to the Verifier. The Wallet adds the response parameter
+         * containing the JWT as defined in Section 4.1. of JARM and Section 6.3 in the body of an HTTPS POST request
+         * using the `application/x-www-form-urlencoded` content type.
          */
-        //NOTE: This seems to be the same as `direct_post` from OID4VP? But it's defined in SIOPv2 ...
-        const val POST = "post"
+        const val DIRECT_POST_JWT = "direct_post.jwt"
 
         /**
          * OAuth 2.0: In this mode, Authorization Response parameters are encoded in the query string added to the

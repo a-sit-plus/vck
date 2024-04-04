@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.wallet.lib.data.InstantLongSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import io.github.aakira.napier.Napier
+import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -25,10 +27,10 @@ data class AuthenticationResponseParameters(
     val code: String? = null,
 
     /**
-     * Signed [IdToken] structure
+     * [IdToken] serialized, wrapped inside a JWS.
      */
     @SerialName("id_token")
-    val idToken: String,
+    val idToken: String? = null,
 
     /**
      * OID4VP: REQUIRED. JSON String or JSON object that MUST contain a single Verifiable Presentation or an array of
@@ -63,6 +65,31 @@ data class AuthenticationResponseParameters(
      */
     @SerialName("state")
     val state: String? = null,
+
+    /**
+     * JARM: REQUIRED, the issuer URL of the authorization server that created the response.
+     */
+    @SerialName("iss")
+    val issuer: String? = null,
+
+    /**
+     * JARM: REQUIRED, the `client_id` of the client the response is intended for
+     */
+    @SerialName("aud")
+    val audience: String? = null,
+
+    /**
+     * JARM: REQUIRED, expiration of the JWT. A maximum JWT lifetime of 10 minutes is RECOMMENDED.
+     */
+    @SerialName("exp")
+    @Serializable(with = InstantLongSerializer::class)
+    val expiration: Instant? = null,
+
+    /**
+     * JARM: Holds all other parameters inside an JWT.
+     */
+    @SerialName("response")
+    val response: String? = null,
 ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)

@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
@@ -21,7 +20,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.POST
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST_JWT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.QUERY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_PROFILE
@@ -209,48 +208,68 @@ class OidcSiopWallet(
             if (!request.responseType.contains(ID_TOKEN) && !request.responseType.contains(VP_TOKEN)) {
                 return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
             }
-            if (request.responseMode?.startsWith(POST) == true) {
-                if (request.redirectUrl == null)
-                    return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                return KmmResult.success(
-                    AuthenticationResponseResult.Post(
-                        url = request.redirectUrl,
-                        params = responseParams.encodeToParameters()
+            return when (request.responseMode) {
+                DIRECT_POST -> {
+                    val url = request.responseUrl
+                        ?: request.redirectUrl
+                        ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+                    KmmResult.success(
+                        AuthenticationResponseResult.Post(
+                            url = url,
+                            params = responseParams.encodeToParameters()
+                        )
                     )
-                )
-            } else if (request.responseMode?.startsWith(DIRECT_POST) == true) {
-                // TODO do not start with, but implement direct_post_jwt
-                if (request.responseUrl == null || request.redirectUrl != null)
-                    return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                return KmmResult.success(
-                    AuthenticationResponseResult.Post(
-                        url = request.responseUrl,
-                        params = responseParams.encodeToParameters()
-                    )
-                )
-            } else if (request.responseMode?.startsWith(QUERY) == true) {
-                if (request.redirectUrl == null)
-                    return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                val url = URLBuilder(request.redirectUrl)
-                    .apply {
-                        responseParams.encodeToParameters().forEach {
-                            this.parameters.append(it.key, it.value)
+                }
+
+                DIRECT_POST_JWT -> {
+                    val url = request.responseUrl
+                        ?: request.redirectUrl
+                        ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+                    jwsService.createSignedJwsAddingParams(
+                        payload = responseParams.serialize().encodeToByteArray()
+                    ).fold(
+                        onSuccess = { responseParamsJws ->
+                            val jarm = AuthenticationResponseParameters(response = responseParamsJws.serialize())
+                            KmmResult.success(
+                                AuthenticationResponseResult.Post(
+                                    url = url,
+                                    params = jarm.encodeToParameters()
+                                )
+                            )
+                        },
+                        onFailure = {
+                            KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                         }
-                    }
-                    .buildString()
-                return KmmResult.success(AuthenticationResponseResult.Redirect(url))
-            } else {
-                // default for vp_token and id_token is fragment
-                if (request.redirectUrl == null)
-                    return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                val url = URLBuilder(request.redirectUrl)
-                    .apply { encodedFragment = responseParams.encodeToParameters().formUrlEncode() }
-                    .buildString()
-                return KmmResult.success(AuthenticationResponseResult.Redirect(url))
+                    )
+
+                }
+
+                QUERY -> {
+                    if (request.redirectUrl == null)
+                        return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+                    val url = URLBuilder(request.redirectUrl)
+                        .apply {
+                            responseParams.encodeToParameters().forEach {
+                                this.parameters.append(it.key, it.value)
+                            }
+                        }
+                        .buildString()
+                    KmmResult.success(AuthenticationResponseResult.Redirect(url))
+                }
+
+                else -> {
+                    // default for vp_token and id_token is fragment
+                    if (request.redirectUrl == null)
+                        return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+                    val url = URLBuilder(request.redirectUrl)
+                        .apply { encodedFragment = responseParams.encodeToParameters().formUrlEncode() }
+                        .buildString()
+                    KmmResult.success(AuthenticationResponseResult.Redirect(url))
+                }
             }
         },
         onFailure = {
-            return KmmResult.failure(it)
+            KmmResult.failure(it)
         }
     )
 
