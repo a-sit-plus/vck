@@ -142,7 +142,7 @@ class OidcSiopProtocolTest : FreeSpec({
             .also { println(it) }
         authnResponse.url.shouldBe(relyingPartyUrl)
 
-        val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.content)
+        val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }

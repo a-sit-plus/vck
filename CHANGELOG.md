@@ -1,7 +1,7 @@
 # Changelog
 
 Release 3.6.0:
- - tbd
+ - `OidcSiopWallet.AuthenticationResponseResult.Post`: Replace property `body: String` with `params: Map<String, String>`, to be posted to the Relying Party. Clients may call extension function `at.asitplus.wallet.lib.oidvci.formUrlEncode` on `params` to get the encoded `body` for HTTP calls.
 
 Release 3.5.0:
 - Kotlin 1.9.23

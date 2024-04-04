@@ -32,9 +32,8 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
-import io.ktor.util.flattenEntries
+import io.ktor.http.*
+import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -94,14 +93,14 @@ class OidcSiopWallet(
      */
     sealed class AuthenticationResponseResult {
         /**
-         * Wallet returns the [AuthenticationResponseParameters] as form encoded parameters, which shall be posted to
-         * `redirect_uri` of the Relying Party, i.e. clients should execute that POST to call the RP again.
+         * Wallet returns the [AuthenticationResponseParameters] as form parameters, which shall be posted to
+         * `redirect_uri of the Relying Party, i.e. clients should execute that POST with [params] to [url].
          */
-        data class Post(val url: String, val content: String) : AuthenticationResponseResult()
+        data class Post(val url: String, val params: Map<String, String>) : AuthenticationResponseResult()
 
         /**
          * Wallet returns the [AuthenticationResponseParameters] as fragment parameters appended to the
-         * `redirect_uri` of the Relying Party, i.e. clients should simply open the URL to call the RP again.
+         * `redirect_uri` of the Relying Party, i.e. clients should simply open the [url].
          */
         data class Redirect(val url: String) : AuthenticationResponseResult()
     }
@@ -212,21 +211,20 @@ class OidcSiopWallet(
             if (request.responseMode?.startsWith(POST) == true) {
                 if (request.redirectUrl == null)
                     return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                val body = responseParams.encodeToParameters().formUrlEncode()
                 return KmmResult.success(
                     AuthenticationResponseResult.Post(
-                        request.redirectUrl,
-                        body
+                        url = request.redirectUrl,
+                        params = responseParams.encodeToParameters()
                     )
                 )
             } else if (request.responseMode?.startsWith(DIRECT_POST) == true) {
+                // TODO do not start with, but implement direct_post_jwt
                 if (request.responseUrl == null || request.redirectUrl != null)
                     return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                val body = responseParams.encodeToParameters().formUrlEncode()
                 return KmmResult.success(
                     AuthenticationResponseResult.Post(
-                        request.responseUrl,
-                        body
+                        url = request.responseUrl,
+                        params = responseParams.encodeToParameters()
                     )
                 )
             } else if (request.responseMode?.startsWith(QUERY) == true) {

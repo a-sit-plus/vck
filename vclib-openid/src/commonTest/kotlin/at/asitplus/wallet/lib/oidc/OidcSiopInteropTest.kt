@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
+import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
@@ -188,7 +189,7 @@ class OidcSiopInteropTest : FreeSpec({
         val response = holderSiop.createAuthnResponse(url).getOrThrow()
 
         response.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Post>()
-        val params = response.content.decodeFromPostBody<AuthenticationResponseParameters>()
+        val params = response.params.formUrlEncode().decodeFromPostBody<AuthenticationResponseParameters>()
         params.presentationSubmission.shouldNotBeNull()
         params.vpToken.shouldNotBeNull()
         params.idToken.shouldNotBeNull()
