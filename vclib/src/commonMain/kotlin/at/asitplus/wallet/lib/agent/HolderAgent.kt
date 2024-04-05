@@ -1,20 +1,37 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
-import at.asitplus.crypto.datatypes.cose.CoseHeader
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
-import at.asitplus.wallet.lib.data.*
-import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.VerifiablePresentation
+import at.asitplus.wallet.lib.data.dif.InputEvaluator
+import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.wallet.lib.data.dif.StandardInputEvaluator
+import at.asitplus.wallet.lib.data.jsonSerializer
+import at.asitplus.wallet.lib.iso.DeviceAuth
+import at.asitplus.wallet.lib.iso.DeviceSigned
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.iso.IssuerSignedList
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.serialization.cbor.ByteStringWrapper
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 
 
 /**
@@ -86,8 +103,17 @@ class HolderAgent(
                     .also { subjectCredentialStore.storeCredential(it, cred.vcJws, cred.scheme) }
                     .also {
                         cred.attachments?.forEach { attachment ->
-                            subjectCredentialStore.storeAttachment(attachment.name, attachment.data, it.vc.id)
-                                .also { attachments += Holder.StoredAttachmentResult(attachment.name, attachment.data) }
+                            subjectCredentialStore.storeAttachment(
+                                attachment.name,
+                                attachment.data,
+                                it.vc.id
+                            )
+                                .also {
+                                    attachments += Holder.StoredAttachmentResult(
+                                        attachment.name,
+                                        attachment.data
+                                    )
+                                }
                         }
                     }
 
@@ -99,26 +125,39 @@ class HolderAgent(
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.SuccessSdJwt -> acceptedSdJwt += vc.sdJwt
-                    .also { subjectCredentialStore.storeCredential(it, cred.vcSdJwt, vc.disclosures, cred.scheme) }
+                    .also {
+                        subjectCredentialStore.storeCredential(
+                            it,
+                            cred.vcSdJwt,
+                            vc.disclosures,
+                            cred.scheme
+                        )
+                    }
 
                 else -> {}
             }
         }
         credentialList.filterIsInstance<Holder.StoreCredentialInput.Iso>().forEach { cred ->
-            val issuerKey: CoseKey? = cred.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain
-                ?.let {
-                    runCatching { X509Certificate.decodeFromDer(it) }
-                        .getOrNull()
-                        ?.publicKey
-                        ?.toCoseKey()
-                        ?.getOrNull()
-                }
+            val issuerKey: CoseKey? =
+                cred.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain
+                    ?.let {
+                        runCatching { X509Certificate.decodeFromDer(it) }
+                            .getOrNull()
+                            ?.publicKey
+                            ?.toCoseKey()
+                            ?.getOrNull()
+                    }
 
             when (val result = validator.verifyIsoCred(cred.issuerSigned, issuerKey)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += result.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += result.input
                 is Verifier.VerifyCredentialResult.SuccessIso -> acceptedIso += result.issuerSigned
-                    .also { subjectCredentialStore.storeCredential(result.issuerSigned, cred.scheme) }
+                    .also {
+                        subjectCredentialStore.storeCredential(
+                            result.issuerSigned,
+                            cred.scheme
+                        )
+                    }
 
                 else -> {}
             }
@@ -139,10 +178,8 @@ class HolderAgent(
      * Note that the revocation status may be [Validator.RevocationStatus.UNKNOWN] if no revocation list
      * has been set with [setRevocationList]
      */
-    override suspend fun getCredentials(
-        credentialSchemes: Collection<ConstantIndex.CredentialScheme>?,
-    ): Collection<Holder.StoredCredential>? {
-        val credentials = subjectCredentialStore.getCredentials(credentialSchemes).getOrNull()
+    override suspend fun getCredentials(): Collection<Holder.StoredCredential>? {
+        val credentials = subjectCredentialStore.getCredentials().getOrNull()
             ?: return null
                 .also { Napier.w("Got no credentials from subjectCredentialStore") }
         return credentials.map {
@@ -155,7 +192,9 @@ class HolderAgent(
                 )
 
                 is SubjectCredentialStore.StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
-                    it.vcSerialized, it.sdJwt, Validator.RevocationStatus.VALID // TODO validation check
+                    it.vcSerialized,
+                    it.sdJwt,
+                    Validator.RevocationStatus.VALID // TODO validation check
                 )
             }
         }
@@ -195,7 +234,12 @@ class HolderAgent(
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
             .filter { validator.checkRevocationStatus(it.sdJwt) != Validator.RevocationStatus.REVOKED }
         if (validSdJwtCredentials.isNotEmpty()) {
-            return createSdJwtPresentation(audienceId, challenge, validSdJwtCredentials, requestedClaims)
+            return createSdJwtPresentation(
+                audienceId,
+                challenge,
+                validSdJwtCredentials,
+                requestedClaims
+            )
         }
         Napier.w("Got no valid credentials for $credentialSchemes")
         return null
@@ -218,8 +262,13 @@ class HolderAgent(
             Document(
                 docType = credential.scheme.isoDocType,
                 issuerSigned = IssuerSigned(
-                    namespaces = mapOf(credential.scheme.isoNamespace to
-                            IssuerSignedList(attributes.entries.filter { it.discloseItem(requestedClaims) })
+                    namespaces = mapOf(
+                        credential.scheme.isoNamespace to
+                                IssuerSignedList(attributes.entries.filter {
+                                    it.discloseItem(
+                                        requestedClaims
+                                    )
+                                })
                     ),
                     issuerAuth = credential.issuerSigned.issuerAuth
                 ),
@@ -246,15 +295,17 @@ class HolderAgent(
             challenge = challenge
         )
         val jwsPayload = keyBindingJws.serialize().encodeToByteArray()
-        val keyBinding = jwsService.createSignedJwt(JwsContentTypeConstants.KB_JWT, jwsPayload).getOrElse {
-            Napier.w("Could not create JWS for presentation", it)
-            return null
-        }
+        val keyBinding =
+            jwsService.createSignedJwt(JwsContentTypeConstants.KB_JWT, jwsPayload).getOrElse {
+                Napier.w("Could not create JWS for presentation", it)
+                return null
+            }
         val first = validSdJwtCredentials.first()
         val filteredDisclosures = first.disclosures
             .filter { it.discloseItem(requestedClaims) }.keys
-        val sdJwt = (listOf(first.vcSerialized.substringBefore("~")) + filteredDisclosures + keyBinding.serialize())
-            .joinToString("~")
+        val sdJwt =
+            (listOf(first.vcSerialized.substringBefore("~")) + filteredDisclosures + keyBinding.serialize())
+                .joinToString("~")
         return Holder.CreatePresentationResult.SdJwt(sdJwt)
     }
 

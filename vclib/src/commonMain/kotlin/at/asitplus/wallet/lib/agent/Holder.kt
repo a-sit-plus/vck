@@ -87,9 +87,7 @@ interface Holder {
      * Note that the revocation status may be [Validator.RevocationStatus.UNKNOWN] if no revocation list
      * has been set with [setRevocationList]
      */
-    suspend fun getCredentials(
-        credentialSchemes: Collection<ConstantIndex.CredentialScheme>? = null,
-    ): Collection<StoredCredential>?
+    suspend fun getCredentials(): Collection<StoredCredential>?
 
     sealed class StoredCredential {
         data class Vc(

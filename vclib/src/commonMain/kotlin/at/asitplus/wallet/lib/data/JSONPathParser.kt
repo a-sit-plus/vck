@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.wallet.lib.agent.toMap
 import io.ktor.http.quote
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -219,17 +218,6 @@ sealed interface JsonPathSelector {
     }
 }
 
-fun <K, V> Map<K, V?>.filterNotNull(): Map<K, V> {
-    val resultMap = mutableMapOf<K, V>()
-    this.entries.forEach {
-        val value = it.value
-        if (value != null) {
-            resultMap.put(it.key, value)
-        }
-    }
-    return resultMap
-}
-
 fun JsonElement.matchJsonPath(
     jsonPath: String
 ): Map<List<String>, JsonElement> {
@@ -242,4 +230,19 @@ fun JsonElement.matchJsonPath(
         }.toMap()
     }
     return matches
+}
+
+fun <K, V> Map<K, V?>.filterNotNull(): Map<K, V> {
+    val resultMap = mutableMapOf<K, V>()
+    this.entries.forEach {
+        val value = it.value
+        if (value != null) {
+            resultMap.put(it.key, value)
+        }
+    }
+    return resultMap
+}
+
+fun <K, V> Collection<Map.Entry<K, V>>.toMap(): Map<K, V> {
+    return this.associate { it.key to it.value }
 }
