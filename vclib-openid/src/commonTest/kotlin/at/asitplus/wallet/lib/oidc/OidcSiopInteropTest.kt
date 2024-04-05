@@ -172,19 +172,12 @@ class OidcSiopInteropTest : FreeSpec({
         holderSiop = OidcSiopWallet.newInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
-            jwkSetRetriever = { it ->
+            remoteResourceRetriever = {
                 if (it == "https://verifier-backend.eudiw.dev/wallet/jarm/" +
                     "WLFJEn9AGbJfAcEyaQTzzxueqmeRazmsHIkxMRTkGRL1zyI7un-KJWaXtulrfiSS38LlU5ABDB9Zdsfq_11r8Q/jwks.json"
-                )
-                    JsonWebKeySet.deserialize(jwkset) else null
-            },
-            requestObjectCandidateRetriever = { it ->
-                listOfNotNull(
-                    if (it.toString() == "https://verifier-backend.eudiw.dev/wallet/request.jwt/" +
-                        "WLFJEn9AGbJfAcEyaQTzzxueqmeRazmsHIkxMRTkGRL1zyI7un-KJWaXtulrfiSS38LlU5ABDB9Zdsfq_11r8Q"
-                    )
-                        requestObject else null
-                )
+                ) jwkset else if (it == "https://verifier-backend.eudiw.dev/wallet/request.jwt/" +
+                    "WLFJEn9AGbJfAcEyaQTzzxueqmeRazmsHIkxMRTkGRL1zyI7un-KJWaXtulrfiSS38LlU5ABDB9Zdsfq_11r8Q"
+                ) requestObject else null
             }
         )
 
