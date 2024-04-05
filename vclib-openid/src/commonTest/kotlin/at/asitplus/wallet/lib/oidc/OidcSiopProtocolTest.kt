@@ -242,7 +242,7 @@ class OidcSiopProtocolTest : FreeSpec({
         ).also { println(it) }
 
         val clientId = Url(authnRequest).parameters["client_id"]!!
-        val requestUrl = "http://www.example.com/request/${Random.nextBytes(32).encodeToString(Base64UrlStrict)}"
+        val requestUrl = "https://www.example.com/request/${Random.nextBytes(32).encodeToString(Base64UrlStrict)}"
 
         val authRequestUrlWithRequestUri = URLBuilder(walletUrl).apply {
             parameters.append("client_id", clientId)
@@ -252,8 +252,8 @@ class OidcSiopProtocolTest : FreeSpec({
         holderSiop = OidcSiopWallet.newInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
-            requestObjectCandidateRetriever = {
-                if (it.toString() == requestUrl) listOf(authnRequest) else listOf()
+            remoteResourceRetriever = {
+                if (it == requestUrl) authnRequest else null
             }
         )
 
@@ -275,7 +275,7 @@ class OidcSiopProtocolTest : FreeSpec({
             credentialScheme = ConstantIndex.AtomicAttribute2023
         ).getOrThrow().also { println(it.serialize()) }
 
-        val requestUrl = "http://www.example.com/request/${Random.nextBytes(32).encodeToString(Base64UrlStrict)}"
+        val requestUrl = "https://www.example.com/request/${Random.nextBytes(32).encodeToString(Base64UrlStrict)}"
         val authRequestUrlWithRequestUri = URLBuilder(walletUrl).apply {
             parameters.append("client_id", relyingPartyUrl)
             parameters.append("request_uri", requestUrl)
@@ -284,8 +284,8 @@ class OidcSiopProtocolTest : FreeSpec({
         holderSiop = OidcSiopWallet.newInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
-            requestObjectCandidateRetriever = {
-                if (it.toString() == requestUrl) listOf(jar.serialize()) else listOf()
+            remoteResourceRetriever = {
+                if (it == requestUrl) jar.serialize() else null
             }
         )
 

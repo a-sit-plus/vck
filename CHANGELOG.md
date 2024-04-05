@@ -5,7 +5,8 @@ Release 3.6.0:
  - Move `JsonWebKeySet` to library `at.asitplus.crypto:datatypes-jws`
  - `DefaultVerifierJwsService` may load public keys for verifying JWS from a JWK Set URL in the header, see constructor argument `jwkSetRetriever` (cf. to `OidcSiopWallet`)
  - `OidcSiopWallet` and `OidcSiopVerifier` implement response mode `direct_post.jwt`, as per OpenID for Verifiable Presentations draft 20
- - Rename `OidcSiopVerifier.createAuthnRequestAsRequestObject()` to `OidcSiopVerifier.createAuthnRequestAsSignedRequestObject()`
+ - `OidcSiopVerifier`: Rename `createAuthnRequestAsRequestObject()` to `createAuthnRequestAsSignedRequestObject()`, also changing the return type
+ - `OidcSiopWallet`: Rename constuctor parameter `jwkSetRetriever` to a more general `remoteResourceRetriever`, to use it for various parameters defined by reference
 
 Release 3.5.0:
 - Kotlin 1.9.23

@@ -78,6 +78,21 @@ object OpenIdConstants {
          * or the `client_metadata_uri` parameter.
          */
         const val DID = "did"
+
+        /**
+         * This scheme allows the Verifier to authenticate using a JWT that is bound to a certain public key. When the
+         * scheme is `verifier_attestation`, the Client Identifier MUST equal the `sub` claim value in the Verifier
+         * attestation JWT. The request MUST be signed with the private key corresponding to the public key in the `cnf`
+         * claim in the Verifier attestation JWT. This serves as proof of possession of this key. The Verifier
+         * attestation JWT MUST be added to the `jwt` JOSE Header of the request object. The Wallet MUST validate the
+         * signature on the Verifier attestation JWT. The `iss` claim value of the Verifier Attestation JWT MUST
+         * identify a party the Wallet trusts for issuing Verifier Attestation JWTs. If the Wallet cannot establish
+         * trust, it MUST refuse the request. If the issuer of the Verifier Attestation JWT adds a `redirect_uris` claim
+         * to the attestation, the Wallet MUST ensure the `redirect_uri` request parameter value exactly matches one of
+         * the `redirect_uris` claim entries. All Verifier metadata other than the public key MUST be obtained from the
+         * `client_metadata` or the `client_metadata_uri parameter`.
+         */
+        const val VERIFIER_ATTESTATION = "verifier_attestation"
     }
 
     object ResponseModes {
