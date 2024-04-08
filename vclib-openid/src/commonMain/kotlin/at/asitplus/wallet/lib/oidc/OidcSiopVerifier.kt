@@ -141,32 +141,43 @@ class OidcSiopVerifier(
         addKeyId = true
     )
 
+    data class RequestOptions(
+        /**
+         * Response mode to request, see [OpenIdConstants.ResponseModes]
+         */
+        val responseMode: String? = null,
+        /**
+         * Required representation, see [ConstantIndex.CredentialRepresentation]
+         */
+        val representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+        /**
+         * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
+         */
+        val state: String? = uuid4().toString(),
+        /**
+         * Credential type to request, or `null` to make no restrictions
+         */
+        val credentialScheme: ConstantIndex.CredentialScheme? = null,
+        /**
+         * List of attributes that shall be requested explicitly (selective disclosure),
+         * or `null` to make no restrictions
+         */
+        val requestedAttributes: List<String>? = null,
+        /**
+         * Optional URL to include [metadata] by reference instead of by value (directly embedding in authn request)
+         */
+        val clientMetadataUrl: String? = null,
+    )
+
     /**
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl].
-     *
-     * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
-     * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
-     * @param credentialScheme which credential type to request, or `null` to make no restrictions
-     * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
      */
     suspend fun createAuthnRequestUrl(
         walletUrl: String,
-        responseMode: String? = null,
-        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-        state: String? = uuid4().toString(),
-        credentialScheme: ConstantIndex.CredentialScheme? = null,
-        requestedAttributes: List<String>? = null,
-        clientMetadataUrl: String? = null,
+        requestOptions: RequestOptions = RequestOptions(),
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
-        createAuthnRequest(
-            responseMode = responseMode,
-            representation = representation,
-            state = state,
-            credentialScheme = credentialScheme,
-            requestedAttributes = requestedAttributes,
-            clientMetadataUrl = clientMetadataUrl,
-        ).encodeToParameters()
+        createAuthnRequest(requestOptions).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
         return urlBuilder.buildString()
     }
@@ -174,27 +185,12 @@ class OidcSiopVerifier(
     /**
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl],
      * containing a JWS Authorization Request (JAR, RFC9101) in `request`, containing the request parameters itself.
-     *
-     * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
-     * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
-     * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
-     * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
      */
     suspend fun createAuthnRequestUrlWithRequestObject(
         walletUrl: String,
-        responseMode: String? = null,
-        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-        state: String? = uuid4().toString(),
-        credentialScheme: ConstantIndex.CredentialScheme? = null,
-        requestedAttributes: List<String>? = null,
+        requestOptions: RequestOptions = RequestOptions()
     ): KmmResult<String> {
-        val jar = createAuthnRequestAsSignedRequestObject(
-            responseMode = responseMode,
-            representation = representation,
-            state = state,
-            credentialScheme = credentialScheme,
-            requestedAttributes = requestedAttributes,
-        ).getOrElse {
+        val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrElse {
             return KmmResult.failure(it)
         }
         val urlBuilder = URLBuilder(walletUrl)
@@ -218,30 +214,11 @@ class OidcSiopVerifier(
      * }.buildString()
      * // on an GET to requestUrl, return `jar.serialize()`
      * ```
-     *
-     * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
-     * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
-     * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
-     * @param credentialScheme which credential type to request, or `null` to make no restrictions
-     * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
-     * @param clientMetadataUrl optional URL to set instead of directly embedding [metadata]
      */
     suspend fun createAuthnRequestAsSignedRequestObject(
-        responseMode: String? = null,
-        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-        state: String? = uuid4().toString(),
-        credentialScheme: ConstantIndex.CredentialScheme? = null,
-        requestedAttributes: List<String>? = null,
-        clientMetadataUrl: String? = null,
+        requestOptions: RequestOptions = RequestOptions(),
     ): KmmResult<JwsSigned> {
-        val requestObject = createAuthnRequest(
-            responseMode = responseMode,
-            representation = representation,
-            state = state,
-            credentialScheme = credentialScheme,
-            requestedAttributes = requestedAttributes,
-            clientMetadataUrl = clientMetadataUrl,
-        )
+        val requestObject = createAuthnRequest(requestOptions)
         val requestObjectSerialized = jsonSerializer.encodeToString(
             requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
         )
@@ -264,50 +241,45 @@ class OidcSiopVerifier(
      * e.g. `https://example.com?repsonse_type=...` (see [createAuthnRequestUrl])
      *
      * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
-     *
-     * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
-     * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
-     * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
-     * @param credentialScheme which credential type to request, or `null` to make no restrictions
-     * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
-     * @param clientMetadataUrl optional URL to set instead of directly embedding [metadata]
      */
     suspend fun createAuthnRequest(
-        responseMode: String? = null,
-        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-        state: String? = uuid4().toString(),
-        credentialScheme: ConstantIndex.CredentialScheme? = null,
-        requestedAttributes: List<String>? = null,
-        clientMetadataUrl: String? = null,
+        requestOptions: RequestOptions = RequestOptions(),
     ): AuthenticationRequestParameters {
-        val typeConstraint = credentialScheme?.let {
-            when (representation) {
+        val typeConstraint = requestOptions.credentialScheme?.let {
+            when (requestOptions.representation) {
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.vcConstraint()
                 ConstantIndex.CredentialRepresentation.SD_JWT -> it.vcConstraint()
                 ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoConstraint()
             }
         }
-        val attributeConstraint = requestedAttributes?.let { createConstraints(representation, it) } ?: listOf()
+        val attributeConstraint = requestOptions.requestedAttributes
+            ?.let { createConstraints(requestOptions.representation, it) }
+            ?: listOf()
         val constraintFields = attributeConstraint + typeConstraint
+        val schemaReference = SchemaReference(
+            requestOptions.credentialScheme?.schemaUri ?: "https://example.com"
+        )
+        val scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, requestOptions.credentialScheme?.vcType)
+            .joinToString(" ")
         return AuthenticationRequestParameters(
             responseType = "$ID_TOKEN $VP_TOKEN",
             clientId = relyingPartyUrl,
             redirectUrl = relyingPartyUrl,
             clientIdScheme = attestationJwt?.let { VERIFIER_ATTESTATION } ?: REDIRECT_URI,
-            scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.vcType).joinToString(" "),
+            scope = scope,
             nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
-            clientMetadata = clientMetadataUrl?.let { null } ?: metadata,
-            clientMetadataUri = clientMetadataUrl,
+            clientMetadata = requestOptions.clientMetadataUrl?.let { null } ?: metadata,
+            clientMetadataUri = requestOptions.clientMetadataUrl,
             idTokenType = IdTokenType.SUBJECT_SIGNED.text,
-            responseMode = responseMode,
-            state = state,
+            responseMode = requestOptions.responseMode,
+            state = requestOptions.state,
             presentationDefinition = PresentationDefinition(
                 id = uuid4().toString(),
-                formats = representation.toFormatHolder(),
+                formats = requestOptions.representation.toFormatHolder(),
                 inputDescriptors = listOf(
                     InputDescriptor(
                         id = uuid4().toString(),
-                        schema = listOf(SchemaReference(credentialScheme?.schemaUri ?: "https://example.com")),
+                        schema = listOf(schemaReference),
                         constraints = Constraint(fields = constraintFields.filterNotNull()),
                     )
                 ),

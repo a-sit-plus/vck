@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -135,7 +136,7 @@ class OidcSiopProtocolTest : FreeSpec({
     "test with direct_post" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            responseMode = OpenIdConstants.ResponseModes.DIRECT_POST
+            requestOptions = RequestOptions(responseMode = OpenIdConstants.ResponseModes.DIRECT_POST)
         ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
@@ -151,7 +152,7 @@ class OidcSiopProtocolTest : FreeSpec({
     "test with direct_post_jwt" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            responseMode = OpenIdConstants.ResponseModes.DIRECT_POST_JWT
+            requestOptions = RequestOptions(responseMode = OpenIdConstants.ResponseModes.DIRECT_POST_JWT)
         ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
@@ -171,8 +172,10 @@ class OidcSiopProtocolTest : FreeSpec({
         val expectedState = uuid4().toString()
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            responseMode = OpenIdConstants.ResponseModes.QUERY,
-            state = expectedState
+            requestOptions = RequestOptions(
+                responseMode = OpenIdConstants.ResponseModes.QUERY,
+                state = expectedState
+            )
         ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
@@ -210,7 +213,7 @@ class OidcSiopProtocolTest : FreeSpec({
     "test specific credential" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            credentialScheme = ConstantIndex.AtomicAttribute2023
+            requestOptions = RequestOptions(credentialScheme = ConstantIndex.AtomicAttribute2023)
         ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
@@ -228,7 +231,7 @@ class OidcSiopProtocolTest : FreeSpec({
     "test with request object" {
         val authnRequestWithRequestObject = verifierSiop.createAuthnRequestUrlWithRequestObject(
             walletUrl = walletUrl,
-            credentialScheme = ConstantIndex.AtomicAttribute2023
+            requestOptions = RequestOptions(credentialScheme = ConstantIndex.AtomicAttribute2023)
         ).getOrThrow().also { println(it) }
 
         val authnResponse =
@@ -255,7 +258,7 @@ class OidcSiopProtocolTest : FreeSpec({
         )
         val authnRequestWithRequestObject = verifierSiop.createAuthnRequestUrlWithRequestObject(
             walletUrl = walletUrl,
-            credentialScheme = ConstantIndex.AtomicAttribute2023
+            requestOptions = RequestOptions(credentialScheme = ConstantIndex.AtomicAttribute2023)
         ).getOrThrow().also { println(it) }
 
 
@@ -288,7 +291,7 @@ class OidcSiopProtocolTest : FreeSpec({
         )
         val authnRequestWithRequestObject = verifierSiop.createAuthnRequestUrlWithRequestObject(
             walletUrl = walletUrl,
-            credentialScheme = ConstantIndex.AtomicAttribute2023
+            requestOptions = RequestOptions(credentialScheme = ConstantIndex.AtomicAttribute2023)
         ).getOrThrow().also { println(it) }
 
         holderSiop = OidcSiopWallet.newInstance(
@@ -304,7 +307,7 @@ class OidcSiopProtocolTest : FreeSpec({
     "test with request object from request_uri as URL query parameters" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            credentialScheme = ConstantIndex.AtomicAttribute2023
+            requestOptions = RequestOptions(credentialScheme = ConstantIndex.AtomicAttribute2023)
         ).also { println(it) }
 
         val clientId = Url(authnRequest).parameters["client_id"]!!
@@ -337,7 +340,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
     "test with request object from request_uri as JWS" {
         val jar = verifierSiop.createAuthnRequestAsSignedRequestObject(
-            credentialScheme = ConstantIndex.AtomicAttribute2023
+            requestOptions = RequestOptions(credentialScheme = ConstantIndex.AtomicAttribute2023)
         ).getOrThrow().also { println(it.serialize()) }
 
         val requestUrl = "https://www.example.com/request/${Random.nextBytes(32).encodeToString(Base64UrlStrict)}"
@@ -367,7 +370,7 @@ class OidcSiopProtocolTest : FreeSpec({
     }
     "test with request object not verified" {
         val jar = verifierSiop.createAuthnRequestAsSignedRequestObject(
-            credentialScheme = ConstantIndex.AtomicAttribute2023
+            requestOptions = RequestOptions(credentialScheme = ConstantIndex.AtomicAttribute2023)
         ).getOrThrow().also { println(it.serialize()) }
 
         val requestUrl = "https://www.example.com/request/${Random.nextBytes(32).encodeToString(Base64UrlStrict)}"
