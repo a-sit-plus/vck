@@ -8,11 +8,13 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
@@ -65,7 +67,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     "test with Fragment" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            representation = ConstantIndex.CredentialRepresentation.SD_JWT
+            requestOptions = RequestOptions(representation = ConstantIndex.CredentialRepresentation.SD_JWT)
         ).also { println(it) }
         authnRequest shouldContain "jwt_sd"
 
@@ -88,9 +90,11 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
-            requestedAttributes = listOf(requestedClaim),
+            requestOptions = RequestOptions(
+                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                credentialScheme = ConstantIndex.AtomicAttribute2023,
+                requestedAttributes = listOf(requestedClaim)
+            )
         ).also { println(it) }
         authnRequest shouldContain "jwt_sd"
         authnRequest shouldContain requestedClaim
@@ -105,6 +109,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         result.disclosures.shouldNotBeEmpty()
         result.disclosures.shouldBeSingleton()
         result.disclosures.shouldHaveSingleElement { it.claimName == requestedClaim }
+        sdJwt.shouldNotBeNull()
     }
 
 })
@@ -116,7 +121,7 @@ private suspend fun assertSecondRun(
 ) {
     val authnRequestUrl = verifierSiop.createAuthnRequestUrl(
         walletUrl = walletUrl,
-        representation = ConstantIndex.CredentialRepresentation.SD_JWT
+        requestOptions = RequestOptions(representation = ConstantIndex.CredentialRepresentation.SD_JWT)
     )
     val authnResponse = holderSiop.createAuthnResponse(authnRequestUrl)
     val url = (authnResponse.getOrThrow() as OidcSiopWallet.AuthenticationResponseResult.Redirect).url
