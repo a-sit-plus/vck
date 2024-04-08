@@ -156,6 +156,7 @@ class OidcSiopVerifier(
         state: String? = uuid4().toString(),
         credentialScheme: ConstantIndex.CredentialScheme? = null,
         requestedAttributes: List<String>? = null,
+        clientMetadataUrl: String? = null,
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
         createAuthnRequest(
@@ -164,6 +165,7 @@ class OidcSiopVerifier(
             state = state,
             credentialScheme = credentialScheme,
             requestedAttributes = requestedAttributes,
+            clientMetadataUrl = clientMetadataUrl,
         ).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
         return urlBuilder.buildString()
@@ -222,6 +224,7 @@ class OidcSiopVerifier(
      * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
      * @param credentialScheme which credential type to request, or `null` to make no restrictions
      * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
+     * @param clientMetadataUrl optional URL to set instead of directly embedding [metadata]
      */
     suspend fun createAuthnRequestAsSignedRequestObject(
         responseMode: String? = null,
@@ -229,6 +232,7 @@ class OidcSiopVerifier(
         state: String? = uuid4().toString(),
         credentialScheme: ConstantIndex.CredentialScheme? = null,
         requestedAttributes: List<String>? = null,
+        clientMetadataUrl: String? = null,
     ): KmmResult<JwsSigned> {
         val requestObject = createAuthnRequest(
             responseMode = responseMode,
@@ -236,6 +240,7 @@ class OidcSiopVerifier(
             state = state,
             credentialScheme = credentialScheme,
             requestedAttributes = requestedAttributes,
+            clientMetadataUrl = clientMetadataUrl,
         )
         val requestObjectSerialized = jsonSerializer.encodeToString(
             requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
@@ -265,6 +270,7 @@ class OidcSiopVerifier(
      * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
      * @param credentialScheme which credential type to request, or `null` to make no restrictions
      * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
+     * @param clientMetadataUrl optional URL to set instead of directly embedding [metadata]
      */
     suspend fun createAuthnRequest(
         responseMode: String? = null,
@@ -272,6 +278,7 @@ class OidcSiopVerifier(
         state: String? = uuid4().toString(),
         credentialScheme: ConstantIndex.CredentialScheme? = null,
         requestedAttributes: List<String>? = null,
+        clientMetadataUrl: String? = null,
     ): AuthenticationRequestParameters {
         val typeConstraint = credentialScheme?.let {
             when (representation) {
@@ -289,7 +296,8 @@ class OidcSiopVerifier(
             clientIdScheme = attestationJwt?.let { VERIFIER_ATTESTATION } ?: REDIRECT_URI,
             scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.vcType).joinToString(" "),
             nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
-            clientMetadata = metadata,
+            clientMetadata = clientMetadataUrl?.let { null } ?: metadata,
+            clientMetadataUri = clientMetadataUrl,
             idTokenType = IdTokenType.SUBJECT_SIGNED.text,
             responseMode = responseMode,
             state = state,
