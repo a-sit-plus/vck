@@ -140,6 +140,14 @@ data class AuthenticationRequestParameters(
     val presentationDefinition: PresentationDefinition? = null,
 
     /**
+     * OID4VP: A string containing a Presentation Definition JSON object. This parameter MUST be present when
+     * `presentation_definition_uri` parameter, or a `scope` value representing a Presentation Definition is not
+     * present.
+     */
+    @SerialName(AuthenticationRequestConstants.SerialNames.presentationDefinitionUri)
+    val presentationDefinitionUri: String? = null,
+
+    /**
      * OID4VP: A string containing an HTTPS URL pointing to a resource where a Presentation Definition JSON object can
      * be retrieved. This parameter MUST be present when `presentation_definition` parameter, or a `scope` value
      * representing a Presentation Definition is not present.
