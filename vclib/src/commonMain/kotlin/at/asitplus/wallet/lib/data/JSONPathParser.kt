@@ -33,10 +33,10 @@ class JSONPathParser(val jsonPath: String) {
         if (jsonPath.length == 1) {
             throw JSONPathParserException("Invalid JSONPath selector: $jsonPath")
         }
-        val nextSymbol = jsonPath[0].toString()
-        val nextEndSymbolIndexExclusive = 1 + when (nextSymbol) {
+        val selectorStartSymbol = jsonPath[0].toString()
+        val selectorEndSymbolIndex = when (selectorStartSymbol) {
             "." -> jsonPath.indexOf(".", 1).let {
-                if (it == -1) jsonPath.lastIndex else it
+                if (it == -1) jsonPath.lastIndex + 1 else it
             }
 
             "[" -> {
@@ -52,10 +52,16 @@ class JSONPathParser(val jsonPath: String) {
             else -> throw JSONPathParserException("Invalid JSONPath selector: $jsonPath")
         }
 
-        val consumedPath = jsonPath.substring(1, nextEndSymbolIndexExclusive)
-        val remainingPath = jsonPath.substring(nextEndSymbolIndexExclusive)
+        val nextStartSymbol = when (selectorStartSymbol) {
+            "." -> selectorEndSymbolIndex
+            "[" -> selectorEndSymbolIndex + 1
+            else -> throw JSONPathParserException("Invalid JSONPath selector: $jsonPath")
+        }
 
-        val selector = when (nextSymbol) {
+        val consumedPath = jsonPath.substring(1, selectorEndSymbolIndex)
+        val remainingPath = jsonPath.substring(nextStartSymbol)
+
+        val selector = when (selectorStartSymbol) {
             "." -> when (consumedPath) {
                 "" -> JsonPathSelector.NestedDescendantsSelector()
                 "*" -> JsonPathSelector.DotWildCardSelector()
@@ -65,25 +71,11 @@ class JSONPathParser(val jsonPath: String) {
             "[" -> if (consumedPath == "*") {
                 JsonPathSelector.IndexWildCardSelector()
             } else if (consumedPath.startsWith("?")) {
-                val startIndexInclusive = consumedPath.indexOf("(") + 1
-                val endIndexExclusive = consumedPath.indexOf(")", startIndexInclusive)
-                JsonPathSelector.FilterSelector(
-                    consumedPath.substring(
-                        startIndexInclusive,
-                        endIndexExclusive
-                    )
-                )
+                TODO("implement filter selector parser")
             } else if (consumedPath.contains(",")) {
-                JsonPathSelector.UnionSelector(
-                    consumedPath.split(",")
-                )
+                TODO("implement union selector parser")
             } else if (consumedPath.contains(":")) {
-                val values = consumedPath.split(":").map { it.trim().toInt() }
-                JsonPathSelector.ArraySliceSelector(
-                    start = values[0],
-                    end = values[1],
-                    step = values.getOrNull(2) ?: 1,
-                )
+                TODO("implement array slice selector parser")
             } else {
                 JsonPathSelector.IndexSelector(consumedPath)
             }
@@ -112,7 +104,7 @@ sealed interface JsonPathSelector {
                 is JsonArray -> mapOf()
 
                 is JsonObject -> jsonElement[objectMemberName]?.let {
-                    mapOf(listOf(objectMemberName.quote()) to it)
+                    mapOf(listOf(objectMemberName) to it)
                 } ?: mapOf()
             }
         }
@@ -128,7 +120,7 @@ sealed interface JsonPathSelector {
                 }.toMap()
 
                 is JsonObject -> jsonElement.entries.map {
-                    listOf(it.key.quote()) to it.value
+                    listOf(it.key) to it.value
                 }.toMap()
             }
         }
@@ -145,7 +137,7 @@ sealed interface JsonPathSelector {
         constructor(selector: String) : this(
             memberName = selector.let {
                 if (it.startsWith("'") or it.startsWith('"')) {
-                    it.substring(1, it.lastIndex - 1)
+                    it.substring(1, it.lastIndex)
                 } else null
             },
             elementIndex = selector.let {
@@ -165,9 +157,9 @@ sealed interface JsonPathSelector {
                     }
                 } ?: mapOf()
 
-                is JsonObject -> memberName?.let { index ->
-                    jsonElement.get(index)?.let {
-                        mapOf(listOf(index.quote()) to it)
+                is JsonObject -> memberName?.let { memberName ->
+                    jsonElement.get(memberName)?.let {
+                        mapOf(listOf(memberName) to it)
                     }
                 } ?: mapOf()
             }
@@ -221,7 +213,7 @@ sealed interface JsonPathSelector {
 fun JsonElement.matchJsonPath(
     jsonPath: String
 ): Map<List<String>, JsonElement> {
-    var matches = mapOf(listOf("") to this)
+    var matches = mapOf(listOf<String>() to this)
     for (selector in JSONPathParser(jsonPath).getSelectors()) {
         matches = matches.flatMap { match ->
             selector.invoke(match.value).map { newMatch ->
