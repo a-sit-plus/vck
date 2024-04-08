@@ -1,7 +1,11 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
+import at.asitplus.crypto.datatypes.jws.JsonWebToken
+import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
@@ -11,6 +15,7 @@ import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
@@ -32,7 +37,9 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.seconds
 
 class OidcSiopProtocolTest : FreeSpec({
 
@@ -237,6 +244,63 @@ class OidcSiopProtocolTest : FreeSpec({
         }
     }
 
+    "test with request object and Attestation JWT" {
+        val sprsCryptoService = DefaultCryptoService()
+        val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierCryptoService)
+        verifierSiop = OidcSiopVerifier.newInstance(
+            verifier = verifierAgent,
+            cryptoService = verifierCryptoService,
+            relyingPartyUrl = relyingPartyUrl,
+            attestationJwt = attestationJwt
+        )
+        val authnRequestWithRequestObject = verifierSiop.createAuthnRequestUrlWithRequestObject(
+            walletUrl = walletUrl,
+            credentialScheme = ConstantIndex.AtomicAttribute2023
+        ).getOrThrow().also { println(it) }
+
+
+        holderSiop = OidcSiopWallet.newInstance(
+            holder = holderAgent,
+            cryptoService = holderCryptoService,
+            requestObjectJwsVerifier = verifierAttestationVerifier(sprsCryptoService.jsonWebKey)
+        )
+        val authnResponse =
+            holderSiop.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
+        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
+            .also { println(it) }
+
+        val result = verifierSiop.validateAuthnResponse(authnResponse.url)
+        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+        result.vp.verifiableCredentials.shouldNotBeEmpty()
+        result.vp.verifiableCredentials.forEach {
+            it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+        }
+    }
+    "test with request object and invalid Attestation JWT" {
+        val sprsCryptoService = DefaultCryptoService()
+        val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierCryptoService)
+
+        verifierSiop = OidcSiopVerifier.newInstance(
+            verifier = verifierAgent,
+            cryptoService = verifierCryptoService,
+            relyingPartyUrl = relyingPartyUrl,
+            attestationJwt = attestationJwt
+        )
+        val authnRequestWithRequestObject = verifierSiop.createAuthnRequestUrlWithRequestObject(
+            walletUrl = walletUrl,
+            credentialScheme = ConstantIndex.AtomicAttribute2023
+        ).getOrThrow().also { println(it) }
+
+        holderSiop = OidcSiopWallet.newInstance(
+            holder = holderAgent,
+            cryptoService = holderCryptoService,
+            requestObjectJwsVerifier = verifierAttestationVerifier(DefaultCryptoService().jsonWebKey)
+        )
+        shouldThrow<OAuth2Exception> {
+            holderSiop.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
+        }
+    }
+
     "test with request object from request_uri as URL query parameters" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
@@ -259,8 +323,7 @@ class OidcSiopProtocolTest : FreeSpec({
             }
         )
 
-        val authnResponse =
-            holderSiop.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
+        val authnResponse = holderSiop.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
             .also { println(it) }
 
@@ -291,8 +354,7 @@ class OidcSiopProtocolTest : FreeSpec({
             }
         )
 
-        val authnResponse =
-            holderSiop.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
+        val authnResponse = holderSiop.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
             .also { println(it) }
 
@@ -324,12 +386,42 @@ class OidcSiopProtocolTest : FreeSpec({
         )
 
         shouldThrow<OAuth2Exception> {
-            holderSiop.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow().also {
-                println(it)
-            }
+            holderSiop.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
         }
     }
 })
+
+private suspend fun buildAttestationJwt(
+    sprsCryptoService: DefaultCryptoService,
+    relyingPartyUrl: String,
+    verifierCryptoService: CryptoService
+): JwsSigned = DefaultJwsService(sprsCryptoService).createSignedJws(
+    header = JwsHeader(
+        algorithm = sprsCryptoService.algorithm.toJwsAlgorithm(),
+    ),
+    payload = JsonWebToken(
+        issuer = "sprs", // allows Wallet to determine the issuer's key
+        subject = relyingPartyUrl,
+        issuedAt = Clock.System.now(),
+        expiration = Clock.System.now().plus(10.seconds),
+        notBefore = Clock.System.now(),
+        confirmationKey = verifierCryptoService.jsonWebKey,
+    ).serialize().encodeToByteArray()
+).getOrThrow()
+
+private fun verifierAttestationVerifier(trustedKey: JsonWebKey) =
+    object : RequestObjectJwsVerifier {
+        override fun invoke(jws: JwsSigned, authnRequest: AuthenticationRequestParameters): Boolean {
+            val attestationJwt = jws.header.attestationJwt?.let { JwsSigned.parse(it) }
+                ?: return false
+            val verifierJwsService = DefaultVerifierJwsService()
+            if (!verifierJwsService.verifyJws(attestationJwt, trustedKey))
+                return false
+            val verifierPublicKey = JsonWebToken.deserialize(attestationJwt.payload.decodeToString())
+                .getOrNull()?.confirmationKey ?: return false
+            return verifierJwsService.verifyJws(jws, verifierPublicKey)
+        }
+    }
 
 private suspend fun verifySecondProtocolRun(
     verifierSiop: OidcSiopVerifier,

@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
+import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
@@ -27,6 +28,7 @@ import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.REDIRECT_URI
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.VERIFIER_ATTESTATION
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
@@ -62,6 +64,11 @@ class OidcSiopVerifier(
     private val verifierJwsService: VerifierJwsService,
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
+    /**
+     * Verifier Attestation JWT (from OID4VP) to include (in header `jwt`) when creating request objects as JWS,
+     * to allow the Wallet to verify the authenticity of this Verifier.
+     */
+    private val attestationJwt: JwsSigned? = null,
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
@@ -77,6 +84,7 @@ class OidcSiopVerifier(
             jwsService: JwsService = DefaultJwsService(cryptoService),
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
+            attestationJwt: JwsSigned? = null,
         ) = OidcSiopVerifier(
             verifier = verifier,
             relyingPartyUrl = relyingPartyUrl,
@@ -85,6 +93,7 @@ class OidcSiopVerifier(
             verifierJwsService = verifierJwsService,
             timeLeewaySeconds = timeLeewaySeconds,
             clock = clock,
+            attestationJwt = attestationJwt,
         )
     }
 
@@ -232,8 +241,12 @@ class OidcSiopVerifier(
             requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
         )
         val signedJws = jwsService.createSignedJwsAddingParams(
+            header = JwsHeader(
+                algorithm = jwsService.algorithm,
+                attestationJwt = attestationJwt?.serialize(),
+            ),
             payload = requestObjectSerialized.encodeToByteArray(),
-            addKeyId = true
+            addJsonWebKey = true,
         ).getOrElse {
             Napier.w("Could not sign JWS form authnRequest", it)
             return KmmResult.failure(it)
@@ -273,7 +286,7 @@ class OidcSiopVerifier(
             responseType = "$ID_TOKEN $VP_TOKEN",
             clientId = relyingPartyUrl,
             redirectUrl = relyingPartyUrl,
-            clientIdScheme = REDIRECT_URI,
+            clientIdScheme = attestationJwt?.let { VERIFIER_ATTESTATION } ?: REDIRECT_URI,
             scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.vcType).joinToString(" "),
             nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
             clientMetadata = metadata,
