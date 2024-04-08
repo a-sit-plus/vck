@@ -5,6 +5,7 @@ Release 3.6.0:
  - Move `JsonWebKeySet` to library `at.asitplus.crypto:datatypes-jws`
  - `DefaultVerifierJwsService` may load public keys for verifying JWS from a JWK Set URL in the header, see constructor argument `jwkSetRetriever` (cf. to `OidcSiopWallet`)
  - `OidcSiopWallet` and `OidcSiopVerifier` implement response mode `direct_post.jwt`, as per OpenID for Verifiable Presentations draft 20
+ - `OidcSiopVerifier`: Add constructor parameter `attestationJwt` to create authentication requests as JWS with an Verifier Attestation JWT in header `jwt` (see OpenId4VP draft 20)
  - `OidcSiopVerifier`: Rename `createAuthnRequestAsRequestObject()` to `createAuthnRequestAsSignedRequestObject()`, also changing the return type
  - `OidcSiopWallet`: Rename constructor parameter `jwkSetRetriever` to a more general `remoteResourceRetriever`, to use it for various parameters defined by reference
  - `OidcSiopWallet`: Replace constructor parameter `verifierJwsService` with `requestObjectJwsVerifier` to allow callers to verify JWS objects with a pre-registered key (as in the OpenId4VP client ID scheme "pre-registered")
