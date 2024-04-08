@@ -9,11 +9,11 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class VerifiablePresentation(
-    @SerialName("id")
+    @SerialName(VerifiablePresentationConstants.SerialNames.id)
     val id: String,
-    @SerialName("type")
+    @SerialName(VerifiablePresentationConstants.SerialNames.type)
     val type: String,
-    @SerialName("verifiableCredential")
+    @SerialName(VerifiablePresentationConstants.SerialNames.verifiableCredential)
     val verifiableCredential: Collection<String>,
 ) {
 
@@ -30,4 +30,12 @@ data class VerifiablePresentation(
         audience = audienceId,
         jwtId = id
     )
+}
+
+class VerifiablePresentationConstants {
+    object SerialNames {
+        const val id = "id"
+        const val type = "type"
+        const val verifiableCredential = "verifiableCredential"
+    }
 }
