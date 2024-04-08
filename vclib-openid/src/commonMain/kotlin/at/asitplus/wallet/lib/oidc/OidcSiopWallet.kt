@@ -13,10 +13,7 @@ import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.JwkSetRetrieverFunction
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
@@ -53,7 +50,6 @@ class OidcSiopWallet(
     private val holder: Holder,
     private val agentPublicKey: CryptoPublicKey,
     private val jwsService: JwsService,
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
     private val clock: Clock = Clock.System,
     private val clientId: String = "https://wallet.a-sit.at/",
     /**
@@ -63,25 +59,29 @@ class OidcSiopWallet(
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-
-    ) {
+    /**
+     * Need to verify the request object serialized as a JWS,
+     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdSchemes.PRE_REGISTERED]).
+     */
+    private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true }
+) {
     companion object {
         fun newInstance(
             holder: Holder,
             cryptoService: CryptoService,
             jwsService: JwsService = DefaultJwsService(cryptoService),
-            verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
             clock: Clock = Clock.System,
             clientId: String = "https://wallet.a-sit.at/",
             remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
+            requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { jws, authnRequest -> true }
         ) = OidcSiopWallet(
             holder = holder,
             agentPublicKey = cryptoService.publicKey,
             jwsService = jwsService,
-            verifierJwsService = verifierJwsService,
             clock = clock,
             clientId = clientId,
             remoteResourceRetriever = remoteResourceRetriever,
+            requestObjectJwsVerifier = requestObjectJwsVerifier
         )
     }
 
@@ -173,11 +173,15 @@ class OidcSiopWallet(
 
     private fun parseRequestObjectJws(requestObject: String): AuthenticationRequestParameters? {
         JwsSigned.parse(requestObject)?.let { jws ->
-            if (verifierJwsService.verifyJwsObject(jws)) {
-                return kotlin.runCatching {
-                    AuthenticationRequestParameters.deserialize(jws.payload.decodeToString())
-                }.getOrNull()
+            val authnRequestParams = kotlin.runCatching {
+                AuthenticationRequestParameters.deserialize(jws.payload.decodeToString())
+            }.getOrNull() ?: return null
+            val signatureVerified = requestObjectJwsVerifier.invoke(jws, authnRequestParams)
+            if (!signatureVerified) {
+                Napier.w("parseRequestObjectJws: Signature not verified for $jws")
+                return null
             }
+            return authnRequestParams
         }
         return null
     }
@@ -455,3 +459,10 @@ class OidcSiopWallet(
  * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
  */
 typealias RemoteResourceRetrieverFunction = suspend (String) -> String?
+
+/**
+ * Implementations need to verify the passed [JwsSigned] and return its result
+ */
+fun interface RequestObjectJwsVerifier {
+    operator fun invoke(jws: JwsSigned, authnRequest: AuthenticationRequestParameters): Boolean
+}

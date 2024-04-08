@@ -12,11 +12,13 @@ import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -299,6 +301,32 @@ class OidcSiopProtocolTest : FreeSpec({
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+        }
+    }
+    "test with request object not verified" {
+        val jar = verifierSiop.createAuthnRequestAsSignedRequestObject(
+            credentialScheme = ConstantIndex.AtomicAttribute2023
+        ).getOrThrow().also { println(it.serialize()) }
+
+        val requestUrl = "https://www.example.com/request/${Random.nextBytes(32).encodeToString(Base64UrlStrict)}"
+        val authRequestUrlWithRequestUri = URLBuilder(walletUrl).apply {
+            parameters.append("client_id", relyingPartyUrl)
+            parameters.append("request_uri", requestUrl)
+        }.buildString()
+
+        holderSiop = OidcSiopWallet.newInstance(
+            holder = holderAgent,
+            cryptoService = holderCryptoService,
+            remoteResourceRetriever = {
+                if (it == requestUrl) jar.serialize() else null
+            },
+            requestObjectJwsVerifier = { _, _ -> false }
+        )
+
+        shouldThrow<OAuth2Exception> {
+            holderSiop.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow().also {
+                println(it)
+            }
         }
     }
 })
