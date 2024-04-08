@@ -3,7 +3,15 @@ package at.asitplus.wallet.lib.data.dif
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.toJsonElement
 import at.asitplus.wallet.lib.data.matchJsonPath
+import io.github.aakira.napier.Napier
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.floatOrNull
+import kotlinx.serialization.json.intOrNull
 
 /*
 Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
@@ -30,17 +38,19 @@ class StandardInputEvaluator : InputEvaluator {
     ): InputEvaluator.CandidateInputMatch? {
         // filter by credential format
         val supportedFormats = inputDescriptor.format ?: presentationDefinition.formats
-        when (credential) {
-            is SubjectCredentialStore.StoreEntry.Vc -> if (supportedFormats?.jwtVp == null) {
-                return null
-            }
+        supportedFormats?.let { formatHolder ->
+            when (credential) {
+                is SubjectCredentialStore.StoreEntry.Vc -> if (formatHolder.jwtVp == null) {
+                    return null
+                }
 
-            is SubjectCredentialStore.StoreEntry.SdJwt -> if (supportedFormats?.jwtSd == null) {
-                return null
-            }
+                is SubjectCredentialStore.StoreEntry.SdJwt -> if (formatHolder.jwtSd == null) {
+                    return null
+                }
 
-            is SubjectCredentialStore.StoreEntry.Iso -> if (supportedFormats?.msoMdoc == null) {
-                return null
+                is SubjectCredentialStore.StoreEntry.Iso -> if (formatHolder.msoMdoc == null) {
+                    return null
+                }
             }
         }
 
@@ -61,18 +71,15 @@ class StandardInputEvaluator : InputEvaluator {
                         )
                     }
                 }
-                if (field.isOptional == false and (fieldQueryResult == null)) {
+                if ((field.isOptional == false) and (fieldQueryResult == null)) {
                     return null
                 }
                 field.predicate?.let {
-                    when(it) {
+                    when (it) {
                         PredicateEnum.PREFERRED -> fieldQueryResult
                         PredicateEnum.REQUIRED -> TODO("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature")
                     }
                 } ?: fieldQueryResult
-            }
-            if (fieldQueryResults.any { it == null }) {
-                return null
             }
             fieldQueryResults
         } ?: listOf()
@@ -90,5 +97,55 @@ data class FieldQueryResult(
 
 internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Boolean {
     // TODO: properly implement constraint filter
+    // source: https://json-schema.org/draft-07/schema#
+    // this currently is only a tentative implementation
+    val typeMatchesElement = when (this) {
+        is JsonArray -> filter.type == "array" // TODO: need recursive type check; Need element count check (minItems = 1) for root, need check for unique items at root (whatever that means)
+        is JsonObject -> filter.type == "object"
+        is JsonPrimitive -> when (filter.type) {
+            "string" -> this.isString
+            "null" -> when (this) {
+                JsonNull -> true
+                else -> false
+            }
+
+            "boolean" -> this.booleanOrNull != null
+            "integer" -> this.intOrNull != null
+            "number" -> this.floatOrNull != null
+            else -> false
+        }
+    }
+
+    if (typeMatchesElement == false) {
+        return false
+    }
+
+    filter.const?.let {
+        val isMatch = runCatching {
+            it == (this as JsonPrimitive).content
+        }.getOrDefault(false)
+        if(isMatch == false) {
+            return false
+        }
+    }
+    filter.pattern?.let {
+        val isMatch = runCatching {
+            Regex(it).matches((this as JsonPrimitive).content)
+        }.getOrDefault(false)
+        if(isMatch == false) {
+            return false
+        }
+    }
+    filter.enum?.let { enum ->
+        val isMatch = runCatching {
+            enum.any { value ->
+                value == (this as JsonPrimitive).content
+            }
+        }.getOrDefault(false)
+        if(isMatch == false) {
+            return false
+        }
+    }
+    // TODO: Implement support for other filters
     return true
 }
