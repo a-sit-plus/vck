@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data
 
-import io.ktor.http.quote
+import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -38,7 +38,9 @@ class JSONPathParser(val jsonPath: String) {
         val selectorStartSymbol = jsonPath[0].toString()
         val selectorEndSymbolIndex = when (selectorStartSymbol) {
             "." -> jsonPath.indexOf(".", 1).let {
-                if (it == -1) jsonPath.lastIndex + 1 else it
+                if (it != -1) it else jsonPath.indexOf("[", 1).let {
+                    if (it != -1) it else jsonPath.lastIndex + 1
+                }
             }
 
             "[" -> {
@@ -60,26 +62,28 @@ class JSONPathParser(val jsonPath: String) {
             else -> throw JSONPathParserException("Invalid JSONPath segment: $jsonPath")
         }
 
-        val consumedPath = jsonPath.substring(1, selectorEndSymbolIndex)
+        val selectorDetails = jsonPath.substring(1, selectorEndSymbolIndex)
         val remainingPath = jsonPath.substring(nextStartSymbol)
+        Napier.d("consumedPath: ${jsonPath.substring(0, selectorEndSymbolIndex)}")
+        Napier.d("remaining path: $remainingPath")
 
         val selector = when (selectorStartSymbol) {
-            "." -> when (consumedPath) {
+            "." -> when (selectorDetails) {
                 "" -> JsonPathSelector.NestedDescendantsSelector()
                 "*" -> JsonPathSelector.DotWildCardSelector()
-                else -> JsonPathSelector.DotSelector(consumedPath)
+                else -> JsonPathSelector.DotSelector(selectorDetails)
             }
 
-            "[" -> if (consumedPath == "*") {
+            "[" -> if (selectorDetails == "*") {
                 JsonPathSelector.IndexWildCardSelector()
-            } else if (consumedPath.startsWith("?")) {
+            } else if (selectorDetails.startsWith("?")) {
                 TODO("implement filter selector parser")
-            } else if (consumedPath.contains(",")) {
+            } else if (selectorDetails.contains(",")) {
                 TODO("implement union selector parser")
-            } else if (consumedPath.contains(":")) {
+            } else if (selectorDetails.contains(":")) {
                 TODO("implement array slice selector parser")
             } else {
-                JsonPathSelector.IndexSelector(consumedPath)
+                JsonPathSelector.IndexSelector(selectorDetails)
             }
 
             else -> throw Exception("Invalid JSONPath segment: $jsonPath")
