@@ -37,8 +37,9 @@ class JSONPathParser(val jsonPath: String) {
         }
         val selectorStartSymbol = jsonPath[0].toString()
         val selectorEndSymbolIndex = when (selectorStartSymbol) {
-            "." -> jsonPath.indexOf(".", 1).let {
-                if (it != -1) it else jsonPath.indexOf("[", 1).let {
+            "." -> {
+                // may end at '.', at '[' or with end of string
+                jsonPath.indexOfAny(listOf(".", "["), startIndex = 1).let {
                     if (it != -1) it else jsonPath.lastIndex + 1
                 }
             }
@@ -64,6 +65,7 @@ class JSONPathParser(val jsonPath: String) {
 
         val selectorDetails = jsonPath.substring(1, selectorEndSymbolIndex)
         val remainingPath = jsonPath.substring(nextStartSymbol)
+        Napier.d("selectorDetails: $selectorDetails")
         Napier.d("consumedPath: ${jsonPath.substring(0, selectorEndSymbolIndex)}")
         Napier.d("remaining path: $remainingPath")
 

@@ -22,6 +22,7 @@ import at.asitplus.wallet.lib.data.jsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceSigned
 import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.ElementValue
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.IssuerSignedList
@@ -33,10 +34,13 @@ import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.serialization.cbor.ByteStringWrapper
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 
 
 /**
@@ -237,6 +241,7 @@ class HolderAgent(
 
         val matches = presentationDefinition.inputDescriptors.map { inputDescriptor ->
             inputs.filter { credential ->
+                // assume credential format to be supported by the verifier if no format holder is specified
                 val supportedFormats = inputDescriptor.format ?: presentationDefinition.formats
                 supportedFormats?.let { formatHolder ->
                     when (credential) {
@@ -244,18 +249,20 @@ class HolderAgent(
                         is SubjectCredentialStore.StoreEntry.SdJwt -> formatHolder.jwtSd != null
                         is SubjectCredentialStore.StoreEntry.Iso -> formatHolder.msoMdoc != null
                     }
-                }
-                    ?: true // assume credential format to be supported by the verifier if no format holder is specified
+                } ?: true
             }.firstNotNullOfOrNull { credential ->
                 StandardInputEvaluator().evaluateMatch(
                     inputDescriptor = inputDescriptor,
                     credential = credential.toJsonElement(),
-                )?.let {
+                ).getOrNull()?.let {
                     CandidateInputMatchContainer(
                         inputDescriptor = inputDescriptor,
                         inputMatch = it,
                         credential = credential,
                     )
+                } ?: null.also {
+                    Napier.d("Credential does not satisfy input descriptor: $credential")
+                    Napier.d("Credential as json element: ${credential.toJsonElement()}")
                 }
             } ?: return KmmResult.failure(
                 MissingInputDescriptorMatchException(inputDescriptor)
@@ -432,7 +439,16 @@ fun SubjectCredentialStore.StoreEntry.toJsonElement(): JsonElement {
     val credential = this
     return when (credential) {
         is SubjectCredentialStore.StoreEntry.Vc -> {
-            jsonSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject)
+            buildJsonObject {
+                put("type", JsonPrimitive(credential.scheme.vcType))
+                jsonSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject).jsonObject.entries.forEach {
+                    put(it.key, it.value)
+                }
+                // TODO: Remove this when there is a clear specification on how to encode vc credentials
+                put("vc", buildJsonArray {
+                    add(jsonSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject))
+                })
+            }
         }
 
         is SubjectCredentialStore.StoreEntry.SdJwt -> {
@@ -459,35 +475,23 @@ fun SubjectCredentialStore.StoreEntry.toJsonElement(): JsonElement {
             buildJsonObject {
                 put("mdoc", buildJsonObject {
                     put("doctype", JsonPrimitive(credential.scheme.isoDocType))
+                    // TODO: remove the rest here as soon as the eudiw verifier has found a better way to specify their presentation definition
+                    put("namespace", JsonPrimitive(credential.scheme.isoNamespace))
+                    credential.issuerSigned.namespaces?.forEach {
+                        it.value.entries.forEach { signedItem ->
+                            put(
+                                signedItem.value.elementIdentifier,
+                                signedItem.value.elementValue.toJsonElement(),
+                            )
+                        }
+                    }
                 })
                 credential.issuerSigned.namespaces?.forEach {
                     put(it.key, buildJsonObject {
                         it.value.entries.forEach { signedItem ->
                             put(
                                 signedItem.value.elementIdentifier,
-                                signedItem.value.elementValue.let { value ->
-                                    value.boolean?.let { JsonPrimitive(it) }
-                                        ?: value.string?.let { JsonPrimitive(it) }
-                                        ?: value.bytes?.let {
-                                            buildJsonArray {
-                                                it.forEach {
-                                                    this.add(JsonPrimitive(it.toInt()))
-                                                }
-                                            }
-                                        } ?: value.drivingPrivilege?.let { drivingPriviledgeArray ->
-                                            buildJsonArray {
-                                                drivingPriviledgeArray.forEach { drivingPriviledge ->
-                                                    this.add(
-                                                        jsonSerializer.encodeToJsonElement(
-                                                            drivingPriviledge
-                                                        )
-                                                    )
-                                                }
-                                            }
-                                        } ?: value.date?.let {
-                                            JsonPrimitive(it.toString())
-                                        } ?: JsonPrimitive(null)
-                                }
+                                signedItem.value.elementValue.toJsonElement()
                             )
                         }
                     })
@@ -495,6 +499,30 @@ fun SubjectCredentialStore.StoreEntry.toJsonElement(): JsonElement {
             }
         }
     }
+}
+
+private fun ElementValue.toJsonElement(): JsonElement {
+    return this.boolean?.let { JsonPrimitive(it) }
+        ?: this.string?.let { JsonPrimitive(it) }
+        ?: this.bytes?.let {
+            buildJsonArray {
+                it.forEach {
+                    this.add(JsonPrimitive(it.toInt()))
+                }
+            }
+        } ?: this.drivingPrivilege?.let { drivingPriviledgeArray ->
+            buildJsonArray {
+                drivingPriviledgeArray.forEach { drivingPriviledge ->
+                    this.add(
+                        jsonSerializer.encodeToJsonElement(
+                            drivingPriviledge
+                        )
+                    )
+                }
+            }
+        } ?: this.date?.let {
+            JsonPrimitive(it.toString())
+        } ?: JsonNull
 }
 
 open class PresentationException(message: String) : Exception(message)

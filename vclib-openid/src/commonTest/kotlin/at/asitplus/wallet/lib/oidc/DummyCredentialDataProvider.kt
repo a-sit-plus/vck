@@ -42,10 +42,10 @@ class DummyCredentialDataProvider(
             val claims = claimNames?.map {
                 ClaimToBeIssued(it, "${it}_DUMMY_VALUE")
             } ?: listOfNotNull(
-                optionalClaim(claimNames, "given-name", "Susanne"),
-                optionalClaim(claimNames, "family-name", "Meier"),
-                optionalClaim(claimNames, "date-of-birth", "1990-01-01"),
-                optionalClaim(claimNames, "is-active", true)
+                ClaimToBeIssued("given-name", "Susanne"),
+                ClaimToBeIssued("family-name", "Meier"),
+                ClaimToBeIssued("date-of-birth", "1990-01-01"),
+                ClaimToBeIssued("is-active", true)
             )
             credentials += when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
@@ -110,8 +110,11 @@ class DummyCredentialDataProvider(
 
         if (credentialScheme == EudiwPidCredentialScheme) {
             val subjectId = subjectPublicKey.didEncoded
-            val claims = listOfNotNull(
-                optionalClaim(claimNames, "family_name", "someone"),
+            val claims = claimNames?.map {
+                // TODO: remove this workaround and actually issue the credentials correctly
+                ClaimToBeIssued(it, "${it}_DUMMY_VALUE")
+            } ?: listOfNotNull(
+                ClaimToBeIssued("family_name", "someone"),
             )
             credentials += when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(

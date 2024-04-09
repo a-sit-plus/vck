@@ -52,15 +52,18 @@ class OidcSiopInteropTest : FreeSpec({
         holderCryptoService = DefaultCryptoService()
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
         runBlocking {
+            val issuedCredential = IssuerAgent.newDefaultInstance(
+                DefaultCryptoService(),
+                dataProvider = DummyCredentialDataProvider(),
+            ).issueCredential(
+                subjectPublicKey = holderCryptoService.publicKey,
+                attributeTypes = listOf(EudiwPidCredentialScheme.vcType),
+                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                claimNames = EudiwPidCredentialScheme.claimNames
+            )
+
             holderAgent.storeCredentials(
-                IssuerAgent.newDefaultInstance(
-                    DefaultCryptoService(),
-                    dataProvider = DummyCredentialDataProvider(),
-                ).issueCredential(
-                    subjectPublicKey = holderCryptoService.publicKey,
-                    attributeTypes = listOf(EudiwPidCredentialScheme.vcType),
-                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                ).toStoreCredentialInput()
+                issuedCredential.toStoreCredentialInput()
             )
         }
     }

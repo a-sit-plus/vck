@@ -268,26 +268,12 @@ class PresentProofProtocol(
             RequestPresentationAttachment.deserialize(it)
         } ?: return problemReporter.problemLastMessage(lastMessage.threadId, "attachments-format")
         // TODO Is ISO supported here?
-        val constraintFields = requestPresentationAttachment.presentationDefinition.inputDescriptors
-            .mapNotNull { it.constraints }
-            .flatMap { it.fields?.toList() ?: listOf() }
-        val requestedTypes = constraintFields
-            .filter { it.path.contains("\$.vc[*].type") }
-            .mapNotNull { it.filter }
-            .filter { it.type == "string" }
-            .mapNotNull { it.const }
-            .mapNotNull { AttributeIndex.resolveAttributeType(it) }
-        val requestedClaims = constraintFields
-            .filter { it.path.contains("\$.vc[*].name") }
-            .mapNotNull { it.filter }
-            .filter { it.type == "string" }
-            .mapNotNull { it.const }
-        val vp = holder?.createPresentation(
+        val presentationResult = holder?.createPresentation(
             challenge = requestPresentationAttachment.options.challenge,
             audienceId = requestPresentationAttachment.options.verifier ?: senderKey.identifier,
-            credentialSchemes = requestedTypes.ifEmpty { null },
-            requestedClaims = requestedClaims.ifEmpty { null },
-        ) ?: return problemReporter.problemInternal(lastMessage.threadId, "vp-empty")
+            presentationDefinition = requestPresentationAttachment.presentationDefinition
+        )?.getOrNull() ?: return problemReporter.problemInternal(lastMessage.threadId, "vp-empty")
+        val vp = presentationResult.verifiablePresentations.firstOrNull()
         // TODO is ISO supported here?
         if (vp !is Holder.CreatePresentationResult.Signed) {
             return problemReporter.problemInternal(lastMessage.threadId, "vp-not-signed")

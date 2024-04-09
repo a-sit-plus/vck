@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.data.dif
 
-import at.asitplus.wallet.lib.agent.SubjectCredentialStore
-import at.asitplus.wallet.lib.agent.toJsonElement
+import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.matchJsonPath
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
@@ -12,6 +11,15 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.intOrNull
+
+open class InputEvaluationException(message: String) : Exception(message)
+
+class FailedFieldQueryException(val constraintField: ConstraintField) : InputEvaluationException(
+    message = "No match has been found to satisfy constraint field: $constraintField"
+)
+class MissingFeatureSupportException(val featureName: String) : InputEvaluationException(
+    message = "Feature is currently not supported: $featureName"
+)
 
 /*
 Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
@@ -31,14 +39,14 @@ interface InputEvaluator {
     fun evaluateMatch(
         inputDescriptor: InputDescriptor,
         credential: JsonElement
-    ): CandidateInputMatch?
+    ): KmmResult<CandidateInputMatch>
 }
 
 class StandardInputEvaluator : InputEvaluator {
     override fun evaluateMatch(
         inputDescriptor: InputDescriptor,
         credential: JsonElement
-    ): InputEvaluator.CandidateInputMatch? {
+    ): KmmResult<InputEvaluator.CandidateInputMatch> {
         // filter by constraints
         val fieldQueryResults = inputDescriptor.constraints?.let { constraints ->
             val constraintFields = constraints.fields ?: listOf()
@@ -57,20 +65,28 @@ class StandardInputEvaluator : InputEvaluator {
                     }
                 }
                 if ((field.isOptional == false) and (fieldQueryResult == null)) {
-                    return null
+                    return KmmResult.failure(
+                        FailedFieldQueryException(field)
+                            .also { it.message?.let { Napier.d(it) } }
+                    )
                 }
                 field.predicate?.let {
                     when (it) {
                         PredicateEnum.PREFERRED -> fieldQueryResult
-                        PredicateEnum.REQUIRED -> TODO("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature")
+                        PredicateEnum.REQUIRED -> return KmmResult.failure(
+                            MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature")
+                                .also { it.message?.let { Napier.d(it) } }
+                        )
                     }
                 } ?: fieldQueryResult
             }
             fieldQueryResults
         } ?: listOf()
 
-        return InputEvaluator.CandidateInputMatch(
-            fieldQueryResults = fieldQueryResults,
+        return KmmResult.success(
+            InputEvaluator.CandidateInputMatch(
+                fieldQueryResults = fieldQueryResults,
+            )
         )
     }
 }
@@ -104,7 +120,7 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
         val isMatch = runCatching {
             it == (this as JsonPrimitive).content
         }.getOrDefault(false)
-        if(isMatch == false) {
+        if (isMatch == false) {
             return false
         }
     }
@@ -112,7 +128,7 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
         val isMatch = runCatching {
             Regex(it).matches((this as JsonPrimitive).content)
         }.getOrDefault(false)
-        if(isMatch == false) {
+        if (isMatch == false) {
             return false
         }
     }
@@ -122,7 +138,7 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
                 value == (this as JsonPrimitive).content
             }
         }.getOrDefault(false)
-        if(isMatch == false) {
+        if (isMatch == false) {
             return false
         }
     }

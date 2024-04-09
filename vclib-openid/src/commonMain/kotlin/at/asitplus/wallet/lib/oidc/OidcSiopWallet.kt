@@ -349,9 +349,9 @@ class OidcSiopWallet(
             challenge = params.nonce,
             audienceId = audience,
             presentationDefinition = presentationDefinition,
-        ).getOrElse {
+        ).getOrElse { exception ->
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
-                .also { Napier.w("Could not create presentation") }
+                .also { Napier.w("Could not create presentation: ${exception.message}") }
         }
 
         clientMetadata.vpFormats?.let { supportedFormats ->
