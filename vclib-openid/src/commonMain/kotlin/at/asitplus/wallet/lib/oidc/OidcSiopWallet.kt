@@ -354,7 +354,7 @@ class OidcSiopWallet(
                 .also { Napier.w("Could not create presentation") }
         )
 
-        params.clientMetadata?.vpFormats?.let { supportedFormats ->
+        clientMetadata.vpFormats?.let { supportedFormats ->
             presentationSubmissionContainer.presentationSubmission.descriptorMap?.mapIndexed { index, descriptor ->
                 val isMissingFormatSupport = when (descriptor.format) {
                     ClaimFormatEnum.JWT -> supportedFormats.jwt?.algorithms?.contains(jwsService.algorithm.identifier) != true
