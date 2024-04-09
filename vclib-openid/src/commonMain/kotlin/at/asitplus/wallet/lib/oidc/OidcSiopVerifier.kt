@@ -470,7 +470,6 @@ class OidcSiopVerifier(
             } catch (exception: InvalidJsonPathException) {
                 return AuthnResponseResult.ValidationError("presentation_submission", params.state)
             }
-            Napier.d("matching jsonPath: $cumulativeJsonPath")
             val relatedPresentation =
                 verifiablePresentation.matchJsonPath(cumulativeJsonPath).entries.first().value
 
