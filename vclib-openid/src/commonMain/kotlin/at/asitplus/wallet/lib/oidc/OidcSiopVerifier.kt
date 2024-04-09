@@ -475,27 +475,50 @@ class OidcSiopVerifier(
 
             val format = descriptor.format
             val result = when (format) {
-                ClaimFormatEnum.JWT_VP -> verifier.verifyPresentation(
-                    (relatedPresentation as JsonPrimitive).content,
-                    idToken.nonce
-                )
+                ClaimFormatEnum.JWT_VP -> when(relatedPresentation) {
+                    // must be a string
+                    // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
+                    is JsonPrimitive -> verifier.verifyPresentation(
+                        relatedPresentation.content,
+                        idToken.nonce
+                    )
+                    else -> return AuthnResponseResult.ValidationError(
+                        "Invalid presentation format",
+                        params.state
+                    ).also { Napier.w("Invalid presentation format: $relatedPresentation") }
+                }
 
-                ClaimFormatEnum.MSO_MDOC -> verifier.verifyPresentation(
-                    (relatedPresentation as JsonPrimitive).content,
-                    idToken.nonce
-                )
+                ClaimFormatEnum.JWT_SD -> when(relatedPresentation) {
+                    // must be a string
+                    // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.5-1
+                    is JsonPrimitive -> verifier.verifyPresentation(
+                        relatedPresentation.content,
+                        idToken.nonce
+                    )
+                    else -> return AuthnResponseResult.ValidationError(
+                        "Invalid presentation format",
+                        params.state
+                    ).also { Napier.w("Invalid presentation format: $relatedPresentation") }
+                }
 
-                ClaimFormatEnum.JWT_SD -> verifier.verifyPresentation(
-                    (relatedPresentation as JsonPrimitive).content,
-                    idToken.nonce
-                )
+                ClaimFormatEnum.MSO_MDOC -> when(relatedPresentation) {
+                    // must be a string
+                    // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.5-1
+                    is JsonPrimitive -> verifier.verifyPresentation(
+                        relatedPresentation.content,
+                        idToken.nonce
+                    )
+                    else -> return AuthnResponseResult.ValidationError(
+                        "Invalid presentation format",
+                        params.state
+                    ).also { Napier.w("Invalid presentation format: $relatedPresentation") }
+                }
 
-                else -> null
-            } ?: return AuthnResponseResult.ValidationError(
-                "descriptor format not known",
-                params.state
-            )
-                .also { Napier.w("Descriptor format not known: $format") }
+                else -> return AuthnResponseResult.ValidationError(
+                    "descriptor format not known",
+                    params.state
+                ).also { Napier.w("Descriptor format not known: $format") }
+            }
 
             when (result) {
                 is Verifier.VerifyPresentationResult.InvalidStructure ->
