@@ -6,6 +6,7 @@ import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -23,11 +24,15 @@ import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
+import io.ktor.util.flattenEntries
 import io.ktor.http.*
 import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlin.time.Duration.Companion.seconds
 
@@ -93,7 +98,8 @@ class OidcSiopWallet(
          * Wallet returns the [AuthenticationResponseParameters] as form parameters, which shall be posted to
          * `redirect_uri of the Relying Party, i.e. clients should execute that POST with [params] to [url].
          */
-        data class Post(val url: String, val params: Map<String, String>) : AuthenticationResponseResult()
+        data class Post(val url: String, val params: Map<String, String>) :
+            AuthenticationResponseResult()
 
         /**
          * Wallet returns the [AuthenticationResponseParameters] as fragment parameters appended to the
@@ -141,7 +147,8 @@ class OidcSiopWallet(
                 .decodeFromUrlQuery<AuthenticationRequestParameters>()
         }.getOrNull() ?: kotlin.runCatching {
             // maybe it's a url that yields the request object in some other way
-            remoteResourceRetriever.invoke(input)?.let { retrieveAuthenticationRequestParameters(it) }
+            remoteResourceRetriever.invoke(input)
+                ?.let { retrieveAuthenticationRequestParameters(it) }
         }.getOrNull()
         ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
             .also { Napier.w("Could not parse authentication request: $input") }
@@ -221,7 +228,8 @@ class OidcSiopWallet(
                         payload = responseParams.serialize().encodeToByteArray()
                     ).fold(
                         onSuccess = { responseParamsJws ->
-                            val jarm = AuthenticationResponseParameters(response = responseParamsJws.serialize())
+                            val jarm =
+                                AuthenticationResponseParameters(response = responseParamsJws.serialize())
                             KmmResult.success(
                                 AuthenticationResponseResult.Post(
                                     url = url,
@@ -254,7 +262,9 @@ class OidcSiopWallet(
                     if (request.redirectUrl == null)
                         return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
                     val url = URLBuilder(request.redirectUrl)
-                        .apply { encodedFragment = responseParams.encodeToParameters().formUrlEncode() }
+                        .apply {
+                            encodedFragment = responseParams.encodeToParameters().formUrlEncode()
+                        }
                         .buildString()
                     KmmResult.success(AuthenticationResponseResult.Redirect(url))
                 }
@@ -303,18 +313,6 @@ class OidcSiopWallet(
                 .also { Napier.w("response_type is not specified") }
         if (!params.responseType.contains(VP_TOKEN) && params.presentationDefinition == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("vp_token not requested") }
-        if (clientMetadata.vpFormats != null) {
-            if (clientMetadata.vpFormats.jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true)
-                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                    .also { Napier.w("Incompatible JWT algorithms") }
-            if (clientMetadata.vpFormats.jwtSd?.algorithms?.contains(jwsService.algorithm.identifier) != true)
-                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                    .also { Napier.w("Incompatible JWT algorithms") }
-            if (clientMetadata.vpFormats.msoMdoc?.algorithms?.contains(jwsService.algorithm.identifier) != true)
-                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                    .also { Napier.w("Incompatible JWT algorithms") }
-        }
         if (params.nonce == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("nonce is null") }
@@ -338,26 +336,55 @@ class OidcSiopWallet(
         }
 
         val presentationDefinition =
-            params.presentationDefinition ?: presentationDefinitionRetriever?.let { retriever ->
-                params.presentationDefinitionUri?.let {
-                    runBlocking {
-                        retriever.retrieveFromUrl(Url(it))
-                    }
-                } ?: params.scope?.split(" ")?.firstNotNullOfOrNull {
-                    runBlocking {
-                        retriever.deriveFromScope(it)
-                    }
+            params.presentationDefinition ?: params.presentationDefinitionUri?.let {
+                remoteResourceRetriever(it)?.let {
+                    jsonSerializer.decodeFromString<PresentationDefinition>(it)
                 }
-            } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            } ?: params.scope?.split(" ")?.firstNotNullOfOrNull {
+                scopePresentationDefinitionRetriever?.invoke(it)
+            } ?: throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
                 .also { Napier.d("No valid presentation definition has been found for request $params") }
 
         val presentationSubmissionContainer = holder.createPresentation(
             challenge = params.nonce,
             audienceId = audience,
             presentationDefinition = presentationDefinition,
-        )
-            ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
+        ) ?: return KmmResult.failure(
+            OAuth2Exception(Errors.USER_CANCELLED)
                 .also { Napier.w("Could not create presentation") }
+        )
+
+        params.clientMetadata?.vpFormats?.let { supportedFormats ->
+            presentationSubmissionContainer.presentationSubmission.descriptorMap?.mapIndexed { index, descriptor ->
+                val isMissingFormatSupport = when (descriptor.format) {
+                    ClaimFormatEnum.JWT -> supportedFormats.jwt?.algorithms?.contains(jwsService.algorithm.identifier) != true
+                    ClaimFormatEnum.JWT_VC -> supportedFormats.jwtVc?.algorithms?.contains(
+                        jwsService.algorithm.identifier
+                    ) != true
+
+                    ClaimFormatEnum.JWT_VP -> supportedFormats.jwtVp?.algorithms?.contains(
+                        jwsService.algorithm.identifier
+                    ) != true
+
+                    ClaimFormatEnum.JWT_SD -> supportedFormats.jwtSd?.algorithms?.contains(
+                        jwsService.algorithm.identifier
+                    ) != true
+
+                    ClaimFormatEnum.MSO_MDOC -> supportedFormats.msoMdoc?.algorithms?.contains(
+                        jwsService.algorithm.identifier
+                    ) != true
+
+                    else -> true
+                }
+
+                if (isMissingFormatSupport) {
+                    return KmmResult.failure(
+                        OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
+                            .also { Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $presentationDefinition") }
+                    )
+                }
+            }
+        }
 
         return KmmResult.success(
             AuthenticationResponseParameters(
@@ -373,12 +400,12 @@ class OidcSiopWallet(
                             )
                     }
                 }.let {
-                    if (it.size == 1) it[0]
+                    if (it.size == 1) JsonPrimitive(it[0])
                     else buildJsonArray {
                         for (value in it) {
                             add(value)
                         }
-                    }.toString() // making use of assumption:416dc455-ebb7-4b74-86e4-b63dc8cfe279
+                    }
                 },
                 presentationSubmission = presentationSubmissionContainer.presentationSubmission,
             )

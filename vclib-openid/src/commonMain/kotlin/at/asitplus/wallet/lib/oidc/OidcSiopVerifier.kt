@@ -44,7 +44,8 @@ import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.http.*
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
@@ -459,14 +460,9 @@ class OidcSiopVerifier(
         val descriptors = presentationSubmission.descriptorMap
             ?: return AuthnResponseResult.ValidationError("presentation_submission", params.state)
                 .also { Napier.w("presentation_submission contains no descriptors") }
-        val vp = params.vpToken // TODO: this may be an array of verifiable presentations
+        val verifiablePresentation = params.vpToken
             ?: return AuthnResponseResult.ValidationError("vp_token is null", params.state)
                 .also { Napier.w("No VP in response") }
-
-        // descriptors use JsonPaths to describe the resulting input descriptor match locations
-        // -> it seems fitting to compile the vpToken to a jsonObject
-        // making use of assumption:50c2c2bc-df25-4e9d-9890-67bde5a0e677
-        val verifiablePresentations = jsonSerializer.parseToJsonElement(vp)
 
         val validationResults = descriptors.map { descriptor ->
             val cumulativeJsonPath = try {
@@ -474,8 +470,9 @@ class OidcSiopVerifier(
             } catch (exception: InvalidJsonPathException) {
                 return AuthnResponseResult.ValidationError("presentation_submission", params.state)
             }
+            Napier.d("matching jsonPath: $cumulativeJsonPath")
             val relatedPresentation =
-                verifiablePresentations.matchJsonPath(cumulativeJsonPath).entries.first().value
+                verifiablePresentation.matchJsonPath(cumulativeJsonPath).entries.first().value
 
             val format = descriptor.format
             val result = when (format) {

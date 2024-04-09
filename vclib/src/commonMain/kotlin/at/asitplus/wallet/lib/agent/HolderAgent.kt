@@ -11,7 +11,6 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.data.VerifiablePresentationConstants
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.InputEvaluator
@@ -273,6 +272,14 @@ class HolderAgent(
                     true // no revocation check available for iso credentials
                 }
             }
+        }?.sortedBy {
+            // prefer iso credentials and sd jwt credentials over plain vc credentials
+            // -> they support selective disclosure!
+            when(it) {
+                is SubjectCredentialStore.StoreEntry.Vc -> 2
+                is SubjectCredentialStore.StoreEntry.SdJwt -> 1
+                is SubjectCredentialStore.StoreEntry.Iso -> 1
+            }
         } ?: return null
             .also { Napier.w("Got no credentials from subjectCredentialStore") }
 
@@ -291,7 +298,7 @@ class HolderAgent(
                         is SubjectCredentialStore.StoreEntry.SdJwt -> formatHolder.jwtSd != null
                         is SubjectCredentialStore.StoreEntry.Iso -> formatHolder.msoMdoc != null
                     }
-                } ?: true // assume credential format to be supported if no format holder is specified
+                } ?: true // assume credential format to be supported by the verifier if no format holder is specified
             }.firstNotNullOfOrNull { credential ->
                 StandardInputEvaluator().evaluateMatch(
                     inputDescriptor = inputDescriptor,
