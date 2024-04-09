@@ -21,36 +21,21 @@ import kotlinx.serialization.json.JsonPrimitive
 
 class CredentialJsonInteropTest : FreeSpec({
 
-    lateinit var relyingPartyUrl: String
-    lateinit var walletUrl: String
-
     lateinit var holderCryptoService: CryptoService
     lateinit var verifierCryptoService: CryptoService
 
     lateinit var issuerAgent: Issuer
     lateinit var subjectCredentialStore: SubjectCredentialStore
     lateinit var holderAgent: Holder
-    lateinit var verifierAgent: Verifier
-
-    lateinit var holderSiop: OidcSiopWallet
-    lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
-        relyingPartyUrl = "https://example.com/rp/${uuid4()}"
-        walletUrl = "https://example.com/wallet/${uuid4()}"
         subjectCredentialStore = InMemorySubjectCredentialStore()
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService, subjectCredentialStore = subjectCredentialStore)
-        verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.didEncoded)
         issuerAgent = IssuerAgent.newDefaultInstance(
             DefaultCryptoService(),
             dataProvider = DummyCredentialDataProvider(),
-        )
-
-        holderSiop = OidcSiopWallet.newInstance(
-            holder = holderAgent,
-            cryptoService = holderCryptoService
         )
     }
 
@@ -66,12 +51,14 @@ class CredentialJsonInteropTest : FreeSpec({
         }
 
         val credential = subjectCredentialStore.getCredentials().getOrThrow()[0]
-        println(credential)
-
         (credential.toJsonElement().matchJsonPath("\$.id").entries.first().value as JsonPrimitive).content shouldNotBe null
+        (credential.toJsonElement().matchJsonPath("\$['id']").entries.first().value as JsonPrimitive).content shouldNotBe null
         (credential.toJsonElement().matchJsonPath("\$.name").entries.first().value as JsonPrimitive).content shouldNotBe null
+        (credential.toJsonElement().matchJsonPath("\$['name']").entries.first().value as JsonPrimitive).content shouldNotBe null
         (credential.toJsonElement().matchJsonPath("\$.mime-type").entries.first().value as JsonPrimitive).content shouldNotBe null
+        (credential.toJsonElement().matchJsonPath("\$['mime-type']").entries.first().value as JsonPrimitive).content shouldNotBe null
         (credential.toJsonElement().matchJsonPath("\$.value").entries.first().value as JsonPrimitive).content shouldNotBe null
+        (credential.toJsonElement().matchJsonPath("\$['value']").entries.first().value as JsonPrimitive).content shouldNotBe null
     }
 
     "SD jwt credential path resolving" {
@@ -87,12 +74,14 @@ class CredentialJsonInteropTest : FreeSpec({
         }
 
         val credential = subjectCredentialStore.getCredentials().getOrThrow()[0]
-        println(credential)
-
         (credential.toJsonElement().matchJsonPath("\$.id").entries.first().value as JsonPrimitive).content shouldNotBe null
+        (credential.toJsonElement().matchJsonPath("\$['id']").entries.first().value as JsonPrimitive).content shouldNotBe null
         (credential.toJsonElement().matchJsonPath("\$.name").entries.first().value as JsonPrimitive).content shouldNotBe null
+        (credential.toJsonElement().matchJsonPath("\$['name']").entries.first().value as JsonPrimitive).content shouldNotBe null
         (credential.toJsonElement().matchJsonPath("\$.mime-type").entries.first().value as JsonPrimitive).content shouldNotBe null
+        (credential.toJsonElement().matchJsonPath("\$['mime-type']").entries.first().value as JsonPrimitive).content shouldNotBe null
         (credential.toJsonElement().matchJsonPath("\$.value").entries.first().value as JsonPrimitive).content shouldNotBe null
+        (credential.toJsonElement().matchJsonPath("\$['value']").entries.first().value as JsonPrimitive).content shouldNotBe null
     }
 
     "ISO credential path resolving" {
@@ -108,11 +97,17 @@ class CredentialJsonInteropTest : FreeSpec({
         }
 
         val credential = subjectCredentialStore.getCredentials().getOrThrow()[0]
-        println(credential)
-
         (credential.toJsonElement().matchJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}'].id").entries.first().value as JsonPrimitive).content shouldNotBe null
+        (credential.toJsonElement().matchJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['id']").entries.first().value as JsonPrimitive).content shouldNotBe null
         (credential.toJsonElement().matchJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}'].name").entries.first().value as JsonPrimitive).content shouldNotBe null
+        (credential.toJsonElement().matchJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['name']").entries.first().value as JsonPrimitive).content shouldNotBe null
         (credential.toJsonElement().matchJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}'].mime-type").entries.first().value as JsonPrimitive).content shouldNotBe null
+        (credential.toJsonElement().matchJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['mime-type']").entries.first().value as JsonPrimitive).content shouldNotBe null
         (credential.toJsonElement().matchJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}'].value").entries.first().value as JsonPrimitive).content shouldNotBe null
+        (credential.toJsonElement().matchJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['value']").entries.first().value as JsonPrimitive).content shouldNotBe null
+
+        // mdoc credentials should also have a doctype
+        (credential.toJsonElement().matchJsonPath("\$['mdoc'].doctype").entries.first().value as JsonPrimitive).content shouldNotBe null
+        (credential.toJsonElement().matchJsonPath("\$.mdoc.doctype").entries.first().value as JsonPrimitive).content shouldNotBe null
     }
 })

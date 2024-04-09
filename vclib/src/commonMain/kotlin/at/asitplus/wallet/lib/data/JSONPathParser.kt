@@ -7,21 +7,23 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 // specification: https://datatracker.ietf.org/doc/rfc9535/
-class JSONPathParserException(message: String) : Exception(message)
+open class JSONPathParserException(message: String) : Exception(message)
+
+class InvalidJsonPathException(val jsonPath: String) : JSONPathParserException(jsonPath)
 
 class JSONPathConstants {
     companion object {
-        const val ROOT_INDICATOR = "$"
+        const val ROOT_INDICATOR = '$'
     }
 }
 
 class JSONPathParser(val jsonPath: String) {
     fun getSelectors(): List<JsonPathSelector> {
         if (jsonPath.isEmpty()) {
-            throw JSONPathParserException("Invalid JSONPath: $jsonPath")
+            throw InvalidJsonPathException(jsonPath)
         }
         if (jsonPath.startsWith(JSONPathConstants.ROOT_INDICATOR) == false) {
-            throw JSONPathParserException("Invalid JSONPath: $jsonPath")
+            throw InvalidJsonPathException(jsonPath)
         }
         return listOf(JsonPathSelector.RootSelector()) + getSubSelectors(jsonPath.substring(1))
     }
@@ -31,7 +33,7 @@ class JSONPathParser(val jsonPath: String) {
             return listOf()
         }
         if (jsonPath.length == 1) {
-            throw JSONPathParserException("Invalid JSONPath selector: $jsonPath")
+            throw JSONPathParserException("Invalid JSONPath segment: $jsonPath")
         }
         val selectorStartSymbol = jsonPath[0].toString()
         val selectorEndSymbolIndex = when (selectorStartSymbol) {
@@ -43,19 +45,19 @@ class JSONPathParser(val jsonPath: String) {
                 // TODO: make this more robust to more complex filters like the union selector or the filter selector, or even just keys that contain a "]"
                 jsonPath.indexOf("]", 1).let {
                     if (it == -1) {
-                        throw JSONPathParserException("Invalid JSONPath selector: $jsonPath")
+                        throw JSONPathParserException("Invalid JSONPath segment: $jsonPath")
                     } else it
                 }
             }
 
-            JSONPathConstants.ROOT_INDICATOR -> throw JSONPathParserException("Invalid JSONPath selector: $jsonPath")
-            else -> throw JSONPathParserException("Invalid JSONPath selector: $jsonPath")
+            JSONPathConstants.ROOT_INDICATOR.toString() -> throw JSONPathParserException("Invalid JSONPath segment: $jsonPath")
+            else -> throw JSONPathParserException("Invalid JSONPath segment: $jsonPath")
         }
 
         val nextStartSymbol = when (selectorStartSymbol) {
             "." -> selectorEndSymbolIndex
             "[" -> selectorEndSymbolIndex + 1
-            else -> throw JSONPathParserException("Invalid JSONPath selector: $jsonPath")
+            else -> throw JSONPathParserException("Invalid JSONPath segment: $jsonPath")
         }
 
         val consumedPath = jsonPath.substring(1, selectorEndSymbolIndex)
@@ -80,7 +82,7 @@ class JSONPathParser(val jsonPath: String) {
                 JsonPathSelector.IndexSelector(consumedPath)
             }
 
-            else -> throw Exception("Invalid JSONPath: $jsonPath")
+            else -> throw Exception("Invalid JSONPath segment: $jsonPath")
         }
         return listOf(selector) + getSubSelectors(remainingPath)
     }

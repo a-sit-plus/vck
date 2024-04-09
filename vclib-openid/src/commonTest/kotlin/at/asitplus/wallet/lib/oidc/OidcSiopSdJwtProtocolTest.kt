@@ -74,7 +74,9 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
 
-        val result = verifierSiop.validateAuthnResponse(authnResponse.url)
+        val validationResults = verifierSiop.validateAuthnResponse(authnResponse.url)
+        validationResults.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
+        val result = validationResults.validationResults.first()
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
         result.disclosures.shouldNotBeEmpty()
 
@@ -102,7 +104,9 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
 
-        val result = verifierSiop.validateAuthnResponse(authnResponse.url)
+        val validationResult = verifierSiop.validateAuthnResponse(authnResponse.url)
+        validationResult.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
+        val result = validationResult.validationResults.first()
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
         val sdJwt = result.sdJwt.also { println(it) }
 
@@ -125,6 +129,8 @@ private suspend fun assertSecondRun(
     )
     val authnResponse = holderSiop.createAuthnResponse(authnRequestUrl)
     val url = (authnResponse.getOrThrow() as OidcSiopWallet.AuthenticationResponseResult.Redirect).url
-    val validation = verifierSiop.validateAuthnResponse(url)
+    val validationResults = verifierSiop.validateAuthnResponse(url)
+    validationResults.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
+    val validation = validationResults.validationResults.first()
     validation.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
 }

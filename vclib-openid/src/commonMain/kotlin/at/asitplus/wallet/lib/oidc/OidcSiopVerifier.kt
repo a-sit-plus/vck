@@ -10,7 +10,9 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.InvalidJsonPathException
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.JSONPathConstants
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
@@ -22,7 +24,9 @@ import at.asitplus.wallet.lib.data.dif.FormatContainerJwt
 import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.data.dif.SchemaReference
+import at.asitplus.wallet.lib.data.matchJsonPath
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -45,6 +49,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -80,7 +85,9 @@ class OidcSiopVerifier(
             verifier: Verifier,
             cryptoService: CryptoService,
             relyingPartyUrl: String,
-            verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
+            verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(
+                DefaultVerifierCryptoService()
+            ),
             jwsService: JwsService = DefaultJwsService(cryptoService),
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
@@ -136,10 +143,11 @@ class OidcSiopVerifier(
      * Creates a JWS containing signed [RelyingPartyMetadata],
      * to be served under a `client_metadata_uri` at the Verifier.
      */
-    suspend fun createSignedMetadata(): KmmResult<JwsSigned> = jwsService.createSignedJwsAddingParams(
-        payload = metadata.serialize().encodeToByteArray(),
-        addKeyId = true
-    )
+    suspend fun createSignedMetadata(): KmmResult<JwsSigned> =
+        jwsService.createSignedJwsAddingParams(
+            payload = metadata.serialize().encodeToByteArray(),
+            addKeyId = true
+        )
 
     data class RequestOptions(
         /**
@@ -252,9 +260,14 @@ class OidcSiopVerifier(
                 ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoConstraint()
             }
         }
-        val attributeConstraint = requestOptions.requestedAttributes
-            ?.let { createConstraints(requestOptions.representation, it) }
-            ?: listOf()
+        val attributeConstraint =
+            requestOptions.requestedAttributes?.let { 
+                createConstraints(
+                    requestOptions.representation, 
+                    requestOptions.credentialScheme, 
+                    it
+                ) 
+            } ?: listOf()
         val constraintFields = attributeConstraint + typeConstraint
         val schemaReference = requestOptions.credentialScheme?.schemaUri?.let { SchemaReference(it) }
         val scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, requestOptions.credentialScheme?.vcType)
@@ -309,10 +322,14 @@ class OidcSiopVerifier(
 
     private fun createConstraints(
         credentialRepresentation: ConstantIndex.CredentialRepresentation,
+        credentialScheme: ConstantIndex.CredentialScheme?,
         attributeTypes: List<String>,
     ): Collection<ConstraintField> = attributeTypes.map {
         if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-            ConstraintField(path = listOf("\$.mdoc.$it"), intentToRetain = false)
+            ConstraintField(
+                path = listOf("\$['${credentialScheme?.isoNamespace ?: "mdoc"}'].$it"),
+                intentToRetain = false
+            )
         else
             ConstraintField(path = listOf("\$.$it"))
     }
@@ -330,9 +347,16 @@ class OidcSiopVerifier(
         data class ValidationError(val field: String, val state: String?) : AuthnResponseResult()
 
         /**
+         * Validation results of all returned verifiable presentations
+         */
+        data class VerifiablePresentationValidationResults(val validationResults: List<AuthnResponseResult>) :
+            AuthnResponseResult()
+
+        /**
          * Successfully decoded and validated the response from the Wallet (W3C credential)
          */
-        data class Success(val vp: VerifiablePresentationParsed, val state: String?) : AuthnResponseResult()
+        data class Success(val vp: VerifiablePresentationParsed, val state: String?) :
+            AuthnResponseResult()
 
         /**
          * Successfully decoded and validated the response from the Wallet (W3C credential in SD-JWT)
@@ -346,7 +370,8 @@ class OidcSiopVerifier(
         /**
          * Successfully decoded and validated the response from the Wallet (ISO credential)
          */
-        data class SuccessIso(val document: IsoDocumentParsed, val state: String?) : AuthnResponseResult()
+        data class SuccessIso(val document: IsoDocumentParsed, val state: String?) :
+            AuthnResponseResult()
     }
 
     /**
@@ -431,44 +456,96 @@ class OidcSiopVerifier(
         val presentationSubmission = params.presentationSubmission
             ?: return AuthnResponseResult.ValidationError("presentation_submission", params.state)
                 .also { Napier.w("presentation_submission empty") }
-        val descriptor = presentationSubmission.descriptorMap?.firstOrNull()
+        val descriptors = presentationSubmission.descriptorMap
             ?: return AuthnResponseResult.ValidationError("presentation_submission", params.state)
                 .also { Napier.w("presentation_submission contains no descriptors") }
-        val vp = params.vpToken
+        val vp = params.vpToken // TODO: this may be an array of verifiable presentations
             ?: return AuthnResponseResult.ValidationError("vp_token is null", params.state)
                 .also { Napier.w("No VP in response") }
-        val format = descriptor.format
 
-        val result = when (format) {
-            ClaimFormatEnum.JWT_VP -> verifier.verifyPresentation(vp, idToken.nonce)
-            ClaimFormatEnum.MSO_MDOC -> verifier.verifyPresentation(vp, idToken.nonce)
-            ClaimFormatEnum.JWT_SD -> verifier.verifyPresentation(vp, idToken.nonce)
-            else -> null
-        } ?: return AuthnResponseResult.ValidationError("descriptor format not known", params.state)
-            .also { Napier.w("Descriptor format not known: $format") }
+        // descriptors use JsonPaths to describe the resulting input descriptor match locations
+        // -> it seems fitting to compile the vpToken to a jsonObject
+        // making use of assumption:50c2c2bc-df25-4e9d-9890-67bde5a0e677
+        val verifiablePresentations = jsonSerializer.parseToJsonElement(vp)
 
-        return when (result) {
-            is Verifier.VerifyPresentationResult.InvalidStructure ->
-                AuthnResponseResult.Error("parse vp failed", params.state)
-                    .also { Napier.w("VP error: $result") }
+        val validationResults = descriptors.map { descriptor ->
+            val cumulativeJsonPath = try {
+                descriptor.cumulativeJsonPath
+            } catch (exception: InvalidJsonPathException) {
+                return AuthnResponseResult.ValidationError("presentation_submission", params.state)
+            }
+            val relatedPresentation =
+                verifiablePresentations.matchJsonPath(cumulativeJsonPath).entries.first().value
 
-            is Verifier.VerifyPresentationResult.Success ->
-                AuthnResponseResult.Success(result.vp, params.state)
-                    .also { Napier.i("VP success: $result") }
+            val format = descriptor.format
+            val result = when (format) {
+                ClaimFormatEnum.JWT_VP -> verifier.verifyPresentation(
+                    (relatedPresentation as JsonPrimitive).content,
+                    idToken.nonce
+                )
 
-            is Verifier.VerifyPresentationResult.NotVerified ->
-                AuthnResponseResult.ValidationError("vpToken", params.state)
-                    .also { Napier.w("VP error: $result") }
+                ClaimFormatEnum.MSO_MDOC -> verifier.verifyPresentation(
+                    (relatedPresentation as JsonPrimitive).content,
+                    idToken.nonce
+                )
 
-            is Verifier.VerifyPresentationResult.SuccessIso ->
-                AuthnResponseResult.SuccessIso(result.document, params.state)
-                    .also { Napier.i("VP success: $result") }
+                ClaimFormatEnum.JWT_SD -> verifier.verifyPresentation(
+                    (relatedPresentation as JsonPrimitive).content,
+                    idToken.nonce
+                )
 
-            is Verifier.VerifyPresentationResult.SuccessSdJwt ->
-                AuthnResponseResult.SuccessSdJwt(result.sdJwt, result.disclosures, params.state)
-                    .also { Napier.i("VP success: $result") }
+                else -> null
+            } ?: return AuthnResponseResult.ValidationError(
+                "descriptor format not known",
+                params.state
+            )
+                .also { Napier.w("Descriptor format not known: $format") }
+
+            when (result) {
+                is Verifier.VerifyPresentationResult.InvalidStructure ->
+                    AuthnResponseResult.Error("parse vp failed", params.state)
+                        .also { Napier.w("VP error: $result") }
+
+                is Verifier.VerifyPresentationResult.Success ->
+                    AuthnResponseResult.Success(result.vp, params.state)
+                        .also { Napier.i("VP success: $result") }
+
+                is Verifier.VerifyPresentationResult.NotVerified ->
+                    AuthnResponseResult.ValidationError("vpToken", params.state)
+                        .also { Napier.w("VP error: $result") }
+
+                is Verifier.VerifyPresentationResult.SuccessIso ->
+                    AuthnResponseResult.SuccessIso(result.document, params.state)
+                        .also { Napier.i("VP success: $result") }
+
+                is Verifier.VerifyPresentationResult.SuccessSdJwt ->
+                    AuthnResponseResult.SuccessSdJwt(
+                        result.sdJwt,
+                        result.disclosures,
+                        params.state
+                    )
+                        .also { Napier.i("VP success: $result") }
+            }
         }
+
+        return if(validationResults.size != 1) AuthnResponseResult.VerifiablePresentationValidationResults(
+            validationResults = validationResults
+        ) else validationResults[0]
     }
-
-
 }
+
+
+private val PresentationSubmissionDescriptor.cumulativeJsonPath: String
+    get() {
+        var cummulativeJsonPath = this.path
+        var descriptorIterator = this.nestedPath
+        while (descriptorIterator != null) {
+            if (descriptorIterator.path[0] != JSONPathConstants.ROOT_INDICATOR) {
+                // JSONPath must always start with root indicator
+                throw InvalidJsonPathException(descriptorIterator.path)
+            }
+            cummulativeJsonPath += descriptorIterator.path.substring(1)
+            descriptorIterator = descriptorIterator.nestedPath
+        }
+        return cummulativeJsonPath
+    }

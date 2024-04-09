@@ -99,6 +99,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             OidcSiopVerifier.RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
+                requestedAttributes = listOf("given-name"), // TODO: evaluate if this is necessary after rebase
             ),
             holderSiop
         )
@@ -147,6 +148,12 @@ private suspend fun runProcess(
     val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
     authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
 
+    // TODO: re-evaluate after rebase
+    /*
+    val validationResults = verifierSiop.validateAuthnResponse(authnResponse.url)
+    validationResults.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
+    val result = validationResults.validationResults.first()
+    */
     val result = verifierSiop.validateAuthnResponse(authnResponse.url)
     result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
     return result.document.also { println(it) }

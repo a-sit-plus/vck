@@ -2,26 +2,19 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.data.AttributeIndex
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
-import at.asitplus.wallet.lib.data.dif.PresentationSubmission
-import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
+import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST_JWT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.QUERY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
 import at.asitplus.wallet.lib.oidvci.IssuerMetadata
@@ -29,13 +22,13 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
-import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.add
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -63,7 +56,12 @@ class OidcSiopWallet(
      * Need to verify the request object serialized as a JWS,
      * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdSchemes.PRE_REGISTERED]).
      */
-    private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true }
+    private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true },
+    /**
+     * Need to implement if the presentation definition needs to be derived from a scope value.
+     * See [ScopePresentationDefinitionRetriever] for implementation instructions.
+     */
+    private val scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever? = null,
 ) {
     companion object {
         fun newInstance(
@@ -73,7 +71,8 @@ class OidcSiopWallet(
             clock: Clock = Clock.System,
             clientId: String = "https://wallet.a-sit.at/",
             remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-            requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { jws, authnRequest -> true }
+            requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { jws, authnRequest -> true },
+            scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever? = { null },
         ) = OidcSiopWallet(
             holder = holder,
             agentPublicKey = cryptoService.publicKey,
@@ -81,7 +80,8 @@ class OidcSiopWallet(
             clock = clock,
             clientId = clientId,
             remoteResourceRetriever = remoteResourceRetriever,
-            requestObjectJwsVerifier = requestObjectJwsVerifier
+            requestObjectJwsVerifier = requestObjectJwsVerifier,
+            scopePresentationDefinitionRetriever = scopePresentationDefinitionRetriever,
         )
     }
 
@@ -132,10 +132,10 @@ class OidcSiopWallet(
      * [AuthenticationResponseResult].
      */
     suspend fun retrieveAuthenticationRequestParameters(input: String): AuthenticationRequestParameters {
-        val params = kotlin.run {
+        val params = kotlin.runCatching {
             // maybe it's already a request jws?
             parseRequestObjectJws(input)
-        } ?: kotlin.runCatching {
+        }.getOrNull() ?: kotlin.runCatching {
             // maybe it's a url that already encodes the authentication request as url parameters
             Url(input).parameters.flattenEntries().toMap()
                 .decodeFromUrlQuery<AuthenticationRequestParameters>()
@@ -337,119 +337,52 @@ class OidcSiopWallet(
             return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
         }
 
-        val requestedAttributeTypes = (params.scope ?: "").split(" ")
-            .filterNot { it == SCOPE_OPENID }.filterNot { it == SCOPE_PROFILE }
-            .filter { it.isNotEmpty() }
-        val requestedNamespace = params.presentationDefinition?.inputDescriptors
-            ?.mapNotNull { it.constraints }
-            ?.flatMap { it.fields?.toList() ?: listOf() }
-            ?.firstOrNull { it.path.toList().contains("$.mdoc.namespace") }
-            ?.filter?.const
-        val requestedSchemes = mutableListOf<ConstantIndex.CredentialScheme>()
-        if (requestedNamespace != null) {
-            requestedSchemes.add(AttributeIndex.resolveIsoNamespace(requestedNamespace)
-                ?: return KmmResult.failure<AuthenticationResponseParameters>(
-                    OAuth2Exception(Errors.USER_CANCELLED)
-                )
-                    .also { Napier.w("Could not resolve requested namespace $requestedNamespace") })
-            requestedAttributeTypes.forEach { requestedAttributeTyp ->
-                requestedSchemes.add(AttributeIndex.resolveAttributeType(requestedAttributeTyp)
-                    ?: return KmmResult.failure<AuthenticationResponseParameters>(
-                        OAuth2Exception(Errors.USER_CANCELLED)
-                    ).also { Napier.w("Could not resolve requested attribute type $it") })
-            }
-        }
-        val requestedClaims = params.presentationDefinition?.inputDescriptors
-            ?.mapNotNull { it.constraints }
-            ?.flatMap { it.fields?.toList() ?: listOf() }
-            ?.flatMap { it.path.toList() }
-            ?.filter { it != "$.type" }
-            ?.filter { it != "$.mdoc.doctype" }
-            ?.map { it.removePrefix("\$.mdoc.") }
-            ?.map { it.removePrefix("\$.") }
-            ?: listOf()
-        val vp = holder.createPresentation(
+        val presentationDefinition =
+            params.presentationDefinition ?: presentationDefinitionRetriever?.let { retriever ->
+                params.presentationDefinitionUri?.let {
+                    runBlocking {
+                        retriever.retrieveFromUrl(Url(it))
+                    }
+                } ?: params.scope?.split(" ")?.firstNotNullOfOrNull {
+                    runBlocking {
+                        retriever.deriveFromScope(it)
+                    }
+                }
+            } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+                .also { Napier.d("No valid presentation definition has been found for request $params") }
+
+        val presentationSubmissionContainer = holder.createPresentation(
             challenge = params.nonce,
             audienceId = audience,
-            credentialSchemes = requestedSchemes.toList().ifEmpty { null },
-            requestedClaims = requestedClaims.ifEmpty { null }
+            presentationDefinition = presentationDefinition,
         )
             ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not create presentation") }
 
-        when (vp) {
-            is Holder.CreatePresentationResult.Signed -> {
-                val presentationSubmission = PresentationSubmission(
-                    id = uuid4().toString(),
-                    definitionId = params.presentationDefinition?.id ?: uuid4().toString(),
-                    descriptorMap = params.presentationDefinition?.inputDescriptors?.map {
-                        PresentationSubmissionDescriptor(
-                            id = it.id,
-                            format = ClaimFormatEnum.JWT_VP,
-                            path = "\$",
-                            nestedPath = PresentationSubmissionDescriptor(
-                                id = uuid4().toString(),
-                                format = ClaimFormatEnum.JWT_VC,
-                                path = "\$.verifiableCredential[0]"
-                            ),
-                        )
+        return KmmResult.success(
+            AuthenticationResponseParameters(
+                idToken = signedIdToken.serialize(),
+                state = params.state,
+                vpToken = presentationSubmissionContainer.verifiablePresentations.map {
+                    when (it) {
+                        is Holder.CreatePresentationResult.Signed -> it.jws
+                        is Holder.CreatePresentationResult.SdJwt -> it.sdJwt
+                        is Holder.CreatePresentationResult.Document -> it.document.serialize()
+                            .encodeToString(
+                                Base16(strict = true)
+                            )
                     }
-                )
-                return KmmResult.success(
-                    AuthenticationResponseParameters(
-                        idToken = signedIdToken.serialize(),
-                        state = params.state,
-                        vpToken = vp.jws,
-                        presentationSubmission = presentationSubmission,
-                    )
-                )
-            }
-
-            is Holder.CreatePresentationResult.SdJwt -> {
-                val presentationSubmission = PresentationSubmission(
-                    id = uuid4().toString(),
-                    definitionId = params.presentationDefinition?.id ?: uuid4().toString(),
-                    descriptorMap = params.presentationDefinition?.inputDescriptors?.map {
-                        PresentationSubmissionDescriptor(
-                            id = it.id,
-                            format = ClaimFormatEnum.JWT_SD,
-                            path = "\$",
-                        )
-                    }
-                )
-                return KmmResult.success(
-                    AuthenticationResponseParameters(
-                        idToken = signedIdToken.serialize(),
-                        state = params.state,
-                        vpToken = vp.sdJwt,
-                        presentationSubmission = presentationSubmission,
-                    )
-                )
-            }
-
-            is Holder.CreatePresentationResult.Document -> {
-                val presentationSubmission = PresentationSubmission(
-                    id = uuid4().toString(),
-                    definitionId = params.presentationDefinition?.id ?: uuid4().toString(),
-                    descriptorMap = params.presentationDefinition?.inputDescriptors?.map {
-                        PresentationSubmissionDescriptor(
-                            id = it.id,
-                            format = ClaimFormatEnum.MSO_MDOC,
-                            path = "\$",
-                        )
-                    }
-                )
-                return KmmResult.success(
-                    AuthenticationResponseParameters(
-                        idToken = signedIdToken.serialize(),
-                        state = params.state,
-                        vpToken = vp.document.serialize().encodeToString(Base16(strict = true)),
-                        presentationSubmission = presentationSubmission,
-                    )
-                )
-            }
-
-        }
+                }.let {
+                    if (it.size == 1) it[0]
+                    else buildJsonArray {
+                        for (value in it) {
+                            add(value)
+                        }
+                    }.toString() // making use of assumption:416dc455-ebb7-4b74-86e4-b63dc8cfe279
+                },
+                presentationSubmission = presentationSubmissionContainer.presentationSubmission,
+            )
+        )
     }
 
 }
@@ -459,6 +392,12 @@ class OidcSiopWallet(
  * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
  */
 typealias RemoteResourceRetrieverFunction = suspend (String) -> String?
+
+/**
+ * Implementations need to match a scope value to a [PresentationDefinition] if a related
+ * presentation definition is known.
+ */
+typealias ScopePresentationDefinitionRetriever = suspend (String) -> PresentationDefinition?
 
 /**
  * Implementations need to verify the passed [JwsSigned] and return its result

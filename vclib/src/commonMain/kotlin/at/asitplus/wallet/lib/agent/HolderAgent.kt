@@ -11,8 +11,13 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
+import at.asitplus.wallet.lib.data.VerifiablePresentationConstants
+import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
+import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.wallet.lib.data.dif.PresentationSubmission
+import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.data.dif.StandardInputEvaluator
 import at.asitplus.wallet.lib.data.jsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceAuth
@@ -24,6 +29,7 @@ import at.asitplus.wallet.lib.iso.IssuerSignedList
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
+import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.serialization.cbor.ByteStringWrapper
@@ -237,12 +243,126 @@ class HolderAgent(
             return createSdJwtPresentation(
                 audienceId,
                 challenge,
-                validSdJwtCredentials,
+                validSdJwtCredentials.first(), // was able to deal with one sdjwt anyway
                 requestedClaims
             )
         }
         Napier.w("Got no valid credentials for $credentialSchemes")
         return null
+    }
+
+    override suspend fun createPresentation(
+        challenge: String,
+        audienceId: String,
+        presentationDefinition: PresentationDefinition,
+    ): Holder.HolderResponseParameters? {
+        // an attempt to implement input evaluation and submission according to:
+        // - https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
+        val inputs = subjectCredentialStore.getCredentials().getOrNull()?.filter {
+            // filter by revocation status
+            when (it) {
+                is SubjectCredentialStore.StoreEntry.Vc -> {
+                    validator.checkRevocationStatus(it.vc) != Validator.RevocationStatus.REVOKED
+                }
+
+                is SubjectCredentialStore.StoreEntry.SdJwt -> {
+                    validator.checkRevocationStatus(it.sdJwt) != Validator.RevocationStatus.REVOKED
+                }
+
+                is SubjectCredentialStore.StoreEntry.Iso -> {
+                    true // no revocation check available for iso credentials
+                }
+            }
+        } ?: return null
+            .also { Napier.w("Got no credentials from subjectCredentialStore") }
+
+        data class CandidateInputMatchContainer(
+            val inputDescriptor: InputDescriptor,
+            val credential: SubjectCredentialStore.StoreEntry,
+            val inputMatch: InputEvaluator.CandidateInputMatch,
+        )
+
+        val matches = presentationDefinition.inputDescriptors.map { inputDescriptor ->
+            inputs.filter { credential ->
+                val supportedFormats = inputDescriptor.format ?: presentationDefinition.formats
+                supportedFormats?.let { formatHolder ->
+                    when (credential) {
+                        is SubjectCredentialStore.StoreEntry.Vc -> formatHolder.jwtVp != null
+                        is SubjectCredentialStore.StoreEntry.SdJwt -> formatHolder.jwtSd != null
+                        is SubjectCredentialStore.StoreEntry.Iso -> formatHolder.msoMdoc != null
+                    }
+                } ?: true // assume credential format to be supported if no format holder is specified
+            }.firstNotNullOfOrNull { credential ->
+                StandardInputEvaluator().evaluateMatch(
+                    inputDescriptor = inputDescriptor,
+                    credential = credential.toJsonElement(),
+                )?.let {
+                    CandidateInputMatchContainer(
+                        inputDescriptor = inputDescriptor,
+                        inputMatch = it,
+                        credential = credential,
+                    )
+                }
+            } ?: return null
+                .also { Napier.w("No match has been found for input descriptor: $inputDescriptor") }
+        }
+
+        val presentationSubmission = PresentationSubmission(
+            id = uuid4().toString(),
+            definitionId = presentationDefinition.id,
+            descriptorMap = matches.mapIndexed { index, match ->
+                PresentationSubmissionDescriptor(
+                    id = match.inputDescriptor.id,
+                    format = when (match.credential) {
+                        is SubjectCredentialStore.StoreEntry.Vc -> ClaimFormatEnum.JWT_VP
+                        is SubjectCredentialStore.StoreEntry.SdJwt -> ClaimFormatEnum.JWT_SD
+                        is SubjectCredentialStore.StoreEntry.Iso -> ClaimFormatEnum.MSO_MDOC
+                    },
+                    // from https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-6.1-2.4
+                    // These objects contain a field called path, which, for this specification,
+                    // MUST have the value $ (top level root path) when only one Verifiable Presentation is contained in the VP Token,
+                    // and MUST have the value $[n] (indexed path from root) when there are multiple Verifiable Presentations,
+                    // where n is the index to select.
+                    path = if (matches.size == 1) "\$" else "\$[$index]",
+                )
+            }
+        )
+
+        val verifiablePresentations = matches.map { match ->
+            val requestedClaims =
+                match.inputMatch.fieldQueryResults?.mapNotNull { fieldQueryResult ->
+                    // TODO: find good way to transform the field query result paths into claim paths
+                    // for now it should be sufficient to take the last part
+                    fieldQueryResult?.jsonPath?.last()
+                } ?: listOf()
+
+            when (match.credential) {
+                is SubjectCredentialStore.StoreEntry.Vc -> createPresentation(
+                    challenge = challenge,
+                    audienceId = audienceId,
+                    validCredentials = listOf(match.credential.vcSerialized)
+                )
+
+                is SubjectCredentialStore.StoreEntry.SdJwt -> createSdJwtPresentation(
+                    challenge = challenge,
+                    audienceId = audienceId,
+                    validSdJwtCredential = match.credential,
+                    requestedClaims = requestedClaims
+                )
+
+                is SubjectCredentialStore.StoreEntry.Iso -> createIsoPresentation(
+                    challenge = challenge,
+                    credential = match.credential,
+                    requestedClaims = requestedClaims
+                )
+            } ?: return null
+                .also { Napier.w("Presentation failed for credential: ${match.credential}") }
+        }
+
+        return Holder.HolderResponseParameters(
+            presentationSubmission = presentationSubmission,
+            verifiablePresentations = verifiablePresentations,
+        )
     }
 
     private suspend fun createIsoPresentation(
@@ -285,7 +405,7 @@ class HolderAgent(
     private suspend fun createSdJwtPresentation(
         audienceId: String,
         challenge: String,
-        validSdJwtCredentials: List<SubjectCredentialStore.StoreEntry.SdJwt>,
+        validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
         requestedClaims: Collection<String>?
     ): Holder.CreatePresentationResult.SdJwt? {
         // TODO can only be one credential at a time
@@ -300,11 +420,10 @@ class HolderAgent(
                 Napier.w("Could not create JWS for presentation", it)
                 return null
             }
-        val first = validSdJwtCredentials.first()
-        val filteredDisclosures = first.disclosures
+        val filteredDisclosures = validSdJwtCredential.disclosures
             .filter { it.discloseItem(requestedClaims) }.keys
         val sdJwt =
-            (listOf(first.vcSerialized.substringBefore("~")) + filteredDisclosures + keyBinding.serialize())
+            (listOf(validSdJwtCredential.vcSerialized.substringBefore("~")) + filteredDisclosures + keyBinding.serialize())
                 .joinToString("~")
         return Holder.CreatePresentationResult.SdJwt(sdJwt)
     }
@@ -343,6 +462,74 @@ class HolderAgent(
         }
         return Holder.CreatePresentationResult.Signed(jws.serialize())
     }
+}
 
+// in openid4vp, the claims to be presented are described using a JSONPath, so compiling this to a JsonElement seems fine
+fun SubjectCredentialStore.StoreEntry.toJsonElement(): JsonElement {
+    val credential = this
+    return when (credential) {
+        is SubjectCredentialStore.StoreEntry.Vc -> {
+            jsonSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject)
+        }
 
+        is SubjectCredentialStore.StoreEntry.SdJwt -> {
+            val pairs = credential.disclosures.map {
+                it.value?.let {
+                    Pair(
+                        it.claimName, when (val value = it.claimValue) {
+                            is Boolean -> JsonPrimitive(value)
+                            is Number -> JsonPrimitive(value)
+                            else -> JsonPrimitive(it.claimValue.toString())
+                        }
+                    )
+                }
+            }.filterNotNull().toMap()
+            buildJsonObject {
+                put("type", JsonPrimitive(credential.scheme.vcType))
+                pairs.forEach {
+                    put(it.key, it.value)
+                }
+            }
+        }
+
+        is SubjectCredentialStore.StoreEntry.Iso -> {
+            buildJsonObject {
+                put("mdoc", buildJsonObject {
+                    put("doctype", JsonPrimitive(credential.scheme.isoDocType))
+                })
+                credential.issuerSigned.namespaces?.forEach {
+                    put(it.key, buildJsonObject {
+                        it.value.entries.forEach { signedItem ->
+                            put(
+                                signedItem.value.elementIdentifier,
+                                signedItem.value.elementValue.let { value ->
+                                    value.boolean?.let { JsonPrimitive(it) }
+                                        ?: value.string?.let { JsonPrimitive(it) }
+                                        ?: value.bytes?.let {
+                                            buildJsonArray {
+                                                it.forEach {
+                                                    this.add(JsonPrimitive(it.toInt()))
+                                                }
+                                            }
+                                        } ?: value.drivingPrivilege?.let { drivingPriviledgeArray ->
+                                            buildJsonArray {
+                                                drivingPriviledgeArray.forEach { drivingPriviledge ->
+                                                    this.add(
+                                                        jsonSerializer.encodeToJsonElement(
+                                                            drivingPriviledge
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        } ?: value.date?.let {
+                                            JsonPrimitive(it.toString())
+                                        } ?: JsonPrimitive(null)
+                                }
+                            )
+                        }
+                    })
+                }
+            }
+        }
+    }
 }

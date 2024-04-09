@@ -19,53 +19,38 @@ Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#in
 
 // May support different features, not sure if all of them fit into one elevator
 interface InputEvaluator {
+    data class FieldQueryResult(
+        val jsonPath: List<String>,
+        val value: JsonElement,
+    )
+
     data class CandidateInputMatch(
         val fieldQueryResults: List<FieldQueryResult?>?,
     )
 
     fun evaluateMatch(
-        presentationDefinition: PresentationDefinition,
         inputDescriptor: InputDescriptor,
-        credential: SubjectCredentialStore.StoreEntry
+        credential: JsonElement
     ): CandidateInputMatch?
 }
 
 class StandardInputEvaluator : InputEvaluator {
     override fun evaluateMatch(
-        presentationDefinition: PresentationDefinition,
         inputDescriptor: InputDescriptor,
-        credential: SubjectCredentialStore.StoreEntry
+        credential: JsonElement
     ): InputEvaluator.CandidateInputMatch? {
-        // filter by credential format
-        val supportedFormats = inputDescriptor.format ?: presentationDefinition.formats
-        supportedFormats?.let { formatHolder ->
-            when (credential) {
-                is SubjectCredentialStore.StoreEntry.Vc -> if (formatHolder.jwtVp == null) {
-                    return null
-                }
-
-                is SubjectCredentialStore.StoreEntry.SdJwt -> if (formatHolder.jwtSd == null) {
-                    return null
-                }
-
-                is SubjectCredentialStore.StoreEntry.Iso -> if (formatHolder.msoMdoc == null) {
-                    return null
-                }
-            }
-        }
-
         // filter by constraints
         val fieldQueryResults = inputDescriptor.constraints?.let { constraints ->
             val constraintFields = constraints.fields ?: listOf()
             val fieldQueryResults = constraintFields.map { field ->
                 val fieldQueryResult = field.path.firstNotNullOfOrNull { jsonPath ->
-                    val candidates = credential.toJsonElement().matchJsonPath(jsonPath)
+                    val candidates = credential.matchJsonPath(jsonPath)
                     candidates.entries.firstOrNull { candidate ->
                         field.filter?.let {
                             candidate.value.satisfiesConstraintFilter(it)
                         } ?: true
                     }?.let {
-                        FieldQueryResult(
+                        InputEvaluator.FieldQueryResult(
                             jsonPath = it.key,
                             value = it.value,
                         )
@@ -89,11 +74,6 @@ class StandardInputEvaluator : InputEvaluator {
         )
     }
 }
-
-data class FieldQueryResult(
-    val jsonPath: List<String>,
-    val value: JsonElement,
-)
 
 internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Boolean {
     // TODO: properly implement constraint filter
