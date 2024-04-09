@@ -1,9 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
+import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.iso.IssuerSigned
@@ -91,22 +93,33 @@ interface Holder {
      */
     suspend fun getCredentials(): Collection<StoredCredential>?
 
-    sealed class StoredCredential {
-        data class Vc(
-            val vcSerialized: String,
-            val vc: VerifiableCredentialJws,
-            val status: Validator.RevocationStatus
-        ) : StoredCredential()
+    sealed class StoredCredential(
+        open val storeEntry: SubjectCredentialStore.StoreEntry,
+        val status: Validator.RevocationStatus,
+    ) {
+        class Vc(
+            override val storeEntry: SubjectCredentialStore.StoreEntry.Vc,
+            status: Validator.RevocationStatus
+        ) : StoredCredential(
+            storeEntry = storeEntry,
+            status = status
+        )
 
-        data class SdJwt(
-            val vcSerialized: String,
-            val sdJwt: VerifiableCredentialSdJwt,
-            val status: Validator.RevocationStatus
-        ) : StoredCredential()
+        class SdJwt(
+            override val storeEntry: SubjectCredentialStore.StoreEntry.SdJwt,
+            status: Validator.RevocationStatus
+        ) : StoredCredential(
+            storeEntry = storeEntry,
+            status = status
+        )
 
-        data class Iso(
-            val issuerSigned: IssuerSigned
-        ) : StoredCredential()
+        class Iso(
+            override val storeEntry: SubjectCredentialStore.StoreEntry.Iso,
+            status: Validator.RevocationStatus
+        ) : StoredCredential(
+            storeEntry = storeEntry,
+            status = status
+        )
     }
 
     data class HolderResponseParameters(
@@ -123,23 +136,30 @@ interface Holder {
     suspend fun createPresentation(
         challenge: String,
         audienceId: String,
-        presentationDefinition: PresentationDefinition,
+        presentationDefinition: PresentationDefinition = PresentationDefinition(
+            id = "0",
+            inputDescriptors = listOf(
+                InputDescriptor(
+                    id = "1",
+                )
+            )
+        ),
         // TODO: add authorization semantics to detect unauthorized requests
         // - eg. a service provider asking for an attribute he should not be allowed to see
-    ): HolderResponseParameters?
+    ): KmmResult<HolderResponseParameters>
 
-    /**
-     * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,
-     * that match the [credentialSchemes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO case).
-     *
-     * May return null if no valid credentials (i.e. non-revoked, matching attribute name) are available.
-     */
-    suspend fun createPresentation(
-        challenge: String,
-        audienceId: String,
-        credentialSchemes: Collection<ConstantIndex.CredentialScheme>? = null,
-        requestedClaims: Collection<String>? = null,
-    ): CreatePresentationResult?
+//    /**
+//     * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,
+//     * that match the [credentialSchemes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO case).
+//     *
+//     * May return null if no valid credentials (i.e. non-revoked, matching attribute name) are available.
+//     */
+//    suspend fun createPresentation(
+//        challenge: String,
+//        audienceId: String,
+//        credentialSchemes: Collection<ConstantIndex.CredentialScheme>? = null,
+//        requestedClaims: Collection<String>? = null,
+//    ): CreatePresentationResult?
 
     /**
      * Creates a [VerifiablePresentation] with the given [validCredentials].
@@ -147,7 +167,7 @@ interface Holder {
      * Note: The caller is responsible that only valid credentials are passed to this function!
      */
     // TODO dont make this public
-    suspend fun createPresentation(
+    suspend fun createVcPresentation(
         validCredentials: List<String>,
         challenge: String,
         audienceId: String,
@@ -168,7 +188,8 @@ interface Holder {
         /**
          * [document] contains a valid ISO 18013 [Document] with [IssuerSigned] and [DeviceSigned] structures
          */
-        data class Document(val document: at.asitplus.wallet.lib.iso.Document) : CreatePresentationResult()
+        data class Document(val document: at.asitplus.wallet.lib.iso.Document) :
+            CreatePresentationResult()
     }
 
 }

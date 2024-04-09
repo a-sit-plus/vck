@@ -1,7 +1,12 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.dif.Constraint
+import at.asitplus.wallet.lib.data.dif.FormatHolder
+import at.asitplus.wallet.lib.data.dif.InputDescriptor
+import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import com.benasher44.uuid.uuid4
+import io.github.aakira.napier.Napier
 import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -46,7 +51,20 @@ class AgentTest : FreeSpec({
         credentials.successful.shouldNotBeEmpty()
         holder.storeCredentials(credentials.toStoreCredentialInput())
 
-        val vp = holder.createPresentation(challenge, verifier.identifier)
+        val presentationParameters = holder.createPresentation(
+            challenge,
+            verifier.identifier,
+            PresentationDefinition(
+                id = "0",
+                inputDescriptors = listOf(
+                    InputDescriptor(
+                        id = "0",
+                    )
+                )
+            )
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.verifiablePresentations.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
         val verified = verifier.verifyPresentation(vp.jws, challenge)
@@ -64,7 +82,13 @@ class AgentTest : FreeSpec({
         holder.storeCredentials(credentials.toStoreCredentialInput())
         holderCredentialStore.getAttachment("picture").getOrThrow().shouldNotBeNull()
 
-        val vp = holder.createPresentation(challenge, verifier.identifier)
+
+        val presentationParameters = holder.createPresentation(
+            challenge,
+            verifier.identifier,
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.verifiablePresentations.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
         val verified = verifier.verifyPresentation(vp.jws, challenge)
@@ -80,7 +104,12 @@ class AgentTest : FreeSpec({
         credentials.successful.shouldNotBeEmpty()
         holder.storeCredentials(credentials.toStoreCredentialInput())
 
-        val vp = holder.createPresentation(challenge, issuer.identifier)
+        val presentationParameters = holder.createPresentation(
+            challenge,
+            issuer.identifier,
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.verifiablePresentations.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
         val result = verifier.verifyPresentation(vp.jws, challenge)
@@ -126,7 +155,7 @@ class AgentTest : FreeSpec({
             storedCredentials.rejected shouldHaveSize credentials.successful.size
             storedCredentials.notVerified.shouldBeEmpty()
 
-            holder.createPresentation(challenge, verifier.identifier) shouldBe null
+            holder.createPresentation(challenge, verifier.identifier).getOrNull() shouldBe null
         }
 
         "and when setting a revocation list after storing credentials" {
@@ -147,7 +176,7 @@ class AgentTest : FreeSpec({
             revocationListCredential.shouldNotBeNull()
             holder.setRevocationList(revocationListCredential) shouldBe true
 
-            holder.createPresentation(challenge, verifier.identifier) shouldBe null
+            holder.createPresentation(challenge, verifier.identifier).getOrNull() shouldBe null
         }
     }
 
@@ -216,7 +245,7 @@ class AgentTest : FreeSpec({
     }
 
     "building presentation without necessary credentials" {
-        holder.createPresentation(challenge, verifier.identifier) shouldBe null
+        holder.createPresentation(challenge, verifier.identifier).getOrNull() shouldBe null
     }
 
     "valid presentation is valid" {
@@ -227,14 +256,19 @@ class AgentTest : FreeSpec({
         )
         credentials.successful.shouldNotBeEmpty()
         holder.storeCredentials(credentials.toStoreCredentialInput())
-        val vp = holder.createPresentation(challenge, verifier.identifier)
+        val presentationParameters = holder.createPresentation(
+            challenge,
+            verifier.identifier,
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.verifiablePresentations.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
 
         val result = verifier.verifyPresentation(vp.jws, challenge)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         result.vp.revokedVerifiableCredentials.shouldBeEmpty()
-        credentials.successful shouldHaveSize result.vp.verifiableCredentials.size
+        result.vp.verifiableCredentials shouldHaveSize 1
     }
 
     "valid presentation is valid -- some other attributes revoked" {
@@ -245,7 +279,12 @@ class AgentTest : FreeSpec({
         )
         credentials.successful.shouldNotBeEmpty()
         holder.storeCredentials(credentials.toStoreCredentialInput())
-        val vp = holder.createPresentation(challenge, verifier.identifier)
+        val presentationParameters = holder.createPresentation(
+            challenge,
+            verifier.identifier,
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.verifiablePresentations.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
 

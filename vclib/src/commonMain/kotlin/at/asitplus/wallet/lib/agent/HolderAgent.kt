@@ -1,11 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
-import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -189,99 +189,45 @@ class HolderAgent(
                 .also { Napier.w("Got no credentials from subjectCredentialStore") }
         return credentials.map {
             when (it) {
-                is SubjectCredentialStore.StoreEntry.Iso -> Holder.StoredCredential.Iso(it.issuerSigned)
+                is SubjectCredentialStore.StoreEntry.Iso -> Holder.StoredCredential.Iso(
+                    storeEntry = it,
+                    status = Validator.RevocationStatus.UNKNOWN
+                )
+
                 is SubjectCredentialStore.StoreEntry.Vc -> Holder.StoredCredential.Vc(
-                    it.vcSerialized,
-                    it.vc,
-                    validator.checkRevocationStatus(it.vc)
+                    storeEntry = it,
+                    status = validator.checkRevocationStatus(it.vc)
                 )
 
                 is SubjectCredentialStore.StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
-                    it.vcSerialized,
-                    it.sdJwt,
-                    Validator.RevocationStatus.VALID // TODO validation check
+                    storeEntry = it,
+                    status = validator.checkRevocationStatus(it.sdJwt)
                 )
             }
         }
-    }
-
-    /**
-     * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,
-     * that match [credentialSchemes] (if specified).
-     * Optionally filters by [requestedClaims] (e.g. in ISO or SD-JWT case).
-     *
-     * May return null if no valid credentials (i.e. non-revoked, matching attribute name) are available.
-     */
-    override suspend fun createPresentation(
-        challenge: String,
-        audienceId: String,
-        credentialSchemes: Collection<ConstantIndex.CredentialScheme>?,
-        requestedClaims: Collection<String>?,
-    ): Holder.CreatePresentationResult? {
-        val credentials = subjectCredentialStore.getCredentials(credentialSchemes).getOrNull()
-            ?: return null
-                .also { Napier.w("Got no credentials from subjectCredentialStore for $credentialSchemes") }
-        val validVcCredentials = credentials
-            .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
-            .filter { validator.checkRevocationStatus(it.vc) != Validator.RevocationStatus.REVOKED }
-            .map { it.vcSerialized }
-        if (validVcCredentials.isNotEmpty()) {
-            return createPresentation(validVcCredentials, challenge, audienceId)
-        }
-        val validIsoCredential = credentials
-            .filterIsInstance<SubjectCredentialStore.StoreEntry.Iso>()
-            // no revocation check
-            .firstOrNull()
-        if (validIsoCredential != null) {
-            return createIsoPresentation(challenge, validIsoCredential, requestedClaims)
-        }
-        val validSdJwtCredentials = credentials
-            .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
-            .filter { validator.checkRevocationStatus(it.sdJwt) != Validator.RevocationStatus.REVOKED }
-        if (validSdJwtCredentials.isNotEmpty()) {
-            return createSdJwtPresentation(
-                audienceId,
-                challenge,
-                validSdJwtCredentials.first(), // was able to deal with one sdjwt anyway
-                requestedClaims
-            )
-        }
-        Napier.w("Got no valid credentials for $credentialSchemes")
-        return null
     }
 
     override suspend fun createPresentation(
         challenge: String,
         audienceId: String,
         presentationDefinition: PresentationDefinition,
-    ): Holder.HolderResponseParameters? {
+    ): KmmResult<Holder.HolderResponseParameters> {
         // an attempt to implement input evaluation and submission according to:
         // - https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
-        val inputs = subjectCredentialStore.getCredentials().getOrNull()?.filter {
-            // filter by revocation status
-            when (it) {
-                is SubjectCredentialStore.StoreEntry.Vc -> {
-                    validator.checkRevocationStatus(it.vc) != Validator.RevocationStatus.REVOKED
-                }
-
-                is SubjectCredentialStore.StoreEntry.SdJwt -> {
-                    validator.checkRevocationStatus(it.sdJwt) != Validator.RevocationStatus.REVOKED
-                }
-
-                is SubjectCredentialStore.StoreEntry.Iso -> {
-                    true // no revocation check available for iso credentials
-                }
-            }
-        }?.sortedBy {
+        val inputs = getCredentials()?.filter {
+            it.status != Validator.RevocationStatus.REVOKED
+        }?.map { it.storeEntry }?.sortedBy {
             // prefer iso credentials and sd jwt credentials over plain vc credentials
             // -> they support selective disclosure!
-            when(it) {
+            when (it) {
                 is SubjectCredentialStore.StoreEntry.Vc -> 2
                 is SubjectCredentialStore.StoreEntry.SdJwt -> 1
                 is SubjectCredentialStore.StoreEntry.Iso -> 1
             }
-        } ?: return null
-            .also { Napier.w("Got no credentials from subjectCredentialStore") }
+        } ?: return KmmResult.failure(
+            CredentialRetrievalException()
+                .also { exception -> exception.message?.let { Napier.w(it) } }
+        )
 
         data class CandidateInputMatchContainer(
             val inputDescriptor: InputDescriptor,
@@ -298,7 +244,8 @@ class HolderAgent(
                         is SubjectCredentialStore.StoreEntry.SdJwt -> formatHolder.jwtSd != null
                         is SubjectCredentialStore.StoreEntry.Iso -> formatHolder.msoMdoc != null
                     }
-                } ?: true // assume credential format to be supported by the verifier if no format holder is specified
+                }
+                    ?: true // assume credential format to be supported by the verifier if no format holder is specified
             }.firstNotNullOfOrNull { credential ->
                 StandardInputEvaluator().evaluateMatch(
                     inputDescriptor = inputDescriptor,
@@ -310,8 +257,10 @@ class HolderAgent(
                         credential = credential,
                     )
                 }
-            } ?: return null
-                .also { Napier.w("No match has been found for input descriptor: $inputDescriptor") }
+            } ?: return KmmResult.failure(
+                MissingInputDescriptorMatchException(inputDescriptor)
+                    .also { exception -> exception.message?.let { Napier.w(it) } }
+            )
         }
 
         val presentationSubmission = PresentationSubmission(
@@ -344,7 +293,7 @@ class HolderAgent(
                 } ?: listOf()
 
             when (match.credential) {
-                is SubjectCredentialStore.StoreEntry.Vc -> createPresentation(
+                is SubjectCredentialStore.StoreEntry.Vc -> createVcPresentation(
                     challenge = challenge,
                     audienceId = audienceId,
                     validCredentials = listOf(match.credential.vcSerialized)
@@ -362,13 +311,20 @@ class HolderAgent(
                     credential = match.credential,
                     requestedClaims = requestedClaims
                 )
-            } ?: return null
-                .also { Napier.w("Presentation failed for credential: ${match.credential}") }
+            } ?: return KmmResult.failure(
+                CredentialPresentationException(
+                    credential = match.credential,
+                    inputDescriptor = match.inputDescriptor,
+                    candidateInputMatch = match.inputMatch,
+                ).also { exception -> exception.message?.let { Napier.w(it) } }
+            )
         }
 
-        return Holder.HolderResponseParameters(
-            presentationSubmission = presentationSubmission,
-            verifiablePresentations = verifiablePresentations,
+        return KmmResult.success(
+            Holder.HolderResponseParameters(
+                presentationSubmission = presentationSubmission,
+                verifiablePresentations = verifiablePresentations,
+            )
         )
     }
 
@@ -455,7 +411,7 @@ class HolderAgent(
      *
      * Note: The caller is responsible that only valid credentials are passed to this function!
      */
-    override suspend fun createPresentation(
+    override suspend fun createVcPresentation(
         validCredentials: List<String>,
         challenge: String,
         audienceId: String,
@@ -540,3 +496,18 @@ fun SubjectCredentialStore.StoreEntry.toJsonElement(): JsonElement {
         }
     }
 }
+
+open class PresentationException(message: String) : Exception(message)
+
+class CredentialRetrievalException :
+    PresentationException("Credentials could not be retrieved from the store")
+
+class MissingInputDescriptorMatchException(
+    val inputDescriptor: InputDescriptor,
+) : PresentationException("No match was found for input descriptor $inputDescriptor")
+
+class CredentialPresentationException(
+    val inputDescriptor: InputDescriptor,
+    val credential: SubjectCredentialStore.StoreEntry,
+    val candidateInputMatch: InputEvaluator.CandidateInputMatch,
+) : PresentationException("Presentation of $inputDescriptor failed with credential $credential and matching $candidateInputMatch")
