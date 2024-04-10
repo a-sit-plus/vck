@@ -11,6 +11,10 @@ Release 3.6.0:
  - `OidcSiopVerifier`: Refactor list of parameters for customizing authentication requests to single data class `RequestOptions`
  - `OidcSiopWallet`: Rename constructor parameter `jwkSetRetriever` to a more general `remoteResourceRetriever`, to use it for various parameters defined by reference
  - `OidcSiopWallet`: Replace constructor parameter `verifierJwsService` with `requestObjectJwsVerifier` to allow callers to verify JWS objects with a pre-registered key (as in the OpenId4VP client ID scheme "pre-registered")
+ - Dependency updates
+   - Conventions 1.9.23+20240410
+     - Ktor 2.3.10
+     - Auto-publish version catalogs
 
 Release 3.5.0:
 - Kotlin 1.9.23
