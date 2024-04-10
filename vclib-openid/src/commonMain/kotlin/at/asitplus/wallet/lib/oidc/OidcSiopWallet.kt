@@ -91,7 +91,7 @@ class OidcSiopWallet(
     sealed class AuthenticationResponseResult {
         /**
          * Wallet returns the [AuthenticationResponseParameters] as form parameters, which shall be posted to
-         * `redirect_uri of the Relying Party, i.e. clients should execute that POST with [params] to [url].
+         * `redirect_uri` of the Relying Party, i.e. clients should execute that POST with [params] to [url].
          */
         data class Post(val url: String, val params: Map<String, String>) : AuthenticationResponseResult()
 
@@ -106,13 +106,13 @@ class OidcSiopWallet(
         IssuerMetadata(
             issuer = clientId,
             authorizationEndpointUrl = clientId,
-            responseTypesSupported = arrayOf(ID_TOKEN),
-            scopesSupported = arrayOf(SCOPE_OPENID),
-            subjectTypesSupported = arrayOf("pairwise", "public"),
-            idTokenSigningAlgorithmsSupported = arrayOf(jwsService.algorithm.identifier),
-            requestObjectSigningAlgorithmsSupported = arrayOf(jwsService.algorithm.identifier),
-            subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
-            idTokenTypesSupported = arrayOf(IdTokenType.SUBJECT_SIGNED),
+            responseTypesSupported = listOf(ID_TOKEN),
+            scopesSupported = listOf(SCOPE_OPENID),
+            subjectTypesSupported = listOf("pairwise", "public"),
+            idTokenSigningAlgorithmsSupported = listOf(jwsService.algorithm.identifier),
+            requestObjectSigningAlgorithmsSupported = listOf(jwsService.algorithm.identifier),
+            subjectSyntaxTypesSupported = listOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
+            idTokenTypesSupported = listOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,
         )
     }

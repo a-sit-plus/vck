@@ -15,6 +15,7 @@ Release 3.6.0:
    - Conventions 1.9.23+20240410
      - Ktor 2.3.10
      - Auto-publish version catalogs
+ - Implement OpenID for Verifiable Credential Issuance draft 13, from 2024-02-08
 
 Release 3.5.0:
 - Kotlin 1.9.23

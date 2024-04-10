@@ -8,7 +8,6 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.http.encodeURLParameter
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlin.random.Random
 
@@ -20,7 +19,9 @@ class SerializationTest : FunSpec({
         authorizationDetails = AuthorizationDetails(
             type = randomString(),
             format = CredentialFormatEnum.JWT_VC,
-            types = arrayOf(VERIFIABLE_CREDENTIAL, randomString()),
+            credentialDefinition = SupportedCredentialFormatDefinition(
+                types = listOf(VERIFIABLE_CREDENTIAL, randomString()),
+            )
         ),
         redirectUrl = randomString(),
         scope = randomString(),
@@ -56,7 +57,7 @@ class SerializationTest : FunSpec({
         types = arrayOf(randomString(), randomString()),
         proof = CredentialRequestProof(
             proofType = randomString(),
-            jwt = randomString()
+            proof = randomString()
         )
     )
 

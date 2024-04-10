@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci.mdl
 
+import at.asitplus.wallet.lib.oidvci.DisplayProperties
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -32,5 +33,5 @@ data class RequestedCredentialClaimSpecification(
      * There MUST be only one object with the same language identifier.
      */
     @SerialName("display")
-    val display: ClaimDisplayProperties? = null,
+    val display: Collection<DisplayProperties>? = null,
 )

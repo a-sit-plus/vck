@@ -3,11 +3,14 @@ package at.asitplus.wallet.lib.oidvci
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-
+/**
+ * OID4VCI: W3C VC: To express the specifics about the claim, the most deeply nested value MAY be an object that
+ * includes the following parameters defined by this specification (other parameters MAY also be used).
+ */
 @Serializable
 data class CredentialSubjectMetadataSingle(
     /**
-     * OID4VCI: OPTIONAL. Boolean which when set to true indicates the claim MUST be present in the issued Credential.
+     * OID4VCI: OPTIONAL. Boolean which when set to `true` indicates the claim MUST be present in the issued Credential.
      * If the mandatory property is omitted its default should be assumed to be false.
      */
     @SerialName("mandatory")
@@ -26,7 +29,7 @@ data class CredentialSubjectMetadataSingle(
      * Credential for a certain language.
      */
     @SerialName("display")
-    val display: DisplayProperties? = null,
+    val display: Collection<DisplayProperties>? = null,
 
 )
 

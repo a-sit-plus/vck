@@ -29,26 +29,3 @@ data class VpFormatsSupported(
     val jsonLinkedData: SupportedAlgorithmsContainer? = null,
 )
 
-@Serializable
-data class SupportedAlgorithmsContainer(
-    /**
-     * OID4VP: An object where the value is an array of case sensitive strings that identify the cryptographic suites
-     * that are supported. Parties will need to agree upon the meanings of the values used, which may be
-     * context-specific, e.g. `EdDSA` and `ES256`.
-     */
-    @SerialName("alg_values_supported")
-    val supportedAlgorithms: Array<String>
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as SupportedAlgorithmsContainer
-
-        return supportedAlgorithms.contentEquals(other.supportedAlgorithms)
-    }
-
-    override fun hashCode(): Int {
-        return supportedAlgorithms.contentHashCode()
-    }
-}
