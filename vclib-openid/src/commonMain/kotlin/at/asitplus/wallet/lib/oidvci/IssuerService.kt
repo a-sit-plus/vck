@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.JsonWebToken
-import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.Issuer
@@ -80,46 +79,47 @@ class IssuerService(
         IssuerMetadata(
             issuer = publicContext,
             credentialIssuer = publicContext,
-            authorizationServer = authorizationServer,
+            authorizationServers = authorizationServer?.let { listOf(it) },
             authorizationEndpointUrl = "$publicContext$authorizationEndpointPath",
             tokenEndpointUrl = "$publicContext$tokenEndpointPath",
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
-            supportedCredentialFormat = credentialSchemes.flatMap { it.toSupportedCredentialFormat() }.toTypedArray(),
-            displayProperties = credentialSchemes
-                .map { DisplayProperties(it.vcType, "en") }
-                .toTypedArray()
+            supportedCredentialConfigurations = mutableMapOf<String, SupportedCredentialFormat>().apply {
+                credentialSchemes.forEach { putAll(it.toSupportedCredentialFormat()) }
+            },
+            displayProperties = credentialSchemes.map { DisplayProperties(it.vcType, "en") }
         )
     }
 
-    private fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat() = listOf(
-        SupportedCredentialFormat(
+    private fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat() = mapOf(
+        this.isoNamespace to SupportedCredentialFormat(
             format = CredentialFormatEnum.MSO_MDOC,
-            id = vcType,
-            types = arrayOf(vcType),
             docType = isoDocType,
-            claims = buildIsoClaims(),
-            supportedBindingMethods = arrayOf(BINDING_METHOD_COSE_KEY),
-            supportedCryptographicSuites = issuer.cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toTypedArray(),
+            claims = mapOf(
+                isoNamespace to claimNames
+                    .associateWith { RequestedCredentialClaimSpecification() }
+            ),
+            supportedBindingMethods = listOf(BINDING_METHOD_COSE_KEY),
+            supportedSigningAlgorithms = issuer.cryptoAlgorithms.map { it.toJwsAlgorithm().identifier },
         ),
-        SupportedCredentialFormat(
+        this.vcType to SupportedCredentialFormat(
             format = CredentialFormatEnum.JWT_VC,
-            id = vcType,
-            types = arrayOf(VERIFIABLE_CREDENTIAL, vcType),
-            supportedBindingMethods = arrayOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
-            supportedCryptographicSuites = issuer.cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toTypedArray(),
+            credentialDefinition = SupportedCredentialFormatDefinition(
+                types = listOf(VERIFIABLE_CREDENTIAL, vcType),
+                credentialSubject = this.claimNames.associateWith { CredentialSubjectMetadataSingle() }
+            ),
+            supportedBindingMethods = listOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
+            supportedSigningAlgorithms = issuer.cryptoAlgorithms.map { it.toJwsAlgorithm().identifier },
         ),
-        SupportedCredentialFormat(
-            format = CredentialFormatEnum.JWT_VC_SD,
-            id = vcType,
-            types = arrayOf(VERIFIABLE_CREDENTIAL, vcType),
-            supportedBindingMethods = arrayOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
-            supportedCryptographicSuites = issuer.cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toTypedArray(),
+        this.vcType to SupportedCredentialFormat(
+            format = CredentialFormatEnum.VC_SD_JWT,
+            sdJwtVcType = vcType,
+            claims = mapOf(
+                isoNamespace to claimNames
+                    .associateWith { RequestedCredentialClaimSpecification() }
+            ),
+            supportedBindingMethods = listOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
+            supportedSigningAlgorithms = issuer.cryptoAlgorithms.map { it.toJwsAlgorithm().identifier },
         )
-    )
-
-    private fun ConstantIndex.CredentialScheme.buildIsoClaims() = mapOf(
-        isoNamespace to ConstantIndex.MobileDrivingLicence2023.claimNames
-            .associateWith { RequestedCredentialClaimSpecification() }
     )
 
     /**
@@ -169,7 +169,7 @@ class IssuerService(
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
         if (proof.proofType != ProofTypes.JWT)
             throw OAuth2Exception(Errors.INVALID_PROOF)
-        val jwsSigned = JwsSigned.parse(proof.jwt)
+        val jwsSigned = JwsSigned.parse(proof.proof)
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
         val jwt = JsonWebToken.deserialize(jwsSigned.payload.decodeToString()).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
@@ -204,7 +204,7 @@ class IssuerService(
         )
 
         is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
-            format = CredentialFormatEnum.JWT_VC_SD,
+            format = CredentialFormatEnum.VC_SD_JWT,
             credential = vcSdJwt,
         )
     }
@@ -212,7 +212,8 @@ class IssuerService(
 }
 
 private fun CredentialFormatEnum.toRepresentation() = when (this) {
-    CredentialFormatEnum.JWT_VC_SD -> ConstantIndex.CredentialRepresentation.SD_JWT
+    CredentialFormatEnum.JWT_VC_SD_UNOFFICIAL -> ConstantIndex.CredentialRepresentation.SD_JWT
+    CredentialFormatEnum.VC_SD_JWT -> ConstantIndex.CredentialRepresentation.SD_JWT
     CredentialFormatEnum.MSO_MDOC -> ConstantIndex.CredentialRepresentation.ISO_MDOC
     else -> ConstantIndex.CredentialRepresentation.PLAIN_JWT
 }

@@ -16,8 +16,7 @@ data class CredentialRequestParameters(
 
     /**
      * OID4VCI:
-     * ISO mDL: N/A.
-     * W3C Verifiable Credentials: REQUIRED.
+     * W3C VC: REQUIRED.
      *
      * JSON array designating the types a certain credential type supports according to (VC_DATA),
      * Section 4.3.
@@ -29,7 +28,6 @@ data class CredentialRequestParameters(
     /**
      * OID4VCI:
      * ISO mDL: REQUIRED.
-     * W3C Verifiable Credentials: N/A.
      *
      * JSON string identifying the credential type.
      */
@@ -39,7 +37,6 @@ data class CredentialRequestParameters(
     /**
      * OID4VCI:
      * ISO mDL: OPTIONAL.
-     * W3C Verifiable Credentials: N/A.
      *
      * A JSON object containing a list of key value pairs,
      * where the key is a certain namespace as defined in [ISO.18013-5] (or any profile of it),

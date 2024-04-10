@@ -5,72 +5,68 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * To be contained in an array sent in parameter `authorization_details` from the Wallet to the Issuer
+ * OID4VCI: The request parameter `authorization_details` defined in Section 2 of (RFC9396) MUST be used to convey the
+ * details about the Credentials the Wallet wants to obtain. This specification introduces a new authorization details
+ * type `openid_credential` and defines the following parameters to be used with this authorization details type.
  */
 @Serializable
 data class AuthorizationDetails(
     /**
-     * Must be `openid_credential`
+     * OID4VCI: REQUIRED. String that determines the authorization details type. It MUST be set to `openid_credential`
+     * for the purpose of this specification.
      */
     @SerialName("type")
     val type: String,
 
-    @SerialName("format")
-    val format: CredentialFormatEnum,
+    /**
+     * OID4VC: REQUIRED when [format] parameter is not present. String specifying a unique identifier of the Credential
+     * being described in [IssuerMetadata.supportedCredentialConfigurations].
+     */
+    @SerialName("credential_configuration_id")
+    val credentialConfigurationId: String? = null,
 
     /**
-     * OIDVCI: Required for ISO mDL: JSON string identifying the credential type.
+     * OID4VCI: REQUIRED when [credentialConfigurationId] parameter is not present.
+     * String identifying the format of the Credential the Wallet needs.
+     * This Credential format identifier determines further claims in the authorization details object needed to
+     * identify the Credential type in the requested format.
+     */
+    @SerialName("format")
+    val format: CredentialFormatEnum? = null,
+
+    /**
+     * OID4VCI: ISO mDL: OPTIONAL. This claim contains the type value the Wallet requests authorization for at the
+     * Credential Issuer. It MUST only be present if the [format] claim is present. It MUST not be present otherwise.
      */
     @SerialName("doctype")
     val docType: String? = null,
 
     /**
-     * OIDVCI: Optional for ISO mDL: A JSON object containing a list of key value pairs, where the key is a certain
-     * namespace as defined in ISO.18013-5 (or any profile of it), and the value is a JSON object. This object also
-     * contains a list of key value pairs, where the key is a claim that is defined in the respective namespace and is
-     * offered in the Credential.
+     * OID4VCI: ISO mDL: OPTIONAL. Object as defined in Appendix A.3.2 excluding the `display` and `value_type`
+     * parameters. The `mandatory` parameter here is used by the Wallet to indicate to the Issuer that it only accepts
+     * Credential(s) issued with those claim(s).
      */
     @SerialName("claims")
     val claims: Map<String, Map<String, RequestedCredentialClaimSpecification>>? = null,
 
     /**
-     * e.g. `VerifiableCredential`, `UniversityDegreeCredential`
+     * OID4VCI: W3C VC: OPTIONAL. Object containing a detailed description of the Credential consisting of the
+     * following parameters. see [SupportedCredentialFormatDefinition].
      */
-    @SerialName("types")
-    val types: Array<String>,
+    @SerialName("credential_definition")
+    val credentialDefinition: SupportedCredentialFormatDefinition? = null,
 
     /**
-     * Must contain the `authorization_server` entry from the Issuer's metadata
+     * OID4VCI: IETF SD-JWT VC: REQUIRED. String as defined in Appendix A.3.2. This claim contains the type values
+     * the Wallet requests authorization for at the Credential Issuer.
+     * It MUST only be present if the [format] claim is present. It MUST not be present otherwise.
+     */
+    @SerialName("vct")
+    val sdJwtVcType: String? = null,
+
+    /**
+     * Must contain an entry form [IssuerMetadata.authorizationServers].
      */
     @SerialName("locations")
-    val locations: Array<String>? = null,
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as AuthorizationDetails
-
-        if (type != other.type) return false
-        if (format != other.format) return false
-        if (docType != other.docType) return false
-        if (claims != other.claims) return false
-        if (!types.contentEquals(other.types)) return false
-        if (locations != null) {
-            if (other.locations == null) return false
-            if (!locations.contentEquals(other.locations)) return false
-        } else if (other.locations != null) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = type.hashCode()
-        result = 31 * result + format.hashCode()
-        result = 31 * result + (docType?.hashCode() ?: 0)
-        result = 31 * result + (claims?.hashCode() ?: 0)
-        result = 31 * result + types.contentHashCode()
-        result = 31 * result + (locations?.contentHashCode() ?: 0)
-        return result
-    }
-}
+    val locations: Collection<String>? = null,
+)

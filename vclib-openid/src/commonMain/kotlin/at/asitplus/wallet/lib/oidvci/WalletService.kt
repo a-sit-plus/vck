@@ -59,15 +59,28 @@ class WalletService(
      * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
      * [IssuerMetadata.authorizationEndpointUrl])
      */
-    fun createAuthRequest() = AuthenticationRequestParameters(
+    fun createAuthRequest(credentialIssuer: String? = null) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         clientId = clientId,
         authorizationDetails = credentialRepresentation.toAuthorizationDetails(),
+        resource = credentialIssuer,
         redirectUrl = redirectUrl,
     )
 
     /**
-     * Send the result as POST parameters (form-encoded)to the server at `/token` (or more specific
+     * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
+     * [IssuerMetadata.authorizationEndpointUrl])
+     */
+    fun createAuthRequest(scope: String, credentialIssuer: String? = null) = AuthenticationRequestParameters(
+        responseType = GRANT_TYPE_CODE,
+        clientId = clientId,
+        scope = scope,
+        resource = credentialIssuer,
+        redirectUrl = redirectUrl,
+    )
+
+    /**
+     * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
      * [IssuerMetadata.tokenEndpointUrl])
      */
     fun createTokenRequestParameters(code: String) = TokenRequestParameters(
@@ -106,7 +119,7 @@ class WalletService(
         }
         val proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofTypes.JWT,
-            jwt = proofPayload.serialize()
+            proof = proofPayload.serialize()
         )
         return KmmResult.success(credentialRepresentation.toCredentialRequestParameters(proof))
     }
@@ -116,7 +129,9 @@ class WalletService(
         ConstantIndex.CredentialRepresentation.SD_JWT -> AuthorizationDetails(
             type = CREDENTIAL_TYPE_OPENID,
             format = toFormat(),
-            types = arrayOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
+            credentialDefinition = SupportedCredentialFormatDefinition(
+                types = listOf(VERIFIABLE_CREDENTIAL, credentialScheme.vcType),
+            ),
             claims = requestedAttributes?.toRequestedClaims(),
         )
 
@@ -124,7 +139,6 @@ class WalletService(
             type = CREDENTIAL_TYPE_OPENID,
             format = toFormat(),
             docType = credentialScheme.isoDocType,
-            types = arrayOf(credentialScheme.vcType),
             claims = requestedAttributes?.toRequestedClaims()
         )
     }
@@ -155,6 +169,6 @@ class WalletService(
 
 private fun ConstantIndex.CredentialRepresentation.toFormat() = when (this) {
     ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialFormatEnum.JWT_VC
-    ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialFormatEnum.JWT_VC_SD
+    ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialFormatEnum.VC_SD_JWT
     ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
 }

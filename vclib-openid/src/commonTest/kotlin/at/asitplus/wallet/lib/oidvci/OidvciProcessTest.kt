@@ -52,7 +52,7 @@ class OidvciProcessTest : FunSpec({
             credentialRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT,
         )
         val credential = runProcess(issuer, client)
-        credential.format shouldBe CredentialFormatEnum.JWT_VC_SD
+        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential
         serializedCredential.shouldNotBeNull().also { println(it) }
 
@@ -70,7 +70,7 @@ class OidvciProcessTest : FunSpec({
             requestedAttributes = listOf("family-name")
         )
         val credential = runProcess(issuer, client)
-        credential.format shouldBe CredentialFormatEnum.JWT_VC_SD
+        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential
         serializedCredential.shouldNotBeNull().also { println(it) }
 
