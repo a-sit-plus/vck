@@ -260,13 +260,10 @@ class HolderAgent(
                         inputMatch = it,
                         credential = credential,
                     )
-                } ?: null.also {
-                    Napier.d("Credential does not satisfy input descriptor: $credential")
-                    Napier.d("Credential as json element: ${credential.toJsonElement()}")
                 }
             } ?: return KmmResult.failure(
                 MissingInputDescriptorMatchException(inputDescriptor)
-                    .also { exception -> exception.message?.let { Napier.w(it) } }
+                    .also { it.message?.let { Napier.w(it) } }
             )
         }
 
@@ -445,6 +442,7 @@ fun SubjectCredentialStore.StoreEntry.toJsonElement(): JsonElement {
                     put(it.key, it.value)
                 }
                 // TODO: Remove this when there is a clear specification on how to encode vc credentials
+                //  This may actually depend on the presentation context, so more information may be required
                 put("vc", buildJsonArray {
                     add(jsonSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject))
                 })

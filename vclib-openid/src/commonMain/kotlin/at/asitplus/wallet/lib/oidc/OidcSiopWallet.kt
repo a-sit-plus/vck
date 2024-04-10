@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
@@ -14,6 +15,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST_JWT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.QUERY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
@@ -27,13 +29,11 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import io.ktor.util.flattenEntries
-import io.ktor.http.*
-import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -392,15 +392,28 @@ class OidcSiopWallet(
                 state = params.state,
                 vpToken = presentationSubmissionContainer.verifiablePresentations.map {
                     when (it) {
-                        is Holder.CreatePresentationResult.Signed -> it.jws
-                        is Holder.CreatePresentationResult.SdJwt -> it.sdJwt
-                        is Holder.CreatePresentationResult.Document -> it.document.serialize()
-                            .encodeToString(
-                                Base16(strict = true)
+                        is Holder.CreatePresentationResult.Signed -> {
+                            // must be a string
+                            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
+                            JsonPrimitive(it.jws)
+                        }
+
+                        is Holder.CreatePresentationResult.SdJwt -> {
+                            // must be a string
+                            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.5-1
+                            JsonPrimitive(it.sdJwt)
+                        }
+
+                        is Holder.CreatePresentationResult.Document -> {
+                            // must be a string
+                            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.5-1
+                            JsonPrimitive(
+                                it.document.serialize().encodeToString(Base16(strict = true))
                             )
+                        }
                     }
                 }.let {
-                    if (it.size == 1) JsonPrimitive(it[0])
+                    if (it.size == 1) it[0]
                     else buildJsonArray {
                         for (value in it) {
                             add(value)
