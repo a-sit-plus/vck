@@ -357,7 +357,6 @@ class OidcSiopWallet(
         clientMetadata.vpFormats?.let { supportedFormats ->
             presentationSubmissionContainer.presentationSubmission.descriptorMap?.mapIndexed { index, descriptor ->
                 val isMissingFormatSupport = when (descriptor.format) {
-                    ClaimFormatEnum.JWT -> supportedFormats.jwt?.algorithms?.contains(jwsService.algorithm.identifier) != true
                     ClaimFormatEnum.JWT_VC -> supportedFormats.jwtVc?.algorithms?.contains(
                         jwsService.algorithm.identifier
                     ) != true

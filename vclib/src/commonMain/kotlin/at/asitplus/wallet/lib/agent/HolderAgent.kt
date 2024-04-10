@@ -228,10 +228,7 @@ class HolderAgent(
                 is SubjectCredentialStore.StoreEntry.SdJwt -> 1
                 is SubjectCredentialStore.StoreEntry.Iso -> 1
             }
-        } ?: return KmmResult.failure(
-            CredentialRetrievalException()
-                .also { exception -> exception.message?.let { Napier.w(it) } }
-        )
+        } ?: return KmmResult.failure(CredentialRetrievalException())
 
         data class CandidateInputMatchContainer(
             val inputDescriptor: InputDescriptor,
@@ -261,10 +258,7 @@ class HolderAgent(
                         credential = credential,
                     )
                 }
-            } ?: return KmmResult.failure(
-                MissingInputDescriptorMatchException(inputDescriptor)
-                    .also { it.message?.let { Napier.w(it) } }
-            )
+            } ?: return KmmResult.failure(MissingInputDescriptorMatchException(inputDescriptor))
         }
 
         val presentationSubmission = PresentationSubmission(
@@ -320,7 +314,7 @@ class HolderAgent(
                     credential = match.credential,
                     inputDescriptor = match.inputDescriptor,
                     candidateInputMatch = match.inputMatch,
-                ).also { exception -> exception.message?.let { Napier.w(it) } }
+                )
             )
         }
 
@@ -441,7 +435,7 @@ fun SubjectCredentialStore.StoreEntry.toJsonElement(): JsonElement {
                 jsonSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject).jsonObject.entries.forEach {
                     put(it.key, it.value)
                 }
-                // TODO: Remove this when there is a clear specification on how to encode vc credentials
+                // TODO: Remove the rest here when there is a clear specification on how to encode vc credentials
                 //  This may actually depend on the presentation context, so more information may be required
                 put("vc", buildJsonArray {
                     add(jsonSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject))
