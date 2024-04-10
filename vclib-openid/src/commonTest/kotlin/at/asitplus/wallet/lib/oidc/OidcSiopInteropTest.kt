@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.LibraryInitializer
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
@@ -36,16 +37,7 @@ class OidcSiopInteropTest : FreeSpec({
     lateinit var holderSiop: OidcSiopWallet
 
     beforeSpec {
-        LibraryInitializer.registerExtensionLibrary(
-            LibraryInitializer.ExtensionLibraryInfo(
-                credentialScheme = EudiwPidCredentialScheme,
-                serializersModule = SerializersModule {
-                    polymorphic(CredentialSubject::class) {
-                        subclass(EudiwPid1::class)
-                    }
-                },
-            )
-        )
+        at.asitplus.wallet.eupid.Initializer.initWithVcLib()
     }
 
     beforeEach {
@@ -58,7 +50,7 @@ class OidcSiopInteropTest : FreeSpec({
                     dataProvider = DummyCredentialDataProvider(),
                 ).issueCredential(
                     subjectPublicKey = holderCryptoService.publicKey,
-                    attributeTypes = listOf(EudiwPidCredentialScheme.vcType),
+                    attributeTypes = listOf(EuPidScheme.vcType),
                     representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 ).toStoreCredentialInput()
             )
