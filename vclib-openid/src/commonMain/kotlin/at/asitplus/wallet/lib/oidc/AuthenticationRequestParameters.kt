@@ -144,7 +144,7 @@ data class AuthenticationRequestParameters(
      * `presentation_definition_uri` parameter, or a `scope` value representing a Presentation Definition is not
      * present.
      */
-    @SerialName(AuthenticationRequestConstants.SerialNames.presentationDefinitionUri)
+    @SerialName("presentation_definition_uri")
     val presentationDefinitionUri: String? = null,
 
     /**
