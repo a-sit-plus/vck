@@ -256,9 +256,7 @@ class OidcSiopVerifier(
             ?.let { createConstraints(requestOptions.representation, it) }
             ?: listOf()
         val constraintFields = attributeConstraint + typeConstraint
-        val schemaReference = SchemaReference(
-            requestOptions.credentialScheme?.schemaUri ?: "https://example.com"
-        )
+        val schemaReference = requestOptions.credentialScheme?.schemaUri?.let { SchemaReference(it) }
         val scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, requestOptions.credentialScheme?.vcType)
             .joinToString(" ")
         return AuthenticationRequestParameters(
@@ -279,7 +277,7 @@ class OidcSiopVerifier(
                 inputDescriptors = listOf(
                     InputDescriptor(
                         id = uuid4().toString(),
-                        schema = listOf(schemaReference),
+                        schema = listOfNotNull(schemaReference),
                         constraints = Constraint(fields = constraintFields.filterNotNull()),
                     )
                 ),
