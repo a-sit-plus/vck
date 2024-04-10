@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
@@ -11,34 +10,13 @@ import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.FormatHolder
-import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
-import io.kotest.matchers.string.shouldContain
-import io.kotest.matchers.string.shouldNotContain
-import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.client.engine.mock.respondBadRequest
-import io.ktor.client.engine.mock.respondRedirect
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
-import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.runBlocking
 
 @Suppress("unused")
@@ -119,8 +97,10 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 )
 
                 val authnRequest = verifierSiop.createAuthnRequest(
-                    credentialScheme = ConstantIndex.AtomicAttribute2023,
-                    representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    requestOptions = OidcSiopVerifier.RequestOptions(
+                        credentialScheme = ConstantIndex.AtomicAttribute2023,
+                        representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    )
                 ).let { request ->
                     request.copy(
                         clientMetadata = request.clientMetadata?.let { clientMetadata ->
@@ -189,7 +169,9 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 )
 
                 val authnRequest = verifierSiop.createAuthnRequest(
-                    credentialScheme = ConstantIndex.AtomicAttribute2023,
+                    requestOptions = OidcSiopVerifier.RequestOptions(
+                        credentialScheme = ConstantIndex.AtomicAttribute2023,
+                    )
                 ).let { request ->
                     request.copy(
                         clientMetadata = request.clientMetadata?.let { clientMetadata ->
@@ -208,9 +190,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
                     .also { println(it) }
 
-                val validationResults = verifierSiop.validateAuthnResponse(authnResponse.url)
-                validationResults.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
-                val result = validationResults.validationResults.first()
+                val result = verifierSiop.validateAuthnResponse(authnResponse.url)
                 result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
                 result.vp.verifiableCredentials.shouldNotBeEmpty()
                 result.vp.verifiableCredentials.forEach {
@@ -261,8 +241,10 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 )
 
                 val authnRequest = verifierSiop.createAuthnRequest(
-                    credentialScheme = ConstantIndex.AtomicAttribute2023,
-                    representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                    requestOptions = OidcSiopVerifier.RequestOptions(
+                        credentialScheme = ConstantIndex.AtomicAttribute2023,
+                        representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                    )
                 ).let { request ->
                     request.copy(
                         presentationDefinition = request.presentationDefinition?.let { presentationDefinition ->
@@ -337,8 +319,10 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 )
 
                 val authnRequest = verifierSiop.createAuthnRequest(
-                    credentialScheme = ConstantIndex.AtomicAttribute2023,
-                    representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                    requestOptions = OidcSiopVerifier.RequestOptions(
+                        credentialScheme = ConstantIndex.AtomicAttribute2023,
+                        representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                    )
                 ).let { request ->
                     request.copy(
                         presentationDefinition = request.presentationDefinition?.let { presentationDefinition ->
@@ -362,9 +346,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
                     .also { println(it) }
 
-                val validationResults = verifierSiop.validateAuthnResponse(authnResponse.url)
-                validationResults.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
-                val result = validationResults.validationResults.first()
+                val result = verifierSiop.validateAuthnResponse(authnResponse.url)
                 result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
                 result.sdJwt.type.contains(ConstantIndex.AtomicAttribute2023.vcType)
             }
@@ -412,8 +394,10 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 )
 
                 val authnRequest = verifierSiop.createAuthnRequest(
-                    credentialScheme = ConstantIndex.AtomicAttribute2023,
-                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    requestOptions = OidcSiopVerifier.RequestOptions(
+                        credentialScheme = ConstantIndex.AtomicAttribute2023,
+                        representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    ),
                 ).let { request ->
                     request.copy(
                         presentationDefinition = request.presentationDefinition?.let { presentationDefinition ->
@@ -488,8 +472,10 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 )
 
                 val authnRequest = verifierSiop.createAuthnRequest(
-                    credentialScheme = ConstantIndex.AtomicAttribute2023,
-                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    requestOptions = OidcSiopVerifier.RequestOptions(
+                        credentialScheme = ConstantIndex.AtomicAttribute2023,
+                        representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    ),
                 ).let { request ->
                     request.copy(
                         presentationDefinition = request.presentationDefinition?.let { presentationDefinition ->
@@ -513,9 +499,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
                     .also { println(it) }
 
-                val validationResults = verifierSiop.validateAuthnResponse(authnResponse.url)
-                validationResults.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
-                val result = validationResults.validationResults.first()
+                val result = verifierSiop.validateAuthnResponse(authnResponse.url)
                 result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
             }
         }
@@ -553,12 +537,16 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         )
 
         val authnRequest1 = verifierSiop.createAuthnRequest(
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
-            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+            requestOptions = OidcSiopVerifier.RequestOptions(
+                credentialScheme = ConstantIndex.AtomicAttribute2023,
+                representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+            ),
         )
         val authnRequest2 = verifierSiop.createAuthnRequest(
-            credentialScheme = ConstantIndex.MobileDrivingLicence2023,
-            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            requestOptions = OidcSiopVerifier.RequestOptions(
+                credentialScheme = ConstantIndex.MobileDrivingLicence2023,
+                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            ),
         )
         val inputDescriptors2 = authnRequest2.presentationDefinition?.inputDescriptors ?: listOf()
 

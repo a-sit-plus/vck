@@ -15,11 +15,9 @@ import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -37,7 +35,8 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.*
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
@@ -102,11 +101,6 @@ class OidcSiopProtocolTest : FreeSpec({
         authnResponse.url.shouldContain("#")
         authnResponse.url.shouldStartWith(relyingPartyUrl)
 
-        /* TODO: re-evaluate after rebase
-        val validationResults = verifierSiop.validateAuthnResponse(authnResponse.url)
-        validationResults.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
-        val result = validationResults.validationResults.first()
-        */
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
@@ -139,11 +133,6 @@ class OidcSiopProtocolTest : FreeSpec({
         val authnResponse = holderSiop.createAuthnResponse(jar).getOrThrow()
         authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>()
 
-        /* TODO: reevaliuate after rebase
-        val validationResults = verifierSiop.validateAuthnResponse(authnResponse.url)
-        validationResults.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
-        val result = validationResults.validationResults.first()
-         */
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
     }
@@ -159,11 +148,6 @@ class OidcSiopProtocolTest : FreeSpec({
             .also { println(it) }
         authnResponse.url.shouldBe(relyingPartyUrl)
 
-        /* TODO: reevaluate after rebase
-        val validationResults = verifierSiop.validateAuthnResponseFromPost(authnResponse.content)
-        validationResults.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
-        val result = validationResults.validationResults.first()
-         */
         val result =
             verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
@@ -184,11 +168,6 @@ class OidcSiopProtocolTest : FreeSpec({
         val jarmResponse = authnResponse.params.values.first()
         DefaultVerifierJwsService().verifyJwsObject(JwsSigned.parse(jarmResponse)!!).shouldBeTrue()
 
-        /* TODO: reevaluate after rebase
-        val validationResults = verifierSiop.validateAuthnResponseFromPost(authnResponse.content)
-        validationResults.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
-        val result = validationResults.validationResults.first()
-         */
         val result =
             verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
@@ -213,11 +192,6 @@ class OidcSiopProtocolTest : FreeSpec({
         authnResponse.url.shouldNotContain("#")
         authnResponse.url.shouldStartWith(relyingPartyUrl)
 
-        /* TODO: reevaluate after rebase
-        val validationResults = verifierSiop.validateAuthnResponse(authnResponse.url)
-        validationResults.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
-        val result = validationResults.validationResults.first()
-         */
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
@@ -237,11 +211,6 @@ class OidcSiopProtocolTest : FreeSpec({
 
         val parsedAuthnResponse: AuthenticationResponseParameters =
             authnResponseParams.decodeFromPostBody()
-        /* TODO: reevaluate after rebase
-        val validationResults = verifierSiop.validateAuthnResponse(parsedAuthnResponse)
-        validationResults.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
-        val result = validationResults.validationResults.first()
-         */
         val result = verifierSiop.validateAuthnResponse(parsedAuthnResponse)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
