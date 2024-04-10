@@ -2,6 +2,8 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.wallet.eupid.EuPidCredential
+import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.Issuer
@@ -106,10 +108,12 @@ class DummyCredentialDataProvider(
             )
         }
 
-        if (credentialScheme == EudiwPidCredentialScheme) {
+        if (credentialScheme == EuPidScheme) {
             val subjectId = subjectPublicKey.didEncoded
             val claims = listOfNotNull(
-                optionalClaim(claimNames, "family_name", "someone"),
+                optionalClaim(claimNames, EuPidScheme.Attributes.FAMILY_NAME, "Musterfrau"),
+                optionalClaim(claimNames, EuPidScheme.Attributes.GIVEN_NAME, "Maria"),
+                optionalClaim(claimNames, EuPidScheme.Attributes.BIRTH_DATE, LocalDate.parse("1970-01-01")),
             )
             credentials += when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
@@ -118,8 +122,13 @@ class DummyCredentialDataProvider(
 
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> listOf(
                     CredentialToBeIssued.VcJwt(
-                        subject = EudiwPid1(subjectId, "someone"),
-                        expiration = expiration,
+                        EuPidCredential(
+                            id = subjectId,
+                            familyName = "Musterfrau",
+                            givenName = "Maria",
+                            birthDate = LocalDate.parse("1970-01-01")
+                        ),
+                        expiration,
                     )
                 )
 
