@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.data.JSONPath
+package at.asitplus.wallet.lib.data.jsonPath
 
 import at.asitplus.parser.generated.JSONPathParser
 

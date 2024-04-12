@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.wallet.lib.data.JSONPath.JSONPathSelector
-import at.asitplus.wallet.lib.data.JSONPath.JSONPathToJSONPathSelectorListCompiler
-import at.asitplus.wallet.lib.data.JSONPath.matchJsonPath
+import at.asitplus.wallet.lib.data.jsonPath.JSONPathSelector
+import at.asitplus.wallet.lib.data.jsonPath.JSONPathToJSONPathSelectorListCompiler
+import at.asitplus.wallet.lib.data.jsonPath.matchJsonPath
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.ints.shouldBeExactly
@@ -90,7 +90,10 @@ class JSONPathParserTest : FreeSpec({
                 vcMatches shouldHaveSize 1
                 val vcArray = vcMatches.first().value
                 vcArray.shouldBeInstanceOf<JsonArray>()
-                val vcArrayElements = JSONPathSelector.WildCardSelector().invoke(vcArray)
+                val vcArrayElements = JSONPathSelector.WildCardSelector().invoke(
+                    rootNode = vcArray,
+                    currentNode = vcArray,
+                )
                 vcArrayElements shouldHaveSize 3
             }
 

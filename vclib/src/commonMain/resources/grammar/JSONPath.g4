@@ -15,18 +15,18 @@ jsonpathQuery
     ;
 
 segments
-    : (S segment)*
+    : (WHITESPACE? segment)*
     ;
 
-B
+BLANK
     : ' '
-    | ' '
+    | '\t'
     | '\n'
     | '\r'
     ;
 
-fragment S
-    : B*
+WHITESPACE
+    : BLANK+
     ; // optional blank space
 
 rootIdentifier: ROOT_IDENTIFIER;
@@ -167,7 +167,7 @@ DIGIT1
 
 
 sliceSelector
-    : (start S)? ':' S (end S)? (':' (S step )?)?
+    : (start WHITESPACE?)? ':' WHITESPACE? (end WHITESPACE?)? (':' (WHITESPACE? step )?)?
     ;
 
 start
@@ -185,7 +185,7 @@ step
 
 
 filterSelector
-    : '?' S logicalExpr
+    : '?' WHITESPACE? logicalExpr
     ;
 
 logicalExpr
@@ -193,11 +193,11 @@ logicalExpr
     ;
 
 logicalOrExpr
-    : logicalAndExpr (S '||' S logicalAndExpr)*
+    : logicalAndExpr (WHITESPACE? '||' WHITESPACE? logicalAndExpr)*
     ; // disjunction; binds less tightly than conjunction
 
 logicalAndExpr
-    : basicExpr (S '&&' S basicExpr)*
+    : basicExpr (WHITESPACE? '&&' WHITESPACE? basicExpr)*
     ; // conjunction; binds more tightly than disjunction
 
 basicExpr
@@ -207,7 +207,7 @@ basicExpr
     ;
 
 parenExpr
-    : (LOGICAL_NOT_OP S)? '(' S logicalExpr S ')'
+    : (LOGICAL_NOT_OP WHITESPACE?)? '(' WHITESPACE? logicalExpr WHITESPACE? ')'
     ; // parenthesized expression
 
 LOGICAL_NOT_OP
@@ -215,7 +215,7 @@ LOGICAL_NOT_OP
     ; // logical NOT operator
 
 testExpr
-    : (LOGICAL_NOT_OP S)? (filterQuery | functionExpr)
+    : (LOGICAL_NOT_OP WHITESPACE?)? (filterQuery | functionExpr)
     ;
 
 filterQuery
@@ -231,7 +231,7 @@ CURRENT_NODE_IDENTIFIER
     ;
 
 comparisonExpr
-    : comparable S comparisonOp S comparable
+    : comparable WHITESPACE? comparisonOp WHITESPACE? comparable
     ;
 
 literal
@@ -297,7 +297,7 @@ absSingularQuery
     ;
 
 singularQuerySegments
-    : (S (nameSegment | indexSegment))*
+    : (WHITESPACE? (nameSegment | indexSegment))*
     ;
 
 nameSegment
@@ -355,7 +355,7 @@ LCALPHA
     ; // 'a'..'z'
 
 functionExpr
-    : functionName '(' S (functionArgument (S ',' S functionArgument)*)? S ')'
+    : functionName '(' WHITESPACE? (functionArgument (WHITESPACE? ',' WHITESPACE? functionArgument)*)? WHITESPACE? ')'
     ;
 
 functionArgument
@@ -376,7 +376,7 @@ childSegment
     ;
 
 bracketedSelection
-    : '[' S selector (S ',' S selector)* S ']'
+    : '[' WHITESPACE? selector (WHITESPACE? ',' WHITESPACE? selector)* WHITESPACE? ']'
     ;
 
 memberNameShorthand

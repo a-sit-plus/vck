@@ -1,7 +1,8 @@
 package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.data.JSONPath.matchJsonPath
+import at.asitplus.wallet.lib.data.jsonPath.JSONPathSelector
+import at.asitplus.wallet.lib.data.jsonPath.matchJsonPath
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -28,7 +29,7 @@ Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#in
 // May support different features, not sure if all of them fit into one elevator
 interface InputEvaluator {
     data class FieldQueryResult(
-        val querySegments: List<JsonPrimitive>,
+        val singularQuerySelectors: List<JSONPathSelector.SingularQuerySelector>,
         val value: JsonElement,
     )
 
@@ -59,7 +60,7 @@ class StandardInputEvaluator : InputEvaluator {
                         } ?: true
                     }?.let {
                         InputEvaluator.FieldQueryResult(
-                            querySegments = it.singularQuerySegments,
+                            singularQuerySelectors = it.singularQuerySelectors,
                             value = it.value,
                         )
                     }

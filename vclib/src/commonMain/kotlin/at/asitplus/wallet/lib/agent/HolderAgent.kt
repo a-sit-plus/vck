@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.data.dif.StandardInputEvaluator
+import at.asitplus.wallet.lib.data.jsonPath.JSONPathSelector
 import at.asitplus.wallet.lib.data.jsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceSigned
@@ -285,8 +286,13 @@ class HolderAgent(
             val requestedClaims =
                 match.inputMatch.fieldQueryResults?.mapNotNull { fieldQueryResult ->
                     // TODO: find good way to transform the field query result paths into claim paths
-                    // for now it should be sufficient to take the last part, it should be a string anyway
-                    fieldQueryResult?.querySegments?.last()?.content
+                    //  for now it should be sufficient to take the last part, we don't have complicated credentials yet
+                    fieldQueryResult?.singularQuerySelectors?.last()?.let {
+                        when(it) {
+                            is JSONPathSelector.IndexSelector -> it.index.toString()
+                            is JSONPathSelector.MemberSelector -> it.memberName
+                        }
+                    }
                 } ?: listOf()
 
             when (match.credential) {

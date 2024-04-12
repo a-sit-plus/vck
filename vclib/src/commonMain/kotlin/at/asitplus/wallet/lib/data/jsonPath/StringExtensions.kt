@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.data.JSONPath
+package at.asitplus.wallet.lib.data.jsonPath
 
 fun String.isLexicographicallySmallerThan(other: String): Boolean {
     return if (this.isEmpty()) {
