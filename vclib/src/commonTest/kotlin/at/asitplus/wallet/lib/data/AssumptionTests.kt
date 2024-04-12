@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.data
 
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.Json
@@ -10,6 +11,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.doubleOrNull
 
 class AssumptionTests : FreeSpec({
     "assumption:416dc455-ebb7-4b74-86e4-b63dc8cfe279: JsonArray.toString() yields a serialized json array without double quotes" {
@@ -19,6 +21,10 @@ class AssumptionTests : FreeSpec({
             }
         }
         jsonArray.toString() shouldBe "[\"a\",\"b\",\"c\"]"
+    }
+    "assumption:ee3a76b1-0906-4a42-8b8c-0e81e41ecc58: JsonPrimitive.doubleOrNull returns a value for integers as well" {
+        val jsonElement = JsonPrimitive(42)
+        jsonElement.doubleOrNull.shouldNotBeNull()
     }
     "assumption:325a6913-4576-4f80-9589-17a841126fbf: Regex(str).match(str) returns true" {
         val dummyString = "adsahdbfsjbdf"

@@ -36,7 +36,6 @@ import kotlinx.serialization.cbor.ByteStringWrapper
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -286,8 +285,8 @@ class HolderAgent(
             val requestedClaims =
                 match.inputMatch.fieldQueryResults?.mapNotNull { fieldQueryResult ->
                     // TODO: find good way to transform the field query result paths into claim paths
-                    // for now it should be sufficient to take the last part
-                    fieldQueryResult?.jsonPath?.last()
+                    // for now it should be sufficient to take the last part, it should be a string anyway
+                    fieldQueryResult?.querySegments?.last()?.content
                 } ?: listOf()
 
             when (match.credential) {

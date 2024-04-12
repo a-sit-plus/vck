@@ -8,12 +8,9 @@ import at.asitplus.wallet.lib.agent.InMemorySubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toJsonElement
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.matchJsonPath
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.data.JSONPath.matchJsonPath
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldNotBe
 import kotlinx.coroutines.runBlocking

@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.data.matchJsonPath
+import at.asitplus.wallet.lib.data.JSONPath.matchJsonPath
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -28,7 +28,7 @@ Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#in
 // May support different features, not sure if all of them fit into one elevator
 interface InputEvaluator {
     data class FieldQueryResult(
-        val jsonPath: List<String>,
+        val querySegments: List<JsonPrimitive>,
         val value: JsonElement,
     )
 
@@ -53,13 +53,13 @@ class StandardInputEvaluator : InputEvaluator {
             val fieldQueryResults = constraintFields.map { field ->
                 val fieldQueryResult = field.path.firstNotNullOfOrNull { jsonPath ->
                     val candidates = credential.matchJsonPath(jsonPath)
-                    candidates.entries.firstOrNull { candidate ->
+                    candidates.firstOrNull { candidate ->
                         field.filter?.let {
                             candidate.value.satisfiesConstraintFilter(it)
                         } ?: true
                     }?.let {
                         InputEvaluator.FieldQueryResult(
-                            jsonPath = it.key,
+                            querySegments = it.singularQuerySegments,
                             value = it.value,
                         )
                     }
