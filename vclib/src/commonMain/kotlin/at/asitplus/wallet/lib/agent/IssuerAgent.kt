@@ -93,12 +93,16 @@ class IssuerAgent(
      * key in [subjectPublicKey] in the format specified by [representation].
      * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
      * [claimNames] to request only some claims (if supported by the representation).
+     *
+     * @param dataProviderOverride Set this parameter to override the default [dataProvider] for this
+     *                             issuing process
      */
     override suspend fun issueCredential(
         subjectPublicKey: CryptoPublicKey,
         attributeTypes: Collection<String>,
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>?,
+        dataProviderOverride: IssuerCredentialDataProvider?,
     ): Issuer.IssuedCredentialResult {
         val failed = mutableListOf<Issuer.FailedAttribute>()
         val successful = mutableListOf<Issuer.IssuedCredential>()
@@ -110,7 +114,7 @@ class IssuerAgent(
                 failed += Issuer.FailedAttribute(attributeType, IllegalArgumentException("type not resolved to scheme"))
                 continue
             }
-            dataProvider.getCredential(subjectPublicKey, scheme, representation, claimNames).fold(
+            (dataProviderOverride ?: dataProvider).getCredential(subjectPublicKey, scheme, representation, claimNames).fold(
                 onSuccess = { toBeIssued ->
                     toBeIssued.forEach { credentialToBeIssued ->
                         issueCredential(credentialToBeIssued, subjectPublicKey, scheme).also { result ->
