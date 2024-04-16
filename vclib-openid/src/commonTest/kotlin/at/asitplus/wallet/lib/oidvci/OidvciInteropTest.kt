@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyCredentialDataProvider
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER
+import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldHaveSingleElement
@@ -179,28 +180,28 @@ class OidvciInteropTest : FunSpec({
         val credentialConfig =
             credentialIssuerMetadata.supportedCredentialConfigurations!![credentialOffer.configurationIds.first()]!!
         val scopeToRequest = credentialConfig.scope!!
-        val authnRequest = client.createAuthRequest(scopeToRequest, credentialIssuerMetadata.credentialIssuer)
+        val state = uuid4().toString()
+        val authnRequest = client.createAuthRequest(scopeToRequest, credentialIssuerMetadata.credentialIssuer, state)
         val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
         code.shouldNotBeNull()
         // TODO Provide a way to authenticate the client ... but how? see `token_endpoint_auth_method` in Client Metadata, RFC 6749
+        val requestOptions = WalletService.RequestOptions(
+            ConstantIndex.AtomicAttribute2023,
+            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+            state = state
+        )
         val tokenRequest = client.createTokenRequestParameters(
             authnResponse.params,
             credentialOffer,
-            WalletService.RequestOptions(
-                ConstantIndex.AtomicAttribute2023,
-                representation = ConstantIndex.CredentialRepresentation.SD_JWT
-            )
+            requestOptions
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
         val credentialRequest = client.createCredentialRequestJwt(
             token,
             credentialIssuerMetadata,
-            WalletService.RequestOptions(
-                ConstantIndex.AtomicAttribute2023,
-                representation = ConstantIndex.CredentialRepresentation.SD_JWT
-            )
+            requestOptions
         ).getOrThrow()
         val credential = issuer.credential(token.accessToken, credentialRequest)
 

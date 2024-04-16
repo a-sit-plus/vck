@@ -137,12 +137,13 @@ class AuthorizationService(
             }
         }
         params.codeVerifier?.let { codeVerifier ->
-            val codeChallenge = codeChallengeMutex.withLock { codeToCodeChallengeMap.remove(params.code) }
-            val codeChallengeCalculated = codeVerifier.encodeToByteArray().sha256()
-                .encodeToString(Base64UrlStrict)
-            if (codeChallenge != codeChallengeCalculated) {
-                return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(OpenIdConstants.Errors.INVALID_GRANT))
-                    .also { Napier.w("token: client did not provide correct code verifier: $codeVerifier") }
+            codeChallengeMutex.withLock { codeToCodeChallengeMap.remove(params.code) }?.let { codeChallenge ->
+                val codeChallengeCalculated = codeVerifier.encodeToByteArray().sha256()
+                    .encodeToString(Base64UrlStrict)
+                if (codeChallenge != codeChallengeCalculated) {
+                    return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(OpenIdConstants.Errors.INVALID_GRANT))
+                        .also { Napier.w("token: client did not provide correct code verifier: $codeVerifier") }
+                }
             }
         }
         val result = TokenResponseParameters(
