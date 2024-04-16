@@ -22,7 +22,12 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 class OidvciProcessTest : FunSpec({
 
     val dataProvider = DummyCredentialDataProvider()
+    val authorizationService = AuthorizationService(
+        dataProvider = dataProvider,
+        credentialSchemes = listOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023)
+    )
     val issuer = IssuerService(
+        authorizationService = authorizationService,
         issuer = IssuerAgent.newDefaultInstance(
             cryptoService = DefaultCryptoService(),
             dataProvider = dataProvider
@@ -33,6 +38,7 @@ class OidvciProcessTest : FunSpec({
     test("process with W3C VC JWT") {
         val client = WalletService()
         val credential = runProcessWithJwtProof(
+            authorizationService,
             issuer,
             client,
             WalletService.RequestOptions(
@@ -53,6 +59,7 @@ class OidvciProcessTest : FunSpec({
     test("process with W3C VC SD-JWT") {
         val client = WalletService()
         val credential = runProcessWithJwtProof(
+            authorizationService,
             issuer,
             client,
             WalletService.RequestOptions(
@@ -74,6 +81,7 @@ class OidvciProcessTest : FunSpec({
     test("process with W3C VC SD-JWT one requested claim") {
         val client = WalletService()
         val credential = runProcessWithJwtProof(
+            authorizationService,
             issuer,
             client,
             WalletService.RequestOptions(
@@ -96,6 +104,7 @@ class OidvciProcessTest : FunSpec({
     test("process with ISO mobile driving licence") {
         val client = WalletService()
         val credential = runProcessWithCwtProof(
+            authorizationService,
             issuer,
             client,
             WalletService.RequestOptions(
@@ -117,6 +126,7 @@ class OidvciProcessTest : FunSpec({
     test("process with ISO mobile driving licence one requested claim") {
         val client = WalletService()
         val credential = runProcessWithCwtProof(
+            authorizationService,
             issuer,
             client,
             WalletService.RequestOptions(
@@ -139,6 +149,7 @@ class OidvciProcessTest : FunSpec({
     test("process with ISO atomic attributes") {
         val client = WalletService()
         val credential = runProcessWithCwtProof(
+            authorizationService,
             issuer,
             client,
             WalletService.RequestOptions(
@@ -157,36 +168,38 @@ class OidvciProcessTest : FunSpec({
 })
 
 private suspend fun runProcessWithJwtProof(
+    authorizationService: AuthorizationService,
     issuer: IssuerService,
     client: WalletService,
     requestOptions: WalletService.RequestOptions,
 ): CredentialResponseParameters {
-    val token = runProcessGetToken(client, issuer, requestOptions)
+    val token = runProcessGetToken(authorizationService, client, requestOptions)
     val credentialRequest = client.createCredentialRequestJwt(token, issuer.metadata, requestOptions).getOrThrow()
     return issuer.credential(token.accessToken, credentialRequest).getOrThrow()
 }
 
 private suspend fun runProcessWithCwtProof(
+    authorizationService: AuthorizationService,
     issuer: IssuerService,
     client: WalletService,
     requestOptions: WalletService.RequestOptions,
 ): CredentialResponseParameters {
-    val token = runProcessGetToken(client, issuer, requestOptions)
+    val token = runProcessGetToken(authorizationService, client, requestOptions)
     val credentialRequest = client.createCredentialRequestCwt(token, issuer.metadata, requestOptions).getOrThrow()
     return issuer.credential(token.accessToken, credentialRequest).getOrThrow()
 }
 
 private suspend fun runProcessGetToken(
+    authorizationService: AuthorizationService,
     client: WalletService,
-    issuer: IssuerService,
     requestOptions: WalletService.RequestOptions,
 ): TokenResponseParameters {
     val authnRequest = client.createAuthRequest(requestOptions)
-    val authnResponse = issuer.authorize(authnRequest).getOrThrow()
+    val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
     authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
     val code = authnResponse.params.code
     code.shouldNotBeNull()
     val tokenRequest = client.createTokenRequestParameters(authnResponse.params, requestOptions)
-    val token = issuer.token(tokenRequest).getOrThrow()
+    val token = authorizationService.token(tokenRequest).getOrThrow()
     return token
 }
