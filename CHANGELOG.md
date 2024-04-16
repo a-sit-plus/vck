@@ -17,7 +17,7 @@ Release 3.6.0:
      - Auto-publish version catalogs
  - Implement OpenID for Verifiable Credential Issuance draft 13, from 2024-02-08
  - Implement RFC 7636 Proof Key for Code Exchange for OpenID for Verifiable Credential Issuance implementations, i.e. `IssuerService` and `WalletService`
- - `IssuerService`: Make public API functions suspending
+ - `IssuerService`: Make public API functions suspending, also return `KmmResult` to transport exceptions
  - `WalletService`: Make public API functions suspending
  - TODO document changes in `IssuerService` and `WalletService`
 

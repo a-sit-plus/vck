@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.JsonWebToken
 import at.asitplus.crypto.datatypes.jws.JwsSigned
@@ -22,11 +23,11 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import com.benasher44.uuid.uuid4
+import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Server implementation to issue credentials using
@@ -162,10 +163,12 @@ class IssuerService(
      * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
      * code from [codeService].
      */
-    suspend fun authorize(request: AuthenticationRequestParameters): AuthenticationResponseResult {
+    suspend fun authorize(request: AuthenticationRequestParameters): KmmResult<AuthenticationResponseResult> {
         // TODO Need to store the `scope` or `authorization_details`, i.e. may respond with `invalid_scope` here!
         if (request.redirectUrl == null)
-            throw OAuth2Exception(Errors.INVALID_REQUEST, "redirect_uri not set")
+            return KmmResult.failure<AuthenticationResponseResult>(
+                OAuth2Exception(Errors.INVALID_REQUEST, "redirect_uri not set")
+            ).also { Napier.w("authorize: client did not set redirect_uri in $request") }
         val code = codeService.provideCode()
         val responseParams = AuthenticationResponseParameters(
             code = code,
@@ -180,43 +183,52 @@ class IssuerService(
         val url = URLBuilder(request.redirectUrl)
             .apply { responseParams.encodeToParameters().forEach { this.parameters.append(it.key, it.value) } }
             .buildString()
-        return AuthenticationResponseResult.Redirect(url, responseParams)
+        val result = AuthenticationResponseResult.Redirect(url, responseParams)
+        Napier.i("authorize returns $result")
+        return KmmResult.success(result)
     }
 
     /**
      * Verifies the authorization code sent by the client and issues an access token.
      * Send this value JSON-serialized back to the client.
+     *
+     * @return [KmmResult] may contain a [OAuth2Exception]
      */
-    suspend fun token(params: TokenRequestParameters): TokenResponseParameters {
+    suspend fun token(params: TokenRequestParameters): KmmResult<TokenResponseParameters> {
         // TODO This is part of the Authorization Server
         when (params.grantType) {
             GRANT_TYPE_CODE -> if (params.code == null || !codeService.verifyCode(params.code))
-                throw OAuth2Exception(Errors.INVALID_CODE)
+                return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_CODE))
+                    .also { Napier.w("token: client did not provide correct code") }
 
             GRANT_TYPE_PRE_AUTHORIZED_CODE -> if (params.preAuthorizedCode == null || !codeService.verifyCode(params.preAuthorizedCode))
-                throw OAuth2Exception(Errors.INVALID_GRANT)
+                return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_GRANT))
+                    .also { Napier.w("token: client did not provide pre authorized code") }
 
             else ->
-                throw OAuth2Exception("No valid grant_type: ${params.grantType}")
+                return KmmResult.failure<TokenResponseParameters>(
+                    OAuth2Exception(Errors.INVALID_REQUEST, "No valid grant_type")
+                ).also { Napier.w("token: client did not provide valid grant_type: ${params.grantType}") }
         }
         if (params.authorizationDetails != null) {
-            // TODO verify
-            // params.authorizationDetails.claims
-            params.authorizationDetails.credentialIdentifiers?.forEach {
-                if (!credentialSchemes.map { it.vcType }.contains(it)) {
-                    throw OAuth2Exception(Errors.INVALID_GRANT)
+            // TODO verify params.authorizationDetails.claims and so on
+            params.authorizationDetails.credentialIdentifiers?.forEach { credentialIdentifier ->
+                if (!credentialSchemes.map { it.vcType }.contains(credentialIdentifier)) {
+                    return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_GRANT))
+                        .also { Napier.w("token: client requested invalid credential identifier: $credentialIdentifier") }
                 }
             }
         }
-        if (params.codeVerifier != null) {
+        params.codeVerifier?.let { codeVerifier ->
             val codeChallenge = codeChallengeMutex.withLock { codeToCodeChallengeMap.remove(params.code) }
-            val codeChallengeCalculated = params.codeVerifier.encodeToByteArray().sha256()
+            val codeChallengeCalculated = codeVerifier.encodeToByteArray().sha256()
                 .encodeToString(Base64UrlStrict)
             if (codeChallenge != codeChallengeCalculated) {
-                throw OAuth2Exception(Errors.INVALID_GRANT)
+                return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_GRANT))
+                    .also { Napier.w("token: client did not provide correct code verifier: $codeVerifier") }
             }
         }
-        return TokenResponseParameters(
+        val result = TokenResponseParameters(
             accessToken = tokenService.provideToken(),
             tokenType = TOKEN_TYPE_BEARER,
             expires = 3600,
@@ -226,6 +238,8 @@ class IssuerService(
                 listOf(it)
             }
         )
+        Napier.i("token returns $result")
+        return KmmResult.success(result)
     }
 
     /**
@@ -237,58 +251,76 @@ class IssuerService(
      * @param authorizationHeader The value of HTTP header `Authorization` sent by the client
      * @param params Parameters the client sent JSON-serialized in the HTTP body
      */
-    @Throws(OAuth2Exception::class, CancellationException::class)
     suspend fun credential(
         authorizationHeader: String, // TODO Change interface to only contain access token, nothing else
         params: CredentialRequestParameters
-    ): CredentialResponseParameters {
+    ): KmmResult<CredentialResponseParameters> {
         if (!tokenService.verifyToken(authorizationHeader.removePrefix(TOKEN_PREFIX_BEARER)))
-            throw OAuth2Exception(Errors.INVALID_TOKEN)
+            return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_TOKEN))
+                .also { Napier.w("credential: client did not provide correct token: $authorizationHeader") }
         val proof = params.proof
-            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+                .also { Napier.w("credential: client did not provide proof of possession") }
         // TODO also support `cwt` as proof
         if (proof.proofType != ProofTypes.JWT || proof.jwt == null)
-            throw OAuth2Exception(Errors.INVALID_PROOF)
+            return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
+                .also { Napier.w("credential: client did provide invalid proof: $proof") }
         val jwsSigned = JwsSigned.parse(proof.jwt)
-            ?: throw OAuth2Exception(Errors.INVALID_PROOF)
+            ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
+                .also { Napier.w("credential: client did provide invalid proof: $proof") }
         val jwt = JsonWebToken.deserialize(jwsSigned.payload.decodeToString()).getOrNull()
-            ?: throw OAuth2Exception(Errors.INVALID_PROOF)
+            ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
+                .also { Napier.w("credential: client did provide invalid JWT in proof: $proof") }
         // TODO verify required claims in OID4VCI 7.2.1.1
         if (jwt.nonce == null || !clientNonceService.verifyAndRemoveNonce(jwt.nonce!!))
-            throw OAuth2Exception(Errors.INVALID_PROOF)
+            return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
+                .also { Napier.w("credential: client did provide invalid nonce in JWT in proof: ${jwt.nonce}") }
         if (jwsSigned.header.type != ProofTypes.JWT_HEADER_TYPE)
-            throw OAuth2Exception(Errors.INVALID_PROOF)
+            return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
+                .also { Napier.w("credential: client did provide invalid header type in JWT in proof: ${jwsSigned.header}") }
         val subjectPublicKey = jwsSigned.header.publicKey
-            ?: throw OAuth2Exception(Errors.INVALID_PROOF)
+            ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
+                .also { Napier.w("credential: client did provide no valid key in header in JWT in proof: ${jwsSigned.header}") }
 
-        val issuedCredentialResult = if (params.format != null) {
-            issuer.issueCredential(
-                subjectPublicKey = subjectPublicKey,
-                attributeTypes = listOfNotNull(params.sdJwtVcType, params.docType)
-                        + (params.credentialDefinition?.types?.toList() ?: listOf()),
-                representation = params.format.toRepresentation(),
-                claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
-            )
-        } else if (params.credentialIdentifier != null) {
-            // TODO this delimiter is probably not safe
-            val representation = CredentialFormatEnum.parse(params.credentialIdentifier.substringAfterLast("-"))
-                ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-            // TODO what to do in case of ISO, look at string constants from EUDIW
-            val vcType = params.credentialIdentifier.substringBeforeLast("-")
-            issuer.issueCredential(
-                subjectPublicKey = subjectPublicKey,
-                attributeTypes = listOf(vcType),
-                representation = representation.toRepresentation(),
-                claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
-            )
-        } else {
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
+        val issuedCredentialResult = when {
+            params.format != null -> {
+                issuer.issueCredential(
+                    subjectPublicKey = subjectPublicKey,
+                    attributeTypes = listOfNotNull(params.sdJwtVcType, params.docType)
+                            + (params.credentialDefinition?.types?.toList() ?: listOf()),
+                    representation = params.format.toRepresentation(),
+                    claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
+                )
+            }
+
+            params.credentialIdentifier != null -> {
+                // TODO this delimiter is probably not safe
+                val representation = CredentialFormatEnum.parse(params.credentialIdentifier.substringAfterLast("-"))
+                    ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+                        .also { Napier.w("credential: client did not provide correct credential identifier: ${params.credentialIdentifier}") }
+                // TODO what to do in case of ISO, look at string constants from EUDIW
+                val vcType = params.credentialIdentifier.substringBeforeLast("-")
+                issuer.issueCredential(
+                    subjectPublicKey = subjectPublicKey,
+                    attributeTypes = listOf(vcType),
+                    representation = representation.toRepresentation(),
+                    claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
+                )
+            }
+
+            else -> {
+                return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+                    .also { Napier.w("credential: client did not provide format or credential identifier in params: $params") }
+            }
         }
         if (issuedCredentialResult.successful.isEmpty()) {
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
+            return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+                .also { Napier.w("credential: issuer did not issue credential: $issuedCredentialResult") }
         }
         // TODO Implement Batch Credential Endpoint for more than one credential response
-        return issuedCredentialResult.successful.first().toCredentialResponseParameters()
+        val result = issuedCredentialResult.successful.first().toCredentialResponseParameters()
+        Napier.i("credential returns $result")
+        return KmmResult.success(result)
     }
 
     private fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
