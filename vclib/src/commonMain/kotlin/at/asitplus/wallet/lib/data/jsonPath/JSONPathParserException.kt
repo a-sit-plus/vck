@@ -5,20 +5,30 @@ import kotlinx.serialization.json.JsonObject
 import org.antlr.v4.kotlinruntime.ParserRuleContext
 
 // specification: https://datatracker.ietf.org/doc/rfc9535/
+
+
 open class JSONPathParserException(message: String) : Exception(message)
 
-class UnexpectedTokenException(ctx: ParserRuleContext) : JSONPathParserException(
+open class JSONPathTypeCheckerException(message: String) : JSONPathParserException(message)
+
+open class JSONPathRuntimeException(message: String) : JSONPathParserException(message)
+
+class UnexpectedTokenException(ctx: ParserRuleContext) : JSONPathRuntimeException(
     "Unexpected text at position ${ctx.position?.let { "${it.start.line}:${it.start.column}" }}: \"${ctx.text.quote()}\""
 )
 
-class MissingKeyException(jsonObject: JsonObject, key: String) : JSONPathParserException(
+class InvalidTestExpressionValueException(expression: ParserRuleContext, value: JSONPathFunctionExpressionValue?) : JSONPathRuntimeException(
+    "Invalid test expression value at position ${expression.position?.let { "${it.start.line}:${it.start.column}" }}: ${expression.toString().quote()} results in: ${value.toString().quote()}"
+)
+
+class InvalidComparableValueException(expression: ParserRuleContext, value: JSONPathFunctionExpressionValue) : JSONPathRuntimeException(
+    "Invalid expression value at position ${expression.position?.let { "${it.start.line}:${it.start.column}" }}: ${expression.toString().quote()} results in: ${value.toString().quote()}"
+)
+
+class MissingKeyException(jsonObject: JsonObject, key: String) : JSONPathRuntimeException(
     "Missing key \"${key.quote()}\" at object \"${jsonObject.toString().quote()}\""
 )
 
-class UnknownFunctionExtensionException(functionExtensionName: String) :JSONPathParserException(
+class UnknownFunctionExtensionException(functionExtensionName: String) :JSONPathRuntimeException(
     "Unknown function extension: $functionExtensionName"
-)
-
-class InvalidValueException(value: JSONPathFilterExpressionValue) :JSONPathParserException(
-    "Test expression must either result in NodeListValue or a LogicalValue, but received: $value"
 )

@@ -1,475 +1,190 @@
-/*
-Source: https://datatracker.ietf.org/doc/rfc9535/
-- Appendix A
-
-This has been manually translated from the abnf format.
-Translation considerations:
-- Alphabetic characters in quoted strings are case-insensitive in ABNF
-    - many characters are therefore represented as their UTF-8 codepoint in the abnf grammar
+/* converted from abnf using tool: http://www.robertpinchbeck.com/abnf_to_antlr/Default.aspx
+Conversion Notes:
+1. replaced the abnf values for true, false and null with strings, which are case-insensitive in abnf, and correct the resulting production rules for true, false and null
+2. added grammar name
+3. moved lexer rules below parser rules
+4. replaced COMPARISON_OP with one parser rule for each operator
+5. created parser rule for wildcard selector, true, false and null
 */
 
 grammar JSONPath;
 
-jsonpathQuery
-    : rootIdentifier segments
-    ;
 
-segments
-    : (WHITESPACE? segment)*
-    ;
+jsonpath_query      : rootSegment segments;
+rootSegment: ROOT_IDENTIFIER;
+segments            : (s segment)*;
+s                   : B*;        // optional blank space
+selector            : name_selector |
+                      wildcardSelector |
+                      slice_selector |
+                      index_selector |
+                      filter_selector;
+wildcardSelector    : WILDCARD_SELECTOR;
+name_selector       : string_literal;
 
-BLANK
-    : ' '
-    | '\t'
-    | '\n'
-    | '\r'
-    ;
+string_literal      : ('\u0022' double_quoted* '\u0022') |     // "string"
+                      ('\u0027' single_quoted* '\u0027');       // 'string'
 
-WHITESPACE
-    : BLANK+
-    ; // optional blank space
+double_quoted       : UNESCAPED |
+                      SQUOTE      |                    // '
+                      (ESC DQUOTE)  |                    // \"
+                      (ESC escapable);
 
-rootIdentifier: ROOT_IDENTIFIER;
-ROOT_IDENTIFIER
-    : '$'
-    ;
+single_quoted       : UNESCAPED |
+                      DQUOTE      |                    // "
+                      (ESC SQUOTE)  |                    // \'
+                      (ESC escapable);
 
-selector
-    : nameSelector
-    | wildcardSelector
-    | sliceSelector
-    | indexSelector
-    | filterSelector
-    ;
+escapable           : '\u0062' | // b BS backspace U+0008
+                      '\u0066' | // f FF form feed U+000C
+                      '\u006E' | // n LF line feed U+000A
+                      '\u0072' | // r CR carriage return U+000D
+                      '\u0074' | // t HT horizontal tab U+0009
+                      '/'  | // / slash (solidus) U+002F
+                      '\\'  | // \ backslash (reverse solidus) U+005C
+                      ('\u0075' hexchar); //  uXXXX U+XXXX
 
-nameSelector
-    : stringLiteral
-    ;
+hexchar             : non_surrogate |
+                      (high_surrogate '\\' '\u0075' low_surrogate);
+non_surrogate       : ((DIGIT | ('A' | 'a')|('B' | 'b')|('C' | 'c') | ('E' | 'e')|('F' | 'f')) (hexdig hexdig hexdig)) |
+                      (('D' | 'd') NUMBERS_ZERO_UNTIL_SEVEN (hexdig hexdig) );
+high_surrogate      : ('D' | 'd') ('8'|'9'|('A' | 'a')|('B' | 'b')) (hexdig hexdig);
+low_surrogate       : ('D' | 'd') (('C' | 'c')|('D' | 'd')|('E' | 'e')|('F' | 'f')) (hexdig hexdig);
 
-stringLiteral
-    : doubleQuotedLiteral
-    | singleQuotedLiteral
-    ;
+hexdig              : DIGIT | ('A' | 'a') | ('B' | 'b') | ('C' | 'c') | ('D' | 'd') | ('E' | 'e') | ('F' | 'f');
+index_selector      : int_1;                        // decimal integer
 
-doubleQuotedLiteral
-    : DQUOTE doubleQuoted* DQUOTE // "string"
-    ;
+int_1                 : '0' |
+                      (('-')? DIGIT1 DIGIT*);      // - optional
+slice_selector      : (start s)? ':' s (end s)? (':' (s step )?)?;
 
-singleQuotedLiteral
-    : SQUOTE singleQuoted* SQUOTE // 'string'
-    ;
+start               : int_1;       // included in selection
+end                 : int_1;       // not included in selection
+step                : int_1;       // default: 1
+filter_selector     : '?' s logical_expr;
+logical_expr        : logical_or_expr;
+logical_or_expr     : logical_and_expr (s ('|' '|') s logical_and_expr)*;
+                        // disjunction
+                        // binds less tightly than conjunction
+logical_and_expr    : basic_expr (s ('&' '&') s basic_expr)*;
+                        // conjunction
+                        // binds more tightly than disjunction
 
-doubleQuoted
-    : unescaped
-    | SQUOTE
-    | ESC DQUOTE
-    | ESC escapable
-    ;
+basic_expr          : paren_expr |
+                      comparison_expr |
+                      test_expr;
 
-SQUOTE
-    : '\''
-    ;
+paren_expr          : (LOGICAL_NOT_OP s)? '(' s logical_expr s ')';
+                                        // parenthesized expression
+test_expr           : (LOGICAL_NOT_OP s)?
+                      (filter_query | // existence/non-existence
+                       function_expr); // LogicalType or NodesType
+filter_query        : rel_query | jsonpath_query;
+rel_query           : CURRENT_NODE_IDENTIFIER segments;
+comparison_expr     : comparable s comparisonOp s comparable;
+literal             : number | string_literal |
+                      true | false | null;
+null: NULL_1;
+true: TRUE_1;
+false: FALSE_1;
+comparable          : literal |
+                      singular_query | // singular query value
+                      function_expr;    // ValueType
 
-DQUOTE
-    : '"'
-    ;
+singular_query      : rel_singular_query | abs_singular_query;
+rel_singular_query  : CURRENT_NODE_IDENTIFIER singular_query_segments;
+abs_singular_query  : ROOT_IDENTIFIER singular_query_segments;
+singular_query_segments : (s (name_segment | index_segment))*;
+name_segment        : ('[' name_selector ']') |
+                      ('.' member_name_shorthand);
+index_segment       : '[' index_selector ']';
+number              : (int_1 | ('-' '0')) ( frac )? ( exp )?; // decimal number
+frac                : '.' DIGIT+;                  // decimal fraction
+exp                 : ('E' | 'e') ( '-' | '+' )? DIGIT+;    // decimal exponent
+function_name       : function_name_first function_name_char*;
+function_name_first : LCALPHA;
+function_name_char  : function_name_first | '_' | DIGIT;
 
-singleQuoted
-    : unescaped
-    | DQUOTE
-    | ESC SQUOTE
-    | ESC escapable
-    ;
+function_expr       : function_name '(' s (function_argument
+                         (s ',' s function_argument)*)? s ')';
+function_argument   : literal |
+                      filter_query | // (includes singular-query)
+                      logical_expr |
+                      function_expr;
+segment             : child_segment | descendant_segment;
+child_segment       : bracketed_selection |
+                      ('.'
+                       (WILDCARD_SELECTOR |
+                        member_name_shorthand));
 
-ESC
-    : BACKSLASH
-    ;
+bracketed_selection : '[' s selector (s ',' s selector)* s ']';
 
-SLASH
-    : '/'
-    ;
+member_name_shorthand : NAME_FIRST name_char*;
+name_char           : NAME_FIRST | DIGIT;
+descendant_segment  : ('.' '.') (bracketed_selection |
+                            WILDCARD_SELECTOR |
+                            member_name_shorthand);
 
-BACKSLASH
-    : '\\'
-    ;
-
-unescaped: UNESCAPED;
-UNESCAPED: [\u0020-\u0021\u0023-\u0026\u0028-\u005B\u005D-\uD7FF\uE000-\u{10FFFF}];
-
-escapable: ESCAPABLE;
-ESCAPABLE
-    : 'b'
-    | 'f'
-    | 'n'
-    | 'r'
-    | 't'
-    | SLASH
-    | BACKSLASH
-    | 'u' HEXCHAR   // unicode characters uXXXX, U+XXXX
-    ;
-
-HEXCHAR
-    : NON_SURROGATE
-    | (HIGH_SURROGATE BACKSLASH 'u' LOW_SURROGATE)
-    ;
-
-NON_SURROGATE
-    : ((DIGIT | 'a' | 'A' | 'b' | 'B' | 'c' | 'C' | /* NO D */ 'e' | 'E' | 'f' | 'F') HEXDIG{3})
-    | (('d' | 'D') [\u0030-\u0037] HEXDIG{2} )
-    ;
-
-HIGH_SURROGATE
-    : ('d' | 'D') ('8'|'9'| 'a' | 'A' | 'b' | 'B') HEXDIG{2}
-    ;
-
-LOW_SURROGATE
-    : ('d' | 'D') ('c' | 'C' |'d' | 'D' | 'e' | 'E' | 'f' | 'F') HEXDIG{2}
-    ;
-
-HEXDIG
-    : DIGIT
-    | 'a' | 'A'
-    | 'b' | 'B'
-    | 'c' | 'C'
-    | 'd' | 'D'
-    | 'e' | 'E'
-    | 'f' | 'F'
-    ;
-
-wildcardSelector: WILDCARD_SELECTOR;
-WILDCARD_SELECTOR
-    : '*'
-    ;
-
-indexSelector
-    : int
-    ;
-
-int
-    : '0'
-    | (minus? DIGIT1 DIGIT*)
-    ;
-
-plus: PLUS;
-PLUS
-    : '+'
-    ;
-
-minus: MINUS;
-MINUS
-    : '-'
-    ;
-
-DIGIT1
-    : [\u0031-\u0039]
-    ; // 1-9 nonZero digit
-
-
-
-sliceSelector
-    : (start WHITESPACE?)? ':' WHITESPACE? (end WHITESPACE?)? (':' (WHITESPACE? step )?)?
-    ;
-
-start
-    : int
-    ; // included in selection
-
-end
-    : int
-    ; // not included in selection
-
-step
-    : int
-    ; // default: 1
-
-
-
-filterSelector
-    : '?' WHITESPACE? logicalExpr
-    ;
-
-logicalExpr
-    : logicalOrExpr
-    ;
-
-logicalOrExpr
-    : logicalAndExpr (WHITESPACE? '||' WHITESPACE? logicalAndExpr)*
-    ; // disjunction; binds less tightly than conjunction
-
-logicalAndExpr
-    : basicExpr (WHITESPACE? '&&' WHITESPACE? basicExpr)*
-    ; // conjunction; binds more tightly than disjunction
-
-basicExpr
-    : parenExpr
-    | comparisonExpr
-    | testExpr
-    ;
-
-parenExpr
-    : (LOGICAL_NOT_OP WHITESPACE?)? '(' WHITESPACE? logicalExpr WHITESPACE? ')'
-    ; // parenthesized expression
-
-LOGICAL_NOT_OP
-    : '!'
-    ; // logical NOT operator
-
-testExpr
-    : (LOGICAL_NOT_OP WHITESPACE?)? (filterQuery | functionExpr)
-    ;
-
-filterQuery
-    : relQuery | jsonpathQuery
-    ;
-
-relQuery
-    : CURRENT_NODE_IDENTIFIER segments
-    ;
-
-CURRENT_NODE_IDENTIFIER
-    : '@'
-    ;
-
-comparisonExpr
-    : comparable WHITESPACE? comparisonOp WHITESPACE? comparable
-    ;
-
-literal
-    : number
-    | stringLiteral
-    | true | false
-    | null
-    ;
-
-comparable
-    : literal
-    | singularQuery // singular query value
-    | functionExpr // ValueType
-    ;
 
 comparisonOp
     : equalsOp | notEqualsOp
     | smallerThanOp | greaterThanOp
-    | smallerOrEqualsOp | greaterOrEqualsOp
+    | smallerThanOrEqualsOp | greaterThanOrEqualsOp
     ;
 
 equalsOp: EQUALS_OP;
-EQUALS_OP
-    : '=='
-    ;
-
 notEqualsOp: NOT_EQUALS_OP;
-NOT_EQUALS_OP
-    : '!='
-    ;
-
 smallerThanOp: SMALLER_THAN_OP;
-SMALLER_THAN_OP
-    : '<'
-    ;
+greaterThanOp: GREATHER_THAN_OP;
+smallerThanOrEqualsOp: SMALLER_THAN_OR_EQUALS_OP;
+greaterThanOrEqualsOp: GREATER_THAN_OR_EQUALS_OP;
 
-greaterThanOp: GREATER_THAN_OP;
-GREATER_THAN_OP
-    : '>'
-    ;
 
-smallerOrEqualsOp: SMALLER_OR_EQUALS_OP;
-SMALLER_OR_EQUALS_OP
-    : '<='
-    ;
+SQUOTE: '\u0027';
+DQUOTE: '\u0022';
 
-greaterOrEqualsOp: GREATER_OR_EQUALS_OP;
-GREATER_OR_EQUALS_OP
-    : '>='
-    ;
+TRUE_1                : 'true';                // true
+FALSE_1               : 'false';             // false
+NULL_1                : 'null';                // null
+CURRENT_NODE_IDENTIFIER : '@';
+LOGICAL_NOT_OP      : '!';               // logical NOT operator
 
-singularQuery
-    : relSingularQuery
-    | absSingularQuery
-    ;
+DIGIT               : '\u0030'..'\u0039';              // 0-9
+ALPHA               : '\u0041'..'\u005A' | '\u0061'..'\u007A';    // A-Z / a-z
 
-relSingularQuery
-    : CURRENT_NODE_IDENTIFIER singularQuerySegments
-    ;
+NAME_FIRST          : ALPHA |
+                      '_'   |
+                      '\u0080'..'\uD7FF' |
+                         // skip surrogate code points
+                      '\uE000'..'\u{10FFFF}';
 
-absSingularQuery
-    : ROOT_IDENTIFIER singularQuerySegments
-    ;
+WILDCARD_SELECTOR   : '*';
+LCALPHA             : '\u0061'..'\u007A';  // "a".."z"
 
-singularQuerySegments
-    : (WHITESPACE? (nameSegment | indexSegment))*
-    ;
+EQUALS_OP: '==';
+NOT_EQUALS_OP: '!=';
+SMALLER_THAN_OP: '<';
+GREATHER_THAN_OP: '>';
+SMALLER_THAN_OR_EQUALS_OP: '<=';
+GREATER_THAN_OR_EQUALS_OP: '>=';
 
-nameSegment
-    : ('[' nameSelector ']')
-    | ('.' memberNameShorthand)
-    ;
 
-indexSegment
-    : '[' indexSelector ']'
-    ;
+B                   : '\u0020' |    // Space
+                      '\u0009' |    // Horizontal tab
+                      '\u000A' |    // Line feed or New line
+                      '\u000D';      // Carriage return
+ROOT_IDENTIFIER     : '$';
 
-number
-    : (int | '-0') frac? exp?
-    ; // decimal number
+ESC                 : '\u005C';                           // \ backslash
 
-frac
-    : '.' DIGIT+
-    ; // decimal fraction
-
-exp
-    : ('e' | 'E') ( minus | plus )? DIGIT+
-    ; // decimal exponent
-
-true: TRUE;
-TRUE
-    : 'true'
-    ;
-
-false: FALSE;
-FALSE
-    : 'false'
-    ;
-
-null: NULL;
-NULL
-    : 'null'
-    ;
-
-functionName
-    : functionNameFirst functionNameChar*
-    ;
-
-functionNameFirst
-    : LCALPHA
-    ;
-
-functionNameChar
-    : functionNameFirst
-    | '_'
-    | DIGIT
-    ;
-
-LCALPHA
-    : [\u0065-\u0090]
-    ; // 'a'..'z'
-
-functionExpr
-    : functionName '(' WHITESPACE? (functionArgument (WHITESPACE? ',' WHITESPACE? functionArgument)*)? WHITESPACE? ')'
-    ;
-
-functionArgument
-    : literal
-    | filterQuery // includes singular-query
-    | logicalExpr
-    | functionExpr
-    ;
-
-segment
-    : childSegment
-    | descendantSegment
-    ;
-
-childSegment
-    : bracketedSelection
-    | '.' (wildcardSelector | memberNameShorthand)
-    ;
-
-bracketedSelection
-    : '[' WHITESPACE? selector (WHITESPACE? ',' WHITESPACE? selector)* WHITESPACE? ']'
-    ;
-
-memberNameShorthand
-    : nameFirst nameChar*
-    ;
-
-nameFirst: NAME_FIRST;
-NAME_FIRST
-    : ALPHA
-    | '_'
-    | [\u0080-\uD7FF]
-    | [\uE000-\u{10FFFF}]
-    ;
-
-nameChar
-    : nameFirst
-    | DIGIT
-    ;
-
-DIGIT
-    : [\u0030-\u0039]
-    ; // 0-9
-
-ALPHA
-    : [\u0041-\u005A]
-    | [\u0061-\u007A]
-    ; // A-Z | a-z
-
-descendantSegment
-    : '..' (
-        bracketedSelection
-        | wildcardSelector
-        | memberNameShorthand
-    )
-    ;
-
-normalizedPath
-    : ROOT_IDENTIFIER normalIndexSegment*
-    ;
-
-normalIndexSegment
-    : '[' normalSelector ']'
-    ;
-
-normalSelector
-    : normalNameSelector
-    | normalIndexSelector
-    ;
-
-normalNameSelector
-    : DQUOTE normalSingleQuoted* DQUOTE
-    ; // 'string'
-
-normalSingleQuoted
-    : normalUnescaped
-    | ESC normalEscapable
-    ;
-
-normalUnescaped: NORMAL_UNESCAPED;
-NORMAL_UNESCAPED
-    : [\u0020-\u0026]
-    | [\u0028-\u005B]
-    | [\u005D-\uD7FF]
-    | [\uE000-\u{10FFFF}]
-    ;
-
-normalEscapable: NORMAL_ESCAPABLE;
-NORMAL_ESCAPABLE
-    : 'b' // BS backspace U+0008
-    | 'f' // FF form feed U+000C
-    | 'n' // LF line feed U+000A
-    | 'r' // CR carriage return U+000D
-    | 't' // HT horizontal tab U+0009
-    | SQUOTE
-    | BACKSLASH
-    | 'u' NORMAL_HEXCHAR // certain values u00xx U+00XX
-    ;
-
-NORMAL_HEXCHAR
-    : '00'
-    (
-        ('0' [\u0030-\u0037]) // '00'-'07'
-        | ('0b')
-        | ('0' [\u0065-\u0066]) // '0e'-'0f'
-        | ('1' NORMAL_HEXDIG)
-    )
-    ;
-
-NORMAL_HEXDIG
-    : DIGIT
-    | [\u0061-\u0066]
-    ; // '0'-'9', 'a'-'f'
-
-normalIndexSelector
-    : '0' | (DIGIT1 *DIGIT)
-    ; // nonNegative decimal integer
+UNESCAPED           : '\u0020'..'\u0021' |                      // see RFC 8259
+                         // omit 0x22 "
+                      '\u0023'..'\u0026' |
+                         // omit 0x27 '
+                      '\u0028'..'\u005B' |
+                         // omit 0x5C \
+                      '\u005D'..'\uD7FF' |
+                         // skip surrogate code points
+                      '\uE000'..'\u{10FFFF}';
+NUMBERS_ZERO_UNTIL_SEVEN: [\u0030-\u0037];
+DIGIT1              : '\u0031'..'\u0039';                    // 1-9 non-zero digit

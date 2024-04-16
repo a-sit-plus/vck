@@ -8,16 +8,15 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 
-sealed interface JSONPathFilterExpressionValue {
-    object Nothing : JSONPathFilterExpressionValue
-    class LogicalValue(val isTrue: Boolean) : JSONPathFilterExpressionValue
-    class NodeListValue(val nodeList: List<JsonElement>) : JSONPathFilterExpressionValue
+sealed interface JSONPathExpressionValue {
+    class LogicalValue(val isTrue: Boolean) : JSONPathExpressionValue
+    class NodeListValue(val nodeList: List<JsonElement>) : JSONPathExpressionValue
 
-    sealed interface ValueTypeValue : JSONPathFilterExpressionValue
+    sealed interface ValueTypeValue : JSONPathExpressionValue
+    object Nothing : ValueTypeValue
     object NullValue : ValueTypeValue
     class StringValue(val string: String) : ValueTypeValue
     sealed class NumberValue : ValueTypeValue {
-        // TODO: support other number formats?
         class DoubleValue(val double: Double) : NumberValue() {
             override operator fun compareTo(other: NumberValue): Int = when (other) {
                 is DoubleValue -> this.double.compareTo(other.double)
@@ -49,19 +48,19 @@ sealed interface JSONPathFilterExpressionValue {
     class JsonArrayValue(val jsonArray: JsonArray) : ValueTypeValue
 }
 
-internal fun JsonElement.toJSONPathFilterExpressionValue(): JSONPathFilterExpressionValue {
+internal fun JsonElement.toJSONPathFilterExpressionValue(): JSONPathExpressionValue {
     return when (this) {
-        is JsonArray -> JSONPathFilterExpressionValue.JsonArrayValue(this)
-        is JsonObject -> JSONPathFilterExpressionValue.JsonObjectValue(this)
+        is JsonArray -> JSONPathExpressionValue.JsonArrayValue(this)
+        is JsonObject -> JSONPathExpressionValue.JsonObjectValue(this)
         is JsonPrimitive -> if (this.isString) {
-            JSONPathFilterExpressionValue.StringValue(this.content)
+            JSONPathExpressionValue.StringValue(this.content)
         } else this.booleanOrNull?.let {
-            JSONPathFilterExpressionValue.LogicalValue(it)
+            JSONPathExpressionValue.LogicalValue(it)
         } ?: this.doubleOrNull!!.let {
-            // TODO: maybe support other number formats like Long?
-            JSONPathFilterExpressionValue.NumberValue.DoubleValue(it)
+            // TODO: maybe support other number formats like Long that don't fit into a double?
+            JSONPathExpressionValue.NumberValue.DoubleValue(it)
         }
 
-        JsonNull -> JSONPathFilterExpressionValue.NullValue
+        JsonNull -> JSONPathExpressionValue.NullValue
     }
 }

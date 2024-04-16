@@ -10,7 +10,7 @@ import kotlin.math.min
 
 /*
 https://datatracker.ietf.org/doc/html/rfc7493
-https://datatracker.ietf.org/doc/rfc9535/
+https://datatracker.ietf.org/doc/html/rfc9535/
 https://datatracker.ietf.org/doc/html/rfc8259
  */
 
@@ -217,7 +217,7 @@ sealed interface JSONPathSelector {
         }
     }
 
-    class DescendantSelector() : JSONPathSelector {
+    class DescendantSelector : JSONPathSelector {
         override fun invoke(
             rootNode: JsonElement,
             currentNode: JsonElement,
@@ -243,9 +243,20 @@ sealed interface JSONPathSelector {
     }
 
     class FilterSelector(
-        val ctx: JSONPathParser.LogicalExprContext,
-        val functionExtensions: Map<String, FunctionExtensionEvaluator>,
+        val ctx: JSONPathParser.Logical_exprContext,
+        val functionExtensionManager: JSONPathFunctionExtensionManager,
+        val errorHandler: JSONPathErrorHandler,
     ) : JSONPathSelector {
+        init {
+            val hasValidTypes = JSONPathTypeChecker(
+                functionExtensionManager = functionExtensionManager,
+                errorHandler = errorHandler, // TODO: add error handler
+            ).visitLogical_expr(ctx)
+            if(hasValidTypes == false) {
+                throw JSONPathTypeCheckerException(errorHandler.toString())
+            }
+        }
+
         override fun invoke(
             rootNode: JsonElement,
             currentNode: JsonElement,
@@ -267,13 +278,13 @@ sealed interface JSONPathSelector {
                     )
                 }
             }.filter {
-                JSONPathLogicalFilterExpressionEvaluator(
+                JSONPathExpressionEvaluator(
                     rootNode = rootNode,
                     currentNode = it.value,
-                    functionExtensions = functionExtensions,
-                ).visitLogicalExpr(
+                    functionExtensionManager = functionExtensionManager,
+                ).visitLogical_expr(
                     ctx
-                )
+                ).isTrue
             }
         }
     }
