@@ -21,6 +21,7 @@ Release 3.6.0:
  - `IssuerService`: Change parameter of `credential()` from `authorizationHeader` to `accessToken`, requiring the plain access token
  - `WalletService`: Make public API functions suspending
  - `WalletService`: Implement proving possesion of private key with CBOR Web Tokens
+ - `WalletService`: Move constructor parameters to `requestOptions` for every method call
 
 Release 3.5.0:
 - Kotlin 1.9.23
