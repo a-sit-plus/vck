@@ -226,7 +226,7 @@ class WalletService(
             requestOptions.requestedAttributes,
             proof
         )
-        Napier.i("createCredentialRequestCwt returns $result")
+        Napier.i("createCredentialRequestJwt returns $result")
         return KmmResult.success(result)
     }
 

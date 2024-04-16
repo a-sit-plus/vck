@@ -1,28 +1,31 @@
 # Changelog
 
 Release 3.6.0:
- - `OidcSiopWallet.AuthenticationResponseResult.Post`: Replace property `body: String` with `params: Map<String, String>`, to be posted to the Relying Party. Clients may call extension function `at.asitplus.wallet.lib.oidvci.formUrlEncode` on `params` to get the encoded `body` for HTTP calls.
- - Move `JsonWebKeySet` to library `at.asitplus.crypto:datatypes-jws`
- - `DefaultVerifierJwsService` may load public keys for verifying JWS from a JWK Set URL in the header, see constructor argument `jwkSetRetriever` (cf. to `OidcSiopWallet`)
- - `OidcSiopWallet` and `OidcSiopVerifier` implement response mode `direct_post.jwt`, as per OpenID for Verifiable Presentations draft 20
- - `OidcSiopVerifier`: Add constructor parameter `attestationJwt` to create authentication requests as JWS with an Verifier Attestation JWT in header `jwt` (see OpenId4VP draft 20)
- - `OidcSiopVerifier`: Rename `createAuthnRequestAsRequestObject()` to `createAuthnRequestAsSignedRequestObject()`, also changing the return type
- - `OidcSiopVerifier`: Add option to set `client_metadata_uri` instead of embedding client metadata in authentication requests
- - `OidcSiopVerifier`: Refactor list of parameters for customizing authentication requests to single data class `RequestOptions`
- - `OidcSiopWallet`: Rename constructor parameter `jwkSetRetriever` to a more general `remoteResourceRetriever`, to use it for various parameters defined by reference
- - `OidcSiopWallet`: Replace constructor parameter `verifierJwsService` with `requestObjectJwsVerifier` to allow callers to verify JWS objects with a pre-registered key (as in the OpenId4VP client ID scheme "pre-registered")
+ - Self-Issued OpenID Provider v2:
+   - `OidcSiopWallet.AuthenticationResponseResult.Post`: Replace property `body: String` with `params: Map<String, String>`, to be posted to the Relying Party. Clients may call extension function `at.asitplus.wallet.lib.oidvci.formUrlEncode` on `params` to get the encoded `body` for HTTP calls.
+   - Move `JsonWebKeySet` to library `at.asitplus.crypto:datatypes-jws`
+   - `DefaultVerifierJwsService` may load public keys for verifying JWS from a JWK Set URL in the header, see constructor argument `jwkSetRetriever` (cf. to `OidcSiopWallet`)
+   - `OidcSiopWallet` and `OidcSiopVerifier` implement response mode `direct_post.jwt`, as per OpenID for Verifiable Presentations draft 20
+   - `OidcSiopVerifier`: Add constructor parameter `attestationJwt` to create authentication requests as JWS with an Verifier Attestation JWT in header `jwt` (see OpenId4VP draft 20)
+   - `OidcSiopVerifier`: Rename `createAuthnRequestAsRequestObject()` to `createAuthnRequestAsSignedRequestObject()`, also changing the return type
+   - `OidcSiopVerifier`: Add option to set `client_metadata_uri` instead of embedding client metadata in authentication requests
+   - `OidcSiopVerifier`: Refactor list of parameters for customizing authentication requests to single data class `RequestOptions`
+   - `OidcSiopWallet`: Rename constructor parameter `jwkSetRetriever` to a more general `remoteResourceRetriever`, to use it for various parameters defined by reference
+   - `OidcSiopWallet`: Replace constructor parameter `verifierJwsService` with `requestObjectJwsVerifier` to allow callers to verify JWS objects with a pre-registered key (as in the OpenId4VP client ID scheme "pre-registered")
+ - OpenID for Verifiable Credential Issuance:
+   - Implement OpenID for Verifiable Credential Issuance draft 13, from 2024-02-08
+   - Rename `IssuerService` to `CredentialIssuer`
+   - Implement RFC 7636 Proof Key for Code Exchange for OpenID for Verifiable Credential Issuance implementations, i.e. `IssuerService`/`CredentialIssuer` and `WalletService`
+   - `IssuerService`/`CredentialIssuer`: Make public API functions suspending, also return `KmmResult` to transport exceptions
+   - `IssuerService`/`CredentialIssuer`: Change parameter of `credential()` from `authorizationHeader` to `accessToken`, requiring the plain access token
+   - `IssuerService`/`CredentialIssuer`: Extract responsibilities of an OAuth Authorizaiton Server into `AuthorizationService`
+   - `WalletService`: Make public API functions suspending
+   - `WalletService`: Implement proving possesion of private key with CBOR Web Tokens
+   - `WalletService`: Move constructor parameters to `requestOptions` for every method call
  - Dependency updates
    - Conventions 1.9.23+20240410
      - Ktor 2.3.10
      - Auto-publish version catalogs
- - Implement OpenID for Verifiable Credential Issuance draft 13, from 2024-02-08
- - Implement RFC 7636 Proof Key for Code Exchange for OpenID for Verifiable Credential Issuance implementations, i.e. `IssuerService` and `WalletService`
- - `IssuerService`: Make public API functions suspending, also return `KmmResult` to transport exceptions
- - `IssuerService`: Change parameter of `credential()` from `authorizationHeader` to `accessToken`, requiring the plain access token
- - `IssuerService`: Extract responsibilities of an OAuth Authorizaiton Server into `AuthorizationService`
- - `WalletService`: Make public API functions suspending
- - `WalletService`: Implement proving possesion of private key with CBOR Web Tokens
- - `WalletService`: Move constructor parameters to `requestOptions` for every method call
 
 Release 3.5.0:
 - Kotlin 1.9.23

@@ -8,6 +8,7 @@ import at.asitplus.crypto.datatypes.jws.JsonWebToken
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ProofTypes
@@ -21,11 +22,11 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
  * Implemented from [OpenID for Verifiable Credential Issuance]
  * (https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), Draft 13, 2024-02-08.
  */
-class IssuerService(
+class CredentialIssuer(
     /**
      * Used to get the user data, and access tokens.
      */
-    private val authorizationService: OpenIdAuthorizationServer,
+    private val authorizationService: OAuth2AuthorizationServer,
     /**
      * Used to actually issue the credential.
      */
@@ -37,14 +38,19 @@ class IssuerService(
     /**
      * Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients.
      */
-    private val publicContext: String = "https://wallet.a-sit.at/",
+    private val publicContext: String = "https://wallet.a-sit.at/credential-issuer",
     /**
      * Used to build [IssuerMetadata.credentialEndpointUrl], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [credential].
      */
     private val credentialEndpointPath: String = "/credential",
+    /**
+     * Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfo]
+     */
+    private val buildIssuerCredentialDataProviderOverride: (OidcUserInfo) -> IssuerCredentialDataProvider = {
+        OAuth2IssuerCredentialDataProvider(it)
+    }
 ) {
-
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`
      */
@@ -66,7 +72,7 @@ class IssuerService(
      * Offer all [credentialSchemes] to clients.
      * Callers may need to transport this in [CredentialOfferUrlParameters] to (HTTPS) clients.
      */
-    fun credentialOffer(): CredentialOffer = CredentialOffer(
+    suspend fun credentialOffer(): CredentialOffer = CredentialOffer(
         credentialIssuer = publicContext,
         configurationIds = credentialSchemes.flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).keys },
         grants = CredentialOfferGrants(
@@ -74,14 +80,16 @@ class IssuerService(
                 issuerState = uuid4().toString(), // TODO remember this state, for subsequent requests from the Wallet
                 authorizationServer = authorizationService.publicContext
             ),
-            preAuthorizedCode = CredentialOfferGrantsPreAuthCode(
-                preAuthorizedCode = authorizationService.providePreAuthorizedCode(),
-                transactionCode = CredentialOfferGrantsPreAuthCodeTransactionCode(
-                    inputMode = "numeric",
-                    length = 16,
-                ),
-                authorizationServer = authorizationService.publicContext
-            )
+            preAuthorizedCode = authorizationService.providePreAuthorizedCode()?.let {
+                CredentialOfferGrantsPreAuthCode(
+                    preAuthorizedCode = it,
+                    transactionCode = CredentialOfferGrantsPreAuthCodeTransactionCode(
+                        inputMode = "numeric",
+                        length = 16,
+                    ),
+                    authorizationServer = authorizationService.publicContext
+                )
+            }
         )
     )
 
@@ -161,8 +169,7 @@ class IssuerService(
         val userInfo = authorizationService.getUserInfo(accessToken).getOrNull()
             ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_TOKEN))
                 .also { Napier.w("credential: client did not provide correct token: $accessToken") }
-        // NOTE: In a real deployment, the Credential Issuer would send the access token
-        // to the Authorization Server's User Info endpoint to receive the user's attributes
+
         val issuedCredentialResult = when {
             params.format != null -> {
                 issuer.issueCredential(
@@ -170,21 +177,23 @@ class IssuerService(
                     attributeTypes = listOfNotNull(params.sdJwtVcType, params.docType)
                             + (params.credentialDefinition?.types?.toList() ?: listOf()),
                     representation = params.format.toRepresentation(),
-                    claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
+                    claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
+                    dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
                 )
             }
 
             params.credentialIdentifier != null -> {
-                // TODO this delimiter is probably not safe
-                val representation = CredentialFormatEnum.parse(params.credentialIdentifier.substringAfterLast("-"))
-                    ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+                val (vcType, representation) = decodeFromCredentialIdentifier(params.credentialIdentifier)
+                if (vcType.isEmpty()) {
+                    return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                         .also { Napier.w("credential: client did not provide correct credential identifier: ${params.credentialIdentifier}") }
-                val vcType = params.credentialIdentifier.substringBeforeLast("-")
+                }
                 issuer.issueCredential(
                     subjectPublicKey = subjectPublicKey,
                     attributeTypes = listOf(vcType),
                     representation = representation.toRepresentation(),
-                    claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
+                    claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
+                    dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
                 )
             }
 

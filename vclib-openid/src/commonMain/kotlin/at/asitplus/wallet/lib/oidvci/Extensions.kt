@@ -21,7 +21,7 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
         supportedBindingMethods = listOf(OpenIdConstants.BINDING_METHOD_COSE_KEY),
         supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier },
     ),
-    "$vcType-${CredentialFormatEnum.JWT_VC.text}" to SupportedCredentialFormat(
+    encodeToCredentialIdentifier(CredentialFormatEnum.JWT_VC) to SupportedCredentialFormat(
         format = CredentialFormatEnum.JWT_VC,
         scope = vcType,
         credentialDefinition = SupportedCredentialFormatDefinition(
@@ -31,7 +31,7 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
         supportedBindingMethods = listOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
         supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier },
     ),
-    "$vcType-${CredentialFormatEnum.VC_SD_JWT.text}" to SupportedCredentialFormat(
+    encodeToCredentialIdentifier(CredentialFormatEnum.VC_SD_JWT) to SupportedCredentialFormat(
         format = CredentialFormatEnum.VC_SD_JWT,
         scope = vcType,
         sdJwtVcType = vcType,
@@ -42,6 +42,21 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
         supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier },
     )
 )
+
+/**
+ * Reverse functionality of [decodeFromCredentialIdentifier]
+ */
+private fun ConstantIndex.CredentialScheme.encodeToCredentialIdentifier(format: CredentialFormatEnum) =
+    "$vcType#${format.text}"
+
+/**
+ * Reverse functionality of [ConstantIndex.CredentialScheme.encodeToCredentialIdentifier]
+ */
+fun decodeFromCredentialIdentifier(input: String): Pair<String, CredentialFormatEnum> {
+    val vcTypeOrIsoNamespace = input.substringBeforeLast("#")
+    val format = CredentialFormatEnum.parse(input.substringAfterLast("#")) ?: CredentialFormatEnum.MSO_MDOC
+    return Pair(vcTypeOrIsoNamespace, format)
+}
 
 fun CredentialFormatEnum.toRepresentation() = when (this) {
     CredentialFormatEnum.JWT_VC_SD_UNOFFICIAL -> ConstantIndex.CredentialRepresentation.SD_JWT

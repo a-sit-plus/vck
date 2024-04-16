@@ -77,12 +77,16 @@ interface Issuer {
      * key in [subjectPublicKey] in the format specified by [representation].
      * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
      * [claimNames] to request only some claims (if supported by the representation).
+     *
+     * @param dataProviderOverride Set this parameter to override the default [IssuerCredentialDataProvider] for this
+     *                             issuing process
      */
     suspend fun issueCredential(
         subjectPublicKey: CryptoPublicKey,
         attributeTypes: Collection<String>,
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>? = null,
+        dataProviderOverride: IssuerCredentialDataProvider? = null,
     ): IssuedCredentialResult
 
     /**

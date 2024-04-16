@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.crypto.datatypes.jws.JwsSigned
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -9,7 +8,8 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
-import at.asitplus.wallet.lib.oidc.DummyCredentialDataProvider
+import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
+import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -21,18 +21,15 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
 class OidvciProcessTest : FunSpec({
 
-    val dataProvider = DummyCredentialDataProvider()
-    val authorizationService = AuthorizationService(
-        dataProvider = dataProvider,
+    val authorizationService = SimpleAuthorizationService(
+        dataProvider = DummyOAuth2DataProvider,
         credentialSchemes = listOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023)
     )
-    val issuer = IssuerService(
+    val issuer = CredentialIssuer(
         authorizationService = authorizationService,
-        issuer = IssuerAgent.newDefaultInstance(
-            cryptoService = DefaultCryptoService(),
-            dataProvider = dataProvider
-        ),
-        credentialSchemes = listOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023)
+        issuer = IssuerAgent.newDefaultInstance(),
+        credentialSchemes = listOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023),
+        buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
     )
 
     test("process with W3C VC JWT") {
@@ -71,7 +68,7 @@ class OidvciProcessTest : FunSpec({
         val serializedCredential = credential.credential
         serializedCredential.shouldNotBeNull().also { println(it) }
 
-        val jws = JwsSigned.parse(serializedCredential)
+        val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~"))
         jws.shouldNotBeNull()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
         sdJwt.shouldNotBeNull().also { println(it) }
@@ -87,14 +84,14 @@ class OidvciProcessTest : FunSpec({
             WalletService.RequestOptions(
                 ConstantIndex.AtomicAttribute2023,
                 representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                requestedAttributes = listOf("family-name")
+                requestedAttributes = listOf("family_name")
             )
         )
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential
         serializedCredential.shouldNotBeNull().also { println(it) }
 
-        val jws = JwsSigned.parse(serializedCredential)
+        val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~"))
         jws.shouldNotBeNull()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
         sdJwt.shouldNotBeNull().also { println(it) }
@@ -168,8 +165,8 @@ class OidvciProcessTest : FunSpec({
 })
 
 private suspend fun runProcessWithJwtProof(
-    authorizationService: AuthorizationService,
-    issuer: IssuerService,
+    authorizationService: SimpleAuthorizationService,
+    issuer: CredentialIssuer,
     client: WalletService,
     requestOptions: WalletService.RequestOptions,
 ): CredentialResponseParameters {
@@ -179,8 +176,8 @@ private suspend fun runProcessWithJwtProof(
 }
 
 private suspend fun runProcessWithCwtProof(
-    authorizationService: AuthorizationService,
-    issuer: IssuerService,
+    authorizationService: SimpleAuthorizationService,
+    issuer: CredentialIssuer,
     client: WalletService,
     requestOptions: WalletService.RequestOptions,
 ): CredentialResponseParameters {
@@ -190,7 +187,7 @@ private suspend fun runProcessWithCwtProof(
 }
 
 private suspend fun runProcessGetToken(
-    authorizationService: AuthorizationService,
+    authorizationService: SimpleAuthorizationService,
     client: WalletService,
     requestOptions: WalletService.RequestOptions,
 ): TokenResponseParameters {

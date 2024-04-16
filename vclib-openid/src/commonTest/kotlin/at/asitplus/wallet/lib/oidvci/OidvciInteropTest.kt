@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
-import at.asitplus.wallet.lib.oidc.DummyCredentialDataProvider
+import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
+import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FunSpec
@@ -21,20 +21,19 @@ class OidvciInteropTest : FunSpec({
         at.asitplus.wallet.eupid.Initializer.initWithVcLib()
     }
 
-    lateinit var authorizationService: AuthorizationService
-    lateinit var issuer: IssuerService
+    lateinit var authorizationService: SimpleAuthorizationService
+    lateinit var issuer: CredentialIssuer
 
     beforeEach {
-        authorizationService = AuthorizationService(
+        authorizationService = SimpleAuthorizationService(
+            dataProvider = DummyOAuth2DataProvider,
             credentialSchemes = listOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023)
         )
-        issuer = IssuerService(
+        issuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent.newDefaultInstance(
-                cryptoService = DefaultCryptoService(),
-                dataProvider = DummyCredentialDataProvider()
-            ),
-            credentialSchemes = listOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023)
+            issuer = IssuerAgent.newDefaultInstance(),
+            credentialSchemes = listOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023),
+            buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
         )
     }
 
