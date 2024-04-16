@@ -72,7 +72,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         authnRequest shouldContain "jwt_sd"
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
+        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().also { println(it) }
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
@@ -100,7 +100,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         authnRequest shouldContain requestedClaim
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
+        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().also { println(it) }
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
@@ -124,7 +124,7 @@ private suspend fun assertSecondRun(
         requestOptions = RequestOptions(representation = ConstantIndex.CredentialRepresentation.SD_JWT)
     )
     val authnResponse = holderSiop.createAuthnResponse(authnRequestUrl)
-    val url = (authnResponse.getOrThrow() as OidcSiopWallet.AuthenticationResponseResult.Redirect).url
+    val url = (authnResponse.getOrThrow() as AuthenticationResponseResult.Redirect).url
     val validation = verifierSiop.validateAuthnResponse(url)
     validation.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
 }

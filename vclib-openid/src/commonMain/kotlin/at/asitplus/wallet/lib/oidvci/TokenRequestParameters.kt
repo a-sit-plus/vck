@@ -57,7 +57,8 @@ data class TokenRequestParameters(
     val transactionCode: CredentialOfferGrantsPreAuthCodeTransactionCode? = null,
 
     /**
-     * TODO implement, for RFC 7636 Proof Key for Code Exchange!
+     * RFC7636: A cryptographically random string that is used to correlate the authorization request to the token
+     * request.
      */
     @SerialName("code_verifier")
     val codeVerifier: String? = null,

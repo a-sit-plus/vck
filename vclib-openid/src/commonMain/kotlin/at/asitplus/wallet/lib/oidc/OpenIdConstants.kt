@@ -26,6 +26,8 @@ object OpenIdConstants {
 
     const val SCOPE_PROFILE = "profile"
 
+    const val CODE_CHALLENGE_METHOD_SHA256 = "S256"
+
     /**
      * To be used in [at.asitplus.wallet.lib.oidvci.AuthorizationDetails.type]
      */

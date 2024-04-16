@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
+import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.JsonWebToken
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
@@ -8,16 +9,23 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
+import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
+import at.asitplus.wallet.lib.oidc.AuthenticationResponseParameters
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.CREDENTIAL_TYPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import com.benasher44.uuid.uuid4
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
+import kotlin.random.Random
 
 /**
  * Client service to retrieve credentials using
@@ -57,13 +65,16 @@ class WalletService(
     private val jwsService: JwsService = DefaultJwsService(cryptoService),
 ) {
 
+    private val stateToCodeChallengeMap = mutableMapOf<String, String>()
+    private val codeChallengeMutex = Mutex()
+
     /**
      * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
      * [IssuerMetadata.authorizationEndpointUrl])
      */
-    fun createAuthRequest(
+    suspend fun createAuthRequest(
         credentialIssuer: String? = null,
-        state: String? = uuid4().toString()
+        state: String = uuid4().toString()
     ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         state = state,
@@ -71,16 +82,18 @@ class WalletService(
         authorizationDetails = credentialRepresentation.toAuthorizationDetails(),
         resource = credentialIssuer,
         redirectUrl = redirectUrl,
+        codeChallenge = generateCodeVerifier(state),
+        codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
     )
 
     /**
      * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
      * [IssuerMetadata.authorizationEndpointUrl])
      */
-    fun createAuthRequest(
+    suspend fun createAuthRequest(
         scope: String,
         credentialIssuer: String? = null,
-        state: String? = uuid4().toString()
+        state: String = uuid4().toString()
     ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         state = state,
@@ -88,27 +101,42 @@ class WalletService(
         scope = scope,
         resource = credentialIssuer,
         redirectUrl = redirectUrl,
-        // TODO also code_challenge and code_challenge_method
+        codeChallenge = generateCodeVerifier(state),
+        codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
+    )
+
+    @OptIn(ExperimentalStdlibApi::class)
+    private suspend fun generateCodeVerifier(state: String): String {
+        val codeVerifier = Random.nextBytes(32).toHexString(HexFormat.Default)
+        codeChallengeMutex.withLock {
+            stateToCodeChallengeMap.put(state, codeVerifier)
+        }
+        return codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
+    }
+
+    /**
+     * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
+     * [IssuerMetadata.tokenEndpointUrl])
+     */
+    suspend fun createTokenRequestParameters(
+        params: AuthenticationResponseParameters
+    ) = TokenRequestParameters(
+        grantType = GRANT_TYPE_CODE,
+        code = params.code,
+        redirectUrl = redirectUrl,
+        clientId = clientId,
+        authorizationDetails = credentialRepresentation.toAuthorizationDetails(),
+        codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(params.state) }
     )
 
     /**
      * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
      * [IssuerMetadata.tokenEndpointUrl])
      */
-    fun createTokenRequestParameters(code: String) = TokenRequestParameters(
-        grantType = GRANT_TYPE_CODE,
-        code = code,
-        redirectUrl = redirectUrl,
-        clientId = clientId,
-        authorizationDetails = credentialRepresentation.toAuthorizationDetails(),
-
-        )
-
-    /**
-     * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
-     * [IssuerMetadata.tokenEndpointUrl])
-     */
-    fun createTokenRequestParameters(credentialOffer: CredentialOffer) = TokenRequestParameters(
+    suspend fun createTokenRequestParameters(
+        params: AuthenticationResponseParameters,
+        credentialOffer: CredentialOffer
+    ) = TokenRequestParameters(
         grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
         // TODO Verify if `redirect_uri` and `client_id` are even needed
         redirectUrl = redirectUrl,
@@ -116,6 +144,7 @@ class WalletService(
         authorizationDetails = credentialRepresentation.toAuthorizationDetails(),
         transactionCode = credentialOffer.grants?.preAuthorizedCode?.transactionCode,
         preAuthorizedCode = credentialOffer.grants?.preAuthorizedCode?.preAuthorizedCode,
+        codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(params.state) }
     )
 
     /**
@@ -148,7 +177,7 @@ class WalletService(
         }
         val proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofTypes.JWT,
-        // TODO support "cwt"
+            // TODO support "cwt"
             jwt = proofPayload.serialize()
         )
         return KmmResult.success(credentialRepresentation.toCredentialRequestParameters(proof))

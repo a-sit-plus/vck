@@ -4,14 +4,12 @@ import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.LibraryInitializer
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
@@ -22,9 +20,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 
 /**
  * Tests our SIOP implementation against EUDI Ref Impl.,
@@ -174,7 +169,7 @@ class OidcSiopInteropTest : FreeSpec({
 
         val response = holderSiop.createAuthnResponse(url).getOrThrow()
 
-        response.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Post>()
+        response.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         val jarmParams = response.params.formUrlEncode().decodeFromPostBody<AuthenticationResponseParameters>()
         val jarm = jarmParams.response
         jarm.shouldNotBeNull()
