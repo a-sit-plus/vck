@@ -1,12 +1,17 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
+import at.asitplus.crypto.datatypes.cose.CborWebToken
+import at.asitplus.crypto.datatypes.cose.CoseHeader
+import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.JsonWebToken
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.cbor.CoseService
+import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.iso.sha256
@@ -21,6 +26,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import com.benasher44.uuid.uuid4
+import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -63,6 +69,10 @@ class WalletService(
      * Used to prove possession of the key material to create [CredentialRequestProof].
      */
     private val jwsService: JwsService = DefaultJwsService(cryptoService),
+    /**
+     * Used to prove possession of the key material to create [CredentialRequestProof].
+     */
+    private val coseService: CoseService = DefaultCoseService(cryptoService),
 ) {
 
     private val stateToCodeChallengeMap = mutableMapOf<String, String>()
@@ -108,9 +118,7 @@ class WalletService(
     @OptIn(ExperimentalStdlibApi::class)
     private suspend fun generateCodeVerifier(state: String): String {
         val codeVerifier = Random.nextBytes(32).toHexString(HexFormat.Default)
-        codeChallengeMutex.withLock {
-            stateToCodeChallengeMap.put(state, codeVerifier)
-        }
+        codeChallengeMutex.withLock { stateToCodeChallengeMap.put(state, codeVerifier) }
         return codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
     }
 
@@ -153,34 +161,70 @@ class WalletService(
      * Also send along the [TokenResponseParameters.accessToken] from [tokenResponse] in HTTP header `Authorization`
      * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
      */
-    suspend fun createCredentialRequest(
+    suspend fun createCredentialRequestJwt(
         tokenResponse: TokenResponseParameters,
-        issuerMetadata: IssuerMetadata
+        issuerMetadata: IssuerMetadata,
     ): KmmResult<CredentialRequestParameters> {
-        // NOTE: Specification is missing a proof type for binding method `cose_key`, so we'll use JWT
         val proofPayload = jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 algorithm = cryptoService.algorithm.toJwsAlgorithm(),
                 type = OpenIdConstants.ProofTypes.JWT_HEADER_TYPE,
             ),
             payload = JsonWebToken(
-                // TODO Set correct parameters
                 issuer = clientId,
                 audience = issuerMetadata.credentialIssuer,
                 issuedAt = Clock.System.now(),
                 nonce = tokenResponse.clientNonce,
             ).serialize().encodeToByteArray(),
-            addKeyId = true,
+            addKeyId = false,
             addJsonWebKey = true
+            // NOTE: use `x5c` to transport key attestation
         ).getOrElse {
+            Napier.w("createCredentialRequestJwt: Error from jwsService: $it")
             return KmmResult.failure(it)
         }
         val proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofTypes.JWT,
-            // TODO support "cwt"
             jwt = proofPayload.serialize()
         )
-        return KmmResult.success(credentialRepresentation.toCredentialRequestParameters(proof))
+        val result = credentialRepresentation.toCredentialRequestParameters(proof)
+        Napier.i("createCredentialRequestCwt returns $result")
+        return KmmResult.success(result)
+    }
+
+    /**
+     * Send the result as JSON-serialized content to the server at `/credential` (or more specific
+     * [IssuerMetadata.credentialEndpointUrl]).
+     * Also send along the [TokenResponseParameters.accessToken] from [tokenResponse] in HTTP header `Authorization`
+     * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
+     */
+    suspend fun createCredentialRequestCwt(
+        tokenResponse: TokenResponseParameters,
+        issuerMetadata: IssuerMetadata,
+    ): KmmResult<CredentialRequestParameters> {
+        val proofPayload = coseService.createSignedCose(
+            protectedHeader = CoseHeader(
+                algorithm = cryptoService.algorithm.toCoseAlgorithm(),
+                contentType = OpenIdConstants.ProofTypes.CWT_HEADER_TYPE,
+                certificateChain = cryptoService.certificate?.encodeToDerOrNull()
+            ),
+            payload = CborWebToken(
+                issuer = clientId,
+                audience = issuerMetadata.credentialIssuer,
+                issuedAt = Clock.System.now(),
+                nonce = tokenResponse.clientNonce?.encodeToByteArray(),
+            ).serialize()
+        ).getOrElse {
+            Napier.w("createCredentialRequestCwt: Error from coseService: $it")
+            return KmmResult.failure(it)
+        }
+        val proof = CredentialRequestProof(
+            proofType = OpenIdConstants.ProofTypes.CWT,
+            cwt = proofPayload.serialize().encodeToString(Base64UrlStrict),
+        )
+        val result = credentialRepresentation.toCredentialRequestParameters(proof)
+        Napier.i("createCredentialRequestCwt returns $result")
+        return KmmResult.success(result)
     }
 
     private fun ConstantIndex.CredentialRepresentation.toAuthorizationDetails() = when (this) {

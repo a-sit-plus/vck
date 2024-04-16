@@ -36,6 +36,7 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.ktor.util.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -103,6 +104,8 @@ class IssuerAgent(
         val successful = mutableListOf<Issuer.IssuedCredential>()
         for (attributeType in attributeTypes) {
             val scheme = AttributeIndex.resolveAttributeType(attributeType)
+                ?: AttributeIndex.resolveIsoNamespace(attributeType)
+                ?: AttributeIndex.resolveSchemaUri(attributeType)
             if (scheme == null) {
                 failed += Issuer.FailedAttribute(attributeType, IllegalArgumentException("type not resolved to scheme"))
                 continue

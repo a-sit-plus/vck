@@ -18,8 +18,9 @@ Release 3.6.0:
  - Implement OpenID for Verifiable Credential Issuance draft 13, from 2024-02-08
  - Implement RFC 7636 Proof Key for Code Exchange for OpenID for Verifiable Credential Issuance implementations, i.e. `IssuerService` and `WalletService`
  - `IssuerService`: Make public API functions suspending, also return `KmmResult` to transport exceptions
+ - `IssuerService`: Change parameter of `credential()` from `authorizationHeader` to `accessToken`, requiring the plain access token
  - `WalletService`: Make public API functions suspending
- - TODO document changes in `IssuerService` and `WalletService`
+ - `WalletService`: Implement proving possesion of private key with CBOR Web Tokens
 
 Release 3.5.0:
 - Kotlin 1.9.23

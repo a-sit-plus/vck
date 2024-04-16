@@ -45,7 +45,15 @@ object OpenIdConstants {
          */
         const val CWT = "cwt"
 
+        /**
+         * Constant from OID4VCI
+         */
         const val JWT_HEADER_TYPE = "openid4vci-proof+jwt"
+
+        /**
+         * Constant from OID4VCI
+         */
+        const val CWT_HEADER_TYPE = "openid4vci-proof+cwt"
     }
 
     /**
