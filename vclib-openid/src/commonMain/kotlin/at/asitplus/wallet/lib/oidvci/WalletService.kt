@@ -14,7 +14,9 @@ import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.CREDENTIAL_TYPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
+import com.benasher44.uuid.uuid4
 import kotlinx.datetime.Clock
 
 /**
@@ -59,8 +61,12 @@ class WalletService(
      * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
      * [IssuerMetadata.authorizationEndpointUrl])
      */
-    fun createAuthRequest(credentialIssuer: String? = null) = AuthenticationRequestParameters(
+    fun createAuthRequest(
+        credentialIssuer: String? = null,
+        state: String? = uuid4().toString()
+    ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
+        state = state,
         clientId = clientId,
         authorizationDetails = credentialRepresentation.toAuthorizationDetails(),
         resource = credentialIssuer,
@@ -71,12 +77,18 @@ class WalletService(
      * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
      * [IssuerMetadata.authorizationEndpointUrl])
      */
-    fun createAuthRequest(scope: String, credentialIssuer: String? = null) = AuthenticationRequestParameters(
+    fun createAuthRequest(
+        scope: String,
+        credentialIssuer: String? = null,
+        state: String? = uuid4().toString()
+    ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
+        state = state,
         clientId = clientId,
         scope = scope,
         resource = credentialIssuer,
         redirectUrl = redirectUrl,
+        // TODO also code_challenge and code_challenge_method
     )
 
     /**
@@ -88,6 +100,22 @@ class WalletService(
         code = code,
         redirectUrl = redirectUrl,
         clientId = clientId,
+        authorizationDetails = credentialRepresentation.toAuthorizationDetails(),
+
+        )
+
+    /**
+     * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
+     * [IssuerMetadata.tokenEndpointUrl])
+     */
+    fun createTokenRequestParameters(credentialOffer: CredentialOffer) = TokenRequestParameters(
+        grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
+        // TODO Verify if `redirect_uri` and `client_id` are even needed
+        redirectUrl = redirectUrl,
+        clientId = clientId,
+        authorizationDetails = credentialRepresentation.toAuthorizationDetails(),
+        transactionCode = credentialOffer.grants?.preAuthorizedCode?.transactionCode,
+        preAuthorizedCode = credentialOffer.grants?.preAuthorizedCode?.preAuthorizedCode,
     )
 
     /**
@@ -107,6 +135,7 @@ class WalletService(
                 type = OpenIdConstants.ProofTypes.JWT_HEADER_TYPE,
             ),
             payload = JsonWebToken(
+                // TODO Set correct parameters
                 issuer = clientId,
                 audience = issuerMetadata.credentialIssuer,
                 issuedAt = Clock.System.now(),
@@ -119,7 +148,8 @@ class WalletService(
         }
         val proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofTypes.JWT,
-            proof = proofPayload.serialize()
+        // TODO support "cwt"
+            jwt = proofPayload.serialize()
         )
         return KmmResult.success(credentialRepresentation.toCredentialRequestParameters(proof))
     }
@@ -149,7 +179,9 @@ class WalletService(
             ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialRequestParameters(
                 format = toFormat(),
                 claims = requestedAttributes?.toRequestedClaims(),
-                types = arrayOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
+                credentialDefinition = SupportedCredentialFormatDefinition(
+                    types = listOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
+                ),
                 proof = proof
             )
 
@@ -157,7 +189,6 @@ class WalletService(
                 format = toFormat(),
                 docType = credentialScheme.isoDocType,
                 claims = requestedAttributes?.toRequestedClaims(),
-                types = arrayOf(credentialScheme.vcType),
                 proof = proof
             )
         }

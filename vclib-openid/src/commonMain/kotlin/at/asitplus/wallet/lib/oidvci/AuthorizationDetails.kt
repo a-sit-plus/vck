@@ -69,4 +69,17 @@ data class AuthorizationDetails(
      */
     @SerialName("locations")
     val locations: Collection<String>? = null,
+
+    /**
+     * OID4VCI: OPTIONAL. Array of strings, each uniquely identifying a Credential that can be issued using the Access
+     * Token returned in this response. Each of these Credentials corresponds to the same entry in the
+     * [IssuerMetadata.supportedCredentialConfigurations] but can contain different claim values or a
+     * different subset of claims within the claims set identified by that Credential type.
+     * This parameter can be used to simplify the Credential Request, as defined in Section 7.2, where the
+     * `credential_identifier` parameter replaces the format parameter and any other Credential format-specific
+     * parameters in the Credential Request. When received, the Wallet MUST use these values together with an Access
+     * Token in subsequent Credential Requests.
+     */
+    @SerialName("credential_identifiers")
+    val credentialIdentifiers: Collection<String>? = null,
 )

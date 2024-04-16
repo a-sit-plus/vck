@@ -53,7 +53,7 @@ data class TokenResponseParameters(
 
     /**
      * OID4VCI:
-     * OPTIONAL JSON integer denoting the lifetime in seconds of the c_nonce.
+     * OPTIONAL JSON integer denoting the lifetime in seconds of the [clientNonce].
      */
     @SerialName("c_nonce_expires_in")
     val clientNonceExpiresIn: Int? = null, // TODO Duration
@@ -74,4 +74,11 @@ data class TokenResponseParameters(
      */
     @SerialName("interval")
     val interval: Int? = null, // TODO Duration
+
+    /**
+     * OID4VP: REQUIRED when `authorization_details` parameter is used to request issuance of a certain Credential type.
+     * It MUST NOT be used otherwise.
+     */
+    @SerialName("authorization_details")
+    val authorizationDetails: Collection<AuthorizationDetails>? = null,
 )

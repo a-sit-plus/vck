@@ -11,12 +11,15 @@ import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.BINDING_METHOD_COSE_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ProofTypes
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_PREFIX_BEARER
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
+import com.benasher44.uuid.uuid4
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.coroutines.cancellation.CancellationException
@@ -48,7 +51,7 @@ class IssuerService(
      */
     private val clientNonceService: NonceService = DefaultNonceService(),
     /**
-     * Used as [IssuerMetadata.authorizationServer].
+     * Used as [IssuerMetadata.authorizationServers].
      */
     private val authorizationServer: String? = null,
     /**
@@ -86,6 +89,7 @@ class IssuerService(
             supportedCredentialConfigurations = mutableMapOf<String, SupportedCredentialFormat>().apply {
                 credentialSchemes.forEach { putAll(it.toSupportedCredentialFormat()) }
             },
+            supportsCredentialIdentifiers = true,
             displayProperties = credentialSchemes.map { DisplayProperties(it.vcType, "en") }
         )
     }
@@ -101,7 +105,7 @@ class IssuerService(
             supportedBindingMethods = listOf(BINDING_METHOD_COSE_KEY),
             supportedSigningAlgorithms = issuer.cryptoAlgorithms.map { it.toJwsAlgorithm().identifier },
         ),
-        this.vcType to SupportedCredentialFormat(
+        "$vcType-${CredentialFormatEnum.JWT_VC.text}" to SupportedCredentialFormat(
             format = CredentialFormatEnum.JWT_VC,
             credentialDefinition = SupportedCredentialFormatDefinition(
                 types = listOf(VERIFIABLE_CREDENTIAL, vcType),
@@ -110,7 +114,7 @@ class IssuerService(
             supportedBindingMethods = listOf(PREFIX_DID_KEY, URN_TYPE_JWK_THUMBPRINT),
             supportedSigningAlgorithms = issuer.cryptoAlgorithms.map { it.toJwsAlgorithm().identifier },
         ),
-        this.vcType to SupportedCredentialFormat(
+        "$vcType-${CredentialFormatEnum.VC_SD_JWT.text}" to SupportedCredentialFormat(
             format = CredentialFormatEnum.VC_SD_JWT,
             sdJwtVcType = vcType,
             claims = mapOf(
@@ -123,11 +127,36 @@ class IssuerService(
     )
 
     /**
+     * Offer all [credentialSchemes] to clients.
+     * Callers may need to transport this in [CredentialOfferUrlParameters] to (HTTPS) clients.
+     */
+    fun credentialOffer(): CredentialOffer = CredentialOffer(
+        credentialIssuer = publicContext,
+        configurationIds = credentialSchemes.map { it.vcType },
+        grants = CredentialOfferGrants(
+            authorizationCode = CredentialOfferGrantsAuthCode(
+                issuerState = uuid4().toString(), // TODO remember this state, for subsequent requests from the Wallet
+                authorizationServer = publicContext // may need to support external AS?
+            ),
+            preAuthorizedCode = CredentialOfferGrantsPreAuthCode(
+                preAuthorizedCode = codeService.provideCode(),
+                transactionCode = CredentialOfferGrantsPreAuthCodeTransactionCode(
+                    inputMode = "numeric",
+                    length = 16,
+                ),
+                authorizationServer = publicContext // may need to support external AS?,
+            )
+        )
+    )
+
+    /**
      * Send this result as HTTP Header `Location` in a 302 response to the client.
      * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
      * code from [codeService].
      */
     fun authorize(params: AuthenticationRequestParameters): String? {
+        // TODO return parameters here directly, callers need to build the URL
+        // TODO also need to store the `scope` or `authorization_details`, i.e. may respond with `invalid_scope` here!
         val builder = URLBuilder(params.redirectUrl ?: return null)
         builder.parameters.append(OpenIdConstants.GRANT_TYPE_CODE, codeService.provideCode())
         return builder.buildString()
@@ -139,13 +168,35 @@ class IssuerService(
      */
     @Throws(OAuth2Exception::class)
     fun token(params: TokenRequestParameters): TokenResponseParameters {
-        if (!codeService.verifyCode(params.code))
-            throw OAuth2Exception(Errors.INVALID_CODE)
+        // TODO This is part of the Authorization Server
+        when (params.grantType) {
+            GRANT_TYPE_CODE -> if (params.code == null || !codeService.verifyCode(params.code))
+                throw OAuth2Exception(Errors.INVALID_CODE)
+
+            GRANT_TYPE_PRE_AUTHORIZED_CODE -> if (params.preAuthorizedCode == null || !codeService.verifyCode(params.preAuthorizedCode))
+                throw OAuth2Exception(Errors.INVALID_GRANT)
+
+            else ->
+                throw OAuth2Exception("No valid grant_type: ${params.grantType}")
+        }
+        if (params.authorizationDetails != null) {
+            // TODO verify
+            // params.authorizationDetails.claims
+            params.authorizationDetails.credentialIdentifiers?.forEach {
+                if (!credentialSchemes.map { it.vcType }.contains(it)) {
+                    throw OAuth2Exception(Errors.INVALID_GRANT)
+                }
+            }
+        }
         return TokenResponseParameters(
             accessToken = tokenService.provideToken(),
             tokenType = TOKEN_TYPE_BEARER,
             expires = 3600,
-            clientNonce = clientNonceService.provideNonce()
+            clientNonce = clientNonceService.provideNonce(),
+            authorizationDetails = params.authorizationDetails?.let {
+                // TODO supported credential identifiers!
+                listOf(it)
+            }
         )
     }
 
@@ -160,19 +211,21 @@ class IssuerService(
      */
     @Throws(OAuth2Exception::class, CancellationException::class)
     suspend fun credential(
-        authorizationHeader: String,
+        authorizationHeader: String, // TODO Change interface to only contain access token, nothing else
         params: CredentialRequestParameters
     ): CredentialResponseParameters {
         if (!tokenService.verifyToken(authorizationHeader.removePrefix(TOKEN_PREFIX_BEARER)))
             throw OAuth2Exception(Errors.INVALID_TOKEN)
         val proof = params.proof
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-        if (proof.proofType != ProofTypes.JWT)
+        // TODO also support `cwt` as proof
+        if (proof.proofType != ProofTypes.JWT || proof.jwt == null)
             throw OAuth2Exception(Errors.INVALID_PROOF)
-        val jwsSigned = JwsSigned.parse(proof.proof)
+        val jwsSigned = JwsSigned.parse(proof.jwt)
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
         val jwt = JsonWebToken.deserialize(jwsSigned.payload.decodeToString()).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
+        // TODO verify required claims in OID4VCI 7.2.1.1
         if (jwt.nonce == null || !clientNonceService.verifyAndRemoveNonce(jwt.nonce!!))
             throw OAuth2Exception(Errors.INVALID_PROOF)
         if (jwsSigned.header.type != ProofTypes.JWT_HEADER_TYPE)
@@ -180,15 +233,33 @@ class IssuerService(
         val subjectPublicKey = jwsSigned.header.publicKey
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
 
-        val issuedCredentialResult = issuer.issueCredential(
-            subjectPublicKey = subjectPublicKey,
-            attributeTypes = params.types.toList(),
-            representation = params.format.toRepresentation(),
-            claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
-        )
+        val issuedCredentialResult = if (params.format != null) {
+            issuer.issueCredential(
+                subjectPublicKey = subjectPublicKey,
+                attributeTypes = listOfNotNull(params.sdJwtVcType, params.docType)
+                        + (params.credentialDefinition?.types?.toList() ?: listOf()),
+                representation = params.format.toRepresentation(),
+                claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
+            )
+        } else if (params.credentialIdentifier != null) {
+            // TODO this delimiter is probably not safe
+            val representation = CredentialFormatEnum.parse(params.credentialIdentifier.substringAfterLast("-"))
+                ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            // TODO what to do in case of ISO, look at string constants from EUDIW
+            val vcType = params.credentialIdentifier.substringBeforeLast("-")
+            issuer.issueCredential(
+                subjectPublicKey = subjectPublicKey,
+                attributeTypes = listOf(vcType),
+                representation = representation.toRepresentation(),
+                claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
+            )
+        } else {
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+        }
         if (issuedCredentialResult.successful.isEmpty()) {
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
+        // TODO Implement Batch Credential Endpoint for more than one credential response
         return issuedCredentialResult.successful.first().toCredentialResponseParameters()
     }
 
