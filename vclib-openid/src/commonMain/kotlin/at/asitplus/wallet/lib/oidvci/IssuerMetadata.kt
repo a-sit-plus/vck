@@ -104,7 +104,7 @@ data class IssuerMetadata(
 
     /**
      * OID4VCI: OPTIONAL. Boolean value specifying whether the Credential Issuer supports returning
-     * `credential_identifiers` parameter in the `authorization_details` Token Response parameter, with `true`
+     * [AuthorizationDetails.credentialIdentifiers] in the Token Response parameter, with `true`
      * indicating support. If omitted, the default value is `false`.
      */
     @SerialName("credential_identifiers_supported")

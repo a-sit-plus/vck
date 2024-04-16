@@ -16,6 +16,7 @@ Release 3.6.0:
      - Ktor 2.3.10
      - Auto-publish version catalogs
  - Implement OpenID for Verifiable Credential Issuance draft 13, from 2024-02-08
+ - TODO document changes in `IssuerService` and `WalletService`
 
 Release 3.5.0:
 - Kotlin 1.9.23

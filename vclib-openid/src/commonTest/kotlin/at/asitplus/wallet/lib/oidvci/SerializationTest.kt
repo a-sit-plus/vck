@@ -37,7 +37,6 @@ class SerializationTest : FunSpec({
         clientId = randomString(),
         preAuthorizedCode = randomString(),
         codeVerifier = randomString(),
-        userPin = randomString(),
     )
 
     fun createTokenResponse() = TokenResponseParameters(
@@ -57,7 +56,7 @@ class SerializationTest : FunSpec({
         types = arrayOf(randomString(), randomString()),
         proof = CredentialRequestProof(
             proofType = randomString(),
-            proof = randomString()
+            jwt = randomString()
         )
     )
 
