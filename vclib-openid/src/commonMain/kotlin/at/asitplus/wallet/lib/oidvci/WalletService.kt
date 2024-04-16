@@ -19,6 +19,7 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseParameters
+import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.CREDENTIAL_TYPE_OPENID
@@ -39,18 +40,6 @@ import kotlin.random.Random
  * Implemented from Draft `openid-4-verifiable-credential-issuance-1_0-11`, 2023-02-03.
  */
 class WalletService(
-    /**
-     * Credential to request from the issuer.
-     */
-    private val credentialScheme: ConstantIndex.CredentialScheme,
-    /**
-     * Representation of the credential to request from the issuer.
-     */
-    private val credentialRepresentation: ConstantIndex.CredentialRepresentation,
-    /**
-     * Pass names of attributes the credential shall contain, e.g. [ConstantIndex.CredentialScheme.claimNames].
-     */
-    private val requestedAttributes: Collection<String>? = null,
     /**
      * Used to create [AuthenticationRequestParameters], [TokenRequestParameters] and [CredentialRequestProof],
      * typically a URI.
@@ -78,27 +67,55 @@ class WalletService(
     private val stateToCodeChallengeMap = mutableMapOf<String, String>()
     private val codeChallengeMutex = Mutex()
 
-    /**
-     * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
-     * [IssuerMetadata.authorizationEndpointUrl])
-     */
-    suspend fun createAuthRequest(
-        credentialIssuer: String? = null,
-        state: String = uuid4().toString()
-    ) = AuthenticationRequestParameters(
-        responseType = GRANT_TYPE_CODE,
-        state = state,
-        clientId = clientId,
-        authorizationDetails = credentialRepresentation.toAuthorizationDetails(),
-        resource = credentialIssuer,
-        redirectUrl = redirectUrl,
-        codeChallenge = generateCodeVerifier(state),
-        codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
+    data class RequestOptions(
+        /**
+         * Credential type to request
+         */
+        val credentialScheme: ConstantIndex.CredentialScheme,
+        /**
+         * Required representation, see [ConstantIndex.CredentialRepresentation]
+         */
+        val representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+        /**
+         * List of attributes that shall be requested explicitly (selective disclosure),
+         * or `null` to make no restrictions
+         */
+        val requestedAttributes: List<String>? = null,
+        /**
+         * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
+         */
+        val state: String = uuid4().toString(),
     )
 
     /**
      * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
      * [IssuerMetadata.authorizationEndpointUrl])
+     *
+     * @param requestOptions which credential in which representation to request
+     */
+    suspend fun createAuthRequest(
+        requestOptions: RequestOptions,
+        credentialIssuer: String? = null,
+    ) = AuthenticationRequestParameters(
+        responseType = GRANT_TYPE_CODE,
+        state = requestOptions.state,
+        clientId = clientId,
+        // TODO in authnrequest, and again in tokenrequest?
+        authorizationDetails = requestOptions.representation.toAuthorizationDetails(
+            requestOptions.credentialScheme,
+            requestOptions.requestedAttributes
+        ),
+        resource = credentialIssuer,
+        redirectUrl = redirectUrl,
+        codeChallenge = generateCodeVerifier(requestOptions.state),
+        codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
+    )
+
+    /**
+     * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
+     * [IssuerMetadata.authorizationEndpointUrl]).
+     *
+     * @param scope Credential to request from the issuer, may be obtained from [IssuerMetadata.supportedCredentialConfigurations], or [SupportedCredentialFormat.scope].
      */
     suspend fun createAuthRequest(
         scope: String,
@@ -125,31 +142,45 @@ class WalletService(
     /**
      * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
      * [IssuerMetadata.tokenEndpointUrl])
+     *
+     * @param requestOptions which credential in which representation to request
      */
     suspend fun createTokenRequestParameters(
-        params: AuthenticationResponseParameters
+        params: AuthenticationResponseParameters,
+        requestOptions: RequestOptions,
     ) = TokenRequestParameters(
         grantType = GRANT_TYPE_CODE,
         code = params.code,
         redirectUrl = redirectUrl,
         clientId = clientId,
-        authorizationDetails = credentialRepresentation.toAuthorizationDetails(),
+        // TODO in authnrequest, and again in tokenrequest?
+        authorizationDetails = requestOptions.representation.toAuthorizationDetails(
+            requestOptions.credentialScheme,
+            requestOptions.requestedAttributes
+        ),
         codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(params.state) }
     )
 
     /**
      * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
      * [IssuerMetadata.tokenEndpointUrl])
+     *
+     * @param requestOptions which credential in which representation to request
      */
     suspend fun createTokenRequestParameters(
         params: AuthenticationResponseParameters,
-        credentialOffer: CredentialOffer
+        credentialOffer: CredentialOffer,
+        requestOptions: RequestOptions,
     ) = TokenRequestParameters(
         grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
         // TODO Verify if `redirect_uri` and `client_id` are even needed
         redirectUrl = redirectUrl,
         clientId = clientId,
-        authorizationDetails = credentialRepresentation.toAuthorizationDetails(),
+        // TODO in authnrequest, and again in tokenrequest?
+        authorizationDetails = requestOptions.representation.toAuthorizationDetails(
+            requestOptions.credentialScheme,
+            requestOptions.requestedAttributes
+        ),
         transactionCode = credentialOffer.grants?.preAuthorizedCode?.transactionCode,
         preAuthorizedCode = credentialOffer.grants?.preAuthorizedCode?.preAuthorizedCode,
         codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(params.state) }
@@ -160,10 +191,13 @@ class WalletService(
      * [IssuerMetadata.credentialEndpointUrl]).
      * Also send along the [TokenResponseParameters.accessToken] from [tokenResponse] in HTTP header `Authorization`
      * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
+     *
+     * @param requestOptions which credential in which representation to request
      */
     suspend fun createCredentialRequestJwt(
         tokenResponse: TokenResponseParameters,
         issuerMetadata: IssuerMetadata,
+        requestOptions: RequestOptions,
     ): KmmResult<CredentialRequestParameters> {
         val proofPayload = jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
@@ -187,7 +221,11 @@ class WalletService(
             proofType = OpenIdConstants.ProofTypes.JWT,
             jwt = proofPayload.serialize()
         )
-        val result = credentialRepresentation.toCredentialRequestParameters(proof)
+        val result = requestOptions.representation.toCredentialRequestParameters(
+            requestOptions.credentialScheme,
+            requestOptions.requestedAttributes,
+            proof
+        )
         Napier.i("createCredentialRequestCwt returns $result")
         return KmmResult.success(result)
     }
@@ -197,10 +235,13 @@ class WalletService(
      * [IssuerMetadata.credentialEndpointUrl]).
      * Also send along the [TokenResponseParameters.accessToken] from [tokenResponse] in HTTP header `Authorization`
      * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
+     *
+     * @param requestOptions which credential in which representation to request
      */
     suspend fun createCredentialRequestCwt(
         tokenResponse: TokenResponseParameters,
         issuerMetadata: IssuerMetadata,
+        requestOptions: RequestOptions,
     ): KmmResult<CredentialRequestParameters> {
         val proofPayload = coseService.createSignedCose(
             protectedHeader = CoseHeader(
@@ -222,12 +263,19 @@ class WalletService(
             proofType = OpenIdConstants.ProofTypes.CWT,
             cwt = proofPayload.serialize().encodeToString(Base64UrlStrict),
         )
-        val result = credentialRepresentation.toCredentialRequestParameters(proof)
+        val result = requestOptions.representation.toCredentialRequestParameters(
+            requestOptions.credentialScheme,
+            requestOptions.requestedAttributes,
+            proof
+        )
         Napier.i("createCredentialRequestCwt returns $result")
         return KmmResult.success(result)
     }
 
-    private fun ConstantIndex.CredentialRepresentation.toAuthorizationDetails() = when (this) {
+    private fun ConstantIndex.CredentialRepresentation.toAuthorizationDetails(
+        credentialScheme: ConstantIndex.CredentialScheme,
+        requestedAttributes: Collection<String>?
+    ) = when (this) {
         ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         ConstantIndex.CredentialRepresentation.SD_JWT -> AuthorizationDetails(
             type = CREDENTIAL_TYPE_OPENID,
@@ -235,38 +283,41 @@ class WalletService(
             credentialDefinition = SupportedCredentialFormatDefinition(
                 types = listOf(VERIFIABLE_CREDENTIAL, credentialScheme.vcType),
             ),
-            claims = requestedAttributes?.toRequestedClaims(),
+            claims = requestedAttributes?.toRequestedClaims(credentialScheme),
         )
 
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> AuthorizationDetails(
             type = CREDENTIAL_TYPE_OPENID,
             format = toFormat(),
             docType = credentialScheme.isoDocType,
-            claims = requestedAttributes?.toRequestedClaims()
+            claims = requestedAttributes?.toRequestedClaims(credentialScheme)
         )
     }
 
-    private fun ConstantIndex.CredentialRepresentation.toCredentialRequestParameters(proof: CredentialRequestProof) =
-        when (this) {
-            ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-            ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialRequestParameters(
-                format = toFormat(),
-                claims = requestedAttributes?.toRequestedClaims(),
-                credentialDefinition = SupportedCredentialFormatDefinition(
-                    types = listOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
-                ),
-                proof = proof
-            )
+    private fun ConstantIndex.CredentialRepresentation.toCredentialRequestParameters(
+        credentialScheme: ConstantIndex.CredentialScheme,
+        requestedAttributes: Collection<String>?,
+        proof: CredentialRequestProof
+    ) = when (this) {
+        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+        ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialRequestParameters(
+            format = toFormat(),
+            claims = requestedAttributes?.toRequestedClaims(credentialScheme),
+            credentialDefinition = SupportedCredentialFormatDefinition(
+                types = listOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
+            ),
+            proof = proof
+        )
 
-            ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialRequestParameters(
-                format = toFormat(),
-                docType = credentialScheme.isoDocType,
-                claims = requestedAttributes?.toRequestedClaims(),
-                proof = proof
-            )
-        }
+        ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialRequestParameters(
+            format = toFormat(),
+            docType = credentialScheme.isoDocType,
+            claims = requestedAttributes?.toRequestedClaims(credentialScheme),
+            proof = proof
+        )
+    }
 
-    private fun Collection<String>.toRequestedClaims() =
+    private fun Collection<String>.toRequestedClaims(credentialScheme: ConstantIndex.CredentialScheme) =
         mapOf(credentialScheme.isoNamespace to this.associateWith { RequestedCredentialClaimSpecification() })
 
 }
