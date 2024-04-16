@@ -8,13 +8,16 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
+import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyCredentialDataProvider
+import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_PREFIX_BEARER
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -138,11 +141,11 @@ private suspend fun runProcess(
 ): CredentialResponseParameters {
     val metadata = issuer.metadata
     val authnRequest = client.createAuthRequest()
-    val codeUrl = issuer.authorize(authnRequest)
-    codeUrl.shouldNotBeNull()
-    val code = Url(codeUrl).parameters[GRANT_TYPE_CODE]
+    val authnResponse = issuer.authorize(authnRequest)
+    authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+    val code = authnResponse.params.code
     code.shouldNotBeNull()
-    val tokenRequest = client.createTokenRequestParameters(code)
+    val tokenRequest = client.createTokenRequestParameters(authnResponse.params)
     val token = issuer.token(tokenRequest)
     val credentialRequest = client.createCredentialRequest(token, metadata).getOrThrow()
     return issuer.credential(TOKEN_PREFIX_BEARER + token.accessToken, credentialRequest)

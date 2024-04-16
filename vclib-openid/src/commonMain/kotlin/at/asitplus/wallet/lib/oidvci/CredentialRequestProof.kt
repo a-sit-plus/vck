@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CredentialRequestProof(
     /**
-     * OID4VCI: e.g. `jwt`, or `cwt`, or `ldp_vp`.
+     * OID4VCI: e.g. `jwt`, or `cwt`, or `ldp_vp`. See [at.asitplus.wallet.lib.oidc.OpenIdConstants.ProofTypes].
      */
     @SerialName("proof_type")
     val proofType: String,

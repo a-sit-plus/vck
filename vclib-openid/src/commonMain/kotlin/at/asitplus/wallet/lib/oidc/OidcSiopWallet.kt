@@ -85,23 +85,6 @@ class OidcSiopWallet(
         )
     }
 
-    /**
-     * Possible outcomes of creating the OIDC Authentication Response
-     */
-    sealed class AuthenticationResponseResult {
-        /**
-         * Wallet returns the [AuthenticationResponseParameters] as form parameters, which shall be posted to
-         * `redirect_uri` of the Relying Party, i.e. clients should execute that POST with [params] to [url].
-         */
-        data class Post(val url: String, val params: Map<String, String>) : AuthenticationResponseResult()
-
-        /**
-         * Wallet returns the [AuthenticationResponseParameters] as fragment parameters appended to the
-         * `redirect_uri` of the Relying Party, i.e. clients should simply open the [url].
-         */
-        data class Redirect(val url: String) : AuthenticationResponseResult()
-    }
-
     val metadata: IssuerMetadata by lazy {
         IssuerMetadata(
             issuer = clientId,
@@ -246,7 +229,7 @@ class OidcSiopWallet(
                             }
                         }
                         .buildString()
-                    KmmResult.success(AuthenticationResponseResult.Redirect(url))
+                    KmmResult.success(AuthenticationResponseResult.Redirect(url, responseParams))
                 }
 
                 else -> {
@@ -256,7 +239,7 @@ class OidcSiopWallet(
                     val url = URLBuilder(request.redirectUrl)
                         .apply { encodedFragment = responseParams.encodeToParameters().formUrlEncode() }
                         .buildString()
-                    KmmResult.success(AuthenticationResponseResult.Redirect(url))
+                    KmmResult.success(AuthenticationResponseResult.Redirect(url, responseParams))
                 }
             }
         },
@@ -277,6 +260,7 @@ class OidcSiopWallet(
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("client_id_scheme is redirect_uri, but metadata is not set") }
         }
+        // TODO implement x509_san_dns, x509_san_uri, as implemented by EUDI verifier
         val clientMetadata = params.clientMetadata
             ?: params.clientMetadataUri?.let { uri ->
                 remoteResourceRetriever.invoke(uri)?.let { RelyingPartyMetadata.deserialize(it) }

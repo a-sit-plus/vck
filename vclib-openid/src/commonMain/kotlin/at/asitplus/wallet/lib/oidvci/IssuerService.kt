@@ -7,8 +7,10 @@ import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
+import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
-import at.asitplus.wallet.lib.oidc.OpenIdConstants
+import at.asitplus.wallet.lib.oidc.AuthenticationResponseParameters
+import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.BINDING_METHOD_COSE_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
@@ -22,6 +24,8 @@ import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import com.benasher44.uuid.uuid4
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -74,6 +78,9 @@ class IssuerService(
      */
     private val credentialEndpointPath: String = "/credential",
 ) {
+
+    private val codeToCodeChallengeMap = mutableMapOf<String, String>()
+    private val codeChallengeMutex = Mutex()
 
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`
@@ -150,24 +157,37 @@ class IssuerService(
     )
 
     /**
+     * Builds the authentication response.
      * Send this result as HTTP Header `Location` in a 302 response to the client.
      * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
      * code from [codeService].
      */
-    fun authorize(params: AuthenticationRequestParameters): String? {
-        // TODO return parameters here directly, callers need to build the URL
-        // TODO also need to store the `scope` or `authorization_details`, i.e. may respond with `invalid_scope` here!
-        val builder = URLBuilder(params.redirectUrl ?: return null)
-        builder.parameters.append(OpenIdConstants.GRANT_TYPE_CODE, codeService.provideCode())
-        return builder.buildString()
+    suspend fun authorize(request: AuthenticationRequestParameters): AuthenticationResponseResult {
+        // TODO Need to store the `scope` or `authorization_details`, i.e. may respond with `invalid_scope` here!
+        if (request.redirectUrl == null)
+            throw OAuth2Exception(Errors.INVALID_REQUEST, "redirect_uri not set")
+        val code = codeService.provideCode()
+        val responseParams = AuthenticationResponseParameters(
+            code = code,
+            state = request.state,
+        )
+        if (request.codeChallenge != null) {
+            codeChallengeMutex.withLock {
+                codeToCodeChallengeMap[code] = request.codeChallenge
+            }
+        }
+        // TODO Also implement POST?
+        val url = URLBuilder(request.redirectUrl)
+            .apply { responseParams.encodeToParameters().forEach { this.parameters.append(it.key, it.value) } }
+            .buildString()
+        return AuthenticationResponseResult.Redirect(url, responseParams)
     }
 
     /**
      * Verifies the authorization code sent by the client and issues an access token.
      * Send this value JSON-serialized back to the client.
      */
-    @Throws(OAuth2Exception::class)
-    fun token(params: TokenRequestParameters): TokenResponseParameters {
+    suspend fun token(params: TokenRequestParameters): TokenResponseParameters {
         // TODO This is part of the Authorization Server
         when (params.grantType) {
             GRANT_TYPE_CODE -> if (params.code == null || !codeService.verifyCode(params.code))
@@ -186,6 +206,14 @@ class IssuerService(
                 if (!credentialSchemes.map { it.vcType }.contains(it)) {
                     throw OAuth2Exception(Errors.INVALID_GRANT)
                 }
+            }
+        }
+        if (params.codeVerifier != null) {
+            val codeChallenge = codeChallengeMutex.withLock { codeToCodeChallengeMap.remove(params.code) }
+            val codeChallengeCalculated = params.codeVerifier.encodeToByteArray().sha256()
+                .encodeToString(Base64UrlStrict)
+            if (codeChallenge != codeChallengeCalculated) {
+                throw OAuth2Exception(Errors.INVALID_GRANT)
             }
         }
         return TokenResponseParameters(
