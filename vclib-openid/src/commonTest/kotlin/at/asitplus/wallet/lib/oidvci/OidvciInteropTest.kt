@@ -20,10 +20,15 @@ class OidvciInteropTest : FunSpec({
         at.asitplus.wallet.eupid.Initializer.initWithVcLib()
     }
 
+    lateinit var authorizationService: AuthorizationService
     lateinit var issuer: IssuerService
 
     beforeEach {
+        authorizationService = AuthorizationService(
+            credentialSchemes = listOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023)
+        )
         issuer = IssuerService(
+            authorizationService = authorizationService,
             issuer = IssuerAgent.newDefaultInstance(
                 cryptoService = DefaultCryptoService(),
                 dataProvider = DummyCredentialDataProvider()
@@ -175,7 +180,7 @@ class OidvciInteropTest : FunSpec({
             credentialIssuerMetadata.supportedCredentialConfigurations!![credentialOffer.configurationIds.first()]!!
         val scopeToRequest = credentialConfig.scope!!
         val authnRequest = client.createAuthRequest(scopeToRequest, credentialIssuerMetadata.credentialIssuer)
-        val authnResponse = issuer.authorize(authnRequest).getOrThrow()
+        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
         code.shouldNotBeNull()
@@ -188,7 +193,7 @@ class OidvciInteropTest : FunSpec({
                 representation = ConstantIndex.CredentialRepresentation.SD_JWT
             )
         )
-        val token = issuer.token(tokenRequest).getOrThrow()
+        val token = authorizationService.token(tokenRequest).getOrThrow()
         val credentialRequest = client.createCredentialRequestJwt(
             token,
             credentialIssuerMetadata,

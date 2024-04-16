@@ -19,6 +19,7 @@ Release 3.6.0:
  - Implement RFC 7636 Proof Key for Code Exchange for OpenID for Verifiable Credential Issuance implementations, i.e. `IssuerService` and `WalletService`
  - `IssuerService`: Make public API functions suspending, also return `KmmResult` to transport exceptions
  - `IssuerService`: Change parameter of `credential()` from `authorizationHeader` to `accessToken`, requiring the plain access token
+ - `IssuerService`: Extract responsibilities of an OAuth Authorizaiton Server into `AuthorizationService`
  - `WalletService`: Make public API functions suspending
  - `WalletService`: Implement proving possesion of private key with CBOR Web Tokens
  - `WalletService`: Move constructor parameters to `requestOptions` for every method call
