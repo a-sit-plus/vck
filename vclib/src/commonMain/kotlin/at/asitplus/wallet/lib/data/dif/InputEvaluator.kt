@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.jsonPath.JSONPathSelector
-import at.asitplus.wallet.lib.data.jsonPath.matchJsonPath
+import at.asitplus.wallet.lib.data.jsonPath.jsonPathCompiler
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -53,14 +53,14 @@ class StandardInputEvaluator : InputEvaluator {
             val constraintFields = constraints.fields ?: listOf()
             val fieldQueryResults = constraintFields.map { field ->
                 val fieldQueryResult = field.path.firstNotNullOfOrNull { jsonPath ->
-                    val candidates = credential.matchJsonPath(jsonPath)
+                    val candidates = jsonPathCompiler.compile(jsonPath).match(credential)
                     candidates.firstOrNull { candidate ->
                         field.filter?.let {
                             candidate.value.satisfiesConstraintFilter(it)
                         } ?: true
                     }?.let {
                         InputEvaluator.FieldQueryResult(
-                            singularQuerySelectors = it.singularQuerySelectors,
+                            singularQuerySelectors = it.normalizedPath,
                             value = it.value,
                         )
                     }

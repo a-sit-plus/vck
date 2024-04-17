@@ -1,7 +1,8 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.wallet.lib.data.jsonPath.JSONPathSelector
-import at.asitplus.wallet.lib.data.jsonPath.JSONPathToJSONPathSelectorListCompiler
+import at.asitplus.wallet.lib.data.jsonPath.SimpleJSONPathMatcher
+import at.asitplus.wallet.lib.data.jsonPath.jsonPathCompiler
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -46,7 +47,8 @@ class JSONPathCompilerTest : FreeSpec({
             )
 
             "$.store.book[*].author" {
-                val selectors = JSONPathToJSONPathSelectorListCompiler().compile(this.testScope.testCase.name.originalName)
+                val matcher = jsonPathCompiler.compile(this.testScope.testCase.name.originalName) as SimpleJSONPathMatcher
+                val selectors = matcher.selectors
                 selectors.shouldNotBeNull()
                 selectors shouldHaveSize 5
                 selectors[0].shouldBeInstanceOf<JSONPathSelector.RootSelector>()
