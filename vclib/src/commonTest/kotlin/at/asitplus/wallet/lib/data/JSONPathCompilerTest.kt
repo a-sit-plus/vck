@@ -6,8 +6,10 @@ import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 class JSONPathCompilerTest : FreeSpec({
     "tests from https://datatracker.ietf.org/doc/rfc9535/" - {
@@ -125,18 +127,76 @@ class JSONPathCompilerTest : FreeSpec({
                 nodeList shouldHaveSize 1
                 bookStore.jsonObject["store"]
                     .shouldNotBeNull().jsonObject["book"]
-                    .shouldNotBeNull().jsonArray[-1]
+                    .shouldNotBeNull().jsonArray.let { it[it.size - 1] }
                     .shouldNotBeNull().shouldBeIn(nodeList)
             }
 
-            "\$..book[-1]" {
+            "\$..book[0,1]" {
                 val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
-                nodeList shouldHaveSize 1
+                nodeList shouldHaveSize 2
                 bookStore.jsonObject["store"]
                     .shouldNotBeNull().jsonObject["book"]
-                    .shouldNotBeNull().jsonArray[-1]
-                    .shouldNotBeNull().shouldBeIn(nodeList)
+                    .shouldNotBeNull().jsonArray.filterIndexed { index, jsonElement ->
+                        index < 2
+                    }.forEach {
+                        it.shouldBeIn(nodeList)
+                    }
+            }
+
+            "\$..book[:2]" {
+                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                    .invoke(bookStore).map { it.value }
+                nodeList shouldHaveSize 2
+                bookStore.jsonObject["store"]
+                    .shouldNotBeNull().jsonObject["book"]
+                    .shouldNotBeNull().jsonArray.filterIndexed { index, jsonElement ->
+                        index < 2
+                    }.forEach {
+                        it.shouldBeIn(nodeList)
+                    }
+            }
+
+            "\$..book[?@.isbn]" {
+                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                    .invoke(bookStore).map { it.value }
+                nodeList shouldHaveSize 2
+                bookStore.jsonObject["store"]
+                    .shouldNotBeNull().jsonObject["book"]
+                    .shouldNotBeNull().jsonArray.filter {
+                        it.jsonObject.containsKey("isbn")
+                    }.forEach {
+                        it.shouldBeIn(nodeList)
+                    }
+            }
+
+            "\$..book[?@.price<10]" {
+                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                    .invoke(bookStore).map { it.value }
+                nodeList shouldHaveSize 2
+                bookStore.jsonObject["store"]
+                    .shouldNotBeNull().jsonObject["book"]
+                    .shouldNotBeNull().jsonArray.filter {
+                        it.jsonObject.get("price").shouldNotBeNull().jsonPrimitive.double < 10
+                    }.forEach {
+                        it.shouldBeIn(nodeList)
+                    }
+            }
+
+            "\$..*" {
+                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                    .invoke(bookStore).map { it.value }
+                bookStore.jsonObject["store"]
+                    .shouldNotBeNull().shouldBeIn(nodeList).jsonObject.let { store ->
+                        store["book"].shouldNotBeNull().shouldBeIn(nodeList).jsonArray.forEach { book ->
+                            book.shouldBeIn(nodeList).jsonObject.forEach { entry ->
+                                entry.shouldBeIn(nodeList)
+                            }
+                        }
+                        store["bicycle"].shouldNotBeNull().shouldBeIn(nodeList).jsonObject.forEach { entry ->
+                            entry.shouldBeIn(nodeList)
+                        }
+                    }
             }
         }
     }

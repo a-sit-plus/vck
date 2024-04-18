@@ -8,6 +8,10 @@ class JSONPathTypeCheckerVisitor(
 ) : JSONPathParserBaseVisitor<Boolean>() {
     // see section 2.4.3: Well-Typedness of Function Expressions
     // - https://datatracker.ietf.org/doc/rfc9535/
+    override fun defaultResult(): Boolean {
+        return true
+    }
+
     override fun aggregateResult(aggregate: Boolean?, nextResult: Boolean): Boolean =
         (aggregate ?: true) and nextResult
 

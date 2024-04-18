@@ -89,7 +89,7 @@ sealed interface JSONPathSelector {
                 is JsonPrimitive -> listOf()
 
                 is JsonArray -> {
-                    val actualIndex = if(index >= 0) {
+                    val actualIndex = if (index >= 0) {
                         index
                     } else {
                         index + currentNode.size
@@ -110,9 +110,7 @@ sealed interface JSONPathSelector {
         }
     }
 
-    class UnionSelector(
-        val selectors: List<JSONPathSelector>
-    ) : JSONPathSelector {
+    class UnionSelector(val selectors: List<JSONPathSelector>) : JSONPathSelector {
         override fun invoke(
             currentNode: JsonElement,
             rootNode: JsonElement,
@@ -129,7 +127,7 @@ sealed interface JSONPathSelector {
     class SliceSelector(
         val startInclusive: Int? = null,
         val endExclusive: Int? = null,
-        val step: Int? = null
+        val step: Int? = null,
     ) : JSONPathSelector {
         // source: section 2.3.4.2.2 of https://datatracker.ietf.org/doc/rfc9535/
         override fun invoke(
@@ -204,6 +202,8 @@ sealed interface JSONPathSelector {
             currentNode: JsonElement,
             rootNode: JsonElement,
         ): NodeList {
+            //  For each i such that 1 <= i <= n, the nodelist Ri is defined to be a
+            //   result of applying the child segment [<selectors>] to the node Di.
             return when (currentNode) {
                 is JsonPrimitive -> listOf()
 
