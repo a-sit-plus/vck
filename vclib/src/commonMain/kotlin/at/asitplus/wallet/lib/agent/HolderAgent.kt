@@ -287,7 +287,7 @@ class HolderAgent(
                 match.inputMatch.fieldQueryResults?.mapNotNull { fieldQueryResult ->
                     // TODO: find good way to transform the field query result paths into claim paths
                     //  for now it should be sufficient to take the last part, we don't have complicated credentials yet
-                    fieldQueryResult?.singularQuerySelectors?.last()?.let {
+                    fieldQueryResult?.singularQuerySegmentSelectors?.last()?.let {
                         when(it) {
                             is JSONPathSelector.IndexSelector -> it.index.toString()
                             is JSONPathSelector.MemberSelector -> it.memberName

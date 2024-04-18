@@ -29,7 +29,7 @@ Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#in
 // May support different features, not sure if all of them fit into one elevator
 interface InputEvaluator {
     data class FieldQueryResult(
-        val singularQuerySelectors: List<JSONPathSelector.SingularQuerySelector>,
+        val singularQuerySegmentSelectors: List<JSONPathSelector.SingularQuerySelector>,
         val value: JsonElement,
     )
 
@@ -53,14 +53,14 @@ class StandardInputEvaluator : InputEvaluator {
             val constraintFields = constraints.fields ?: listOf()
             val fieldQueryResults = constraintFields.map { field ->
                 val fieldQueryResult = field.path.firstNotNullOfOrNull { jsonPath ->
-                    val candidates = jsonPathCompiler.compile(jsonPath).match(credential)
+                    val candidates = jsonPathCompiler.compile(jsonPath).invoke(credential)
                     candidates.firstOrNull { candidate ->
                         field.filter?.let {
                             candidate.value.satisfiesConstraintFilter(it)
                         } ?: true
                     }?.let {
                         InputEvaluator.FieldQueryResult(
-                            singularQuerySelectors = it.normalizedPath,
+                            singularQuerySegmentSelectors = it.singularQuerySelectors,
                             value = it.value,
                         )
                     }

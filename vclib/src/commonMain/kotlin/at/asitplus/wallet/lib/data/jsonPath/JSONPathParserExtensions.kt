@@ -3,20 +3,20 @@ package at.asitplus.wallet.lib.data.jsonPath
 import at.asitplus.parser.generated.JSONPathParser
 
 fun JSONPathParser.StringLiteralContext.toUnescapedString(): String {
-    // !! because we know per grammar rules that either must be not null
-    return singleQuoted().joinToString("") {
-        listOfNotNull(
-            it.UNESCAPED()?.text,
-            it.DQUOTE()?.text,
-            it.SQUOTE()?.text,
-            it.ESCAPABLE()?.text,
-        ).joinToString("")
-    } + singleQuoted().joinToString("") {
-        listOfNotNull(
-            it.UNESCAPED()?.text,
-            it.DQUOTE()?.text,
-            it.SQUOTE()?.text,
-            it.ESCAPABLE()?.text,
-        ).joinToString("")
+    val withoutQuotesAtEnds = this.text.substring(1, this.text.lastIndex)
+
+    val out = StringBuilder()
+    var isEscaped = false
+
+    for (c in withoutQuotesAtEnds.toCharArray()) {
+        if (isEscaped) {
+            out.append(c)
+            isEscaped = false
+        } else if (c == '\\') {  // TODO: find a way to get the escape symbol?
+            isEscaped = true
+        } else {
+            out.append(c)
+        }
     }
+    return out.toString()
 }

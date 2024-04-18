@@ -2,30 +2,30 @@ package at.asitplus.wallet.lib.data.jsonPath
 
 import kotlinx.serialization.json.JsonElement
 
-interface JSONPathMatcher {
-    fun match(jsonElement: JsonElement): NodeList
+interface JSONPathQuery {
+    fun invoke(currentNode: JsonElement, rootNode: JsonElement = currentNode): NodeList
 
     val isSingularQuery: Boolean
 }
 
-class SimpleJSONPathMatcher(
+class SimpleJSONPathQuery(
     val selectors: List<JSONPathSelector>,
-): JSONPathMatcher {
-    override fun match(jsonElement: JsonElement): NodeList {
+) : JSONPathQuery {
+    override fun invoke(currentNode: JsonElement, rootNode: JsonElement): NodeList {
         var matches = listOf(
             NodeListEntry(
-                normalizedPath = listOf(),
-                value = jsonElement,
+                singularQuerySelectors = listOf(),
+                value = currentNode,
             )
         )
         selectors.forEach { selector ->
             matches = matches.flatMap { match ->
                 selector.invoke(
-                    rootNode = jsonElement,
-                    currentNode = match.value
+                    currentNode = match.value,
+                    rootNode = rootNode,
                 ).map { newMatch ->
                     NodeListEntry(
-                        normalizedPath = match.normalizedPath + newMatch.normalizedPath,
+                        singularQuerySelectors = match.singularQuerySelectors + newMatch.singularQuerySelectors,
                         value = newMatch.value
                     )
                 }

@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.wallet.lib.data.jsonPath.JSONPathSelector
-import at.asitplus.wallet.lib.data.jsonPath.SimpleJSONPathMatcher
+import at.asitplus.wallet.lib.data.jsonPath.SimpleJSONPathQuery
 import at.asitplus.wallet.lib.data.jsonPath.jsonPathCompiler
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -16,17 +16,17 @@ import kotlinx.serialization.json.buildJsonObject
 
 class JSONPathParserTest : FreeSpec({
     "Root selector is retrieved without exceptions" {
-        val matcher = jsonPathCompiler.compile("$") as SimpleJSONPathMatcher
+        val matcher = jsonPathCompiler.compile("$") as SimpleJSONPathQuery
         val selectors = matcher.selectors
         selectors.shouldNotBeNull()
         selectors.size shouldBeExactly 1
         selectors.get(0).shouldBeInstanceOf<JSONPathSelector.RootSelector>()
     }
     "Dot selector behaves the same as index selector for member names" {
-        val matcher1 = jsonPathCompiler.compile("\$['mdoc'].doctype") as SimpleJSONPathMatcher
+        val matcher1 = jsonPathCompiler.compile("\$['mdoc'].doctype") as SimpleJSONPathQuery
         val selectors1 = matcher1.selectors
 
-        val matcher2 = jsonPathCompiler.compile("\$.mdoc.doctype") as SimpleJSONPathMatcher
+        val matcher2 = jsonPathCompiler.compile("\$.mdoc.doctype") as SimpleJSONPathQuery
         val selectors2 = matcher2.selectors
 
         selectors1.shouldNotBeNull()
@@ -50,7 +50,7 @@ class JSONPathParserTest : FreeSpec({
     }
     "test parser wildcard selector" - {
         "test parser detects dot wildcard selector" {
-            val matcher = jsonPathCompiler.compile("$.*") as SimpleJSONPathMatcher
+            val matcher = jsonPathCompiler.compile("$.*") as SimpleJSONPathQuery
             val selectors = matcher.selectors
             selectors.shouldNotBeNull()
             selectors shouldHaveSize 2
@@ -58,7 +58,7 @@ class JSONPathParserTest : FreeSpec({
             selectors[1].shouldBeInstanceOf<JSONPathSelector.WildCardSelector>()
         }
         "test parser detects index wildcard selector" {
-            val matcher = jsonPathCompiler.compile("\$[*]") as SimpleJSONPathMatcher
+            val matcher = jsonPathCompiler.compile("\$[*]") as SimpleJSONPathQuery
             val selectors = matcher.selectors
             selectors.shouldNotBeNull()
             selectors shouldHaveSize 2
@@ -68,7 +68,7 @@ class JSONPathParserTest : FreeSpec({
             selector.selectors[0].shouldBeInstanceOf<JSONPathSelector.WildCardSelector>()
         }
         "test parser detects index wildcard selector as first selector" {
-            val matcher = jsonPathCompiler.compile("\$[*].vc") as SimpleJSONPathMatcher
+            val matcher = jsonPathCompiler.compile("\$[*].vc") as SimpleJSONPathQuery
             val selectors = matcher.selectors
             selectors.shouldNotBeNull()
             selectors shouldHaveSize 3
@@ -79,7 +79,7 @@ class JSONPathParserTest : FreeSpec({
             selectors[2].shouldBeInstanceOf<JSONPathSelector.MemberSelector>()
         }
         "test parser detects index wildcard selector as second selector" {
-            val matcher = jsonPathCompiler.compile("\$.vc[*]") as SimpleJSONPathMatcher
+            val matcher = jsonPathCompiler.compile("\$.vc[*]") as SimpleJSONPathQuery
             val selectors = matcher.selectors
             selectors.shouldNotBeNull()
             selectors shouldHaveSize 3
@@ -101,19 +101,16 @@ class JSONPathParserTest : FreeSpec({
             }
             jsonObject.shouldNotBeNull()
 
-            (jsonPathCompiler.compile("$.type").match(jsonObject).first().value as JsonPrimitive).content shouldBe type
-            jsonPathCompiler.compile("$.vc").match(jsonObject).let { vcMatches ->
+            (jsonPathCompiler.compile("$.type").invoke(jsonObject).first().value as JsonPrimitive).content shouldBe type
+            jsonPathCompiler.compile("$.vc").invoke(jsonObject).let { vcMatches ->
                 vcMatches shouldHaveSize 1
                 val vcArray = vcMatches.first().value
                 vcArray.shouldBeInstanceOf<JsonArray>()
-                val vcArrayElements = JSONPathSelector.WildCardSelector().invoke(
-                    rootNode = vcArray,
-                    currentNode = vcArray,
-                )
+                val vcArrayElements = JSONPathSelector.WildCardSelector.invoke(vcArray)
                 vcArrayElements shouldHaveSize 3
             }
 
-            val vcArrayElements = jsonPathCompiler.compile("$.vc[*]").match(jsonObject)
+            val vcArrayElements = jsonPathCompiler.compile("$.vc[*]").invoke(jsonObject)
             vcArrayElements shouldHaveSize 3
         }
     }

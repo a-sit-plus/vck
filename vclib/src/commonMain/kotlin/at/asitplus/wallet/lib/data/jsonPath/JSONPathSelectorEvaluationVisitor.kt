@@ -3,9 +3,10 @@ package at.asitplus.wallet.lib.data.jsonPath
 import at.asitplus.parser.generated.JSONPathParser
 import at.asitplus.parser.generated.JSONPathParserBaseVisitor
 
-class JSONPathSelectorEvaluationVisitor : JSONPathParserBaseVisitor<List<JSONPathSelector>>() {
+class JSONPathSelectorEvaluationVisitor(
+    private val compiler: JSONPathCompiler,
+) : JSONPathParserBaseVisitor<List<JSONPathSelector>>() {
     // source: https://datatracker.ietf.org/doc/rfc9535/ from 2024-02-21
-
     override fun defaultResult(): List<JSONPathSelector> {
         return listOf()
     }
@@ -15,20 +16,19 @@ class JSONPathSelectorEvaluationVisitor : JSONPathParserBaseVisitor<List<JSONPat
         nextResult: List<JSONPathSelector>
     ): List<JSONPathSelector> = (aggregate ?: listOf()) + nextResult
 
-    override fun visitRootSegment(ctx: JSONPathParser.RootSegmentContext): List<JSONPathSelector> {
+    override fun visitRootIdentifier(ctx: JSONPathParser.RootIdentifierContext): List<JSONPathSelector> {
         return listOf(
-            JSONPathSelector.RootSelector()
+            JSONPathSelector.RootSelector
         )
     }
 
     override fun visitDescendant_segment(ctx: JSONPathParser.Descendant_segmentContext): List<JSONPathSelector> {
         return listOfNotNull(
-            JSONPathSelector.DescendantSelector(),
+            JSONPathSelector.DescendantSelector,
         ) + (this.visitChildren(ctx) ?: listOf())
     }
 
     override fun visitBracketed_selection(ctx: JSONPathParser.Bracketed_selectionContext): List<JSONPathSelector> {
-        println("visitBracketed_selection")
         return listOf(
             JSONPathSelector.UnionSelector(
                 selectors = ctx.selector().flatMap {
@@ -62,16 +62,24 @@ class JSONPathSelectorEvaluationVisitor : JSONPathParserBaseVisitor<List<JSONPat
         )
     }
 
-    override fun visitMemberNameShorthandSelector(ctx: JSONPathParser.MemberNameShorthandSelectorContext): List<JSONPathSelector> {
+    override fun visitFilter_selector(ctx: JSONPathParser.Filter_selectorContext): List<JSONPathSelector> {
+        return listOf(
+            JSONPathSelector.FilterSelector(
+                ctx = ctx.logical_expr(),
+                compiler = compiler,
+            )
+        )
+    }
+
+    override fun visitMemberNameShorthand(ctx: JSONPathParser.MemberNameShorthandContext): List<JSONPathSelector> {
         return listOf(
             JSONPathSelector.MemberSelector(ctx.text)
         )
     }
 
     override fun visitWildcardSelector(ctx: JSONPathParser.WildcardSelectorContext): List<JSONPathSelector> {
-        println("WildcardSelector")
         return listOf(
-            JSONPathSelector.WildCardSelector()
+            JSONPathSelector.WildCardSelector
         )
     }
 }
