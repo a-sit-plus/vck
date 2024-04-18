@@ -5,7 +5,9 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -190,13 +192,54 @@ class JSONPathCompilerTest : FreeSpec({
                     .shouldNotBeNull().shouldBeIn(nodeList).jsonObject.let { store ->
                         store["book"].shouldNotBeNull().shouldBeIn(nodeList).jsonArray.forEach { book ->
                             book.shouldBeIn(nodeList).jsonObject.forEach { entry ->
-                                entry.shouldBeIn(nodeList)
+                                entry.value.shouldBeIn(nodeList)
                             }
                         }
                         store["bicycle"].shouldNotBeNull().shouldBeIn(nodeList).jsonObject.forEach { entry ->
-                            entry.shouldBeIn(nodeList)
+                            entry.value.shouldBeIn(nodeList)
                         }
                     }
+            }
+        }
+
+        "2.1.3. Example" - {
+            val jsonElement = jsonSerializer.decodeFromString<JsonElement>("{\"a\":[{\"b\":0},{\"b\":1},{\"c\":2}]}")
+            "\$" {
+                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                    .invoke(jsonElement).map { it.value }
+                nodeList shouldHaveSize 1
+                jsonElement.shouldBeIn(nodeList)
+            }
+            "\$.a" {
+                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                    .invoke(jsonElement).map { it.value }
+                nodeList shouldHaveSize 1
+                jsonElement.jsonObject["a"].shouldNotBeNull().shouldBeIn(nodeList)
+            }
+            "\$.a[*]" {
+                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                    .invoke(jsonElement).map { it.value }
+                nodeList shouldHaveSize 3
+                jsonElement.jsonObject["a"].shouldNotBeNull().jsonArray.forEach {
+                    it.shouldBeIn(nodeList)
+                }
+            }
+            "\$.a[*].b" {
+                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                    .invoke(jsonElement).map { it.value }
+                nodeList shouldHaveSize 2
+                jsonElement.jsonObject["a"].shouldNotBeNull().jsonArray.forEach {
+                    it.shouldBeInstanceOf<JsonObject>()["b"]?.jsonPrimitive?.shouldBeIn(nodeList)
+                }
+            }
+        }
+        "2.2.3.  Examples" - {
+            val jsonElement = jsonSerializer.decodeFromString<JsonElement>("{\"k\": \"v\"}")
+            "$" {
+                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                    .invoke(jsonElement).map { it.value }
+                nodeList shouldHaveSize 1
+                jsonElement.shouldBeIn(nodeList)
             }
         }
     }

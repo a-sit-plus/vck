@@ -1,4 +1,4 @@
-; source: https://datatracker.ietf.org/doc/rfc9535/
+; specification: https://datatracker.ietf.org/doc/rfc9535/
 ; - Appendix A
 
 jsonpath-query      = root-identifier segments
@@ -147,46 +147,3 @@ ALPHA               = %x41-5A / %x61-7A    ; A-Z / a-z
 descendant-segment  = ".." (bracketed-selection /
                            wildcard-selector /
                            member-name-shorthand)
-
-            Figure 2: Collected ABNF of JSONPath Queries
-
-Figure 3 contains the collected ABNF grammar that defines the syntax
-of a JSONPath Normalized Path while also using the rules root-
-identifier, ESC, DIGIT, and DIGIT1 from Figure 2.
-
-normalized-path      = root-identifier *(normal-index-segment)
-normal-index-segment = "[" normal-selector "]"
-normal-selector      = normal-name-selector / normal-index-selector
-normal-name-selector = %x27 *normal-single-quoted %x27 ; 'string'
-normal-single-quoted = normal-unescaped /
-                      ESC normal-escapable
-normal-unescaped     =    ; omit %x0-1F control codes
-                      %x20-26 /
-                         ; omit 0x27 '
-                      %x28-5B /
-                         ; omit 0x5C \
-                      %x5D-D7FF /
-                         ; skip surrogate code points
-                      %xE000-10FFFF
-
-normal-escapable     = %x62 / ; b BS backspace U+0008
-                      %x66 / ; f FF form feed U+000C
-                      %x6E / ; n LF line feed U+000A
-                      %x72 / ; r CR carriage return U+000D
-                      %x74 / ; t HT horizontal tab U+0009
-                      "'" /  ; ' apostrophe U+0027
-                      "\" /  ; \ backslash (reverse solidus) U+005C
-                      (%x75 normal-hexchar)
-                                      ; certain values u00xx U+00XX
-normal-hexchar       = "0" "0"
-                      (
-                         ("0" %x30-37) / ; "00"-"07"
-                            ; omit U+0008-U+000A BS HT LF
-                         ("0" %x62) /    ; "0b"
-                            ; omit U+000C-U+000D FF CR
-                         ("0" %x65-66) / ; "0e"-"0f"
-                         ("1" normal-HEXDIG)
-                      )
-normal-HEXDIG        = DIGIT / %x61-66    ; "0"-"9", "a"-"f"
-normal-index-selector = "0" / (DIGIT1 *DIGIT)
-                       ; non-negative decimal integer

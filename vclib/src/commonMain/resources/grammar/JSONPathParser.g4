@@ -1,10 +1,6 @@
-// converted from abnf using tool:
-// http://www.robertpinchbeck.com/abnf_to_antlr/Default.aspx
-// Conversion instructions:
-// 1. replaced the abnf values for true, false and null with strings, which are case-insensitive in abnf
-// 2. do conversion and correct the resulting production rules for true, false and null
-// 3. add grammar name
-// 4. move lexer rules below parser rules
+// 1. converted from abnf using tool:
+//      - http://www.robertpinchbeck.com/abnf_to_antlr/Default.aspx
+// 2. manually resolved lexer ambiguities
 parser grammar JSONPathParser;
 
 options { tokenVocab=JSONPathLexer; }
