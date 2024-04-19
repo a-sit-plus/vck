@@ -1,25 +1,25 @@
 package at.asitplus.wallet.lib.data.jsonPath.functionExtensions
 
-import at.asitplus.wallet.lib.data.jsonPath.JSONPathExpressionTypeEnum
-import at.asitplus.wallet.lib.data.jsonPath.JSONPathExpressionValue
-import at.asitplus.wallet.lib.data.jsonPath.JSONPathFunctionExtension
+import at.asitplus.wallet.lib.data.jsonPath.JsonPathExpressionValue
+import at.asitplus.wallet.lib.data.jsonPath.JsonPathExpressionTypeEnum
+import at.asitplus.wallet.lib.data.jsonPath.JsonPathFunctionExtension
 import kotlinx.serialization.json.JsonPrimitive
 
-data object CountFunctionExtension : JSONPathFunctionExtension.ValueTypeFunctionExtension(
+data object CountFunctionExtension : JsonPathFunctionExtension.ValueTypeFunctionExtension(
     name = "count",
     argumentTypes = listOf(
-        JSONPathExpressionTypeEnum.NodesType,
+        JsonPathExpressionTypeEnum.NodesType,
     )
 ) {
-    override fun invoke(arguments: List<JSONPathExpressionValue>): JSONPathExpressionValue.ValueTypeValue {
+    override fun invoke(arguments: List<JsonPathExpressionValue>): JsonPathExpressionValue.ValueTypeValue {
         super.validateArgumentTypes(arguments)
         return implementation(
-            arguments[0] as JSONPathExpressionValue.NodesTypeValue
+            arguments[0] as JsonPathExpressionValue.NodesTypeValue
         )
     }
 
-    private fun implementation(nodesTypeValue: JSONPathExpressionValue.NodesTypeValue): JSONPathExpressionValue.ValueTypeValue {
-        return JSONPathExpressionValue.ValueTypeValue.JsonValue(
+    private fun implementation(nodesTypeValue: JsonPathExpressionValue.NodesTypeValue): JsonPathExpressionValue.ValueTypeValue {
+        return JsonPathExpressionValue.ValueTypeValue.JsonValue(
             JsonPrimitive(nodesTypeValue.nodeList.size.toUInt())
         )
     }

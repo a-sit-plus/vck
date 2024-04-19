@@ -1,6 +1,6 @@
-package at.asitplus.wallet.lib.data
+package at.asitplus.wallet.lib.data.jsonPath
 
-import at.asitplus.wallet.lib.data.jsonPath.jsonPathCompiler
+import at.asitplus.wallet.lib.data.jsonSerializer
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldHaveSize
@@ -13,7 +13,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-class JSONPathCompilerTest : FreeSpec({
+class JsonPathCompilerTest : FreeSpec({
     "tests from https://datatracker.ietf.org/doc/rfc9535/" - {
         "1.5.  JSONPath Examples" - {
             val bookStore = jsonSerializer.decodeFromString<JsonElement>(
@@ -51,7 +51,7 @@ class JSONPathCompilerTest : FreeSpec({
             )
 
             "$.store.book[*].author" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
                 nodeList shouldHaveSize 4
                 val bookArray =
@@ -63,7 +63,7 @@ class JSONPathCompilerTest : FreeSpec({
             }
 
             "$..author" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
                 nodeList shouldHaveSize 4
                 val bookArray =
@@ -75,7 +75,7 @@ class JSONPathCompilerTest : FreeSpec({
             }
 
             "\$.store.*" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
                 nodeList shouldHaveSize 2
                 val store =
@@ -85,7 +85,7 @@ class JSONPathCompilerTest : FreeSpec({
             }
 
             "\$.store..price" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
                 nodeList shouldHaveSize 5
                 val store =
@@ -97,7 +97,7 @@ class JSONPathCompilerTest : FreeSpec({
             }
 
             "\$..book[2]" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
                 nodeList shouldHaveSize 1
                 bookStore.jsonObject["store"]
@@ -107,7 +107,7 @@ class JSONPathCompilerTest : FreeSpec({
             }
 
             "\$..book[2].author" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
                 nodeList shouldHaveSize 1
                 bookStore.jsonObject["store"]
@@ -118,13 +118,13 @@ class JSONPathCompilerTest : FreeSpec({
             }
 
             "\$..book[2].publisher" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
                 nodeList shouldHaveSize 0
             }
 
             "\$..book[-1]" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
                 nodeList shouldHaveSize 1
                 bookStore.jsonObject["store"]
@@ -134,7 +134,7 @@ class JSONPathCompilerTest : FreeSpec({
             }
 
             "\$..book[0,1]" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
                 nodeList shouldHaveSize 2
                 bookStore.jsonObject["store"]
@@ -147,7 +147,7 @@ class JSONPathCompilerTest : FreeSpec({
             }
 
             "\$..book[:2]" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
                 nodeList shouldHaveSize 2
                 bookStore.jsonObject["store"]
@@ -160,7 +160,7 @@ class JSONPathCompilerTest : FreeSpec({
             }
 
             "\$..book[?@.isbn]" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
                 nodeList shouldHaveSize 2
                 bookStore.jsonObject["store"]
@@ -173,7 +173,7 @@ class JSONPathCompilerTest : FreeSpec({
             }
 
             "\$..book[?@.price<10]" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
                 nodeList shouldHaveSize 2
                 bookStore.jsonObject["store"]
@@ -186,7 +186,7 @@ class JSONPathCompilerTest : FreeSpec({
             }
 
             "\$..*" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(bookStore).map { it.value }
                 bookStore.jsonObject["store"]
                     .shouldNotBeNull().shouldBeIn(nodeList).jsonObject.let { store ->
@@ -205,19 +205,19 @@ class JSONPathCompilerTest : FreeSpec({
         "2.1.3. Example" - {
             val jsonElement = jsonSerializer.decodeFromString<JsonElement>("{\"a\":[{\"b\":0},{\"b\":1},{\"c\":2}]}")
             "\$" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(jsonElement).map { it.value }
                 nodeList shouldHaveSize 1
                 jsonElement.shouldBeIn(nodeList)
             }
             "\$.a" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(jsonElement).map { it.value }
                 nodeList shouldHaveSize 1
                 jsonElement.jsonObject["a"].shouldNotBeNull().shouldBeIn(nodeList)
             }
             "\$.a[*]" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(jsonElement).map { it.value }
                 nodeList shouldHaveSize 3
                 jsonElement.jsonObject["a"].shouldNotBeNull().jsonArray.forEach {
@@ -225,7 +225,7 @@ class JSONPathCompilerTest : FreeSpec({
                 }
             }
             "\$.a[*].b" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(jsonElement).map { it.value }
                 nodeList shouldHaveSize 2
                 jsonElement.jsonObject["a"].shouldNotBeNull().jsonArray.forEach {
@@ -236,7 +236,7 @@ class JSONPathCompilerTest : FreeSpec({
         "2.2.3.  Examples" - {
             val jsonElement = jsonSerializer.decodeFromString<JsonElement>("{\"k\": \"v\"}")
             "$" {
-                val nodeList = jsonPathCompiler.compile(this.testScope.testCase.name.originalName)
+                val nodeList = defaultJsonPathCompiler.compile(this.testScope.testCase.name.originalName)
                     .invoke(jsonElement).map { it.value }
                 nodeList shouldHaveSize 1
                 jsonElement.shouldBeIn(nodeList)

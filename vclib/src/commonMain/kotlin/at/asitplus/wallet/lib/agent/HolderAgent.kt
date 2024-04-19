@@ -17,8 +17,8 @@ import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
-import at.asitplus.wallet.lib.data.dif.StandardInputEvaluator
-import at.asitplus.wallet.lib.data.jsonPath.JSONPathSelector
+import at.asitplus.wallet.lib.data.dif.BaseInputEvaluator
+import at.asitplus.wallet.lib.data.jsonPath.JsonPathSelector
 import at.asitplus.wallet.lib.data.jsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceSigned
@@ -52,7 +52,8 @@ class HolderAgent(
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val jwsService: JwsService,
     private val coseService: CoseService,
-    override val identifier: String
+    override val identifier: String,
+    private val difInputEvaluator: InputEvaluator = BaseInputEvaluator(),
 ) : Holder {
 
     companion object {
@@ -248,7 +249,7 @@ class HolderAgent(
                     }
                 } ?: true
             }.firstNotNullOfOrNull { credential ->
-                StandardInputEvaluator().evaluateMatch(
+                difInputEvaluator.evaluateMatch(
                     inputDescriptor = inputDescriptor,
                     credential = credential.toJsonElement(),
                 ).getOrNull()?.let {
@@ -287,10 +288,10 @@ class HolderAgent(
                 match.inputMatch.fieldQueryResults?.mapNotNull { fieldQueryResult ->
                     // TODO: find good way to transform the field query result paths into claim paths
                     //  for now it should be sufficient to take the last part, we don't have complicated credentials yet
-                    fieldQueryResult?.singularQuerySegmentSelectors?.last()?.let {
+                    fieldQueryResult?.singularQuerySelectors?.last()?.let {
                         when(it) {
-                            is JSONPathSelector.IndexSelector -> it.index.toString()
-                            is JSONPathSelector.MemberSelector -> it.memberName
+                            is JsonPathSelector.IndexSelector -> it.index.toString()
+                            is JsonPathSelector.MemberSelector -> it.memberName
                         }
                     }
                 } ?: listOf()

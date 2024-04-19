@@ -1,26 +1,26 @@
 package at.asitplus.wallet.lib.data.jsonPath.functionExtensions
 
-import at.asitplus.wallet.lib.data.jsonPath.JSONPathExpressionTypeEnum
-import at.asitplus.wallet.lib.data.jsonPath.JSONPathExpressionValue
-import at.asitplus.wallet.lib.data.jsonPath.JSONPathFunctionExtension
+import at.asitplus.wallet.lib.data.jsonPath.JsonPathExpressionTypeEnum
+import at.asitplus.wallet.lib.data.jsonPath.JsonPathExpressionValue
+import at.asitplus.wallet.lib.data.jsonPath.JsonPathFunctionExtension
 
 
-data object ValueFunctionExtension : JSONPathFunctionExtension.ValueTypeFunctionExtension(
+data object ValueFunctionExtension : JsonPathFunctionExtension.ValueTypeFunctionExtension(
     name = "value",
     argumentTypes = listOf(
-        JSONPathExpressionTypeEnum.NodesType,
+        JsonPathExpressionTypeEnum.NodesType,
     )
 ) {
-    override fun invoke(arguments: List<JSONPathExpressionValue>): JSONPathExpressionValue.ValueTypeValue {
+    override fun invoke(arguments: List<JsonPathExpressionValue>): JsonPathExpressionValue.ValueTypeValue {
         super.validateArgumentTypes(arguments)
         return implementation(
-            nodesTypeValue = arguments[0] as JSONPathExpressionValue.NodesTypeValue
+            nodesTypeValue = arguments[0] as JsonPathExpressionValue.NodesTypeValue
         )
     }
 
-    private fun implementation(nodesTypeValue: JSONPathExpressionValue.NodesTypeValue): JSONPathExpressionValue.ValueTypeValue {
+    private fun implementation(nodesTypeValue: JsonPathExpressionValue.NodesTypeValue): JsonPathExpressionValue.ValueTypeValue {
         return if (nodesTypeValue.nodeList.size == 1) {
-            JSONPathExpressionValue.ValueTypeValue.JsonValue(nodesTypeValue.nodeList[0])
-        } else JSONPathExpressionValue.ValueTypeValue.Nothing
+            JsonPathExpressionValue.ValueTypeValue.JsonValue(nodesTypeValue.nodeList[0])
+        } else JsonPathExpressionValue.ValueTypeValue.Nothing
     }
 }

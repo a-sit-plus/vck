@@ -4,6 +4,6 @@ import kotlinx.serialization.json.JsonElement
 
 typealias NodeList = List<NodeListEntry>
 data class NodeListEntry(
-    val singularQuerySelectors: List<JSONPathSelector.SingularQuerySelector>,
+    val singularQuerySelectors: List<JsonPathSelector.SingularQuerySelector>,
     val value: JsonElement,
 )

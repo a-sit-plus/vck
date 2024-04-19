@@ -1,9 +1,9 @@
 // 1. converted from abnf using tool:
 //      - http://www.robertpinchbeck.com/abnf_to_antlr/Default.aspx
 // 2. manually resolved lexer ambiguities
-parser grammar JSONPathParser;
+parser grammar JsonPathParser;
 
-options { tokenVocab=JSONPathLexer; }
+options { tokenVocab=JsonPathLexer; }
 
 jsonpath_query      : rootIdentifier segments;
 segments            : (ws segment)*;

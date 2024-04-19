@@ -1,8 +1,9 @@
 package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.data.jsonPath.JSONPathSelector
-import at.asitplus.wallet.lib.data.jsonPath.jsonPathCompiler
+import at.asitplus.wallet.lib.data.jsonPath.JsonPathCompiler
+import at.asitplus.wallet.lib.data.jsonPath.JsonPathSelector
+import at.asitplus.wallet.lib.data.jsonPath.defaultJsonPathCompiler
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -13,15 +14,6 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.intOrNull
 
-open class InputEvaluationException(message: String) : Exception(message)
-
-class FailedFieldQueryException(val constraintField: ConstraintField) : InputEvaluationException(
-    message = "No match has been found to satisfy constraint field: $constraintField"
-)
-class MissingFeatureSupportException(val featureName: String) : InputEvaluationException(
-    message = "Feature is currently not supported: $featureName"
-)
-
 /*
 Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
  */
@@ -29,7 +21,7 @@ Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#in
 // May support different features, not sure if all of them fit into one elevator
 interface InputEvaluator {
     data class FieldQueryResult(
-        val singularQuerySegmentSelectors: List<JSONPathSelector.SingularQuerySelector>,
+        val singularQuerySelectors: List<JsonPathSelector.SingularQuerySelector>,
         val value: JsonElement,
     )
 
@@ -43,7 +35,9 @@ interface InputEvaluator {
     ): KmmResult<CandidateInputMatch>
 }
 
-class StandardInputEvaluator : InputEvaluator {
+class BaseInputEvaluator(
+    private val jsonPathCompiler: JsonPathCompiler = defaultJsonPathCompiler,
+) : InputEvaluator {
     override fun evaluateMatch(
         inputDescriptor: InputDescriptor,
         credential: JsonElement
@@ -60,7 +54,7 @@ class StandardInputEvaluator : InputEvaluator {
                         } ?: true
                     }?.let {
                         InputEvaluator.FieldQueryResult(
-                            singularQuerySegmentSelectors = it.singularQuerySelectors,
+                            singularQuerySelectors = it.singularQuerySelectors,
                             value = it.value,
                         )
                     }
@@ -146,3 +140,12 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
     // TODO: Implement support for other filters
     return true
 }
+
+open class InputEvaluationException(message: String) : Exception(message)
+
+class FailedFieldQueryException(val constraintField: ConstraintField) : InputEvaluationException(
+    message = "No match has been found to satisfy constraint field: $constraintField"
+)
+class MissingFeatureSupportException(val featureName: String) : InputEvaluationException(
+    message = "Feature is not supported: $featureName"
+)

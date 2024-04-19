@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data.jsonPath
 
-import at.asitplus.parser.generated.JSONPathParser
+import at.asitplus.parser.generated.JsonPathParser
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -14,13 +14,13 @@ https://datatracker.ietf.org/doc/html/rfc9535/
 https://datatracker.ietf.org/doc/html/rfc8259
  */
 
-sealed interface JSONPathSelector {
+sealed interface JsonPathSelector {
     fun invoke(
         currentNode: JsonElement,
         rootNode: JsonElement = currentNode,
     ): NodeList
 
-    data object RootSelector : JSONPathSelector {
+    data object RootSelector : JsonPathSelector {
         override fun invoke(
             currentNode: JsonElement,
             rootNode: JsonElement,
@@ -34,7 +34,7 @@ sealed interface JSONPathSelector {
         }
     }
 
-    data object WildCardSelector : JSONPathSelector {
+    data object WildCardSelector : JsonPathSelector {
         override fun invoke(
             currentNode: JsonElement,
             rootNode: JsonElement,
@@ -59,7 +59,7 @@ sealed interface JSONPathSelector {
         }
     }
 
-    sealed interface SingularQuerySelector : JSONPathSelector
+    sealed interface SingularQuerySelector : JsonPathSelector
     class MemberSelector(val memberName: String) : SingularQuerySelector {
         override fun invoke(
             currentNode: JsonElement,
@@ -110,7 +110,7 @@ sealed interface JSONPathSelector {
         }
     }
 
-    class UnionSelector(val selectors: List<JSONPathSelector>) : JSONPathSelector {
+    class UnionSelector(val selectors: List<JsonPathSelector>) : JsonPathSelector {
         override fun invoke(
             currentNode: JsonElement,
             rootNode: JsonElement,
@@ -128,7 +128,7 @@ sealed interface JSONPathSelector {
         val startInclusive: Int? = null,
         val endExclusive: Int? = null,
         val step: Int? = null,
-    ) : JSONPathSelector {
+    ) : JsonPathSelector {
         // source: section 2.3.4.2.2 of https://datatracker.ietf.org/doc/rfc9535/
         override fun invoke(
             currentNode: JsonElement,
@@ -197,7 +197,7 @@ sealed interface JSONPathSelector {
         }
     }
 
-    data object DescendantSelector : JSONPathSelector {
+    data object DescendantSelector : JsonPathSelector {
         override fun invoke(
             currentNode: JsonElement,
             rootNode: JsonElement,
@@ -239,13 +239,13 @@ sealed interface JSONPathSelector {
     }
 
     class FilterSelector(
-        val ctx: JSONPathParser.Logical_exprContext,
-        val compiler: JSONPathCompiler,
-    ) : JSONPathSelector {
+        val ctx: JsonPathParser.Logical_exprContext,
+        val compiler: JsonPathCompiler,
+    ) : JsonPathSelector {
         init {
-            val hasValidTypes = JSONPathTypeCheckerVisitor(compiler).visitLogical_expr(ctx)
+            val hasValidTypes = JsonPathTypeCheckerVisitor(compiler).visitLogical_expr(ctx)
             if (hasValidTypes == false) {
-                throw JSONPathTypeCheckerException("See the error handler output for more details.")
+                throw JsonPathTypeCheckerException("See the error handler output for more details.")
             }
         }
 
@@ -270,7 +270,7 @@ sealed interface JSONPathSelector {
                     )
                 }
             }.filter {
-                JSONPathExpressionEvaluationVisitor(
+                JsonPathExpressionEvaluationVisitor(
                     rootNode = rootNode,
                     currentNode = it.value,
                     compiler = compiler,

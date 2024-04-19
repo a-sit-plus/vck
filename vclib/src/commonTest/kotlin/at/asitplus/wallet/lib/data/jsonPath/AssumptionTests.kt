@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.data
+package at.asitplus.wallet.lib.data.jsonPath
 
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull

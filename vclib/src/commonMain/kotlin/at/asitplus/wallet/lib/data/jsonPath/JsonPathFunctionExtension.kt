@@ -1,11 +1,11 @@
 package at.asitplus.wallet.lib.data.jsonPath
 
-sealed class JSONPathFunctionExtension<ReturnType : JSONPathExpressionValue>(
+sealed class JsonPathFunctionExtension<ReturnType : JsonPathExpressionValue>(
     val name: String,
-    val argumentTypes: List<JSONPathExpressionTypeEnum>,
+    val argumentTypes: List<JsonPathExpressionTypeEnum>,
 ) {
-    abstract fun invoke(arguments: List<JSONPathExpressionValue>): ReturnType
-    fun validateArgumentTypes(arguments: List<JSONPathExpressionValue>) {
+    abstract fun invoke(arguments: List<JsonPathExpressionValue>): ReturnType
+    fun validateArgumentTypes(arguments: List<JsonPathExpressionValue>) {
         if(arguments.size != argumentTypes.size) {
             throw InvalidArgumentsException(
                 expectedArguments = argumentTypes.size,
@@ -24,24 +24,24 @@ sealed class JSONPathFunctionExtension<ReturnType : JSONPathExpressionValue>(
 
     abstract class ValueTypeFunctionExtension(
         name: String,
-        argumentTypes: List<JSONPathExpressionTypeEnum>,
-    ) : JSONPathFunctionExtension<JSONPathExpressionValue.ValueTypeValue>(
+        argumentTypes: List<JsonPathExpressionTypeEnum>,
+    ) : JsonPathFunctionExtension<JsonPathExpressionValue.ValueTypeValue>(
         name = name,
         argumentTypes = argumentTypes,
     )
 
     abstract class LogicalTypeFunctionExtension(
         name: String,
-        argumentTypes: List<JSONPathExpressionTypeEnum>,
-    ) : JSONPathFunctionExtension<JSONPathExpressionValue.LogicalTypeValue>(
+        argumentTypes: List<JsonPathExpressionTypeEnum>,
+    ) : JsonPathFunctionExtension<JsonPathExpressionValue.LogicalTypeValue>(
         name = name,
         argumentTypes = argumentTypes,
     )
 
     abstract class NodesTypeFunctionExtension(
         name: String,
-        argumentTypes: List<JSONPathExpressionTypeEnum>,
-    ) : JSONPathFunctionExtension<JSONPathExpressionValue.NodesTypeValue.FunctionExtensionResult>(
+        argumentTypes: List<JsonPathExpressionTypeEnum>,
+    ) : JsonPathFunctionExtension<JsonPathExpressionValue.NodesTypeValue.FunctionExtensionResult>(
         name = name,
         argumentTypes = argumentTypes,
     )

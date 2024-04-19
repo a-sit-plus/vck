@@ -6,23 +6,23 @@ import at.asitplus.wallet.lib.data.jsonPath.functionExtensions.MatchFunctionExte
 import at.asitplus.wallet.lib.data.jsonPath.functionExtensions.SearchFunctionExtension
 import at.asitplus.wallet.lib.data.jsonPath.functionExtensions.ValueFunctionExtension
 
-interface JSONPathFunctionExtensionManager {
-    fun addExtension(functionExtension: JSONPathFunctionExtension<*>)
-    fun getExtension(name: String): JSONPathFunctionExtension<*>?
+interface JsonPathFunctionExtensionManager {
+    fun addExtension(functionExtension: JsonPathFunctionExtension<*>)
+    fun getExtension(name: String): JsonPathFunctionExtension<*>?
 }
 
 val defaultFunctionExtensionManager by lazy {
-    object : JSONPathFunctionExtensionManager {
-        private val extensions: MutableMap<String, JSONPathFunctionExtension<*>> = mutableMapOf()
+    object : JsonPathFunctionExtensionManager {
+        private val extensions: MutableMap<String, JsonPathFunctionExtension<*>> = mutableMapOf()
 
-        override fun addExtension(functionExtension: JSONPathFunctionExtension<*>) {
+        override fun addExtension(functionExtension: JsonPathFunctionExtension<*>) {
             if(extensions.containsKey(functionExtension.name)) {
                 throw FunctionExtensionCollisionException(functionExtension.name)
             }
             extensions.put(functionExtension.name, functionExtension)
         }
 
-        override fun getExtension(name: String): JSONPathFunctionExtension<*>? {
+        override fun getExtension(name: String): JsonPathFunctionExtension<*>? {
             return extensions.get(name)
         }
     }.apply {

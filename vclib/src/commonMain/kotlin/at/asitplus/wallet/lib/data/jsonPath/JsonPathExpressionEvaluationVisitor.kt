@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data.jsonPath
 
-import at.asitplus.parser.generated.JSONPathParser
-import at.asitplus.parser.generated.JSONPathParserBaseVisitor
+import at.asitplus.parser.generated.JsonPathParser
+import at.asitplus.parser.generated.JsonPathParserBaseVisitor
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -11,29 +11,29 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 
-internal class JSONPathExpressionEvaluationVisitor(
+internal class JsonPathExpressionEvaluationVisitor(
     val rootNode: JsonElement,
     val currentNode: JsonElement,
-    val compiler: JSONPathCompiler,
-) : JSONPathParserBaseVisitor<JSONPathExpressionValue>() {
+    val compiler: JsonPathCompiler,
+) : JsonPathParserBaseVisitor<JsonPathExpressionValue>() {
 
-    override fun visitLogical_expr(ctx: JSONPathParser.Logical_exprContext): JSONPathExpressionValue.LogicalTypeValue {
+    override fun visitLogical_expr(ctx: JsonPathParser.Logical_exprContext): JsonPathExpressionValue.LogicalTypeValue {
         return visitLogical_or_expr(ctx.logical_or_expr())
     }
 
-    override fun visitLogical_or_expr(ctx: JSONPathParser.Logical_or_exprContext): JSONPathExpressionValue.LogicalTypeValue {
-        return JSONPathExpressionValue.LogicalTypeValue(ctx.logical_and_expr().any {
+    override fun visitLogical_or_expr(ctx: JsonPathParser.Logical_or_exprContext): JsonPathExpressionValue.LogicalTypeValue {
+        return JsonPathExpressionValue.LogicalTypeValue(ctx.logical_and_expr().any {
             visitLogical_and_expr(it).isTrue
         })
     }
 
-    override fun visitLogical_and_expr(ctx: JSONPathParser.Logical_and_exprContext): JSONPathExpressionValue.LogicalTypeValue {
-        return JSONPathExpressionValue.LogicalTypeValue(ctx.basic_expr().all {
+    override fun visitLogical_and_expr(ctx: JsonPathParser.Logical_and_exprContext): JsonPathExpressionValue.LogicalTypeValue {
+        return JsonPathExpressionValue.LogicalTypeValue(ctx.basic_expr().all {
             visitBasic_expr(it).isTrue
         })
     }
 
-    override fun visitBasic_expr(ctx: JSONPathParser.Basic_exprContext): JSONPathExpressionValue.LogicalTypeValue {
+    override fun visitBasic_expr(ctx: JsonPathParser.Basic_exprContext): JsonPathExpressionValue.LogicalTypeValue {
         return ctx.comparison_expr()?.let {
             visitComparison_expr(it)
         } ?: ctx.test_expr()?.let {
@@ -43,10 +43,10 @@ internal class JSONPathExpressionEvaluationVisitor(
         } ?: throw UnexpectedTokenException(ctx)
     }
 
-    override fun visitParen_expr(ctx: JSONPathParser.Paren_exprContext): JSONPathExpressionValue.LogicalTypeValue {
+    override fun visitParen_expr(ctx: JsonPathParser.Paren_exprContext): JsonPathExpressionValue.LogicalTypeValue {
         val negate = ctx.LOGICAL_NOT_OP() != null
         val evaluation = visitLogical_expr(ctx.logical_expr())
-        return JSONPathExpressionValue.LogicalTypeValue(
+        return JsonPathExpressionValue.LogicalTypeValue(
             if (negate) {
                 !evaluation.isTrue
             } else {
@@ -55,7 +55,7 @@ internal class JSONPathExpressionEvaluationVisitor(
         )
     }
 
-    override fun visitComparison_expr(ctx: JSONPathParser.Comparison_exprContext): JSONPathExpressionValue.LogicalTypeValue {
+    override fun visitComparison_expr(ctx: JsonPathParser.Comparison_exprContext): JsonPathExpressionValue.LogicalTypeValue {
         // see section 2.3.5.2.2
         val firstComparable = ctx.comparable(0) ?: throw UnexpectedTokenException(ctx)
         val secondComparable = ctx.comparable(1) ?: throw UnexpectedTokenException(ctx)
@@ -102,12 +102,12 @@ internal class JSONPathExpressionEvaluationVisitor(
             }
         }
 
-        return JSONPathExpressionValue.LogicalTypeValue(comparisonResult)
+        return JsonPathExpressionValue.LogicalTypeValue(comparisonResult)
     }
 
     internal fun evaluateComparisonEquals(
-        first: JSONPathParser.ComparableContext,
-        second: JSONPathParser.ComparableContext,
+        first: JsonPathParser.ComparableContext,
+        second: JsonPathParser.ComparableContext,
     ): Boolean {
         val firstValue = visitComparable(first)
         val secondValue = visitComparable(second)
@@ -129,30 +129,30 @@ internal class JSONPathExpressionEvaluationVisitor(
     }
 
     internal fun evaluateComparisonEqualsUnpacked(
-        first: JSONPathExpressionValue.ValueTypeValue,
-        second: JSONPathExpressionValue.ValueTypeValue,
+        first: JsonPathExpressionValue.ValueTypeValue,
+        second: JsonPathExpressionValue.ValueTypeValue,
     ): Boolean = when (first) {
-        is JSONPathExpressionValue.ValueTypeValue.JsonValue -> {
+        is JsonPathExpressionValue.ValueTypeValue.JsonValue -> {
             when (first.jsonElement) {
-                is JsonArray -> if (second is JSONPathExpressionValue.ValueTypeValue.JsonValue) {
+                is JsonArray -> if (second is JsonPathExpressionValue.ValueTypeValue.JsonValue) {
                     if (second.jsonElement is JsonArray) {
                         (first.jsonElement.size == second.jsonElement.size) and first.jsonElement.mapIndexed { index, it ->
                             index to it
                         }.all {
                             this.evaluateComparisonEqualsUnpacked(
-                                JSONPathExpressionValue.ValueTypeValue.JsonValue(it.second),
-                                JSONPathExpressionValue.ValueTypeValue.JsonValue(second.jsonElement[it.first]),
+                                JsonPathExpressionValue.ValueTypeValue.JsonValue(it.second),
+                                JsonPathExpressionValue.ValueTypeValue.JsonValue(second.jsonElement[it.first]),
                             )
                         }
                     } else false
                 } else false
 
-                is JsonObject -> if (second is JSONPathExpressionValue.ValueTypeValue.JsonValue) {
+                is JsonObject -> if (second is JsonPathExpressionValue.ValueTypeValue.JsonValue) {
                     if (second.jsonElement is JsonObject) {
                         (first.jsonElement.keys == second.jsonElement.keys) and first.jsonElement.entries.all {
                             this.evaluateComparisonEqualsUnpacked(
-                                JSONPathExpressionValue.ValueTypeValue.JsonValue(it.value),
-                                JSONPathExpressionValue.ValueTypeValue.JsonValue(
+                                JsonPathExpressionValue.ValueTypeValue.JsonValue(it.value),
+                                JsonPathExpressionValue.ValueTypeValue.JsonValue(
                                     second.jsonElement[it.key]
                                         ?: throw MissingKeyException(
                                             jsonObject = second.jsonElement,
@@ -164,7 +164,7 @@ internal class JSONPathExpressionEvaluationVisitor(
                     } else false
                 } else false
 
-                is JsonPrimitive -> if (second is JSONPathExpressionValue.ValueTypeValue.JsonValue) {
+                is JsonPrimitive -> if (second is JsonPathExpressionValue.ValueTypeValue.JsonValue) {
                     if (second.jsonElement is JsonPrimitive) {
                         when {
                             first.jsonElement.isString != second.jsonElement.isString -> false
@@ -177,18 +177,18 @@ internal class JSONPathExpressionEvaluationVisitor(
                     } else false
                 } else false
 
-                JsonNull -> if (second is JSONPathExpressionValue.ValueTypeValue.JsonValue) {
+                JsonNull -> if (second is JsonPathExpressionValue.ValueTypeValue.JsonValue) {
                     second.jsonElement == JsonNull
                 } else false
             }
         }
 
-        JSONPathExpressionValue.ValueTypeValue.Nothing -> second == JSONPathExpressionValue.ValueTypeValue.Nothing
+        JsonPathExpressionValue.ValueTypeValue.Nothing -> second == JsonPathExpressionValue.ValueTypeValue.Nothing
     }
 
     internal fun evaluateComparisonSmallerThan(
-        first: JSONPathParser.ComparableContext,
-        second: JSONPathParser.ComparableContext,
+        first: JsonPathParser.ComparableContext,
+        second: JsonPathParser.ComparableContext,
     ): Boolean {
         val firstValue = visitComparable(first)
         val secondValue = visitComparable(second)
@@ -208,13 +208,13 @@ internal class JSONPathExpressionEvaluationVisitor(
     }
 
     internal fun evaluateComparisonUnpackedSmallerThan(
-        first: JSONPathExpressionValue,
-        second: JSONPathExpressionValue,
+        first: JsonPathExpressionValue,
+        second: JsonPathExpressionValue,
     ): Boolean {
-        if (first !is JSONPathExpressionValue.ValueTypeValue.JsonValue) {
+        if (first !is JsonPathExpressionValue.ValueTypeValue.JsonValue) {
             return false
         }
-        if (second !is JSONPathExpressionValue.ValueTypeValue.JsonValue) {
+        if (second !is JsonPathExpressionValue.ValueTypeValue.JsonValue) {
             return false
         }
         if (first.jsonElement !is JsonPrimitive) {
@@ -238,15 +238,15 @@ internal class JSONPathExpressionEvaluationVisitor(
         } ?: false
     }
 
-    override fun visitTest_expr(ctx: JSONPathParser.Test_exprContext): JSONPathExpressionValue.LogicalTypeValue {
+    override fun visitTest_expr(ctx: JsonPathParser.Test_exprContext): JsonPathExpressionValue.LogicalTypeValue {
         val negate = ctx.LOGICAL_NOT_OP() != null
         val result = when (val it = visitChildren(ctx)) {
-            is JSONPathExpressionValue.LogicalTypeValue -> it.isTrue
-            is JSONPathExpressionValue.NodesTypeValue -> it.nodeList.isNotEmpty()
+            is JsonPathExpressionValue.LogicalTypeValue -> it.isTrue
+            is JsonPathExpressionValue.NodesTypeValue -> it.nodeList.isNotEmpty()
             else -> throw InvalidTestExpressionValueException(expression = ctx, value = it)
         }
 
-        return JSONPathExpressionValue.LogicalTypeValue(
+        return JsonPathExpressionValue.LogicalTypeValue(
             if (negate) {
                 !result
             } else {
@@ -255,23 +255,23 @@ internal class JSONPathExpressionEvaluationVisitor(
         )
     }
 
-    override fun visitRel_query(ctx: JSONPathParser.Rel_queryContext): JSONPathExpressionValue {
-        return JSONPathExpressionValue.NodesTypeValue.FilterQueryResult(
+    override fun visitRel_query(ctx: JsonPathParser.Rel_queryContext): JsonPathExpressionValue {
+        return JsonPathExpressionValue.NodesTypeValue.FilterQueryResult(
             compiler.compile("$${ctx.segments().text}").invoke(currentNode).map {
                 it.value
             }
         )
     }
 
-    override fun visitJsonpath_query(ctx: JSONPathParser.Jsonpath_queryContext): JSONPathExpressionValue {
-        return JSONPathExpressionValue.NodesTypeValue.FilterQueryResult(
+    override fun visitJsonpath_query(ctx: JsonPathParser.Jsonpath_queryContext): JsonPathExpressionValue {
+        return JsonPathExpressionValue.NodesTypeValue.FilterQueryResult(
             compiler.compile(ctx.text).invoke(rootNode).map {
                 it.value
             }
         )
     }
 
-    override fun visitFunction_expr(ctx: JSONPathParser.Function_exprContext): JSONPathExpressionValue {
+    override fun visitFunction_expr(ctx: JsonPathParser.Function_exprContext): JsonPathExpressionValue {
         val functionName = ctx.FUNCTION_NAME().text
         val extension = compiler.getFunctionExtensionManager()?.getExtension(functionName)
             ?: throw UnknownFunctionExtensionException(functionName)
@@ -288,38 +288,38 @@ internal class JSONPathExpressionEvaluationVisitor(
             val argument = visitFunction_argument(argumentContext)
 
             when (expectedArgumentType) {
-                JSONPathExpressionTypeEnum.LogicalType -> when (argument) {
-                    is JSONPathExpressionValue.LogicalTypeValue -> argument
-                    is JSONPathExpressionValue.NodesTypeValue -> JSONPathExpressionValue.LogicalTypeValue(
+                JsonPathExpressionTypeEnum.LogicalType -> when (argument) {
+                    is JsonPathExpressionValue.LogicalTypeValue -> argument
+                    is JsonPathExpressionValue.NodesTypeValue -> JsonPathExpressionValue.LogicalTypeValue(
                         argument.nodeList.isNotEmpty()
                     )
 
-                    is JSONPathExpressionValue.ValueTypeValue -> throw InvalidArgumentTypeException(
+                    is JsonPathExpressionValue.ValueTypeValue -> throw InvalidArgumentTypeException(
                         value = argument,
                         expectedArgumentType = expectedArgumentType,
                     )
                 }
 
-                JSONPathExpressionTypeEnum.NodesType -> when (argument) {
-                    is JSONPathExpressionValue.NodesTypeValue -> argument
+                JsonPathExpressionTypeEnum.NodesType -> when (argument) {
+                    is JsonPathExpressionValue.NodesTypeValue -> argument
                     else -> throw InvalidArgumentTypeException(
                         value = argument,
                         expectedArgumentType = expectedArgumentType,
                     )
                 }
 
-                JSONPathExpressionTypeEnum.ValueType -> when (argument) {
-                    is JSONPathExpressionValue.ValueTypeValue -> argument
-                    is JSONPathExpressionValue.NodesTypeValue -> {
-                        if (argument !is JSONPathExpressionValue.NodesTypeValue.SingularQueryResult) {
+                JsonPathExpressionTypeEnum.ValueType -> when (argument) {
+                    is JsonPathExpressionValue.ValueTypeValue -> argument
+                    is JsonPathExpressionValue.NodesTypeValue -> {
+                        if (argument !is JsonPathExpressionValue.NodesTypeValue.SingularQueryResult) {
                             throw InvalidArgumentTypeException(
                                 value = argument,
                                 expectedArgumentType = expectedArgumentType,
                             )
                         } else if(argument.nodeList.size == 1) {
-                            JSONPathExpressionValue.ValueTypeValue.JsonValue(argument.nodeList[0])
+                            JsonPathExpressionValue.ValueTypeValue.JsonValue(argument.nodeList[0])
                         } else {
-                            JSONPathExpressionValue.ValueTypeValue.Nothing
+                            JsonPathExpressionValue.ValueTypeValue.Nothing
                         }
                     }
 
@@ -333,45 +333,45 @@ internal class JSONPathExpressionEvaluationVisitor(
         return extension.invoke(coercedArguments)
     }
 
-    override fun visitRel_singular_query(ctx: JSONPathParser.Rel_singular_queryContext): JSONPathExpressionValue {
-        return JSONPathExpressionValue.NodesTypeValue.SingularQueryResult(
+    override fun visitRel_singular_query(ctx: JsonPathParser.Rel_singular_queryContext): JsonPathExpressionValue {
+        return JsonPathExpressionValue.NodesTypeValue.SingularQueryResult(
             compiler.compile("$" + ctx.singular_query_segments().text).invoke(currentNode)
                 .map { it.value }
         )
     }
 
-    override fun visitNumber(ctx: JSONPathParser.NumberContext): JSONPathExpressionValue {
+    override fun visitNumber(ctx: JsonPathParser.NumberContext): JsonPathExpressionValue {
         // TODO: support other number formats like long
-        return JSONPathExpressionValue.ValueTypeValue.JsonValue(
+        return JsonPathExpressionValue.ValueTypeValue.JsonValue(
             // DO NOT CREATE THIS PRIMITIVE FROM THE TEXT
             // - JsonPrimitive.isString is the only way to know whether the content is actually a string
             JsonPrimitive(ctx.text.toDouble())
         )
     }
 
-    override fun visitStringLiteral(ctx: JSONPathParser.StringLiteralContext): JSONPathExpressionValue {
-        return JSONPathExpressionValue.ValueTypeValue.JsonValue(
+    override fun visitStringLiteral(ctx: JsonPathParser.StringLiteralContext): JsonPathExpressionValue {
+        return JsonPathExpressionValue.ValueTypeValue.JsonValue(
             JsonPrimitive(ctx.toUnescapedString())
         )
     }
 
-    override fun visitNull(ctx: JSONPathParser.NullContext): JSONPathExpressionValue {
-        return JSONPathExpressionValue.ValueTypeValue.JsonValue(JsonNull)
+    override fun visitNull(ctx: JsonPathParser.NullContext): JsonPathExpressionValue {
+        return JsonPathExpressionValue.ValueTypeValue.JsonValue(JsonNull)
     }
 
-    override fun visitTrue(ctx: JSONPathParser.TrueContext): JSONPathExpressionValue {
-        return JSONPathExpressionValue.ValueTypeValue.JsonValue(JsonPrimitive(true))
+    override fun visitTrue(ctx: JsonPathParser.TrueContext): JsonPathExpressionValue {
+        return JsonPathExpressionValue.ValueTypeValue.JsonValue(JsonPrimitive(true))
     }
 
-    override fun visitFalse(ctx: JSONPathParser.FalseContext): JSONPathExpressionValue {
-        return JSONPathExpressionValue.ValueTypeValue.JsonValue(JsonPrimitive(false))
+    override fun visitFalse(ctx: JsonPathParser.FalseContext): JsonPathExpressionValue {
+        return JsonPathExpressionValue.ValueTypeValue.JsonValue(JsonPrimitive(false))
     }
 }
 
 
-private fun JSONPathExpressionValue.isEmptyOrNothing(): Boolean = when (this) {
-    is JSONPathExpressionValue.NodesTypeValue -> this.nodeList.isEmpty()
-    JSONPathExpressionValue.ValueTypeValue.Nothing -> true
+private fun JsonPathExpressionValue.isEmptyOrNothing(): Boolean = when (this) {
+    is JsonPathExpressionValue.NodesTypeValue -> this.nodeList.isEmpty()
+    JsonPathExpressionValue.ValueTypeValue.Nothing -> true
     else -> false
 }
 
@@ -379,16 +379,16 @@ private fun JSONPathExpressionValue.isEmptyOrNothing(): Boolean = when (this) {
 // results in a nodelist consisting of a single node, that side is
 // replaced by the value of its node.
 // source: https://datatracker.ietf.org/doc/rfc9535/
-private fun JSONPathExpressionValue.toComparisonValue(): JSONPathExpressionValue.ValueTypeValue? =
+private fun JsonPathExpressionValue.toComparisonValue(): JsonPathExpressionValue.ValueTypeValue? =
     when (this) {
-        is JSONPathExpressionValue.ValueTypeValue -> this
-        is JSONPathExpressionValue.NodesTypeValue -> if (this.nodeList.size == 1) {
-            JSONPathExpressionValue.ValueTypeValue.JsonValue(this.nodeList[0])
+        is JsonPathExpressionValue.ValueTypeValue -> this
+        is JsonPathExpressionValue.NodesTypeValue -> if (this.nodeList.size == 1) {
+            JsonPathExpressionValue.ValueTypeValue.JsonValue(this.nodeList[0])
         } else if (this.nodeList.size > 1) {
             null // invalid intermediate value
         } else {
-            JSONPathExpressionValue.ValueTypeValue.Nothing
+            JsonPathExpressionValue.ValueTypeValue.Nothing
         }
 
-        is JSONPathExpressionValue.LogicalTypeValue -> null
+        is JsonPathExpressionValue.LogicalTypeValue -> null
     }

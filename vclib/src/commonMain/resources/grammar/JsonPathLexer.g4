@@ -1,7 +1,7 @@
 // 1. converted from abnf using tool:
 //      - http://www.robertpinchbeck.com/abnf_to_antlr/Default.aspx
 // 2. manually resolved lexer ambiguities
-lexer grammar JSONPathLexer;
+lexer grammar JsonPathLexer;
 
 // normal
 ROOT_IDENTIFIER: '$';
