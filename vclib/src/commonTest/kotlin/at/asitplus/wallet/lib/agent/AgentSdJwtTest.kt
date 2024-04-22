@@ -55,7 +55,7 @@ class AgentSdJwtTest : FreeSpec({
                             constraints = Constraint(
                                 fields = listOf(
                                     ConstraintField(
-                                        path = listOf("$.given-name")
+                                        path = listOf("$['given-name']")
                                     )
                                 )
                             )
@@ -89,7 +89,7 @@ class AgentSdJwtTest : FreeSpec({
                         constraints = Constraint(
                             fields = listOf(
                                 ConstraintField(
-                                    path = listOf("$.given-name")
+                                    path = listOf("$['given-name']")
                                 )
                             )
                         )
@@ -125,7 +125,7 @@ class AgentSdJwtTest : FreeSpec({
                         constraints = Constraint(
                             fields = listOf(
                                 ConstraintField(
-                                    path = listOf("$.given-name")
+                                    path = listOf("$['given-name']")
                                 )
                             )
                         )
@@ -155,7 +155,7 @@ class AgentSdJwtTest : FreeSpec({
                         constraints = Constraint(
                             fields = listOf(
                                 ConstraintField(
-                                    path = listOf("$.given-name")
+                                    path = listOf("$['given-name']")
                                 )
                             )
                         )

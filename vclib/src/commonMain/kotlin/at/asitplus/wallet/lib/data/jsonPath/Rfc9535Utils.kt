@@ -1,12 +1,8 @@
 package at.asitplus.wallet.lib.data.jsonPath
 
 interface Rfc9535Utils {
-    fun unpackStringLiteral(string: String): String
-}
-
-val rfc9535Utils by lazy {
-    object : Rfc9535Utils {
-        override fun unpackStringLiteral(string: String): String {
+    companion object {
+        fun unpackStringLiteral(string: String): String {
             val doubleQuotedString = if (string.startsWith("\"")) {
                 string // treat as normal rfc8259 double quoted string
             } else {
@@ -18,7 +14,7 @@ val rfc9535Utils by lazy {
                         "\"$it\""
                     }
             }
-            return rfc8259Utils.unpackStringLiteral(doubleQuotedString)
+            return Rfc8259Utils.unpackStringLiteral(doubleQuotedString)
         }
     }
 }

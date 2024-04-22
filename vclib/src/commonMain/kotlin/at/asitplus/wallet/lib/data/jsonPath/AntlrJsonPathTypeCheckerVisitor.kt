@@ -11,6 +11,9 @@ class AntlrJsonPathTypeCheckerVisitor(
     // see section 2.4.3: Well-Typedness of Function Expressions
     // - https://datatracker.ietf.org/doc/rfc9535/
 
+    override fun defaultResult(): AntlrJsonPathTypeCheckerExpressionType {
+        return AntlrJsonPathTypeCheckerExpressionType.NoType
+    }
     override fun aggregateResult(
         aggregate: AntlrJsonPathTypeCheckerExpressionType?,
         nextResult: AntlrJsonPathTypeCheckerExpressionType
@@ -59,6 +62,23 @@ class AntlrJsonPathTypeCheckerVisitor(
 
     override fun visitLiteral(ctx: JsonPathParser.LiteralContext): AntlrJsonPathTypeCheckerExpressionType {
         return AntlrJsonPathTypeCheckerExpressionType.ValueType
+    }
+
+    override fun visitTest_expr(ctx: JsonPathParser.Test_exprContext): AntlrJsonPathTypeCheckerExpressionType {
+        return ctx.function_expr()?.let { functionExpressionContext ->
+            when (visitFunction_expr(functionExpressionContext)) {
+                is AntlrJsonPathTypeCheckerExpressionType.ValueType -> {
+                    errorListener
+                        ?.invalidFunctionExtensionForTestExpression(
+                            functionExpressionContext.FUNCTION_NAME().text,
+                        )
+                    AntlrJsonPathTypeCheckerExpressionType.ErrorType
+                }
+                is AntlrJsonPathTypeCheckerExpressionType.ErrorType -> AntlrJsonPathTypeCheckerExpressionType.ErrorType
+
+                else -> AntlrJsonPathTypeCheckerExpressionType.LogicalType
+            }
+        } ?: AntlrJsonPathTypeCheckerExpressionType.LogicalType // otherwise this is a filter query
     }
 
     override fun visitFunction_expr(ctx: JsonPathParser.Function_exprContext): AntlrJsonPathTypeCheckerExpressionType {
@@ -121,23 +141,6 @@ class AntlrJsonPathTypeCheckerVisitor(
         } else {
             AntlrJsonPathTypeCheckerExpressionType.ErrorType
         }
-    }
-
-    override fun visitTest_expr(ctx: JsonPathParser.Test_exprContext): AntlrJsonPathTypeCheckerExpressionType {
-        return ctx.function_expr()?.let { functionExpressionContext ->
-            when (visitFunction_expr(functionExpressionContext)) {
-                is AntlrJsonPathTypeCheckerExpressionType.ValueType -> {
-                    errorListener
-                        ?.invalidFunctionExtensionForTestExpression(
-                            functionExpressionContext.FUNCTION_NAME().text,
-                        )
-                    AntlrJsonPathTypeCheckerExpressionType.ErrorType
-                }
-                is AntlrJsonPathTypeCheckerExpressionType.ErrorType -> AntlrJsonPathTypeCheckerExpressionType.ErrorType
-
-                else -> AntlrJsonPathTypeCheckerExpressionType.LogicalType
-            }
-        } ?: AntlrJsonPathTypeCheckerExpressionType.LogicalType // otherwise this is a filter query
     }
 
     override fun visitComparison_expr(ctx: JsonPathParser.Comparison_exprContext): AntlrJsonPathTypeCheckerExpressionType {

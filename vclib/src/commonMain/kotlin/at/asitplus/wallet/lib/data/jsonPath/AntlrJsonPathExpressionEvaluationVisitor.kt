@@ -134,8 +134,27 @@ class AntlrJsonPathExpressionEvaluationVisitor(
         second: JsonPathExpressionValue.ValueTypeValue,
     ): Boolean = when (first) {
         is JsonPathExpressionValue.ValueTypeValue.JsonValue -> {
-            when (first.jsonElement) {
-                is JsonArray -> if (second is JsonPathExpressionValue.ValueTypeValue.JsonValue) {
+            if (second !is JsonPathExpressionValue.ValueTypeValue.JsonValue) {
+                false
+            } else when (first.jsonElement) {
+                JsonNull -> {
+                    second.jsonElement == JsonNull
+                }
+
+                is JsonPrimitive -> {
+                    if (second.jsonElement is JsonPrimitive) {
+                        when {
+                            first.jsonElement.isString != second.jsonElement.isString -> false
+                            first.jsonElement.isString -> first.jsonElement.content == second.jsonElement.content
+                            else -> first.jsonElement.booleanOrNull?.let { it == second.jsonElement.booleanOrNull }
+                                ?: first.jsonElement.longOrNull?.let { it == second.jsonElement.longOrNull }
+                                ?: first.jsonElement.doubleOrNull?.let { it == second.jsonElement.doubleOrNull }
+                                ?: false
+                        }
+                    } else false
+                }
+
+                is JsonArray -> {
                     if (second.jsonElement is JsonArray) {
                         (first.jsonElement.size == second.jsonElement.size) and first.jsonElement.mapIndexed { index, it ->
                             index to it
@@ -146,9 +165,9 @@ class AntlrJsonPathExpressionEvaluationVisitor(
                             )
                         }
                     } else false
-                } else false
+                }
 
-                is JsonObject -> if (second is JsonPathExpressionValue.ValueTypeValue.JsonValue) {
+                is JsonObject -> {
                     if (second.jsonElement is JsonObject) {
                         (first.jsonElement.keys == second.jsonElement.keys) and first.jsonElement.entries.all {
                             this.evaluateComparisonEqualsUnpacked(
@@ -163,24 +182,7 @@ class AntlrJsonPathExpressionEvaluationVisitor(
                             )
                         }
                     } else false
-                } else false
-
-                is JsonPrimitive -> if (second is JsonPathExpressionValue.ValueTypeValue.JsonValue) {
-                    if (second.jsonElement is JsonPrimitive) {
-                        when {
-                            first.jsonElement.isString != second.jsonElement.isString -> false
-                            first.jsonElement.isString -> first.jsonElement.content == second.jsonElement.content
-                            else -> first.jsonElement.booleanOrNull?.let { it == second.jsonElement.booleanOrNull }
-                                ?: first.jsonElement.longOrNull?.let { it == second.jsonElement.longOrNull }
-                                ?: first.jsonElement.doubleOrNull?.let { it == second.jsonElement.doubleOrNull }
-                                ?: false
-                        }
-                    } else false
-                } else false
-
-                JsonNull -> if (second is JsonPathExpressionValue.ValueTypeValue.JsonValue) {
-                    second.jsonElement == JsonNull
-                } else false
+                }
             }
         }
 

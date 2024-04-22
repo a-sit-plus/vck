@@ -15,5 +15,6 @@ sealed class AntlrJsonPathTypeCheckerExpressionType(val jsonPathExpressionType: 
         data object FunctionNodesType : NodesType()
     }
 
+    data object NoType : AntlrJsonPathTypeCheckerExpressionType(null)
     data object ErrorType : AntlrJsonPathTypeCheckerExpressionType(null)
 }
