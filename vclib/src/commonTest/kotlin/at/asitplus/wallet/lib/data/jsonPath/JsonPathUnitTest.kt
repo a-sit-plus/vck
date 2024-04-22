@@ -823,6 +823,116 @@ class JsonPathUnitTest : FreeSpec({
                     JsonPath(this.testScope.testCase.name.originalName)
                 }
             }
+            "\$[?value(@..color) == 'red']" {
+                shouldNotThrowAny {
+                    JsonPath(this.testScope.testCase.name.originalName)
+                }
+            }
+            "\$[?value(@..color)]" {
+                shouldThrow<JsonPathTypeCheckerException> {
+                    JsonPath(this.testScope.testCase.name.originalName)
+                }
+            }
+            "\$[?bar(@.a)]" - {
+                "logical type argument" {
+                    defaultFunctionExtensionManager.removeExtension("bar")
+                    defaultFunctionExtensionManager.addExtension(
+                        object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
+                            name = "bar",
+                            argumentTypes = listOf(JsonPathExpressionType.LogicalType),
+                        ) {
+                            override fun invoke(arguments: List<JsonPathExpressionValue>): JsonPathExpressionValue.LogicalTypeValue {
+                                TODO("Not yet implemented")
+                            }
+                        }
+                    )
+                    shouldNotThrowAny {
+                        JsonPath(this.testScope.testCase.parent!!.name.originalName)
+                    }
+                }
+                "value type argument" {
+                    defaultFunctionExtensionManager.removeExtension("bar")
+                    defaultFunctionExtensionManager.addExtension(
+                        object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
+                            name = "bar",
+                            argumentTypes = listOf(JsonPathExpressionType.ValueType),
+                        ) {
+                            override fun invoke(arguments: List<JsonPathExpressionValue>): JsonPathExpressionValue.LogicalTypeValue {
+                                TODO("Not yet implemented")
+                            }
+                        }
+                    )
+                    shouldNotThrowAny {
+                        JsonPath(this.testScope.testCase.parent!!.name.originalName)
+                    }
+                }
+                "nodes type argument" {
+                    defaultFunctionExtensionManager.removeExtension("bar")
+                    defaultFunctionExtensionManager.addExtension(
+                        object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
+                            name = "bar",
+                            argumentTypes = listOf(JsonPathExpressionType.NodesType),
+                        ) {
+                            override fun invoke(arguments: List<JsonPathExpressionValue>): JsonPathExpressionValue.LogicalTypeValue {
+                                TODO("Not yet implemented")
+                            }
+                        }
+                    )
+                    shouldNotThrowAny {
+                        JsonPath(this.testScope.testCase.parent!!.name.originalName)
+                    }
+                }
+            }
+            "\$[?bnl(@.*)]" - {
+                "logical type argument" {
+                    defaultFunctionExtensionManager.removeExtension("bnl")
+                    defaultFunctionExtensionManager.addExtension(
+                        object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
+                            name = "bnl",
+                            argumentTypes = listOf(JsonPathExpressionType.LogicalType),
+                        ) {
+                            override fun invoke(arguments: List<JsonPathExpressionValue>): JsonPathExpressionValue.LogicalTypeValue {
+                                TODO("Not yet implemented")
+                            }
+                        }
+                    )
+                    shouldNotThrowAny {
+                        JsonPath(this.testScope.testCase.parent!!.name.originalName)
+                    }
+                }
+                "value type argument" {
+                    defaultFunctionExtensionManager.removeExtension("bnl")
+                    defaultFunctionExtensionManager.addExtension(
+                        object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
+                            name = "bnl",
+                            argumentTypes = listOf(JsonPathExpressionType.ValueType),
+                        ) {
+                            override fun invoke(arguments: List<JsonPathExpressionValue>): JsonPathExpressionValue.LogicalTypeValue {
+                                TODO("Not yet implemented")
+                            }
+                        }
+                    )
+                    shouldThrow<JsonPathTypeCheckerException> {
+                        JsonPath(this.testScope.testCase.parent!!.name.originalName)
+                    }
+                }
+                "nodes type argument" {
+                    defaultFunctionExtensionManager.removeExtension("bnl")
+                    defaultFunctionExtensionManager.addExtension(
+                        object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
+                            name = "bnl",
+                            argumentTypes = listOf(JsonPathExpressionType.NodesType),
+                        ) {
+                            override fun invoke(arguments: List<JsonPathExpressionValue>): JsonPathExpressionValue.LogicalTypeValue {
+                                TODO("Not yet implemented")
+                            }
+                        }
+                    )
+                    shouldNotThrowAny {
+                        JsonPath(this.testScope.testCase.parent!!.name.originalName)
+                    }
+                }
+            }
         }
     }
 })

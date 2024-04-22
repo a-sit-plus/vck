@@ -10,25 +10,19 @@ class AntlrJsonPathTypeCheckerVisitor(
 ) : JsonPathParserBaseVisitor<AntlrJsonPathTypeCheckerExpressionType>() {
     // see section 2.4.3: Well-Typedness of Function Expressions
     // - https://datatracker.ietf.org/doc/rfc9535/
-    override fun defaultResult(): AntlrJsonPathTypeCheckerExpressionType {
-        return AntlrJsonPathTypeCheckerExpressionType.NoType
-    }
 
     override fun aggregateResult(
         aggregate: AntlrJsonPathTypeCheckerExpressionType?,
         nextResult: AntlrJsonPathTypeCheckerExpressionType
     ): AntlrJsonPathTypeCheckerExpressionType {
-        if (nextResult == AntlrJsonPathTypeCheckerExpressionType.ErrorType) {
-            return AntlrJsonPathTypeCheckerExpressionType.ErrorType
-        }
         if (aggregate == AntlrJsonPathTypeCheckerExpressionType.ErrorType) {
             return AntlrJsonPathTypeCheckerExpressionType.ErrorType
         }
-        return AntlrJsonPathTypeCheckerExpressionType.NoType
+        return nextResult
     }
 
     override fun visitFilter_query(ctx: JsonPathParser.Filter_queryContext): AntlrJsonPathTypeCheckerExpressionType {
-        return if(compiler.compile("$${ctx.text.substring(1)}").isSingularQuery) {
+        return if (compiler.compile("$${ctx.text.substring(1)}").isSingularQuery) {
             AntlrJsonPathTypeCheckerExpressionType.NodesType.FilterQuery.SingularQuery
         } else {
             AntlrJsonPathTypeCheckerExpressionType.NodesType.FilterQuery.NonSingularQuery
@@ -40,16 +34,39 @@ class AntlrJsonPathTypeCheckerVisitor(
     }
 
     override fun visitLogical_expr(ctx: JsonPathParser.Logical_exprContext): AntlrJsonPathTypeCheckerExpressionType {
-        return AntlrJsonPathTypeCheckerExpressionType.LogicalType
+        return visitLogical_or_expr(ctx.logical_or_expr())
+    }
+
+    override fun visitLogical_or_expr(ctx: JsonPathParser.Logical_or_exprContext): AntlrJsonPathTypeCheckerExpressionType {
+        return if (ctx.logical_and_expr().map { visitLogical_and_expr(it) }.any {
+                it is AntlrJsonPathTypeCheckerExpressionType.ErrorType
+            }) {
+            AntlrJsonPathTypeCheckerExpressionType.ErrorType
+        } else {
+            AntlrJsonPathTypeCheckerExpressionType.LogicalType
+        }
+    }
+
+    override fun visitLogical_and_expr(ctx: JsonPathParser.Logical_and_exprContext): AntlrJsonPathTypeCheckerExpressionType {
+        return if (ctx.basic_expr().map { visitBasic_expr(it) }.any {
+                it is AntlrJsonPathTypeCheckerExpressionType.ErrorType
+            }) {
+            AntlrJsonPathTypeCheckerExpressionType.ErrorType
+        } else {
+            AntlrJsonPathTypeCheckerExpressionType.LogicalType
+        }
     }
 
     override fun visitLiteral(ctx: JsonPathParser.LiteralContext): AntlrJsonPathTypeCheckerExpressionType {
-        return AntlrJsonPathTypeCheckerExpressionType.ValueType.LiteralValueType
+        return AntlrJsonPathTypeCheckerExpressionType.ValueType
     }
 
     override fun visitFunction_expr(ctx: JsonPathParser.Function_exprContext): AntlrJsonPathTypeCheckerExpressionType {
         val functionArgumentTypes = ctx.function_argument().map {
             visitFunction_argument(it)
+        }
+        val isFunctionArgumentsValid = functionArgumentTypes.all {
+            it != AntlrJsonPathTypeCheckerExpressionType.ErrorType
         }
 
         val extension =
@@ -74,30 +91,10 @@ class AntlrJsonPathTypeCheckerVisitor(
 
                 JsonPathExpressionType.ValueType -> when (argumentType) {
                     is AntlrJsonPathTypeCheckerExpressionType.NodesType.FilterQuery.SingularQuery -> JsonPathExpressionType.ValueType
-                    argumentExtension is JsonPathFunctionExtension.ValueTypeFunctionExtension -> JsonPathExpressionType.ValueType
-                    argument.literal() != null -> JsonPathExpressionType.ValueType
-                    argument.filter_query() != null -> argument.filter_query()?.text?.let {
-                        // must be a singular query
-                        val asJsonPathQuery = "$${it.substring(1)}"
-                        if (compiler.compile(asJsonPathQuery).isSingularQuery) JsonPathExpressionType.ValueType
-                        else JsonPathExpressionType.NodesType
-                    }
-
-                    argument.logical_expr() != null -> JsonPathExpressionType.LogicalType
-                    argumentExtension is JsonPathFunctionExtension.LogicalTypeFunctionExtension -> JsonPathExpressionType.LogicalType
-                    argumentExtension is JsonPathFunctionExtension.NodesTypeFunctionExtension -> JsonPathExpressionType.NodesType
                     else -> argumentType.jsonPathExpressionType
                 }
 
-                null -> when {
-                    argumentExtension is JsonPathFunctionExtension.ValueTypeFunctionExtension -> JsonPathExpressionType.ValueType
-                    argumentExtension is JsonPathFunctionExtension.LogicalTypeFunctionExtension -> JsonPathExpressionType.LogicalType
-                    argumentExtension is JsonPathFunctionExtension.NodesTypeFunctionExtension -> JsonPathExpressionType.NodesType
-                    argument.literal() != null -> JsonPathExpressionType.ValueType
-                    argument.filter_query() != null -> JsonPathExpressionType.NodesType
-                    argument.logical_expr() != null -> JsonPathExpressionType.LogicalType
-                    else -> null
-                }
+                null -> argumentType.jsonPathExpressionType
             }
         }
 
@@ -116,60 +113,56 @@ class AntlrJsonPathTypeCheckerVisitor(
         }
 
         return if (isArglistSizeConsistent and isCoercedArgumentTypesMatching and isFunctionArgumentsValid) {
-            return when (extension) {
+            when (extension) {
                 is JsonPathFunctionExtension.LogicalTypeFunctionExtension -> AntlrJsonPathTypeCheckerExpressionType.LogicalType
-                is JsonPathFunctionExtension.NodesTypeFunctionExtension -> AntlrJsonPathTypeCheckerExpressionType.NodesType
-                is JsonPathFunctionExtension.LogicalTypeFunctionExtension -> AntlrJsonPathTypeCheckerExpressionType.LogicalType
+                is JsonPathFunctionExtension.NodesTypeFunctionExtension -> AntlrJsonPathTypeCheckerExpressionType.NodesType.FunctionNodesType
+                is JsonPathFunctionExtension.ValueTypeFunctionExtension -> AntlrJsonPathTypeCheckerExpressionType.ValueType
             }
+        } else {
+            AntlrJsonPathTypeCheckerExpressionType.ErrorType
         }
     }
 
-    override fun visitTest_expr(ctx: JsonPathParser.Test_exprContext): Boolean {
+    override fun visitTest_expr(ctx: JsonPathParser.Test_exprContext): AntlrJsonPathTypeCheckerExpressionType {
         return ctx.function_expr()?.let { functionExpressionContext ->
-            val isFunctionExprValid = visitFunction_expr(functionExpressionContext)
-
-            val isValidTestExpressionReturnType =
-                when (functionExtensionRetriever.invoke(functionExpressionContext.FUNCTION_NAME().text)) {
-                    is JsonPathFunctionExtension.NodesTypeFunctionExtension -> true
-                    is JsonPathFunctionExtension.LogicalTypeFunctionExtension -> true
-                    null -> false
-                    else -> {
-                        errorListener
-                            ?.invalidFunctionExtensionForTestExpression(
-                                functionExpressionContext.FUNCTION_NAME().text,
-                            )
-                        false
-                    }
-                }
-            isFunctionExprValid and isValidTestExpressionReturnType
-        } ?: true // otherwise this is a filter query and therefore testable
-    }
-
-    override fun visitComparison_expr(ctx: JsonPathParser.Comparison_exprContext): Boolean {
-        // evaluate all comparables in order to find as many errors as possible
-        // otherwise, a comparison always returns a boolean anyway
-        return ctx.comparable().map {
-            it.function_expr()?.let { functionExpressionContext ->
-                val extension =
-                    functionExtensionRetriever.invoke(functionExpressionContext.FUNCTION_NAME().text)
-                when (extension) {
-                    null -> {} // unknown function is reported in visitComparable
-                    is JsonPathFunctionExtension.ValueTypeFunctionExtension -> {}
-                    else -> {
-                        errorListener?.invalidFunctionExtensionForComparable(
+            when (visitFunction_expr(functionExpressionContext)) {
+                is AntlrJsonPathTypeCheckerExpressionType.ValueType -> {
+                    errorListener
+                        ?.invalidFunctionExtensionForTestExpression(
                             functionExpressionContext.FUNCTION_NAME().text,
                         )
-                    }
+                    AntlrJsonPathTypeCheckerExpressionType.ErrorType
                 }
+                is AntlrJsonPathTypeCheckerExpressionType.ErrorType -> AntlrJsonPathTypeCheckerExpressionType.ErrorType
+
+                else -> AntlrJsonPathTypeCheckerExpressionType.LogicalType
             }
-            visitComparable(it)
-        }.all {
-            it
-        }
+        } ?: AntlrJsonPathTypeCheckerExpressionType.LogicalType // otherwise this is a filter query
     }
 
-    override fun visitComparable(ctx: JsonPathParser.ComparableContext): Boolean {
-        return super.visitComparable(ctx)
+    override fun visitComparison_expr(ctx: JsonPathParser.Comparison_exprContext): AntlrJsonPathTypeCheckerExpressionType {
+        // evaluate all comparables in order to find as many errors as possible
+        // otherwise, a comparison always returns a boolean anyway
+        val isValidComparableTypes = ctx.comparable().map { comparableContext ->
+            val comparable = visitComparable(comparableContext)
+            comparableContext.function_expr()?.let { functionExpressionContext ->
+                if (comparable !is AntlrJsonPathTypeCheckerExpressionType.ValueType) {
+                    errorListener?.invalidFunctionExtensionForComparable(
+                        functionExpressionContext.FUNCTION_NAME().text,
+                    )
+                }
+            }
+            comparableContext.singular_query()?.let {
+                AntlrJsonPathTypeCheckerExpressionType.ValueType
+            } ?: comparable
+        }.all {
+            it is AntlrJsonPathTypeCheckerExpressionType.ValueType
+        }
+        return if (isValidComparableTypes) {
+            AntlrJsonPathTypeCheckerExpressionType.LogicalType
+        } else {
+            AntlrJsonPathTypeCheckerExpressionType.ErrorType
+        }
     }
 }
 

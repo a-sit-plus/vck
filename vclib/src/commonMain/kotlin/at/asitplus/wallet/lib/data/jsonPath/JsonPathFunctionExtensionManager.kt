@@ -8,6 +8,7 @@ import at.asitplus.wallet.lib.data.jsonPath.functionExtensions.ValueFunctionExte
 
 interface JsonPathFunctionExtensionManager {
     fun addExtension(functionExtension: JsonPathFunctionExtension<*>)
+    fun removeExtension(functionExtensionName: String)
     fun getExtension(name: String): JsonPathFunctionExtension<*>?
 }
 
@@ -20,6 +21,10 @@ val defaultFunctionExtensionManager: JsonPathFunctionExtensionManager by lazy {
                 throw FunctionExtensionCollisionException(functionExtension.name)
             }
             extensions.put(functionExtension.name, functionExtension)
+        }
+
+        override fun removeExtension(functionExtensionName: String) {
+            extensions.remove(functionExtensionName)
         }
 
         override fun getExtension(name: String): JsonPathFunctionExtension<*>? {

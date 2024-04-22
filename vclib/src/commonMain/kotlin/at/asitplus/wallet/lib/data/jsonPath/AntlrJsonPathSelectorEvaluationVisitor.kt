@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.data.jsonPath
 
 import at.asitplus.parser.generated.JsonPathParser
 import at.asitplus.parser.generated.JsonPathParserBaseVisitor
+import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonElement
 
 class AntlrJsonPathSelectorEvaluationVisitor(
@@ -66,11 +67,13 @@ class AntlrJsonPathSelectorEvaluationVisitor(
     }
 
     override fun visitLogical_expr(ctx: JsonPathParser.Logical_exprContext): List<JsonPathSelector> {
-        val hasValidTypes = AntlrJsonPathTypeCheckerVisitor(
+        val visitorReturnType = AntlrJsonPathTypeCheckerVisitor(
             compiler = compiler,
             errorListener = errorListener,
             functionExtensionRetriever = functionExtensionRetriever,
         ).visitLogical_expr(ctx)
+        Napier.d(visitorReturnType.toString())
+        val hasValidTypes = visitorReturnType !is AntlrJsonPathTypeCheckerExpressionType.ErrorType
         if (hasValidTypes == false) {
             throw JsonPathTypeCheckerException("See the output of the error handler for more details.")
         }
