@@ -15,7 +15,7 @@ plugins {
     id("org.jetbrains.dokka")
     id("signing")
 
-    id("com.strumenta.antlr-kotlin") version "1.0.0-RC2"
+    alias(libs.plugins.antlrKotlinPlugin)
 }
 
 /* required for maven publication */
@@ -37,7 +37,7 @@ kotlin {
             }
             dependencies {
                 commonImplementationAndApiDependencies()
-                implementation("com.strumenta:antlr-kotlin-runtime:1.0.0-RC2")
+                implementation(libs.antlrKotlin)
             }
         }
 

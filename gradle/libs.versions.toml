@@ -1,0 +1,8 @@
+[versions]
+antlrKotlinVersion = "1.0.0-RC2"
+
+[libraries]
+antlrKotlin = { group = "com.strumenta", name = "antlr-kotlin-runtime", version.ref = "antlrKotlinVersion" }
+
+[plugins]
+antlrKotlinPlugin = { id = "com.strumenta.antlr-kotlin", version.ref = "antlrKotlinVersion" }
