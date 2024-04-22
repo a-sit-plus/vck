@@ -14,9 +14,9 @@ data class ConstraintField(
     @SerialName("purpose")
     val purpose: String? = null,
     @SerialName("predicate")
-    val predicate: PredicateEnum? = null,
+    val predicate: RequirementEnum? = null,
     @SerialName("optional")
-    private val optional: Boolean? = null,
+    val optional: Boolean? = null,
     @SerialName("path")
     // should be JSONPath
     val path: List<String>,
@@ -24,7 +24,4 @@ data class ConstraintField(
     val filter: ConstraintFilter? = null,
     @SerialName("intent_to_retain")
     val intentToRetain: Boolean? = null,
-) {
-    val isOptional: Boolean
-        get() = optional == true
-}
+)

@@ -11,13 +11,13 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
+import at.asitplus.wallet.lib.data.dif.BaseInputEvaluator
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
-import at.asitplus.wallet.lib.data.dif.BaseInputEvaluator
 import at.asitplus.wallet.lib.data.jsonPath.JsonPathSelector
 import at.asitplus.wallet.lib.data.jsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceAuth
@@ -289,7 +289,7 @@ class HolderAgent(
                     // TODO: find good way to transform the field query result paths into claim paths
                     //  for now it should be sufficient to take the last part, we don't have complicated credentials yet
                     fieldQueryResult?.singularQuerySelectors?.last()?.let {
-                        when(it) {
+                        when (it) {
                             is JsonPathSelector.IndexSelector -> it.index.toString()
                             is JsonPathSelector.MemberSelector -> it.memberName
                         }
@@ -375,7 +375,6 @@ class HolderAgent(
         validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
         requestedClaims: Collection<String>?
     ): Holder.CreatePresentationResult.SdJwt? {
-        // TODO can only be one credential at a time
         val keyBindingJws = KeyBindingJws(
             issuedAt = Clock.System.now(),
             audience = audienceId,
@@ -431,7 +430,7 @@ class HolderAgent(
     }
 }
 
-// in openid4vp, the claims to be presented are described using a JSONPath, so compiling this to a JsonElement seems fine
+// in openid4vp, the claims to be presented are described using a JSONPath, so compiling this to a JsonElement seems reasonable
 fun SubjectCredentialStore.StoreEntry.toJsonElement(): JsonElement {
     val credential = this
     return when (credential) {
@@ -452,13 +451,11 @@ fun SubjectCredentialStore.StoreEntry.toJsonElement(): JsonElement {
         is SubjectCredentialStore.StoreEntry.SdJwt -> {
             val pairs = credential.disclosures.map {
                 it.value?.let {
-                    Pair(
-                        it.claimName, when (val value = it.claimValue) {
-                            is Boolean -> JsonPrimitive(value)
-                            is Number -> JsonPrimitive(value)
-                            else -> JsonPrimitive(it.claimValue.toString())
-                        }
-                    )
+                    it.claimName to when (val value = it.claimValue) {
+                        is Boolean -> JsonPrimitive(value)
+                        is Number -> JsonPrimitive(value)
+                        else -> JsonPrimitive(it.claimValue.toString())
+                    }
                 }
             }.filterNotNull().toMap()
             buildJsonObject {

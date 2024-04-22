@@ -51,9 +51,10 @@ class AntlrJsonPathTypeCheckerVisitor(
     }
 
     override fun visitLogical_and_expr(ctx: JsonPathParser.Logical_and_exprContext): AntlrJsonPathTypeCheckerExpressionType {
-        return if (ctx.basic_expr().map { visitBasic_expr(it) }.any {
-                it is AntlrJsonPathTypeCheckerExpressionType.ErrorType
-            }) {
+        val isError = ctx.basic_expr().map { visitBasic_expr(it) }.any {
+            it is AntlrJsonPathTypeCheckerExpressionType.ErrorType
+        }
+        return if (isError) {
             AntlrJsonPathTypeCheckerExpressionType.ErrorType
         } else {
             AntlrJsonPathTypeCheckerExpressionType.LogicalType

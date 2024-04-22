@@ -26,7 +26,7 @@ class AntlrJsonPathCompiler(
             functionExtensionRetriever = functionExtensionRetriever,
         ).visit(parser.jsonpath_query()) ?: listOf()
 
-        return SimpleJsonPathQuery(selectors)
+        return JsonPathQuery(selectors)
     }
 
     fun setErrorListener(errorListener: AntlrJsonPathCompilerErrorListener?) {

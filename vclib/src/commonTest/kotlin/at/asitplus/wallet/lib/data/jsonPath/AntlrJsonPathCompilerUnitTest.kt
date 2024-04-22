@@ -13,20 +13,20 @@ import kotlinx.serialization.json.buildJsonObject
 
 class AntlrJsonPathCompilerUnitTest : FreeSpec({
     val compiler = AntlrJsonPathCompiler(
-        functionExtensionRetriever = defaultFunctionExtensionManager::getExtension,
+        functionExtensionRetriever = defaultJsonPathFunctionExtensionManager::getExtension,
     )
     "Root selector is retrieved without exceptions" {
-        val matcher = compiler.compile("$") as SimpleJsonPathQuery
+        val matcher = compiler.compile("$")
         val selectors = matcher.selectors
         selectors.shouldNotBeNull()
         selectors.size shouldBeExactly 1
         selectors.get(0).shouldBeInstanceOf<JsonPathSelector.RootSelector>()
     }
     "Dot selector behaves the same as index selector for member names" {
-        val matcher1 = compiler.compile("\$['mdoc'].doctype") as SimpleJsonPathQuery
+        val matcher1 = compiler.compile("\$['mdoc'].doctype")
         val selectors1 = matcher1.selectors
 
-        val matcher2 = compiler.compile("\$.mdoc.doctype") as SimpleJsonPathQuery
+        val matcher2 = compiler.compile("\$.mdoc.doctype")
         val selectors2 = matcher2.selectors
 
         selectors1.shouldNotBeNull()
@@ -50,7 +50,7 @@ class AntlrJsonPathCompilerUnitTest : FreeSpec({
     }
     "test parser wildcard selector" - {
         "test parser detects dot wildcard selector" {
-            val matcher = compiler.compile("$.*") as SimpleJsonPathQuery
+            val matcher = compiler.compile("$.*")
             val selectors = matcher.selectors
             selectors.shouldNotBeNull()
             selectors shouldHaveSize 2
@@ -58,7 +58,7 @@ class AntlrJsonPathCompilerUnitTest : FreeSpec({
             selectors[1].shouldBeInstanceOf<JsonPathSelector.WildCardSelector>()
         }
         "test parser detects index wildcard selector" {
-            val matcher = compiler.compile("\$[*]") as SimpleJsonPathQuery
+            val matcher = compiler.compile("\$[*]")
             val selectors = matcher.selectors
             selectors.shouldNotBeNull()
             selectors shouldHaveSize 2
@@ -68,7 +68,7 @@ class AntlrJsonPathCompilerUnitTest : FreeSpec({
             selector.selectors[0].shouldBeInstanceOf<JsonPathSelector.WildCardSelector>()
         }
         "test parser detects index wildcard selector as first selector" {
-            val matcher = compiler.compile("\$[*].vc") as SimpleJsonPathQuery
+            val matcher = compiler.compile("\$[*].vc")
             val selectors = matcher.selectors
             selectors.shouldNotBeNull()
             selectors shouldHaveSize 3
@@ -79,7 +79,7 @@ class AntlrJsonPathCompilerUnitTest : FreeSpec({
             selectors[2].shouldBeInstanceOf<JsonPathSelector.MemberSelector>()
         }
         "test parser detects index wildcard selector as second selector" {
-            val matcher = compiler.compile("\$.vc[*]") as SimpleJsonPathQuery
+            val matcher = compiler.compile("\$.vc[*]")
             val selectors = matcher.selectors
             selectors.shouldNotBeNull()
             selectors shouldHaveSize 3

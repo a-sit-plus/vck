@@ -130,8 +130,6 @@ interface Holder {
     /**
      * Creates an array of [VerifiablePresentation] and a [PresentationSubmission] to match
      * the [presentationDefinition]. Optionally filters by [requestedClaims] (e.g. in ISO case).
-     *
-     * May return null if no presentation can be made (i.e. no matching credentials available).
      */
     suspend fun createPresentation(
         challenge: String,
@@ -147,19 +145,6 @@ interface Holder {
         // TODO: add authorization semantics to detect unauthorized requests
         // - eg. a service provider asking for an attribute he should not be allowed to see
     ): KmmResult<HolderResponseParameters>
-
-//    /**
-//     * Creates a [VerifiablePresentation] serialized as a JWT for all the credentials we have stored,
-//     * that match the [credentialSchemes] (if specified). Optionally filters by [requestedClaims] (e.g. in ISO case).
-//     *
-//     * May return null if no valid credentials (i.e. non-revoked, matching attribute name) are available.
-//     */
-//    suspend fun createPresentation(
-//        challenge: String,
-//        audienceId: String,
-//        credentialSchemes: Collection<ConstantIndex.CredentialScheme>? = null,
-//        requestedClaims: Collection<String>? = null,
-//    ): CreatePresentationResult?
 
     /**
      * Creates a [VerifiablePresentation] with the given [validCredentials].

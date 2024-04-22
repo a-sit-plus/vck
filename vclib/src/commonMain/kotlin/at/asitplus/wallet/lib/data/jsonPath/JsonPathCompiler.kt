@@ -7,6 +7,6 @@ interface JsonPathCompiler {
 val defaultJsonPathCompiler: JsonPathCompiler by lazy {
     AntlrJsonPathCompiler(
         errorListener = napierAntlrJsonPathCompilerErrorListener,
-        functionExtensionRetriever = defaultFunctionExtensionManager::getExtension,
+        functionExtensionRetriever = defaultJsonPathFunctionExtensionManager::getExtension,
     )
 }

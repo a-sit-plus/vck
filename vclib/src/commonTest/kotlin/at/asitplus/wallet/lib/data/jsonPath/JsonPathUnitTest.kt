@@ -790,7 +790,7 @@ class JsonPathUnitTest : FreeSpec({
                 }
             }
             "\$[?count(foo(@.*)) == 1]" {
-                defaultFunctionExtensionManager.addExtension(
+                defaultJsonPathFunctionExtensionManager.addExtension(
                     object: JsonPathFunctionExtension.NodesTypeFunctionExtension(
                         name = "foo",
                         argumentTypes = listOf(JsonPathExpressionType.NodesType),
@@ -821,7 +821,7 @@ class JsonPathUnitTest : FreeSpec({
             }
             "\$[?bar(@.a)]" - {
                 "logical type argument" {
-                    defaultFunctionExtensionManager.putExtension(
+                    defaultJsonPathFunctionExtensionManager.putExtension(
                         object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
                             name = "bar",
                             argumentTypes = listOf(JsonPathExpressionType.LogicalType),
@@ -836,7 +836,7 @@ class JsonPathUnitTest : FreeSpec({
                     }
                 }
                 "value type argument" {
-                    defaultFunctionExtensionManager.putExtension(
+                    defaultJsonPathFunctionExtensionManager.putExtension(
                         object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
                             name = "bar",
                             argumentTypes = listOf(JsonPathExpressionType.ValueType),
@@ -851,7 +851,7 @@ class JsonPathUnitTest : FreeSpec({
                     }
                 }
                 "nodes type argument" {
-                    defaultFunctionExtensionManager.putExtension(
+                    defaultJsonPathFunctionExtensionManager.putExtension(
                         object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
                             name = "bar",
                             argumentTypes = listOf(JsonPathExpressionType.NodesType),
@@ -868,7 +868,7 @@ class JsonPathUnitTest : FreeSpec({
             }
             "\$[?bnl(@.*)]" - {
                 "logical type argument" {
-                    defaultFunctionExtensionManager.putExtension(
+                    defaultJsonPathFunctionExtensionManager.putExtension(
                         object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
                             name = "bnl",
                             argumentTypes = listOf(JsonPathExpressionType.LogicalType),
@@ -883,7 +883,7 @@ class JsonPathUnitTest : FreeSpec({
                     }
                 }
                 "value type argument" {
-                    defaultFunctionExtensionManager.putExtension(
+                    defaultJsonPathFunctionExtensionManager.putExtension(
                         object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
                             name = "bnl",
                             argumentTypes = listOf(JsonPathExpressionType.ValueType),
@@ -898,7 +898,7 @@ class JsonPathUnitTest : FreeSpec({
                     }
                 }
                 "nodes type argument" {
-                    defaultFunctionExtensionManager.putExtension(
+                    defaultJsonPathFunctionExtensionManager.putExtension(
                         object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
                             name = "bnl",
                             argumentTypes = listOf(JsonPathExpressionType.NodesType),
@@ -914,7 +914,7 @@ class JsonPathUnitTest : FreeSpec({
                 }
             }
             "\$[?blt(1==1)]" {
-                defaultFunctionExtensionManager.putExtension(
+                defaultJsonPathFunctionExtensionManager.putExtension(
                     object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
                         name = "blt",
                         argumentTypes = listOf(JsonPathExpressionType.LogicalType),
@@ -929,7 +929,7 @@ class JsonPathUnitTest : FreeSpec({
                 }
             }
             "\$[?blt(1)]" {
-                defaultFunctionExtensionManager.putExtension(
+                defaultJsonPathFunctionExtensionManager.putExtension(
                     object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
                         name = "blt",
                         argumentTypes = listOf(JsonPathExpressionType.LogicalType),
@@ -944,7 +944,7 @@ class JsonPathUnitTest : FreeSpec({
                 }
             }
             "\$[?bal(1)]" {
-                defaultFunctionExtensionManager.putExtension(
+                defaultJsonPathFunctionExtensionManager.putExtension(
                     object: JsonPathFunctionExtension.LogicalTypeFunctionExtension(
                         name = "bal",
                         argumentTypes = listOf(JsonPathExpressionType.ValueType),

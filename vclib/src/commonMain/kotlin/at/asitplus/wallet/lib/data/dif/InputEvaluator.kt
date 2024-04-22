@@ -56,7 +56,7 @@ class BaseInputEvaluator : InputEvaluator {
                         )
                     }
                 }
-                if ((field.isOptional == false) and (fieldQueryResult == null)) {
+                if ((field.optional != true) and (fieldQueryResult == null)) {
                     return KmmResult.failure(
                         FailedFieldQueryException(field)
                             .also { it.message?.let { Napier.d(it) } }
@@ -64,8 +64,10 @@ class BaseInputEvaluator : InputEvaluator {
                 }
                 field.predicate?.let {
                     when (it) {
-                        PredicateEnum.PREFERRED -> fieldQueryResult
-                        PredicateEnum.REQUIRED -> return KmmResult.failure(
+                        // TODO: None is not a valid field value, maybe change field type?
+                        RequirementEnum.NONE -> fieldQueryResult
+                        RequirementEnum.PREFERRED -> fieldQueryResult
+                        RequirementEnum.REQUIRED -> return KmmResult.failure(
                             MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature")
                                 .also { it.message?.let { Napier.d(it) } }
                         )

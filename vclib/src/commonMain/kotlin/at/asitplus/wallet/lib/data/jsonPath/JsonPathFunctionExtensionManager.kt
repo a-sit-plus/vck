@@ -13,7 +13,7 @@ interface JsonPathFunctionExtensionManager {
     fun getExtension(name: String): JsonPathFunctionExtension<*>?
 }
 
-val defaultFunctionExtensionManager by lazy {
+val defaultJsonPathFunctionExtensionManager by lazy {
     object : JsonPathFunctionExtensionManager {
         private val extensions: MutableMap<String, JsonPathFunctionExtension<*>> = mutableMapOf()
 
