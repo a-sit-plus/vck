@@ -5,7 +5,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.iso.IssuerSigned
@@ -129,19 +128,12 @@ interface Holder {
 
     /**
      * Creates an array of [VerifiablePresentation] and a [PresentationSubmission] to match
-     * the [presentationDefinition]. Optionally filters by [requestedClaims] (e.g. in ISO case).
+     * the [presentationDefinition].
      */
     suspend fun createPresentation(
         challenge: String,
         audienceId: String,
-        presentationDefinition: PresentationDefinition = PresentationDefinition(
-            id = "0",
-            inputDescriptors = listOf(
-                InputDescriptor(
-                    id = "1",
-                )
-            )
-        ),
+        presentationDefinition: PresentationDefinition,
         // TODO: add authorization semantics to detect unauthorized requests
         // - eg. a service provider asking for an attribute he should not be allowed to see
     ): KmmResult<HolderResponseParameters>

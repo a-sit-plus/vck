@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -187,7 +189,16 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
     val holderCryptoService = DefaultCryptoService()
     val holder = HolderAgent.newDefaultInstance(cryptoService = holderCryptoService)
     issueDummyCredentials(holder, issuer, holderCryptoService)
-    val presentationResult = holder.createPresentation(challenge, verifierId).getOrNull()
+    val presentationResult = holder.createPresentation(
+        challenge = challenge,
+        audienceId = verifierId,
+        presentationDefinition = PresentationDefinition(
+            id = "0",
+            inputDescriptors = listOf(
+                InputDescriptor(id = "1")
+            ),
+        ),
+    ).getOrNull()
     return (presentationResult?.verifiablePresentations?.first() as Holder.CreatePresentationResult.SdJwt).sdJwt
 }
 

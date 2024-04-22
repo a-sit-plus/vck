@@ -65,6 +65,15 @@ class AntlrJsonPathTypeCheckerVisitor(
         return AntlrJsonPathTypeCheckerExpressionType.ValueType
     }
 
+    override fun visitParen_expr(ctx: JsonPathParser.Paren_exprContext): AntlrJsonPathTypeCheckerExpressionType {
+        val childType = visitLogical_expr(ctx.logical_expr())
+        return if (childType is AntlrJsonPathTypeCheckerExpressionType.ErrorType) {
+            AntlrJsonPathTypeCheckerExpressionType.ErrorType
+        } else {
+            AntlrJsonPathTypeCheckerExpressionType.LogicalType
+        }
+    }
+
     override fun visitTest_expr(ctx: JsonPathParser.Test_exprContext): AntlrJsonPathTypeCheckerExpressionType {
         return ctx.function_expr()?.let { functionExpressionContext ->
             when (visitFunction_expr(functionExpressionContext)) {

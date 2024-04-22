@@ -1,10 +1,14 @@
+@file:Suppress("unused")
+
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.dif.InputDescriptor
+import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -59,11 +63,16 @@ class ValidatorVpTest : FreeSpec({
     }
 
     "correct challenge in VP leads to Success" {
-        val presentationParameters =
-            holder.createPresentation(
-                challenge,
-                verifier.identifier,
-            ).getOrNull()
+        val presentationParameters = holder.createPresentation(
+            challenge = challenge,
+            audienceId = verifier.identifier,
+            presentationDefinition = PresentationDefinition(
+                id = "0",
+                inputDescriptors = listOf(
+                    InputDescriptor(id = "1")
+                ),
+            ),
+        ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
         vp.shouldNotBeNull()
@@ -91,7 +100,16 @@ class ValidatorVpTest : FreeSpec({
     }
 
     "wrong challenge in VP leads to InvalidStructure" {
-        val presentationParameters = holder.createPresentation("challenge", verifier.identifier).getOrNull()
+        val presentationParameters = holder.createPresentation(
+            challenge = "challenge",
+            audienceId = verifier.identifier,
+            presentationDefinition = PresentationDefinition(
+                id = "0",
+                inputDescriptors = listOf(
+                    InputDescriptor(id = "1")
+                ),
+            ),
+        ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
@@ -100,7 +118,16 @@ class ValidatorVpTest : FreeSpec({
     }
 
     "wrong audience in VP leads to InvalidStructure" {
-        val presentationParameters = holder.createPresentation(challenge, "keyId").getOrNull()
+        val presentationParameters = holder.createPresentation(
+            challenge = challenge,
+            audienceId = "keyId",
+            presentationDefinition = PresentationDefinition(
+                id = "0",
+                inputDescriptors = listOf(
+                    InputDescriptor(id = "1")
+                ),
+            ),
+        ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
         vp.shouldNotBeNull()
@@ -110,7 +137,16 @@ class ValidatorVpTest : FreeSpec({
     }
 
     "valid parsed presentation should separate revoked and valid credentials" {
-        val presentationResults = holder.createPresentation(challenge, verifier.identifier).getOrNull()
+        val presentationResults = holder.createPresentation(
+            challenge = challenge,
+            audienceId = verifier.identifier,
+            presentationDefinition = PresentationDefinition(
+                id = "0",
+                inputDescriptors = listOf(
+                    InputDescriptor(id = "1")
+                ),
+            ),
+        ).getOrNull()
         presentationResults.shouldNotBeNull()
         val vp = presentationResults.verifiablePresentations.firstOrNull()
         vp.shouldNotBeNull()

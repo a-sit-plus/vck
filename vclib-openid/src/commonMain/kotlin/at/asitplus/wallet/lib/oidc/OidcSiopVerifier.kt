@@ -10,9 +10,7 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.InvalidJsonPathException
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
-import at.asitplus.wallet.lib.data.JSONPathConstants
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
@@ -26,7 +24,7 @@ import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.data.dif.SchemaReference
-import at.asitplus.wallet.lib.data.jsonPath.matchJsonPath
+import at.asitplus.wallet.lib.data.jsonPath.JsonPath
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -46,6 +44,7 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
+import io.ktor.http.quote
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
@@ -328,11 +327,11 @@ class OidcSiopVerifier(
     ): Collection<ConstraintField> = attributeTypes.map {
         if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
             ConstraintField(
-                path = listOf("\$['${credentialScheme?.isoNamespace ?: "mdoc"}'].$it"),
+                path = listOf("\$['${credentialScheme?.isoNamespace ?: "mdoc"}'][${it.quote()}]"),
                 intentToRetain = false
             )
         else
-            ConstraintField(path = listOf("\$.$it"))
+            ConstraintField(path = listOf("\$[${it.quote()}]"))
     }
 
 
@@ -465,13 +464,8 @@ class OidcSiopVerifier(
                 .also { Napier.w("No VP in response") }
 
         val validationResults = descriptors.map { descriptor ->
-            val cumulativeJsonPath = try {
-                descriptor.cumulativeJsonPath
-            } catch (exception: InvalidJsonPathException) {
-                return AuthnResponseResult.ValidationError("presentation_submission", params.state)
-            }
             val relatedPresentation =
-                verifiablePresentation.matchJsonPath(cumulativeJsonPath).entries.first().value
+                JsonPath(descriptor.cumulativeJsonPath).query(verifiablePresentation).first().value
 
             val format = descriptor.format
             val result = when (format) {
@@ -559,10 +553,6 @@ private val PresentationSubmissionDescriptor.cumulativeJsonPath: String
         var cummulativeJsonPath = this.path
         var descriptorIterator = this.nestedPath
         while (descriptorIterator != null) {
-            if (descriptorIterator.path[0] != JSONPathConstants.ROOT_INDICATOR) {
-                // JSONPath must always start with root indicator
-                throw InvalidJsonPathException(descriptorIterator.path)
-            }
             cummulativeJsonPath += descriptorIterator.path.substring(1)
             descriptorIterator = descriptorIterator.nestedPath
         }
