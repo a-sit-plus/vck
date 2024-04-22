@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data.jsonPath
 
-interface JsonPathTypeCheckerErrorListener {
+interface AntlrJsonPathTypeCheckerErrorListener {
     fun unknownFunctionExtension(functionExtensionName: String)
 
     // section 2.4.3: Well-Typedness of Function Expressions
@@ -11,6 +11,6 @@ interface JsonPathTypeCheckerErrorListener {
 
     fun invalidArglistForFunctionExtension(
         functionExtension: JsonPathFunctionExtension<*>,
-        coercedArgumentTypes: List<JsonPathExpressionTypeEnum?>
+        coercedArgumentTypes: List<JsonPathExpressionType?>
     )
 }

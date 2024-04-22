@@ -2,9 +2,12 @@ package at.asitplus.wallet.lib.data.jsonPath
 
 import at.asitplus.parser.generated.JsonPathParser
 import at.asitplus.parser.generated.JsonPathParserBaseVisitor
+import kotlinx.serialization.json.JsonElement
 
-class JsonPathSelectorEvaluationVisitor(
+class AntlrJsonPathSelectorEvaluationVisitor(
     private val compiler: JsonPathCompiler,
+    private val errorListener: AntlrJsonPathCompilerErrorListener?,
+    private val functionExtensionRetriever: (String) -> JsonPathFunctionExtension<*>?,
 ) : JsonPathParserBaseVisitor<List<JsonPathSelector>>() {
     // source: https://datatracker.ietf.org/doc/rfc9535/ from 2024-02-21
     override fun defaultResult(): List<JsonPathSelector> {
@@ -62,11 +65,32 @@ class JsonPathSelectorEvaluationVisitor(
         )
     }
 
-    override fun visitFilter_selector(ctx: JsonPathParser.Filter_selectorContext): List<JsonPathSelector> {
+    override fun visitLogical_expr(ctx: JsonPathParser.Logical_exprContext): List<JsonPathSelector> {
+        val hasValidTypes = AntlrJsonPathTypeCheckerVisitor(
+            compiler = compiler,
+            errorListener = errorListener,
+            functionExtensionRetriever = functionExtensionRetriever,
+        ).visitLogical_expr(ctx)
+        if (hasValidTypes == false) {
+            throw JsonPathTypeCheckerException("See the output of the error handler for more details.")
+        }
         return listOf(
             JsonPathSelector.FilterSelector(
-                ctx = ctx.logical_expr(),
-                compiler = compiler,
+                filterPredicate = object : FilterPredicate {
+                    override fun invoke(
+                        currentNode: JsonElement,
+                        rootNode: JsonElement
+                    ): Boolean {
+                        return AntlrJsonPathExpressionEvaluationVisitor(
+                            rootNode = rootNode,
+                            currentNode = currentNode,
+                            compiler = compiler,
+                            functionExtensionRetriever = functionExtensionRetriever,
+                        ).visitLogical_expr(
+                            ctx
+                        ).isTrue
+                    }
+                }
             )
         )
     }

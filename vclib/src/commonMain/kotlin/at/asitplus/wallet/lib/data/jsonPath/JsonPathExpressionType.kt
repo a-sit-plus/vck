@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data.jsonPath
 
-enum class JsonPathExpressionTypeEnum {
+enum class JsonPathExpressionType {
     ValueType,
     LogicalType,
     NodesType;

@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data.jsonPath.functionExtensions
 
-import at.asitplus.wallet.lib.data.jsonPath.JsonPathExpressionTypeEnum
+import at.asitplus.wallet.lib.data.jsonPath.JsonPathExpressionType
 import at.asitplus.wallet.lib.data.jsonPath.JsonPathExpressionValue
 import at.asitplus.wallet.lib.data.jsonPath.JsonPathFunctionExtension
 import com.strumenta.antlrkotlin.runtime.ext.codePointIndices
@@ -11,7 +11,7 @@ import kotlinx.serialization.json.JsonPrimitive
 data object LengthFunctionExtension : JsonPathFunctionExtension.ValueTypeFunctionExtension(
     name = "length",
     argumentTypes = listOf(
-        JsonPathExpressionTypeEnum.ValueType,
+        JsonPathExpressionType.ValueType,
     )
 ) {
     override fun invoke(arguments: List<JsonPathExpressionValue>): JsonPathExpressionValue.ValueTypeValue {

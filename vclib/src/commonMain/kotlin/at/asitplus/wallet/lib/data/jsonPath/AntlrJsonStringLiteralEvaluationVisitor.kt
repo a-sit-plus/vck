@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.data.jsonPath
 import at.asitplus.parser.generated.JsonStringLiteralParser
 import at.asitplus.parser.generated.JsonStringLiteralParserBaseVisitor
 
-class JsonStringLiteralEvaluationVisitor : JsonStringLiteralParserBaseVisitor<String>() {
+class AntlrJsonStringLiteralEvaluationVisitor : JsonStringLiteralParserBaseVisitor<String>() {
     override fun defaultResult(): String {
         return ""
     }

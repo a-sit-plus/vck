@@ -32,29 +32,57 @@ class JsonStringLiteralTest : FreeSpec({
     }
     "rfc9535" - {
         "rfc8259 conformance" - {
-            "unescapes backslash to backslash" {
-                rfc9535Utils.unpackStringLiteral("\"\\\\\"") shouldBe "\\"
+            "double quoted" - {
+                "unescapes backslash to backslash" {
+                    rfc9535Utils.unpackStringLiteral("\"\\\\\"") shouldBe "\\"
+                }
+                "unescapes slash to slash" {
+                    rfc9535Utils.unpackStringLiteral("\"\\/\"") shouldBe "/"
+                }
+                "unescapes quotation mark to quotation mark" {
+                    rfc9535Utils.unpackStringLiteral("\"\\\"\"") shouldBe "\""
+                }
+                "unescapes b to backspace" {
+                    rfc9535Utils.unpackStringLiteral("\"\\b\"") shouldBe Char(0x0008).toString()
+                }
+                "unescapes f to form feed" {
+                    rfc9535Utils.unpackStringLiteral("\"\\f\"") shouldBe Char(0x000C).toString()
+                }
+                "unescapes n to newline" {
+                    rfc9535Utils.unpackStringLiteral("\"\\n\"") shouldBe "\n"
+                }
+                "unescapes r to carriage return" {
+                    rfc9535Utils.unpackStringLiteral("\"\\r\"") shouldBe "\r"
+                }
+                "unescapes t to horizontal tab" {
+                    rfc9535Utils.unpackStringLiteral("\"\\t\"") shouldBe "\t"
+                }
             }
-            "unescapes slash to slash" {
-                rfc9535Utils.unpackStringLiteral("\"\\/\"") shouldBe "/"
-            }
-            "unescapes quotation mark to quotation mark" {
-                rfc9535Utils.unpackStringLiteral("\"\\\"\"") shouldBe "\""
-            }
-            "unescapes b to backspace" {
-                rfc9535Utils.unpackStringLiteral("\"\\b\"") shouldBe Char(0x0008).toString()
-            }
-            "unescapes f to form feed" {
-                rfc9535Utils.unpackStringLiteral("\"\\f\"") shouldBe Char(0x000C).toString()
-            }
-            "unescapes n to newline" {
-                rfc9535Utils.unpackStringLiteral("\"\\n\"") shouldBe "\n"
-            }
-            "unescapes r to carriage return" {
-                rfc9535Utils.unpackStringLiteral("\"\\r\"") shouldBe "\r"
-            }
-            "unescapes t to horizontal tab" {
-                rfc9535Utils.unpackStringLiteral("\"\\t\"") shouldBe "\t"
+            "single quoted" - {
+                "unescapes backslash to backslash" {
+                    rfc9535Utils.unpackStringLiteral("'\\\\'") shouldBe "\\"
+                }
+                "unescapes slash to slash" {
+                    rfc9535Utils.unpackStringLiteral("'\\/'") shouldBe "/"
+                }
+                "unescapes quotation mark to quotation mark" {
+                    rfc9535Utils.unpackStringLiteral("'\\''") shouldBe "'"
+                }
+                "unescapes b to backspace" {
+                    rfc9535Utils.unpackStringLiteral("'\\b'") shouldBe Char(0x0008).toString()
+                }
+                "unescapes f to form feed" {
+                    rfc9535Utils.unpackStringLiteral("'\\f'") shouldBe Char(0x000C).toString()
+                }
+                "unescapes n to newline" {
+                    rfc9535Utils.unpackStringLiteral("'\\n'") shouldBe "\n"
+                }
+                "unescapes r to carriage return" {
+                    rfc9535Utils.unpackStringLiteral("'\\r'") shouldBe "\r"
+                }
+                "unescapes t to horizontal tab" {
+                    rfc9535Utils.unpackStringLiteral("'\\t'") shouldBe "\t"
+                }
             }
         }
     }

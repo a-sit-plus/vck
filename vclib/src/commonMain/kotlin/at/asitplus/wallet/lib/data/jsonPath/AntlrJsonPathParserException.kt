@@ -36,6 +36,6 @@ class UnknownFunctionExtensionException(functionExtensionName: String) :JsonPath
 class InvalidArgumentsException(val expectedArguments: Int, val actualArguments: Int) : Exception(
     "Invalid number of arguments. Expected $expectedArguments, but received $actualArguments."
 )
-class InvalidArgumentTypeException(val value: JsonPathExpressionValue, val expectedArgumentType: JsonPathExpressionTypeEnum): JsonPathTypeCheckerException(
+class InvalidArgumentTypeException(val value: JsonPathExpressionValue, val expectedArgumentType: JsonPathExpressionType): JsonPathTypeCheckerException(
     "Unexpected argument type: Expected value of type ${expectedArgumentType.toString().quote()}, received: $value"
 )

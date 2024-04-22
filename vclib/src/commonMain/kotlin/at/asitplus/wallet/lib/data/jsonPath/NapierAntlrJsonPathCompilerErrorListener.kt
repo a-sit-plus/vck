@@ -8,8 +8,10 @@ import org.antlr.v4.kotlinruntime.Recognizer
 import org.antlr.v4.kotlinruntime.atn.ATNConfigSet
 import org.antlr.v4.kotlinruntime.dfa.DFA
 
-val napierJsonPathCompilerErrorListener by lazy {
-    object : JsonPathCompilerErrorListener {
+val napierAntlrJsonPathCompilerErrorListener by lazy {
+    val napierAntlrErrorListener = NapierAntlrErrorListener("JsonPath Compiler")
+
+    object : AntlrJsonPathCompilerErrorListener {
         override fun unknownFunctionExtension(functionExtensionName: String) {
             Napier.e("Unknown JSONPath function extension: \"$functionExtensionName\"")
         }
@@ -24,7 +26,7 @@ val napierJsonPathCompilerErrorListener by lazy {
 
         override fun invalidArglistForFunctionExtension(
             functionExtension: JsonPathFunctionExtension<*>,
-            coercedArgumentTypes: List<JsonPathExpressionTypeEnum?>
+            coercedArgumentTypes: List<JsonPathExpressionType?>
         ) {
             Napier.e(
                 "Invalid arguments for function extension \"${functionExtension.name}\": Expected: <${
@@ -44,7 +46,15 @@ val napierJsonPathCompilerErrorListener by lazy {
             ambigAlts: BitSet,
             configs: ATNConfigSet
         ) {
-            // Noop
+            napierAntlrErrorListener.reportAmbiguity(
+                recognizer = recognizer,
+                dfa = dfa,
+                startIndex = startIndex,
+                stopIndex = stopIndex,
+                exact = exact,
+                ambigAlts = ambigAlts,
+                configs = configs,
+            )
         }
 
         override fun reportAttemptingFullContext(
@@ -55,7 +65,14 @@ val napierJsonPathCompilerErrorListener by lazy {
             conflictingAlts: BitSet,
             configs: ATNConfigSet
         ) {
-            // Noop
+            napierAntlrErrorListener.reportAttemptingFullContext(
+                recognizer = recognizer,
+                dfa = dfa,
+                startIndex = startIndex,
+                stopIndex = stopIndex,
+                conflictingAlts = conflictingAlts,
+                configs = configs,
+            )
         }
 
         override fun reportContextSensitivity(
@@ -66,7 +83,14 @@ val napierJsonPathCompilerErrorListener by lazy {
             prediction: Int,
             configs: ATNConfigSet
         ) {
-            // Noop
+            napierAntlrErrorListener.reportContextSensitivity(
+                recognizer = recognizer,
+                dfa = dfa,
+                startIndex = startIndex,
+                stopIndex = stopIndex,
+                prediction = prediction,
+                configs = configs,
+            )
         }
 
         override fun syntaxError(
@@ -77,7 +101,14 @@ val napierJsonPathCompilerErrorListener by lazy {
             msg: String,
             e: RecognitionException?
         ) {
-            Napier.e("JsonPath Compiler: Syntax error $line:$charPositionInLine $msg")
+            napierAntlrErrorListener.syntaxError(
+                recognizer = recognizer,
+                offendingSymbol = offendingSymbol,
+                line = line,
+                charPositionInLine = charPositionInLine,
+                msg = msg,
+                e = e,
+            )
         }
     }
 }

@@ -1,9 +1,8 @@
 package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.data.jsonPath.JsonPathCompiler
+import at.asitplus.wallet.lib.data.jsonPath.JsonPath
 import at.asitplus.wallet.lib.data.jsonPath.JsonPathSelector
-import at.asitplus.wallet.lib.data.jsonPath.defaultJsonPathCompiler
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -35,9 +34,7 @@ interface InputEvaluator {
     ): KmmResult<CandidateInputMatch>
 }
 
-class BaseInputEvaluator(
-    private val jsonPathCompiler: JsonPathCompiler = defaultJsonPathCompiler,
-) : InputEvaluator {
+class BaseInputEvaluator : InputEvaluator {
     override fun evaluateMatch(
         inputDescriptor: InputDescriptor,
         credential: JsonElement
@@ -47,7 +44,7 @@ class BaseInputEvaluator(
             val constraintFields = constraints.fields ?: listOf()
             val fieldQueryResults = constraintFields.map { field ->
                 val fieldQueryResult = field.path.firstNotNullOfOrNull { jsonPath ->
-                    val candidates = jsonPathCompiler.compile(jsonPath).invoke(credential)
+                    val candidates = JsonPath(jsonPath).query(credential)
                     candidates.firstOrNull { candidate ->
                         field.filter?.let {
                             candidate.value.satisfiesConstraintFilter(it)
@@ -144,8 +141,8 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
 open class InputEvaluationException(message: String) : Exception(message)
 
 class FailedFieldQueryException(val constraintField: ConstraintField) : InputEvaluationException(
-    message = "No match has been found to satisfy constraint field: $constraintField"
+    "No match has been found to satisfy constraint field: $constraintField"
 )
 class MissingFeatureSupportException(val featureName: String) : InputEvaluationException(
-    message = "Feature is not supported: $featureName"
+    "Feature is not supported: $featureName"
 )

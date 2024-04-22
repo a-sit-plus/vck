@@ -11,10 +11,11 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 
-internal class JsonPathExpressionEvaluationVisitor(
-    val rootNode: JsonElement,
-    val currentNode: JsonElement,
-    val compiler: JsonPathCompiler,
+class AntlrJsonPathExpressionEvaluationVisitor(
+    private val rootNode: JsonElement,
+    private val currentNode: JsonElement,
+    private val compiler: JsonPathCompiler,
+    private val functionExtensionRetriever: (String) -> JsonPathFunctionExtension<*>?,
 ) : JsonPathParserBaseVisitor<JsonPathExpressionValue>() {
 
     override fun visitLogical_expr(ctx: JsonPathParser.Logical_exprContext): JsonPathExpressionValue.LogicalTypeValue {
@@ -113,7 +114,7 @@ internal class JsonPathExpressionEvaluationVisitor(
         val secondValue = visitComparable(second)
 
         if (firstValue.isEmptyOrNothing() or secondValue.isEmptyOrNothing()) {
-            return firstValue.isEmptyOrNothing() != secondValue.isEmptyOrNothing()
+            return firstValue.isEmptyOrNothing() == secondValue.isEmptyOrNothing()
         }
 
         return evaluateComparisonEqualsUnpacked(
@@ -257,7 +258,10 @@ internal class JsonPathExpressionEvaluationVisitor(
 
     override fun visitRel_query(ctx: JsonPathParser.Rel_queryContext): JsonPathExpressionValue {
         return JsonPathExpressionValue.NodesTypeValue.FilterQueryResult(
-            compiler.compile("$${ctx.segments().text}").invoke(currentNode).map {
+            compiler.compile("$${ctx.segments().text}").invoke(
+                currentNode = currentNode,
+                rootNode = rootNode,
+            ).map {
                 it.value
             }
         )
@@ -265,7 +269,10 @@ internal class JsonPathExpressionEvaluationVisitor(
 
     override fun visitJsonpath_query(ctx: JsonPathParser.Jsonpath_queryContext): JsonPathExpressionValue {
         return JsonPathExpressionValue.NodesTypeValue.FilterQueryResult(
-            compiler.compile(ctx.text).invoke(rootNode).map {
+            compiler.compile(ctx.text).invoke(
+                currentNode = rootNode,
+                rootNode = rootNode,
+            ).map {
                 it.value
             }
         )
@@ -273,61 +280,39 @@ internal class JsonPathExpressionEvaluationVisitor(
 
     override fun visitFunction_expr(ctx: JsonPathParser.Function_exprContext): JsonPathExpressionValue {
         val functionName = ctx.FUNCTION_NAME().text
-        val extension = compiler.getFunctionExtensionManager()?.getExtension(functionName)
+        val extension = functionExtensionRetriever.invoke(functionName)
             ?: throw UnknownFunctionExtensionException(functionName)
 
-        if(ctx.function_argument().size != extension.argumentTypes.size) {
-            throw InvalidArgumentsException(
-                expectedArguments = extension.argumentTypes.size,
-                actualArguments = ctx.function_argument().size,
-            )
-        }
-        val coercedArguments = extension.argumentTypes.zip(ctx.function_argument()).map {
-            val expectedArgumentType = it.first
-            val argumentContext = it.second
+        val coercedArguments = ctx.function_argument().mapIndexed { index, argumentContext ->
+            val expectedArgumentType = extension.argumentTypes.getOrNull(index)
             val argument = visitFunction_argument(argumentContext)
 
             when (expectedArgumentType) {
-                JsonPathExpressionTypeEnum.LogicalType -> when (argument) {
-                    is JsonPathExpressionValue.LogicalTypeValue -> argument
+                JsonPathExpressionType.LogicalType -> when (argument) {
                     is JsonPathExpressionValue.NodesTypeValue -> JsonPathExpressionValue.LogicalTypeValue(
                         argument.nodeList.isNotEmpty()
                     )
 
-                    is JsonPathExpressionValue.ValueTypeValue -> throw InvalidArgumentTypeException(
-                        value = argument,
-                        expectedArgumentType = expectedArgumentType,
-                    )
+                    else -> argument
                 }
 
-                JsonPathExpressionTypeEnum.NodesType -> when (argument) {
-                    is JsonPathExpressionValue.NodesTypeValue -> argument
-                    else -> throw InvalidArgumentTypeException(
-                        value = argument,
-                        expectedArgumentType = expectedArgumentType,
-                    )
-                }
+                JsonPathExpressionType.NodesType -> argument
 
-                JsonPathExpressionTypeEnum.ValueType -> when (argument) {
-                    is JsonPathExpressionValue.ValueTypeValue -> argument
+                JsonPathExpressionType.ValueType -> when (argument) {
                     is JsonPathExpressionValue.NodesTypeValue -> {
-                        if (argument !is JsonPathExpressionValue.NodesTypeValue.SingularQueryResult) {
-                            throw InvalidArgumentTypeException(
-                                value = argument,
-                                expectedArgumentType = expectedArgumentType,
-                            )
-                        } else if(argument.nodeList.size == 1) {
+                        // assume that this results from a singular query
+                        // - validation should be done by a type checker anyway
+                        if (argument.nodeList.size == 1) {
                             JsonPathExpressionValue.ValueTypeValue.JsonValue(argument.nodeList[0])
                         } else {
                             JsonPathExpressionValue.ValueTypeValue.Nothing
                         }
                     }
 
-                    else -> throw InvalidArgumentTypeException(
-                        value = argument,
-                        expectedArgumentType = expectedArgumentType,
-                    )
+                    else -> argument
                 }
+
+                null -> argument
             }
         }
         return extension.invoke(coercedArguments)
@@ -335,8 +320,19 @@ internal class JsonPathExpressionEvaluationVisitor(
 
     override fun visitRel_singular_query(ctx: JsonPathParser.Rel_singular_queryContext): JsonPathExpressionValue {
         return JsonPathExpressionValue.NodesTypeValue.SingularQueryResult(
-            compiler.compile("$" + ctx.singular_query_segments().text).invoke(currentNode)
-                .map { it.value }
+            compiler.compile("$" + ctx.singular_query_segments().text).invoke(
+                currentNode = currentNode,
+                rootNode = rootNode,
+            ).map { it.value }
+        )
+    }
+
+    override fun visitAbs_singular_query(ctx: JsonPathParser.Abs_singular_queryContext): JsonPathExpressionValue {
+        return JsonPathExpressionValue.NodesTypeValue.SingularQueryResult(
+            compiler.compile(ctx.text).invoke(
+                currentNode = rootNode,
+                rootNode = rootNode,
+            ).map { it.value }
         )
     }
 

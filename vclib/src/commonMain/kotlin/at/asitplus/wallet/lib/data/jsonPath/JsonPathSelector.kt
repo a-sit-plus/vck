@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.data.jsonPath
 
-import at.asitplus.parser.generated.JsonPathParser
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -115,12 +114,12 @@ sealed interface JsonPathSelector {
             currentNode: JsonElement,
             rootNode: JsonElement,
         ): NodeList {
-            return selectors.map {
+            return selectors.flatMap {
                 it.invoke(
                     currentNode = currentNode,
                     rootNode = rootNode,
                 )
-            }.flatten()
+            }
         }
     }
 
@@ -142,7 +141,9 @@ sealed interface JsonPathSelector {
                     val actualStepSize = step ?: 1
 
                     // When step is 0, no elements are selected.
-                    if (actualStepSize == 0) return listOf()
+                    if (actualStepSize == 0) {
+                        return listOf()
+                    }
 
                     // default start and end according to specification
                     val start = startInclusive
@@ -155,7 +156,7 @@ sealed interface JsonPathSelector {
                     val range = if (actualStepSize > 0) {
                         lower..<upper step actualStepSize
                     } else {
-                        upper downTo lower + 1 step actualStepSize
+                        upper downTo lower + 1 step -actualStepSize
                     }
 
                     range.map { index ->
@@ -239,16 +240,8 @@ sealed interface JsonPathSelector {
     }
 
     class FilterSelector(
-        val ctx: JsonPathParser.Logical_exprContext,
-        val compiler: JsonPathCompiler,
+        private val filterPredicate: FilterPredicate,
     ) : JsonPathSelector {
-        init {
-            val hasValidTypes = JsonPathTypeCheckerVisitor(compiler).visitLogical_expr(ctx)
-            if (hasValidTypes == false) {
-                throw JsonPathTypeCheckerException("See the error handler output for more details.")
-            }
-        }
-
         override fun invoke(
             currentNode: JsonElement,
             rootNode: JsonElement,
@@ -270,14 +263,18 @@ sealed interface JsonPathSelector {
                     )
                 }
             }.filter {
-                JsonPathExpressionEvaluationVisitor(
-                    rootNode = rootNode,
+                filterPredicate.invoke(
                     currentNode = it.value,
-                    compiler = compiler,
-                ).visitLogical_expr(
-                    ctx
-                ).isTrue
+                    rootNode = rootNode,
+                )
             }
         }
     }
+}
+
+interface FilterPredicate {
+    fun invoke(
+        currentNode: JsonElement,
+        rootNode: JsonElement,
+    ): Boolean
 }
