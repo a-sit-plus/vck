@@ -145,4 +145,5 @@ tasks.withType<KotlinCompile<*>> {
 }
 tasks.withType<AntlrKotlinTask> {
     dependsOn(tasks.named("jvmProcessResources"))
+    dependsOn(tasks.named("iosX64ProcessResources"))
 }
