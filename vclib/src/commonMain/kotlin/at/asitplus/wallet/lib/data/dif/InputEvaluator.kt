@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
 import at.asitplus.wallet.lib.data.jsonPath.JsonPath
-import at.asitplus.wallet.lib.data.jsonPath.JsonPathSelector
+import at.asitplus.wallet.lib.data.jsonPath.NodeListEntry
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -19,11 +19,11 @@ Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#in
 
 // May support different features, not sure if all of them fit into one elevator
 interface InputEvaluator {
-    data class FieldQueryResult(
-        val singularQuerySelectors: List<JsonPathSelector.SingularQuerySelector>,
-        val value: JsonElement,
-    )
 
+    data class FieldQueryResult(
+        val constraintField: ConstraintField,
+        val match: NodeListEntry,
+    )
     data class CandidateInputMatch(
         val fieldQueryResults: List<FieldQueryResult?>?,
     )
@@ -51,8 +51,8 @@ class BaseInputEvaluator : InputEvaluator {
                         } ?: true
                     }?.let {
                         InputEvaluator.FieldQueryResult(
-                            singularQuerySelectors = it.singularQuerySelectors,
-                            value = it.value,
+                            constraintField = field,
+                            match = it,
                         )
                     }
                 }
@@ -64,7 +64,7 @@ class BaseInputEvaluator : InputEvaluator {
                 }
                 field.predicate?.let {
                     when (it) {
-                        // TODO: None is not a valid field value, maybe change field type?
+                        // TODO: RequirementEnum.NONE is not a valid field value, maybe change member type to new Enum?
                         RequirementEnum.NONE -> fieldQueryResult
                         RequirementEnum.PREFERRED -> fieldQueryResult
                         RequirementEnum.REQUIRED -> return KmmResult.failure(

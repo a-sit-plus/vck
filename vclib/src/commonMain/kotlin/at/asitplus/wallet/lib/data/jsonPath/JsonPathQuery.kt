@@ -8,7 +8,7 @@ class JsonPathQuery(
     fun invoke(currentNode: JsonElement, rootNode: JsonElement = currentNode): NodeList {
         var matches = listOf(
             NodeListEntry(
-                singularQuerySelectors = listOf(),
+                normalizedJsonPath = NormalizedJsonPath(),
                 value = currentNode,
             )
         )
@@ -19,7 +19,7 @@ class JsonPathQuery(
                     rootNode = rootNode,
                 ).map { newMatch ->
                     NodeListEntry(
-                        singularQuerySelectors = match.singularQuerySelectors + newMatch.singularQuerySelectors,
+                        normalizedJsonPath = match.normalizedJsonPath + newMatch.normalizedJsonPath,
                         value = newMatch.value
                     )
                 }
@@ -29,9 +29,12 @@ class JsonPathQuery(
     }
 
     val isSingularQuery: Boolean
-        get() = selectors.filter {
-            it !is JsonPathSelector.RootSelector
-        }.all {
-            it is JsonPathSelector.SingularQuerySelector
+        get() = selectors.all {
+            when(it) {
+                JsonPathSelector.RootSelector,
+                is JsonPathSelector.MemberSelector,
+                is JsonPathSelector.IndexSelector -> true
+                else -> false
+            }
         }
 }

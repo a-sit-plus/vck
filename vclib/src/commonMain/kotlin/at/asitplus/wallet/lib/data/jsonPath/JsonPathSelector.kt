@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.data.jsonPath
 
+import at.asitplus.wallet.lib.data.jsonPath.NormalizedJsonPathSegment.IndexSegment
+import at.asitplus.wallet.lib.data.jsonPath.NormalizedJsonPathSegment.NameSegment
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -26,40 +28,14 @@ sealed interface JsonPathSelector {
         ): NodeList {
             return listOf(
                 NodeListEntry(
-                    singularQuerySelectors = listOf(),
+                    normalizedJsonPath = NormalizedJsonPath(),
                     value = currentNode
                 )
             )
         }
     }
 
-    data object WildCardSelector : JsonPathSelector {
-        override fun invoke(
-            currentNode: JsonElement,
-            rootNode: JsonElement,
-        ): NodeList {
-            return when (currentNode) {
-                is JsonPrimitive -> listOf()
-
-                is JsonArray -> currentNode.mapIndexed { index, it ->
-                    NodeListEntry(
-                        singularQuerySelectors = listOf(IndexSelector(index)),
-                        value = it,
-                    )
-                }
-
-                is JsonObject -> currentNode.entries.map {
-                    NodeListEntry(
-                        singularQuerySelectors = listOf(MemberSelector(it.key)),
-                        value = it.value,
-                    )
-                }
-            }
-        }
-    }
-
-    sealed interface SingularQuerySelector : JsonPathSelector
-    class MemberSelector(val memberName: String) : SingularQuerySelector {
+    class MemberSelector(val memberName: String) : JsonPathSelector {
         override fun invoke(
             currentNode: JsonElement,
             rootNode: JsonElement,
@@ -71,7 +47,7 @@ sealed interface JsonPathSelector {
 
                 is JsonObject -> listOfNotNull(currentNode[memberName]?.let {
                     NodeListEntry(
-                        singularQuerySelectors = listOf(MemberSelector(memberName)),
+                        normalizedJsonPath = NormalizedJsonPath(NameSegment(memberName)),
                         value = it
                     )
                 })
@@ -79,7 +55,7 @@ sealed interface JsonPathSelector {
         }
     }
 
-    class IndexSelector(val index: Int) : SingularQuerySelector {
+    class IndexSelector(val index: Int) : JsonPathSelector {
         override fun invoke(
             currentNode: JsonElement,
             rootNode: JsonElement,
@@ -96,7 +72,7 @@ sealed interface JsonPathSelector {
                     listOfNotNull(
                         currentNode.getOrNull(actualIndex)?.let {
                             NodeListEntry(
-                                singularQuerySelectors = listOf(IndexSelector(actualIndex)),
+                                normalizedJsonPath = NormalizedJsonPath(IndexSegment(actualIndex.toUInt())),
                                 value = it
                             )
                         }
@@ -105,6 +81,31 @@ sealed interface JsonPathSelector {
 
 
                 is JsonObject -> listOf()
+            }
+        }
+    }
+
+    data object WildCardSelector : JsonPathSelector {
+        override fun invoke(
+            currentNode: JsonElement,
+            rootNode: JsonElement,
+        ): NodeList {
+            return when (currentNode) {
+                is JsonPrimitive -> listOf()
+
+                is JsonArray -> currentNode.indices.flatMap {
+                    IndexSelector(it).invoke(
+                        currentNode = currentNode,
+                        rootNode = rootNode,
+                    )
+                }
+
+                is JsonObject -> currentNode.keys.flatMap {
+                    MemberSelector(it).invoke(
+                        currentNode = currentNode,
+                        rootNode = rootNode,
+                    )
+                }
             }
         }
     }
@@ -159,12 +160,10 @@ sealed interface JsonPathSelector {
                         upper downTo lower + 1 step -actualStepSize
                     }
 
-                    range.map { index ->
-                        currentNode.getOrNull(index)
-                    }.filterNotNull().mapIndexed { index, it ->
-                        NodeListEntry(
-                            singularQuerySelectors = listOf(IndexSelector(index)),
-                            value = it
+                    range.flatMap { index ->
+                        IndexSelector(index).invoke(
+                            currentNode = currentNode,
+                            rootNode = rootNode,
                         )
                     }
                 }
@@ -208,29 +207,28 @@ sealed interface JsonPathSelector {
             return when (currentNode) {
                 is JsonPrimitive -> listOf()
 
-                is JsonArray -> listOf(
-                    NodeListEntry(
-                        singularQuerySelectors = listOf(),
-                        value = currentNode
-                    )
-                ) + currentNode.flatMapIndexed { index, next ->
-                    invoke(next, rootNode).map {
+                is JsonArray -> RootSelector.invoke(
+                    currentNode = currentNode,
+                    rootNode = rootNode,
+                ) + currentNode.flatMapIndexed { index, childNode ->
+                    invoke(
+                        currentNode = childNode,
+                        rootNode = rootNode
+                    ).map {
                         NodeListEntry(
-                            singularQuerySelectors = listOf(IndexSelector(index)) + it.singularQuerySelectors,
+                            normalizedJsonPath = NormalizedJsonPath(IndexSegment(index.toUInt())) + it.normalizedJsonPath,
                             it.value
                         )
                     }
                 }
 
-                is JsonObject -> listOf(
-                    NodeListEntry(
-                        singularQuerySelectors = listOf(),
-                        value = currentNode
-                    )
-                ) + currentNode.entries.flatMap { entry ->
+                is JsonObject -> RootSelector.invoke(
+                    currentNode = currentNode,
+                    rootNode = rootNode,
+                ) + currentNode.flatMap { entry ->
                     invoke(entry.value, rootNode).map {
                         NodeListEntry(
-                            singularQuerySelectors = listOf(MemberSelector(entry.key)) + it.singularQuerySelectors,
+                            normalizedJsonPath = NormalizedJsonPath(NameSegment(entry.key)) + it.normalizedJsonPath,
                             it.value
                         )
                     }
@@ -249,17 +247,17 @@ sealed interface JsonPathSelector {
             return when (currentNode) {
                 is JsonPrimitive -> listOf()
 
-                is JsonArray -> currentNode.mapIndexed { index, it ->
-                    NodeListEntry(
-                        singularQuerySelectors = listOf(IndexSelector(index)),
-                        value = it
+                is JsonArray -> currentNode.flatMapIndexed { index, it ->
+                    IndexSelector(index).invoke(
+                        currentNode = currentNode,
+                        rootNode = rootNode,
                     )
                 }
 
-                is JsonObject -> currentNode.entries.map {
-                    NodeListEntry(
-                        singularQuerySelectors = listOf(MemberSelector(it.key)),
-                        value = it.value
+                is JsonObject -> currentNode.entries.flatMap {
+                    MemberSelector(it.key).invoke(
+                        currentNode = currentNode,
+                        rootNode = rootNode,
                     )
                 }
             }.filter {

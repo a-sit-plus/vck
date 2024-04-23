@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.data.jsonPath
 
-import at.asitplus.wallet.lib.data.jsonSerializer
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
@@ -9,6 +8,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.double
@@ -16,10 +16,11 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
+@Suppress("unused")
 class JsonPathUnitTest : FreeSpec({
     "Examples from https://datatracker.ietf.org/doc/rfc9535/" - {
         "1.5.  JSONPath Examples" - {
-            val bookStore = jsonSerializer.decodeFromString<JsonElement>(
+            val bookStore = Json.decodeFromString<JsonElement>(
                 "   { \"store\": {\n" +
                         "       \"book\": [\n" +
                         "         { \"category\": \"reference\",\n" +
@@ -223,7 +224,7 @@ class JsonPathUnitTest : FreeSpec({
 
         "2.1. Overview" - {
             val jsonElement =
-                jsonSerializer.decodeFromString<JsonElement>("{\"a\":[{\"b\":0},{\"b\":1},{\"c\":2}]}")
+                Json.decodeFromString<JsonElement>("{\"a\":[{\"b\":0},{\"b\":1},{\"c\":2}]}")
             "\$" {
                 val nodeList = JsonPath(this.testScope.testCase.name.originalName)
                     .query(jsonElement).map { it.value }
@@ -255,7 +256,7 @@ class JsonPathUnitTest : FreeSpec({
         }
 
         "2.2. Root Identifier" - {
-            val jsonElement = jsonSerializer.decodeFromString<JsonElement>("{\"k\": \"v\"}")
+            val jsonElement = Json.decodeFromString<JsonElement>("{\"k\": \"v\"}")
             "$" {
                 val nodeList = JsonPath(this.testScope.testCase.name.originalName)
                     .query(jsonElement).map { it.value }
@@ -265,7 +266,7 @@ class JsonPathUnitTest : FreeSpec({
         }
 
         "2.3.1. Name Selector" - {
-            val jsonElement = jsonSerializer.decodeFromString<JsonElement>(
+            val jsonElement = Json.decodeFromString<JsonElement>(
                 "{\n" +
                         "                \"o\": {\"j j\": {\"k.k\": 3}},\n" +
                         "                \"'\": {\"@\": 2}\n" +
@@ -308,7 +309,7 @@ class JsonPathUnitTest : FreeSpec({
         }
 
         "2.3.2. Wildcard Selector" - {
-            val jsonElement = jsonSerializer.decodeFromString<JsonElement>(
+            val jsonElement = Json.decodeFromString<JsonElement>(
                 "   {\n" +
                         "     \"o\": {\"j\": 1, \"k\": 2},\n" +
                         "     \"a\": [5, 3]\n" +
@@ -375,7 +376,7 @@ class JsonPathUnitTest : FreeSpec({
         }
 
         "2.3.3.  Index Selector" - {
-            val jsonElement = jsonSerializer.decodeFromString<JsonElement>("[\"a\",\"b\"]")
+            val jsonElement = Json.decodeFromString<JsonElement>("[\"a\",\"b\"]")
 
             "\$[1]" {
                 val nodeList = JsonPath(this.testScope.testCase.name.originalName)
@@ -393,7 +394,7 @@ class JsonPathUnitTest : FreeSpec({
 
         "2.3.4.  Array Slice Selector" - {
             val jsonElement =
-                jsonSerializer.decodeFromString<JsonElement>("[\"a\", \"b\", \"c\", \"d\", \"e\", \"f\", \"g\"]")
+                Json.decodeFromString<JsonElement>("[\"a\", \"b\", \"c\", \"d\", \"e\", \"f\", \"g\"]")
 
             "\$[1:3]" {
                 val nodeList = JsonPath(this.testScope.testCase.name.originalName)
@@ -456,7 +457,7 @@ class JsonPathUnitTest : FreeSpec({
                 // since this should be compiler agnostic, check whether the evaluation is correct by using
                 // the return list as an indicator for true/false:
                 // - if the result should be true, all children should be returned, otherwise zero
-                val jsonElement = jsonSerializer.decodeFromString<JsonElement>(
+                val jsonElement = Json.decodeFromString<JsonElement>(
                     "{\n" +
                             "     \"obj\": {\"x\": \"y\"},\n" +
                             "     \"arr\": [2, 3]\n" +
@@ -605,7 +606,7 @@ class JsonPathUnitTest : FreeSpec({
                 }
             }
             "Queries" - {
-                val jsonElement = jsonSerializer.decodeFromString<JsonElement>(
+                val jsonElement = Json.decodeFromString<JsonElement>(
                     "{\n" +
                             "     \"a\": [3, 5, 1, 2, 4, 6,\n" +
                             "           {\"b\": \"j\"},\n" +
@@ -961,7 +962,7 @@ class JsonPathUnitTest : FreeSpec({
         }
 
         "2.5.1.  Child Segment" - {
-            val jsonElement = jsonSerializer.decodeFromString<JsonElement>(
+            val jsonElement = Json.decodeFromString<JsonElement>(
                 "[\"a\", \"b\", \"c\", \"d\", \"e\", \"f\", \"g\"]"
             ).jsonArray
             "\$[0, 3]" {
@@ -992,7 +993,7 @@ class JsonPathUnitTest : FreeSpec({
         }
 
         "2.5.2.  Descendant Segment" - {
-            val jsonElement = jsonSerializer.decodeFromString<JsonElement>(
+            val jsonElement = Json.decodeFromString<JsonElement>(
                 "{\n" +
                         "     \"o\": {\"j\": 1, \"k\": 2},\n" +
                         "     \"a\": [5, 3, [{\"j\": 4}, {\"k\": 6}]]\n" +
@@ -1103,7 +1104,7 @@ class JsonPathUnitTest : FreeSpec({
         }
 
         "2.6.  Semantics of null" - {
-            val jsonElement = jsonSerializer.decodeFromString<JsonElement>(
+            val jsonElement = Json.decodeFromString<JsonElement>(
                 "   {\"a\": null, \"b\": [null], \"c\": [{}], \"null\": 1}"
             ).jsonObject
             "\$.a" {

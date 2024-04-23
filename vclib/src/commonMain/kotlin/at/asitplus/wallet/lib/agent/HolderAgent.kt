@@ -18,7 +18,8 @@ import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
-import at.asitplus.wallet.lib.data.jsonPath.JsonPathSelector
+import at.asitplus.wallet.lib.data.jsonPath.NormalizedJsonPath
+import at.asitplus.wallet.lib.data.jsonPath.NormalizedJsonPathSegment
 import at.asitplus.wallet.lib.data.jsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceSigned
@@ -286,15 +287,8 @@ class HolderAgent(
         val verifiablePresentations = matches.map { match ->
             val requestedClaims =
                 match.inputMatch.fieldQueryResults?.mapNotNull { fieldQueryResult ->
-                    // TODO: find good way to transform the field query result paths into claim paths
-                    //  for now it should be sufficient to take the last part, we don't have complicated credentials yet
-                    fieldQueryResult?.singularQuerySelectors?.last()?.let {
-                        when (it) {
-                            is JsonPathSelector.IndexSelector -> it.index.toString()
-                            is JsonPathSelector.MemberSelector -> it.memberName
-                        }
-                    }
-                } ?: listOf()
+                    fieldQueryResult?.match?.normalizedJsonPath
+                }
 
             when (match.credential) {
                 is SubjectCredentialStore.StoreEntry.Vc -> createVcPresentation(
@@ -335,28 +329,58 @@ class HolderAgent(
     private suspend fun createIsoPresentation(
         challenge: String,
         credential: SubjectCredentialStore.StoreEntry.Iso,
-        requestedClaims: Collection<String>?
+        requestedClaims: List<NormalizedJsonPath>?
     ): Holder.CreatePresentationResult.Document? {
         val deviceSignature = coseService.createSignedCose(
             payload = challenge.encodeToByteArray(),
             addKeyId = false
         ).getOrNull() ?: return null
             .also { Napier.w("Could not create DeviceAuth for presentation") }
-        val attributes = credential.issuerSigned.namespaces?.get(credential.scheme.isoNamespace)
-            ?: return null
-                .also { Napier.w("Could not filter issuerSignedItems for ${credential.scheme.isoNamespace}") }
+
+        // allows disclosure of attributes from different namespaces
+        val namespaceToAttributesMap = requestedClaims?.mapNotNull { normalizedJsonPath ->
+            // namespace + attribute
+            val firstTwoNameSegments = normalizedJsonPath.segments.filterIndexed { index, _ ->
+                // TODO: unsure how to deal with attributes with a depth of more than 2
+                //  revealing the whole attribute for now, which is as fine grained as MDOC can do anyway
+                index < 2
+            }.filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
+            if (firstTwoNameSegments.size == 2) {
+                val namespace = firstTwoNameSegments[0].memberName
+                val attributeName = firstTwoNameSegments[1].memberName
+                namespace to attributeName
+            } else {
+                // TODO: Not a namespaced attribute, how to deal with these?
+                //  treating them as fields that are inherent to the credential for now
+                //  -> no need for selective disclosure
+                null
+            }
+        }?.groupBy {
+            // grouping by namespace
+            it.first
+        }?.mapValues {
+            // unrolling values to just the list of attribute names for that namespace
+            it.value.map {
+                it.second
+            }
+        }
+        val disclosedItems = namespaceToAttributesMap?.mapValues { namespaceToAttributeNamesEntry ->
+            val namespace = namespaceToAttributeNamesEntry.key
+            val attributeNames = namespaceToAttributeNamesEntry.value
+            IssuerSignedList(attributeNames.map { attributeName ->
+                credential.issuerSigned.namespaces?.get(
+                    namespace
+                )?.entries?.find {
+                    it.value.elementIdentifier == attributeName
+                } ?: throw AttributeNotAvailableException(credential, namespace, attributeName)
+            })
+        }
+
         return Holder.CreatePresentationResult.Document(
             Document(
                 docType = credential.scheme.isoDocType,
                 issuerSigned = IssuerSigned(
-                    namespaces = mapOf(
-                        credential.scheme.isoNamespace to
-                                IssuerSignedList(attributes.entries.filter {
-                                    it.discloseItem(
-                                        requestedClaims
-                                    )
-                                })
-                    ),
+                    namespaces = disclosedItems,
                     issuerAuth = credential.issuerSigned.issuerAuth
                 ),
                 deviceSigned = DeviceSigned(
@@ -373,7 +397,7 @@ class HolderAgent(
         audienceId: String,
         challenge: String,
         validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
-        requestedClaims: Collection<String>?
+        requestedClaims: List<NormalizedJsonPath>?
     ): Holder.CreatePresentationResult.SdJwt? {
         val keyBindingJws = KeyBindingJws(
             issuedAt = Clock.System.now(),
@@ -387,7 +411,18 @@ class HolderAgent(
                 return null
             }
         val filteredDisclosures = validSdJwtCredential.disclosures
-            .filter { it.discloseItem(requestedClaims) }.keys
+            .filter {
+                it.discloseItem(requestedClaims?.mapNotNull { claimPath ->
+                    // TODO: unsure how to deal with attributes with a depth of more than 1 (if they even should be supported)
+                    //  revealing the whole attribute for now, which is as fine grained as SdJwt can do anyway
+                    claimPath.segments.firstOrNull()?.let {
+                        when (it) {
+                            is NormalizedJsonPathSegment.NameSegment -> it.memberName
+                            is NormalizedJsonPathSegment.IndexSegment -> null // can't disclose index
+                        }
+                    }
+                })
+            }.keys
         val sdJwt =
             (listOf(validSdJwtCredential.vcSerialized.substringBefore("~")) + filteredDisclosures + keyBinding.serialize())
                 .joinToString("~")
@@ -395,12 +430,14 @@ class HolderAgent(
     }
 
 
-    private fun Map.Entry<String, SelectiveDisclosureItem?>.discloseItem(requestedClaims: Collection<String>?) =
-        if (requestedClaims?.isNotEmpty() == true) {
-            value?.let { it.claimName in requestedClaims } ?: false
+    private fun Map.Entry<String, SelectiveDisclosureItem?>.discloseItem(requestedClaims: Collection<String>?): Boolean {
+        // do not disclose by default
+        return if (requestedClaims == null) {
+            false
         } else {
-            true
+            value?.let { it.claimName in requestedClaims } ?: false
         }
+    }
 
     private fun ByteStringWrapper<IssuerSignedItem>.discloseItem(requestedClaims: Collection<String>?) =
         if (requestedClaims?.isNotEmpty() == true) {
@@ -528,6 +565,12 @@ class CredentialRetrievalException :
 class MissingInputDescriptorMatchException(
     val inputDescriptor: InputDescriptor,
 ) : PresentationException("No match was found for input descriptor $inputDescriptor")
+
+class AttributeNotAvailableException(
+    val credential: SubjectCredentialStore.StoreEntry.Iso,
+    val namespace: String,
+    val attributeName: String,
+) : PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']: $credential")
 
 class CredentialPresentationException(
     val inputDescriptor: InputDescriptor,
