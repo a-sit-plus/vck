@@ -10,8 +10,8 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.floatOrNull
-import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.longOrNull
 
 /*
 Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
@@ -94,14 +94,11 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
         is JsonObject -> filter.type == "object"
         is JsonPrimitive -> when (filter.type) {
             "string" -> this.isString
-            "null" -> when (this) {
-                JsonNull -> true
-                else -> false
-            }
+            "null" -> this == JsonNull
 
-            "boolean" -> this.booleanOrNull != null
-            "integer" -> this.intOrNull != null
-            "number" -> this.floatOrNull != null
+            "boolean" -> this.isString == false && this.booleanOrNull != null
+            "integer" -> this.isString == false && this.longOrNull != null
+            "number" -> this.isString == false && this.doubleOrNull != null
             else -> false
         }
     }
