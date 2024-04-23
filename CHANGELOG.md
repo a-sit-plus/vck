@@ -1,6 +1,11 @@
 # Changelog
 
 Release 3.6.0:
+ - Change `OidcSiopVerifier.validateAuthnResponse`: Supports new presentation semantics, where the vp_token may be a array of verifiable presentations. 
+ - Change `OidcSiopWallet.createAuthnResponseParams`: Feed the newly required parameters to `Holder.createPresentation`; Changed output semantics to potentially submit a list of verifiable presentations
+ - Change `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.
+ - Add `JsonPath`: JsonPath compiler and query functionality
+ - Add `BaseInputEvaluator`: Input evaluator according to `DIF.PresentationExchange 2.0.0`
  - `OidcSiopWallet.AuthenticationResponseResult.Post`: Replace property `body: String` with `params: Map<String, String>`, to be posted to the Relying Party. Clients may call extension function `at.asitplus.wallet.lib.oidvci.formUrlEncode` on `params` to get the encoded `body` for HTTP calls.
  - Move `JsonWebKeySet` to library `at.asitplus.crypto:datatypes-jws`
  - `DefaultVerifierJwsService` may load public keys for verifying JWS from a JWK Set URL in the header, see constructor argument `jwkSetRetriever` (cf. to `OidcSiopWallet`)
