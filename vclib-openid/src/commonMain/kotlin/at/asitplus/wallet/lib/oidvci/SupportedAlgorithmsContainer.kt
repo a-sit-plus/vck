@@ -9,10 +9,6 @@ data class SupportedAlgorithmsContainer(
      * OID4VP: An object where the value is an array of case sensitive strings that identify the cryptographic suites
      * that are supported. Parties will need to agree upon the meanings of the values used, which may be
      * context-specific, e.g. `EdDSA` and `ES256`.
-     *
-     * OID4VCI: REQUIRED. Array containing a list of the JWE (RFC7516) encryption algorithms (alg values) (RFC7518)
-     * supported by the Credential and Batch Credential Endpoint to encode the Credential or Batch Credential Response
-     * in a JWT (RFC7519).
      */
     @SerialName("alg_values_supported")
     val supportedAlgorithms: Collection<String>,
