@@ -36,8 +36,8 @@ class OAuth2IssuerCredentialDataProvider(private val userInfo: OidcUserInfo) : I
             val subjectId = subjectPublicKey.didEncoded
             val claims = listOfNotNull(
                 // TODO Extend list of default OIDC claims
-                optionalClaim(claimNames, "given_name", userInfo.givenName),
-                optionalClaim(claimNames, "family_name", userInfo.familyName),
+                userInfo.givenName?.let { optionalClaim(claimNames, "given_name", it) },
+                userInfo.familyName?.let { optionalClaim(claimNames, "family_name", it) },
                 optionalClaim(claimNames, "subject", userInfo.subject),
             )
             credentials += when (representation) {
