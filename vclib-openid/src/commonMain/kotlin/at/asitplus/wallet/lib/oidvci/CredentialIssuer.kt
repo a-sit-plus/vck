@@ -83,10 +83,6 @@ class CredentialIssuer(
             preAuthorizedCode = authorizationService.providePreAuthorizedCode()?.let {
                 CredentialOfferGrantsPreAuthCode(
                     preAuthorizedCode = it,
-                    transactionCode = CredentialOfferGrantsPreAuthCodeTransactionCode(
-                        inputMode = "numeric",
-                        length = 16,
-                    ),
                     authorizationServer = authorizationService.publicContext
                 )
             }
