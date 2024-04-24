@@ -15,7 +15,7 @@ jobs:
       - name: Build klibs
         run: ./gradlew iosArm64MainKlibrary iosX64MainKlibrary
       - name: Run tests
-        run: ./gradlew iosX64Test
+        run: ./gradlew iosX64Test :vclib:iosX64Test :vclib-aries:iosX64Test :vclib-openid:iosX64Test
       - name: Test Report
         uses: dorny/test-reporter@v1
         if: success() || failure()
