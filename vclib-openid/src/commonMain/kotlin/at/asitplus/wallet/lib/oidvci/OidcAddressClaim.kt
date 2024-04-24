@@ -8,6 +8,8 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class OidcAddressClaim(
+    @SerialName("formatted")
+    val formatted: String? = null,
     @SerialName("street_address")
     val street: String? = null,
     @SerialName("locality")
@@ -18,6 +20,4 @@ data class OidcAddressClaim(
     val postalCode: String? = null,
     @SerialName("country")
     val country: String? = null,
-    @SerialName("formatted")
-    val formatted: String? = null,
 )
