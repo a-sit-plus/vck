@@ -12,6 +12,7 @@ Release 3.6.0:
    - `OidcSiopVerifier`: Refactor list of parameters for customizing authentication requests to single data class `RequestOptions`
    - `OidcSiopWallet`: Rename constructor parameter `jwkSetRetriever` to a more general `remoteResourceRetriever`, to use it for various parameters defined by reference
    - `OidcSiopWallet`: Replace constructor parameter `verifierJwsService` with `requestObjectJwsVerifier` to allow callers to verify JWS objects with a pre-registered key (as in the OpenId4VP client ID scheme "pre-registered")
+   - Get rid of collections in serializable types and use sets instead
  - OpenID for Verifiable Credential Issuance:
    - Implement OpenID for Verifiable Credential Issuance draft 13, from 2024-02-08
    - Rename `IssuerService` to `CredentialIssuer`
@@ -22,10 +23,12 @@ Release 3.6.0:
    - `WalletService`: Make public API functions suspending
    - `WalletService`: Implement proving possesion of private key with CBOR Web Tokens
    - `WalletService`: Move constructor parameters to `requestOptions` for every method call
+   - Get rid of collections in serializable types and use sets instead
  - Dependency updates
    - Conventions 1.9.23+20240410
      - Ktor 2.3.10
      - Auto-publish version catalogs
+ - `Issuer`: Change `cryptoAlgorithms` from `Collection` to `Set`
 
 Release 3.5.0:
 - Kotlin 1.9.23

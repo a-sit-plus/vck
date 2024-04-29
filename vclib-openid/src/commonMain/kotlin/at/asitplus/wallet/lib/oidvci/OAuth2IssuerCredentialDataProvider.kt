@@ -19,9 +19,11 @@ import kotlin.time.Duration.Companion.minutes
  * Adapter implementation to convert [userInfo] obtained from an [OAuth2AuthorizationServer]
  * into credentials needed by [IssuerCredentialDataProvider].
  */
-class OAuth2IssuerCredentialDataProvider(private val userInfo: OidcUserInfo) : IssuerCredentialDataProvider {
-
+class OAuth2IssuerCredentialDataProvider(
+    private val userInfo: OidcUserInfo,
     private val clock: Clock = Clock.System
+) : IssuerCredentialDataProvider {
+
     private val defaultLifetime = 1.minutes
 
     override fun getCredential(

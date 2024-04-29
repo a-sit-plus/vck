@@ -23,12 +23,12 @@ class OidvciProcessTest : FunSpec({
 
     val authorizationService = SimpleAuthorizationService(
         dataProvider = DummyOAuth2DataProvider,
-        credentialSchemes = listOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023)
+        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023)
     )
     val issuer = CredentialIssuer(
         authorizationService = authorizationService,
         issuer = IssuerAgent.newDefaultInstance(),
-        credentialSchemes = listOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023),
+        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023),
         buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
     )
 
@@ -84,7 +84,7 @@ class OidvciProcessTest : FunSpec({
             WalletService.RequestOptions(
                 ConstantIndex.AtomicAttribute2023,
                 representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                requestedAttributes = listOf("family_name")
+                requestedAttributes = setOf("family_name")
             )
         )
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
@@ -129,7 +129,7 @@ class OidvciProcessTest : FunSpec({
             WalletService.RequestOptions(
                 ConstantIndex.MobileDrivingLicence2023,
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                requestedAttributes = listOf(MobileDrivingLicenceDataElements.DOCUMENT_NUMBER)
+                requestedAttributes = setOf(MobileDrivingLicenceDataElements.DOCUMENT_NUMBER)
             )
         )
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC

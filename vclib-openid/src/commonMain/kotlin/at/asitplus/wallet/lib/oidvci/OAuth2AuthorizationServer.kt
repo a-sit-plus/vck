@@ -25,6 +25,6 @@ interface OAuth2AuthorizationServer {
     suspend fun getUserInfo(accessToken: String): KmmResult<OidcUserInfo>
 
     // TODO How is this supposed to happen when using an external Authorization Server?
-    fun verifyAndRemoveClientNonce(nonce: String): Boolean
+    suspend fun verifyAndRemoveClientNonce(nonce: String): Boolean
 }
 

@@ -35,7 +35,7 @@ data class IssuerMetadata(
      * identifier is used to obtain the Authorization Server metadata.
      */
     @SerialName("authorization_servers")
-    val authorizationServers: Collection<String>? = null,
+    val authorizationServers: Set<String>? = null,
 
     /**
      * OID4VCI: REQUIRED. URL of the Credential Issuer's Credential Endpoint. This URL MUST use the https scheme and
@@ -123,7 +123,7 @@ data class IssuerMetadata(
      * a certain language.
      */
     @SerialName("display")
-    val displayProperties: Collection<DisplayProperties>? = null,
+    val displayProperties: Set<DisplayProperties>? = null,
 
     /**
      * OIDC Discovery: REQUIRED. JSON array containing a list of the OAuth 2.0 `response_type` values that this OP
@@ -132,21 +132,21 @@ data class IssuerMetadata(
      * OIDC SIOPv2: MUST be `id_token`.
      */
     @SerialName("response_types_supported")
-    val responseTypesSupported: Collection<String>? = null,
+    val responseTypesSupported: Set<String>? = null,
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array of strings representing supported scopes.
      * MUST support the `openid` scope value.
      */
     @SerialName("scopes_supported")
-    val scopesSupported: Collection<String>? = null,
+    val scopesSupported: Set<String>? = null,
 
     /**
      * OIDC Discovery: REQUIRED. JSON array containing a list of the Subject Identifier types that this OP supports.
      * Valid types include `pairwise` and `public`.
      */
     @SerialName("subject_types_supported")
-    val subjectTypesSupported: Collection<String>? = null,
+    val subjectTypesSupported: Set<String>? = null,
 
     /**
      * OIDC Discovery: REQUIRED. A JSON array containing a list of the JWS signing algorithms (`alg` values) supported
@@ -154,7 +154,7 @@ data class IssuerMetadata(
      * Valid values include `RS256`, `ES256`, `ES256K`, and `EdDSA`.
      */
     @SerialName("id_token_signing_alg_values_supported")
-    val idTokenSigningAlgorithmsSupported: Collection<String>? = null,
+    val idTokenSigningAlgorithmsSupported: Set<String>? = null,
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array containing a list of the JWS signing algorithms (alg values) supported by the
@@ -162,7 +162,7 @@ data class IssuerMetadata(
      * Valid values include `none`, `RS256`, `ES256`, `ES256K`, and `EdDSA`.
      */
     @SerialName("request_object_signing_alg_values_supported")
-    val requestObjectSigningAlgorithmsSupported: Collection<String>? = null,
+    val requestObjectSigningAlgorithmsSupported: Set<String>? = null,
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array of strings representing URI scheme identifiers and optionally method names of
@@ -170,7 +170,7 @@ data class IssuerMetadata(
      * Valid values include `urn:ietf:params:oauth:jwk-thumbprint`, `did:example` and others.
      */
     @SerialName("subject_syntax_types_supported")
-    val subjectSyntaxTypesSupported: Collection<String>? = null,
+    val subjectSyntaxTypesSupported: Set<String>? = null,
 
     /**
      * OIDC SIOPv2: OPTIONAL. A JSON array of strings containing the list of ID Token types supported by the OP,
@@ -179,7 +179,7 @@ data class IssuerMetadata(
      * ID Token, i.e. the id token is signed with key material under the end-user's control).
      */
     @SerialName("id_token_types_supported")
-    val idTokenTypesSupported: Collection<IdTokenType>? = null,
+    val idTokenTypesSupported: Set<IdTokenType>? = null,
 
     /**
      * OID4VP: OPTIONAL. Boolean value specifying whether the Wallet supports the transfer of `presentation_definition`
@@ -202,7 +202,7 @@ data class IssuerMetadata(
      * If omitted, the default value is pre-registered.
      */
     @SerialName("client_id_schemes_supported")
-    val clientIdSchemesSupported: Collection<String>? = null,
+    val clientIdSchemesSupported: Set<String>? = null,
 ) {
     fun serialize() = jsonSerializer.encodeToString(this)
 

@@ -89,13 +89,13 @@ class OidcSiopWallet(
         IssuerMetadata(
             issuer = clientId,
             authorizationEndpointUrl = clientId,
-            responseTypesSupported = listOf(ID_TOKEN),
-            scopesSupported = listOf(SCOPE_OPENID),
-            subjectTypesSupported = listOf("pairwise", "public"),
-            idTokenSigningAlgorithmsSupported = listOf(jwsService.algorithm.identifier),
-            requestObjectSigningAlgorithmsSupported = listOf(jwsService.algorithm.identifier),
-            subjectSyntaxTypesSupported = listOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
-            idTokenTypesSupported = listOf(IdTokenType.SUBJECT_SIGNED),
+            responseTypesSupported = setOf(ID_TOKEN),
+            scopesSupported = setOf(SCOPE_OPENID),
+            subjectTypesSupported = setOf("pairwise", "public"),
+            idTokenSigningAlgorithmsSupported = setOf(jwsService.algorithm.identifier),
+            requestObjectSigningAlgorithmsSupported = setOf(jwsService.algorithm.identifier),
+            subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
+            idTokenTypesSupported = setOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,
         )
     }

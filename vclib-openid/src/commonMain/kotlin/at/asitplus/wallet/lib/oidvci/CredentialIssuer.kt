@@ -34,7 +34,7 @@ class CredentialIssuer(
     /**
      * List of supported schemes.
      */
-    private val credentialSchemes: Collection<ConstantIndex.CredentialScheme>,
+    private val credentialSchemes: Set<ConstantIndex.CredentialScheme>,
     /**
      * Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients.
      */
@@ -58,13 +58,13 @@ class CredentialIssuer(
         IssuerMetadata(
             issuer = publicContext,
             credentialIssuer = publicContext,
-            authorizationServers = listOf(authorizationService.publicContext),
+            authorizationServers = setOf(authorizationService.publicContext),
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
             supportedCredentialConfigurations = mutableMapOf<String, SupportedCredentialFormat>().apply {
                 credentialSchemes.forEach { putAll(it.toSupportedCredentialFormat(issuer.cryptoAlgorithms)) }
             },
             supportsCredentialIdentifiers = true,
-            displayProperties = credentialSchemes.map { DisplayProperties(it.vcType, "en") }
+            displayProperties = credentialSchemes.map { DisplayProperties(it.vcType, "en") }.toSet()
         )
     }
 

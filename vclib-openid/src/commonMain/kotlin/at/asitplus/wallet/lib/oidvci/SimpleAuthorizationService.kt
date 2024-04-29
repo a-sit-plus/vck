@@ -30,7 +30,7 @@ class SimpleAuthorizationService(
     /**
      * List of supported schemes.
      */
-    private val credentialSchemes: Collection<ConstantIndex.CredentialScheme>,
+    private val credentialSchemes: Set<ConstantIndex.CredentialScheme>,
     /**
      * Used to create and verify authorization codes during issuing.
      */
@@ -169,7 +169,7 @@ class SimpleAuthorizationService(
             clientNonce = clientNonceService.provideNonce(),
             authorizationDetails = params.authorizationDetails?.let {
                 // TODO supported credential identifiers!
-                listOf(it)
+                setOf(it)
             }
         )
         return KmmResult.success(result)
@@ -182,7 +182,7 @@ class SimpleAuthorizationService(
         }
     }
 
-    override fun verifyAndRemoveClientNonce(nonce: String): Boolean {
+    override suspend fun verifyAndRemoveClientNonce(nonce: String): Boolean {
         return clientNonceService.verifyAndRemoveNonce(nonce)
     }
 

@@ -29,7 +29,7 @@ data class CredentialSubjectMetadataSingle(
      * Credential for a certain language.
      */
     @SerialName("display")
-    val display: Collection<DisplayProperties>? = null,
+    val display: Set<DisplayProperties>? = null,
 
 )
 

@@ -68,7 +68,7 @@ data class AuthorizationDetails(
      * Must contain an entry form [IssuerMetadata.authorizationServers].
      */
     @SerialName("locations")
-    val locations: Collection<String>? = null,
+    val locations: Set<String>? = null,
 
     /**
      * OID4VCI: OPTIONAL. Array of strings, each uniquely identifying a Credential that can be issued using the Access
@@ -81,5 +81,5 @@ data class AuthorizationDetails(
      * Token in subsequent Credential Requests.
      */
     @SerialName("credential_identifiers")
-    val credentialIdentifiers: Collection<String>? = null,
+    val credentialIdentifiers: Set<String>? = null,
 )
