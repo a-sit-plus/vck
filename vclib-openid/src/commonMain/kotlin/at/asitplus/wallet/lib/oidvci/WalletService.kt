@@ -80,11 +80,15 @@ class WalletService(
          * List of attributes that shall be requested explicitly (selective disclosure),
          * or `null` to make no restrictions
          */
-        val requestedAttributes: List<String>? = null,
+        val requestedAttributes: Set<String>? = null,
         /**
          * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
          */
         val state: String = uuid4().toString(),
+        /**
+         * Modify clock for testing specific scenarios
+         */
+        val clock: Clock = Clock.System,
     )
 
     /**
@@ -207,7 +211,7 @@ class WalletService(
             payload = JsonWebToken(
                 issuer = clientId,
                 audience = issuerMetadata.credentialIssuer,
-                issuedAt = Clock.System.now(),
+                issuedAt = requestOptions.clock.now(),
                 nonce = tokenResponse.clientNonce,
             ).serialize().encodeToByteArray(),
             addKeyId = false,
@@ -252,7 +256,7 @@ class WalletService(
             payload = CborWebToken(
                 issuer = clientId,
                 audience = issuerMetadata.credentialIssuer,
-                issuedAt = Clock.System.now(),
+                issuedAt = requestOptions.clock.now(),
                 nonce = tokenResponse.clientNonce?.encodeToByteArray(),
             ).serialize()
         ).getOrElse {
@@ -274,7 +278,7 @@ class WalletService(
 
     private fun ConstantIndex.CredentialRepresentation.toAuthorizationDetails(
         credentialScheme: ConstantIndex.CredentialScheme,
-        requestedAttributes: Collection<String>?
+        requestedAttributes: Set<String>?
     ) = when (this) {
         ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         ConstantIndex.CredentialRepresentation.SD_JWT -> AuthorizationDetails(
@@ -296,7 +300,7 @@ class WalletService(
 
     private fun ConstantIndex.CredentialRepresentation.toCredentialRequestParameters(
         credentialScheme: ConstantIndex.CredentialScheme,
-        requestedAttributes: Collection<String>?,
+        requestedAttributes: Set<String>?,
         proof: CredentialRequestProof
     ) = when (this) {
         ConstantIndex.CredentialRepresentation.PLAIN_JWT,

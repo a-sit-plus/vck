@@ -69,7 +69,7 @@ interface Issuer {
      * The cryptographic algorithms supported by this issuer, i.e. the ones from its cryptographic service,
      * used to sign credentials.
      */
-    val cryptoAlgorithms: List<CryptoAlgorithm>
+    val cryptoAlgorithms: Set<CryptoAlgorithm>
 
     /**
      * Issues credentials for some [attributeTypes] (i.e. some of

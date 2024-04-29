@@ -10,7 +10,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
-fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: List<CryptoAlgorithm>) = mapOf(
+fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<CryptoAlgorithm>) = mapOf(
     this.isoNamespace to SupportedCredentialFormat(
         format = CredentialFormatEnum.MSO_MDOC,
         scope = vcType,
@@ -18,8 +18,8 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
         claims = mapOf(
             isoNamespace to claimNames.associateWith { RequestedCredentialClaimSpecification() }
         ),
-        supportedBindingMethods = listOf(OpenIdConstants.BINDING_METHOD_COSE_KEY),
-        supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier },
+        supportedBindingMethods = setOf(OpenIdConstants.BINDING_METHOD_COSE_KEY),
+        supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toSet(),
     ),
     encodeToCredentialIdentifier(CredentialFormatEnum.JWT_VC) to SupportedCredentialFormat(
         format = CredentialFormatEnum.JWT_VC,
@@ -28,8 +28,8 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
             types = listOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType),
             credentialSubject = claimNames.associateWith { CredentialSubjectMetadataSingle() }
         ),
-        supportedBindingMethods = listOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
-        supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier },
+        supportedBindingMethods = setOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
+        supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toSet(),
     ),
     encodeToCredentialIdentifier(CredentialFormatEnum.VC_SD_JWT) to SupportedCredentialFormat(
         format = CredentialFormatEnum.VC_SD_JWT,
@@ -38,8 +38,8 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
         claims = mapOf(
             isoNamespace to claimNames.associateWith { RequestedCredentialClaimSpecification() }
         ),
-        supportedBindingMethods = listOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
-        supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier },
+        supportedBindingMethods = setOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
+        supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toSet(),
     )
 )
 

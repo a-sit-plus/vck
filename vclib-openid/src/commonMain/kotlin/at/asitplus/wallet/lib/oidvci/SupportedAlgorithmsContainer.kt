@@ -11,7 +11,7 @@ data class SupportedAlgorithmsContainer(
      * context-specific, e.g. `EdDSA` and `ES256`.
      */
     @SerialName("alg_values_supported")
-    val supportedAlgorithms: Collection<String>,
+    val supportedAlgorithms: Set<String>,
 
     /**
      * OID4VCI: REQUIRED. Array containing a list of the JWE (RFC7516) encryption algorithms (enc values) (RFC7518)
@@ -19,7 +19,7 @@ data class SupportedAlgorithmsContainer(
      * in a JWT (RFC7519).
      */
     @SerialName("enc_values_supported")
-    val supportedEncryptionAlgorithms: Collection<String>? = null,
+    val supportedEncryptionAlgorithms: Set<String>? = null,
 
     /**
      * OID4VCI: REQUIRED. Boolean value specifying whether the Credential Issuer requires the additional encryption

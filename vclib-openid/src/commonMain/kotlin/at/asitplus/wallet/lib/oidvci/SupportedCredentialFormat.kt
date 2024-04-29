@@ -41,14 +41,14 @@ data class SupportedCredentialFormat(
      * represented by `did:example`.
      */
     @SerialName("cryptographic_binding_methods_supported")
-    val supportedBindingMethods: Collection<String>? = null,
+    val supportedBindingMethods: Set<String>? = null,
 
     /**
      * OID4VCI: OPTIONAL. Array of case sensitive strings that identify the algorithms that the Issuer uses to sign the
      * issued Credential. Algorithm names used are determined by the Credential format and are defined in Appendix A.
      */
     @SerialName("credential_signing_alg_values_supported")
-    val supportedSigningAlgorithms: Collection<String>? = null,
+    val supportedSigningAlgorithms: Set<String>? = null,
 
     /**
      * OID4VCI: OPTIONAL. Object that describes specifics of the key proof(s) that the Credential Issuer supports.
@@ -97,12 +97,12 @@ data class SupportedCredentialFormat(
      * An array of `claims.display.name` values that lists them in the order they should be displayed by the Wallet.
      */
     @SerialName("order")
-    val order: Collection<String>? = null,
+    val order: Set<String>? = null,
 
     /**
      * OID4VCI: OPTIONAL. Array of objects, where each object contains the display properties of the supported
      * Credential for a certain language. Below is a non-exhaustive list of parameters that MAY be included.
      */
     @SerialName("display")
-    val display: Collection<DisplayProperties>? = null,
+    val display: Set<DisplayProperties>? = null,
 )
