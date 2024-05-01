@@ -345,9 +345,12 @@ class ValidatorVcTest : FreeSpec() {
 
     private fun credentialNameFn(it: CredentialToBeIssued): String =
         when (it) {
-            is CredentialToBeIssued.Iso -> it::class.simpleName ?: "Iso"
-            is CredentialToBeIssued.VcJwt -> it::class.simpleName ?: "VcJwt"
-            is CredentialToBeIssued.VcSd -> it::class.simpleName ?: "VcSd"
+            is CredentialToBeIssued.Iso -> (it::class.simpleName ?: "Iso") + "-" +
+                    it.issuerSignedItems.hashCode()
+            is CredentialToBeIssued.VcJwt -> (it::class.simpleName ?: "VcJwt") + "-" +
+                    it.subject.hashCode()
+            is CredentialToBeIssued.VcSd -> (it::class.simpleName ?: "VcSd") + "-" +
+                    it.claims.hashCode()
         }
 
     private fun issueCredential(
@@ -396,7 +399,7 @@ class ValidatorVcTest : FreeSpec() {
         jwtId = jwtId
     )
 
-    private suspend fun signJws(vcJws: VerifiableCredentialJws): String? {
+    private suspend fun signJws(vcJws: VerifiableCredentialJws): String {
         val vcSerialized = vcJws.serialize()
         val jwsPayload = vcSerialized.encodeToByteArray()
         return issuerJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrThrow().serialize()

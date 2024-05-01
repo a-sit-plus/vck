@@ -8,32 +8,38 @@ import org.gradle.api.Project
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
 
 
-inline fun commonApiDependencies() = listOf(
-    coroutines(),
-    serialization("json"),
-    serialization("cbor"),
-    "at.asitplus.crypto:datatypes-cose:${VcLibVersions.kmpcrypto}",
-    "at.asitplus.crypto:datatypes-jws:${VcLibVersions.kmpcrypto}",
-    datetime(),
-    "com.squareup.okio:okio:${VcLibVersions.okio}",
-    "at.asitplus.crypto:datatypes:${VcLibVersions.kmpcrypto}", //for iosExport
-    "io.matthewnelson.kotlin-components:encoding-base16:${VcLibVersions.encoding}",
-    "io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}"
-)
+inline fun Project.commonApiDependencies(): List<String> {
+    project.AspVersions.versions["kmpcrypto"] = VcLibVersions.kmpcrypto
+    project.AspVersions.versions["okio"] = VcLibVersions.okio
+    project.AspVersions.versions["encoding"] = VcLibVersions.encoding
+    return listOf(
+        coroutines(),
+        serialization("json"),
+        serialization("cbor"),
+        addDependency("at.asitplus.crypto:datatypes", "kmpcrypto"), //for iOS Export
+        addDependency("at.asitplus.crypto:datatypes-cose", "kmpcrypto"),
+        addDependency("at.asitplus.crypto:datatypes-jws", "kmpcrypto"),
+        datetime(),
+        addDependency("com.squareup.okio:okio", "okio"),
+        addDependency("io.matthewnelson.kotlin-components:encoding-base16", "encoding"),
+        addDependency("io.matthewnelson.kotlin-components:encoding-base64", "encoding"),
+    )
+}
 
 inline fun KotlinDependencyHandler.commonImplementationAndApiDependencies() {
-    commonApiDependencies().forEach { dep -> api(dep) }
+    project.commonApiDependencies().forEach { dep -> api(dep) }
     commonImplementationDependencies()
 }
 
 inline fun KotlinDependencyHandler.commonImplementationDependencies() {
-    implementation(ktor("http"))
-    implementation(napier())
-    implementation(ktor("utils"))
-    implementation("com.benasher44:uuid:${VcLibVersions.uuid}")
+    implementation(project.ktor("http"))
+    implementation(project.napier())
+    implementation(project.ktor("utils"))
+    project.AspVersions.versions["uuid"] = VcLibVersions.uuid
+    implementation(project.addDependency("com.benasher44:uuid", "uuid"))
 }
 
-fun commonIosExports() = arrayOf(
+fun Project.commonIosExports() = arrayOf(
     datetime(),
     "com.ionspin.kotlin:bignum:${VcLibVersions.bignum}",
     kmmresult(),

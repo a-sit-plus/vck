@@ -2,15 +2,16 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
-import at.asitplus.wallet.lib.LibraryInitializer
+import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
+import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
@@ -19,9 +20,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 
 /**
  * Tests our SIOP implementation against EUDI Ref Impl.,
@@ -34,16 +32,7 @@ class OidcSiopInteropTest : FreeSpec({
     lateinit var holderSiop: OidcSiopWallet
 
     beforeSpec {
-        LibraryInitializer.registerExtensionLibrary(
-            LibraryInitializer.ExtensionLibraryInfo(
-                credentialScheme = EudiwPidCredentialScheme,
-                serializersModule = SerializersModule {
-                    polymorphic(CredentialSubject::class) {
-                        subclass(EudiwPid1::class)
-                    }
-                },
-            )
-        )
+        at.asitplus.wallet.eupid.Initializer.initWithVcLib()
     }
 
     beforeEach {
@@ -56,7 +45,7 @@ class OidcSiopInteropTest : FreeSpec({
                     dataProvider = DummyCredentialDataProvider(),
                 ).issueCredential(
                     subjectPublicKey = holderCryptoService.publicKey,
-                    attributeTypes = listOf(EudiwPidCredentialScheme.vcType),
+                    attributeTypes = listOf(EuPidScheme.vcType),
                     representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 ).toStoreCredentialInput()
             )
@@ -169,24 +158,23 @@ class OidcSiopInteropTest : FreeSpec({
         holderSiop = OidcSiopWallet.newInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
-            jwkSetRetriever = { it ->
+            remoteResourceRetriever = {
                 if (it == "https://verifier-backend.eudiw.dev/wallet/jarm/" +
                     "WLFJEn9AGbJfAcEyaQTzzxueqmeRazmsHIkxMRTkGRL1zyI7un-KJWaXtulrfiSS38LlU5ABDB9Zdsfq_11r8Q/jwks.json"
-                )
-                    JsonWebKeySet.deserialize(jwkset) else null
-            },
-            requestRetriever = { it ->
-                if (it == "https://verifier-backend.eudiw.dev/wallet/request.jwt/" +
+                ) jwkset else if (it == "https://verifier-backend.eudiw.dev/wallet/request.jwt/" +
                     "WLFJEn9AGbJfAcEyaQTzzxueqmeRazmsHIkxMRTkGRL1zyI7un-KJWaXtulrfiSS38LlU5ABDB9Zdsfq_11r8Q"
-                )
-                    requestObject else null
+                ) requestObject else null
             }
         )
 
         val response = holderSiop.createAuthnResponse(url).getOrThrow()
 
-        response.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Post>()
-        val params = response.content.decodeFromPostBody<AuthenticationResponseParameters>()
+        response.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+        val jarmParams = response.params.formUrlEncode().decodeFromPostBody<AuthenticationResponseParameters>()
+        val jarm = jarmParams.response
+        jarm.shouldNotBeNull()
+        val params = AuthenticationResponseParameters.deserialize(JwsSigned.parse(jarm)!!.payload.decodeToString())
+        params.shouldNotBeNull()
         params.presentationSubmission.shouldNotBeNull()
         params.vpToken.shouldNotBeNull()
         params.idToken.shouldNotBeNull()

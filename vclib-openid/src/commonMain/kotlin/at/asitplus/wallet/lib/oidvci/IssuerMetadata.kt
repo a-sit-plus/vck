@@ -1,9 +1,12 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.KmmResult
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.oidc.IdTokenType
-import at.asitplus.wallet.lib.oidc.IdTokenTypeSerializer
+import at.asitplus.wallet.lib.oidc.jsonSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 
 /**
  * To be serialized into `/.well-known/openid-credential-issuer`
@@ -17,7 +20,7 @@ data class IssuerMetadata(
      * from this Issuer.
      */
     @SerialName("issuer")
-    val issuer: String,
+    val issuer: String? = null,
 
     /**
      * OID4VCI: REQUIRED. The Credential Issuer's identifier.
@@ -26,13 +29,13 @@ data class IssuerMetadata(
     val credentialIssuer: String? = null,
 
     /**
-     * OID4VCI: OPTIONAL. Identifier of the OAuth 2.0 Authorization Server (as defined in RFC8414) the Credential
-     * Issuer relies on for authorization. If this element is omitted, the entity providing the Credential Issuer is
-     * also acting as the AS, i.e. the Credential Issuer's identifier is used as the OAuth 2.0 Issuer value to obtain
-     * the Authorization Server metadata as per RFC8414.
+     * OID4VCI: OPTIONAL. Array of strings, where each string is an identifier of the OAuth 2.0 Authorization Server
+     * (as defined in RFC8414) the Credential Issuer relies on for authorization. If this parameter is omitted, the
+     * entity providing the Credential Issuer is also acting as the Authorization Server, i.e., the Credential Issuer's
+     * identifier is used to obtain the Authorization Server metadata.
      */
-    @SerialName("authorization_server")
-    val authorizationServer: String? = null,
+    @SerialName("authorization_servers")
+    val authorizationServers: Set<String>? = null,
 
     /**
      * OID4VCI: REQUIRED. URL of the Credential Issuer's Credential Endpoint. This URL MUST use the https scheme and
@@ -66,30 +69,61 @@ data class IssuerMetadata(
      * Can be custom URI scheme, or Universal Links/App links.
      */
     @SerialName("authorization_endpoint")
-    val authorizationEndpointUrl: String,
+    val authorizationEndpointUrl: String? = null,
 
     /**
-     * OID4VCI: OPTIONAL. URL of the Credential Issuer's Batch Credential Endpoint. This URL MUST use the https scheme
-     * and MAY contain port, path and query parameter components. If omitted, the Credential Issuer does not support
-     * the Batch Credential Endpoint.
+     * OID4VCI: OPTIONAL. URL of the Credential Issuer's Batch Credential Endpoint, as defined in Section 8.
+     * This URL MUST use the `https` scheme and MAY contain port, path, and query parameter components.
+     * If omitted, the Credential Issuer does not support the Batch Credential Endpoint.
      */
     @SerialName("batch_credential_endpoint")
     val batchCredentialEndpointUrl: String? = null,
 
     /**
-     * OID4VCI: REQUIRED. A JSON array containing a list of JSON objects, each of them representing metadata about a
-     * separate credential type that the Credential Issuer can issue. The JSON objects in the array MUST conform to the
-     * structure of the Section 10.2.3.1.
+     * OID4VCI: OPTIONAL. URL of the Credential Issuer's Deferred Credential Endpoint, as defined in Section 9.
+     * This URL MUST use the `https` scheme and MAY contain port, path, and query parameter components.
+     * If omitted, the Credential Issuer does not support the Deferred Credential Endpoint.
      */
-    @SerialName("credentials_supported")
-    val supportedCredentialFormat: Array<SupportedCredentialFormat>? = null,
+    @SerialName("deferred_credential_endpoint")
+    val deferredCredentialEndpointUrl: String? = null,
+
+    /**
+     * OID4VCI: OPTIONAL. URL of the Credential Issuer's Notification Endpoint, as defined in Section 10.
+     * This URL MUST use the `https` scheme and MAY contain port, path, and query parameter components.
+     * If omitted, the Credential Issuer does not support the Notification Endpoint.
+     */
+    @SerialName("notification_endpoint")
+    val notificationEndpointUrl: String? = null,
+
+    /**
+     * OID4VCI: OPTIONAL. Object containing information about whether the Credential Issuer supports encryption of the
+     * Credential and Batch Credential Response on top of TLS.
+     */
+    @SerialName("credential_response_encryption")
+    val credentialResponseEncryption: SupportedAlgorithmsContainer? = null,
+
+    /**
+     * OID4VCI: OPTIONAL. Boolean value specifying whether the Credential Issuer supports returning
+     * [AuthorizationDetails.credentialIdentifiers] in the Token Response parameter, with `true`
+     * indicating support. If omitted, the default value is `false`.
+     */
+    @SerialName("credential_identifiers_supported")
+    val supportsCredentialIdentifiers: Boolean? = false,
+
+    /**
+     * OID4VCI: REQUIRED. Object that describes specifics of the Credential that the Credential Issuer supports
+     * issuance of. This object contains a list of name/value pairs, where each name is a unique identifier of the
+     * supported Credential being described.
+     */
+    @SerialName("credential_configurations_supported")
+    val supportedCredentialConfigurations: Map<String, SupportedCredentialFormat>? = null,
 
     /**
      * OID4VCI: OPTIONAL. An array of objects, where each object contains display properties of a Credential Issuer for
      * a certain language.
      */
     @SerialName("display")
-    val displayProperties: Array<DisplayProperties>? = null,
+    val displayProperties: Set<DisplayProperties>? = null,
 
     /**
      * OIDC Discovery: REQUIRED. JSON array containing a list of the OAuth 2.0 `response_type` values that this OP
@@ -98,21 +132,21 @@ data class IssuerMetadata(
      * OIDC SIOPv2: MUST be `id_token`.
      */
     @SerialName("response_types_supported")
-    val responseTypesSupported: Array<String>? = null,
+    val responseTypesSupported: Set<String>? = null,
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array of strings representing supported scopes.
      * MUST support the `openid` scope value.
      */
     @SerialName("scopes_supported")
-    val scopesSupported: Array<String>? = null,
+    val scopesSupported: Set<String>? = null,
 
     /**
      * OIDC Discovery: REQUIRED. JSON array containing a list of the Subject Identifier types that this OP supports.
      * Valid types include `pairwise` and `public`.
      */
     @SerialName("subject_types_supported")
-    val subjectTypesSupported: Array<String>? = null,
+    val subjectTypesSupported: Set<String>? = null,
 
     /**
      * OIDC Discovery: REQUIRED. A JSON array containing a list of the JWS signing algorithms (`alg` values) supported
@@ -120,7 +154,7 @@ data class IssuerMetadata(
      * Valid values include `RS256`, `ES256`, `ES256K`, and `EdDSA`.
      */
     @SerialName("id_token_signing_alg_values_supported")
-    val idTokenSigningAlgorithmsSupported: Array<String>? = null,
+    val idTokenSigningAlgorithmsSupported: Set<String>? = null,
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array containing a list of the JWS signing algorithms (alg values) supported by the
@@ -128,7 +162,7 @@ data class IssuerMetadata(
      * Valid values include `none`, `RS256`, `ES256`, `ES256K`, and `EdDSA`.
      */
     @SerialName("request_object_signing_alg_values_supported")
-    val requestObjectSigningAlgorithmsSupported: Array<String>? = null,
+    val requestObjectSigningAlgorithmsSupported: Set<String>? = null,
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array of strings representing URI scheme identifiers and optionally method names of
@@ -136,7 +170,7 @@ data class IssuerMetadata(
      * Valid values include `urn:ietf:params:oauth:jwk-thumbprint`, `did:example` and others.
      */
     @SerialName("subject_syntax_types_supported")
-    val subjectSyntaxTypesSupported: Array<String>? = null,
+    val subjectSyntaxTypesSupported: Set<String>? = null,
 
     /**
      * OIDC SIOPv2: OPTIONAL. A JSON array of strings containing the list of ID Token types supported by the OP,
@@ -145,7 +179,7 @@ data class IssuerMetadata(
      * ID Token, i.e. the id token is signed with key material under the end-user's control).
      */
     @SerialName("id_token_types_supported")
-    val idTokenTypesSupported: Array<@Serializable(with = IdTokenTypeSerializer::class) IdTokenType>? = null,
+    val idTokenTypesSupported: Set<IdTokenType>? = null,
 
     /**
      * OID4VP: OPTIONAL. Boolean value specifying whether the Wallet supports the transfer of `presentation_definition`
@@ -168,89 +202,12 @@ data class IssuerMetadata(
      * If omitted, the default value is pre-registered.
      */
     @SerialName("client_id_schemes_supported")
-    val clientIdSchemesSupported: Array<String>? = null,
+    val clientIdSchemesSupported: Set<String>? = null,
 ) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
+    fun serialize() = jsonSerializer.encodeToString(this)
 
-        other as IssuerMetadata
-
-        if (issuer != other.issuer) return false
-        if (credentialIssuer != other.credentialIssuer) return false
-        if (authorizationServer != other.authorizationServer) return false
-        if (credentialEndpointUrl != other.credentialEndpointUrl) return false
-        if (tokenEndpointUrl != other.tokenEndpointUrl) return false
-        if (jsonWebKeySetUrl != other.jsonWebKeySetUrl) return false
-        if (authorizationEndpointUrl != other.authorizationEndpointUrl) return false
-        if (batchCredentialEndpointUrl != other.batchCredentialEndpointUrl) return false
-        if (supportedCredentialFormat != null) {
-            if (other.supportedCredentialFormat == null) return false
-            if (!supportedCredentialFormat.contentEquals(other.supportedCredentialFormat)) return false
-        } else if (other.supportedCredentialFormat != null) return false
-        if (displayProperties != null) {
-            if (other.displayProperties == null) return false
-            if (!displayProperties.contentEquals(other.displayProperties)) return false
-        } else if (other.displayProperties != null) return false
-        if (responseTypesSupported != null) {
-            if (other.responseTypesSupported == null) return false
-            if (!responseTypesSupported.contentEquals(other.responseTypesSupported)) return false
-        } else if (other.responseTypesSupported != null) return false
-        if (scopesSupported != null) {
-            if (other.scopesSupported == null) return false
-            if (!scopesSupported.contentEquals(other.scopesSupported)) return false
-        } else if (other.scopesSupported != null) return false
-        if (subjectTypesSupported != null) {
-            if (other.subjectTypesSupported == null) return false
-            if (!subjectTypesSupported.contentEquals(other.subjectTypesSupported)) return false
-        } else if (other.subjectTypesSupported != null) return false
-        if (idTokenSigningAlgorithmsSupported != null) {
-            if (other.idTokenSigningAlgorithmsSupported == null) return false
-            if (!idTokenSigningAlgorithmsSupported.contentEquals(other.idTokenSigningAlgorithmsSupported)) return false
-        } else if (other.idTokenSigningAlgorithmsSupported != null) return false
-        if (requestObjectSigningAlgorithmsSupported != null) {
-            if (other.requestObjectSigningAlgorithmsSupported == null) return false
-            if (!requestObjectSigningAlgorithmsSupported.contentEquals(other.requestObjectSigningAlgorithmsSupported)) return false
-        } else if (other.requestObjectSigningAlgorithmsSupported != null) return false
-        if (subjectSyntaxTypesSupported != null) {
-            if (other.subjectSyntaxTypesSupported == null) return false
-            if (!subjectSyntaxTypesSupported.contentEquals(other.subjectSyntaxTypesSupported)) return false
-        } else if (other.subjectSyntaxTypesSupported != null) return false
-        if (idTokenTypesSupported != null) {
-            if (other.idTokenTypesSupported == null) return false
-            if (!idTokenTypesSupported.contentEquals(other.idTokenTypesSupported)) return false
-        } else if (other.idTokenTypesSupported != null) return false
-        if (presentationDefinitionUriSupported != other.presentationDefinitionUriSupported) return false
-        if (vpFormatsSupported != other.vpFormatsSupported) return false
-        if (clientIdSchemesSupported != null) {
-            if (other.clientIdSchemesSupported == null) return false
-            if (!clientIdSchemesSupported.contentEquals(other.clientIdSchemesSupported)) return false
-        } else if (other.clientIdSchemesSupported != null) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = issuer.hashCode()
-        result = 31 * result + (credentialIssuer?.hashCode() ?: 0)
-        result = 31 * result + (authorizationServer?.hashCode() ?: 0)
-        result = 31 * result + (credentialEndpointUrl?.hashCode() ?: 0)
-        result = 31 * result + (tokenEndpointUrl?.hashCode() ?: 0)
-        result = 31 * result + (jsonWebKeySetUrl?.hashCode() ?: 0)
-        result = 31 * result + authorizationEndpointUrl.hashCode()
-        result = 31 * result + (batchCredentialEndpointUrl?.hashCode() ?: 0)
-        result = 31 * result + (supportedCredentialFormat?.contentHashCode() ?: 0)
-        result = 31 * result + (displayProperties?.contentHashCode() ?: 0)
-        result = 31 * result + (responseTypesSupported?.contentHashCode() ?: 0)
-        result = 31 * result + (scopesSupported?.contentHashCode() ?: 0)
-        result = 31 * result + (subjectTypesSupported?.contentHashCode() ?: 0)
-        result = 31 * result + (idTokenSigningAlgorithmsSupported?.contentHashCode() ?: 0)
-        result = 31 * result + (requestObjectSigningAlgorithmsSupported?.contentHashCode() ?: 0)
-        result = 31 * result + (subjectSyntaxTypesSupported?.contentHashCode() ?: 0)
-        result = 31 * result + (idTokenTypesSupported?.contentHashCode() ?: 0)
-        result = 31 * result + presentationDefinitionUriSupported.hashCode()
-        result = 31 * result + (vpFormatsSupported?.hashCode() ?: 0)
-        result = 31 * result + (clientIdSchemesSupported?.contentHashCode() ?: 0)
-        return result
+    companion object {
+        fun deserialize(input: String): KmmResult<IssuerMetadata> =
+            runCatching { jsonSerializer.decodeFromString<IssuerMetadata>(input) }.wrap()
     }
 }

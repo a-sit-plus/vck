@@ -2,6 +2,8 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
+import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
@@ -26,6 +28,7 @@ import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.REDIRECT_URI
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.VERIFIER_ATTESTATION
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
@@ -61,6 +64,11 @@ class OidcSiopVerifier(
     private val verifierJwsService: VerifierJwsService,
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
+    /**
+     * Verifier Attestation JWT (from OID4VP) to include (in header `jwt`) when creating request objects as JWS,
+     * to allow the Wallet to verify the authenticity of this Verifier.
+     */
+    private val attestationJwt: JwsSigned? = null,
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
@@ -76,6 +84,7 @@ class OidcSiopVerifier(
             jwsService: JwsService = DefaultJwsService(cryptoService),
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
+            attestationJwt: JwsSigned? = null,
         ) = OidcSiopVerifier(
             verifier = verifier,
             relyingPartyUrl = relyingPartyUrl,
@@ -84,6 +93,7 @@ class OidcSiopVerifier(
             verifierJwsService = verifierJwsService,
             timeLeewaySeconds = timeLeewaySeconds,
             clock = clock,
+            attestationJwt = attestationJwt,
         )
     }
 
@@ -131,61 +141,63 @@ class OidcSiopVerifier(
         addKeyId = true
     )
 
+    data class RequestOptions(
+        /**
+         * Response mode to request, see [OpenIdConstants.ResponseModes]
+         */
+        val responseMode: String? = null,
+        /**
+         * Required representation, see [ConstantIndex.CredentialRepresentation]
+         */
+        val representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+        /**
+         * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
+         */
+        val state: String? = uuid4().toString(),
+        /**
+         * Credential type to request, or `null` to make no restrictions
+         */
+        val credentialScheme: ConstantIndex.CredentialScheme? = null,
+        /**
+         * List of attributes that shall be requested explicitly (selective disclosure),
+         * or `null` to make no restrictions
+         */
+        val requestedAttributes: List<String>? = null,
+        /**
+         * Optional URL to include [metadata] by reference instead of by value (directly embedding in authn request)
+         */
+        val clientMetadataUrl: String? = null,
+    )
+
     /**
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl].
-     *
-     * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
-     * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
-     * @param credentialScheme which credential type to request, or `null` to make no restrictions
-     * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
      */
     suspend fun createAuthnRequestUrl(
         walletUrl: String,
-        responseMode: String? = null,
-        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-        state: String? = uuid4().toString(),
-        credentialScheme: ConstantIndex.CredentialScheme? = null,
-        requestedAttributes: List<String>? = null,
+        requestOptions: RequestOptions = RequestOptions(),
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
-        createAuthnRequest(
-            responseMode = responseMode,
-            representation = representation,
-            state = state,
-            credentialScheme = credentialScheme,
-            requestedAttributes = requestedAttributes,
-        ).encodeToParameters()
+        createAuthnRequest(requestOptions).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
         return urlBuilder.buildString()
     }
 
     /**
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl],
-     * containing a JWS Authorization Request (JAR, RFC9101), containing the request parameters itself.
-     *
-     * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
-     * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
-     * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
-     * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
+     * containing a JWS Authorization Request (JAR, RFC9101) in `request`, containing the request parameters itself.
      */
     suspend fun createAuthnRequestUrlWithRequestObject(
         walletUrl: String,
-        responseMode: String? = null,
-        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-        state: String? = uuid4().toString(),
-        credentialScheme: ConstantIndex.CredentialScheme? = null,
-        requestedAttributes: List<String>? = null,
+        requestOptions: RequestOptions = RequestOptions()
     ): KmmResult<String> {
-        val urlBuilder = URLBuilder(walletUrl)
-        createAuthnRequestAsRequestObject(
-            responseMode = responseMode,
-            representation = representation,
-            state = state,
-            credentialScheme = credentialScheme,
-            requestedAttributes = requestedAttributes,
-        ).getOrElse {
+        val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrElse {
             return KmmResult.failure(it)
-        }.encodeToParameters()
+        }
+        val urlBuilder = URLBuilder(walletUrl)
+        AuthenticationRequestParameters(
+            clientId = relyingPartyUrl,
+            request = jar.serialize(),
+        ).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
         return KmmResult.success(urlBuilder.buildString())
     }
@@ -193,42 +205,35 @@ class OidcSiopVerifier(
     /**
      * Creates an JWS Authorization Request (JAR, RFC9101), wrapping the usual [AuthenticationRequestParameters].
      *
-     * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
-     * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
-     * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
-     * @param credentialScheme which credential type to request, or `null` to make no restrictions
-     * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
+     * To use this for an Authentication Request with `request_uri`, use the following code,
+     * `jar` being the result of this function:
+     * ```
+     * val urlToSendToWallet = io.ktor.http.URLBuilder(walletUrl).apply {
+     *    parameters.append("client_id", relyingPartyUrl)
+     *    parameters.append("request_uri", requestUrl)
+     * }.buildString()
+     * // on an GET to requestUrl, return `jar.serialize()`
+     * ```
      */
-    suspend fun createAuthnRequestAsRequestObject(
-        responseMode: String? = null,
-        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-        state: String? = uuid4().toString(),
-        credentialScheme: ConstantIndex.CredentialScheme? = null,
-        requestedAttributes: List<String>? = null,
-    ): KmmResult<AuthenticationRequestParameters> {
-        val requestObject = createAuthnRequest(
-            responseMode = responseMode,
-            representation = representation,
-            state = state,
-            credentialScheme = credentialScheme,
-            requestedAttributes = requestedAttributes,
-        )
+    suspend fun createAuthnRequestAsSignedRequestObject(
+        requestOptions: RequestOptions = RequestOptions(),
+    ): KmmResult<JwsSigned> {
+        val requestObject = createAuthnRequest(requestOptions)
         val requestObjectSerialized = jsonSerializer.encodeToString(
             requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
         )
         val signedJws = jwsService.createSignedJwsAddingParams(
+            header = JwsHeader(
+                algorithm = jwsService.algorithm,
+                attestationJwt = attestationJwt?.serialize(),
+            ),
             payload = requestObjectSerialized.encodeToByteArray(),
-            addKeyId = true
+            addJsonWebKey = true,
         ).getOrElse {
             Napier.w("Could not sign JWS form authnRequest", it)
             return KmmResult.failure(it)
         }
-        return KmmResult.success(
-            AuthenticationRequestParameters(
-                clientId = relyingPartyUrl,
-                request = signedJws.serialize()
-            )
-        )
+        return KmmResult.success(signedJws)
     }
 
     /**
@@ -236,47 +241,43 @@ class OidcSiopVerifier(
      * e.g. `https://example.com?repsonse_type=...` (see [createAuthnRequestUrl])
      *
      * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
-     *
-     * @param responseMode which response mode to request, see [OpenIdConstants.ResponseModes]
-     * @param representation specifies the required representation, see [ConstantIndex.CredentialRepresentation]
-     * @param state opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
-     * @param credentialScheme which credential type to request, or `null` to make no restrictions
-     * @param requestedAttributes list of attributes that shall be requested explicitly (selective disclosure)
      */
     suspend fun createAuthnRequest(
-        responseMode: String? = null,
-        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-        state: String? = uuid4().toString(),
-        credentialScheme: ConstantIndex.CredentialScheme? = null,
-        requestedAttributes: List<String>? = null,
+        requestOptions: RequestOptions = RequestOptions(),
     ): AuthenticationRequestParameters {
-        val typeConstraint = credentialScheme?.let {
-            when (representation) {
+        val typeConstraint = requestOptions.credentialScheme?.let {
+            when (requestOptions.representation) {
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.vcConstraint()
                 ConstantIndex.CredentialRepresentation.SD_JWT -> it.vcConstraint()
                 ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoConstraint()
             }
         }
-        val attributeConstraint = requestedAttributes?.let { createConstraints(representation, it) } ?: listOf()
+        val attributeConstraint = requestOptions.requestedAttributes
+            ?.let { createConstraints(requestOptions.representation, it) }
+            ?: listOf()
         val constraintFields = attributeConstraint + typeConstraint
+        val schemaReference = requestOptions.credentialScheme?.schemaUri?.let { SchemaReference(it) }
+        val scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, requestOptions.credentialScheme?.vcType)
+            .joinToString(" ")
         return AuthenticationRequestParameters(
             responseType = "$ID_TOKEN $VP_TOKEN",
             clientId = relyingPartyUrl,
             redirectUrl = relyingPartyUrl,
-            clientIdScheme = REDIRECT_URI,
-            scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.vcType).joinToString(" "),
+            clientIdScheme = attestationJwt?.let { VERIFIER_ATTESTATION } ?: REDIRECT_URI,
+            scope = scope,
             nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
-            clientMetadata = metadata,
+            clientMetadata = requestOptions.clientMetadataUrl?.let { null } ?: metadata,
+            clientMetadataUri = requestOptions.clientMetadataUrl,
             idTokenType = IdTokenType.SUBJECT_SIGNED.text,
-            responseMode = responseMode,
-            state = state,
+            responseMode = requestOptions.responseMode,
+            state = requestOptions.state,
             presentationDefinition = PresentationDefinition(
                 id = uuid4().toString(),
-                formats = representation.toFormatHolder(),
+                formats = requestOptions.representation.toFormatHolder(),
                 inputDescriptors = listOf(
                     InputDescriptor(
                         id = uuid4().toString(),
-                        schema = listOf(SchemaReference(credentialScheme?.schemaUri ?: "https://example.com")),
+                        schema = listOfNotNull(schemaReference),
                         constraints = Constraint(fields = constraintFields.filterNotNull()),
                     )
                 ),
@@ -380,7 +381,20 @@ class OidcSiopVerifier(
      * Validates [AuthenticationResponseParameters] from the Wallet
      */
     suspend fun validateAuthnResponse(params: AuthenticationResponseParameters): AuthnResponseResult {
+        if (params.response != null) {
+            JwsSigned.parse(params.response)?.let { jarmResponse ->
+                if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
+                    return AuthnResponseResult.ValidationError("response", params.state)
+                        .also { Napier.w { "JWS of response not verified: ${params.response}" } }
+                }
+                AuthenticationResponseParameters.deserialize(jarmResponse.payload.decodeToString())?.let {
+                    return validateAuthnResponse(it)
+                }
+            }
+        }
         val idTokenJws = params.idToken
+            ?: return AuthnResponseResult.ValidationError("idToken", params.state)
+                .also { Napier.w("Could not parse idToken: $params") }
         val jwsSigned = JwsSigned.parse(idTokenJws)
             ?: return AuthnResponseResult.ValidationError("idToken", params.state)
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }

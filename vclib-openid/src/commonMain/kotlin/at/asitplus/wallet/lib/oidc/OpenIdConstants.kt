@@ -8,6 +8,8 @@ object OpenIdConstants {
 
     const val GRANT_TYPE_CODE = "code"
 
+    const val GRANT_TYPE_PRE_AUTHORIZED_CODE = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+
     const val TOKEN_PREFIX_BEARER = "Bearer "
 
     const val TOKEN_TYPE_BEARER = "bearer"
@@ -24,6 +26,8 @@ object OpenIdConstants {
 
     const val SCOPE_PROFILE = "profile"
 
+    const val CODE_CHALLENGE_METHOD_SHA256 = "S256"
+
     /**
      * To be used in [at.asitplus.wallet.lib.oidvci.AuthorizationDetails.type]
      */
@@ -36,7 +40,20 @@ object OpenIdConstants {
          */
         const val JWT = "jwt"
 
+        /**
+         * Proof type in [at.asitplus.wallet.lib.oidvci.CredentialRequestProof]
+         */
+        const val CWT = "cwt"
+
+        /**
+         * Constant from OID4VCI
+         */
         const val JWT_HEADER_TYPE = "openid4vci-proof+jwt"
+
+        /**
+         * Constant from OID4VCI
+         */
+        const val CWT_HEADER_TYPE = "openid4vci-proof+cwt"
     }
 
     /**
@@ -78,6 +95,21 @@ object OpenIdConstants {
          * or the `client_metadata_uri` parameter.
          */
         const val DID = "did"
+
+        /**
+         * This scheme allows the Verifier to authenticate using a JWT that is bound to a certain public key. When the
+         * scheme is `verifier_attestation`, the Client Identifier MUST equal the `sub` claim value in the Verifier
+         * attestation JWT. The request MUST be signed with the private key corresponding to the public key in the `cnf`
+         * claim in the Verifier attestation JWT. This serves as proof of possession of this key. The Verifier
+         * attestation JWT MUST be added to the `jwt` JOSE Header of the request object. The Wallet MUST validate the
+         * signature on the Verifier attestation JWT. The `iss` claim value of the Verifier Attestation JWT MUST
+         * identify a party the Wallet trusts for issuing Verifier Attestation JWTs. If the Wallet cannot establish
+         * trust, it MUST refuse the request. If the issuer of the Verifier Attestation JWT adds a `redirect_uris` claim
+         * to the attestation, the Wallet MUST ensure the `redirect_uri` request parameter value exactly matches one of
+         * the `redirect_uris` claim entries. All Verifier metadata other than the public key MUST be obtained from the
+         * `client_metadata` or the `client_metadata_uri parameter`.
+         */
+        const val VERIFIER_ATTESTATION = "verifier_attestation"
     }
 
     object ResponseModes {
@@ -91,12 +123,12 @@ object OpenIdConstants {
         const val DIRECT_POST = "direct_post"
 
         /**
-         * SIOPv2: This response mode is used to request the Self-Issued OP to deliver the result of the authentication
-         * process to a certain endpoint using the HTTP POST method. The additional parameter `response_mode` is used
-         * to carry this value.
+         * OID4VP: The Response Mode `direct_post.jwt` causes the Wallet to send the Authorization Response using an
+         * HTTPS POST request instead of redirecting back to the Verifier. The Wallet adds the response parameter
+         * containing the JWT as defined in Section 4.1. of JARM and Section 6.3 in the body of an HTTPS POST request
+         * using the `application/x-www-form-urlencoded` content type.
          */
-        //NOTE: This seems to be the same as `direct_post` from OID4VP? But it's defined in SIOPv2 ...
-        const val POST = "post"
+        const val DIRECT_POST_JWT = "direct_post.jwt"
 
         /**
          * OAuth 2.0: In this mode, Authorization Response parameters are encoded in the query string added to the
@@ -129,6 +161,11 @@ object OpenIdConstants {
          * Invalid request in general: `invalid_request`
          */
         const val INVALID_REQUEST = "invalid_request"
+
+        /**
+         * Invalid grant: `invalid_grant`
+         */
+        const val INVALID_GRANT = "invalid_grant"
 
         /**
          * Invalid or missing proofs in OpenId4VCI: `invalid_or_missing_proof`
