@@ -1,5 +1,8 @@
 # Changelog
 
+Release NEXT:
+
+
 Release 3.6.0:
  - Self-Issued OpenID Provider v2:
    - `OidcSiopWallet.AuthenticationResponseResult.Post`: Replace property `body: String` with `params: Map<String, String>`, to be posted to the Relying Party. Clients may call extension function `at.asitplus.wallet.lib.oidvci.formUrlEncode` on `params` to get the encoded `body` for HTTP calls.
