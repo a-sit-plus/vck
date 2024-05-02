@@ -18,7 +18,6 @@ import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
-import at.asitplus.wallet.lib.oidc.AuthenticationResponseParameters
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
@@ -66,6 +65,20 @@ class WalletService(
 
     private val stateToCodeChallengeMap = mutableMapOf<String, String>()
     private val codeChallengeMutex = Mutex()
+
+    companion object {
+        fun newDefaultInstance(
+            clientId: String,
+            redirectUrl: String,
+            cryptoService: CryptoService
+        ): WalletService = WalletService(
+            clientId = clientId,
+            redirectUrl = redirectUrl,
+            cryptoService = cryptoService,
+            jwsService = DefaultJwsService(cryptoService),
+            coseService = DefaultCoseService(cryptoService),
+        )
+    }
 
     data class RequestOptions(
         /**
@@ -150,11 +163,12 @@ class WalletService(
      * @param requestOptions which credential in which representation to request
      */
     suspend fun createTokenRequestParameters(
-        params: AuthenticationResponseParameters,
         requestOptions: RequestOptions,
+        code: String,
+        state: String,
     ) = TokenRequestParameters(
         grantType = GRANT_TYPE_CODE,
-        code = params.code,
+        code = code,
         redirectUrl = redirectUrl,
         clientId = clientId,
         // TODO in authnrequest, and again in tokenrequest?
@@ -162,7 +176,7 @@ class WalletService(
             requestOptions.credentialScheme,
             requestOptions.requestedAttributes
         ),
-        codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(params.state) }
+        codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(state) }
     )
 
     /**
@@ -170,11 +184,12 @@ class WalletService(
      * [IssuerMetadata.tokenEndpointUrl])
      *
      * @param requestOptions which credential in which representation to request
+     * @param preAuthCode from [CredentialOfferGrants.preAuthorizedCode] in [CredentialOffer.grants]
      */
     suspend fun createTokenRequestParameters(
-        params: AuthenticationResponseParameters,
-        credentialOffer: CredentialOffer,
         requestOptions: RequestOptions,
+        preAuthCode: CredentialOfferGrantsPreAuthCode?,
+        state: String,
     ) = TokenRequestParameters(
         grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
         // TODO Verify if `redirect_uri` and `client_id` are even needed
@@ -185,23 +200,25 @@ class WalletService(
             requestOptions.credentialScheme,
             requestOptions.requestedAttributes
         ),
-        transactionCode = credentialOffer.grants?.preAuthorizedCode?.transactionCode,
-        preAuthorizedCode = credentialOffer.grants?.preAuthorizedCode?.preAuthorizedCode,
-        codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(params.state) }
+        transactionCode = preAuthCode?.transactionCode,
+        preAuthorizedCode = preAuthCode?.preAuthorizedCode,
+        codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(state) }
     )
 
     /**
      * Send the result as JSON-serialized content to the server at `/credential` (or more specific
      * [IssuerMetadata.credentialEndpointUrl]).
-     * Also send along the [TokenResponseParameters.accessToken] from [tokenResponse] in HTTP header `Authorization`
+     * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
      * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
      *
      * @param requestOptions which credential in which representation to request
+     * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
+     * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
      */
     suspend fun createCredentialRequestJwt(
-        tokenResponse: TokenResponseParameters,
-        issuerMetadata: IssuerMetadata,
         requestOptions: RequestOptions,
+        clientNonce: String?,
+        credentialIssuer: String?,
     ): KmmResult<CredentialRequestParameters> {
         val proofPayload = jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
@@ -210,9 +227,9 @@ class WalletService(
             ),
             payload = JsonWebToken(
                 issuer = clientId,
-                audience = issuerMetadata.credentialIssuer,
+                audience = credentialIssuer,
                 issuedAt = requestOptions.clock.now(),
-                nonce = tokenResponse.clientNonce,
+                nonce = clientNonce,
             ).serialize().encodeToByteArray(),
             addKeyId = false,
             addJsonWebKey = true
@@ -237,15 +254,17 @@ class WalletService(
     /**
      * Send the result as JSON-serialized content to the server at `/credential` (or more specific
      * [IssuerMetadata.credentialEndpointUrl]).
-     * Also send along the [TokenResponseParameters.accessToken] from [tokenResponse] in HTTP header `Authorization`
-     * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
+     * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
+     * as value `Bearer <accessTokenValue>` (depending on the [TokenResponseParameters.tokenType]).
      *
      * @param requestOptions which credential in which representation to request
+     * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
+     * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
      */
     suspend fun createCredentialRequestCwt(
-        tokenResponse: TokenResponseParameters,
-        issuerMetadata: IssuerMetadata,
         requestOptions: RequestOptions,
+        clientNonce: String?,
+        credentialIssuer: String?,
     ): KmmResult<CredentialRequestParameters> {
         val proofPayload = coseService.createSignedCose(
             protectedHeader = CoseHeader(
@@ -255,9 +274,9 @@ class WalletService(
             ),
             payload = CborWebToken(
                 issuer = clientId,
-                audience = issuerMetadata.credentialIssuer,
+                audience = credentialIssuer,
                 issuedAt = requestOptions.clock.now(),
-                nonce = tokenResponse.clientNonce?.encodeToByteArray(),
+                nonce = clientNonce?.encodeToByteArray(),
             ).serialize()
         ).getOrElse {
             Napier.w("createCredentialRequestCwt: Error from coseService: $it")
