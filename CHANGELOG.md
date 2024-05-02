@@ -1,6 +1,7 @@
 # Changelog
 
-Release NEXT:
+Release 3.6.1:
+ * Update to KMP-Crypto 2.6.0
 
 
 Release 3.6.0:
