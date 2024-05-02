@@ -130,7 +130,7 @@ class SimpleAuthorizationService(
                 if (params.preAuthorizedCode == null || !codeService.verifyCode(params.preAuthorizedCode))
                     return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_GRANT))
                         .also { Napier.w("token: client did not provide pre authorized code") }
-                codeToUserInfoMutex.withLock { codeToUserInfoMap[params.code] }
+                codeToUserInfoMutex.withLock { codeToUserInfoMap[params.preAuthorizedCode] }
             }
 
             else -> {
