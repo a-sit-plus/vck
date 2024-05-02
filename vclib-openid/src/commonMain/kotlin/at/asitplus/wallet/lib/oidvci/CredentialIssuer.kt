@@ -45,9 +45,9 @@ class CredentialIssuer(
      */
     private val credentialEndpointPath: String = "/credential",
     /**
-     * Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfo]
+     * Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]
      */
-    private val buildIssuerCredentialDataProviderOverride: (OidcUserInfo) -> IssuerCredentialDataProvider = {
+    private val buildIssuerCredentialDataProviderOverride: (OidcUserInfoExtended) -> IssuerCredentialDataProvider = {
         OAuth2IssuerCredentialDataProvider(it)
     }
 ) {

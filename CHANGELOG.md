@@ -1,7 +1,7 @@
 # Changelog
 
 Release NEXT:
-
+ - Change usage of `OidcUserInfo` in interfaces to `OidcUserInfoExtended`, to also deserialize unknown properties
 
 Release 3.6.1:
  * Update to KMP-Crypto 2.6.0

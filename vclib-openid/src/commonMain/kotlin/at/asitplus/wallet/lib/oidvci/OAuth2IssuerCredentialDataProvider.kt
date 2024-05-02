@@ -20,7 +20,7 @@ import kotlin.time.Duration.Companion.minutes
  * into credentials needed by [IssuerCredentialDataProvider].
  */
 class OAuth2IssuerCredentialDataProvider(
-    private val userInfo: OidcUserInfo,
+    private val userInfo: OidcUserInfoExtended,
     private val clock: Clock = Clock.System
 ) : IssuerCredentialDataProvider {
 
@@ -38,9 +38,9 @@ class OAuth2IssuerCredentialDataProvider(
             val subjectId = subjectPublicKey.didEncoded
             val claims = listOfNotNull(
                 // TODO Extend list of default OIDC claims
-                userInfo.givenName?.let { optionalClaim(claimNames, "given_name", it) },
-                userInfo.familyName?.let { optionalClaim(claimNames, "family_name", it) },
-                optionalClaim(claimNames, "subject", userInfo.subject),
+                userInfo.userInfo.givenName?.let { optionalClaim(claimNames, "given_name", it) },
+                userInfo.userInfo.familyName?.let { optionalClaim(claimNames, "family_name", it) },
+                optionalClaim(claimNames, "subject", userInfo.userInfo.subject),
             )
             credentials += when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(

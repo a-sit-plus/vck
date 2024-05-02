@@ -14,6 +14,8 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 
 /**
  * Simple authorization server implementation, to be used for [CredentialIssuer],
@@ -65,7 +67,7 @@ class SimpleAuthorizationService(
     private val codeToUserInfoMap = mutableMapOf<String, OidcUserInfo>()
     private val codeToUserInfoMutex = Mutex()
 
-    private val accessTokenToUserInfoMap = mutableMapOf<String, OidcUserInfo>()
+    private val accessTokenToUserInfoMap = mutableMapOf<String, OidcUserInfoExtended>()
     private val accessTokenToUserInfoMutex = Mutex()
 
     /**
@@ -160,9 +162,14 @@ class SimpleAuthorizationService(
             }
         }
 
+        val userInfoExtended = OidcUserInfoExtended(
+            userInfo = userInfo,
+            jsonObject = jsonSerializer.encodeToJsonElement(userInfo) as JsonObject
+        )
+
         val result = TokenResponseParameters(
             accessToken = tokenService.provideToken().also {
-                accessTokenToUserInfoMutex.withLock { accessTokenToUserInfoMap[it] = userInfo }
+                accessTokenToUserInfoMutex.withLock { accessTokenToUserInfoMap[it] = userInfoExtended }
             },
             tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
             expires = 3600,
@@ -186,13 +193,13 @@ class SimpleAuthorizationService(
         return clientNonceService.verifyAndRemoveNonce(nonce)
     }
 
-    override suspend fun getUserInfo(accessToken: String): KmmResult<OidcUserInfo> {
+    override suspend fun getUserInfo(accessToken: String): KmmResult<OidcUserInfoExtended> {
         if (!tokenService.verifyToken(accessToken)) {
-            return KmmResult.failure<OidcUserInfo>(OAuth2Exception(Errors.INVALID_TOKEN))
+            return KmmResult.failure<OidcUserInfoExtended>(OAuth2Exception(Errors.INVALID_TOKEN))
                 .also { Napier.w("getUserInfo: client did not provide correct token: $accessToken") }
         }
         val result = accessTokenToUserInfoMutex.withLock { accessTokenToUserInfoMap[accessToken] }
-            ?: return KmmResult.failure<OidcUserInfo>(OAuth2Exception(Errors.INVALID_TOKEN))
+            ?: return KmmResult.failure<OidcUserInfoExtended>(OAuth2Exception(Errors.INVALID_TOKEN))
                 .also { Napier.w("getUserInfo: could not load user info for $accessToken") }
 
         return KmmResult.success(result)
