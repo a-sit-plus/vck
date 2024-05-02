@@ -2,12 +2,12 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 
 /**
- * Holds a deserialized [OidcUserInfo] as well as a [JsonElement] with other properties,
+ * Holds a deserialized [OidcUserInfo] as well as a [JsonObject] with other properties,
  * that could not been parsed.
  */
 data class OidcUserInfoExtended(
@@ -20,6 +20,11 @@ data class OidcUserInfoExtended(
                 val jsonObject = jsonSerializer.decodeFromString<JsonObject>(it)
                 val userInfo = jsonSerializer.decodeFromJsonElement<OidcUserInfo>(jsonObject)
                 OidcUserInfoExtended(userInfo, jsonObject)
+            }.wrap()
+
+        fun fromOidcUserInfo(userInfo: OidcUserInfo): KmmResult<OidcUserInfoExtended> =
+            runCatching {
+                OidcUserInfoExtended(userInfo, jsonSerializer.encodeToJsonElement(userInfo) as JsonObject)
             }.wrap()
     }
 }

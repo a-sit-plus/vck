@@ -11,5 +11,5 @@ interface OAuth2DataProvider {
      *
      * @param request May be null when using pre-authorized code flow (defined in OID4VCI).
      */
-    suspend fun loadUserInfo(request: AuthenticationRequestParameters? = null): OidcUserInfo
+    suspend fun loadUserInfo(request: AuthenticationRequestParameters? = null): OidcUserInfoExtended
 }

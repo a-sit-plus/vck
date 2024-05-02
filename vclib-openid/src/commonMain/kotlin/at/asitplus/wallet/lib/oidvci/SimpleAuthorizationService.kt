@@ -14,8 +14,6 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.encodeToJsonElement
 
 /**
  * Simple authorization server implementation, to be used for [CredentialIssuer],
@@ -64,7 +62,7 @@ class SimpleAuthorizationService(
     private val codeToCodeChallengeMap = mutableMapOf<String, String>()
     private val codeToCodeChallengeMutex = Mutex()
 
-    private val codeToUserInfoMap = mutableMapOf<String, OidcUserInfo>()
+    private val codeToUserInfoMap = mutableMapOf<String, OidcUserInfoExtended>()
     private val codeToUserInfoMutex = Mutex()
 
     private val accessTokenToUserInfoMap = mutableMapOf<String, OidcUserInfoExtended>()
@@ -120,7 +118,7 @@ class SimpleAuthorizationService(
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun token(params: TokenRequestParameters): KmmResult<TokenResponseParameters> {
-        val userInfo: OidcUserInfo = when (params.grantType) {
+        val userInfo: OidcUserInfoExtended = when (params.grantType) {
             OpenIdConstants.GRANT_TYPE_CODE -> {
                 if (params.code == null || !codeService.verifyCode(params.code))
                     return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_CODE))
@@ -162,14 +160,9 @@ class SimpleAuthorizationService(
             }
         }
 
-        val userInfoExtended = OidcUserInfoExtended(
-            userInfo = userInfo,
-            jsonObject = jsonSerializer.encodeToJsonElement(userInfo) as JsonObject
-        )
-
         val result = TokenResponseParameters(
             accessToken = tokenService.provideToken().also {
-                accessTokenToUserInfoMutex.withLock { accessTokenToUserInfoMap[it] = userInfoExtended }
+                accessTokenToUserInfoMutex.withLock { accessTokenToUserInfoMap[it] = userInfo }
             },
             tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
             expires = 3600,

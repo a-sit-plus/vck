@@ -162,7 +162,12 @@ class DummyOAuth2IssuerCredentialDataProvider(
 }
 
 object DummyOAuth2DataProvider : OAuth2DataProvider {
-    override suspend fun loadUserInfo(request: AuthenticationRequestParameters?): OidcUserInfo {
-        return OidcUserInfo(subject = "subject", givenName = "Erika", familyName = "Musterfrau")
-    }
+    override suspend fun loadUserInfo(request: AuthenticationRequestParameters?) =
+        OidcUserInfoExtended.fromOidcUserInfo(
+            OidcUserInfo(
+                subject = "subject",
+                givenName = "Erika",
+                familyName = "Musterfrau"
+            )
+        ).getOrThrow()
 }
