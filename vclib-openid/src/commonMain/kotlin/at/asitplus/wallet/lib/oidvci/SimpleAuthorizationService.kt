@@ -93,7 +93,10 @@ class SimpleAuthorizationService(
             ).also { Napier.w("authorize: client did not set redirect_uri in $request") }
 
         val code = codeService.provideCode().also {
-            codeToUserInfoMutex.withLock { codeToUserInfoMap[it] = dataProvider.loadUserInfo(request) }
+            val userInfo = dataProvider.loadUserInfo(request)
+                ?: return KmmResult.failure<AuthenticationResponseResult>(OAuth2Exception(Errors.INVALID_REQUEST))
+                    .also { Napier.w("authorize: could not load user info from $request") }
+            codeToUserInfoMutex.withLock { codeToUserInfoMap[it] = userInfo }
         }
         val responseParams = AuthenticationResponseParameters(
             code = code,
@@ -176,9 +179,11 @@ class SimpleAuthorizationService(
             .also { Napier.i("token returns $result") }
     }
 
-    override suspend fun providePreAuthorizedCode(): String {
+    override suspend fun providePreAuthorizedCode(): String? {
         return codeService.provideCode().also {
-            codeToUserInfoMutex.withLock { codeToUserInfoMap[it] = dataProvider.loadUserInfo() }
+            val userInfo = dataProvider.loadUserInfo()
+                ?: return null.also { Napier.w("authorize: could not load user info from data provider") }
+            codeToUserInfoMutex.withLock { codeToUserInfoMap[it] = userInfo }
         }
     }
 
