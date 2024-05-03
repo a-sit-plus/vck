@@ -1,9 +1,11 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.wallet.lib.data.dif.CredentialDefinition
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 
 /**
  * OID4VCI: Object that describes specifics of the Credential that the Credential Issuer supports issuance of.
@@ -78,7 +80,6 @@ data class SupportedCredentialFormat(
     @SerialName("doctype")
     val docType: String? = null,
 
-    // TODO For IETF SD-JWT VC this may be nested differently ... see OID4VCI Draft 13.
     /**
      * OID4VCI:
      * ISO mDL: OPTIONAL. Object containing a list of name/value pairs, where the name is a certain namespace as
@@ -87,7 +88,7 @@ data class SupportedCredentialFormat(
      * offered in the Credential.
      */
     @SerialName("claims")
-    val claims: Map<String, Map<String, RequestedCredentialClaimSpecification>>? = null,
+    private var claims: JsonElement? = null,
 
     /**
      * OID4VCI:
@@ -105,4 +106,20 @@ data class SupportedCredentialFormat(
      */
     @SerialName("display")
     val display: Set<DisplayProperties>? = null,
-)
+) {
+    var isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>?
+        get() = claims?.let {
+            jsonSerializer.decodeFromJsonElement<Map<String, Map<String, RequestedCredentialClaimSpecification>>>(it)
+        }
+        set(value) {
+            claims = jsonSerializer.encodeToJsonElement(value)
+        }
+
+    var sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>?
+        get() = claims?.let {
+            jsonSerializer.decodeFromJsonElement<Map<String, RequestedCredentialClaimSpecification>>(it)
+        }
+        set(value) {
+            claims = jsonSerializer.encodeToJsonElement(value)
+        }
+}

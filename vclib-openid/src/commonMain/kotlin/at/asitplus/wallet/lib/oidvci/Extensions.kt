@@ -15,12 +15,13 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
         format = CredentialFormatEnum.MSO_MDOC,
         scope = vcType,
         docType = isoDocType,
-        claims = mapOf(
-            isoNamespace to claimNames.associateWith { RequestedCredentialClaimSpecification() }
-        ),
         supportedBindingMethods = setOf(OpenIdConstants.BINDING_METHOD_COSE_KEY),
         supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toSet(),
-    ),
+    ).apply {
+        isoClaims = mapOf(
+            isoNamespace to claimNames.associateWith { RequestedCredentialClaimSpecification() }
+        )
+    },
     encodeToCredentialIdentifier(CredentialFormatEnum.JWT_VC) to SupportedCredentialFormat(
         format = CredentialFormatEnum.JWT_VC,
         scope = vcType,
@@ -35,12 +36,11 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
         format = CredentialFormatEnum.VC_SD_JWT,
         scope = vcType,
         sdJwtVcType = vcType,
-        claims = mapOf(
-            isoNamespace to claimNames.associateWith { RequestedCredentialClaimSpecification() }
-        ),
         supportedBindingMethods = setOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
         supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toSet(),
-    )
+    ).apply {
+        sdJwtClaims = claimNames.associateWith { RequestedCredentialClaimSpecification() }
+    }
 )
 
 /**

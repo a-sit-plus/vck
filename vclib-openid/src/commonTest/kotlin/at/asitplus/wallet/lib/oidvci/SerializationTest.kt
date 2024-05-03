@@ -11,8 +11,6 @@ import io.kotest.matchers.string.shouldContain
 import io.ktor.http.*
 import kotlinx.serialization.encodeToString
 import kotlin.random.Random
-import kotlin.random.nextUInt
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 class SerializationTest : FunSpec({
