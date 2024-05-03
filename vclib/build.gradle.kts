@@ -1,4 +1,3 @@
-
 import at.asitplus.gradle.bouncycastle
 import at.asitplus.gradle.commonImplementationAndApiDependencies
 import at.asitplus.gradle.commonIosExports
@@ -30,7 +29,7 @@ kotlin {
         commonMain {
             dependencies {
                 commonImplementationAndApiDependencies()
-                implementation(libs.antlrKotlin)
+                implementation("com.strumenta:antlr-kotlin-runtime:1.0.0-RC3")
             }
         }
 

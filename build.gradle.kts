@@ -1,7 +1,6 @@
 import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
 plugins {
     id("at.asitplus.gradle.vclib-conventions")
-    alias(libs.plugins.org.jetbrains.kotlin.jvm) apply false
 }
 
 //access dokka plugin from conventions plugin's classpath in root project → no need to specify version
