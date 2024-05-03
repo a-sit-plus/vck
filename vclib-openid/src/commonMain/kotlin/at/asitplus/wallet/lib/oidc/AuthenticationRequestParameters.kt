@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.data.InstantLongSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.oidvci.AuthorizationDetails
@@ -255,9 +256,6 @@ data class AuthenticationRequestParameters(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<AuthenticationRequestParameters>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }

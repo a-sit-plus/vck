@@ -273,7 +273,7 @@ class OidcSiopInteropTest : FreeSpec({
         parsed.issuedAt shouldBe Instant.fromEpochSeconds(1710313534)
         val cm = parsed.clientMetadata
         cm.shouldNotBeNull()
-        cm.subjectSyntaxTypesSupported shouldHaveSingleElement "urn:ietf:params:oauth:jwk-thumbprint"
+        cm.subjectSyntaxTypesSupported.shouldNotBeNull() shouldHaveSingleElement "urn:ietf:params:oauth:jwk-thumbprint"
         cm.authorizationEncryptedResponseAlg shouldBe JweAlgorithm.ECDH_ES
         cm.authorizationEncryptedResponseEncoding shouldBe "A128CBC-HS256"
         cm.idTokenEncryptedResponseAlg shouldBe JweAlgorithm.RSA_OAEP_256

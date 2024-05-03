@@ -104,7 +104,7 @@ data class RelyingPartyMetadata(
      * Valid values include `urn:ietf:params:oauth:jwk-thumbprint`, `did:example` and others.
      */
     @SerialName("subject_syntax_types_supported")
-    val subjectSyntaxTypesSupported: List<String>,
+    val subjectSyntaxTypesSupported: Set<String>? = null,
 
     /**
      * OID4VP: REQUIRED. An object defining the formats and proof types of Verifiable Presentations and Verifiable

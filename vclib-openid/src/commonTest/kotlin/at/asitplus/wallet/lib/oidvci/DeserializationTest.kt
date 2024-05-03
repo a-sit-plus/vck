@@ -261,4 +261,117 @@ class DeserializationTest : FunSpec({
         claims["is_over_65"].shouldNotBeNull()
     }
 
+    test("Idemia Interop Request") {
+        val input = """
+        {
+            "nonce": "iihlPsH0UbzC27dg7zHlli0aVZ/akpDNrafh86kgNRRfcrmL22TR8cZaPyyuFxlOT7U6qGlp400o482nJo7lgg==",
+            "state": "b3b2ea02-b959-44e4-a40a-0af2502146d8",
+            "iat": 1714722722,
+            "exp": 1717314722,
+            "nbf": 1714722722,
+            "jti": "b3b2ea02-b959-44e4-a40a-0af2502146d8",
+            "response_uri": "https://interop.rac-shared.staging.identity-dev.idemia.io/openid4vp/resp/b3b2ea02-b959-44e4-a40a-0af2502146d8",
+            "client_id_scheme": "redirect_uri",
+            "response_type": "vp_token",
+            "client_id": "https://interop.rac-shared.staging.identity-dev.idemia.io/openid4vp/resp/b3b2ea02-b959-44e4-a40a-0af2502146d8",
+            "response_mode": "direct_post.jwt",
+            "aud": "https://self-issued.me/v2",
+            "scope": "openid",
+            "presentation_definition": {
+            "id": "b3b2ea02-b959-44e4-a40a-0af2502146d8",
+            "input_descriptors": [
+              {
+                "id": "org.iso.18013.5.1.mDL",
+                "format": {
+                  "mso_mdoc": {
+                    "alg": [
+                      "ES256"
+                    ]
+                  }
+                },
+                "constraints": {
+                  "fields": [
+                    {
+                      "path": [
+                        "${'$'}['org.iso.18013.5.1']['document_number']"
+                      ],
+                      "intent_to_retain": false
+                    },
+                    {
+                      "path": [
+                        "${'$'}['org.iso.18013.5.1']['issue_date']"
+                      ],
+                      "intent_to_retain": false
+                    },
+                    {
+                      "path": [
+                        "${'$'}['org.iso.18013.5.1']['issuing_authority']"
+                      ],
+                      "intent_to_retain": false
+                    },
+                    {
+                      "path": [
+                        "${'$'}['org.iso.18013.5.1']['birth_date']"
+                      ],
+                      "intent_to_retain": false
+                    },
+                    {
+                      "path": [
+                        "${'$'}['org.iso.18013.5.1']['expiry_date']"
+                      ],
+                      "intent_to_retain": false
+                    },
+                    {
+                      "path": [
+                        "${'$'}['org.iso.18013.5.1']['given_name']"
+                      ],
+                      "intent_to_retain": false
+                    },
+                    {
+                      "path": [
+                        "${'$'}['org.iso.18013.5.1']['portrait']"
+                      ],
+                      "intent_to_retain": false
+                    },
+                    {
+                      "path": [
+                        "${'$'}['org.iso.18013.5.1']['family_name']"
+                      ],
+                      "intent_to_retain": false
+                    }
+                  ],
+                  "limit_disclosure": "required"
+                }
+              }
+            ]
+            },
+            "client_metadata": {
+            "authorization_encrypted_response_alg": "ECDH-ES",
+            "authorization_encrypted_response_enc": "A256GCM",
+            "require_signed_request_object": false,
+            "vp_formats": {
+              "alg": [
+                "ES256"
+              ]
+            },
+            "jwks": {
+              "keys": [
+                {
+                  "kty": "EC",
+                  "kid": "ephReaderKey",
+                  "use": "enc",
+                  "alg": "ECDH-ES",
+                  "x": "GSjGTm4gAA-GFhXS1Z3kCREwF7EzlxF9iAsqkGC3ys4",
+                  "y": "YQyDOSYyQ3xKFiRWHfUITreUvEo51btt7qw3Apy7F7U",
+                  "crv": "P-256"
+                }
+              ]
+            }
+            }
+            }    
+        """.trimIndent()
+
+        val deserialized = AuthenticationRequestParameters.deserialize(input).getOrThrow()
+    }
+
 })

@@ -60,6 +60,12 @@ class CredentialIssuer(
             credentialIssuer = publicContext,
             authorizationServers = setOf(authorizationService.publicContext),
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
+            authorizationEndpointUrl = if (authorizationService is SimpleAuthorizationService)
+                authorizationService.publicContext + authorizationService.authorizationEndpointPath
+            else null,
+            tokenEndpointUrl = if (authorizationService is SimpleAuthorizationService)
+                authorizationService.publicContext + authorizationService.tokenEndpointPath
+            else null,
             supportedCredentialConfigurations = mutableMapOf<String, SupportedCredentialFormat>().apply {
                 credentialSchemes.forEach { putAll(it.toSupportedCredentialFormat(issuer.cryptoAlgorithms)) }
             },

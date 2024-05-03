@@ -156,15 +156,14 @@ class OidcSiopWallet(
 
     private fun parseRequestObjectJws(requestObject: String): AuthenticationRequestParameters? {
         JwsSigned.parse(requestObject)?.let { jws ->
-            val authnRequestParams = kotlin.runCatching {
-                AuthenticationRequestParameters.deserialize(jws.payload.decodeToString())
-            }.getOrNull() ?: return null
-            val signatureVerified = requestObjectJwsVerifier.invoke(jws, authnRequestParams)
+            val params = AuthenticationRequestParameters.deserialize(jws.payload.decodeToString()).getOrNull()
+                ?: return null
+            val signatureVerified = requestObjectJwsVerifier.invoke(jws, params)
             if (!signatureVerified) {
                 Napier.w("parseRequestObjectJws: Signature not verified for $jws")
                 return null
             }
-            return authnRequestParams
+            return params
         }
         return null
     }
@@ -274,7 +273,7 @@ class OidcSiopWallet(
             }
             ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("Could not parse audience") }
-        if (URN_TYPE_JWK_THUMBPRINT !in clientMetadata.subjectSyntaxTypesSupported)
+        if (clientMetadata.subjectSyntaxTypesSupported == null || URN_TYPE_JWK_THUMBPRINT !in clientMetadata.subjectSyntaxTypesSupported)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible subject syntax types algorithms") }
         if (params.redirectUrl != null) {

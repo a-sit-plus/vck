@@ -52,12 +52,12 @@ class SimpleAuthorizationService(
      * Used to build [IssuerMetadata.authorizationEndpointUrl], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [authorize].
      */
-    private val authorizationEndpointPath: String = "/authorize",
+    val authorizationEndpointPath: String = "/authorize",
     /**
      * Used to build [IssuerMetadata.tokenEndpointUrl], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [token].
      */
-    private val tokenEndpointPath: String = "/token",
+    val tokenEndpointPath: String = "/token",
 ) : OAuth2AuthorizationServer {
 
     private val codeToCodeChallengeMap = mutableMapOf<String, String>()

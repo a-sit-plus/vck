@@ -104,7 +104,7 @@ class OidcSiopVerifier(
         RelyingPartyMetadata(
             redirectUris = listOf(relyingPartyUrl),
             jsonWebKeySet = JsonWebKeySet(listOf(agentPublicKey.toJsonWebKey())),
-            subjectSyntaxTypesSupported = listOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
+            subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
             vpFormats = FormatHolder(
                 msoMdoc = containerJwt,
                 jwtVp = containerJwt,
