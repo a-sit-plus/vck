@@ -265,7 +265,7 @@ class PresentProofProtocol(
             )
         val jwmAttachment = attachments[0]
         val requestPresentationAttachment = jwmAttachment.decodeString()?.let {
-            RequestPresentationAttachment.deserialize(it)
+            RequestPresentationAttachment.deserialize(it).getOrNull()
         } ?: return problemReporter.problemLastMessage(lastMessage.threadId, "attachments-format")
         // TODO Is ISO supported here?
         val constraintFields = requestPresentationAttachment.presentationDefinition.inputDescriptors

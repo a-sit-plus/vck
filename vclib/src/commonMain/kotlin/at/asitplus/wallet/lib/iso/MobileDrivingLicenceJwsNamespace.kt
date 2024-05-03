@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.data.jsonSerializer
-import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -20,10 +20,7 @@ data class MobileDrivingLicenceJwsNamespace(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<MobileDrivingLicenceJwsNamespace>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 
 }

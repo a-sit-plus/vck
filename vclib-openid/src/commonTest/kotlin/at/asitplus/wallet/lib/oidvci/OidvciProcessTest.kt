@@ -71,7 +71,9 @@ class OidvciProcessTest : FunSpec({
         val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~"))
         jws.shouldNotBeNull()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
-        sdJwt.shouldNotBeNull().also { println(it) }
+            .getOrThrow().shouldNotBeNull()
+
+        println(sdJwt)
         sdJwt.disclosureDigests.size shouldBeGreaterThan 1
     }
 
@@ -94,7 +96,9 @@ class OidvciProcessTest : FunSpec({
         val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~"))
         jws.shouldNotBeNull()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
-        sdJwt.shouldNotBeNull().also { println(it) }
+            .getOrThrow().shouldNotBeNull()
+
+        println(sdJwt)
         sdJwt.disclosureDigests.size shouldBe 1
     }
 
@@ -114,7 +118,8 @@ class OidvciProcessTest : FunSpec({
         serializedCredential.shouldNotBeNull().also { println(it) }
 
         val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64()))
-        issuerSigned.shouldNotBeNull().also { println(it) }
+            .getOrThrow().shouldNotBeNull()
+
         val numberOfClaims = issuerSigned.namespaces?.values?.firstOrNull()?.entries?.size
         numberOfClaims.shouldNotBeNull()
         numberOfClaims shouldBeGreaterThan 1
@@ -137,7 +142,8 @@ class OidvciProcessTest : FunSpec({
         serializedCredential.shouldNotBeNull().also { println(it) }
 
         val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64()))
-        issuerSigned.shouldNotBeNull().also { println(it) }
+            .getOrThrow().shouldNotBeNull()
+
         val numberOfClaims = issuerSigned.namespaces?.values?.firstOrNull()?.entries?.size
         numberOfClaims.shouldNotBeNull()
         numberOfClaims shouldBe 1

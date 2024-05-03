@@ -9,8 +9,6 @@ import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.EXPIRY_DATE
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.ISSUE_DATE
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.PORTRAIT
-import io.github.aakira.napier.DebugAntilog
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -136,7 +134,7 @@ class CborSerializationTest : FreeSpec({
         """.trimIndent().replace("\n", "").uppercase()
 
         val deviceRequest = DeviceRequest.deserialize(input.decodeToByteArray(Base16(strict = true)))
-        deviceRequest.shouldNotBeNull()
+            .getOrThrow().shouldNotBeNull()
         println(deviceRequest)
 
         deviceRequest.version shouldBe "1.0"
@@ -324,7 +322,7 @@ class CborSerializationTest : FreeSpec({
         """.trimIndent().replace("\n", "").uppercase()
 
         val deviceResponse = DeviceResponse.deserialize(input.decodeToByteArray(Base16(strict = true)))
-        deviceResponse.shouldNotBeNull()
+            .getOrThrow().shouldNotBeNull()
 
         println(deviceResponse)
 
@@ -408,8 +406,8 @@ class CborSerializationTest : FreeSpec({
                 "30396b6578706972795f64617465d903ec6a323032342d31302d3230"
 
         val deserialized = DrivingPrivilege.deserialize(input.uppercase().decodeToByteArray(Base16(strict = true)))
+            .getOrThrow().shouldNotBeNull()
 
-        deserialized.shouldNotBeNull()
         deserialized.vehicleCategoryCode shouldBe "A"
         deserialized.issueDate shouldBe LocalDate.parse("2018-08-09")
         deserialized.expiryDate shouldBe LocalDate.parse("2024-10-20")
@@ -423,7 +421,7 @@ class CborSerializationTest : FreeSpec({
         """.trimIndent().replace("\n", "").uppercase()
 
         val deserialized = IssuerSignedItem.deserialize(input.decodeToByteArray(Base16(strict = true)))
-        deserialized.shouldNotBeNull()
+            .getOrThrow().shouldNotBeNull()
         val serialized = deserialized.serialize()
 
         // TODO "elementValue" in IssuerSignedItem needs a tag 1004u (0xD903EC) iff the value is a date
@@ -487,7 +485,7 @@ class CborSerializationTest : FreeSpec({
         """.trimIndent().replace("\n", "")
 
         val deserialized = IssuerSignedItem.deserialize(input.decodeToByteArray(Base16(strict = true)))
-        deserialized.shouldNotBeNull()
+            .getOrThrow().shouldNotBeNull()
         val serialized = deserialized.serialize()
 
         serialized.encodeToString(Base16(strict = true)).uppercase() shouldBe input
@@ -604,13 +602,12 @@ class CborSerializationTest : FreeSpec({
         """.trimIndent().replace("\n", "").uppercase()
 
         val coseSigned = CoseSigned.deserialize(input.decodeToByteArray(Base16(strict = true)))
-        coseSigned.shouldNotBeNull()
+            .getOrThrow().shouldNotBeNull()
         println(coseSigned)
 
         val payload = coseSigned.payload
         payload.shouldNotBeNull()
-        val mso = MobileSecurityObject.deserializeFromIssuerAuth(payload)
-        mso.shouldNotBeNull()
+        val mso = MobileSecurityObject.deserializeFromIssuerAuth(payload).getOrThrow().shouldNotBeNull()
         println(mso)
         mso.version shouldBe "1.0"
         mso.digestAlgorithm shouldBe "SHA-256"

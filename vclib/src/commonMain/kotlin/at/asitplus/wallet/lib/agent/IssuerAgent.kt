@@ -168,7 +168,7 @@ class IssuerAgent(
                     ValueDigest.fromIssuerSigned(it)
                 })
             ),
-            deviceKeyInfo = DeviceKeyInfo(subjectPublicKey.toCoseKey().getOrElse {
+            deviceKeyInfo = DeviceKeyInfo(subjectPublicKey.toCoseKey().getOrElse { ex ->
                 return Issuer.IssuedCredentialResult(
                     failed = listOf(
                         Issuer.FailedAttribute(
@@ -176,7 +176,7 @@ class IssuerAgent(
                             DataSourceProblem("SubjectPublicKey transformation failed")
                         )
                     )
-                ).also { Napier.w("Could not transform SubjectPublicKey to COSE Key") }
+                ).also { Napier.w("Could not transform SubjectPublicKey to COSE Key", ex) }
             }),
             docType = scheme.isoDocType,
             validityInfo = ValidityInfo(

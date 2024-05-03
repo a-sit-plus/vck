@@ -38,9 +38,8 @@ class JweSerializationTest : FreeSpec({
         val type = JwsContentTypeConstants.JWT
         val serialized = """{"alg": "${algorithm.text}", "enc": "${encryption.text}", "kid": "$kid", "typ": "$type"}"""
 
-        val parsed = JweHeader.deserialize(serialized)
+        val parsed = JweHeader.deserialize(serialized).getOrThrow().shouldNotBeNull()
 
-        parsed.shouldNotBeNull()
         parsed.algorithm shouldBe algorithm
         parsed.encryption shouldBe encryption
         parsed.keyId shouldBe kid
@@ -53,9 +52,8 @@ class JweSerializationTest : FreeSpec({
         val type = JwsContentTypeConstants.JWT
         val serialized = """{"alg": "foo", "enc": "${encryption.text}", "kid": "$kid", "typ": "$type"}"""
 
-        val parsed = JweHeader.deserialize(serialized)
+        val parsed = JweHeader.deserialize(serialized).getOrThrow().shouldNotBeNull()
 
-        parsed.shouldNotBeNull()
         parsed.algorithm shouldBe null
         parsed.encryption shouldBe encryption
         parsed.keyId shouldBe kid
@@ -68,9 +66,8 @@ class JweSerializationTest : FreeSpec({
         val type = JwsContentTypeConstants.JWT
         val serialized = """{"alg": "${algorithm.text}", "enc": "foo", "kid": "$kid", "typ": "$type"}"""
 
-        val parsed = JweHeader.deserialize(serialized)
+        val parsed = JweHeader.deserialize(serialized).getOrThrow().shouldNotBeNull()
 
-        parsed.shouldNotBeNull()
         parsed.algorithm shouldBe algorithm
         parsed.encryption shouldBe null
         parsed.keyId shouldBe kid
@@ -84,9 +81,8 @@ class JweSerializationTest : FreeSpec({
         val type = uuid4().toString()
         val serialized = """{"alg": "${algorithm.text}", "enc": "${encryption.text}", "kid": "$kid", "typ": "$type"}"""
 
-        val parsed = JweHeader.deserialize(serialized)
+        val parsed = JweHeader.deserialize(serialized).getOrThrow().shouldNotBeNull()
 
-        parsed.shouldNotBeNull()
         parsed.algorithm shouldBe algorithm
         parsed.encryption shouldBe encryption
         parsed.keyId shouldBe kid

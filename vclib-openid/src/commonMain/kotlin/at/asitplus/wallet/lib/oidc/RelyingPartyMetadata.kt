@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.data.dif.FormatHolder
-import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -128,9 +128,6 @@ data class RelyingPartyMetadata(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<RelyingPartyMetadata>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }

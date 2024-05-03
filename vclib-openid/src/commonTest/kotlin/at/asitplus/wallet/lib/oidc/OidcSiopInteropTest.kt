@@ -174,7 +174,8 @@ class OidcSiopInteropTest : FreeSpec({
         val jarm = jarmParams.response
         jarm.shouldNotBeNull()
         val params = AuthenticationResponseParameters.deserialize(JwsSigned.parse(jarm)!!.payload.decodeToString())
-        params.shouldNotBeNull()
+            .getOrThrow().shouldNotBeNull()
+
         params.presentationSubmission.shouldNotBeNull()
         params.vpToken.shouldNotBeNull()
         params.idToken.shouldNotBeNull()

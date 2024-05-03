@@ -141,9 +141,10 @@ class CredentialIssuer(
                 if (proof.cwt == null)
                     return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
-                val coseSigned = CoseSigned.deserialize(proof.cwt.decodeToByteArray(Base64UrlStrict))
-                    ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
-                        .also { Napier.w("credential: client did provide invalid proof: $proof") }
+                val coseSigned = CoseSigned.deserialize(proof.cwt.decodeToByteArray(Base64UrlStrict)).getOrElse { ex ->
+                    return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
+                        .also { Napier.w("credential: client did provide invalid proof: $proof", ex) }
+                }
                 val cwt = coseSigned.payload?.let { CborWebToken.deserialize(it).getOrNull() }
                     ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
                         .also { Napier.w("credential: client did provide invalid CWT in proof: $proof") }

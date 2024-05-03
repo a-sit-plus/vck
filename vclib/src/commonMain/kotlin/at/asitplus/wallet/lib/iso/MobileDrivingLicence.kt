@@ -2,6 +2,7 @@
 
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.io.ByteArrayBase64UrlSerializer
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.ADMINISTRATIVE_NUMBER
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.AGE_BIRTH_YEAR
@@ -35,7 +36,6 @@ import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.SEX
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.SIGNATURE_USUAL_MARK
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.UN_DISTINGUISHING_SIGN
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.WEIGHT
-import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
@@ -241,9 +241,6 @@ data class MobileDrivingLicence(
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<MobileDrivingLicence>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }

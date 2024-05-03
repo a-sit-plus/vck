@@ -235,7 +235,7 @@ class WalletService(
             addJsonWebKey = true
             // NOTE: use `x5c` to transport key attestation
         ).getOrElse {
-            Napier.w("createCredentialRequestJwt: Error from jwsService: $it")
+            Napier.w("createCredentialRequestJwt: Error from jwsService", it)
             return KmmResult.failure(it)
         }
         val proof = CredentialRequestProof(
@@ -279,7 +279,7 @@ class WalletService(
                 nonce = clientNonce?.encodeToByteArray(),
             ).serialize()
         ).getOrElse {
-            Napier.w("createCredentialRequestCwt: Error from coseService: $it")
+            Napier.w("createCredentialRequestCwt: Error from coseService", it)
             return KmmResult.failure(it)
         }
         val proof = CredentialRequestProof(

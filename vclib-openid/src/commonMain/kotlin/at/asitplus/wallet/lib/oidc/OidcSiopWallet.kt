@@ -156,8 +156,10 @@ class OidcSiopWallet(
 
     private fun parseRequestObjectJws(requestObject: String): AuthenticationRequestParameters? {
         JwsSigned.parse(requestObject)?.let { jws ->
-            val params = AuthenticationRequestParameters.deserialize(jws.payload.decodeToString()).getOrNull()
-                ?: return null
+            val params = AuthenticationRequestParameters.deserialize(jws.payload.decodeToString()).getOrElse {
+                return null
+                    .also { Napier.w("parseRequestObjectJws: Deserialization failed", it)}
+            }
             val signatureVerified = requestObjectJwsVerifier.invoke(jws, params)
             if (!signatureVerified) {
                 Napier.w("parseRequestObjectJws: Signature not verified for $jws")
@@ -262,7 +264,7 @@ class OidcSiopWallet(
         // TODO implement x509_san_dns, x509_san_uri, as implemented by EUDI verifier
         val clientMetadata = params.clientMetadata
             ?: params.clientMetadataUri?.let { uri ->
-                remoteResourceRetriever.invoke(uri)?.let { RelyingPartyMetadata.deserialize(it) }
+                remoteResourceRetriever.invoke(uri)?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
             }
             ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("client metadata is not specified") }

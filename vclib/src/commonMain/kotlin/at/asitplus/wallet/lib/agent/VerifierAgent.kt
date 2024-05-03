@@ -61,10 +61,8 @@ class VerifierAgent private constructor(
         if (jwsSigned != null) {
             return validator.verifyVpJws(it, challenge, identifier)
         }
-        val document =
-            runCatching {
-                it.decodeToByteArrayOrNull(Base16(strict = true))?.let { bytes -> Document.deserialize(bytes) }
-            }.getOrNull()
+        val document = it.decodeToByteArrayOrNull(Base16(strict = true))
+            ?.let { bytes -> Document.deserialize(bytes).getOrNull() }
         if (document != null) {
             return validator.verifyDocument(document, challenge)
         }

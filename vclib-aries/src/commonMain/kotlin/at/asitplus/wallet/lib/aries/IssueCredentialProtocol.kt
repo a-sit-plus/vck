@@ -222,7 +222,7 @@ class IssueCredentialProtocol(
         val lastJwmAttachment = lastMessage.attachments?.firstOrNull()
             ?: return problemReporter.problemLastMessage(lastMessage.threadId, "attachments-missing")
         val requestCredentialAttachment = lastJwmAttachment.decodeString()?.let {
-            RequestCredentialAttachment.deserialize(it)
+            RequestCredentialAttachment.deserialize(it).getOrNull()
         } ?: return problemReporter.problemLastMessage(lastMessage.threadId, "attachments-format")
 
         val uri = requestCredentialAttachment.credentialManifest.credential.schema.uri
@@ -330,7 +330,7 @@ class IssueCredentialProtocol(
                 .mapNotNull { extractBinaryAttachment(it) }
             return Holder.StoreCredentialInput.Vc(decoded, credentialScheme, attachmentList)
         } ?: runCatching { fulfillment.decodeBinary() }.getOrNull()?.let { decoded ->
-            IssuerSigned.deserialize(decoded)?.let { issuerSigned ->
+            IssuerSigned.deserialize(decoded).getOrNull()?.let { issuerSigned ->
                 return Holder.StoreCredentialInput.Iso(issuerSigned, credentialScheme)
             }
         } ?: return null

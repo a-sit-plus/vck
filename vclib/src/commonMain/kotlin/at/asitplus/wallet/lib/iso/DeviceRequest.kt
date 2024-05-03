@@ -2,8 +2,8 @@
 
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.cose.CoseSigned
-import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
@@ -68,10 +68,7 @@ data class DeviceRequest(
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<DeviceRequest>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }
 
@@ -214,10 +211,7 @@ data class DeviceResponse(
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<DeviceResponse>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }
 
@@ -241,10 +235,7 @@ data class Document(
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<Document>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }
 
@@ -267,10 +258,7 @@ data class IssuerSigned(
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<IssuerSigned>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }
 
@@ -357,7 +345,7 @@ object IssuerSignedListSerializer : KSerializer<IssuerSignedList> {
                 } else {
                     val readBytes = decoder.decodeSerializableValue(ByteArraySerializer())
                     entries += ByteStringWrapper(
-                        value = IssuerSignedItem.deserialize(readBytes)!!,
+                        value = IssuerSignedItem.deserialize(readBytes).getOrThrow(),
                         serialized = readBytes
                     )
                 }
@@ -415,10 +403,7 @@ data class IssuerSignedItem(
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<IssuerSignedItem>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }
 
@@ -477,10 +462,7 @@ data class ElementValue(
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<ElementValue>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }
 
