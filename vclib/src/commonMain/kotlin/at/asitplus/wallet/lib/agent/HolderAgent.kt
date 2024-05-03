@@ -4,6 +4,8 @@ import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.pki.X509Certificate
+import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.KeyBindingJws
@@ -18,8 +20,6 @@ import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
-import at.asitplus.wallet.lib.data.jsonPath.NormalizedJsonPath
-import at.asitplus.wallet.lib.data.jsonPath.NormalizedJsonPathSegment
 import at.asitplus.wallet.lib.data.jsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceSigned

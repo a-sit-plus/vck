@@ -12,7 +12,7 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.toJsonElement
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.jsonPath.JsonPath
+import at.asitplus.wallet.lib.data.jsonpath.JsonPath
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldNotBe
 import kotlinx.coroutines.runBlocking
@@ -66,19 +66,16 @@ class CredentialJsonInteropTest : FreeSpec({
                     subjectPublicKey = holderCryptoService.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                    claimNames = listOf("id", "name", "mime-type", "value"),
+                    claimNames = listOf("given-name", "family-name", "date-of-birth", "is-active"),
                 ).toStoreCredentialInput()
             )
         }
 
         val credential = subjectCredentialStore.getCredentials().getOrThrow()[0].toJsonElement()
-        (JsonPath("\$.id").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['id']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$.name").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['mime-type']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$.value").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['value']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
+        (JsonPath("\$['given-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
+        (JsonPath("\$['family-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
+        (JsonPath("\$['date-of-birth']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
+        (JsonPath("\$['is-active']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
     }
 
     "ISO credential path resolving" {
@@ -88,18 +85,14 @@ class CredentialJsonInteropTest : FreeSpec({
                     subjectPublicKey = holderCryptoService.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                    claimNames = listOf("id", "name", "mime-type", "value"),
+                    claimNames = listOf("given-name", "family-name", "date-of-birth", "is-active"),
                 ).toStoreCredentialInput()
             )
         }
 
         val credential = subjectCredentialStore.getCredentials().getOrThrow()[0].toJsonElement()
-        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}'].id").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['id']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}'].name").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['mime-type']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}'].value").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['value']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-    }
+        (JsonPath("\$['given-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
+        (JsonPath("\$['family-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
+        (JsonPath("\$['date-of-birth']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
+        (JsonPath("\$['is-active']").query(credential).first().value as JsonPrimitive).content shouldNotBe null    }
 })

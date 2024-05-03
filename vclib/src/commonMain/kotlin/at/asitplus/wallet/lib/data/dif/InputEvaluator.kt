@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.data.jsonPath.JsonPath
-import at.asitplus.wallet.lib.data.jsonPath.NodeListEntry
+import at.asitplus.jsonpath.JsonPath
+import at.asitplus.jsonpath.core.NodeListEntry
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement

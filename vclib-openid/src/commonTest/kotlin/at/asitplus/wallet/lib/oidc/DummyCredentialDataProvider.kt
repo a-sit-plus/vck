@@ -39,13 +39,11 @@ class DummyCredentialDataProvider(
         val credentials = mutableListOf<CredentialToBeIssued>()
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
             val subjectId = subjectPublicKey.didEncoded
-            val claims = claimNames?.map {
-                ClaimToBeIssued(it, "${it}_DUMMY_VALUE")
-            } ?: listOfNotNull(
-                ClaimToBeIssued("given-name", "Susanne"),
-                ClaimToBeIssued("family-name", "Meier"),
-                ClaimToBeIssued("date-of-birth", "1990-01-01"),
-                ClaimToBeIssued("is-active", true)
+            val claims = listOfNotNull(
+                optionalClaim(claimNames, "given-name", "Susanne"),
+                optionalClaim(claimNames, "family-name", "Meier"),
+                optionalClaim(claimNames, "date-of-birth", "1990-01-01"),
+                optionalClaim(claimNames, "is-active", true)
             )
             credentials += when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
