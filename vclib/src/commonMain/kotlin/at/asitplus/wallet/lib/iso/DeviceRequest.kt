@@ -7,35 +7,15 @@ import at.asitplus.crypto.datatypes.cose.CoseSigned
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.InternalSerializationApi
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
 import kotlinx.serialization.builtins.ArraySerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.ByteStringWrapper
 import kotlinx.serialization.cbor.ValueTags
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.descriptors.SerialKind
-import kotlinx.serialization.descriptors.StructureKind
-import kotlinx.serialization.descriptors.buildClassSerialDescriptor
-import kotlinx.serialization.descriptors.buildSerialDescriptor
-import kotlinx.serialization.descriptors.listSerialDescriptor
-import kotlinx.serialization.descriptors.mapSerialDescriptor
-import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.encoding.CompositeDecoder
-import kotlinx.serialization.encoding.CompositeEncoder
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.encoding.decodeStructure
-import kotlinx.serialization.encoding.encodeCollection
-import kotlinx.serialization.encoding.encodeStructure
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 import okio.ByteString.Companion.toByteString
 
 /**
@@ -412,7 +392,6 @@ data class IssuerSignedItem(
 /**
  * Convenience class to enable serialization of (nearly) "any" value in [IssuerSignedItem.elementValue]
  */
-@Serializable(with = ElementValueSerializer::class)
 data class ElementValue(
     val bytes: ByteArray? = null,
     @ValueTags(1004u)
@@ -561,22 +540,54 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
     @OptIn(InternalSerializationApi::class)
     @Suppress("UNCHECKED_CAST")
     private fun CompositeEncoder.encodeAnything(value: IssuerSignedItem, index: Int) {
+
+        val descriptor =
+            when (val it = value.elementValue) {
+                is String -> buildDescriptor(it, String.serializer())
+                is Int -> buildDescriptor(it, Int.serializer())
+                // TODO write tag 1004
+                is LocalDate -> buildDescriptor(it, LocalDate.serializer())
+                is Boolean -> buildDescriptor(it, Boolean.serializer())
+                is ByteArray -> buildDescriptor(it, ByteArraySerializer())
+                is Array<*> -> buildDescriptor(
+                    it as Array<DrivingPrivilege>,
+                    ArraySerializer(DrivingPrivilege.serializer())
+                ) //TODO: this needs to come from external library baaed on actual type from value.elementIdentifier so we only have an else branch
+                else -> error("$it is not supported")
+            }
+
         when (val it = value.elementValue) {
+
+
             is String -> encodeStringElement(descriptor, index, it)
             is Int -> encodeIntElement(descriptor, index, it)
             // TODO write tag 1004
             is LocalDate -> encodeSerializableElement(descriptor, index, LocalDate.serializer(), it)
             is Boolean -> encodeBooleanElement(descriptor, index, it)
             is ByteArray -> encodeSerializableElement(descriptor, index, ByteArraySerializer(), it)
-            is Array<*> -> if (it.isNotEmpty() && it[0] is DrivingPrivilege)
+            is Array<*> ->
                 encodeSerializableElement(
                     descriptor,
-                    3,
+                    index,
                     ArraySerializer(DrivingPrivilege.serializer()),
                     it as Array<DrivingPrivilege>
                 )
+
+            else -> {
+                //actually we want the else branch and no hardcoded array stuff
+            }
         }
     }
+
+    //TODO dont use serializer as parameter, but get it from somewhere based on value.elementIdentifier
+    private inline fun <reified T> buildDescriptor(element: T, serializer: KSerializer<T>) =
+        buildClassSerialDescriptor("IssuerSignedItem") { //TODO move this whole thing to the top and construct
+            element("digestID", Long.serializer().descriptor)
+            element("random", ByteArraySerializer().descriptor)
+            element("elementIdentifier", String.serializer().descriptor)
+            element("elementValue", serializer.descriptor)
+        }
+
 
     override fun deserialize(decoder: Decoder): IssuerSignedItem {
         var digestId = 0U
@@ -620,7 +631,7 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
         throw IllegalArgumentException("Could not decode value")
     }
 }
-
+/*
 object ElementValueSerializer : KSerializer<ElementValue> {
 
     @OptIn(InternalSerializationApi::class)
@@ -671,7 +682,7 @@ object ElementValueSerializer : KSerializer<ElementValue> {
         throw IllegalArgumentException("Could not decode instance of ElementValue")
     }
 
-}
+}*/
 
 fun ByteArray.stripCborTag(tag: Byte) = this.dropWhile { it == 0xd8.toByte() }.dropWhile { it == tag }.toByteArray()
 
