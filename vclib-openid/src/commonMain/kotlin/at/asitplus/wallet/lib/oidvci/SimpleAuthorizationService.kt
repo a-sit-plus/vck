@@ -14,6 +14,7 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Simple authorization server implementation, to be used for [CredentialIssuer],
@@ -168,7 +169,7 @@ class SimpleAuthorizationService(
                 accessTokenToUserInfoMutex.withLock { accessTokenToUserInfoMap[it] = userInfo }
             },
             tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
-            expires = 3600,
+            expires = 3600.seconds,
             clientNonce = clientNonceService.provideNonce(),
             authorizationDetails = params.authorizationDetails?.let {
                 // TODO supported credential identifiers!

@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.wallet.lib.data.DurationSecondsIntSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.time.Duration
 
 @Serializable
 data class TokenResponseParameters(
@@ -33,7 +35,8 @@ data class TokenResponseParameters(
      * SHOULD provide the expiration time via other means or document the default value.
      */
     @SerialName("expires_in")
-    val expires: Int, // TODO Duration
+    @Serializable(with = DurationSecondsIntSerializer::class)
+    val expires: Duration,
 
     /**
      * RFC6749:
@@ -56,7 +59,8 @@ data class TokenResponseParameters(
      * OPTIONAL JSON integer denoting the lifetime in seconds of the [clientNonce].
      */
     @SerialName("c_nonce_expires_in")
-    val clientNonceExpiresIn: Int? = null, // TODO Duration
+    @Serializable(with = DurationSecondsIntSerializer::class)
+    val clientNonceExpiresIn: Duration? = null,
 
     /**
      * OID4VCI:
@@ -73,7 +77,8 @@ data class TokenResponseParameters(
      * Endpoint in the Pre-Authorized Code Flow. If no value is provided, clients MUST use 5 as the default.
      */
     @SerialName("interval")
-    val interval: Int? = null, // TODO Duration
+    @Serializable(with = DurationSecondsIntSerializer::class)
+    val interval: Duration? = null,
 
     /**
      * OID4VP: REQUIRED when `authorization_details` parameter is used to request issuance of a certain Credential type.
