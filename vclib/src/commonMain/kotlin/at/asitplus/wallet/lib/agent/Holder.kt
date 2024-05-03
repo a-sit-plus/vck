@@ -122,18 +122,6 @@ interface Holder {
         requestedClaims: Collection<String>? = null,
     ): CreatePresentationResult?
 
-    /**
-     * Creates a [VerifiablePresentation] with the given [validCredentials].
-     *
-     * Note: The caller is responsible that only valid credentials are passed to this function!
-     */
-    // TODO dont make this public
-    suspend fun createPresentation(
-        validCredentials: List<String>,
-        challenge: String,
-        audienceId: String,
-    ): CreatePresentationResult?
-
     sealed class CreatePresentationResult {
         /**
          * [jws] contains a valid, serialized, Verifiable Presentation that can be parsed by [Verifier.verifyPresentation]

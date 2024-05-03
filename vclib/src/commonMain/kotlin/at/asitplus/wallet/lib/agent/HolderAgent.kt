@@ -278,7 +278,7 @@ class HolderAgent(
      *
      * Note: The caller is responsible that only valid credentials are passed to this function!
      */
-    override suspend fun createPresentation(
+    suspend fun createPresentation(
         validCredentials: List<String>,
         challenge: String,
         audienceId: String,

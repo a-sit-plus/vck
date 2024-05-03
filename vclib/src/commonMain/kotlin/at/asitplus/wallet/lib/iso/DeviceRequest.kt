@@ -425,8 +425,6 @@ data class IssuerSignedItem(
 /**
  * Convenience class to enable serialization of (nearly) "any" value in [IssuerSignedItem.elementValue]
  */
-// TODO Could this be anything else?
-// TODO Yes, can be boolean!
 @Serializable(with = ElementValueSerializer::class)
 data class ElementValue(
     val bytes: ByteArray? = null,
