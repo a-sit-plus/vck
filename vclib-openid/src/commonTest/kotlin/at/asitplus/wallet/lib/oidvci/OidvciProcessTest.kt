@@ -1,41 +1,48 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.crypto.datatypes.jws.JwsSigned
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
-import at.asitplus.wallet.lib.oidc.DummyCredentialDataProvider
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_PREFIX_BEARER
+import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
+import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
+import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.ktor.http.*
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
+
 class OidvciProcessTest : FunSpec({
 
-    val dataProvider = DummyCredentialDataProvider()
-    val issuer = IssuerService(
-        issuer = IssuerAgent.newDefaultInstance(
-            cryptoService = DefaultCryptoService(),
-            dataProvider = dataProvider
-        ),
-        credentialSchemes = listOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023)
+    val authorizationService = SimpleAuthorizationService(
+        dataProvider = DummyOAuth2DataProvider,
+        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023)
+    )
+    val issuer = CredentialIssuer(
+        authorizationService = authorizationService,
+        issuer = IssuerAgent.newDefaultInstance(),
+        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023),
+        buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
     )
 
     test("process with W3C VC JWT") {
-        val client = WalletService(
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+        val client = WalletService()
+        val credential = runProcessWithJwtProof(
+            authorizationService,
+            issuer,
+            client,
+            WalletService.RequestOptions(
+                ConstantIndex.AtomicAttribute2023,
+                representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
+            )
         )
-        val credential = runProcess(issuer, client)
         credential.format shouldBe CredentialFormatEnum.JWT_VC
         val serializedCredential = credential.credential
         serializedCredential.shouldNotBeNull().also { println(it) }
@@ -47,16 +54,21 @@ class OidvciProcessTest : FunSpec({
     }
 
     test("process with W3C VC SD-JWT") {
-        val client = WalletService(
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT,
+        val client = WalletService()
+        val credential = runProcessWithJwtProof(
+            authorizationService,
+            issuer,
+            client,
+            WalletService.RequestOptions(
+                ConstantIndex.AtomicAttribute2023,
+                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+            )
         )
-        val credential = runProcess(issuer, client)
-        credential.format shouldBe CredentialFormatEnum.JWT_VC_SD
+        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential
         serializedCredential.shouldNotBeNull().also { println(it) }
 
-        val jws = JwsSigned.parse(serializedCredential)
+        val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~"))
         jws.shouldNotBeNull()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
         sdJwt.shouldNotBeNull().also { println(it) }
@@ -64,17 +76,22 @@ class OidvciProcessTest : FunSpec({
     }
 
     test("process with W3C VC SD-JWT one requested claim") {
-        val client = WalletService(
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT,
-            requestedAttributes = listOf("family-name")
+        val client = WalletService()
+        val credential = runProcessWithJwtProof(
+            authorizationService,
+            issuer,
+            client,
+            WalletService.RequestOptions(
+                ConstantIndex.AtomicAttribute2023,
+                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                requestedAttributes = setOf("family_name")
+            )
         )
-        val credential = runProcess(issuer, client)
-        credential.format shouldBe CredentialFormatEnum.JWT_VC_SD
+        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential
         serializedCredential.shouldNotBeNull().also { println(it) }
 
-        val jws = JwsSigned.parse(serializedCredential)
+        val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~"))
         jws.shouldNotBeNull()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
         sdJwt.shouldNotBeNull().also { println(it) }
@@ -82,11 +99,16 @@ class OidvciProcessTest : FunSpec({
     }
 
     test("process with ISO mobile driving licence") {
-        val client = WalletService(
-            credentialScheme = ConstantIndex.MobileDrivingLicence2023,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+        val client = WalletService()
+        val credential = runProcessWithCwtProof(
+            authorizationService,
+            issuer,
+            client,
+            WalletService.RequestOptions(
+                ConstantIndex.MobileDrivingLicence2023,
+                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            )
         )
-        val credential = runProcess(issuer, client)
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC
         val serializedCredential = credential.credential
         serializedCredential.shouldNotBeNull().also { println(it) }
@@ -99,12 +121,17 @@ class OidvciProcessTest : FunSpec({
     }
 
     test("process with ISO mobile driving licence one requested claim") {
-        val client = WalletService(
-            credentialScheme = ConstantIndex.MobileDrivingLicence2023,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-            requestedAttributes = listOf(MobileDrivingLicenceDataElements.DOCUMENT_NUMBER)
+        val client = WalletService()
+        val credential = runProcessWithCwtProof(
+            authorizationService,
+            issuer,
+            client,
+            WalletService.RequestOptions(
+                ConstantIndex.MobileDrivingLicence2023,
+                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                requestedAttributes = setOf(MobileDrivingLicenceDataElements.DOCUMENT_NUMBER)
+            )
         )
-        val credential = runProcess(issuer, client)
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC
         val serializedCredential = credential.credential
         serializedCredential.shouldNotBeNull().also { println(it) }
@@ -117,11 +144,16 @@ class OidvciProcessTest : FunSpec({
     }
 
     test("process with ISO atomic attributes") {
-        val client = WalletService(
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
-            credentialRepresentation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+        val client = WalletService()
+        val credential = runProcessWithCwtProof(
+            authorizationService,
+            issuer,
+            client,
+            WalletService.RequestOptions(
+                ConstantIndex.AtomicAttribute2023,
+                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
+            )
         )
-        val credential = runProcess(issuer, client)
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC
         val serializedCredential = credential.credential
         serializedCredential.shouldNotBeNull().also { println(it) }
@@ -132,18 +164,39 @@ class OidvciProcessTest : FunSpec({
 
 })
 
-private suspend fun runProcess(
-    issuer: IssuerService,
-    client: WalletService
+private suspend fun runProcessWithJwtProof(
+    authorizationService: SimpleAuthorizationService,
+    issuer: CredentialIssuer,
+    client: WalletService,
+    requestOptions: WalletService.RequestOptions,
 ): CredentialResponseParameters {
-    val metadata = issuer.metadata
-    val authnRequest = client.createAuthRequest()
-    val codeUrl = issuer.authorize(authnRequest)
-    codeUrl.shouldNotBeNull()
-    val code = Url(codeUrl).parameters[GRANT_TYPE_CODE]
+    val token = runProcessGetToken(authorizationService, client, requestOptions)
+    val credentialRequest = client.createCredentialRequestJwt(token, issuer.metadata, requestOptions).getOrThrow()
+    return issuer.credential(token.accessToken, credentialRequest).getOrThrow()
+}
+
+private suspend fun runProcessWithCwtProof(
+    authorizationService: SimpleAuthorizationService,
+    issuer: CredentialIssuer,
+    client: WalletService,
+    requestOptions: WalletService.RequestOptions,
+): CredentialResponseParameters {
+    val token = runProcessGetToken(authorizationService, client, requestOptions)
+    val credentialRequest = client.createCredentialRequestCwt(token, issuer.metadata, requestOptions).getOrThrow()
+    return issuer.credential(token.accessToken, credentialRequest).getOrThrow()
+}
+
+private suspend fun runProcessGetToken(
+    authorizationService: SimpleAuthorizationService,
+    client: WalletService,
+    requestOptions: WalletService.RequestOptions,
+): TokenResponseParameters {
+    val authnRequest = client.createAuthRequest(requestOptions)
+    val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+    authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+    val code = authnResponse.params.code
     code.shouldNotBeNull()
-    val tokenRequest = client.createTokenRequestParameters(code)
-    val token = issuer.token(tokenRequest)
-    val credentialRequest = client.createCredentialRequest(token, metadata).getOrThrow()
-    return issuer.credential(TOKEN_PREFIX_BEARER + token.accessToken, credentialRequest)
+    val tokenRequest = client.createTokenRequestParameters(authnResponse.params, requestOptions)
+    val token = authorizationService.token(tokenRequest).getOrThrow()
+    return token
 }

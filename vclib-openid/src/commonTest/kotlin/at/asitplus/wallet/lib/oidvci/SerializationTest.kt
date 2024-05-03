@@ -7,7 +7,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import io.ktor.http.encodeURLParameter
+import io.ktor.http.*
 import kotlinx.serialization.encodeToString
 import kotlin.random.Random
 
@@ -19,7 +19,9 @@ class SerializationTest : FunSpec({
         authorizationDetails = AuthorizationDetails(
             type = randomString(),
             format = CredentialFormatEnum.JWT_VC,
-            types = arrayOf(VERIFIABLE_CREDENTIAL, randomString()),
+            credentialDefinition = SupportedCredentialFormatDefinition(
+                types = listOf(VERIFIABLE_CREDENTIAL, randomString()),
+            )
         ),
         redirectUrl = randomString(),
         scope = randomString(),
@@ -35,7 +37,6 @@ class SerializationTest : FunSpec({
         clientId = randomString(),
         preAuthorizedCode = randomString(),
         codeVerifier = randomString(),
-        userPin = randomString(),
     )
 
     fun createTokenResponse() = TokenResponseParameters(
@@ -52,7 +53,9 @@ class SerializationTest : FunSpec({
 
     fun createCredentialRequest() = CredentialRequestParameters(
         format = CredentialFormatEnum.JWT_VC,
-        types = arrayOf(randomString(), randomString()),
+        credentialDefinition = SupportedCredentialFormatDefinition(
+            types = listOf(randomString(), randomString()),
+        ),
         proof = CredentialRequestProof(
             proofType = randomString(),
             jwt = randomString()
@@ -124,8 +127,8 @@ class SerializationTest : FunSpec({
         val params = createCredentialRequest()
         val json = at.asitplus.wallet.lib.oidc.jsonSerializer.encodeToString(params)
         println(json)
-        json shouldContain "\"types\":["
-        json shouldContain "\"${params.types.first()}\""
+        json shouldContain "\"type\":["
+        json shouldContain "\"${params.credentialDefinition?.types?.first()}\""
         val parsed: CredentialRequestParameters =
             at.asitplus.wallet.lib.oidc.jsonSerializer.decodeFromString<CredentialRequestParameters>(json)
         parsed shouldBe params

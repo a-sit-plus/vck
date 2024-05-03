@@ -90,35 +90,17 @@ class OidcSiopWallet(
         )
     }
 
-    /**
-     * Possible outcomes of creating the OIDC Authentication Response
-     */
-    sealed class AuthenticationResponseResult {
-        /**
-         * Wallet returns the [AuthenticationResponseParameters] as form parameters, which shall be posted to
-         * `redirect_uri of the Relying Party, i.e. clients should execute that POST with [params] to [url].
-         */
-        data class Post(val url: String, val params: Map<String, String>) :
-            AuthenticationResponseResult()
-
-        /**
-         * Wallet returns the [AuthenticationResponseParameters] as fragment parameters appended to the
-         * `redirect_uri` of the Relying Party, i.e. clients should simply open the [url].
-         */
-        data class Redirect(val url: String) : AuthenticationResponseResult()
-    }
-
     val metadata: IssuerMetadata by lazy {
         IssuerMetadata(
             issuer = clientId,
             authorizationEndpointUrl = clientId,
-            responseTypesSupported = arrayOf(ID_TOKEN),
-            scopesSupported = arrayOf(SCOPE_OPENID),
-            subjectTypesSupported = arrayOf("pairwise", "public"),
-            idTokenSigningAlgorithmsSupported = arrayOf(jwsService.algorithm.identifier),
-            requestObjectSigningAlgorithmsSupported = arrayOf(jwsService.algorithm.identifier),
-            subjectSyntaxTypesSupported = arrayOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
-            idTokenTypesSupported = arrayOf(IdTokenType.SUBJECT_SIGNED),
+            responseTypesSupported = setOf(ID_TOKEN),
+            scopesSupported = setOf(SCOPE_OPENID),
+            subjectTypesSupported = setOf("pairwise", "public"),
+            idTokenSigningAlgorithmsSupported = setOf(jwsService.algorithm.identifier),
+            requestObjectSigningAlgorithmsSupported = setOf(jwsService.algorithm.identifier),
+            subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
+            idTokenTypesSupported = setOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,
         )
     }
@@ -254,7 +236,7 @@ class OidcSiopWallet(
                             }
                         }
                         .buildString()
-                    KmmResult.success(AuthenticationResponseResult.Redirect(url))
+                    KmmResult.success(AuthenticationResponseResult.Redirect(url, responseParams))
                 }
 
                 else -> {
@@ -266,7 +248,7 @@ class OidcSiopWallet(
                             encodedFragment = responseParams.encodeToParameters().formUrlEncode()
                         }
                         .buildString()
-                    KmmResult.success(AuthenticationResponseResult.Redirect(url))
+                    KmmResult.success(AuthenticationResponseResult.Redirect(url, responseParams))
                 }
             }
         },
@@ -287,6 +269,7 @@ class OidcSiopWallet(
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("client_id_scheme is redirect_uri, but metadata is not set") }
         }
+        // TODO implement x509_san_dns, x509_san_uri, as implemented by EUDI verifier
         val clientMetadata = params.clientMetadata
             ?: params.clientMetadataUri?.let { uri ->
                 remoteResourceRetriever.invoke(uri)?.let { RelyingPartyMetadata.deserialize(it) }

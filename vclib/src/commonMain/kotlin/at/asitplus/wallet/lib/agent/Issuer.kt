@@ -69,7 +69,7 @@ interface Issuer {
      * The cryptographic algorithms supported by this issuer, i.e. the ones from its cryptographic service,
      * used to sign credentials.
      */
-    val cryptoAlgorithms: List<CryptoAlgorithm>
+    val cryptoAlgorithms: Set<CryptoAlgorithm>
 
     /**
      * Issues credentials for some [attributeTypes] (i.e. some of
@@ -77,12 +77,16 @@ interface Issuer {
      * key in [subjectPublicKey] in the format specified by [representation].
      * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
      * [claimNames] to request only some claims (if supported by the representation).
+     *
+     * @param dataProviderOverride Set this parameter to override the default [IssuerCredentialDataProvider] for this
+     *                             issuing process
      */
     suspend fun issueCredential(
         subjectPublicKey: CryptoPublicKey,
         attributeTypes: Collection<String>,
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>? = null,
+        dataProviderOverride: IssuerCredentialDataProvider? = null,
     ): IssuedCredentialResult
 
     /**

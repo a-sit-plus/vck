@@ -147,7 +147,7 @@ private suspend fun runProcess(
     ).also { println(it) }
 
     val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-    authnResponse.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Redirect>().also { println(it) }
+    authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().also { println(it) }
 
     val result = verifierSiop.validateAuthnResponse(authnResponse.url)
     result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()

@@ -8,6 +8,8 @@ object OpenIdConstants {
 
     const val GRANT_TYPE_CODE = "code"
 
+    const val GRANT_TYPE_PRE_AUTHORIZED_CODE = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+
     const val TOKEN_PREFIX_BEARER = "Bearer "
 
     const val TOKEN_TYPE_BEARER = "bearer"
@@ -24,6 +26,8 @@ object OpenIdConstants {
 
     const val SCOPE_PROFILE = "profile"
 
+    const val CODE_CHALLENGE_METHOD_SHA256 = "S256"
+
     /**
      * To be used in [at.asitplus.wallet.lib.oidvci.AuthorizationDetails.type]
      */
@@ -36,7 +40,20 @@ object OpenIdConstants {
          */
         const val JWT = "jwt"
 
+        /**
+         * Proof type in [at.asitplus.wallet.lib.oidvci.CredentialRequestProof]
+         */
+        const val CWT = "cwt"
+
+        /**
+         * Constant from OID4VCI
+         */
         const val JWT_HEADER_TYPE = "openid4vci-proof+jwt"
+
+        /**
+         * Constant from OID4VCI
+         */
+        const val CWT_HEADER_TYPE = "openid4vci-proof+cwt"
     }
 
     /**
@@ -144,6 +161,11 @@ object OpenIdConstants {
          * Invalid request in general: `invalid_request`
          */
         const val INVALID_REQUEST = "invalid_request"
+
+        /**
+         * Invalid grant: `invalid_grant`
+         */
+        const val INVALID_GRANT = "invalid_grant"
 
         /**
          * Invalid or missing proofs in OpenId4VCI: `invalid_or_missing_proof`

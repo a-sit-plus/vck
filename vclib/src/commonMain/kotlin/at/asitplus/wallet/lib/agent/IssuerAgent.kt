@@ -36,6 +36,7 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.ktor.util.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -58,7 +59,7 @@ class IssuerAgent(
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
     override val identifier: String,
-    override val cryptoAlgorithms: List<CryptoAlgorithm>,
+    override val cryptoAlgorithms: Set<CryptoAlgorithm>,
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
 ) : Issuer {
 
@@ -80,7 +81,7 @@ class IssuerAgent(
             coseService = DefaultCoseService(cryptoService),
             dataProvider = dataProvider,
             identifier = cryptoService.publicKey.didEncoded,
-            cryptoAlgorithms = listOf(cryptoService.algorithm),
+            cryptoAlgorithms = setOf(cryptoService.algorithm),
             timePeriodProvider = timePeriodProvider,
             clock = clock,
         )
@@ -92,22 +93,28 @@ class IssuerAgent(
      * key in [subjectPublicKey] in the format specified by [representation].
      * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
      * [claimNames] to request only some claims (if supported by the representation).
+     *
+     * @param dataProviderOverride Set this parameter to override the default [dataProvider] for this
+     *                             issuing process
      */
     override suspend fun issueCredential(
         subjectPublicKey: CryptoPublicKey,
         attributeTypes: Collection<String>,
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>?,
+        dataProviderOverride: IssuerCredentialDataProvider?,
     ): Issuer.IssuedCredentialResult {
         val failed = mutableListOf<Issuer.FailedAttribute>()
         val successful = mutableListOf<Issuer.IssuedCredential>()
         for (attributeType in attributeTypes) {
             val scheme = AttributeIndex.resolveAttributeType(attributeType)
+                ?: AttributeIndex.resolveIsoNamespace(attributeType)
+                ?: AttributeIndex.resolveSchemaUri(attributeType)
             if (scheme == null) {
                 failed += Issuer.FailedAttribute(attributeType, IllegalArgumentException("type not resolved to scheme"))
                 continue
             }
-            dataProvider.getCredential(subjectPublicKey, scheme, representation, claimNames).fold(
+            (dataProviderOverride ?: dataProvider).getCredential(subjectPublicKey, scheme, representation, claimNames).fold(
                 onSuccess = { toBeIssued ->
                     toBeIssued.forEach { credentialToBeIssued ->
                         issueCredential(credentialToBeIssued, subjectPublicKey, scheme).also { result ->

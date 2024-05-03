@@ -3,14 +3,13 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsSigned
-import at.asitplus.wallet.lib.LibraryInitializer
+import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
@@ -21,9 +20,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 
 /**
  * Tests our SIOP implementation against EUDI Ref Impl.,
@@ -36,34 +32,23 @@ class OidcSiopInteropTest : FreeSpec({
     lateinit var holderSiop: OidcSiopWallet
 
     beforeSpec {
-        LibraryInitializer.registerExtensionLibrary(
-            LibraryInitializer.ExtensionLibraryInfo(
-                credentialScheme = EudiwPidCredentialScheme,
-                serializersModule = SerializersModule {
-                    polymorphic(CredentialSubject::class) {
-                        subclass(EudiwPid1::class)
-                    }
-                },
-            )
-        )
+        at.asitplus.wallet.eupid.Initializer.initWithVcLib()
     }
 
     beforeEach {
         holderCryptoService = DefaultCryptoService()
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
         runBlocking {
-            val issuedCredential = IssuerAgent.newDefaultInstance(
-                DefaultCryptoService(),
-                dataProvider = DummyCredentialDataProvider(),
-            ).issueCredential(
-                subjectPublicKey = holderCryptoService.publicKey,
-                attributeTypes = listOf(EudiwPidCredentialScheme.vcType),
-                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                claimNames = EudiwPidCredentialScheme.claimNames
-            )
-
             holderAgent.storeCredentials(
-                issuedCredential.toStoreCredentialInput()
+                IssuerAgent.newDefaultInstance(
+                    DefaultCryptoService(),
+                    dataProvider = DummyCredentialDataProvider(),
+                ).issueCredential(
+                    subjectPublicKey = holderCryptoService.publicKey,
+                    attributeTypes = listOf(EuPidScheme.vcType),
+                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    claimNames = EuPidScheme.claimNames
+                ).toStoreCredentialInput()
             )
         }
     }
