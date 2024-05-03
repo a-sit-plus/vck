@@ -12,8 +12,6 @@ plugins {
     id("at.asitplus.gradle.vclib-conventions")
     id("org.jetbrains.dokka")
     id("signing")
-
-    alias(libs.plugins.antlrKotlinPlugin)
 }
 
 /* required for maven publication */
