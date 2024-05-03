@@ -68,12 +68,6 @@ class DummyCredentialDataProvider(
             digestId = digestId,
             random = Random.nextBytes(16),
             elementIdentifier = name,
-            elementValue = when (value) {
-                is String -> ElementValue(string = value)
-                is ByteArray -> ElementValue(bytes = value)
-                is LocalDate -> ElementValue(date = value)
-                is Boolean -> ElementValue(boolean = value)
-                else -> ElementValue(string = value.toString())
-            }
+            elementValue = value
         )
 }

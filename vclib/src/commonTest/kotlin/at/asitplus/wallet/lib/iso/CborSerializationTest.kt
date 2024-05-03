@@ -334,17 +334,17 @@ class CborSerializationTest : FreeSpec({
             document.issuerSigned.namespaces?.get(ConstantIndex.MobileDrivingLicence2023.isoNamespace)
         issuerSignedList.shouldNotBeNull()
         issuerSignedList.findItem(0U).elementIdentifier shouldBe FAMILY_NAME
-        issuerSignedList.findItem(0U).elementValue.string shouldBe "Doe"
+        issuerSignedList.findItem(0U).elementValue shouldBe "Doe"
         issuerSignedList.findItem(3U).elementIdentifier shouldBe ISSUE_DATE
-        issuerSignedList.findItem(3U).elementValue.date shouldBe LocalDate.parse("2019-10-20")
+        issuerSignedList.findItem(3U).elementValue shouldBe LocalDate.parse("2019-10-20")
         issuerSignedList.findItem(4U).elementIdentifier shouldBe EXPIRY_DATE
-        issuerSignedList.findItem(4U).elementValue.date shouldBe LocalDate.parse("2024-10-20")
+        issuerSignedList.findItem(4U).elementValue shouldBe LocalDate.parse("2024-10-20")
         issuerSignedList.findItem(7U).elementIdentifier shouldBe DOCUMENT_NUMBER
-        issuerSignedList.findItem(7U).elementValue.string shouldBe "123456789"
+        issuerSignedList.findItem(7U).elementValue shouldBe "123456789"
         issuerSignedList.findItem(8U).elementIdentifier shouldBe PORTRAIT
-        issuerSignedList.findItem(8U).elementValue.bytes.shouldNotBeNull()
+        issuerSignedList.findItem(8U).elementValue.shouldNotBeNull()
         issuerSignedList.findItem(9U).elementIdentifier shouldBe DRIVING_PRIVILEGES
-        val drivingPrivilege = issuerSignedList.findItem(9U).elementValue.drivingPrivilege
+        val drivingPrivilege = issuerSignedList.findItem(9U).elementValue as Array<DrivingPrivilege>
         drivingPrivilege.shouldNotBeNull()
         drivingPrivilege shouldContain DrivingPrivilege(
             vehicleCategoryCode = "A",

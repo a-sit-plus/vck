@@ -269,7 +269,7 @@ class Verifier {
         key: String
     ) {
         val issuerSignedItem = issuerSignedItems.entries.first { it.value.elementIdentifier == key }
-        val elementValue = issuerSignedItem.value.elementValue.string
+        val elementValue = issuerSignedItem.value.elementValue.toString()
         elementValue.shouldNotBeNull()
         val issuerHash = mdlItems.entries.first { it.key == issuerSignedItem.value.digestId }
         issuerHash.shouldNotBeNull()
@@ -284,7 +284,7 @@ private fun extractDataString(
     key: String
 ): String {
     val element = mdlItems.entries.first { it.value.elementIdentifier == key }
-    val value = element.value.elementValue.string
+    val value = element.value.elementValue.toString()
     value.shouldNotBeNull()
     return value
 }
@@ -294,7 +294,7 @@ private fun extractDataDrivingPrivileges(
     key: String
 ): Array<DrivingPrivilege> {
     val element = mdlItems.entries.first { it.value.elementIdentifier == key }
-    val value = element.value.elementValue.drivingPrivilege
+    val value = element.value.elementValue as Array<DrivingPrivilege>
     value.shouldNotBeNull()
     return value
 }
@@ -304,12 +304,12 @@ fun buildIssuerSignedItem(elementIdentifier: String, elementValue: String, diges
     digestId = digestId,
     random = Random.nextBytes(16),
     elementIdentifier = elementIdentifier,
-    elementValue = ElementValue(string = elementValue)
+    elementValue = elementValue
 )
 
 fun buildIssuerSignedItem(elementIdentifier: String, elementValue: DrivingPrivilege, digestId: UInt) = IssuerSignedItem(
     digestId = digestId,
     random = Random.nextBytes(16),
     elementIdentifier = elementIdentifier,
-    elementValue = ElementValue(drivingPrivilege = arrayOf(elementValue))
+    elementValue = arrayOf(elementValue)
 )

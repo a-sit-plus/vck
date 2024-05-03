@@ -24,11 +24,13 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.descriptors.buildSerialDescriptor
 import kotlinx.serialization.descriptors.listSerialDescriptor
 import kotlinx.serialization.descriptors.mapSerialDescriptor
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.encoding.CompositeDecoder
+import kotlinx.serialization.encoding.CompositeEncoder
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.encoding.decodeStructure
@@ -358,7 +360,7 @@ object IssuerSignedListSerializer : KSerializer<IssuerSignedList> {
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
  */
-@Serializable
+@Serializable(with = IssuerSignedItemSerializer::class)
 data class IssuerSignedItem(
     @SerialName("digestID")
     val digestId: UInt,
@@ -368,7 +370,7 @@ data class IssuerSignedItem(
     @SerialName("elementIdentifier")
     val elementIdentifier: String,
     @SerialName("elementValue")
-    val elementValue: ElementValue,
+    val elementValue: Any,
 ) {
 
     fun serialize() = cborSerializer.encodeToByteArray(this)
@@ -536,6 +538,87 @@ object ByteStringWrapperItemsRequestSerializer : KSerializer<ByteStringWrapper<I
         return ByteStringWrapper(cborSerializer.decodeFromByteArray(bytes), bytes)
     }
 
+}
+
+object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
+
+    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("IssuerSignedItem") {
+        element("digestID", Long.serializer().descriptor)
+        element("random", ByteArraySerializer().descriptor)
+        element("elementIdentifier", String.serializer().descriptor)
+        element("elementValue", String.serializer().descriptor)
+    }
+
+    override fun serialize(encoder: Encoder, value: IssuerSignedItem) {
+        encoder.encodeStructure(descriptor) {
+            encodeLongElement(descriptor, 0, value.digestId.toLong())
+            encodeSerializableElement(descriptor, 1, ByteArraySerializer(), value.random)
+            encodeStringElement(descriptor, 2, value.elementIdentifier)
+            encodeAnything(value, 3)
+        }
+    }
+
+    @OptIn(InternalSerializationApi::class)
+    @Suppress("UNCHECKED_CAST")
+    private fun CompositeEncoder.encodeAnything(value: IssuerSignedItem, index: Int) {
+        when (val it = value.elementValue) {
+            is String -> encodeStringElement(descriptor, index, it)
+            is Int -> encodeIntElement(descriptor, index, it)
+            // TODO write tag 1004
+            is LocalDate -> encodeSerializableElement(descriptor, index, LocalDate.serializer(), it)
+            is Boolean -> encodeBooleanElement(descriptor, index, it)
+            is ByteArray -> encodeSerializableElement(descriptor, index, ByteArraySerializer(), it)
+            is Array<*> -> if (it.isNotEmpty() && it[0] is DrivingPrivilege)
+                encodeSerializableElement(
+                    descriptor,
+                    3,
+                    ArraySerializer(DrivingPrivilege.serializer()),
+                    it as Array<DrivingPrivilege>
+                )
+        }
+    }
+
+    override fun deserialize(decoder: Decoder): IssuerSignedItem {
+        var digestId = 0U
+        lateinit var random: ByteArray
+        lateinit var elementIdentifier: String
+        lateinit var elementValue: Any
+        decoder.decodeStructure(descriptor) {
+            while (true) {
+                val name = decodeStringElement(descriptor, 0)
+                val index = descriptor.getElementIndex(name)
+                //val elementDescriptor = descriptor.getElementDescriptor(index)
+                when (name) {
+                    "digestID" -> digestId = decodeLongElement(descriptor, index).toUInt()
+                    "random" -> random = decodeSerializableElement(descriptor, index, ByteArraySerializer())
+                    "elementIdentifier" -> elementIdentifier = decodeStringElement(descriptor, index)
+                    "elementValue" -> elementValue = decodeAnything(index)
+                }
+                if (index == 3) break
+            }
+        }
+        return IssuerSignedItem(
+            digestId = digestId,
+            random = random,
+            elementIdentifier = elementIdentifier,
+            elementValue = elementValue
+        )
+    }
+
+    private fun CompositeDecoder.decodeAnything(index: Int): Any {
+        runCatching { return decodeStringElement(descriptor, index) }
+        runCatching { return decodeSerializableElement(descriptor, index, ByteArraySerializer()) }
+        runCatching {
+            return decodeSerializableElement(
+                descriptor,
+                index,
+                ArraySerializer(DrivingPrivilege.serializer())
+            )
+        }
+        runCatching { return decodeBooleanElement(descriptor, index) }
+        runCatching { return decodeSerializableElement(descriptor, index, LocalDate.serializer()) }
+        throw IllegalArgumentException("Could not decode value")
+    }
 }
 
 object ElementValueSerializer : KSerializer<ElementValue> {
