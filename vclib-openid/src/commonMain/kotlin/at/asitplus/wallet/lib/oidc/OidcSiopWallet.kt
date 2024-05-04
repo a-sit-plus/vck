@@ -311,7 +311,7 @@ class OidcSiopWallet(
             issuer = agentJsonWebKey.jwkThumbprint,
             subject = agentJsonWebKey.jwkThumbprint,
             subjectJwk = agentJsonWebKey,
-            audience = params.redirectUrl ?: params.clientId,
+            audience = params.redirectUrl ?: params.clientId ?: agentJsonWebKey.jwkThumbprint,
             issuedAt = now,
             expiration = now + 60.seconds,
             nonce = params.nonce,
