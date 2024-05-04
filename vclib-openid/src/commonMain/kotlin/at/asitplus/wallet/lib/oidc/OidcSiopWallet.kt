@@ -6,7 +6,9 @@ import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
@@ -66,9 +68,9 @@ class OidcSiopWallet(
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true }
 ) {
     companion object {
-        fun newInstance(
-            holder: Holder,
-            cryptoService: CryptoService,
+        fun newDefaultInstance(
+            cryptoService: CryptoService = DefaultCryptoService(),
+            holder: Holder = HolderAgent.newDefaultInstance(cryptoService),
             jwsService: JwsService = DefaultJwsService(cryptoService),
             clock: Clock = Clock.System,
             clientId: String = "https://wallet.a-sit.at/",
@@ -106,7 +108,11 @@ class OidcSiopWallet(
      * [AuthenticationResponseResult].
      */
     suspend fun createAuthnResponse(input: String): KmmResult<AuthenticationResponseResult> {
-        return createAuthnResponse(retrieveAuthenticationRequestParameters(input))
+        val parameters = parseAuthenticationRequestParameters(input).getOrElse {
+            return KmmResult.failure<AuthenticationResponseResult>(it)
+                .also { Napier.w("Could not parse authentication request: $input") }
+        }
+        return createAuthnResponse(parameters)
     }
 
     /**
@@ -114,60 +120,41 @@ class OidcSiopWallet(
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun retrieveAuthenticationRequestParameters(input: String): AuthenticationRequestParameters {
-        val params = kotlin.run {
-            // maybe it's already a request jws?
+    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParameters> {
+        val parsedParams = kotlin.run { // maybe it is a request JWS
             parseRequestObjectJws(input)
-        } ?: kotlin.runCatching {
-            // maybe it's a url that already encodes the authentication request as url parameters
-            Url(input).parameters.flattenEntries().toMap()
-                .decodeFromUrlQuery<AuthenticationRequestParameters>()
-        }.getOrNull() ?: kotlin.runCatching {
-            // maybe it's a url that yields the request object in some other way
-            remoteResourceRetriever.invoke(input)?.let { retrieveAuthenticationRequestParameters(it) }
+        } ?: kotlin.runCatching { // maybe it's in the URL parameters
+            Url(input).parameters.flattenEntries().toMap().decodeFromUrlQuery<AuthenticationRequestParameters>()
+        }.getOrNull() ?: kotlin.runCatching {  // maybe it is already a JSON string
+            AuthenticationRequestParameters.deserialize(input).getOrNull()
         }.getOrNull()
-        ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+        ?: return KmmResult.failure<AuthenticationRequestParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
             .also { Napier.w("Could not parse authentication request: $input") }
 
-        val requestParams = params.requestUri?.let {
-            // go down the rabbit hole following the request_uri parameters
-            retrieveAuthenticationRequestParameters(it).also { newParams ->
-                if (params.clientId != newParams.clientId) {
-                    throw OAuth2Exception(Errors.INVALID_REQUEST)
-                        .also { Napier.e("Client ids do not match: before: $params, after: $newParams") }
-                }
-            }
-        } ?: params
-
-        val authenticationRequestParameters = requestParams.let { extractRequestObject(it) ?: it }
-        if (authenticationRequestParameters.clientId != requestParams.clientId) {
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
-                .also { Napier.w("Client ids do not match: outer: $requestParams, inner: $authenticationRequestParameters") }
+        val extractedParams = parsedParams.let { extractRequestObject(it) ?: it }
+        if (parsedParams.clientId != null && extractedParams.clientId != parsedParams.clientId) {
+            return KmmResult.failure<AuthenticationRequestParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+                .also { Napier.w("ClientIds changed: ${parsedParams.clientId} to ${extractedParams.clientId}") }
         }
-        return authenticationRequestParameters
+        return KmmResult.success(extractedParams)
     }
 
-    private fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParameters? {
+    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParameters? =
         params.request?.let { requestObject ->
-            return parseRequestObjectJws(requestObject)
+            parseRequestObjectJws(requestObject)
+        } ?: params.requestUri?.let { uri ->
+            remoteResourceRetriever.invoke(uri)?.let { parseAuthenticationRequestParameters(it).getOrNull() }
         }
-        return null
-    }
 
     private fun parseRequestObjectJws(requestObject: String): AuthenticationRequestParameters? {
-        JwsSigned.parse(requestObject)?.let { jws ->
+        return JwsSigned.parse(requestObject)?.let { jws ->
             val params = AuthenticationRequestParameters.deserialize(jws.payload.decodeToString()).getOrElse {
                 return null
-                    .also { Napier.w("parseRequestObjectJws: Deserialization failed", it)}
+                    .also { Napier.w("parseRequestObjectJws: Deserialization failed", it) }
             }
-            val signatureVerified = requestObjectJwsVerifier.invoke(jws, params)
-            if (!signatureVerified) {
-                Napier.w("parseRequestObjectJws: Signature not verified for $jws")
-                return null
-            }
-            return params
+            if (requestObjectJwsVerifier.invoke(jws, params)) params else null
+                .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
         }
-        return null
     }
 
     /**
@@ -205,7 +192,8 @@ class OidcSiopWallet(
                         payload = responseParams.serialize().encodeToByteArray()
                     ).fold(
                         onSuccess = { responseParamsJws ->
-                            val jarm = AuthenticationResponseParameters(response = responseParamsJws.serialize())
+                            val jarm =
+                                AuthenticationResponseParameters(response = responseParamsJws.serialize())
                             KmmResult.success(
                                 AuthenticationResponseResult.Post(
                                     url = url,

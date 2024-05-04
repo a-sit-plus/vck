@@ -61,7 +61,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             )
         }
 
-        holderSiop = OidcSiopWallet.newInstance(
+        holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService
         )

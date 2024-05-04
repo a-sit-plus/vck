@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
@@ -155,7 +156,7 @@ class OidcSiopInteropTest : FreeSpec({
 
         """.trimIndent()
 
-        holderSiop = OidcSiopWallet.newInstance(
+        holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
             remoteResourceRetriever = {
@@ -282,6 +283,31 @@ class OidcSiopInteropTest : FreeSpec({
         cm.idTokenSignedResponseAlg shouldBe JwsAlgorithm.RS256
         cm.jsonWebKeySetUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/jarm/" +
                 "xgagB1vsIrWhMLixoJTCVZZvOHsZ8QrulEFxc0bjJdMRyzqO6j2-UB00gmOZraocfoknlxXY-kaoLlX8kygqxw/jwks.json"
+    }
+
+    "Request in request URI" {
+        val input = "mdoc-openid4vp://?request_uri=https%3A%2F%2Fexample.com%2Fd15b5b6f-7821-4031-9a18-ebe491b720a6"
+        val jws = DefaultJwsService(DefaultCryptoService()).createSignedJwsAddingParams(
+            payload = AuthenticationRequestParameters(
+                nonce = "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ==",
+                state = "ef391e30-bacc-4441-af5d-7f42fb682e02",
+                responseUrl = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
+                clientId = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
+            ).serialize().encodeToByteArray()
+        ).getOrThrow().serialize()
+
+        val wallet = OidcSiopWallet.newDefaultInstance(
+            remoteResourceRetriever = { url ->
+                if (url == "https://example.com/d15b5b6f-7821-4031-9a18-ebe491b720a6") jws else null
+            }
+        )
+
+        val parsed = wallet.parseAuthenticationRequestParameters(input).getOrThrow()
+
+        parsed.nonce shouldBe "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ=="
+        parsed.state shouldBe "ef391e30-bacc-4441-af5d-7f42fb682e02"
+        parsed.responseUrl shouldBe "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02"
+        parsed.clientId shouldBe parsed.responseUrl
     }
 
 })
