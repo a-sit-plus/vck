@@ -263,9 +263,10 @@ class OidcSiopWallet(
             }
             ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("Could not parse audience") }
-        if (clientMetadata.subjectSyntaxTypesSupported == null || URN_TYPE_JWK_THUMBPRINT !in clientMetadata.subjectSyntaxTypesSupported)
-            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
-                .also { Napier.w("Incompatible subject syntax types algorithms") }
+        // TODO Check removed for EUDI interop
+//        if (clientMetadata.subjectSyntaxTypesSupported == null || URN_TYPE_JWK_THUMBPRINT !in clientMetadata.subjectSyntaxTypesSupported)
+//            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
+//                .also { Napier.w("Incompatible subject syntax types algorithms") }
         if (params.redirectUrl != null) {
             if (params.clientId != params.redirectUrl)
                 return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
@@ -278,15 +279,18 @@ class OidcSiopWallet(
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("vp_token not requested") }
         if (clientMetadata.vpFormats != null) {
-            if (clientMetadata.vpFormats.jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true)
-                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                    .also { Napier.w("Incompatible JWT algorithms") }
-            if (clientMetadata.vpFormats.jwtSd?.algorithms?.contains(jwsService.algorithm.identifier) != true)
-                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                    .also { Napier.w("Incompatible JWT algorithms") }
-            if (clientMetadata.vpFormats.msoMdoc?.algorithms?.contains(jwsService.algorithm.identifier) != true)
-                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                    .also { Napier.w("Incompatible JWT algorithms") }
+            if (clientMetadata.vpFormats.jwtVp != null
+                && clientMetadata.vpFormats.jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true
+            ) return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
+                .also { Napier.w("Incompatible JWT algorithms") }
+            if (clientMetadata.vpFormats.jwtSd != null
+                && clientMetadata.vpFormats.jwtSd?.algorithms?.contains(jwsService.algorithm.identifier) != true
+            ) return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
+                .also { Napier.w("Incompatible JWT algorithms") }
+            if (clientMetadata.vpFormats.msoMdoc != null
+                && clientMetadata.vpFormats.msoMdoc?.algorithms?.contains(jwsService.algorithm.identifier) != true
+            ) return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
+                .also { Napier.w("Incompatible JWT algorithms") }
         }
         if (params.nonce == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
@@ -318,18 +322,12 @@ class OidcSiopWallet(
             ?.flatMap { it.fields?.toList() ?: listOf() }
             ?.firstOrNull { it.path.toList().contains("$.mdoc.namespace") }
             ?.filter?.const
+            ?: params.presentationDefinition?.inputDescriptors?.map { it.id }?.firstOrNull()
         val requestedSchemes = mutableListOf<ConstantIndex.CredentialScheme>()
         if (requestedNamespace != null) {
-            requestedSchemes.add(AttributeIndex.resolveIsoNamespace(requestedNamespace)
-                ?: return KmmResult.failure<AuthenticationResponseParameters>(
-                    OAuth2Exception(Errors.USER_CANCELLED)
-                )
-                    .also { Napier.w("Could not resolve requested namespace $requestedNamespace") })
+            AttributeIndex.resolveIsoNamespace(requestedNamespace)?.let { requestedSchemes.add(it) }
             requestedAttributeTypes.forEach { requestedAttributeTyp ->
-                requestedSchemes.add(AttributeIndex.resolveAttributeType(requestedAttributeTyp)
-                    ?: return KmmResult.failure<AuthenticationResponseParameters>(
-                        OAuth2Exception(Errors.USER_CANCELLED)
-                    ).also { Napier.w("Could not resolve requested attribute type $it") })
+                AttributeIndex.resolveAttributeType(requestedAttributeTyp)?.let { requestedSchemes.add(it) }
             }
         }
         val requestedClaims = params.presentationDefinition?.inputDescriptors
@@ -341,11 +339,12 @@ class OidcSiopWallet(
             ?.map { it.removePrefix("\$.mdoc.") }
             ?.map { it.removePrefix("\$.") }
             ?: listOf()
+        val requestedClaimsClean = stripNamespaces(requestedClaims, requestedSchemes)
         val vp = holder.createPresentation(
             challenge = params.nonce,
             audienceId = audience,
             credentialSchemes = requestedSchemes.toList().ifEmpty { null },
-            requestedClaims = requestedClaims.ifEmpty { null }
+            requestedClaims = requestedClaimsClean.ifEmpty { null }
         )
             ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not create presentation") }
@@ -423,6 +422,18 @@ class OidcSiopWallet(
             }
 
         }
+    }
+
+    private fun stripNamespaces(
+        requestedClaims: List<String>,
+        requestedSchemes: MutableList<ConstantIndex.CredentialScheme>
+    ) = requestedClaims.map { claim ->
+        // NOTE: To be replaced with JSONPath implementation
+        var cleaned = claim
+        requestedSchemes.forEach { scheme ->
+            cleaned = cleaned.removePrefix("\$['${scheme.isoNamespace}']['").removeSuffix("']")
+        }
+        cleaned
     }
 
 }
