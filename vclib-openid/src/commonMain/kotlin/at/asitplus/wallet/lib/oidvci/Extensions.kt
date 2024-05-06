@@ -11,18 +11,17 @@ import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
 fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<CryptoAlgorithm>) = mapOf(
-    this.isoNamespace to SupportedCredentialFormat(
+    this.isoNamespace to SupportedCredentialFormat.forIsoMdoc(
         format = CredentialFormatEnum.MSO_MDOC,
         scope = vcType,
         docType = isoDocType,
         supportedBindingMethods = setOf(OpenIdConstants.BINDING_METHOD_COSE_KEY),
         supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toSet(),
-    ).apply {
         isoClaims = mapOf(
             isoNamespace to claimNames.associateWith { RequestedCredentialClaimSpecification() }
         )
-    },
-    encodeToCredentialIdentifier(CredentialFormatEnum.JWT_VC) to SupportedCredentialFormat(
+    ),
+    encodeToCredentialIdentifier(CredentialFormatEnum.JWT_VC) to SupportedCredentialFormat.forVcJwt(
         format = CredentialFormatEnum.JWT_VC,
         scope = vcType,
         credentialDefinition = SupportedCredentialFormatDefinition(
@@ -32,15 +31,14 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
         supportedBindingMethods = setOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
         supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toSet(),
     ),
-    encodeToCredentialIdentifier(CredentialFormatEnum.VC_SD_JWT) to SupportedCredentialFormat(
+    encodeToCredentialIdentifier(CredentialFormatEnum.VC_SD_JWT) to SupportedCredentialFormat.forSdJwt(
         format = CredentialFormatEnum.VC_SD_JWT,
         scope = vcType,
         sdJwtVcType = vcType,
         supportedBindingMethods = setOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
         supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toSet(),
-    ).apply {
         sdJwtClaims = claimNames.associateWith { RequestedCredentialClaimSpecification() }
-    }
+    )
 )
 
 /**

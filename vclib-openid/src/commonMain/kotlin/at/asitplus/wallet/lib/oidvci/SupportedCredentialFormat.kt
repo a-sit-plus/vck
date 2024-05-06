@@ -14,7 +14,7 @@ import kotlinx.serialization.json.encodeToJsonElement
  * being offered.
  */
 @Serializable
-data class SupportedCredentialFormat(
+data class SupportedCredentialFormat private constructor(
     /**
      * OID4VCI: REQUIRED. A JSON string identifying the format of this credential, e.g. `jwt_vc_json` or `ldp_vc`.
      * Depending on the format value, the object contains further elements defining the type and (optionally) particular
@@ -107,19 +107,90 @@ data class SupportedCredentialFormat(
     @SerialName("display")
     val display: Set<DisplayProperties>? = null,
 ) {
-    var isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>?
+    val isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>?
         get() = claims?.let {
-            jsonSerializer.decodeFromJsonElement<Map<String, Map<String, RequestedCredentialClaimSpecification>>>(it)
-        }
-        set(value) {
-            claims = jsonSerializer.encodeToJsonElement(value)
+            runCatching {
+                jsonSerializer.decodeFromJsonElement<Map<String, Map<String, RequestedCredentialClaimSpecification>>>(it)
+            }.getOrNull()
         }
 
-    var sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>?
+    val sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>?
         get() = claims?.let {
-            jsonSerializer.decodeFromJsonElement<Map<String, RequestedCredentialClaimSpecification>>(it)
+            runCatching {
+                jsonSerializer.decodeFromJsonElement<Map<String, RequestedCredentialClaimSpecification>>(it)
+            }.getOrNull()
         }
-        set(value) {
-            claims = jsonSerializer.encodeToJsonElement(value)
-        }
+
+    companion object {
+
+        fun forIsoMdoc(
+            format: CredentialFormatEnum,
+            scope: String,
+            supportedBindingMethods: Set<String>? = null,
+            supportedSigningAlgorithms: Set<String>? = null,
+            supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
+            credentialDefinition: SupportedCredentialFormatDefinition? = null,
+            docType: String,
+            isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>,
+            order: Set<String>? = null,
+            display: Set<DisplayProperties>? = null,
+        ) = SupportedCredentialFormat(
+            format = format,
+            scope = scope,
+            supportedBindingMethods = supportedBindingMethods,
+            supportedSigningAlgorithms = supportedSigningAlgorithms,
+            supportedProofTypes = supportedProofTypes,
+            credentialDefinition = credentialDefinition,
+            docType = docType,
+            claims = jsonSerializer.encodeToJsonElement(isoClaims),
+            order = order,
+            display = display
+        )
+
+        fun forSdJwt(
+            format: CredentialFormatEnum,
+            scope: String,
+            supportedBindingMethods: Set<String>? = null,
+            supportedSigningAlgorithms: Set<String>? = null,
+            supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
+            credentialDefinition: SupportedCredentialFormatDefinition? = null,
+            sdJwtVcType: String,
+            sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>,
+            order: Set<String>? = null,
+            display: Set<DisplayProperties>? = null,
+        ) = SupportedCredentialFormat(
+            format = format,
+            scope = scope,
+            supportedBindingMethods = supportedBindingMethods,
+            supportedSigningAlgorithms = supportedSigningAlgorithms,
+            supportedProofTypes = supportedProofTypes,
+            credentialDefinition = credentialDefinition,
+            sdJwtVcType = sdJwtVcType,
+            claims = jsonSerializer.encodeToJsonElement(sdJwtClaims),
+            order = order,
+            display = display
+        )
+
+        fun forVcJwt(
+            format: CredentialFormatEnum,
+            scope: String,
+            supportedBindingMethods: Set<String>? = null,
+            supportedSigningAlgorithms: Set<String>? = null,
+            supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
+            credentialDefinition: SupportedCredentialFormatDefinition,
+            order: Set<String>? = null,
+            display: Set<DisplayProperties>? = null,
+        ) = SupportedCredentialFormat(
+            format = format,
+            scope = scope,
+            supportedBindingMethods = supportedBindingMethods,
+            supportedSigningAlgorithms = supportedSigningAlgorithms,
+            supportedProofTypes = supportedProofTypes,
+            credentialDefinition = credentialDefinition,
+            claims = null,
+            order = order,
+            display = display
+        )
+
+    }
 }
