@@ -601,8 +601,7 @@ class CborSerializationTest : FreeSpec({
             044b890ad85aa53f129134775d733754d7cb7a413766aeff13cb2e
         """.trimIndent().replace("\n", "").uppercase()
 
-        val coseSigned = CoseSigned.deserialize(input.decodeToByteArray(Base16(strict = true)))
-            .getOrThrow().shouldNotBeNull()
+        val coseSigned = CoseSigned.deserialize(input.decodeToByteArray(Base16(strict = true))).shouldNotBeNull()
         println(coseSigned)
 
         val payload = coseSigned.payload
