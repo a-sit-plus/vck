@@ -170,7 +170,7 @@ class OidcSiopInteropTest : FreeSpec({
 
         val response = holderSiop.createAuthnResponse(url).getOrThrow()
 
-        response.shouldBeInstanceOf<OidcSiopWallet.AuthenticationResponseResult.Post>()
+        response.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         val jarmParams = response.params.formUrlEncode().decodeFromPostBody<AuthenticationResponseParameters>()
         val jarm = jarmParams.response
         jarm.shouldNotBeNull()
