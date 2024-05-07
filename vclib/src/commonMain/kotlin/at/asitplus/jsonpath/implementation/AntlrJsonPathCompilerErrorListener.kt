@@ -1,5 +1,0 @@
-package at.asitplus.jsonpath.implementation
-
-import org.antlr.v4.kotlinruntime.ANTLRErrorListener
-
-interface AntlrJsonPathCompilerErrorListener : AntlrJsonPathSemanticAnalyzerErrorListener, ANTLRErrorListener

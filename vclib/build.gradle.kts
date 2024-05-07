@@ -29,7 +29,6 @@ kotlin {
         commonMain {
             dependencies {
                 commonImplementationAndApiDependencies()
-                implementation("com.strumenta:antlr-kotlin-runtime:1.0.0-RC3")
             }
         }
 

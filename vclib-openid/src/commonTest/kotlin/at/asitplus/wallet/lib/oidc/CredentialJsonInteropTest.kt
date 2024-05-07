@@ -1,22 +1,22 @@
-@file:Suppress("unused")
-
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.jsonpath.JsonPath
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.InMemorySubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.toJsonElement
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.jsonpath.JsonPath
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldNotBe
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
 
+@Suppress("unused")
 class CredentialJsonInteropTest : FreeSpec({
 
     lateinit var holderCryptoService: CryptoService
