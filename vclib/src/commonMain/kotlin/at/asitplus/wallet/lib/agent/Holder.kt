@@ -1,11 +1,13 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.wallet.lib.data.dif.FormatHolder
+import at.asitplus.wallet.lib.data.dif.PresentationOption
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
@@ -21,6 +23,8 @@ interface Holder {
      * e.g. `did:key:mAB...` or `urn:ietf:params:oauth:jwk-thumbprint:sha256:...`
      */
     val identifier: String
+
+    val defaultPathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean
 
     /**
      * Sets the revocation list ot use for further processing of Verifiable Credentials
@@ -100,24 +104,21 @@ interface Holder {
             override val storeEntry: SubjectCredentialStore.StoreEntry.Vc,
             status: Validator.RevocationStatus
         ) : StoredCredential(
-            storeEntry = storeEntry,
-            status = status
+            storeEntry = storeEntry, status = status
         )
 
         class SdJwt(
             override val storeEntry: SubjectCredentialStore.StoreEntry.SdJwt,
             status: Validator.RevocationStatus
         ) : StoredCredential(
-            storeEntry = storeEntry,
-            status = status
+            storeEntry = storeEntry, status = status
         )
 
         class Iso(
             override val storeEntry: SubjectCredentialStore.StoreEntry.Iso,
             status: Validator.RevocationStatus
         ) : StoredCredential(
-            storeEntry = storeEntry,
-            status = status
+            storeEntry = storeEntry, status = status
         )
     }
 
@@ -128,14 +129,18 @@ interface Holder {
 
     /**
      * Creates an array of [VerifiablePresentation] and a [PresentationSubmission] to match
-     * the [presentationDefinition].
+     * the [presentationOption].
+     *
+     * [presentationOption] - run DescriptorCombination.findValidDescriptorCombinations and
+     * let the user choose one of the valid combinations of input descriptors for this presentation.
      */
     suspend fun createPresentation(
         challenge: String,
         audienceId: String,
-        presentationDefinition: PresentationDefinition,
-        // TODO: add authorization semantics to detect unauthorized requests
-        // - eg. a service provider asking for an attribute he should not be allowed to see
+        presentationDefinitionId: String,
+        presentationOption: PresentationOption,
+        fallbackFormatHolder: FormatHolder? = null,
+        pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = defaultPathAuthorizationValidator,
     ): KmmResult<HolderResponseParameters>
 
     /**

@@ -3,8 +3,8 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.dif.PresentationOption
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -52,8 +52,8 @@ class AgentTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge,
             verifier.identifier,
-            PresentationDefinition(
-                id = "0",
+            presentationDefinitionId = "",
+            presentationOption = PresentationOption(
                 inputDescriptors = listOf(
                     InputDescriptor(
                         id = "0",
@@ -83,8 +83,8 @@ class AgentTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.identifier,
-            presentationDefinition = PresentationDefinition(
-                id = "0",
+            presentationDefinitionId = "",
+            presentationOption = PresentationOption(
                 inputDescriptors = listOf(
                     InputDescriptor(id = "1")
                 ),
@@ -110,8 +110,8 @@ class AgentTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = issuer.identifier,
-            presentationDefinition = PresentationDefinition(
-                id = "0",
+            presentationDefinitionId = "",
+            presentationOption = PresentationOption(
                 inputDescriptors = listOf(
                     InputDescriptor(id = "1")
                 ),
@@ -173,8 +173,8 @@ class AgentTest : FreeSpec({
             holder.createPresentation(
                 challenge = challenge,
                 audienceId = verifier.identifier,
-                presentationDefinition = PresentationDefinition(
-                    id = "0",
+                presentationDefinitionId = "",
+                presentationOption = PresentationOption(
                     inputDescriptors = listOf(
                         InputDescriptor(id = "1")
                     ),
@@ -205,8 +205,8 @@ class AgentTest : FreeSpec({
             holder.createPresentation(
                 challenge = challenge,
                 audienceId = verifier.identifier,
-                presentationDefinition = PresentationDefinition(
-                    id = "0",
+                presentationDefinitionId = "",
+                presentationOption = PresentationOption(
                     inputDescriptors = listOf(
                         InputDescriptor(id = "1")
                     ),
@@ -290,8 +290,8 @@ class AgentTest : FreeSpec({
         holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.identifier,
-            presentationDefinition = PresentationDefinition(
-                id = "0",
+            presentationDefinitionId = "",
+            presentationOption = PresentationOption(
                 inputDescriptors = listOf(
                     InputDescriptor(id = "1")
                 ),
@@ -310,8 +310,8 @@ class AgentTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.identifier,
-            presentationDefinition = PresentationDefinition(
-                id = "0",
+            presentationDefinitionId = "",
+            presentationOption = PresentationOption(
                 inputDescriptors = listOf(
                     InputDescriptor(id = "1")
                 ),
@@ -339,8 +339,8 @@ class AgentTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.identifier,
-            presentationDefinition = PresentationDefinition(
-                id = "0",
+            presentationDefinitionId = "",
+            presentationOption = PresentationOption(
                 inputDescriptors = listOf(
                     InputDescriptor(id = "1")
                 ),

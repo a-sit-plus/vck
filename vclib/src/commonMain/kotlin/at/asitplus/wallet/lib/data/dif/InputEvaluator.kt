@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.data.dif
 import at.asitplus.KmmResult
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NodeListEntry
+import at.asitplus.jsonpath.core.NormalizedJsonPath
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -13,32 +14,24 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 
-/*
-Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
+/**
+ * Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
  */
-
-// May support different features, not sure if all of them fit into one elevator
-interface InputEvaluator {
+class InputEvaluator {
 
     data class FieldQueryResult(
         val constraintField: ConstraintField,
         val match: NodeListEntry,
     )
-    data class CandidateInputMatch(
+    data class CandidateInputMatching(
         val fieldQueryResults: List<FieldQueryResult?>?,
     )
 
     fun evaluateMatch(
         inputDescriptor: InputDescriptor,
-        credential: JsonElement
-    ): KmmResult<CandidateInputMatch>
-}
-
-class BaseInputEvaluator : InputEvaluator {
-    override fun evaluateMatch(
-        inputDescriptor: InputDescriptor,
-        credential: JsonElement
-    ): KmmResult<InputEvaluator.CandidateInputMatch> {
+        credential: JsonElement,
+        pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
+    ): KmmResult<CandidateInputMatching> {
         // filter by constraints
         val fieldQueryResults = inputDescriptor.constraints?.let { constraints ->
             val constraintFields = constraints.fields ?: listOf()
@@ -46,9 +39,11 @@ class BaseInputEvaluator : InputEvaluator {
                 val fieldQueryResult = field.path.firstNotNullOfOrNull { jsonPath ->
                     val candidates = JsonPath(jsonPath).query(credential)
                     candidates.firstOrNull { candidate ->
-                        field.filter?.let {
-                            candidate.value.satisfiesConstraintFilter(it)
-                        } ?: true
+                        if(pathAuthorizationValidator(candidate.normalizedJsonPath)) {
+                            field.filter?.let {
+                                candidate.value.satisfiesConstraintFilter(it)
+                            } ?: true
+                        } else false
                     }?.let {
                         InputEvaluator.FieldQueryResult(
                             constraintField = field,
@@ -78,7 +73,7 @@ class BaseInputEvaluator : InputEvaluator {
         } ?: listOf()
 
         return KmmResult.success(
-            InputEvaluator.CandidateInputMatch(
+            CandidateInputMatching(
                 fieldQueryResults = fieldQueryResults,
             )
         )

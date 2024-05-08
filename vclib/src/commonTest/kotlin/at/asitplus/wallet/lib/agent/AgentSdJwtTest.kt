@@ -5,8 +5,8 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.Constraint
 import at.asitplus.wallet.lib.data.dif.ConstraintField
+import at.asitplus.wallet.lib.data.dif.PresentationOption
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.inspectors.forAll
@@ -49,8 +49,8 @@ class AgentSdJwtTest : FreeSpec({
             holder.createPresentation(
                 challenge,
                 verifier.identifier,
-                presentationDefinition = PresentationDefinition(
-                    id = "",
+                presentationDefinitionId = "",
+                presentationOption = PresentationOption(
                     inputDescriptors = listOf(
                         InputDescriptor(
                             id = "",
@@ -83,8 +83,8 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge,
             verifier.identifier,
-            presentationDefinition = PresentationDefinition(
-                id = "",
+            presentationDefinitionId = "",
+            presentationOption = PresentationOption(
                 inputDescriptors = listOf(
                     InputDescriptor(
                         id = "",
@@ -119,8 +119,8 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             malformedChallenge,
             verifier.identifier,
-            presentationDefinition = PresentationDefinition(
-                id = "",
+            presentationDefinitionId = "",
+            presentationOption = PresentationOption(
                 inputDescriptors = listOf(
                     InputDescriptor(
                         id = "",
@@ -149,9 +149,9 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge,
             verifier.identifier,
-            presentationDefinition = PresentationDefinition(
-                id = "",
-                inputDescriptors = listOf(
+            presentationDefinitionId = "",
+            presentationOption = PresentationOption(
+                listOf(
                     InputDescriptor(
                         id = "",
                         constraints = Constraint(
@@ -192,11 +192,11 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
     val presentationResult = holder.createPresentation(
         challenge = challenge,
         audienceId = verifierId,
-        presentationDefinition = PresentationDefinition(
-            id = "0",
-            inputDescriptors = listOf(
+        presentationDefinitionId = "0",
+        presentationOption = PresentationOption(
+            listOf(
                 InputDescriptor(id = "1")
-            ),
+            )
         ),
     ).getOrNull()
     return (presentationResult?.verifiablePresentations?.first() as Holder.CreatePresentationResult.SdJwt).sdJwt

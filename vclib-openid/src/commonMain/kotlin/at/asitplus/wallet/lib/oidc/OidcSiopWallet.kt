@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.wallet.lib.data.dif.PresentationOption
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
@@ -180,7 +181,8 @@ class OidcSiopWallet(
      * or JSON serialized as a JWT Request Object.
      */
     suspend fun createAuthnResponse(
-        request: AuthenticationRequestParameters
+        request: AuthenticationRequestParameters,
+        presentationOption: PresentationOption? = null,
     ): KmmResult<AuthenticationResponseResult> = createAuthnResponseParams(request).fold(
         onSuccess = { responseParams ->
             if (request.responseType == null) {
@@ -259,9 +261,12 @@ class OidcSiopWallet(
 
     /**
      * Creates the authentication response from the RP's [params]
+     *
+     * Allows user preselection of submitted credentials
      */
     suspend fun createAuthnResponseParams(
-        params: AuthenticationRequestParameters
+        params: AuthenticationRequestParameters,
+        presentationOption: PresentationOption? = null
     ): KmmResult<AuthenticationResponseParameters> {
         if (params.clientIdScheme == OpenIdConstants.ClientIdSchemes.REDIRECT_URI
             && (params.clientMetadata == null && params.clientMetadataUri == null)
@@ -331,7 +336,12 @@ class OidcSiopWallet(
         val presentationSubmissionContainer = holder.createPresentation(
             challenge = params.nonce,
             audienceId = audience,
-            presentationDefinition = presentationDefinition,
+            presentationDefinitionId = presentationDefinition.id,
+            presentationOption = presentationOption
+                ?: PresentationOption.findValidPresentationOptions(
+                    presentationDefinition
+                ).first(),
+            fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata.vpFormats,
         ).getOrElse { exception ->
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
                 .also { Napier.w("Could not create presentation: ${exception.message}") }
@@ -362,7 +372,7 @@ class OidcSiopWallet(
                 if (isMissingFormatSupport) {
                     return KmmResult.failure(
                         OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
-                            .also { Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $presentationDefinition") }
+                            .also { Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats") }
                     )
                 }
             }

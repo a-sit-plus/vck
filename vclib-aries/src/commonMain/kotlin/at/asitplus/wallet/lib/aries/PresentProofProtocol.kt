@@ -1,16 +1,16 @@
 package at.asitplus.wallet.lib.aries
 
-import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
+import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.AriesGoalCodeParser
-import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
 import at.asitplus.wallet.lib.data.dif.Constraint
 import at.asitplus.wallet.lib.data.dif.ConstraintField
 import at.asitplus.wallet.lib.data.dif.ConstraintFilter
+import at.asitplus.wallet.lib.data.dif.PresentationOption
 import at.asitplus.wallet.lib.data.dif.FormatContainerJwt
 import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
@@ -120,7 +120,10 @@ class PresentProofProtocol(
         return createRequestPresentation()
     }
 
-    override suspend fun parseMessage(body: JsonWebMessage, senderKey: JsonWebKey): InternalNextMessage {
+    override suspend fun parseMessage(
+        body: JsonWebMessage,
+        senderKey: JsonWebKey
+    ): InternalNextMessage {
         when (this.state) {
             State.START -> {
                 if (body is OutOfBandInvitation)
@@ -186,7 +189,10 @@ class PresentProofProtocol(
             .also { this.state = State.REQUEST_PRESENTATION_SENT }
     }
 
-    private fun createRequestPresentation(invitation: OutOfBandInvitation, senderKey: JsonWebKey): InternalNextMessage {
+    private fun createRequestPresentation(
+        invitation: OutOfBandInvitation,
+        senderKey: JsonWebKey
+    ): InternalNextMessage {
         val credentialScheme = AriesGoalCodeParser.parseGoalCode(invitation.body.goalCode)
             ?: return problemReporter.problemLastMessage(invitation.threadId, "goal-code-unknown")
         val message = buildRequestPresentationMessage(credentialScheme, invitation.id)
@@ -228,7 +234,8 @@ class PresentProofProtocol(
                 verifier = verifierIdentifier,
             )
         )
-        val attachment = JwmAttachment.encodeBase64(jsonSerializer.encodeToString(requestPresentation))
+        val attachment =
+            JwmAttachment.encodeBase64(jsonSerializer.encodeToString(requestPresentation))
         return RequestPresentation(
             body = RequestPresentationBody(
                 comment = "Please show your credentials",
@@ -271,7 +278,10 @@ class PresentProofProtocol(
         val presentationResult = holder?.createPresentation(
             challenge = requestPresentationAttachment.options.challenge,
             audienceId = requestPresentationAttachment.options.verifier ?: senderKey.identifier,
-            presentationDefinition = requestPresentationAttachment.presentationDefinition
+            presentationDefinitionId = requestPresentationAttachment.presentationDefinition.id,
+            presentationOption = PresentationOption.findValidPresentationOptions(
+                requestPresentationAttachment.presentationDefinition
+            ).first()
         )?.getOrNull() ?: return problemReporter.problemInternal(lastMessage.threadId, "vp-empty")
         val vp = presentationResult.verifiablePresentations.firstOrNull()
         // TODO is ISO supported here?
