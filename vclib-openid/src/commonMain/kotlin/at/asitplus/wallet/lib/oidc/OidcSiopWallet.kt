@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
+import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -56,7 +57,7 @@ class OidcSiopWallet(
     private val clientId: String = "https://wallet.a-sit.at/",
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
-     * or the authentication request itself as `request_uri`.
+     * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
      * Implementations need to fetch the url passed in, and return either the body, if there is one,
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
@@ -243,25 +244,19 @@ class OidcSiopWallet(
     suspend fun createAuthnResponseParams(
         params: AuthenticationRequestParameters
     ): KmmResult<AuthenticationResponseParameters> {
-        if (params.clientIdScheme == OpenIdConstants.ClientIdSchemes.REDIRECT_URI
-            && (params.clientMetadata == null && params.clientMetadataUri == null)
-        ) {
-            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("client_id_scheme is redirect_uri, but metadata is not set") }
-        }
+        // params.clientIdScheme is assumed to be OpenIdConstants.ClientIdSchemes.REDIRECT_URI,
+        // because we'll require clientMetadata to be present, below
         // TODO implement x509_san_dns, x509_san_uri, as implemented by EUDI verifier
         val clientMetadata = params.clientMetadata
             ?: params.clientMetadataUri?.let { uri ->
                 remoteResourceRetriever.invoke(uri)?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
-            }
-            ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+            } ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("client metadata is not specified") }
         val audience = clientMetadata.jsonWebKeySet?.keys?.firstOrNull()?.identifier
             ?: clientMetadata.jsonWebKeySetUrl?.let {
                 remoteResourceRetriever.invoke(it)
                     ?.let { JsonWebKeySet.deserialize(it) }?.keys?.firstOrNull()?.identifier
-            }
-            ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+            } ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("Could not parse audience") }
         // TODO Check removed for EUDI interop
 //        if (clientMetadata.subjectSyntaxTypesSupported == null || URN_TYPE_JWK_THUMBPRINT !in clientMetadata.subjectSyntaxTypesSupported)
@@ -275,7 +270,10 @@ class OidcSiopWallet(
         if (params.responseType == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("response_type is not specified") }
-        if (!params.responseType.contains(VP_TOKEN) && params.presentationDefinition == null)
+        val presentationDefinition = params.presentationDefinition ?: params.presentationDefinitionUrl?.let {
+            remoteResourceRetriever.invoke(it)
+        }?.let { PresentationDefinition.deserialize(it).getOrNull() }
+        if (!params.responseType.contains(VP_TOKEN) && presentationDefinition == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("vp_token not requested") }
         if (clientMetadata.vpFormats != null) {
@@ -314,15 +312,16 @@ class OidcSiopWallet(
             return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
         }
 
+        // scope or presentationDefinition must be present, maybe refactor this code below
         val requestedAttributeTypes = (params.scope ?: "").split(" ")
             .filterNot { it == SCOPE_OPENID }.filterNot { it == SCOPE_PROFILE }
             .filter { it.isNotEmpty() }
-        val requestedNamespace = params.presentationDefinition?.inputDescriptors
+        val requestedNamespace = presentationDefinition?.inputDescriptors
             ?.mapNotNull { it.constraints }
             ?.flatMap { it.fields?.toList() ?: listOf() }
             ?.firstOrNull { it.path.toList().contains("$.mdoc.namespace") }
             ?.filter?.const
-            ?: params.presentationDefinition?.inputDescriptors?.map { it.id }?.firstOrNull()
+            ?: presentationDefinition?.inputDescriptors?.map { it.id }?.firstOrNull()
         val requestedSchemes = mutableListOf<ConstantIndex.CredentialScheme>()
         if (requestedNamespace != null) {
             AttributeIndex.resolveIsoNamespace(requestedNamespace)?.let { requestedSchemes.add(it) }
@@ -330,7 +329,7 @@ class OidcSiopWallet(
                 AttributeIndex.resolveAttributeType(requestedAttributeTyp)?.let { requestedSchemes.add(it) }
             }
         }
-        val requestedClaims = params.presentationDefinition?.inputDescriptors
+        val requestedClaims = presentationDefinition?.inputDescriptors
             ?.mapNotNull { it.constraints }
             ?.flatMap { it.fields?.toList() ?: listOf() }
             ?.flatMap { it.path.toList() }
@@ -353,8 +352,8 @@ class OidcSiopWallet(
             is Holder.CreatePresentationResult.Signed -> {
                 val presentationSubmission = PresentationSubmission(
                     id = uuid4().toString(),
-                    definitionId = params.presentationDefinition?.id ?: uuid4().toString(),
-                    descriptorMap = params.presentationDefinition?.inputDescriptors?.map {
+                    definitionId = presentationDefinition?.id ?: uuid4().toString(),
+                    descriptorMap = presentationDefinition?.inputDescriptors?.map {
                         PresentationSubmissionDescriptor(
                             id = it.id,
                             format = ClaimFormatEnum.JWT_VP,
@@ -380,8 +379,8 @@ class OidcSiopWallet(
             is Holder.CreatePresentationResult.SdJwt -> {
                 val presentationSubmission = PresentationSubmission(
                     id = uuid4().toString(),
-                    definitionId = params.presentationDefinition?.id ?: uuid4().toString(),
-                    descriptorMap = params.presentationDefinition?.inputDescriptors?.map {
+                    definitionId = presentationDefinition?.id ?: uuid4().toString(),
+                    descriptorMap = presentationDefinition?.inputDescriptors?.map {
                         PresentationSubmissionDescriptor(
                             id = it.id,
                             format = ClaimFormatEnum.JWT_SD,
@@ -402,8 +401,8 @@ class OidcSiopWallet(
             is Holder.CreatePresentationResult.Document -> {
                 val presentationSubmission = PresentationSubmission(
                     id = uuid4().toString(),
-                    definitionId = params.presentationDefinition?.id ?: uuid4().toString(),
-                    descriptorMap = params.presentationDefinition?.inputDescriptors?.map {
+                    definitionId = presentationDefinition?.id ?: uuid4().toString(),
+                    descriptorMap = presentationDefinition?.inputDescriptors?.map {
                         PresentationSubmissionDescriptor(
                             id = it.id,
                             format = ClaimFormatEnum.MSO_MDOC,

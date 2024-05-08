@@ -8,6 +8,7 @@ Release NEXT:
  - Wrap exceptions during deserialization in `KmmResult`, i.e. changing all `deserialize()` methods in companion objects
  - `OidcSiopWallet`: Rename `newInstance()` to `newDefaultInstance()`, to align it with other factory methods
  - `OidcSiopWallet`: Rename `retrieveAuthenticationRequestParameters() ` to `parseAuthenticationRequestParameters()`, changing result type to `KmmResult<AuthenticationRequestParameters>`
+ - `OidcSiopWallet`: Support getting presentation definition remotely, with `presentation_definition_uri` from OpenId4VP
 
 Release 3.6.1:
  * Update to KMP-Crypto 2.6.0
