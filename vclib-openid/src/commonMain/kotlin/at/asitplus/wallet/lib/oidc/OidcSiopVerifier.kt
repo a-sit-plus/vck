@@ -322,14 +322,6 @@ class OidcSiopVerifier(
         )
     )
 
-    private fun ConstantIndex.CredentialScheme.isoConstraint() = ConstraintField(
-        path = listOf("$.type"),
-        filter = ConstraintFilter(
-            type = "string",
-            pattern = isoDocType,
-        )
-    )
-
     private fun createConstraints(
         credentialRepresentation: ConstantIndex.CredentialRepresentation,
         credentialScheme: ConstantIndex.CredentialScheme?,
