@@ -6,6 +6,7 @@ import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import at.asitplus.jsonpath.JsonPath
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
@@ -24,7 +25,6 @@ import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.data.dif.SchemaReference
-import at.asitplus.jsonpath.JsonPath
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -257,7 +257,7 @@ class OidcSiopVerifier(
             when (requestOptions.representation) {
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.vcConstraint()
                 ConstantIndex.CredentialRepresentation.SD_JWT -> it.vcConstraint()
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoConstraint()
+                ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
             }
         }
         val attributeConstraint =
@@ -289,7 +289,17 @@ class OidcSiopVerifier(
                 formats = requestOptions.representation.toFormatHolder(),
                 inputDescriptors = listOf(
                     InputDescriptor(
-                        id = uuid4().toString(),
+                        id = requestOptions.credentialScheme?.let {
+                            when (requestOptions.representation) {
+                                /**
+                                 * doctype is not really an attribute that can be presented,
+                                 * encoding it into the descriptor id as in the following non-normative example fow now:
+                                 * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
+                                 */
+                                ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoDocType
+                                else -> null
+                            }
+                        } ?: uuid4().toString(),
                         schema = listOfNotNull(schemaReference),
                         constraints = Constraint(fields = constraintFields.filterNotNull()),
                     )
@@ -313,7 +323,7 @@ class OidcSiopVerifier(
     )
 
     private fun ConstantIndex.CredentialScheme.isoConstraint() = ConstraintField(
-        path = listOf("$.mdoc.doctype"),
+        path = listOf("$.type"),
         filter = ConstraintFilter(
             type = "string",
             pattern = isoDocType,

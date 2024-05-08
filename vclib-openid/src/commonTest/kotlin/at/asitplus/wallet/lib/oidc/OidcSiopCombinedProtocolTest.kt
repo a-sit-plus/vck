@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
+import io.github.aakira.napier.Napier
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
@@ -402,8 +403,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     request.copy(
                         presentationDefinition = request.presentationDefinition?.let { presentationDefinition ->
                             presentationDefinition.copy(
+                                // only support msoMdoc here
                                 formats = FormatHolder(
-                                    // only support msoMdoc here
                                     msoMdoc = presentationDefinition.formats?.msoMdoc
                                 ),
                                 inputDescriptors = presentationDefinition.inputDescriptors.map { inputDescriptor ->
@@ -415,9 +416,12 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                         },
                     )
                 }
+                Napier.d("Create response")
 
                 shouldThrow<OAuth2Exception> {
-                    holderSiop.createAuthnResponse(authnRequest).getOrThrow()
+                    holderSiop.createAuthnResponse(authnRequest).getOrThrow().also {
+                        Napier.d("response: $it")
+                    }
                 }
             }
 
@@ -494,6 +498,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     )
                 }
 
+                Napier.d("request: $authnRequest")
                 val authnResponse =
                     holderSiop.createAuthnResponse(authnRequest).getOrThrow()
                 authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()

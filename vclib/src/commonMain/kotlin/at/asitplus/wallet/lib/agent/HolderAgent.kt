@@ -249,6 +249,12 @@ class HolderAgent(
                         is SubjectCredentialStore.StoreEntry.Iso -> formatHolder.msoMdoc != null
                     }
                 } ?: true
+            }.filter { credential ->
+                // iso credentials now have their doctype encoded into the id
+                when (credential) {
+                    is SubjectCredentialStore.StoreEntry.Iso -> credential.scheme.isoDocType == inputDescriptor.id
+                    else -> true
+                }
             }.firstNotNullOfOrNull { credential ->
                 difInputEvaluator.evaluateMatch(
                     inputDescriptor = inputDescriptor,
@@ -505,19 +511,6 @@ fun SubjectCredentialStore.StoreEntry.toJsonElement(): JsonElement {
 
         is SubjectCredentialStore.StoreEntry.Iso -> {
             buildJsonObject {
-                put("mdoc", buildJsonObject {
-                    put("doctype", JsonPrimitive(credential.scheme.isoDocType))
-                    // TODO: remove the rest here as soon as the eudiw verifier has found a better way to specify their presentation definition
-                    put("namespace", JsonPrimitive(credential.scheme.isoNamespace))
-                    credential.issuerSigned.namespaces?.forEach {
-                        it.value.entries.forEach { signedItem ->
-                            put(
-                                signedItem.value.elementIdentifier,
-                                signedItem.value.elementValue.toJsonElement(),
-                            )
-                        }
-                    }
-                })
                 credential.issuerSigned.namespaces?.forEach {
                     put(it.key, buildJsonObject {
                         it.value.entries.forEach { signedItem ->

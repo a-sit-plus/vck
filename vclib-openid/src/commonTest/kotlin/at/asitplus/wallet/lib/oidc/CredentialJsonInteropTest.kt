@@ -90,8 +90,8 @@ class CredentialJsonInteropTest : FreeSpec({
         }
 
         val credential = subjectCredentialStore.getCredentials().getOrThrow()[0].toJsonElement()
-        (JsonPath("\$['given-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['family-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['date-of-birth']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['is-active']").query(credential).first().value as JsonPrimitive).content shouldNotBe null    }
+        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['given-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
+        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['family-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
+        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['date-of-birth']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
+        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['is-active']").query(credential).first().value as JsonPrimitive).content shouldNotBe null    }
 })
