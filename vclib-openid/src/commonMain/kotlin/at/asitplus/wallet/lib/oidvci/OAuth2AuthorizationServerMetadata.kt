@@ -34,16 +34,20 @@ data class OAuth2AuthorizationServerMetadata(
      * URL of the authorization server's authorization endpoint
      * `RFC6749`.  This is REQUIRED unless no grant types are supported
      * that use the authorization endpoint.
+     *
+     * NOTE: Mandatory for our use-case
      */
     @SerialName("authorization_endpoint")
-    val authorizationEndpoint: String? = null,
+    val authorizationEndpoint: String,
 
     /**
      * URL of the authorization server's token endpoint `RFC6749`.  This
      * is REQUIRED unless only the implicit grant type is supported.
+     *
+     * NOTE: Mandatory for our use-case
      */
     @SerialName("token_endpoint")
-    val tokenEndpoint: String? = null,
+    val tokenEndpoint: String,
 
     /**
      * OPTIONAL.  URL of the authorization server's JWK Set `JWK`
@@ -259,7 +263,7 @@ data class OAuth2AuthorizationServerMetadata(
      */
     @SerialName("code_challenge_methods_supported")
     val codeChallengeMethodsSupported: List<String>? = null,
-){
+) {
     fun serialize() = at.asitplus.wallet.lib.oidc.jsonSerializer.encodeToString(this)
 
     companion object {
