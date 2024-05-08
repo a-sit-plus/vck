@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
+import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -19,6 +20,8 @@ import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.ktor.http.*
+import io.ktor.util.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 
@@ -308,6 +311,13 @@ class OidcSiopInteropTest : FreeSpec({
         parsed.state shouldBe "ef391e30-bacc-4441-af5d-7f42fb682e02"
         parsed.responseUrl shouldBe "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02"
         parsed.clientId shouldBe parsed.responseUrl
+    }
+
+    "empty client_id" {
+        val input = "mdoc-openid4vp://?response_type=vp_token&client_id=&response_mode=direct_post.jwt"
+
+        Url(input).parameters.flattenEntries().toMap()
+            .decodeFromUrlQuery<AuthenticationRequestParameters>().shouldNotBeNull()
     }
 
 })
