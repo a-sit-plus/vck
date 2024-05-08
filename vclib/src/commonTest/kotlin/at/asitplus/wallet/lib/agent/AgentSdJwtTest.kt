@@ -43,6 +43,21 @@ class AgentSdJwtTest : FreeSpec({
         challenge = uuid4().toString()
     }
 
+    val givenNamePresentationOption = PresentationOption(
+        inputDescriptors = listOf(
+            InputDescriptor(
+                id = "",
+                constraints = Constraint(
+                    fields = listOf(
+                        ConstraintField(
+                            path = listOf("$['given-name']")
+                        )
+                    )
+                )
+            )
+        )
+    )
+
     "simple walk-through success" {
         issueDummyCredentials(holder, issuer, holderCryptoService)
         val presentationParameters =
@@ -50,20 +65,7 @@ class AgentSdJwtTest : FreeSpec({
                 challenge,
                 verifier.identifier,
                 presentationDefinitionId = "",
-                presentationOption = PresentationOption(
-                    inputDescriptors = listOf(
-                        InputDescriptor(
-                            id = "",
-                            constraints = Constraint(
-                                fields = listOf(
-                                    ConstraintField(
-                                        path = listOf("$['given-name']")
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
+                presentationOption = givenNamePresentationOption
             ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
@@ -84,20 +86,7 @@ class AgentSdJwtTest : FreeSpec({
             challenge,
             verifier.identifier,
             presentationDefinitionId = "",
-            presentationOption = PresentationOption(
-                inputDescriptors = listOf(
-                    InputDescriptor(
-                        id = "",
-                        constraints = Constraint(
-                            fields = listOf(
-                                ConstraintField(
-                                    path = listOf("$['given-name']")
-                                )
-                            )
-                        )
-                    )
-                )
-            )
+            presentationOption = givenNamePresentationOption
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
@@ -120,20 +109,7 @@ class AgentSdJwtTest : FreeSpec({
             malformedChallenge,
             verifier.identifier,
             presentationDefinitionId = "",
-            presentationOption = PresentationOption(
-                inputDescriptors = listOf(
-                    InputDescriptor(
-                        id = "",
-                        constraints = Constraint(
-                            fields = listOf(
-                                ConstraintField(
-                                    path = listOf("$['given-name']")
-                                )
-                            )
-                        )
-                    )
-                )
-            )
+            presentationOption = givenNamePresentationOption
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
@@ -150,20 +126,7 @@ class AgentSdJwtTest : FreeSpec({
             challenge,
             verifier.identifier,
             presentationDefinitionId = "",
-            presentationOption = PresentationOption(
-                listOf(
-                    InputDescriptor(
-                        id = "",
-                        constraints = Constraint(
-                            fields = listOf(
-                                ConstraintField(
-                                    path = listOf("$['given-name']")
-                                )
-                            )
-                        )
-                    )
-                )
-            )
+            presentationOption = givenNamePresentationOption
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
