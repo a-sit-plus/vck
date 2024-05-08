@@ -9,8 +9,8 @@ import at.asitplus.wallet.lib.agent.InMemorySubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
-import at.asitplus.wallet.lib.agent.toJsonElement
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldNotBe
 import kotlinx.coroutines.runBlocking
@@ -48,7 +48,7 @@ class CredentialJsonInteropTest : FreeSpec({
             )
         }
 
-        val credential = subjectCredentialStore.getCredentials().getOrThrow()[0].toJsonElement()
+        val credential = CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
         (JsonPath("\$.id").query(credential).first().value as JsonPrimitive).content shouldNotBe null
         (JsonPath("\$['id']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
         (JsonPath("\$.name").query(credential).first().value as JsonPrimitive).content shouldNotBe null
@@ -70,7 +70,7 @@ class CredentialJsonInteropTest : FreeSpec({
             )
         }
 
-        val credential = subjectCredentialStore.getCredentials().getOrThrow()[0].toJsonElement()
+        val credential = CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
         (JsonPath("\$['given-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
         (JsonPath("\$['family-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
         (JsonPath("\$['date-of-birth']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
@@ -89,7 +89,7 @@ class CredentialJsonInteropTest : FreeSpec({
             )
         }
 
-        val credential = subjectCredentialStore.getCredentials().getOrThrow()[0].toJsonElement()
+        val credential = CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
         (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['given-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
         (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['family-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
         (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['date-of-birth']").query(credential).first().value as JsonPrimitive).content shouldNotBe null

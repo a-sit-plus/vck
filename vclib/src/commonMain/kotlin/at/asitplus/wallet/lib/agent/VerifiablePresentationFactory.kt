@@ -1,14 +1,12 @@
-package at.asitplus.wallet.lib.data.dif
+package at.asitplus.wallet.lib.agent
 
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import at.asitplus.wallet.lib.agent.AttributeNotAvailableException
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiablePresentation
+import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceSigned
 import at.asitplus.wallet.lib.iso.Document

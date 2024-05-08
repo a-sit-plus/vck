@@ -17,7 +17,6 @@ import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationOption
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
-import at.asitplus.wallet.lib.data.dif.VerifiablePresentationFactory
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService

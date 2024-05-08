@@ -1,6 +1,8 @@
 # Changelog
 
 UNRELEASED Release 3.7.0:
+- Add `VerifiablePresentationFactory`: Used to have a separate place for creating verifiable presentations, HolderAgent got a little cramped
+- Add `PresentationOption`: Should be used in the future to evaluate which choices a user has for presentation. Becomes important once submission requirements have to be supported.
 - Change `OidcSiopVerifier.validateAuthnResponse`: Supports new presentation semantics, where the vp_token may be a array of verifiable presentations.
 - Change `OidcSiopWallet.createAuthnResponseParams`: Feed the newly required parameters to `Holder.createPresentation`; Changed output semantics to potentially submit a list of verifiable presentations
 - Change `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.
