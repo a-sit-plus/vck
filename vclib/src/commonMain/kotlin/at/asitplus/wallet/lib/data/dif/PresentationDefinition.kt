@@ -14,7 +14,7 @@ import kotlinx.serialization.encodeToString
 @Serializable
 data class PresentationDefinition(
     @SerialName("id")
-    val id: String,
+    val id: String? = null,
     @SerialName("name")
     val name: String? = null,
     @SerialName("purpose")
