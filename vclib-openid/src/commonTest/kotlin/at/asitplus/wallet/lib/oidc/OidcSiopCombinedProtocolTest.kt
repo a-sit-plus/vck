@@ -24,7 +24,6 @@ import kotlinx.coroutines.runBlocking
 class OidcSiopCombinedProtocolTest : FreeSpec({
 
     lateinit var relyingPartyUrl: String
-    lateinit var walletUrl: String
 
     lateinit var holderCryptoService: CryptoService
     lateinit var verifierCryptoService: CryptoService
@@ -39,7 +38,6 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
-        walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
         verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.didEncoded)
 
@@ -59,35 +57,17 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         "test support for plain jwt credential request" - {
             "if not available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeJwtCredentials(
+                        holderCryptoService,
+                        listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeSdJwtCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeIsoCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
                 }
 
@@ -122,45 +102,21 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
             "if available despite others" {
                 runBlocking {
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeJwtCredentials(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeJwtCredentials(
+                        holderCryptoService,
+                        listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeSdJwtCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeIsoCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
                 }
                 verifierSiop = OidcSiopVerifier.newInstance(
@@ -203,35 +159,17 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         "test support for sd jwt credential request" - {
             "if not available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeJwtCredentials(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeSdJwtCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeIsoCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
                 }
 
@@ -271,45 +209,21 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
             "if available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeJwtCredentials(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeSdJwtCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeSdJwtCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeIsoCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
                 }
 
@@ -356,35 +270,17 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         "test support for mso credential request" - {
             "if not available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeJwtCredentials(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeSdJwtCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeIsoCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
                     )
                 }
 
@@ -427,45 +323,21 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
             "if available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeJwtCredentials(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeSdJwtCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeIsoCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.AtomicAttribute2023.vcType)
                     )
-                    holderAgent.storeCredentials(
-                        IssuerAgent.newDefaultInstance(
-                            DefaultCryptoService(),
-                            dataProvider = DummyCredentialDataProvider(),
-                        ).issueCredential(
-                            subjectPublicKey = holderCryptoService.publicKey,
-                            attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType),
-                            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        ).toStoreCredentialInput()
+                    holderAgent.storeIsoCredential(
+                        holderCryptoService,
+                        listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
                     )
                 }
 
@@ -513,26 +385,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
     "test presentation of multiple credentials with different formats" {
         runBlocking {
-            holderAgent.storeCredentials(
-                IssuerAgent.newDefaultInstance(
-                    DefaultCryptoService(),
-                    dataProvider = DummyCredentialDataProvider(),
-                ).issueCredential(
-                    subjectPublicKey = holderCryptoService.publicKey,
-                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                    representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                ).toStoreCredentialInput()
-            )
-            holderAgent.storeCredentials(
-                IssuerAgent.newDefaultInstance(
-                    DefaultCryptoService(),
-                    dataProvider = DummyCredentialDataProvider(),
-                ).issueCredential(
-                    subjectPublicKey = holderCryptoService.publicKey,
-                    attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType),
-                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                ).toStoreCredentialInput()
-            )
+            holderAgent.storeJwtCredentials(holderCryptoService, listOf(ConstantIndex.AtomicAttribute2023.vcType))
+            holderAgent.storeIsoCredential(holderCryptoService, listOf(ConstantIndex.MobileDrivingLicence2023.vcType))
         }
 
         verifierSiop = OidcSiopVerifier.newInstance(
@@ -578,3 +432,49 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         validationResults.validationResults.size shouldBe 2
     }
 })
+
+private suspend fun Holder.storeJwtCredentials(
+    holderCryptoService: CryptoService,
+    attributeTypes: List<String>
+) {
+    storeCredentials(
+        IssuerAgent.newDefaultInstance(
+            DefaultCryptoService(),
+            dataProvider = DummyCredentialDataProvider(),
+        ).issueCredential(
+            subjectPublicKey = holderCryptoService.publicKey,
+            attributeTypes = attributeTypes,
+            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+        ).toStoreCredentialInput()
+    )
+}
+
+private suspend fun Holder.storeSdJwtCredential(
+    holderCryptoService: CryptoService,
+    attributeTypes: List<String>
+) {
+    storeCredentials(
+        IssuerAgent.newDefaultInstance(
+            DefaultCryptoService(),
+            dataProvider = DummyCredentialDataProvider(),
+        ).issueCredential(
+            subjectPublicKey = holderCryptoService.publicKey,
+            attributeTypes = attributeTypes,
+            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+        ).toStoreCredentialInput()
+    )
+}
+
+private suspend fun Holder.storeIsoCredential(
+    holderCryptoService: CryptoService,
+    attributeTypes: List<String>
+) = storeCredentials(
+    IssuerAgent.newDefaultInstance(
+        DefaultCryptoService(),
+        dataProvider = DummyCredentialDataProvider(),
+    ).issueCredential(
+        subjectPublicKey = holderCryptoService.publicKey,
+        attributeTypes = attributeTypes,
+        representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+    ).toStoreCredentialInput()
+)
