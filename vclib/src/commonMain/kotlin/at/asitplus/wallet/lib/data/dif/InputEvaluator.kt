@@ -73,9 +73,7 @@ class InputEvaluator {
         } ?: listOf()
 
         return KmmResult.success(
-            CandidateInputMatching(
-                fieldQueryResults = fieldQueryResults,
-            )
+            CandidateInputMatching(fieldQueryResults = fieldQueryResults)
         )
     }
 }
@@ -90,15 +88,14 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
         is JsonPrimitive -> when (filter.type) {
             "string" -> this.isString
             "null" -> this == JsonNull
-
-            "boolean" -> this.isString == false && this.booleanOrNull != null
-            "integer" -> this.isString == false && this.longOrNull != null
-            "number" -> this.isString == false && this.doubleOrNull != null
+            "boolean" -> !this.isString && this.booleanOrNull != null
+            "integer" -> !this.isString && this.longOrNull != null
+            "number" -> !this.isString && this.doubleOrNull != null
             else -> false
         }
     }
 
-    if (typeMatchesElement == false) {
+    if (!typeMatchesElement) {
         return false
     }
 
@@ -106,7 +103,7 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
         val isMatch = runCatching {
             it == (this as JsonPrimitive).content
         }.getOrDefault(false)
-        if (isMatch == false) {
+        if (!isMatch) {
             return false
         }
     }
@@ -114,7 +111,7 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
         val isMatch = runCatching {
             Regex(it).matches((this as JsonPrimitive).content)
         }.getOrDefault(false)
-        if (isMatch == false) {
+        if (!isMatch) {
             return false
         }
     }
@@ -124,7 +121,7 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
                 value == (this as JsonPrimitive).content
             }
         }.getOrDefault(false)
-        if (isMatch == false) {
+        if (!isMatch) {
             return false
         }
     }

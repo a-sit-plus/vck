@@ -14,13 +14,13 @@ import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldNotBe
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
 @Suppress("unused")
 class CredentialJsonInteropTest : FreeSpec({
 
     lateinit var holderCryptoService: CryptoService
-    lateinit var verifierCryptoService: CryptoService
 
     lateinit var issuerAgent: Issuer
     lateinit var subjectCredentialStore: SubjectCredentialStore
@@ -28,9 +28,9 @@ class CredentialJsonInteropTest : FreeSpec({
 
     beforeEach {
         holderCryptoService = DefaultCryptoService()
-        verifierCryptoService = DefaultCryptoService()
         subjectCredentialStore = InMemorySubjectCredentialStore()
-        holderAgent = HolderAgent.newDefaultInstance(holderCryptoService, subjectCredentialStore = subjectCredentialStore)
+        holderAgent =
+            HolderAgent.newDefaultInstance(holderCryptoService, subjectCredentialStore = subjectCredentialStore)
         issuerAgent = IssuerAgent.newDefaultInstance(
             DefaultCryptoService(),
             dataProvider = DummyCredentialDataProvider(),
@@ -48,14 +48,15 @@ class CredentialJsonInteropTest : FreeSpec({
             )
         }
 
-        val credential = CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
-        (JsonPath("\$.id").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['id']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$.name").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['mime-type']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$.value").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['value']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
+        val credential =
+            CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
+        credential.getByJsonPath("\$.id").content shouldNotBe null
+        credential.getByJsonPath("\$['id']").content shouldNotBe null
+        credential.getByJsonPath("\$.name").content shouldNotBe null
+        credential.getByJsonPath("\$['name']").content shouldNotBe null
+        credential.getByJsonPath("\$['mime-type']").content shouldNotBe null
+        credential.getByJsonPath("\$.value").content shouldNotBe null
+        credential.getByJsonPath("\$['value']").content shouldNotBe null
     }
 
     "SD jwt credential path resolving" {
@@ -70,11 +71,12 @@ class CredentialJsonInteropTest : FreeSpec({
             )
         }
 
-        val credential = CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
-        (JsonPath("\$['given-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['family-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['date-of-birth']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['is-active']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
+        val credential =
+            CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
+        credential.getByJsonPath("\$['given-name']").content shouldNotBe null
+        credential.getByJsonPath("\$['family-name']").content shouldNotBe null
+        credential.getByJsonPath("\$['date-of-birth']").content shouldNotBe null
+        credential.getByJsonPath("\$['is-active']").content shouldNotBe null
     }
 
     "ISO credential path resolving" {
@@ -89,9 +91,14 @@ class CredentialJsonInteropTest : FreeSpec({
             )
         }
 
-        val credential = CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
-        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['given-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['family-name']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['date-of-birth']").query(credential).first().value as JsonPrimitive).content shouldNotBe null
-        (JsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['is-active']").query(credential).first().value as JsonPrimitive).content shouldNotBe null    }
+        val credential =
+            CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
+        credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['given-name']").content shouldNotBe null
+        credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['family-name']").content shouldNotBe null
+        credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['date-of-birth']").content shouldNotBe null
+        credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['is-active']").content shouldNotBe null
+    }
 })
+
+private fun JsonElement.getByJsonPath(path: String) =
+    (JsonPath(path).query(this).first().value as JsonPrimitive)
