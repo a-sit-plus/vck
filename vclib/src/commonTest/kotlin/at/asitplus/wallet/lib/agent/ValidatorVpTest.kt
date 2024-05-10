@@ -66,11 +66,9 @@ class ValidatorVpTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.identifier,
-            presentationDefinitionId = "0",
+            presentationDefinitionId = uuid4().toString(),
             presentationOption = PresentationOption(
-                inputDescriptors = listOf(
-                    InputDescriptor(id = "1")
-                ),
+                inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
             ),
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -103,11 +101,9 @@ class ValidatorVpTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = "challenge",
             audienceId = verifier.identifier,
-            presentationDefinitionId = "0",
+            presentationDefinitionId = uuid4().toString(),
             presentationOption = PresentationOption(
-                inputDescriptors = listOf(
-                    InputDescriptor(id = "1")
-                ),
+                inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
             ),
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -121,11 +117,9 @@ class ValidatorVpTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = "keyId",
-            presentationDefinitionId = "0",
+            presentationDefinitionId = uuid4().toString(),
             presentationOption = PresentationOption(
-                inputDescriptors = listOf(
-                    InputDescriptor(id = "1")
-                ),
+                inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
             ),
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -140,11 +134,9 @@ class ValidatorVpTest : FreeSpec({
         val presentationResults = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.identifier,
-            presentationDefinitionId = "0",
+            presentationDefinitionId = uuid4().toString(),
             presentationOption = PresentationOption(
-                inputDescriptors = listOf(
-                    InputDescriptor(id = "1")
-                ),
+                inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
             ),
         ).getOrNull()
         presentationResults.shouldNotBeNull()

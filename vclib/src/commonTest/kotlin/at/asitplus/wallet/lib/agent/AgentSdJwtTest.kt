@@ -5,8 +5,8 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.Constraint
 import at.asitplus.wallet.lib.data.dif.ConstraintField
-import at.asitplus.wallet.lib.data.dif.PresentationOption
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
+import at.asitplus.wallet.lib.data.dif.PresentationOption
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.inspectors.forAll
@@ -46,7 +46,7 @@ class AgentSdJwtTest : FreeSpec({
     val givenNamePresentationOption = PresentationOption(
         inputDescriptors = listOf(
             InputDescriptor(
-                id = "",
+                id = uuid4().toString(),
                 constraints = Constraint(
                     fields = listOf(
                         ConstraintField(
@@ -60,13 +60,12 @@ class AgentSdJwtTest : FreeSpec({
 
     "simple walk-through success" {
         issueDummyCredentials(holder, issuer, holderCryptoService)
-        val presentationParameters =
-            holder.createPresentation(
-                challenge,
-                verifier.identifier,
-                presentationDefinitionId = "",
-                presentationOption = givenNamePresentationOption
-            ).getOrNull()
+        val presentationParameters = holder.createPresentation(
+            challenge,
+            verifier.identifier,
+            presentationDefinitionId = uuid4().toString(),
+            presentationOption = givenNamePresentationOption
+        ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
         vp shouldNotBe null
@@ -85,7 +84,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge,
             verifier.identifier,
-            presentationDefinitionId = "",
+            presentationDefinitionId = uuid4().toString(),
             presentationOption = givenNamePresentationOption
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -108,7 +107,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             malformedChallenge,
             verifier.identifier,
-            presentationDefinitionId = "",
+            presentationDefinitionId = uuid4().toString(),
             presentationOption = givenNamePresentationOption
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -125,7 +124,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge,
             verifier.identifier,
-            presentationDefinitionId = "",
+            presentationDefinitionId = uuid4().toString(),
             presentationOption = givenNamePresentationOption
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -155,11 +154,9 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
     val presentationResult = holder.createPresentation(
         challenge = challenge,
         audienceId = verifierId,
-        presentationDefinitionId = "0",
+        presentationDefinitionId = uuid4().toString(),
         presentationOption = PresentationOption(
-            listOf(
-                InputDescriptor(id = "1")
-            )
+            listOf(InputDescriptor(id = uuid4().toString()))
         ),
     ).getOrNull()
     return (presentationResult?.verifiablePresentations?.first() as Holder.CreatePresentationResult.SdJwt).sdJwt
