@@ -149,9 +149,9 @@ class OidcSiopWallet(
 
     private fun parseRequestObjectJws(requestObject: String): AuthenticationRequestParameters? {
         return JwsSigned.parse(requestObject)?.let { jws ->
-            val params = AuthenticationRequestParameters.deserialize(jws.payload.decodeToString()).getOrElse {
+            val params = AuthenticationRequestParameters.deserialize(jws.payload.decodeToString()).getOrElse { ex ->
                 return null
-                    .also { Napier.w("parseRequestObjectJws: Deserialization failed", it) }
+                    .also { Napier.w("parseRequestObjectJws: Deserialization failed", ex) }
             }
             if (requestObjectJwsVerifier.invoke(jws, params)) params else null
                 .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
@@ -277,15 +277,15 @@ class OidcSiopWallet(
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("vp_token not requested") }
         if (clientMetadata.vpFormats != null) {
-            if (clientMetadata.vpFormats.jwtVp != null
+            if (clientMetadata.vpFormats.jwtVp?.algorithms != null
                 && clientMetadata.vpFormats.jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true
             ) return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible JWT algorithms") }
-            if (clientMetadata.vpFormats.jwtSd != null
+            if (clientMetadata.vpFormats.jwtSd?.algorithms != null
                 && clientMetadata.vpFormats.jwtSd?.algorithms?.contains(jwsService.algorithm.identifier) != true
             ) return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible JWT algorithms") }
-            if (clientMetadata.vpFormats.msoMdoc != null
+            if (clientMetadata.vpFormats.msoMdoc?.algorithms != null
                 && clientMetadata.vpFormats.msoMdoc?.algorithms?.contains(jwsService.algorithm.identifier) != true
             ) return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                 .also { Napier.w("Incompatible JWT algorithms") }
