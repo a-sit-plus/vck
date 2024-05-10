@@ -181,7 +181,6 @@ class OidcSiopWallet(
      */
     suspend fun createAuthnResponse(
         request: AuthenticationRequestParameters,
-        presentationOption: PresentationOption? = null,
     ): KmmResult<AuthenticationResponseResult> = createAuthnResponseParams(request).fold(
         onSuccess = { responseParams ->
             if (request.responseType == null) {
