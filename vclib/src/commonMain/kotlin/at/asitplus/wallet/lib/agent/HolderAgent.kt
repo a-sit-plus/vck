@@ -40,9 +40,7 @@ class HolderAgent(
         identifier = identifier,
     ),
     private val difInputEvaluator: InputEvaluator = InputEvaluator(),
-    override val defaultPathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = { _, _ ->
-        true
-    }
+    override val defaultPathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = { _, _ -> true }
 ) : Holder {
 
     companion object {

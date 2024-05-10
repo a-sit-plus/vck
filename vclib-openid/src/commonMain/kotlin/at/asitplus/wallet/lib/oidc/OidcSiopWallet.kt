@@ -27,9 +27,8 @@ import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
-import io.ktor.util.flattenEntries
+import io.ktor.http.*
+import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -338,9 +337,7 @@ class OidcSiopWallet(
             audienceId = audience,
             presentationDefinitionId = presentationDefinition.id,
             presentationOption = presentationOption
-                ?: PresentationOption.findValidPresentationOptions(
-                    presentationDefinition
-                ).first(),
+                ?: PresentationOption.findValidPresentationOptions(presentationDefinition).first(),
             fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata.vpFormats,
         ).getOrElse { exception ->
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))

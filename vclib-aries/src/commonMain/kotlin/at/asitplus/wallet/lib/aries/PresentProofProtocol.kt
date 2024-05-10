@@ -10,11 +10,11 @@ import at.asitplus.wallet.lib.data.SchemaIndex
 import at.asitplus.wallet.lib.data.dif.Constraint
 import at.asitplus.wallet.lib.data.dif.ConstraintField
 import at.asitplus.wallet.lib.data.dif.ConstraintFilter
-import at.asitplus.wallet.lib.data.dif.PresentationOption
 import at.asitplus.wallet.lib.data.dif.FormatContainerJwt
 import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.wallet.lib.data.dif.PresentationOption
 import at.asitplus.wallet.lib.data.dif.SchemaReference
 import at.asitplus.wallet.lib.msg.AttachmentFormatReference
 import at.asitplus.wallet.lib.msg.JsonWebMessage

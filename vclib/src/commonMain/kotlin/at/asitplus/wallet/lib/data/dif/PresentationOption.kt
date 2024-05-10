@@ -6,14 +6,12 @@ data class PresentationOption(
     companion object {
         fun findValidPresentationOptions(
             presentationDefinition: PresentationDefinition,
-        ): Collection<PresentationOption> {
-            return findValidPresentationOptions(
-                inputDescriptors = presentationDefinition.inputDescriptors,
-                submissionRequirements = presentationDefinition.submissionRequirements,
-            )
-        }
+        ): Collection<PresentationOption> = findValidPresentationOptions(
+            inputDescriptors = presentationDefinition.inputDescriptors,
+            submissionRequirements = presentationDefinition.submissionRequirements,
+        )
 
-        fun findValidPresentationOptions(
+        private fun findValidPresentationOptions(
             inputDescriptors: Collection<InputDescriptor>,
             submissionRequirements: Collection<SubmissionRequirement>?,
         ): Collection<PresentationOption> {
