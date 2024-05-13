@@ -2,16 +2,30 @@
 
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Instant
-import kotlinx.serialization.*
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.cbor.ByteStringWrapper
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.listSerialDescriptor
+import kotlinx.serialization.descriptors.mapSerialDescriptor
+import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.encoding.CompositeDecoder
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.encoding.decodeStructure
+import kotlinx.serialization.encoding.encodeStructure
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for MSO (9.1.2.4)
@@ -44,17 +58,11 @@ data class MobileSecurityObject(
                 ByteStringWrapperMobileSecurityObjectSerializer,
                 it.stripCborTag(24)
             ).value
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
 
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<MobileSecurityObject>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }
 
@@ -165,10 +173,7 @@ data class DeviceKeyInfo(
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<DeviceKeyInfo>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }
 
@@ -207,10 +212,7 @@ data class KeyAuthorization(
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<KeyAuthorization>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }
 
@@ -234,10 +236,7 @@ data class ValidityInfo(
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             cborSerializer.decodeFromByteArray<ValidityInfo>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }
 

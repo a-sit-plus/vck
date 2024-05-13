@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.data.jsonSerializer
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
@@ -40,10 +41,7 @@ data class ServerRequest(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<ServerRequest>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }
 
@@ -98,9 +96,6 @@ data class ServerResponse(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<ServerResponse>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }

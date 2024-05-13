@@ -26,7 +26,7 @@ class SdJwtSerializationTest : FreeSpec({
         serialized shouldContain """"$value""""
         serialized shouldContain "]"
 
-        val deserialized = SelectiveDisclosureItem.deserialize(serialized)
+        val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
         deserialized shouldBe item
     }
 
@@ -43,7 +43,7 @@ class SdJwtSerializationTest : FreeSpec({
         serialized shouldNotContain """"$value""""
         serialized shouldContain "]"
 
-        val deserialized = SelectiveDisclosureItem.deserialize(serialized)
+        val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
         deserialized shouldBe item
     }
 
@@ -60,7 +60,7 @@ class SdJwtSerializationTest : FreeSpec({
         serialized shouldNotContain """"$value""""
         serialized shouldContain "]"
 
-        val deserialized = SelectiveDisclosureItem.deserialize(serialized)
+        val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
         deserialized shouldBe item
     }
 

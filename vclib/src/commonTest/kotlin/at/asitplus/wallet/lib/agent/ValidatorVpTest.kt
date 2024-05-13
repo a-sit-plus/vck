@@ -28,7 +28,7 @@ class ValidatorVpTest : FreeSpec({
     lateinit var validator: Validator
     lateinit var issuer: Issuer
     lateinit var issuerCredentialStore: IssuerCredentialStore
-    lateinit var holder: Holder
+    lateinit var holder: HolderAgent
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var holderJwsService: JwsService
     lateinit var holderCryptoService: CryptoService

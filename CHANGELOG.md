@@ -1,8 +1,16 @@
 # Changelog
 
-UNRELEASED Release 3.7.0:
+Release NEXT:
+ - Change usage of `OidcUserInfo` in interfaces to `OidcUserInfoExtended`, to also deserialize unknown properties
+ - OID4VCI: `WalletService`: Replace parameters containing whole authentication parameters with single parameters holding `code` and `state`
+ - Change several integer properties to durations, e.g. expirations (in seconds) for OIDC data classes
+ - In `SupportedCredentialFormat` replace `claims` with `isoClaims` and `sdJwtClaims` to be able to handle both formats defined in OID4VCI Draft 13
+ - Wrap exceptions during deserialization in `KmmResult`, i.e. changing all `deserialize()` methods in companion objects
+ - `OidcSiopWallet`: Rename `newInstance()` to `newDefaultInstance()`, to align it with other factory methods
+ - `OidcSiopWallet`: Rename `retrieveAuthenticationRequestParameters() ` to `parseAuthenticationRequestParameters()`, changing result type to `KmmResult<AuthenticationRequestParameters>`
+ - `OidcSiopWallet`: Support getting presentation definition remotely, with `presentation_definition_uri` from OpenId4VP
+ - Be more lenient when parsing several authentication request parameters
 - Add `VerifiablePresentationFactory`: Used to have a separate place for creating verifiable presentations, HolderAgent got a little cramped
-- Add `PresentationOption`: Should be used in the future to evaluate which choices a user has for presentation. Becomes important once submission requirements have to be supported.
 - Change `OidcSiopVerifier.validateAuthnResponse`: Supports new presentation semantics, where the vp_token may be a array of verifiable presentations.
 - Change `OidcSiopWallet.createAuthnResponseParams`: Feed the newly required parameters to `Holder.createPresentation`; Changed output semantics to potentially submit a list of verifiable presentations
 - Change `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.

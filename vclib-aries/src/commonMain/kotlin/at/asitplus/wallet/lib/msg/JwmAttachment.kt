@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.msg
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.io.Base64Strict
 import at.asitplus.wallet.lib.aries.jsonSerializer
 import com.benasher44.uuid.uuid4
@@ -48,10 +49,7 @@ data class JwmAttachment(
 
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<JwmAttachment>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
 
         fun encodeBase64(data: String) = JwmAttachment(
             id = uuid4().toString(),

@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.jws.SelectiveDisclosureItemSerializer
-import io.github.aakira.napier.Napier
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -41,10 +41,7 @@ data class SelectiveDisclosureItem(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<SelectiveDisclosureItem>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 
 }

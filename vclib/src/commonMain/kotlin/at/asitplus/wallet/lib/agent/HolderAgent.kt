@@ -273,7 +273,7 @@ class HolderAgent(
         )
     }
 
-    override suspend fun createVcPresentation(
+    suspend fun createVcPresentation(
         validCredentials: List<String>,
         challenge: String,
         audienceId: String

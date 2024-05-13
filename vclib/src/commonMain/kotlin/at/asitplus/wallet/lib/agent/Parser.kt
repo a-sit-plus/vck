@@ -29,21 +29,22 @@ class Parser(
     /**
      * Parses a Verifiable Presentation in JWS format
      *
-     * @param it the JWS enclosing the VP, in compact representation
+     * @param input the JWS enclosing the VP, in compact representation
      * @param challenge the nonce sent from the verifier to the holder creating the VP
      * @param localIdentifier the identifier (e.g. `keyId`) of the verifier that has requested the VP from the holder
      */
-    fun parseVpJws(it: String, challenge: String, localIdentifier: String): ParseVpResult {
-        Napier.d("Parsing VP $it")
-        val jws = JwsSigned.parse(it)
-            ?: return ParseVpResult.InvalidStructure(it)
+    fun parseVpJws(input: String, challenge: String, localIdentifier: String): ParseVpResult {
+        Napier.d("Parsing VP $input")
+        val jws = JwsSigned.parse(input)
+            ?: return ParseVpResult.InvalidStructure(input)
                 .also { Napier.w("Could not parse JWS") }
         val payload = jws.payload.decodeToString()
         val kid = jws.header.keyId
-        val vpJws = kotlin.runCatching { VerifiablePresentationJws.deserialize(payload) }.getOrNull()
-            ?: return ParseVpResult.InvalidStructure(it)
-                .also { Napier.w("Could not parse payload") }
-        return parseVpJws(it, vpJws, kid, challenge, localIdentifier)
+        val vpJws = VerifiablePresentationJws.deserialize(payload).getOrElse { ex ->
+            return ParseVpResult.InvalidStructure(input)
+              .also { Napier.w("Could not parse payload", ex) }
+        }
+        return parseVpJws(input, vpJws, kid, challenge, localIdentifier)
     }
 
     fun parseVpJws(

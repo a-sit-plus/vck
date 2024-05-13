@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.wallet.lib.data.DurationSecondsIntSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.time.Duration
 
 @Serializable
 data class CredentialResponseParameters(
@@ -42,5 +44,6 @@ data class CredentialResponseParameters(
      * OPTIONAL. JSON integer denoting the lifetime in seconds of the c_nonce.
      */
     @SerialName("c_nonce_expires_in")
-    val clientNonceExpiresIn: Int? = null, // TODO Duration
+    @Serializable(with = DurationSecondsIntSerializer::class)
+    val clientNonceExpiresIn: Duration? = null,
 )

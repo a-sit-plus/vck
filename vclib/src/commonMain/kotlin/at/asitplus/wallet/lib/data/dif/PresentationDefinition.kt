@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.data.dif
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.data.jsonSerializer
 import com.benasher44.uuid.uuid4
-import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -14,7 +14,7 @@ import kotlinx.serialization.encodeToString
 @Serializable
 data class PresentationDefinition(
     @SerialName("id")
-    val id: String,
+    val id: String? = null,
     @SerialName("name")
     val name: String? = null,
     @SerialName("purpose")
@@ -36,10 +36,7 @@ data class PresentationDefinition(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<PresentationDefinition>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }
 

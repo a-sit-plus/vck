@@ -111,7 +111,7 @@ class OidcSiopVerifier(
         RelyingPartyMetadata(
             redirectUris = listOf(relyingPartyUrl),
             jsonWebKeySet = JsonWebKeySet(listOf(agentPublicKey.toJsonWebKey())),
-            subjectSyntaxTypesSupported = listOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
+            subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
             vpFormats = FormatHolder(
                 msoMdoc = containerJwt,
                 jwtVp = containerJwt,
@@ -414,9 +414,8 @@ class OidcSiopVerifier(
                     return AuthnResponseResult.ValidationError("response", params.state)
                         .also { Napier.w { "JWS of response not verified: ${params.response}" } }
                 }
-                AuthenticationResponseParameters.deserialize(jarmResponse.payload.decodeToString())?.let {
-                    return validateAuthnResponse(it)
-                }
+                AuthenticationResponseParameters.deserialize(jarmResponse.payload.decodeToString())
+                    .getOrNull()?.let { return validateAuthnResponse(it) }
             }
         }
         val idTokenJws = params.idToken
@@ -428,9 +427,10 @@ class OidcSiopVerifier(
         if (!verifierJwsService.verifyJwsObject(jwsSigned))
             return AuthnResponseResult.ValidationError("idToken", params.state)
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
-        val idToken = IdToken.deserialize(jwsSigned.payload.decodeToString())
-            ?: return AuthnResponseResult.ValidationError("idToken", params.state)
-                .also { Napier.w("Could not deserialize idToken: $idTokenJws") }
+        val idToken = IdToken.deserialize(jwsSigned.payload.decodeToString()).getOrElse { ex ->
+            return AuthnResponseResult.ValidationError("idToken", params.state)
+                .also { Napier.w("Could not deserialize idToken: $idTokenJws", ex) }
+        }
         if (idToken.issuer != idToken.subject)
             return AuthnResponseResult.ValidationError("iss", params.state)
                 .also { Napier.d("Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}") }

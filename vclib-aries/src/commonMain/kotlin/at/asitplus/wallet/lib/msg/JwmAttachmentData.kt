@@ -1,10 +1,9 @@
 package at.asitplus.wallet.lib.msg
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.aries.jsonSerializer
-import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
 
@@ -25,9 +24,6 @@ data class JwmAttachmentData(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<JwmAttachmentData>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }

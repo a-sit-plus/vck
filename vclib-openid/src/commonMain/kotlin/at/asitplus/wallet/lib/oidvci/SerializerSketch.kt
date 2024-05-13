@@ -25,21 +25,32 @@ inline fun <reified T> Parameters.decode(): T =
     }))
 
 inline fun <reified T> Parameters.decodeFromUrlQuery(): T =
-    entries.associate { (k, v) -> k.decodeURLQueryComponent() to v.decodeURLQueryComponent() }.decode()
+    entries.filter { (k, v) -> k.isNotEmpty() && v.isNotEmpty() }
+        .associate { (k, v) -> k.safeDecodeUrlQueryComponent() to v.safeDecodeUrlQueryComponent() }.decode()
 
 inline fun <reified T> String.decodeFromPostBody(): T = split("&")
     .associate {
-        it.substringBefore("=").decodeURLQueryComponent() to
-                it.substringAfter("=", "").decodeURLQueryComponent()
+        val key = it.substringBefore("=")
+        val value = it.substringAfter("=", "")
+        key.safeDecodeUrlQueryComponent() to value.safeDecodeUrlQueryComponent()
     }
     .decode()
 
+
 inline fun <reified T> String.decodeFromUrlQuery(): T = split("&")
     .associate {
-        it.substringBefore("=").decodeURLQueryComponent(plusIsSpace = true) to
-                it.substringAfter("=", "").decodeURLQueryComponent(plusIsSpace = true)
+        val key = it.substringBefore("=")
+        val value = it.substringAfter("=", "")
+        key.safeDecodeUrlQueryComponent(plusIsSpace = true) to
+                value.safeDecodeUrlQueryComponent(plusIsSpace = true)
     }
     .decode()
+
+/**
+ * Empty strings can not be decoded by [decodeURLQueryComponent], so we'll need to filter it.
+ */
+fun String.safeDecodeUrlQueryComponent(plusIsSpace: Boolean = false) =
+    if (this.isNotEmpty()) decodeURLQueryComponent(plusIsSpace = plusIsSpace) else this
 
 fun Parameters.formUrlEncode() = map { (k, v) -> k to v }.formUrlEncode()
 

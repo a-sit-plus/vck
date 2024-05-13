@@ -61,7 +61,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             )
         }
 
-        holderSiop = OidcSiopWallet.newInstance(
+        holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService
         )
@@ -130,6 +130,32 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         document.validItems.shouldNotBeEmpty()
         document.validItems.shouldBeSingleton()
         document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
+        document.invalidItems.shouldBeEmpty()
+    }
+
+
+    "Selective Disclosure with mDL JSON Path syntax" {
+        val requestedClaim = "\$['${ConstantIndex.MobileDrivingLicence2023.isoNamespace}']" +
+                "['${MobileDrivingLicenceDataElements.FAMILY_NAME}']"
+        verifierSiop = OidcSiopVerifier.newInstance(
+            verifier = verifierAgent,
+            cryptoService = verifierCryptoService,
+            relyingPartyUrl = relyingPartyUrl,
+        )
+        val document = runProcess(
+            verifierSiop,
+            walletUrl,
+            OidcSiopVerifier.RequestOptions(
+                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                credentialScheme = ConstantIndex.MobileDrivingLicence2023,
+                requestedAttributes = listOf(requestedClaim)
+            ),
+            holderSiop,
+        )
+
+        document.validItems.shouldNotBeEmpty()
+        document.validItems.shouldBeSingleton()
+        document.validItems.shouldHaveSingleElement { it.elementIdentifier == MobileDrivingLicenceDataElements.FAMILY_NAME }
         document.invalidItems.shouldBeEmpty()
     }
 

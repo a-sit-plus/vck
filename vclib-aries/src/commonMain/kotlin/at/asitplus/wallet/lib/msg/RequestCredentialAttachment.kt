@@ -1,12 +1,11 @@
 package at.asitplus.wallet.lib.msg
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.aries.jsonSerializer
 import at.asitplus.wallet.lib.data.dif.CredentialManifest
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
-import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
 
@@ -25,9 +24,6 @@ data class RequestCredentialAttachment(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<RequestCredentialAttachment>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }
