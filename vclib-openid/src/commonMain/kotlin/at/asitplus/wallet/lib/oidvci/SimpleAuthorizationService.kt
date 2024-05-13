@@ -45,16 +45,16 @@ class SimpleAuthorizationService(
      */
     private val clientNonceService: NonceService = DefaultNonceService(),
     /**
-     * Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients.
+     * Used in several fields in [OAuth2AuthorizationServerMetadata], to provide endpoint URLs to clients.
      */
     override val publicContext: String = "https://wallet.a-sit.at/authorization-server",
     /**
-     * Used to build [IssuerMetadata.authorizationEndpointUrl], i.e. implementers need to forward requests
+     * Used to build [OAuth2AuthorizationServerMetadata.authorizationEndpoint], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [authorize].
      */
     private val authorizationEndpointPath: String = "/authorize",
     /**
-     * Used to build [IssuerMetadata.tokenEndpointUrl], i.e. implementers need to forward requests
+     * Used to build [OAuth2AuthorizationServerMetadata.tokenEndpoint], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [token].
      */
     private val tokenEndpointPath: String = "/token",
