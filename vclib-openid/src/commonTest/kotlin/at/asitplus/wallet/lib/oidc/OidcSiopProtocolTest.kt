@@ -201,7 +201,7 @@ class OidcSiopProtocolTest : FreeSpec({
             authnRequestUrlParams.decodeFromUrlQuery()
         val authnResponse = holderSiop.createAuthnResponseParams(parsedAuthnRequest).getOrThrow()
         val authnResponseParams =
-            authnResponse.encodeToParameters().formUrlEncode().also { println(it) }
+            authnResponse.params.encodeToParameters().formUrlEncode().also { println(it) }
 
         val parsedAuthnResponse: AuthenticationResponseParameters =
             authnResponseParams.decodeFromPostBody()
