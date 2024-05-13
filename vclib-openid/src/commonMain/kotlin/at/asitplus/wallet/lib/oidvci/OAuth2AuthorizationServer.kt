@@ -28,8 +28,8 @@ interface OAuth2AuthorizationServer {
     suspend fun verifyAndRemoveClientNonce(nonce: String): Boolean
 
     /**
-     * Provide necessary [OAuth2AuthorizationServerMetadata] for a client to be able to authenticate
+     * Provide necessary [OAuth2AuthorizationServerMetadata] JSON for a client to be able to authenticate
      */
-    suspend fun provideMetadata(): OAuth2AuthorizationServerMetadata
+    suspend fun provideMetadata(): String
 }
 

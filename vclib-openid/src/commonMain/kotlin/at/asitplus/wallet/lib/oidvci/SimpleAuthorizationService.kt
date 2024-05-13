@@ -14,6 +14,7 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.encodeToString
 
 /**
  * Simple authorization server implementation, to be used for [CredentialIssuer],
@@ -71,11 +72,11 @@ class SimpleAuthorizationService(
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`
      */
-    val metadata: IssuerMetadata by lazy {
-        IssuerMetadata(
+    val metadata: OAuth2AuthorizationServerMetadata by lazy {
+        OAuth2AuthorizationServerMetadata(
             issuer = publicContext,
-            authorizationEndpointUrl = "$publicContext$authorizationEndpointPath",
-            tokenEndpointUrl = "$publicContext$tokenEndpointPath",
+            authorizationEndpoint = "$publicContext$authorizationEndpointPath",
+            tokenEndpoint = "$publicContext$tokenEndpointPath",
         )
     }
 
@@ -199,4 +200,5 @@ class SimpleAuthorizationService(
             .also { Napier.v("getUserInfo returns $result") }
     }
 
+    override suspend fun provideMetadata() = json.encodeToString(metadata)
 }
