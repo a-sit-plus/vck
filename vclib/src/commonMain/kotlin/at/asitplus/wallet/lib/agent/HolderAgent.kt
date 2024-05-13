@@ -14,7 +14,7 @@ import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.InputEvaluator
-import at.asitplus.wallet.lib.data.dif.PresentationOption
+import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.iso.IssuerSigned
@@ -224,8 +224,7 @@ class HolderAgent(
     override suspend fun createPresentation(
         challenge: String,
         audienceId: String,
-        presentationDefinitionId: String,
-        presentationOption: PresentationOption,
+        presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean,
     ): KmmResult<Holder.HolderResponseParameters> {
@@ -233,9 +232,9 @@ class HolderAgent(
             ?: return KmmResult.failure(CredentialRetrievalException())
 
         val allMatchingResults = findDescriptorInputMatchings(
-            inputDescriptors = presentationOption.inputDescriptors,
+            inputDescriptors = presentationDefinition.inputDescriptors,
             credentials = credentials,
-            fallbackFormatHolder = fallbackFormatHolder,
+            fallbackFormatHolder = presentationDefinition.formats,
             pathAuthorizationValidator = pathAuthorizationValidator,
         )
         val matches = allMatchingResults.mapNotNull { (key, value) ->
@@ -245,7 +244,7 @@ class HolderAgent(
         }
 
         val presentationSubmission = PresentationSubmission.fromMatches(
-            presentationId = presentationDefinitionId,
+            presentationId = presentationDefinition.id,
             matches = matches,
         )
 

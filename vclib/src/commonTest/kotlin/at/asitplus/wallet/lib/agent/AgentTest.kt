@@ -4,7 +4,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
-import at.asitplus.wallet.lib.data.dif.PresentationOption
+import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -15,6 +15,10 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 class AgentTest : FreeSpec({
+    val singularPresentationDefinition = PresentationDefinition(
+        id = uuid4().toString(),
+        inputDescriptors = listOf(InputDescriptor(id = uuid4().toString()))
+    )
 
     lateinit var issuer: Issuer
     lateinit var holder: Holder
@@ -52,12 +56,7 @@ class AgentTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge,
             verifier.identifier,
-            presentationDefinitionId = uuid4().toString(),
-            presentationOption = PresentationOption(
-                inputDescriptors = listOf(
-                    InputDescriptor(id = uuid4().toString())
-                )
-            )
+            presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
@@ -81,10 +80,7 @@ class AgentTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.identifier,
-            presentationDefinitionId = uuid4().toString(),
-            presentationOption = PresentationOption(
-                inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
-            ),
+            presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
@@ -106,10 +102,7 @@ class AgentTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = issuer.identifier,
-            presentationDefinitionId = uuid4().toString(),
-            presentationOption = PresentationOption(
-                inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
-            ),
+            presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
@@ -167,10 +160,7 @@ class AgentTest : FreeSpec({
             holder.createPresentation(
                 challenge = challenge,
                 audienceId = verifier.identifier,
-                presentationDefinitionId = uuid4().toString(),
-                presentationOption = PresentationOption(
-                    inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
-                ),
+                presentationDefinition = singularPresentationDefinition,
             ).getOrNull() shouldBe null
         }
 
@@ -197,10 +187,7 @@ class AgentTest : FreeSpec({
             holder.createPresentation(
                 challenge = challenge,
                 audienceId = verifier.identifier,
-                presentationDefinitionId = uuid4().toString(),
-                presentationOption = PresentationOption(
-                    inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
-                ),
+                presentationDefinition = singularPresentationDefinition,
             ).getOrNull() shouldBe null
         }
     }
@@ -280,10 +267,7 @@ class AgentTest : FreeSpec({
         holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.identifier,
-            presentationDefinitionId = uuid4().toString(),
-            presentationOption = PresentationOption(
-                inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
-            ),
+            presentationDefinition = singularPresentationDefinition,
         ).getOrNull() shouldBe null
     }
 
@@ -298,10 +282,7 @@ class AgentTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.identifier,
-            presentationDefinitionId = uuid4().toString(),
-            presentationOption = PresentationOption(
-                inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
-            ),
+            presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
@@ -325,10 +306,7 @@ class AgentTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.identifier,
-            presentationDefinitionId = uuid4().toString(),
-            presentationOption = PresentationOption(
-                inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
-            ),
+            presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()

@@ -7,7 +7,7 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.dif.FormatHolder
-import at.asitplus.wallet.lib.data.dif.PresentationOption
+import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
@@ -129,16 +129,18 @@ interface Holder {
 
     /**
      * Creates an array of [VerifiablePresentation] and a [PresentationSubmission] to match
-     * the [presentationOption].
+     * the [presentationDefinition].
      *
-     * [presentationOption] - run DescriptorCombination.findValidDescriptorCombinations and
-     * let the user choose one of the valid combinations of input descriptors for this presentation.
+     * @param fallbackFormatHolder: format holder to be used in case there is no format holder in a
+     *  given presentation definition and the input descriptor.
+     *  This will mostly resolve to be the some clientMetadata.vpFormats
+     * @param pathAuthorizationValidator: Provides the user of this library with a way to enforce
+     *  authorization rules.
      */
     suspend fun createPresentation(
         challenge: String,
         audienceId: String,
-        presentationDefinitionId: String,
-        presentationOption: PresentationOption,
+        presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = defaultPathAuthorizationValidator,
     ): KmmResult<HolderResponseParameters>

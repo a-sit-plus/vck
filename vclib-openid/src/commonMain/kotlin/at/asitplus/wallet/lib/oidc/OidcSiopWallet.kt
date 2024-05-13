@@ -9,7 +9,6 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.data.dif.PresentationOption
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
@@ -27,8 +26,9 @@ import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
-import io.ktor.http.*
-import io.ktor.util.*
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
+import io.ktor.util.flattenEntries
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -264,7 +264,6 @@ class OidcSiopWallet(
      */
     suspend fun createAuthnResponseParams(
         params: AuthenticationRequestParameters,
-        presentationOption: PresentationOption? = null
     ): KmmResult<AuthenticationResponseParameters> {
         if (params.clientIdScheme == OpenIdConstants.ClientIdSchemes.REDIRECT_URI
             && (params.clientMetadata == null && params.clientMetadataUri == null)
@@ -334,9 +333,7 @@ class OidcSiopWallet(
         val presentationSubmissionContainer = holder.createPresentation(
             challenge = params.nonce,
             audienceId = audience,
-            presentationDefinitionId = presentationDefinition.id,
-            presentationOption = presentationOption
-                ?: PresentationOption.findValidPresentationOptions(presentationDefinition).first(),
+            presentationDefinition = presentationDefinition,
             fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata.vpFormats,
         ).getOrElse { exception ->
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))

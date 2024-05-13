@@ -14,7 +14,6 @@ import at.asitplus.wallet.lib.data.dif.FormatContainerJwt
 import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.data.dif.PresentationOption
 import at.asitplus.wallet.lib.data.dif.SchemaReference
 import at.asitplus.wallet.lib.msg.AttachmentFormatReference
 import at.asitplus.wallet.lib.msg.JsonWebMessage
@@ -278,10 +277,7 @@ class PresentProofProtocol(
         val presentationResult = holder?.createPresentation(
             challenge = requestPresentationAttachment.options.challenge,
             audienceId = requestPresentationAttachment.options.verifier ?: senderKey.identifier,
-            presentationDefinitionId = requestPresentationAttachment.presentationDefinition.id,
-            presentationOption = PresentationOption.findValidPresentationOptions(
-                requestPresentationAttachment.presentationDefinition
-            ).first()
+            presentationDefinition = requestPresentationAttachment.presentationDefinition,
         )?.getOrNull() ?: return problemReporter.problemInternal(lastMessage.threadId, "vp-empty")
         val vp = presentationResult.verifiablePresentations.firstOrNull()
         // TODO is ISO supported here?

@@ -5,8 +5,8 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.data.dif.PresentationOption
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
+import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -20,6 +20,10 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 
 class ValidatorVpTest : FreeSpec({
+    val singularPresentationDefinition = PresentationDefinition(
+        id = uuid4().toString(),
+        inputDescriptors = listOf(InputDescriptor(id = uuid4().toString()))
+    )
 
     lateinit var validator: Validator
     lateinit var issuer: Issuer
@@ -66,10 +70,7 @@ class ValidatorVpTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.identifier,
-            presentationDefinitionId = uuid4().toString(),
-            presentationOption = PresentationOption(
-                inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
-            ),
+            presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
@@ -101,10 +102,7 @@ class ValidatorVpTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = "challenge",
             audienceId = verifier.identifier,
-            presentationDefinitionId = uuid4().toString(),
-            presentationOption = PresentationOption(
-                inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
-            ),
+            presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
@@ -117,10 +115,7 @@ class ValidatorVpTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = "keyId",
-            presentationDefinitionId = uuid4().toString(),
-            presentationOption = PresentationOption(
-                inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
-            ),
+            presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.verifiablePresentations.firstOrNull()
@@ -134,10 +129,7 @@ class ValidatorVpTest : FreeSpec({
         val presentationResults = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.identifier,
-            presentationDefinitionId = uuid4().toString(),
-            presentationOption = PresentationOption(
-                inputDescriptors = listOf(InputDescriptor(id = uuid4().toString())),
-            ),
+            presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationResults.shouldNotBeNull()
         val vp = presentationResults.verifiablePresentations.firstOrNull()
