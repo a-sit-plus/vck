@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
+import at.asitplus.crypto.datatypes.jws.JweEncrypted
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
@@ -100,7 +101,7 @@ class OidcSiopVerifier(
     private val containerJwt =
         FormatContainerJwt(algorithms = verifierJwsService.supportedAlgorithms.map { it.identifier })
 
-    private val metadata by lazy {
+    val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = listOf(relyingPartyUrl),
             jsonWebKeySet = JsonWebKeySet(listOf(agentPublicKey.toJsonWebKey())),
@@ -141,6 +142,13 @@ class OidcSiopVerifier(
         addKeyId = true
     )
 
+    // TODO always include encryption in metadata? also in [createAuthnRequest]
+    fun createMetadataWithEncryption(): RelyingPartyMetadata = metadata.copy(
+        // https://openid.net/specs/openid-connect-self-issued-v2-1_0.html#section-7.5-3
+        idTokenEncryptedResponseAlg = jwsService.encryptionAlgorithm,
+        idTokenEncryptedResponseEncoding = jwsService.encryptionEncoding
+    )
+
     data class RequestOptions(
         /**
          * Response mode to request, see [OpenIdConstants.ResponseModes]
@@ -167,6 +175,7 @@ class OidcSiopVerifier(
          * Optional URL to include [metadata] by reference instead of by value (directly embedding in authn request)
          */
         val clientMetadataUrl: String? = null,
+        val encryption: Boolean = false,
     )
 
     /**
@@ -266,7 +275,8 @@ class OidcSiopVerifier(
             clientIdScheme = attestationJwt?.let { VERIFIER_ATTESTATION } ?: REDIRECT_URI,
             scope = scope,
             nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
-            clientMetadata = requestOptions.clientMetadataUrl?.let { null } ?: metadata,
+            clientMetadata = requestOptions.clientMetadataUrl?.let { null }
+                ?: if (requestOptions.encryption) createMetadataWithEncryption() else metadata,
             clientMetadataUri = requestOptions.clientMetadataUrl,
             idTokenType = IdTokenType.SUBJECT_SIGNED.text,
             responseMode = requestOptions.responseMode,
@@ -389,6 +399,12 @@ class OidcSiopVerifier(
                 }
                 AuthenticationResponseParameters.deserialize(jarmResponse.payload.decodeToString())
                     .getOrNull()?.let { return validateAuthnResponse(it) }
+            }
+            JweEncrypted.parse(params.response)?.let { jarmResponse ->
+                jwsService.decryptJweObject(jarmResponse, params.response).getOrNull()?.let { decrypted ->
+                    AuthenticationResponseParameters.deserialize(decrypted.payload.decodeToString())
+                        .getOrNull()?.let { return validateAuthnResponse(it) }
+                }
             }
         }
         val idTokenJws = params.idToken
