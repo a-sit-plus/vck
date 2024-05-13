@@ -7,6 +7,7 @@ import io.kotest.matchers.booleans.shouldBeTrue
 import kotlinx.serialization.SerialName
 import kotlin.random.Random
 
+@Suppress("unused")
 class EqualityTests : FreeSpec({
 
     lateinit var jwk1: JsonWebKey
