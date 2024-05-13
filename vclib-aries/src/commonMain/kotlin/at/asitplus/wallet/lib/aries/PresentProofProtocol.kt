@@ -279,7 +279,7 @@ class PresentProofProtocol(
             audienceId = requestPresentationAttachment.options.verifier ?: senderKey.identifier,
             presentationDefinition = requestPresentationAttachment.presentationDefinition,
         )?.getOrNull() ?: return problemReporter.problemInternal(lastMessage.threadId, "vp-empty")
-        val vp = presentationResult.verifiablePresentations.firstOrNull()
+        val vp = presentationResult.presentationResults.firstOrNull()
         // TODO is ISO supported here?
         if (vp !is Holder.CreatePresentationResult.Signed) {
             return problemReporter.problemInternal(lastMessage.threadId, "vp-not-signed")

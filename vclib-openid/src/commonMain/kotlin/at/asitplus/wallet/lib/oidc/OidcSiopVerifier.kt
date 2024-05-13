@@ -7,6 +7,8 @@ import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.jsonpath.JsonPath
+import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
@@ -261,17 +263,19 @@ class OidcSiopVerifier(
             }
         }
         val attributeConstraint =
-            requestOptions.requestedAttributes?.let { 
+            requestOptions.requestedAttributes?.let {
                 createConstraints(
-                    requestOptions.representation, 
-                    requestOptions.credentialScheme, 
+                    requestOptions.representation,
+                    requestOptions.credentialScheme,
                     it
-                ) 
+                )
             } ?: listOf()
         val constraintFields = attributeConstraint + typeConstraint
-        val schemaReference = requestOptions.credentialScheme?.schemaUri?.let { SchemaReference(it) }
-        val scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, requestOptions.credentialScheme?.vcType)
-            .joinToString(" ")
+        val schemaReference =
+            requestOptions.credentialScheme?.schemaUri?.let { SchemaReference(it) }
+        val scope =
+            listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, requestOptions.credentialScheme?.vcType)
+                .joinToString(" ")
         return AuthenticationRequestParameters(
             responseType = "$ID_TOKEN $VP_TOKEN",
             clientId = relyingPartyUrl,
@@ -329,7 +333,14 @@ class OidcSiopVerifier(
     ): Collection<ConstraintField> = attributeTypes.map {
         if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
             ConstraintField(
-                path = listOf("\$['${credentialScheme?.isoNamespace ?: "mdoc"}'][${it.quote()}]"),
+                path = listOf(
+                    NormalizedJsonPath(
+                        NormalizedJsonPathSegment.NameSegment(
+                            credentialScheme?.isoNamespace ?: "mdoc"
+                        ),
+                        NormalizedJsonPathSegment.NameSegment(it),
+                    ).toString()
+                ),
                 intentToRetain = false
             )
         else
@@ -471,39 +482,42 @@ class OidcSiopVerifier(
 
             val format = descriptor.format
             val result = when (format) {
-                ClaimFormatEnum.JWT_VP -> when(relatedPresentation) {
+                ClaimFormatEnum.JWT_VP -> when (relatedPresentation) {
                     // must be a string
                     // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
                     is JsonPrimitive -> verifier.verifyPresentation(
                         relatedPresentation.content,
                         idToken.nonce
                     )
+
                     else -> return AuthnResponseResult.ValidationError(
                         "Invalid presentation format",
                         params.state
                     ).also { Napier.w("Invalid presentation format: $relatedPresentation") }
                 }
 
-                ClaimFormatEnum.JWT_SD -> when(relatedPresentation) {
+                ClaimFormatEnum.JWT_SD -> when (relatedPresentation) {
                     // must be a string
                     // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.5-1
                     is JsonPrimitive -> verifier.verifyPresentation(
                         relatedPresentation.content,
                         idToken.nonce
                     )
+
                     else -> return AuthnResponseResult.ValidationError(
                         "Invalid presentation format",
                         params.state
                     ).also { Napier.w("Invalid presentation format: $relatedPresentation") }
                 }
 
-                ClaimFormatEnum.MSO_MDOC -> when(relatedPresentation) {
+                ClaimFormatEnum.MSO_MDOC -> when (relatedPresentation) {
                     // must be a string
                     // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.5-1
                     is JsonPrimitive -> verifier.verifyPresentation(
                         relatedPresentation.content,
                         idToken.nonce
                     )
+
                     else -> return AuthnResponseResult.ValidationError(
                         "Invalid presentation format",
                         params.state
@@ -543,7 +557,7 @@ class OidcSiopVerifier(
             }
         }
 
-        return if(validationResults.size != 1) AuthnResponseResult.VerifiablePresentationValidationResults(
+        return if (validationResults.size != 1) AuthnResponseResult.VerifiablePresentationValidationResults(
             validationResults = validationResults
         ) else validationResults[0]
     }

@@ -19,6 +19,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 
+@Suppress("unused")
 class OidcSiopIsoProtocolTest : FreeSpec({
 
     lateinit var relyingPartyUrl: String
@@ -79,7 +80,9 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             OidcSiopVerifier.RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = ConstantIndex.MobileDrivingLicence2023,
-                requestedAttributes = listOf(MobileDrivingLicenceDataElements.GIVEN_NAME),
+                requestedAttributes = listOf(
+                    MobileDrivingLicenceDataElements.GIVEN_NAME
+                ),
             ),
             holderSiop
         )
@@ -135,8 +138,6 @@ class OidcSiopIsoProtocolTest : FreeSpec({
 
 
     "Selective Disclosure with mDL JSON Path syntax" {
-        val requestedClaim = "\$['${ConstantIndex.MobileDrivingLicence2023.isoNamespace}']" +
-                "['${MobileDrivingLicenceDataElements.FAMILY_NAME}']"
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
@@ -148,7 +149,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             OidcSiopVerifier.RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = ConstantIndex.MobileDrivingLicence2023,
-                requestedAttributes = listOf(requestedClaim)
+                requestedAttributes = listOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
             ),
             holderSiop,
         )

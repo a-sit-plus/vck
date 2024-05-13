@@ -59,7 +59,7 @@ class AgentTest : FreeSpec({
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.verifiablePresentations.firstOrNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
         val verified = verifier.verifyPresentation(vp.jws, challenge)
@@ -83,7 +83,7 @@ class AgentTest : FreeSpec({
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.verifiablePresentations.firstOrNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
         val verified = verifier.verifyPresentation(vp.jws, challenge)
@@ -105,7 +105,7 @@ class AgentTest : FreeSpec({
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.verifiablePresentations.firstOrNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
         val result = verifier.verifyPresentation(vp.jws, challenge)
@@ -285,7 +285,7 @@ class AgentTest : FreeSpec({
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.verifiablePresentations.firstOrNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
 
@@ -309,7 +309,7 @@ class AgentTest : FreeSpec({
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.verifiablePresentations.firstOrNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
 

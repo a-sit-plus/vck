@@ -12,7 +12,7 @@ data class PresentationSubmission(
     @SerialName("id")
     val id: String,
     @SerialName("definition_id")
-    val definitionId: String,
+    val definitionId: String?,
     @SerialName("descriptor_map")
     val descriptorMap: Collection<PresentationSubmissionDescriptor>? = null,
 )

@@ -227,7 +227,7 @@ class HolderAgent(
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean,
-    ): KmmResult<Holder.HolderResponseParameters> {
+    ): KmmResult<Holder.PresentationResponseParameters> {
         val credentials = getValidCredentialsByPriority()
             ?: return KmmResult.failure(CredentialRetrievalException())
 
@@ -266,9 +266,9 @@ class HolderAgent(
         }
 
         return KmmResult.success(
-            Holder.HolderResponseParameters(
+            Holder.PresentationResponseParameters(
                 presentationSubmission = presentationSubmission,
-                verifiablePresentations = verifiablePresentations,
+                presentationResults = verifiablePresentations,
             )
         )
     }
@@ -348,7 +348,7 @@ class HolderAgent(
     }
 
     private fun PresentationSubmission.Companion.fromMatches(
-        presentationId: String,
+        presentationId: String?,
         matches: List<Pair<InputDescriptor, CandidateInputMatchContainer>>,
     ): PresentationSubmission {
         return PresentationSubmission(

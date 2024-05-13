@@ -67,7 +67,7 @@ class AgentSdJwtTest : FreeSpec({
             presentationDefinition = givenNamePresentationDefinition
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.verifiablePresentations.firstOrNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp shouldNotBe null
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
         println("Presentation: " + vp.sdJwt)
@@ -87,7 +87,7 @@ class AgentSdJwtTest : FreeSpec({
             presentationDefinition = givenNamePresentationDefinition
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.verifiablePresentations.firstOrNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp shouldNotBe null
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
         // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
@@ -109,7 +109,7 @@ class AgentSdJwtTest : FreeSpec({
             presentationDefinition = givenNamePresentationDefinition
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.verifiablePresentations.firstOrNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp shouldNotBe null
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
@@ -125,7 +125,7 @@ class AgentSdJwtTest : FreeSpec({
             presentationDefinition = givenNamePresentationDefinition
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.verifiablePresentations.firstOrNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp shouldNotBe null
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
@@ -156,7 +156,7 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
             inputDescriptors = listOf(InputDescriptor(id = uuid4().toString()))
         ),
     ).getOrNull()
-    return (presentationResult?.verifiablePresentations?.first() as Holder.CreatePresentationResult.SdJwt).sdJwt
+    return (presentationResult?.presentationResults?.first() as Holder.CreatePresentationResult.SdJwt).sdJwt
 }
 
 suspend fun issueDummyCredentials(

@@ -122,9 +122,9 @@ interface Holder {
         )
     }
 
-    data class HolderResponseParameters(
+    data class PresentationResponseParameters(
         val presentationSubmission: PresentationSubmission,
-        val verifiablePresentations: List<CreatePresentationResult>
+        val presentationResults: List<CreatePresentationResult>
     )
 
     /**
@@ -143,7 +143,7 @@ interface Holder {
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = defaultPathAuthorizationValidator,
-    ): KmmResult<HolderResponseParameters>
+    ): KmmResult<PresentationResponseParameters>
 
     sealed class CreatePresentationResult {
         /**

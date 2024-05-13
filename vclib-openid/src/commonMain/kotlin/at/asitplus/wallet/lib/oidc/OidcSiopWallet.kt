@@ -9,13 +9,9 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.data.dif.PresentationSubmission
-import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
@@ -320,43 +316,42 @@ class OidcSiopWallet(
             return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
         }
 
-        val presentationSubmissionContainer = holder.createPresentation(
-            challenge = params.nonce,
-            audienceId = audience,
-            presentationDefinition = presentationDefinition,
-            fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata.vpFormats,
-        ).getOrElse { exception ->
-            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
-                .also { Napier.w("Could not create presentation: ${exception.message}") }
+        val presentationResultContainer = presentationDefinition?.let {
+            holder.createPresentation(
+                challenge = params.nonce,
+                audienceId = audience,
+                presentationDefinition = presentationDefinition,
+                fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata.vpFormats,
+            ).getOrElse { exception ->
+                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
+                    .also { Napier.w("Could not create presentation: ${exception.message}") }
+            }
         }
+        presentationResultContainer?.let {
+            clientMetadata.vpFormats?.let { supportedFormats ->
+                presentationResultContainer.presentationSubmission.descriptorMap?.mapIndexed { index, descriptor ->
+                    val isMissingFormatSupport = when (descriptor.format) {
+                        ClaimFormatEnum.JWT_VP -> supportedFormats.jwtVp?.algorithms?.contains(
+                            jwsService.algorithm.identifier
+                        ) != true
 
-        clientMetadata.vpFormats?.let { supportedFormats ->
-            presentationSubmissionContainer.presentationSubmission.descriptorMap?.mapIndexed { index, descriptor ->
-                val isMissingFormatSupport = when (descriptor.format) {
-                    ClaimFormatEnum.JWT_VC -> supportedFormats.jwtVc?.algorithms?.contains(
-                        jwsService.algorithm.identifier
-                    ) != true
+                        ClaimFormatEnum.JWT_SD -> supportedFormats.jwtSd?.algorithms?.contains(
+                            jwsService.algorithm.identifier
+                        ) != true
 
-                    ClaimFormatEnum.JWT_VP -> supportedFormats.jwtVp?.algorithms?.contains(
-                        jwsService.algorithm.identifier
-                    ) != true
+                        ClaimFormatEnum.MSO_MDOC -> supportedFormats.msoMdoc?.algorithms?.contains(
+                            jwsService.algorithm.identifier
+                        ) != true
 
-                    ClaimFormatEnum.JWT_SD -> supportedFormats.jwtSd?.algorithms?.contains(
-                        jwsService.algorithm.identifier
-                    ) != true
+                        else -> true
+                    }
 
-                    ClaimFormatEnum.MSO_MDOC -> supportedFormats.msoMdoc?.algorithms?.contains(
-                        jwsService.algorithm.identifier
-                    ) != true
-
-                    else -> true
-                }
-
-                if (isMissingFormatSupport) {
-                    return KmmResult.failure(
-                        OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
-                            .also { Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats") }
-                    )
+                    if (isMissingFormatSupport) {
+                        return KmmResult.failure(
+                            OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
+                                .also { Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats") }
+                        )
+                    }
                 }
             }
         }
@@ -365,7 +360,7 @@ class OidcSiopWallet(
             AuthenticationResponseParameters(
                 idToken = signedIdToken.serialize(),
                 state = params.state,
-                vpToken = presentationSubmissionContainer.verifiablePresentations.map {
+                vpToken = presentationResultContainer?.presentationResults?.map {
                     when (it) {
                         is Holder.CreatePresentationResult.Signed -> {
                             // must be a string
@@ -387,7 +382,7 @@ class OidcSiopWallet(
                             )
                         }
                     }
-                }.let {
+                }?.let {
                     if (it.size == 1) it[0]
                     else buildJsonArray {
                         for (value in it) {
@@ -395,7 +390,7 @@ class OidcSiopWallet(
                         }
                     }
                 },
-                presentationSubmission = presentationSubmissionContainer.presentationSubmission,
+                presentationSubmission = presentationResultContainer?.presentationSubmission,
             )
         )
     }

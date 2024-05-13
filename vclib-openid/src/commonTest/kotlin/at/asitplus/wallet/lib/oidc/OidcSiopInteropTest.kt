@@ -21,8 +21,8 @@ import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.*
-import io.ktor.util.*
+import io.ktor.http.Url
+import io.ktor.util.flattenEntries
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 
@@ -151,7 +151,7 @@ class OidcSiopInteropTest : FreeSpec({
             }
         )
 
-        val resp = holderSiop.retrieveAuthenticationRequestParameters(url)
+        val resp = holderSiop.parseAuthenticationRequestParameters(url)
         Napier.d("resp: $resp")
 
         val response = holderSiop.createAuthnResponse(url).getOrThrow()

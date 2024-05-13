@@ -88,7 +88,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             verifierAgent =
                 VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.didEncoded)
 
-            holderSiop = OidcSiopWallet.newInstance(
+            holderSiop = OidcSiopWallet.newDefaultInstance(
                 holder = holderAgent,
                 cryptoService = holderCryptoService,
                 scopePresentationDefinitionRetriever = testScopePresentationDefinitionRetriever

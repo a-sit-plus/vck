@@ -73,7 +73,7 @@ class ValidatorVpTest : FreeSpec({
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.verifiablePresentations.firstOrNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
         val result = verifier.verifyPresentation(vp.jws, challenge)
@@ -105,7 +105,7 @@ class ValidatorVpTest : FreeSpec({
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.verifiablePresentations.firstOrNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
         val result = verifier.verifyPresentation(vp.jws, challenge)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
@@ -118,7 +118,7 @@ class ValidatorVpTest : FreeSpec({
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.verifiablePresentations.firstOrNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
         val result = verifier.verifyPresentation(vp.jws, challenge)
@@ -132,7 +132,7 @@ class ValidatorVpTest : FreeSpec({
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationResults.shouldNotBeNull()
-        val vp = presentationResults.verifiablePresentations.firstOrNull()
+        val vp = presentationResults.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
         holderCredentialStore.getCredentials().getOrThrow()
