@@ -92,6 +92,22 @@ object OpenIdConstants {
         const val X509_SAN_DNS = "x509_san_dns"
 
         /**
+         * When the Client Identifier Scheme is x509_san_uri, the Client Identifier MUST be a URI name and match a
+         * `uniformResourceIdentifier` Subject Alternative Name (SAN) [RFC5280](https://www.rfc-editor.org/info/rfc5280) entry in the leaf
+         * certificate passed with the request. The request MUST be signed with the private key corresponding to the
+         * public key in the leaf X.509 certificate of the certificate chain added to the request in the `x5c` JOSE
+         * header [RFC7515](https://www.rfc-editor.org/info/rfc7515) of the signed request object.
+         *
+         * The Wallet MUST validate the signature and the trust chain of the X.509 certificate.
+         * All Verifier metadata other than the public key MUST be obtained from the `client_metadata` parameter.
+         * If the Wallet can establish trust in the Client Identifier authenticated through the certificate, e.g.
+         * because the Client Identifier is contained in a list of trusted Client Identifiers, it may allow the client
+         * to freely choose the `redirect_uri` value. If not, the FQDN of the `redirect_uri` value MUST match the
+         * Client Identifier.
+         */
+        const val X509_SAN_URI = "x509_san_uri"
+
+        /**
          * This value indicates that the Client Identifier is an Entity Identifier defined in OpenID Connect Federation.
          * Processing rules given in OpenID.Federation MUST be followed. Automatic Registration as defined in
          * OpenID.Federation MUST be used. The Authorization Request MAY also contain a `trust_chain` parameter.
