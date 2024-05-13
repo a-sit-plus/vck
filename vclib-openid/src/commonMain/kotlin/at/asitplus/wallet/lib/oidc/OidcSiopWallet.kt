@@ -137,7 +137,7 @@ class OidcSiopWallet(
                     it.parameters.flattenEntries().toMap().decodeFromUrlQuery<AuthenticationRequestParameters>()
                 )
             }
-        }.getOrNull() ?: kotlin.runCatching {  // maybe it is already a JSON string
+        }.onFailure { it.printStackTrace() }.getOrNull() ?: kotlin.runCatching {  // maybe it is already a JSON string
             AuthenticationRequestParametersFrom.Json(
                 input,
                 AuthenticationRequestParameters.deserialize(input).getOrThrow()
