@@ -4,7 +4,6 @@ import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.data.InstantLongSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.oidvci.AuthorizationDetails
-import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -266,6 +265,4 @@ data class AuthenticationRequestParameters(
             jsonSerializer.decodeFromString<AuthenticationRequestParameters>(it)
         }.wrap()
     }
-
-    val presentationDefinitionUri: String? = presentationDefinitionUrl
 }
