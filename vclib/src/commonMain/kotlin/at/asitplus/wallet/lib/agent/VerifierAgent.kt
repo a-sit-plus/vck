@@ -57,7 +57,7 @@ class VerifierAgent private constructor(
         if (sdJwtSigned != null) {
             return validator.verifyVpSdJwt(it, challenge, identifier)
         }
-        val jwsSigned = runCatching { JwsSigned.parse(it) }.getOrNull()
+        val jwsSigned = JwsSigned.parse(it).getOrNull()
         if (jwsSigned != null) {
             return validator.verifyVpJws(it, challenge, identifier)
         }
