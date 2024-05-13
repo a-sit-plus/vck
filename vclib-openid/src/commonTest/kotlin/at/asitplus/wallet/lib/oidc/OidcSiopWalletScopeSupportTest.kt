@@ -26,6 +26,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 
+@Suppress("unused")
 class OidcSiopWalletScopeSupportTest : FreeSpec({
     "specified well known scopes" - {
         // no scopes with a mapping to a presentation definition are known yet
