@@ -115,6 +115,18 @@ class OidcSiopVerifier(
     }
 
     /**
+     * Creates the [RelyingPartyMetadata], but with parameters set to request encryption of pushed authentication
+     * responses, see [RelyingPartyMetadata.idTokenEncryptedResponseAlg]
+     * and [RelyingPartyMetadata.idTokenEncryptedResponseEncoding].
+     */
+    val metadataWithEncryption by lazy {
+        metadata.copy(
+            idTokenEncryptedResponseAlg = jwsService.encryptionAlgorithm,
+            idTokenEncryptedResponseEncoding = jwsService.encryptionEncoding
+        )
+    }
+
+    /**
      * Create a URL to be displayed as a static QR code for Wallet initiation.
      * URL is the [walletUrl], with query parameters appended for [relyingPartyUrl], [clientMetadataUrl], [requestUrl].
      */
@@ -140,13 +152,6 @@ class OidcSiopVerifier(
     suspend fun createSignedMetadata(): KmmResult<JwsSigned> = jwsService.createSignedJwsAddingParams(
         payload = metadata.serialize().encodeToByteArray(),
         addKeyId = true
-    )
-
-    // TODO always include encryption in metadata? also in [createAuthnRequest]
-    fun createMetadataWithEncryption(): RelyingPartyMetadata = metadata.copy(
-        // https://openid.net/specs/openid-connect-self-issued-v2-1_0.html#section-7.5-3
-        idTokenEncryptedResponseAlg = jwsService.encryptionAlgorithm,
-        idTokenEncryptedResponseEncoding = jwsService.encryptionEncoding
     )
 
     data class RequestOptions(
@@ -175,6 +180,10 @@ class OidcSiopVerifier(
          * Optional URL to include [metadata] by reference instead of by value (directly embedding in authn request)
          */
         val clientMetadataUrl: String? = null,
+        /**
+         * Set this value to include metadata with encryption parameters set. Beware if setting this value and also
+         * [clientMetadataUrl], that the URL shall point to [getCreateMetadataWithEncryption].
+         */
         val encryption: Boolean = false,
     )
 
@@ -276,7 +285,7 @@ class OidcSiopVerifier(
             scope = scope,
             nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
             clientMetadata = requestOptions.clientMetadataUrl?.let { null }
-                ?: if (requestOptions.encryption) createMetadataWithEncryption() else metadata,
+                ?: if (requestOptions.encryption) metadataWithEncryption else metadata,
             clientMetadataUri = requestOptions.clientMetadataUrl,
             idTokenType = IdTokenType.SUBJECT_SIGNED.text,
             responseMode = requestOptions.responseMode,
