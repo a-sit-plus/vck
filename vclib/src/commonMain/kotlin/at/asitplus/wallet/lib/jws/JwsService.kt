@@ -13,7 +13,6 @@ import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 
 /**
@@ -43,7 +42,8 @@ interface JwsService {
         header: JwsHeader? = null,
         payload: ByteArray,
         addKeyId: Boolean = true,
-        addJsonWebKey: Boolean = true
+        addJsonWebKey: Boolean = true,
+        addX5c: Boolean = false
     ): KmmResult<JwsSigned>
 
     fun encryptJweObject(
@@ -105,7 +105,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         header: JwsHeader?,
         payload: ByteArray,
         addKeyId: Boolean,
-        addJsonWebKey: Boolean
+        addJsonWebKey: Boolean,
+        addX5c: Boolean
     ): KmmResult<JwsSigned> {
         var copy = header?.copy(algorithm = cryptoService.algorithm.toJwsAlgorithm())
             ?: JwsHeader(algorithm = cryptoService.algorithm.toJwsAlgorithm())
@@ -113,6 +114,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             copy = copy.copy(keyId = cryptoService.jsonWebKey.keyId)
         if (addJsonWebKey)
             copy = copy.copy(jsonWebKey = cryptoService.jsonWebKey)
+        if (addX5c)
+            copy = copy.copy(certificateChain = listOf(cryptoService!!.certificate!!)) //TODO cleanup/nullchecks
         return createSignedJws(copy, payload)
     }
 
@@ -188,7 +191,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             Napier.w("No ciphertext from native code", it)
             return KmmResult.failure(it)
         }
-        return KmmResult.success(JweEncrypted(jweHeader, aad, null, iv,   ciphertext.ciphertext, ciphertext.authtag))
+        return KmmResult.success(JweEncrypted(jweHeader, aad, null, iv, ciphertext.ciphertext, ciphertext.authtag))
     }
 
     private fun prependWithAdditionalInfo(

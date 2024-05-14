@@ -27,12 +27,19 @@ import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.data.dif.SchemaReference
+import at.asitplus.crypto.datatypes.pki.CertificateChain
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.PRE_REGISTERED
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.REDIRECT_URI
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.VERIFIER_ATTESTATION
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.X509_SAN_DNS
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.X509_SAN_URI
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
@@ -63,7 +70,7 @@ import kotlin.time.toDuration
  *
  * This class creates the Authentication Request, [verifier] verifies the response. See [OidcSiopWallet] for the holder.
  */
-class OidcSiopVerifier(
+class OidcSiopVerifier private constructor(
     private val verifier: Verifier,
     private val relyingPartyUrl: String,
     private val agentPublicKey: CryptoPublicKey,
@@ -75,7 +82,9 @@ class OidcSiopVerifier(
      * Verifier Attestation JWT (from OID4VP) to include (in header `jwt`) when creating request objects as JWS,
      * to allow the Wallet to verify the authenticity of this Verifier.
      */
-    private val attestationJwt: JwsSigned? = null,
+    private val attestationJwt: JwsSigned?,
+    private val x5c: CertificateChain?,
+    private val clientIdScheme: String
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
@@ -93,7 +102,7 @@ class OidcSiopVerifier(
             jwsService: JwsService = DefaultJwsService(cryptoService),
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
-            attestationJwt: JwsSigned? = null,
+            attestationJwt: JwsSigned,
         ) = OidcSiopVerifier(
             verifier = verifier,
             relyingPartyUrl = relyingPartyUrl,
@@ -103,6 +112,53 @@ class OidcSiopVerifier(
             timeLeewaySeconds = timeLeewaySeconds,
             clock = clock,
             attestationJwt = attestationJwt,
+            x5c = null,
+            clientIdScheme = VERIFIER_ATTESTATION
+        )
+
+        fun newInstance(
+            verifier: Verifier,
+            cryptoService: CryptoService,
+            relyingPartyUrl: String,
+            verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
+            jwsService: JwsService = DefaultJwsService(cryptoService),
+            timeLeewaySeconds: Long = 300L,
+            clock: Clock = Clock.System,
+            x5c: CertificateChain,
+        ) = OidcSiopVerifier(
+            verifier = verifier,
+            relyingPartyUrl = relyingPartyUrl,
+            agentPublicKey = cryptoService.publicKey,
+            jwsService = jwsService,
+            verifierJwsService = verifierJwsService,
+            timeLeewaySeconds = timeLeewaySeconds,
+            clock = clock,
+            attestationJwt = null,
+            clientIdScheme = X509_SAN_DNS,
+            x5c = x5c
+        )
+
+
+        fun newInstance(
+            verifier: Verifier,
+            cryptoService: CryptoService,
+            relyingPartyUrl: String,
+            verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
+            jwsService: JwsService = DefaultJwsService(cryptoService),
+            timeLeewaySeconds: Long = 300L,
+            clock: Clock = Clock.System,
+            clientIdScheme: String = REDIRECT_URI,
+        ) = OidcSiopVerifier(
+            verifier = verifier,
+            relyingPartyUrl = relyingPartyUrl,
+            agentPublicKey = cryptoService.publicKey,
+            jwsService = jwsService,
+            verifierJwsService = verifierJwsService,
+            timeLeewaySeconds = timeLeewaySeconds,
+            clock = clock,
+            attestationJwt = null,
+            clientIdScheme = clientIdScheme,
+            x5c = null
         )
     }
 
@@ -145,11 +201,11 @@ class OidcSiopVerifier(
      * Creates a JWS containing signed [RelyingPartyMetadata],
      * to be served under a `client_metadata_uri` at the Verifier.
      */
-    suspend fun createSignedMetadata(): KmmResult<JwsSigned> =
-        jwsService.createSignedJwsAddingParams(
-            payload = metadata.serialize().encodeToByteArray(),
-            addKeyId = true
-        )
+    suspend fun createSignedMetadata(): KmmResult<JwsSigned> = jwsService.createSignedJwsAddingParams(
+        payload = metadata.serialize().encodeToByteArray(),
+        addKeyId = true,
+        addX5c = false
+    )
 
     data class RequestOptions(
         /**
@@ -236,9 +292,10 @@ class OidcSiopVerifier(
             header = JwsHeader(
                 algorithm = jwsService.algorithm,
                 attestationJwt = attestationJwt?.serialize(),
+                certificateChain = x5c
             ),
             payload = requestObjectSerialized.encodeToByteArray(),
-            addJsonWebKey = true,
+            addJsonWebKey = x5c==null
         ).getOrElse {
             Napier.w("Could not sign JWS form authnRequest", it)
             return KmmResult.failure(it)
@@ -279,8 +336,8 @@ class OidcSiopVerifier(
         return AuthenticationRequestParameters(
             responseType = "$ID_TOKEN $VP_TOKEN",
             clientId = relyingPartyUrl,
-            redirectUrl = relyingPartyUrl,
-            clientIdScheme = attestationJwt?.let { VERIFIER_ATTESTATION } ?: REDIRECT_URI,
+            redirectUrl = relyingPartyUrl.let { if (it.startsWith("https://")) it else "https://$it" }, //TODO make this configurable
+            clientIdScheme = clientIdScheme,
             scope = scope,
             nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
             clientMetadata = requestOptions.clientMetadataUrl?.let { null } ?: metadata,

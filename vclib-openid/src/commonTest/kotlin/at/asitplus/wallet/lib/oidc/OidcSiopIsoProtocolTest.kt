@@ -125,7 +125,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             OidcSiopVerifier.RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = ConstantIndex.MobileDrivingLicence2023,
-                requestedAttributes = listOf(requestedClaim)
+                requestedAttributes = listOf(requestedClaim),
             ),
             holderSiop,
         )

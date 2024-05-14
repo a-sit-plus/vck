@@ -59,6 +59,8 @@ object OpenIdConstants {
     /**
      * Constants from OID4VP
      */
+
+    //TODO make this a sealed class with custom serializer/deserializer to add a generic UNRECOGNISED scheme, s.t. parsing still works
     object ClientIdSchemes {
         /**
          *  This value represents the RFC6749 default behavior, i.e., the Client Identifier needs to be known to the

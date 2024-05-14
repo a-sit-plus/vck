@@ -287,7 +287,8 @@ class OidcSiopInteropTest : FreeSpec({
                 state = "ef391e30-bacc-4441-af5d-7f42fb682e02",
                 responseUrl = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
                 clientId = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
-            ).serialize().encodeToByteArray()
+            ).serialize().encodeToByteArray(),
+            addX5c = false
         ).getOrThrow().serialize()
 
         val wallet = OidcSiopWallet.newDefaultInstance(
