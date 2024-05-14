@@ -5,11 +5,12 @@ import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -34,6 +35,9 @@ import io.ktor.http.Url
 import io.ktor.util.flattenEntries
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -257,46 +261,39 @@ class OidcSiopWallet(
         // params.clientIdScheme is assumed to be OpenIdConstants.ClientIdSchemes.REDIRECT_URI,
         // because we'll require clientMetadata to be present, below
         // TODO implement x509_san_dns, x509_san_uri, as implemented by EUDI verifier
-        val clientMetadata = params.clientMetadata
-            ?: params.clientMetadataUri?.let { uri ->
-                remoteResourceRetriever.invoke(uri)
-                    ?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
-            }
+        val clientMetadata = retrieveClientMetadata(params)
             ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("client metadata is not specified") }
-        val audience = clientMetadata.jsonWebKeySet?.keys?.firstOrNull()?.identifier
-            ?: clientMetadata.jsonWebKeySetUrl?.let {
-                remoteResourceRetriever.invoke(it)
-                    ?.let { JsonWebKeySet.deserialize(it) }?.keys?.firstOrNull()?.identifier
-            }
+
+        val audience = retrieveAudience(clientMetadata)
             ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("Could not parse audience") }
+
+        val presentationDefinition = retrievePresentationDefinition(params)
+
         // TODO Check removed for EUDI interop
 //        if (clientMetadata.subjectSyntaxTypesSupported == null || URN_TYPE_JWK_THUMBPRINT !in clientMetadata.subjectSyntaxTypesSupported)
 //            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
 //                .also { Napier.w("Incompatible subject syntax types algorithms") }
         if (params.redirectUrl != null) {
-            if (params.clientId != params.redirectUrl)
+            if (params.clientId != params.redirectUrl) {
                 return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                     .also { Napier.w("client_id does not match redirect_uri") }
+            }
         }
-        if (params.responseType == null)
+        if (params.responseType == null) {
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("response_type is not specified") }
-        val presentationDefinition =
-            params.presentationDefinition ?: params.presentationDefinitionUrl?.let {
-                remoteResourceRetriever.invoke(it)
-            }?.let {
-                PresentationDefinition.deserialize(it).getOrNull()
-            } ?: params.scope?.split(" ")?.firstNotNullOfOrNull {
-                scopePresentationDefinitionRetriever?.invoke(it)
-            }
-        if (!params.responseType.contains(VP_TOKEN) && presentationDefinition == null)
+        }
+        if (!params.responseType.contains(VP_TOKEN) && presentationDefinition == null) {
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("vp_token not requested") }
-        if (params.nonce == null)
+        }
+        if (params.nonce == null) {
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("nonce is null") }
+        }
+
 
         val now = clock.now()
         // we'll assume jwk-thumbprint
@@ -395,18 +392,239 @@ class OidcSiopWallet(
         )
     }
 
-    private fun stripNamespaces(
-        requestedClaims: List<String>,
-        requestedSchemes: MutableList<ConstantIndex.CredentialScheme>
-    ) = requestedClaims.map { claim ->
-        // NOTE: To be replaced with JSONPath implementation
-        var cleaned = claim
-        requestedSchemes.forEach { scheme ->
-            cleaned = cleaned.removePrefix("\$['${scheme.isoNamespace}']['").removeSuffix("']")
+    suspend fun startAuthenticationResponsePreparation(
+        input: String,
+        pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean,
+    ): KmmResult<AuthenticationResponseBuilder> {
+        val parameters = parseAuthenticationRequestParameters(input).getOrElse {
+            return KmmResult.failure<AuthenticationResponseBuilder>(it)
+                .also { Napier.w("Could not parse authentication request: $input") }
         }
-        cleaned
+
+        val clientMetadata = retrieveClientMetadata(parameters)
+            ?: return KmmResult.failure<AuthenticationResponseBuilder>(OAuth2Exception(Errors.INVALID_REQUEST))
+                .also { Napier.w("client metadata is not specified") }
+
+        val audience = retrieveAudience(clientMetadata)
+            ?: return KmmResult.failure<AuthenticationResponseBuilder>(OAuth2Exception(Errors.INVALID_REQUEST))
+                .also { Napier.w("Could not parse audience") }
+
+        val presentationDefinition = retrievePresentationDefinition(parameters)
+
+        // TODO Check removed for EUDI interop
+//        if (clientMetadata.subjectSyntaxTypesSupported == null || URN_TYPE_JWK_THUMBPRINT !in clientMetadata.subjectSyntaxTypesSupported)
+//            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
+//                .also { Napier.w("Incompatible subject syntax types algorithms") }
+        if (parameters.redirectUrl != null) {
+            if (parameters.clientId != parameters.redirectUrl) {
+                return KmmResult.failure<AuthenticationResponseBuilder>(OAuth2Exception(Errors.INVALID_REQUEST))
+                    .also { Napier.w("client_id does not match redirect_uri") }
+            }
+        }
+        if (parameters.responseType == null) {
+            return KmmResult.failure<AuthenticationResponseBuilder>(OAuth2Exception(Errors.INVALID_REQUEST))
+                .also { Napier.w("response_type is not specified") }
+        }
+        if (!parameters.responseType.contains(VP_TOKEN) && presentationDefinition == null) {
+            return KmmResult.failure<AuthenticationResponseBuilder>(OAuth2Exception(Errors.INVALID_REQUEST))
+                .also { Napier.w("vp_token not requested") }
+        }
+        if (parameters.nonce == null) {
+            return KmmResult.failure<AuthenticationResponseBuilder>(OAuth2Exception(Errors.INVALID_REQUEST))
+                .also { Napier.w("nonce is null") }
+        }
+
+        return KmmResult.success(
+            AuthenticationResponseBuilder(
+                parameters = parameters,
+                responseType = parameters.responseType,
+                clientMetadata = clientMetadata,
+                audience = audience,
+                nonce = parameters.nonce,
+                submissionBuilder = presentationDefinition?.let {
+                    PresentationSubmissionBuilder(
+                        presentationDefinitionId = presentationDefinition.id,
+                        submissionRequirements = presentationDefinition.submissionRequirements,
+                        inputDescriptorMatches = holder.matchInputDescriptorsAgainstCredentialStore(
+                            presentationDefinition = presentationDefinition,
+                            fallbackFormatHolder = clientMetadata.vpFormats,
+                            pathAuthorizationValidator = pathAuthorizationValidator,
+                        ).getOrElse {
+                            return KmmResult.failure<AuthenticationResponseBuilder>(
+                                OAuth2Exception(
+                                    Errors.USER_CANCELLED
+                                )
+                            )
+                                .also { Napier.w("Unable to find matching credentials") }
+                        },
+                    )
+                },
+            )
+        )
     }
 
+    suspend fun finalizeAuthenticationResponseParameters(
+        authenticationResponseBuilder: AuthenticationResponseBuilder,
+    ): KmmResult<AuthenticationResponseParameters> {
+        val signedIdToken = if (!authenticationResponseBuilder.responseType.contains(ID_TOKEN)) {
+            null
+        } else {
+            val now = clock.now()
+            // we'll assume jwk-thumbprint
+            val agentJsonWebKey = agentPublicKey.toJsonWebKey()
+            val idToken = IdToken(
+                issuer = agentJsonWebKey.jwkThumbprint,
+                subject = agentJsonWebKey.jwkThumbprint,
+                subjectJwk = agentJsonWebKey,
+                audience = authenticationResponseBuilder.parameters.redirectUrl
+                    ?: authenticationResponseBuilder.parameters.clientId
+                    ?: agentJsonWebKey.jwkThumbprint,
+                issuedAt = now,
+                expiration = now + 60.seconds,
+                nonce = authenticationResponseBuilder.nonce,
+            )
+            val jwsPayload = idToken.serialize().encodeToByteArray()
+            jwsService.createSignedJwsAddingParams(payload = jwsPayload).getOrElse {
+                Napier.w("Could not sign id_token", it)
+                return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
+            }
+        }
+
+        val presentationResultContainer =
+            authenticationResponseBuilder.submissionBuilder?.let { submission ->
+
+                holder.createPresentation(
+                    challenge = authenticationResponseBuilder.nonce,
+                    audienceId = authenticationResponseBuilder.audience,
+                    presentationDefinitionId = submission.presentationDefinitionId,
+                    submissionSelection = submission.submissionSelection
+                ).getOrElse { exception ->
+                    return KmmResult.failure<AuthenticationResponseParameters>(
+                        OAuth2Exception(
+                            Errors.USER_CANCELLED
+                        )
+                    )
+                        .also { Napier.w("Could not create presentation: ${exception.message}") }
+                }
+            }
+        presentationResultContainer?.let {
+            authenticationResponseBuilder.clientMetadata.vpFormats?.let { supportedFormats ->
+                presentationResultContainer.presentationSubmission.descriptorMap?.mapIndexed { index, descriptor ->
+                    val isMissingFormatSupport = when (descriptor.format) {
+                        ClaimFormatEnum.JWT_VP -> supportedFormats.jwtVp?.algorithms?.contains(
+                            jwsService.algorithm.identifier
+                        ) != true
+
+                        ClaimFormatEnum.JWT_SD -> supportedFormats.jwtSd?.algorithms?.contains(
+                            jwsService.algorithm.identifier
+                        ) != true
+
+                        ClaimFormatEnum.MSO_MDOC -> supportedFormats.msoMdoc?.algorithms?.contains(
+                            jwsService.algorithm.identifier
+                        ) != true
+
+                        else -> true
+                    }
+
+                    if (isMissingFormatSupport) {
+                        return KmmResult.failure(
+                            OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
+                                .also { Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats") }
+                        )
+                    }
+                }
+            }
+        }
+
+        return KmmResult.success(
+            AuthenticationResponseParameters(
+                idToken = signedIdToken?.serialize(),
+                state = authenticationResponseBuilder.parameters.state,
+                vpToken = presentationResultContainer?.presentationResults?.map {
+                    when (it) {
+                        is Holder.CreatePresentationResult.Signed -> {
+                            // must be a string
+                            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
+                            JsonPrimitive(it.jws)
+                        }
+
+                        is Holder.CreatePresentationResult.SdJwt -> {
+                            // must be a string
+                            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.5-1
+                            JsonPrimitive(it.sdJwt)
+                        }
+
+                        is Holder.CreatePresentationResult.Document -> {
+                            // must be a string
+                            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.5-1
+                            JsonPrimitive(
+                                it.document.serialize().encodeToString(Base16(strict = true))
+                            )
+                        }
+                    }
+                }?.let {
+                    if (it.size == 1) it[0]
+                    else buildJsonArray {
+                        for (value in it) {
+                            add(value)
+                        }
+                    }
+                },
+                presentationSubmission = presentationResultContainer?.presentationSubmission,
+            )
+        )
+    }
+
+    private suspend fun retrieveClientMetadata(params: AuthenticationRequestParameters): RelyingPartyMetadata? {
+        return withContext(Dispatchers.IO) {
+            params.clientMetadata
+                ?: params.clientMetadataUri?.let { uri ->
+                    remoteResourceRetriever.invoke(uri)
+                        ?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
+                }
+        }
+    }
+
+    private suspend fun retrieveAudience(clientMetadata: RelyingPartyMetadata): String? {
+        return withContext(Dispatchers.IO) {
+            clientMetadata.jsonWebKeySet?.keys?.firstOrNull()?.identifier
+                ?: clientMetadata.jsonWebKeySetUrl?.let {
+                    remoteResourceRetriever.invoke(it)
+                        ?.let { JsonWebKeySet.deserialize(it) }?.keys?.firstOrNull()?.identifier
+                }
+        }
+    }
+
+    private suspend fun retrievePresentationDefinition(params: AuthenticationRequestParameters): PresentationDefinition? {
+        return withContext(Dispatchers.IO) {
+            params.presentationDefinition ?: params.presentationDefinitionUrl?.let {
+                remoteResourceRetriever.invoke(it)
+            }?.let {
+                PresentationDefinition.deserialize(it).getOrNull()
+            } ?: params.scope?.split(" ")?.firstNotNullOfOrNull {
+                scopePresentationDefinitionRetriever?.invoke(it)
+            }
+        }
+    }
+
+    private suspend fun prepareIdToken(audience: String, nonce: String): KmmResult<JwsSigned> {
+        return withContext(Dispatchers.IO) {
+            val now = clock.now()
+            // we'll assume jwk-thumbprint
+            val agentJsonWebKey = agentPublicKey.toJsonWebKey()
+            val idToken = IdToken(
+                issuer = agentJsonWebKey.jwkThumbprint,
+                subject = agentJsonWebKey.jwkThumbprint,
+                subjectJwk = agentJsonWebKey,
+                audience = audience,
+                issuedAt = now,
+                expiration = now + 60.seconds,
+                nonce = nonce,
+            )
+            val jwsPayload = idToken.serialize().encodeToByteArray()
+            jwsService.createSignedJwsAddingParams(payload = jwsPayload)
+        }
+    }
 }
 
 /**

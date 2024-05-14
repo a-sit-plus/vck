@@ -146,6 +146,22 @@ interface Holder {
         pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = defaultPathAuthorizationValidator,
     ): KmmResult<PresentationResponseParameters>
 
+
+    /**
+     * Creates an array of [VerifiablePresentation] and a [PresentationSubmission] from already
+     * preselected [submissionSelection].
+     *
+     * @param presentationDefinitionId: id of the presentation definition this submission is intended for
+     * @param submissionSelection: a preselection of input descriptors and matching credentials along
+     * with a description of the fields to be disclosed
+     */
+    suspend fun createPresentation(
+        challenge: String,
+        audienceId: String,
+        presentationDefinitionId: String?,
+        submissionSelection: Map<InputDescriptor, HolderAgent.CandidateInputMatchContainer>,
+    ): KmmResult<Holder.PresentationResponseParameters>
+
     /**
      * Creates a mapping from the input descriptors of the presentation definition to matching
      * credentials and the fields that would need to be disclosed.
@@ -160,7 +176,7 @@ interface Holder {
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = { _, _ -> true },
-    ): KmmResult<Map<InputDescriptor, HolderAgent.CandidateInputMatchContainer?>>
+    ): KmmResult<Map<InputDescriptor, Collection<HolderAgent.CandidateInputMatchContainer>>>
 
     sealed class CreatePresentationResult {
         /**

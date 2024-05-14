@@ -23,6 +23,7 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import kotlinx.serialization.Serializable
 
 
 /**
@@ -217,6 +218,7 @@ class HolderAgent(
         }
     }
 
+    @Serializable
     data class CandidateInputMatchContainer(
         val credential: SubjectCredentialStore.StoreEntry,
         val fieldQueryResults: FieldQueryResults,
@@ -235,34 +237,37 @@ class HolderAgent(
             pathAuthorizationValidator = pathAuthorizationValidator,
         ).getOrElse {
             return KmmResult.failure(it)
-        }.mapNotNull { (key, value) ->
-            // TODO: support submission requirements, where not all input descriptors may have a match
-            //  -> no need to throw at this point
-            value?.let {
-                key to it
-            } ?: return KmmResult.failure(MissingInputDescriptorMatchException(key))
+        }.map { (key, value) ->
+            if(value.isNotEmpty()) {
+                key to value.first()
+            } else {
+                // TODO: support submission requirements, where not all input descriptors may have a match
+                //  -> there would be no need to throw at this point
+                return KmmResult.failure(MissingInputDescriptorMatchException(key))
+            }
         }
 
         return createPresentation(
             challenge = challenge,
             audienceId = audienceId,
             presentationDefinitionId = presentationDefinition.id,
-            inputDescriptorMatches = matches,
+            submissionSelection = matches.toMap()
         )
     }
 
-    suspend fun createPresentation(
+    override suspend fun createPresentation(
         challenge: String,
         audienceId: String,
         presentationDefinitionId: String?,
-        inputDescriptorMatches: List<Pair<InputDescriptor, CandidateInputMatchContainer>>,
+        submissionSelection: Map<InputDescriptor, CandidateInputMatchContainer>
     ): KmmResult<Holder.PresentationResponseParameters> {
+        val submissionList = submissionSelection.toList()
         val presentationSubmission = PresentationSubmission.fromMatches(
             presentationId = presentationDefinitionId,
-            matches = inputDescriptorMatches,
+            matches = submissionList,
         )
 
-        val verifiablePresentations = inputDescriptorMatches.map { match ->
+        val verifiablePresentations = submissionList.map { match ->
             val credential = match.second.credential
             val fieldQueryResults = match.second.fieldQueryResults
             verifiablePresentationFactory.createVerifiablePresentation(
@@ -303,7 +308,7 @@ class HolderAgent(
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean,
-    ): KmmResult<Map<InputDescriptor, CandidateInputMatchContainer?>> {
+    ): KmmResult<Map<InputDescriptor, Collection<CandidateInputMatchContainer>>> {
         val credentials = getValidCredentialsByPriority()
             ?: return KmmResult.failure(CredentialRetrievalException())
 
@@ -321,9 +326,9 @@ class HolderAgent(
         credentials: Collection<SubjectCredentialStore.StoreEntry>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean,
-    ): Map<InputDescriptor, CandidateInputMatchContainer?> {
+    ): Map<InputDescriptor, Collection<CandidateInputMatchContainer>> {
         return inputDescriptors.associateWith { inputDescriptor ->
-            credentials.firstNotNullOfOrNull { credential ->
+            credentials.mapNotNull { credential ->
                 evaluateInputDescritorAgainstCredential(
                     inputDescriptor = inputDescriptor,
                     credential = credential,
