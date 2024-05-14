@@ -35,4 +35,12 @@ object AttributeIndex {
         return schemeSet.firstOrNull { it.isoNamespace.startsWith(namespace) || namespace.startsWith(it.isoNamespace) }
     }
 
+    /**
+     * Matches the passed [docType] against all known docTypes from [ConstantIndex.CredentialScheme.isoDocType]
+     */
+    fun resolveIsoDoctype(docType: String): ConstantIndex.CredentialScheme? {
+        // allow for extension to the namespace by appending ".countryname" or anything else, according to spec
+        return schemeSet.firstOrNull { it.isoDocType.startsWith(docType) || docType.startsWith(it.isoDocType) }
+    }
+
 }
