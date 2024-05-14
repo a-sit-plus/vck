@@ -158,8 +158,8 @@ interface Holder {
      */
     suspend fun matchInputDescriptorsAgainstCredentialStore(
         presentationDefinition: PresentationDefinition,
-        fallbackFormatHolder: FormatHolder?,
-        pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean,
+        fallbackFormatHolder: FormatHolder? = null,
+        pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = { _, _ -> true },
     ): KmmResult<Map<InputDescriptor, HolderAgent.CandidateInputMatchContainer?>>
 
     sealed class CreatePresentationResult {
