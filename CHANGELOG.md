@@ -16,6 +16,9 @@ Release NEXT:
 - Change `OidcSiopWallet.createAuthnResponseParams`: Feed the newly required parameters to `Holder.createPresentation`; Changed output semantics to potentially submit a list of verifiable presentations
 - Change `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.
 - Add `BaseInputEvaluator`: Input evaluator according to `DIF.PresentationExchange 2.0.0`
+ - Refactor authenticationparams TODO
+ - update kmp-crypto
+ - X509San TODO
 
 Release 3.6.1:
  * Update to KMP-Crypto 2.6.0

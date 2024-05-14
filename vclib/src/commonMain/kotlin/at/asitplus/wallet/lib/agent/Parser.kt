@@ -35,14 +35,13 @@ class Parser(
      */
     fun parseVpJws(input: String, challenge: String, localIdentifier: String): ParseVpResult {
         Napier.d("Parsing VP $input")
-        val jws = JwsSigned.parse(input)
-            ?: return ParseVpResult.InvalidStructure(input)
-                .also { Napier.w("Could not parse JWS") }
+        val jws = JwsSigned.parse(input).getOrNull() ?: return ParseVpResult.InvalidStructure(input)
+            .also { Napier.w("Could not parse JWS") }
         val payload = jws.payload.decodeToString()
         val kid = jws.header.keyId
         val vpJws = VerifiablePresentationJws.deserialize(payload).getOrElse { ex ->
             return ParseVpResult.InvalidStructure(input)
-              .also { Napier.w("Could not parse payload", ex) }
+                .also { Napier.w("Could not parse payload", ex) }
         }
         return parseVpJws(input, vpJws, kid, challenge, localIdentifier)
     }

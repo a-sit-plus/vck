@@ -128,7 +128,7 @@ class OidcSiopProtocolTest : FreeSpec({
         authnRequest.clientId shouldBe relyingPartyUrl
         val jar = authnRequest.request
         jar.shouldNotBeNull()
-        DefaultVerifierJwsService().verifyJwsObject(JwsSigned.parse(jar)!!).shouldBeTrue()
+        DefaultVerifierJwsService().verifyJwsObject(JwsSigned.parse(jar).getOrThrow()).shouldBeTrue()
 
         val authnResponse = holderSiop.createAuthnResponse(jar).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -166,7 +166,7 @@ class OidcSiopProtocolTest : FreeSpec({
         authnResponse.url.shouldBe(relyingPartyUrl)
         authnResponse.params.shouldHaveSize(1)
         val jarmResponse = authnResponse.params.values.first()
-        DefaultVerifierJwsService().verifyJwsObject(JwsSigned.parse(jarmResponse)!!).shouldBeTrue()
+        DefaultVerifierJwsService().verifyJwsObject(JwsSigned.parse(jarmResponse).getOrThrow()).shouldBeTrue()
 
         val result =
             verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
@@ -205,7 +205,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
         val parsedAuthnRequest: AuthenticationRequestParameters =
             authnRequestUrlParams.decodeFromUrlQuery()
-        val authnResponse = holderSiop.createAuthnResponseParams(parsedAuthnRequest).getOrThrow()
+        val authnResponse = holderSiop.createAuthnResponseParams(AuthenticationRequestParametersFrom.Uri(Url(authnRequestUrlParams),parsedAuthnRequest)).getOrThrow()
         val authnResponseParams =
             authnResponse.encodeToParameters().formUrlEncode().also { println(it) }
 
@@ -421,7 +421,7 @@ private suspend fun buildAttestationJwt(
 private fun verifierAttestationVerifier(trustedKey: JsonWebKey) =
     object : RequestObjectJwsVerifier {
         override fun invoke(jws: JwsSigned, authnRequest: AuthenticationRequestParameters): Boolean {
-            val attestationJwt = jws.header.attestationJwt?.let { JwsSigned.parse(it) }
+            val attestationJwt = jws.header.attestationJwt?.let { JwsSigned.parse(it).getOrThrow() }
                 ?: return false
             val verifierJwsService = DefaultVerifierJwsService()
             if (!verifierJwsService.verifyJws(attestationJwt, trustedKey))

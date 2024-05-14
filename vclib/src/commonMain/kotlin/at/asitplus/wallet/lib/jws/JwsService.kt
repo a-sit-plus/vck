@@ -5,23 +5,15 @@ import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.Digest
 import at.asitplus.crypto.datatypes.asn1.encodeTo4Bytes
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
-import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
-import at.asitplus.crypto.datatypes.jws.JweAlgorithm
-import at.asitplus.crypto.datatypes.jws.JweEncrypted
-import at.asitplus.crypto.datatypes.jws.JweEncryption
-import at.asitplus.crypto.datatypes.jws.JweHeader
-import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
+import at.asitplus.crypto.datatypes.jws.*
 import at.asitplus.crypto.datatypes.jws.JwsExtensions.prependWith4BytesSize
-import at.asitplus.crypto.datatypes.jws.JwsHeader
-import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.JwsSigned.Companion.prepareJwsSignatureInput
-import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 
 /**
@@ -196,7 +188,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             Napier.w("No ciphertext from native code", it)
             return KmmResult.failure(it)
         }
-        return KmmResult.success(JweEncrypted(aad, null, iv, ciphertext.ciphertext, ciphertext.authtag))
+        return KmmResult.success(JweEncrypted(jweHeader, aad, null, iv,   ciphertext.ciphertext, ciphertext.authtag))
     }
 
     private fun prependWithAdditionalInfo(

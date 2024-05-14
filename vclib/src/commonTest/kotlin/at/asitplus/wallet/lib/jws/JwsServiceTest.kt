@@ -47,8 +47,7 @@ class JwsServiceTest : FreeSpec({
         val signed = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, payload).getOrThrow().serialize()
         signed.shouldNotBeNull()
 
-        val parsed = JwsSigned.parse(signed)
-        parsed.shouldNotBeNull()
+        val parsed = JwsSigned.parse(signed).getOrThrow()
         parsed.serialize() shouldBe signed
         parsed.payload shouldBe payload
 
@@ -117,8 +116,7 @@ class JwsServiceTest : FreeSpec({
             JweEncryption.A256GCM,
         ).getOrThrow().serialize()
         encrypted.shouldNotBeNull()
-        val parsed = JweEncrypted.parse(encrypted)
-        parsed.shouldNotBeNull()
+        val parsed = JweEncrypted.parse(encrypted).getOrThrow()
 
         val result = jwsService.decryptJweObject(parsed, encrypted).getOrThrow()
         result.payload.decodeToString() shouldBe stringPayload

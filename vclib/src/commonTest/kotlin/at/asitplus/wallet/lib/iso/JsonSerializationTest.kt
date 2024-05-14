@@ -139,8 +139,7 @@ class JsonSerializationTest : FreeSpec({
         println(serverResponse)
 
         val payload = serverResponse.documents.first()
-        val jws = JwsSigned.parse(payload)
-        jws.shouldNotBeNull()
+        val jws = JwsSigned.parse(payload).getOrThrow()
 
         val mdlJws = MobileDrivingLicenceJws.deserialize(jws.payload.decodeToString()).getOrThrow().shouldNotBeNull()
         println(mdlJws)

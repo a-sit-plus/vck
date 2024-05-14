@@ -23,11 +23,11 @@ class MessageWrapper(
 ) {
 
     suspend fun parseMessage(it: String): ReceivedMessage {
-        val jwsSigned = JwsSigned.parse(it)
+        val jwsSigned = JwsSigned.parse(it).getOrNull()
         if (jwsSigned != null) {
             return parseJwsMessage(jwsSigned, it)
         }
-        val jweEncrypted = JweEncrypted.parse(it)
+        val jweEncrypted = JweEncrypted.parse(it).getOrNull()
         if (jweEncrypted != null)
             return parseJweMessage(jweEncrypted, it)
         return ReceivedMessage.Error
@@ -45,7 +45,7 @@ class MessageWrapper(
         }
         val payloadString = joseObject.payload.decodeToString()
         if (joseObject.header.contentType == JwsContentTypeConstants.DIDCOMM_SIGNED_JSON) {
-            val parsed = JwsSigned.parse(payloadString)
+            val parsed = JwsSigned.parse(payloadString).getOrNull()
                 ?: return ReceivedMessage.Error
                     .also { Napier.w("Could not parse inner JWS") }
             return parseJwsMessage(parsed, payloadString)

@@ -117,7 +117,7 @@ class CredentialIssuer(
                 if (proof.jwt == null)
                     return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
-                val jwsSigned = JwsSigned.parse(proof.jwt)
+                val jwsSigned = JwsSigned.parse(proof.jwt).getOrNull()
                     ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
                 val jwt = JsonWebToken.deserialize(jwsSigned.payload.decodeToString()).getOrNull()
@@ -141,7 +141,7 @@ class CredentialIssuer(
                 if (proof.cwt == null)
                     return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
-                val coseSigned = CoseSigned.deserialize(proof.cwt.decodeToByteArray(Base64UrlStrict))
+                val coseSigned = CoseSigned.deserialize(proof.cwt.decodeToByteArray(Base64UrlStrict)).getOrNull()
                     ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
 

@@ -10,21 +10,20 @@ import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.jws.*
-import at.asitplus.crypto.datatypes.pki.DistinguishedName
+import at.asitplus.crypto.datatypes.pki.AttributeTypeAndValue
+import at.asitplus.crypto.datatypes.pki.RelativeDistinguishedName
 import at.asitplus.crypto.datatypes.pki.TbsCertificate
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.plus
-import kotlinx.datetime.toKotlinInstant
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.JCEECPublicKey
 import org.bouncycastle.jce.spec.ECPublicKeySpec
 import java.math.BigInteger
 import java.security.*
 import java.security.cert.Certificate
-import java.time.Instant
 import java.util.*
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
@@ -32,7 +31,6 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.absoluteValue
 import kotlin.random.Random
-import kotlin.time.Duration.Companion.days
 
 
 actual open class DefaultCryptoService : CryptoService {
@@ -87,11 +85,11 @@ actual open class DefaultCryptoService : CryptoService {
         val tbsCertificate = TbsCertificate(
             version = 2,
             serialNumber = serialNumber.toByteArray(),
-            issuerName = listOf(DistinguishedName.CommonName(Asn1String.UTF8(commonName))),
+            issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
             validFrom = Asn1Time(notBeforeDate),
             validUntil = Asn1Time(notAfterDate),
             signatureAlgorithm = algorithm,
-            subjectName = listOf(DistinguishedName.CommonName(Asn1String.UTF8(commonName))),
+            subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
             publicKey = publicKey
         )
         val signature =

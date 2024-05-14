@@ -160,7 +160,7 @@ class OidcSiopInteropTest : FreeSpec({
         val jarmParams = response.params.formUrlEncode().decodeFromPostBody<AuthenticationResponseParameters>()
         val jarm = jarmParams.response
         jarm.shouldNotBeNull()
-        val params = AuthenticationResponseParameters.deserialize(JwsSigned.parse(jarm)!!.payload.decodeToString())
+        val params = AuthenticationResponseParameters.deserialize(JwsSigned.parse(jarm).getOrThrow().payload.decodeToString())
             .getOrThrow().shouldNotBeNull()
 
         params.presentationSubmission.shouldNotBeNull()
@@ -290,10 +290,10 @@ class OidcSiopInteropTest : FreeSpec({
 
         val parsed = wallet.parseAuthenticationRequestParameters(input).getOrThrow()
 
-        parsed.nonce shouldBe "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ=="
-        parsed.state shouldBe "ef391e30-bacc-4441-af5d-7f42fb682e02"
-        parsed.responseUrl shouldBe "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02"
-        parsed.clientId shouldBe parsed.responseUrl
+        parsed.parameters.nonce shouldBe "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ=="
+        parsed.parameters.state shouldBe "ef391e30-bacc-4441-af5d-7f42fb682e02"
+        parsed.parameters.responseUrl shouldBe "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02"
+        parsed.parameters.clientId shouldBe parsed.parameters.responseUrl
     }
 
     "empty client_id" {

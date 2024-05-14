@@ -420,7 +420,7 @@ class OidcSiopVerifier(
      */
     suspend fun validateAuthnResponse(params: AuthenticationResponseParameters): AuthnResponseResult {
         if (params.response != null) {
-            JwsSigned.parse(params.response)?.let { jarmResponse ->
+            JwsSigned.parse(params.response).getOrNull()?.let { jarmResponse ->
                 if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
                     return AuthnResponseResult.ValidationError("response", params.state)
                         .also { Napier.w { "JWS of response not verified: ${params.response}" } }
@@ -432,7 +432,7 @@ class OidcSiopVerifier(
         val idTokenJws = params.idToken
             ?: return AuthnResponseResult.ValidationError("idToken", params.state)
                 .also { Napier.w("Could not parse idToken: $params") }
-        val jwsSigned = JwsSigned.parse(idTokenJws)
+        val jwsSigned = JwsSigned.parse(idTokenJws).getOrNull()
             ?: return AuthnResponseResult.ValidationError("idToken", params.state)
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
         if (!verifierJwsService.verifyJwsObject(jwsSigned))
