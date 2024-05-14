@@ -49,7 +49,7 @@ class JwsHeaderSerializationTest : FreeSpec({
             | "x5c":["${first.encodeToString(Base64Strict)}","${second.encodeToString(Base64Strict)}"]}
             | """.trimMargin()
 
-        val parsed = JwsHeader.deserialize(serialized).shouldNotBeNull()
+        val parsed = JwsHeader.deserialize(serialized).getOrThrow()
 
         parsed.algorithm shouldBe algorithm
         parsed.keyId shouldBe kid
