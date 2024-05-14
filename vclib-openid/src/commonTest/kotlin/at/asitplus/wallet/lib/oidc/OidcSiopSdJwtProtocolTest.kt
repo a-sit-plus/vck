@@ -67,7 +67,11 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     "test with Fragment" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = RequestOptions(representation = ConstantIndex.CredentialRepresentation.SD_JWT)
+            requestOptions = RequestOptions(
+                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                credentialScheme = ConstantIndex.AtomicAttribute2023,
+                requestedAttributes = listOf("given-name")
+            ),
         ).also { println(it) }
         authnRequest shouldContain "jwt_sd"
 

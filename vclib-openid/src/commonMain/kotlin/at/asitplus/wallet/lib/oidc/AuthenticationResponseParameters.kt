@@ -7,6 +7,7 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonElement
 
 /**
  * Contents of an OIDC Authentication Response.
@@ -43,7 +44,7 @@ data class AuthenticationResponseParameters(
      * format is already represented as a JSON object or a JSON string.
      */
     @SerialName("vp_token")
-    val vpToken: String? = null,
+    val vpToken: JsonElement? = null,
 
     /**
      * OID4VP: REQUIRED. The presentation_submission element as defined in DIF.PresentationExchange. It contains

@@ -15,6 +15,8 @@ data class ConstraintField(
     val purpose: String? = null,
     @SerialName("predicate")
     val predicate: RequirementEnum? = null,
+    @SerialName("optional")
+    val optional: Boolean? = null,
     @SerialName("path")
     // should be JSONPath
     val path: List<String>,

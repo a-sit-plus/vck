@@ -10,6 +10,11 @@ Release NEXT:
  - `OidcSiopWallet`: Rename `retrieveAuthenticationRequestParameters() ` to `parseAuthenticationRequestParameters()`, changing result type to `KmmResult<AuthenticationRequestParameters>`
  - `OidcSiopWallet`: Support getting presentation definition remotely, with `presentation_definition_uri` from OpenId4VP
  - Be more lenient when parsing several authentication request parameters
+- Add `VerifiablePresentationFactory`: Used to have a separate place for creating verifiable presentations, HolderAgent got a little cramped
+- Change `OidcSiopVerifier.validateAuthnResponse`: Supports new presentation semantics, where the vp_token may be a array of verifiable presentations.
+- Change `OidcSiopWallet.createAuthnResponseParams`: Feed the newly required parameters to `Holder.createPresentation`; Changed output semantics to potentially submit a list of verifiable presentations
+- Change `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.
+- Add `BaseInputEvaluator`: Input evaluator according to `DIF.PresentationExchange 2.0.0`
 
 Release 3.6.1:
  * Update to KMP-Crypto 2.6.0

@@ -1,6 +1,12 @@
+@file:Suppress("unused")
+
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.dif.Constraint
+import at.asitplus.wallet.lib.data.dif.ConstraintField
+import at.asitplus.wallet.lib.data.dif.InputDescriptor
+import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.inspectors.forAll
@@ -8,6 +14,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 class AgentSdJwtTest : FreeSpec({
@@ -36,12 +43,32 @@ class AgentSdJwtTest : FreeSpec({
         challenge = uuid4().toString()
     }
 
+    val givenNamePresentationDefinition = PresentationDefinition(
+        id = uuid4().toString(),
+        inputDescriptors = listOf(
+            InputDescriptor(
+                id = uuid4().toString(),
+                constraints = Constraint(
+                    fields = listOf(
+                        ConstraintField(
+                            path = listOf("$['given-name']")
+                        )
+                    )
+                )
+            )
+        )
+    )
+
     "simple walk-through success" {
         issueDummyCredentials(holder, issuer, holderCryptoService)
-        val vp =
-            holder.createPresentation(challenge, verifier.identifier, requestedClaims = listOf("given-name")).also {
-                it.shouldNotBeNull()
-            }
+        val presentationParameters = holder.createPresentation(
+            challenge,
+            verifier.identifier,
+            presentationDefinition = givenNamePresentationDefinition
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
+        vp shouldNotBe null
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
         println("Presentation: " + vp.sdJwt)
 
@@ -54,7 +81,14 @@ class AgentSdJwtTest : FreeSpec({
 
     "wrong key binding jwt" {
         issueDummyCredentials(holder, issuer, holderCryptoService)
-        val vp = holder.createPresentation(challenge, verifier.identifier, requestedClaims = listOf("name"))
+        val presentationParameters = holder.createPresentation(
+            challenge,
+            verifier.identifier,
+            presentationDefinition = givenNamePresentationDefinition
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
+        vp shouldNotBe null
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
         // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
         val malformedVpSdJwt = vp.sdJwt.replaceAfterLast(
@@ -69,7 +103,14 @@ class AgentSdJwtTest : FreeSpec({
     "wrong challenge in key binding jwt" {
         issueDummyCredentials(holder, issuer, holderCryptoService)
         val malformedChallenge = challenge.reversed()
-        val vp = holder.createPresentation(malformedChallenge, verifier.identifier, requestedClaims = listOf("name"))
+        val presentationParameters = holder.createPresentation(
+            malformedChallenge,
+            verifier.identifier,
+            presentationDefinition = givenNamePresentationDefinition
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
+        vp shouldNotBe null
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
@@ -78,7 +119,14 @@ class AgentSdJwtTest : FreeSpec({
 
     "revoked sd jwt" {
         issueDummyCredentials(holder, issuer, holderCryptoService)
-        val vp = holder.createPresentation(challenge, verifier.identifier, requestedClaims = listOf("name"))
+        val presentationParameters = holder.createPresentation(
+            challenge,
+            verifier.identifier,
+            presentationDefinition = givenNamePresentationDefinition
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
+        vp shouldNotBe null
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
         issuer.revokeCredentialsWithId(
@@ -100,8 +148,15 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
     val holderCryptoService = DefaultCryptoService()
     val holder = HolderAgent.newDefaultInstance(cryptoService = holderCryptoService)
     issueDummyCredentials(holder, issuer, holderCryptoService)
-    val vp = holder.createPresentation(challenge, verifierId)
-    return (vp as Holder.CreatePresentationResult.SdJwt).sdJwt
+    val presentationResult = holder.createPresentation(
+        challenge = challenge,
+        audienceId = verifierId,
+        presentationDefinition = PresentationDefinition(
+            id = uuid4().toString(),
+            inputDescriptors = listOf(InputDescriptor(id = uuid4().toString()))
+        ),
+    ).getOrNull()
+    return (presentationResult?.presentationResults?.first() as Holder.CreatePresentationResult.SdJwt).sdJwt
 }
 
 suspend fun issueDummyCredentials(
@@ -112,7 +167,7 @@ suspend fun issueDummyCredentials(
     val result = issuer.issueCredential(
         subjectPublicKey = holderCryptoService.publicKey,
         attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-        representation = ConstantIndex.CredentialRepresentation.SD_JWT
+        representation = ConstantIndex.CredentialRepresentation.SD_JWT,
     )
     result.successful.shouldNotBeEmpty()
     holder.storeCredentials(result.toStoreCredentialInput())
