@@ -267,7 +267,8 @@ class OidcSiopWallet(
     ): KmmResult<AuthenticationResponseParameters> {
         // params.clientIdScheme is assumed to be OpenIdConstants.ClientIdSchemes.REDIRECT_URI,
         // because we'll require clientMetadata to be present, below
-        if (params.parameters.clientIdScheme == OpenIdConstants.ClientIdSchemes.REDIRECT_URI
+        val clientIdScheme = params.parameters.clientIdScheme
+        if (clientIdScheme == OpenIdConstants.ClientIdSchemes.REDIRECT_URI
             && (params.parameters.clientMetadata == null && params.parameters.clientMetadataUri == null)
         ) {
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
@@ -275,8 +276,8 @@ class OidcSiopWallet(
         }
 
         //TODO: was the JWsSigned already cryptographically verified? esp. th x5c?
-        if ((params.parameters.clientIdScheme == OpenIdConstants.ClientIdSchemes.X509_SAN_DNS)
-            || (params.parameters.clientIdScheme == OpenIdConstants.ClientIdSchemes.X509_SAN_DNS)
+        if ((clientIdScheme == OpenIdConstants.ClientIdSchemes.X509_SAN_DNS)
+            || (clientIdScheme == OpenIdConstants.ClientIdSchemes.X509_SAN_URI)
         ) {
             if (params.parameters.clientMetadata == null
                 || params !is AuthenticationRequestParametersFrom.JwsSigned
@@ -285,9 +286,7 @@ class OidcSiopWallet(
             ) return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also {
                     Napier.w(
-                        "client_id_scheme is ${
-                            params.parameters.clientIdScheme
-                        }, but metadata is not set and no x5c certificate chain is present in the original authn request"
+                        "client_id_scheme is $clientIdScheme, but metadata is not set and no x5c certificate chain is present in the original authn request"
                     )
                 }
             else { //basic checks done
@@ -296,20 +295,16 @@ class OidcSiopWallet(
                     return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                         .also {
                             Napier.w(
-                                "client_id_scheme is ${
-                                    params.parameters.clientIdScheme
-                                }, but no extensions were found in the leaf certificate"
+                                "client_id_scheme is $clientIdScheme, but no extensions were found in the leaf certificate"
                             )
                         }
                 }
-                if (params.parameters.clientIdScheme == OpenIdConstants.ClientIdSchemes.X509_SAN_DNS) {
+                if (clientIdScheme == OpenIdConstants.ClientIdSchemes.X509_SAN_DNS) {
                     val dnsNames = leaf.tbsCertificate.subjectAlternativeNames?.dnsNames
                         ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                             .also {
                                 Napier.w(
-                                    "client_id_scheme is ${
-                                        params.parameters.clientIdScheme
-                                    }, but no dnsNames were found in the leaf certificate"
+                                    "client_id_scheme is $clientIdScheme, but no dnsNames were found in the leaf certificate"
                                 )
                             }
 
@@ -317,9 +312,7 @@ class OidcSiopWallet(
                         return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                             .also {
                                 Napier.w(
-                                    "client_id_scheme is ${
-                                        params.parameters.clientIdScheme
-                                    }, but client_id does not match any dnsName in the leaf certificate"
+                                    "client_id_scheme is $clientIdScheme, but client_id does not match any dnsName in the leaf certificate"
                                 )
                             }
 
@@ -329,9 +322,7 @@ class OidcSiopWallet(
                                 OAuth2Exception(Errors.INVALID_REQUEST)
                             ).also {
                                 Napier.w(
-                                    "client_id_scheme is ${
-                                        OpenIdConstants.ClientIdSchemes.X509_SAN_DNS
-                                    }, but no redirect_url was provided"
+                                    "client_id_scheme is $clientIdScheme, but no redirect_url was provided"
                                 )
                             }
 
@@ -341,9 +332,7 @@ class OidcSiopWallet(
                         OAuth2Exception(Errors.INVALID_REQUEST)
                     ).also {
                         Napier.w(
-                            "client_id_scheme is ${
-                                OpenIdConstants.ClientIdSchemes.X509_SAN_DNS
-                            }, but no redirect_url was provided"
+                            "client_id_scheme is $clientIdScheme, but no redirect_url was provided"
                         )
                     }
                 } else {
@@ -351,18 +340,14 @@ class OidcSiopWallet(
                         ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                             .also {
                                 Napier.w(
-                                    "client_id_scheme is ${
-                                        params.parameters.clientIdScheme
-                                    }, but no URIs were found in the leaf certificate"
+                                    "client_id_scheme is $clientIdScheme, but no URIs were found in the leaf certificate"
                                 )
                             }
                     if (!uris.contains(params.parameters.clientId))
                         return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                             .also {
                                 Napier.w(
-                                    "client_id_scheme is ${
-                                        params.parameters.clientIdScheme
-                                    }, but client_id does not match any URIs in the leaf certificate"
+                                    "client_id_scheme is $clientIdScheme, but client_id does not match any URIs in the leaf certificate"
                                 )
                             }
 
@@ -370,9 +355,7 @@ class OidcSiopWallet(
                         return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                             .also {
                                 Napier.w(
-                                    "client_id_scheme is ${
-                                        params.parameters.clientIdScheme
-                                    }, but client_id does not match redirect_uri"
+                                    "client_id_scheme is $clientIdScheme, but client_id does not match redirect_uri"
                                 )
                             }
 
