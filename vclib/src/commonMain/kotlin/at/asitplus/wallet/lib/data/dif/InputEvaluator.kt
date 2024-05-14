@@ -14,67 +14,50 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 
+typealias FieldQueryResult = Pair<ConstraintField, NodeListEntry?>
+typealias FieldQueryResults = Map<ConstraintField, NodeListEntry?>
+
 /**
  * Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
  */
 class InputEvaluator {
-
-    data class FieldQueryResult(
-        val constraintField: ConstraintField,
-        val match: NodeListEntry,
-    )
-    data class CandidateInputMatching(
-        val fieldQueryResults: List<FieldQueryResult?>?,
-    )
-
-    fun evaluateMatch(
+    fun evaluateFieldQueryResults(
         inputDescriptor: InputDescriptor,
         credential: JsonElement,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
-    ): KmmResult<CandidateInputMatching> {
+    ): KmmResult<FieldQueryResults> {
         // filter by constraints
-        val fieldQueryResults = inputDescriptor.constraints?.let { constraints ->
-            val constraintFields = constraints.fields ?: listOf()
-            val fieldQueryResults = constraintFields.map { field ->
-                val fieldQueryResult = field.path.firstNotNullOfOrNull { jsonPath ->
-                    val candidates = JsonPath(jsonPath).query(credential)
-                    candidates.firstOrNull { candidate ->
-                        if(pathAuthorizationValidator(candidate.normalizedJsonPath)) {
-                            field.filter?.let {
-                                candidate.value.satisfiesConstraintFilter(it)
-                            } ?: true
-                        } else false
-                    }?.let {
-                        InputEvaluator.FieldQueryResult(
-                            constraintField = field,
-                            match = it,
-                        )
-                    }
+        val fieldQueryResults = inputDescriptor.constraints?.fields?.associateWith { field ->
+            val fieldQueryResult = field.path.firstNotNullOfOrNull { jsonPath ->
+                val candidates = JsonPath(jsonPath).query(credential)
+                candidates.firstOrNull { candidate ->
+                    if (pathAuthorizationValidator(candidate.normalizedJsonPath)) {
+                        field.filter?.let {
+                            candidate.value.satisfiesConstraintFilter(it)
+                        } ?: true
+                    } else false
                 }
-                if ((field.optional != true) and (fieldQueryResult == null)) {
-                    return KmmResult.failure(
-                        FailedFieldQueryException(field)
+            }
+            if ((field.optional != true) and (fieldQueryResult == null)) {
+                return KmmResult.failure(
+                    FailedFieldQueryException(field)
+                        .also { it.message?.let { Napier.d(it) } }
+                )
+            }
+            field.predicate?.let {
+                when (it) {
+                    // TODO: RequirementEnum.NONE is not a valid field value, maybe change member type to new Enum?
+                    RequirementEnum.NONE -> fieldQueryResult
+                    RequirementEnum.PREFERRED -> fieldQueryResult
+                    RequirementEnum.REQUIRED -> return KmmResult.failure(
+                        MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature")
                             .also { it.message?.let { Napier.d(it) } }
                     )
                 }
-                field.predicate?.let {
-                    when (it) {
-                        // TODO: RequirementEnum.NONE is not a valid field value, maybe change member type to new Enum?
-                        RequirementEnum.NONE -> fieldQueryResult
-                        RequirementEnum.PREFERRED -> fieldQueryResult
-                        RequirementEnum.REQUIRED -> return KmmResult.failure(
-                            MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature")
-                                .also { it.message?.let { Napier.d(it) } }
-                        )
-                    }
-                } ?: fieldQueryResult
-            }
-            fieldQueryResults
-        } ?: listOf()
+            } ?: fieldQueryResult
+        } ?: mapOf()
 
-        return KmmResult.success(
-            CandidateInputMatching(fieldQueryResults = fieldQueryResults)
-        )
+        return KmmResult.success(fieldQueryResults)
     }
 }
 
@@ -134,6 +117,7 @@ open class InputEvaluationException(message: String) : Exception(message)
 class FailedFieldQueryException(val constraintField: ConstraintField) : InputEvaluationException(
     "No match has been found to satisfy constraint field: $constraintField"
 )
+
 class MissingFeatureSupportException(val featureName: String) : InputEvaluationException(
     "Feature is not supported: $featureName"
 )
