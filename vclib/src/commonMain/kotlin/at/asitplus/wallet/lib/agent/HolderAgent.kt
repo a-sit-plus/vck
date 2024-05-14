@@ -299,7 +299,7 @@ class HolderAgent(
         )
     }
 
-    suspend fun matchInputDescriptorsAgainstCredentialStore(
+    override suspend fun matchInputDescriptorsAgainstCredentialStore(
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean,
