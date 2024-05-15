@@ -14,9 +14,19 @@ Release NEXT:
 - Change `OidcSiopVerifier.validateAuthnResponse`: Supports new presentation semantics, where the vp_token may be a array of verifiable presentations.
 - Change `OidcSiopWallet.createAuthnResponseParams`: Feed the newly required parameters to `Holder.createPresentation`; Changed output semantics to potentially submit a list of verifiable presentations
 - Change `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.
-- Add `BaseInputEvaluator`: Input evaluator according to `DIF.PresentationExchange 2.0.0`
+- Add `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.
+- Add `InputEvaluator`: Input evaluator according to `DIF.PresentationExchange 2.0.0`
+- Add `AuthenticationResponseBuilder`: Data class for holding primitives required to prepare an authentication response
+- Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.
+- Add `PresentationSubmissionBuilder`: Data class for holding primitives to select credentials for a presentation response
+  - Add `isSubmissionRequirementsSatisfied`: Evaluates whether the submission requirements are satisfied with the current selection
+- BREAKING CHANGE to `OidcSiopWallet`:
+  - Remove `OidcSiopWallet.createAuthnResponseParams`
+  - add `OidcSiopWallet.startAuthenticationResponsePreparation`: Yields a `AuthenticationResponseBuilder`
+  - add `OidcSiopWallet.finalizeAuthenticationResponseResult`: Consumes an `AuthenticationResponseBuilder` and yields `AuthenticationResponseResult`
+  - add `OidcSiopWallet.refreshPresentationSubmissionBuilder`: Refreshes a `PresentationSubmissionBuilder`
 
-Release 3.6.1:
+    Release 3.6.1:
  * Update to KMP-Crypto 2.6.0
 
 

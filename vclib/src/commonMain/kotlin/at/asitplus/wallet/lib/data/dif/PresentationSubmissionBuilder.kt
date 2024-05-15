@@ -85,7 +85,7 @@ class PresentationSubmissionBuilder(
         resetSubmissionSelection()
     }
 
-    private fun resetSubmissionSelection() {
+    fun resetSubmissionSelection() {
         // select the first credential from all the descriptor matches by default (if existing)
         submissionSelection = inputDescriptorMatches.entries.mapNotNull { entry ->
             if (entry.value.isNotEmpty()) {
