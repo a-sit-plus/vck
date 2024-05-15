@@ -19,6 +19,7 @@ Release NEXT:
  - Refactor `AuthenticationRequestParameters` → `AuthenticationRequestParametersFrom` to contain parsed parameters and their source
  - Update KMP-Crypto to support JWE and ECDH-ES
  - Implement `x509_san_dns` and `x509_san_uri` schemes
+ - Refactor OpenIdConstants to contain sealed classes, where appropriate
 
 Release 3.6.1:
  * Update to KMP-Crypto 2.6.0
