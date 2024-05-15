@@ -248,6 +248,9 @@ class OidcSiopWallet(
         )
     }
 
+    /**
+     * Users of the library need to call this method in case the stored credentials change.
+     */
     suspend fun refreshPresentationSubmissionBuilder(presentationSubmissionBuilder: PresentationSubmissionBuilder) {
         presentationSubmissionBuilder.refreshInputDescriptors(
             holder = holder,
@@ -321,7 +324,7 @@ class OidcSiopWallet(
         }
     }
 
-    suspend fun finalizeAuthenticationResponseParameters(
+    internal suspend fun finalizeAuthenticationResponseParameters(
         authenticationResponseBuilder: AuthenticationResponseBuilder,
     ): KmmResult<AuthenticationResponseParameters> {
         val signedIdToken = if (!authenticationResponseBuilder.responseType.contains(ID_TOKEN)) {

@@ -5,6 +5,9 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.PathAuthorizationValidator
 import kotlinx.serialization.Serializable
 
+/**
+ * Container for preparing submissions, even when serialization and deserialization is required while preparation
+ */
 @Serializable
 class PresentationSubmissionBuilder(
     val presentationDefinition: PresentationDefinition,
