@@ -10,5 +10,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class FormatContainerJwt(
     @SerialName("alg")
-    val algorithms: Collection<String>,
+    val algorithms: Collection<String>? = null,
 )

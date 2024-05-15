@@ -19,6 +19,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 
+@Suppress("unused")
 class OidcSiopIsoProtocolTest : FreeSpec({
 
     lateinit var relyingPartyUrl: String
@@ -61,7 +62,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             )
         }
 
-        holderSiop = OidcSiopWallet.newInstance(
+        holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService
         )
@@ -79,6 +80,9 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             OidcSiopVerifier.RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = ConstantIndex.MobileDrivingLicence2023,
+                requestedAttributes = listOf(
+                    MobileDrivingLicenceDataElements.GIVEN_NAME
+                ),
             ),
             holderSiop
         )
@@ -99,6 +103,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             OidcSiopVerifier.RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
+                requestedAttributes = listOf("given-name"),
             ),
             holderSiop
         )
@@ -128,6 +133,30 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         document.validItems.shouldNotBeEmpty()
         document.validItems.shouldBeSingleton()
         document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
+        document.invalidItems.shouldBeEmpty()
+    }
+
+
+    "Selective Disclosure with mDL JSON Path syntax" {
+        verifierSiop = OidcSiopVerifier.newInstance(
+            verifier = verifierAgent,
+            cryptoService = verifierCryptoService,
+            relyingPartyUrl = relyingPartyUrl,
+        )
+        val document = runProcess(
+            verifierSiop,
+            walletUrl,
+            OidcSiopVerifier.RequestOptions(
+                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                credentialScheme = ConstantIndex.MobileDrivingLicence2023,
+                requestedAttributes = listOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
+            ),
+            holderSiop,
+        )
+
+        document.validItems.shouldNotBeEmpty()
+        document.validItems.shouldBeSingleton()
+        document.validItems.shouldHaveSingleElement { it.elementIdentifier == MobileDrivingLicenceDataElements.FAMILY_NAME }
         document.invalidItems.shouldBeEmpty()
     }
 

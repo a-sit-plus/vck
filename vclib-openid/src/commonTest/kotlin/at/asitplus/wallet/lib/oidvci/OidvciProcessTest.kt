@@ -71,7 +71,9 @@ class OidvciProcessTest : FunSpec({
         val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~"))
         jws.shouldNotBeNull()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
-        sdJwt.shouldNotBeNull().also { println(it) }
+            .getOrThrow().shouldNotBeNull()
+
+        println(sdJwt)
         sdJwt.disclosureDigests.size shouldBeGreaterThan 1
     }
 
@@ -94,7 +96,9 @@ class OidvciProcessTest : FunSpec({
         val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~"))
         jws.shouldNotBeNull()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
-        sdJwt.shouldNotBeNull().also { println(it) }
+            .getOrThrow().shouldNotBeNull()
+
+        println(sdJwt)
         sdJwt.disclosureDigests.size shouldBe 1
     }
 
@@ -114,7 +118,8 @@ class OidvciProcessTest : FunSpec({
         serializedCredential.shouldNotBeNull().also { println(it) }
 
         val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64()))
-        issuerSigned.shouldNotBeNull().also { println(it) }
+            .getOrThrow().shouldNotBeNull()
+
         val numberOfClaims = issuerSigned.namespaces?.values?.firstOrNull()?.entries?.size
         numberOfClaims.shouldNotBeNull()
         numberOfClaims shouldBeGreaterThan 1
@@ -137,7 +142,8 @@ class OidvciProcessTest : FunSpec({
         serializedCredential.shouldNotBeNull().also { println(it) }
 
         val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64()))
-        issuerSigned.shouldNotBeNull().also { println(it) }
+            .getOrThrow().shouldNotBeNull()
+
         val numberOfClaims = issuerSigned.namespaces?.values?.firstOrNull()?.entries?.size
         numberOfClaims.shouldNotBeNull()
         numberOfClaims shouldBe 1
@@ -171,7 +177,11 @@ private suspend fun runProcessWithJwtProof(
     requestOptions: WalletService.RequestOptions,
 ): CredentialResponseParameters {
     val token = runProcessGetToken(authorizationService, client, requestOptions)
-    val credentialRequest = client.createCredentialRequestJwt(token, issuer.metadata, requestOptions).getOrThrow()
+    val credentialRequest = client.createCredentialRequestJwt(
+        requestOptions,
+        token.clientNonce,
+        issuer.metadata.credentialIssuer
+    ).getOrThrow()
     return issuer.credential(token.accessToken, credentialRequest).getOrThrow()
 }
 
@@ -182,7 +192,11 @@ private suspend fun runProcessWithCwtProof(
     requestOptions: WalletService.RequestOptions,
 ): CredentialResponseParameters {
     val token = runProcessGetToken(authorizationService, client, requestOptions)
-    val credentialRequest = client.createCredentialRequestCwt(token, issuer.metadata, requestOptions).getOrThrow()
+    val credentialRequest = client.createCredentialRequestCwt(
+        requestOptions = requestOptions,
+        clientNonce = token.clientNonce,
+        credentialIssuer = issuer.metadata.credentialIssuer
+    ).getOrThrow()
     return issuer.credential(token.accessToken, credentialRequest).getOrThrow()
 }
 
@@ -196,7 +210,11 @@ private suspend fun runProcessGetToken(
     authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
     val code = authnResponse.params.code
     code.shouldNotBeNull()
-    val tokenRequest = client.createTokenRequestParameters(authnResponse.params, requestOptions)
+    val tokenRequest = client.createTokenRequestParameters(
+        requestOptions = requestOptions,
+        code = code,
+        state = authnResponse.params.state!!,
+    )
     val token = authorizationService.token(tokenRequest).getOrThrow()
     return token
 }

@@ -14,7 +14,8 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.encodeToString
+import kotlin.time.Duration.Companion.seconds
+
 
 /**
  * Simple authorization server implementation, to be used for [CredentialIssuer],
@@ -52,21 +53,21 @@ class SimpleAuthorizationService(
      * Used to build [OAuth2AuthorizationServerMetadata.authorizationEndpoint], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [authorize].
      */
-    private val authorizationEndpointPath: String = "/authorize",
+    val authorizationEndpointPath: String = "/authorize",
     /**
      * Used to build [OAuth2AuthorizationServerMetadata.tokenEndpoint], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [token].
      */
-    private val tokenEndpointPath: String = "/token",
+    val tokenEndpointPath: String = "/token",
 ) : OAuth2AuthorizationServer {
 
     private val codeToCodeChallengeMap = mutableMapOf<String, String>()
     private val codeToCodeChallengeMutex = Mutex()
 
-    private val codeToUserInfoMap = mutableMapOf<String, OidcUserInfo>()
+    private val codeToUserInfoMap = mutableMapOf<String, OidcUserInfoExtended>()
     private val codeToUserInfoMutex = Mutex()
 
-    private val accessTokenToUserInfoMap = mutableMapOf<String, OidcUserInfo>()
+    private val accessTokenToUserInfoMap = mutableMapOf<String, OidcUserInfoExtended>()
     private val accessTokenToUserInfoMutex = Mutex()
 
     /**
@@ -94,7 +95,10 @@ class SimpleAuthorizationService(
             ).also { Napier.w("authorize: client did not set redirect_uri in $request") }
 
         val code = codeService.provideCode().also {
-            codeToUserInfoMutex.withLock { codeToUserInfoMap[it] = dataProvider.loadUserInfo(request) }
+            val userInfo = dataProvider.loadUserInfo(request)
+                ?: return KmmResult.failure<AuthenticationResponseResult>(OAuth2Exception(Errors.INVALID_REQUEST))
+                    .also { Napier.w("authorize: could not load user info from $request") }
+            codeToUserInfoMutex.withLock { codeToUserInfoMap[it] = userInfo }
         }
         val responseParams = AuthenticationResponseParameters(
             code = code,
@@ -119,7 +123,7 @@ class SimpleAuthorizationService(
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun token(params: TokenRequestParameters): KmmResult<TokenResponseParameters> {
-        val userInfo: OidcUserInfo = when (params.grantType) {
+        val userInfo: OidcUserInfoExtended = when (params.grantType) {
             OpenIdConstants.GRANT_TYPE_CODE -> {
                 if (params.code == null || !codeService.verifyCode(params.code))
                     return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_CODE))
@@ -131,7 +135,7 @@ class SimpleAuthorizationService(
                 if (params.preAuthorizedCode == null || !codeService.verifyCode(params.preAuthorizedCode))
                     return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_GRANT))
                         .also { Napier.w("token: client did not provide pre authorized code") }
-                codeToUserInfoMutex.withLock { codeToUserInfoMap[params.code] }
+                codeToUserInfoMutex.withLock { codeToUserInfoMap[params.preAuthorizedCode] }
             }
 
             else -> {
@@ -166,7 +170,7 @@ class SimpleAuthorizationService(
                 accessTokenToUserInfoMutex.withLock { accessTokenToUserInfoMap[it] = userInfo }
             },
             tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
-            expires = 3600,
+            expires = 3600.seconds,
             clientNonce = clientNonceService.provideNonce(),
             authorizationDetails = params.authorizationDetails?.let {
                 // TODO supported credential identifiers!
@@ -177,9 +181,11 @@ class SimpleAuthorizationService(
             .also { Napier.i("token returns $result") }
     }
 
-    override suspend fun providePreAuthorizedCode(): String {
+    override suspend fun providePreAuthorizedCode(): String? {
         return codeService.provideCode().also {
-            codeToUserInfoMutex.withLock { codeToUserInfoMap[it] = dataProvider.loadUserInfo() }
+            val userInfo = dataProvider.loadUserInfo()
+                ?: return null.also { Napier.w("authorize: could not load user info from data provider") }
+            codeToUserInfoMutex.withLock { codeToUserInfoMap[it] = userInfo }
         }
     }
 
@@ -187,13 +193,13 @@ class SimpleAuthorizationService(
         return clientNonceService.verifyAndRemoveNonce(nonce)
     }
 
-    override suspend fun getUserInfo(accessToken: String): KmmResult<OidcUserInfo> {
+    override suspend fun getUserInfo(accessToken: String): KmmResult<OidcUserInfoExtended> {
         if (!tokenService.verifyToken(accessToken)) {
-            return KmmResult.failure<OidcUserInfo>(OAuth2Exception(Errors.INVALID_TOKEN))
+            return KmmResult.failure<OidcUserInfoExtended>(OAuth2Exception(Errors.INVALID_TOKEN))
                 .also { Napier.w("getUserInfo: client did not provide correct token: $accessToken") }
         }
         val result = accessTokenToUserInfoMutex.withLock { accessTokenToUserInfoMap[accessToken] }
-            ?: return KmmResult.failure<OidcUserInfo>(OAuth2Exception(Errors.INVALID_TOKEN))
+            ?: return KmmResult.failure<OidcUserInfoExtended>(OAuth2Exception(Errors.INVALID_TOKEN))
                 .also { Napier.w("getUserInfo: could not load user info for $accessToken") }
 
         return KmmResult.success(result)

@@ -35,13 +35,15 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.*
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
+@Suppress("unused")
 class OidcSiopProtocolTest : FreeSpec({
 
     lateinit var relyingPartyUrl: String
@@ -76,7 +78,7 @@ class OidcSiopProtocolTest : FreeSpec({
             )
         }
 
-        holderSiop = OidcSiopWallet.newInstance(
+        holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService
         )
@@ -119,8 +121,10 @@ class OidcSiopProtocolTest : FreeSpec({
             .also { println(it) }
         DefaultVerifierJwsService().verifyJwsObject(metadataObject).shouldBeTrue()
 
-        val authnRequestUrl = verifierSiop.createAuthnRequestUrlWithRequestObject(walletUrl).getOrThrow()
-        val authnRequest: AuthenticationRequestParameters = Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
+        val authnRequestUrl =
+            verifierSiop.createAuthnRequestUrlWithRequestObject(walletUrl).getOrThrow()
+        val authnRequest: AuthenticationRequestParameters =
+            Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
         authnRequest.clientId shouldBe relyingPartyUrl
         val jar = authnRequest.request
         jar.shouldNotBeNull()
@@ -144,7 +148,8 @@ class OidcSiopProtocolTest : FreeSpec({
             .also { println(it) }
         authnResponse.url.shouldBe(relyingPartyUrl)
 
-        val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
+        val result =
+            verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
@@ -163,7 +168,8 @@ class OidcSiopProtocolTest : FreeSpec({
         val jarmResponse = authnResponse.params.values.first()
         DefaultVerifierJwsService().verifyJwsObject(JwsSigned.parse(jarmResponse)!!).shouldBeTrue()
 
-        val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
+        val result =
+            verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
@@ -262,7 +268,7 @@ class OidcSiopProtocolTest : FreeSpec({
         ).getOrThrow().also { println(it) }
 
 
-        holderSiop = OidcSiopWallet.newInstance(
+        holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
             requestObjectJwsVerifier = verifierAttestationVerifier(sprsCryptoService.jsonWebKey)
@@ -294,7 +300,7 @@ class OidcSiopProtocolTest : FreeSpec({
             requestOptions = RequestOptions(credentialScheme = ConstantIndex.AtomicAttribute2023)
         ).getOrThrow().also { println(it) }
 
-        holderSiop = OidcSiopWallet.newInstance(
+        holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
             requestObjectJwsVerifier = verifierAttestationVerifier(DefaultCryptoService().jsonWebKey)
@@ -318,7 +324,7 @@ class OidcSiopProtocolTest : FreeSpec({
             parameters.append("request_uri", requestUrl)
         }.buildString()
 
-        holderSiop = OidcSiopWallet.newInstance(
+        holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
             remoteResourceRetriever = {
@@ -349,7 +355,7 @@ class OidcSiopProtocolTest : FreeSpec({
             parameters.append("request_uri", requestUrl)
         }.buildString()
 
-        holderSiop = OidcSiopWallet.newInstance(
+        holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
             remoteResourceRetriever = {
@@ -379,7 +385,7 @@ class OidcSiopProtocolTest : FreeSpec({
             parameters.append("request_uri", requestUrl)
         }.buildString()
 
-        holderSiop = OidcSiopWallet.newInstance(
+        holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
             remoteResourceRetriever = {
@@ -438,4 +444,3 @@ private suspend fun verifySecondProtocolRun(
     )
     validation.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
 }
-

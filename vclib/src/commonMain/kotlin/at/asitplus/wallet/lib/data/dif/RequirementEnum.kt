@@ -13,6 +13,6 @@ enum class RequirementEnum(val text: String) {
     PREFERRED("preferred");
 
     companion object {
-        fun parse(text: String) = values().firstOrNull { it.text == text }
+        fun parse(text: String) = entries.firstOrNull { it.text == text }
     }
 }

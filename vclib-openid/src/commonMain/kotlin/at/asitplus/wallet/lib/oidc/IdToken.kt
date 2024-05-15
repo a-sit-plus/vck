@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.wallet.lib.data.InstantLongSerializer
-import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -89,10 +89,7 @@ data class IdToken(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<IdToken>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 
 }

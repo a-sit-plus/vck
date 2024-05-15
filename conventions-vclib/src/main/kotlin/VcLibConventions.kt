@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
 
 inline fun Project.commonApiDependencies(): List<String> {
     project.AspVersions.versions["kmpcrypto"] = VcLibVersions.kmpcrypto
+    project.AspVersions.versions["jsonpath"] = VcLibVersions.jsonpath
     project.AspVersions.versions["okio"] = VcLibVersions.okio
     project.AspVersions.versions["encoding"] = VcLibVersions.encoding
     return listOf(
@@ -19,6 +20,8 @@ inline fun Project.commonApiDependencies(): List<String> {
         addDependency("at.asitplus.crypto:datatypes", "kmpcrypto"), //for iOS Export
         addDependency("at.asitplus.crypto:datatypes-cose", "kmpcrypto"),
         addDependency("at.asitplus.crypto:datatypes-jws", "kmpcrypto"),
+        addDependency("at.asitplus.crypto:datatypes-jws", "kmpcrypto"),
+        addDependency("at.asitplus:jsonpath", "jsonpath"),
         datetime(),
         addDependency("com.squareup.okio:okio", "okio"),
         addDependency("io.matthewnelson.kotlin-components:encoding-base16", "encoding"),
@@ -46,6 +49,7 @@ fun Project.commonIosExports() = arrayOf(
     "at.asitplus.crypto:datatypes:${VcLibVersions.kmpcrypto}",
     "at.asitplus.crypto:datatypes-cose:${VcLibVersions.kmpcrypto}",
     "at.asitplus.crypto:datatypes-jws:${VcLibVersions.kmpcrypto}",
+    "at.asitplus:jsonpath:${VcLibVersions.jsonpath}",
     "io.matthewnelson.kotlin-components:encoding-base16:${VcLibVersions.encoding}",
     "io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}",
 )

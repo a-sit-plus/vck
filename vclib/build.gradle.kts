@@ -1,4 +1,8 @@
-import at.asitplus.gradle.*
+import at.asitplus.gradle.bouncycastle
+import at.asitplus.gradle.commonImplementationAndApiDependencies
+import at.asitplus.gradle.commonIosExports
+import at.asitplus.gradle.exportIosFramework
+import at.asitplus.gradle.setupDokka
 
 plugins {
     kotlin("multiplatform")

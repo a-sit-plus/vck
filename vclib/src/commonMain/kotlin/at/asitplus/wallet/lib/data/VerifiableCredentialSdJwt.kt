@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
-import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -41,10 +41,7 @@ data class VerifiableCredentialSdJwt(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<VerifiableCredentialSdJwt>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 
 }

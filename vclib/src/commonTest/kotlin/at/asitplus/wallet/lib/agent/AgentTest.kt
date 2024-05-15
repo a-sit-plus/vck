@@ -1,8 +1,11 @@
+@file:Suppress("unused")
+
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.dif.InputDescriptor
+import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import com.benasher44.uuid.uuid4
-import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -12,6 +15,10 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 class AgentTest : FreeSpec({
+    val singularPresentationDefinition = PresentationDefinition(
+        id = uuid4().toString(),
+        inputDescriptors = listOf(InputDescriptor(id = uuid4().toString()))
+    )
 
     lateinit var issuer: Issuer
     lateinit var holder: Holder
@@ -46,7 +53,13 @@ class AgentTest : FreeSpec({
         credentials.successful.shouldNotBeEmpty()
         holder.storeCredentials(credentials.toStoreCredentialInput())
 
-        val vp = holder.createPresentation(challenge, verifier.identifier)
+        val presentationParameters = holder.createPresentation(
+            challenge,
+            verifier.identifier,
+            presentationDefinition = singularPresentationDefinition,
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
         val verified = verifier.verifyPresentation(vp.jws, challenge)
@@ -64,7 +77,13 @@ class AgentTest : FreeSpec({
         holder.storeCredentials(credentials.toStoreCredentialInput())
         holderCredentialStore.getAttachment("picture").getOrThrow().shouldNotBeNull()
 
-        val vp = holder.createPresentation(challenge, verifier.identifier)
+        val presentationParameters = holder.createPresentation(
+            challenge = challenge,
+            audienceId = verifier.identifier,
+            presentationDefinition = singularPresentationDefinition,
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
         val verified = verifier.verifyPresentation(vp.jws, challenge)
@@ -80,7 +99,13 @@ class AgentTest : FreeSpec({
         credentials.successful.shouldNotBeEmpty()
         holder.storeCredentials(credentials.toStoreCredentialInput())
 
-        val vp = holder.createPresentation(challenge, issuer.identifier)
+        val presentationParameters = holder.createPresentation(
+            challenge = challenge,
+            audienceId = issuer.identifier,
+            presentationDefinition = singularPresentationDefinition,
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
         val result = verifier.verifyPresentation(vp.jws, challenge)
@@ -95,15 +120,19 @@ class AgentTest : FreeSpec({
         )
         credentials.successful.shouldNotBeEmpty()
         issuer.revokeCredentials(
-            credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }) shouldBe true
+            credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>()
+                .map { it.vcJws }) shouldBe true
 
-        val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+        val revocationListCredential =
+            issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
         revocationListCredential.shouldNotBeNull()
         verifier.setRevocationList(revocationListCredential) shouldBe true
 
-        credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }.forEach {
-            verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
-        }
+        credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }
+            .forEach {
+                verifier.verifyVcJws(it)
+                    .shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
+            }
     }
 
     "building presentation with revoked credentials should not work" - {
@@ -116,8 +145,11 @@ class AgentTest : FreeSpec({
             )
             credentials.successful.shouldNotBeEmpty()
             issuer.revokeCredentials(
-                credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }) shouldBe true
-            val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+                credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>()
+                    .map { it.vcJws }
+            ) shouldBe true
+            val revocationListCredential =
+                issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
             revocationListCredential.shouldNotBeNull()
             holder.setRevocationList(revocationListCredential) shouldBe true
 
@@ -125,8 +157,11 @@ class AgentTest : FreeSpec({
             storedCredentials.acceptedVcJwt.shouldBeEmpty()
             storedCredentials.rejected shouldHaveSize credentials.successful.size
             storedCredentials.notVerified.shouldBeEmpty()
-
-            holder.createPresentation(challenge, verifier.identifier) shouldBe null
+            holder.createPresentation(
+                challenge = challenge,
+                audienceId = verifier.identifier,
+                presentationDefinition = singularPresentationDefinition,
+            ).getOrNull() shouldBe null
         }
 
         "and when setting a revocation list after storing credentials" {
@@ -142,12 +177,18 @@ class AgentTest : FreeSpec({
             storedCredentials.notVerified.shouldBeEmpty()
 
             issuer.revokeCredentials(
-                credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }) shouldBe true
-            val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+                credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>()
+                    .map { it.vcJws }) shouldBe true
+            val revocationListCredential =
+                issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
             revocationListCredential.shouldNotBeNull()
             holder.setRevocationList(revocationListCredential) shouldBe true
 
-            holder.createPresentation(challenge, verifier.identifier) shouldBe null
+            holder.createPresentation(
+                challenge = challenge,
+                audienceId = verifier.identifier,
+                presentationDefinition = singularPresentationDefinition,
+            ).getOrNull() shouldBe null
         }
     }
 
@@ -180,7 +221,11 @@ class AgentTest : FreeSpec({
             }
 
             "with a revocation list set" {
-                holder.setRevocationList(issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)!!) shouldBe true
+                holder.setRevocationList(
+                    issuer.issueRevocationListCredential(
+                        FixedTimePeriodProvider.timePeriod
+                    )!!
+                ) shouldBe true
                 val holderCredentials = holder.getCredentials()
                 holderCredentials.shouldNotBeNull()
                 holderCredentials.filterIsInstance<Holder.StoredCredential.Vc>().forEach {
@@ -202,8 +247,11 @@ class AgentTest : FreeSpec({
             storedCredentials.notVerified.shouldBeEmpty()
 
             issuer.revokeCredentials(
-                credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }) shouldBe true
-            val revocationListCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+                credentials.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>()
+                    .map { it.vcJws }
+            ) shouldBe true
+            val revocationListCredential =
+                issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
             revocationListCredential.shouldNotBeNull()
             holder.setRevocationList(revocationListCredential) shouldBe true
 
@@ -216,7 +264,11 @@ class AgentTest : FreeSpec({
     }
 
     "building presentation without necessary credentials" {
-        holder.createPresentation(challenge, verifier.identifier) shouldBe null
+        holder.createPresentation(
+            challenge = challenge,
+            audienceId = verifier.identifier,
+            presentationDefinition = singularPresentationDefinition,
+        ).getOrNull() shouldBe null
     }
 
     "valid presentation is valid" {
@@ -227,14 +279,20 @@ class AgentTest : FreeSpec({
         )
         credentials.successful.shouldNotBeEmpty()
         holder.storeCredentials(credentials.toStoreCredentialInput())
-        val vp = holder.createPresentation(challenge, verifier.identifier)
+        val presentationParameters = holder.createPresentation(
+            challenge = challenge,
+            audienceId = verifier.identifier,
+            presentationDefinition = singularPresentationDefinition,
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
 
         val result = verifier.verifyPresentation(vp.jws, challenge)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         result.vp.revokedVerifiableCredentials.shouldBeEmpty()
-        credentials.successful shouldHaveSize result.vp.verifiableCredentials.size
+        result.vp.verifiableCredentials shouldHaveSize 1
     }
 
     "valid presentation is valid -- some other attributes revoked" {
@@ -245,7 +303,13 @@ class AgentTest : FreeSpec({
         )
         credentials.successful.shouldNotBeEmpty()
         holder.storeCredentials(credentials.toStoreCredentialInput())
-        val vp = holder.createPresentation(challenge, verifier.identifier)
+        val presentationParameters = holder.createPresentation(
+            challenge = challenge,
+            audienceId = verifier.identifier,
+            presentationDefinition = singularPresentationDefinition,
+        ).getOrNull()
+        presentationParameters.shouldNotBeNull()
+        val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
 
@@ -257,7 +321,8 @@ class AgentTest : FreeSpec({
         credentials.successful.shouldNotBeEmpty()
         issuer.revokeCredentials(credentialsToRevoke.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>()
             .map { it.vcJws }) shouldBe true
-        val revocationList = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+        val revocationList =
+            issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
         revocationList.shouldNotBeNull()
         verifier.setRevocationList(revocationList) shouldBe true
 

@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.ElementValue
@@ -25,7 +24,9 @@ class DummyCredentialDataProvider(
         claimNames: Collection<String>?
     ): KmmResult<List<CredentialToBeIssued>> {
         val expiration = clock.now() + defaultLifetime
-        val claims = listOf(
+        val claims = claimNames?.map {
+            ClaimToBeIssued(it, "${it}_DUMMY_VALUE")
+        } ?: listOf(
             ClaimToBeIssued("given-name", "Susanne"),
             ClaimToBeIssued("family-name", "Meier"),
             ClaimToBeIssued("date-of-birth", "1990-01-01"),

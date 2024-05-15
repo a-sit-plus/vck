@@ -1,9 +1,8 @@
 package at.asitplus.wallet.lib.oidc
 
-import io.github.aakira.napier.Napier
+import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
 @Serializable
@@ -32,10 +31,7 @@ data class AuthnRequestClaims(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<AuthnRequestClaims>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 
 }
@@ -90,10 +86,7 @@ data class AuthnRequestSingleClaim(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<AuthnRequestSingleClaim>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 
 }

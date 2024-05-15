@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.data.InstantLongSerializer
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.oidvci.AuthorizationDetails
-import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -33,7 +33,7 @@ data class AuthenticationRequestParameters(
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      */
     @SerialName("client_id")
-    val clientId: String,
+    val clientId: String? = null,
 
     /**
      * OIDC: REQUIRED. Redirection URI to which the response will be sent. This URI MUST exactly match one of the
@@ -133,11 +133,19 @@ data class AuthenticationRequestParameters(
 
     /**
      * OID4VP: A string containing a Presentation Definition JSON object. This parameter MUST be present when
-     * `presentation_definition_uri` parameter, or a `scope` value representing a Presentation Definition is not
+     * [presentationDefinitionUrl] parameter, or a [scope] value representing a Presentation Definition is not
      * present.
      */
     @SerialName("presentation_definition")
     val presentationDefinition: PresentationDefinition? = null,
+
+    /**
+     * OID4VP: A string containing an HTTPS URL pointing to a resource where a Presentation Definition JSON object
+     * can be retrieved. This parameter MUST be present when [presentationDefinition] parameter, or a scope value
+     * representing a Presentation Definition is not present.
+     */
+    @SerialName("presentation_definition_uri")
+    val presentationDefinitionUrl: String? = null,
 
     /**
      * OID4VP: A string containing an HTTPS URL pointing to a resource where a Presentation Definition JSON object can
@@ -149,8 +157,8 @@ data class AuthenticationRequestParameters(
 
     /**
      * OID4VP: OPTIONAL. A string identifying the scheme of the value in the `client_id` Authorization Request parameter
-     * (Client Identifier scheme). The `client_id_scheme` parameter namespaces the respective Client Identifier. If an
-     * Authorization Request uses the `client_id_scheme` parameter, the Wallet MUST interpret the Client Identifier of
+     * (Client Identifier scheme). The [clientIdScheme] parameter namespaces the respective Client Identifier. If an
+     * Authorization Request uses the [clientIdScheme] parameter, the Wallet MUST interpret the Client Identifier of
      * the Verifier in the context of the Client Identifier scheme. If the parameter is not present, the Wallet MUST
      * behave as specified in RFC6749. If the same Client Identifier is used with different Client Identifier schemes,
      * those occurrences MUST be treated as different Verifiers. Note that the Verifier needs to determine which Client
@@ -255,9 +263,6 @@ data class AuthenticationRequestParameters(
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<AuthenticationRequestParameters>(it)
-        }.getOrElse {
-            Napier.w("deserialize failed", it)
-            null
-        }
+        }.wrap()
     }
 }

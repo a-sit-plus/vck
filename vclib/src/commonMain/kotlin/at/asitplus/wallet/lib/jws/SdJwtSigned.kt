@@ -51,6 +51,7 @@ data class SdJwtSigned(
             val disclosures = stringList.drop(1).take(rawDisclosures.count())
                 .associateWith {
                     SelectiveDisclosureItem.deserialize(it.decodeToByteArray(Base64UrlStrict).decodeToString())
+                        .getOrNull()
                 }
             val keyBindingString = stringList.drop(1 + rawDisclosures.size).firstOrNull()
             val keyBindingJws = keyBindingString?.let { JwsSigned.parse(it) }

@@ -45,9 +45,9 @@ class CredentialIssuer(
      */
     private val credentialEndpointPath: String = "/credential",
     /**
-     * Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfo]
+     * Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]
      */
-    private val buildIssuerCredentialDataProviderOverride: (OidcUserInfo) -> IssuerCredentialDataProvider = {
+    private val buildIssuerCredentialDataProviderOverride: (OidcUserInfoExtended) -> IssuerCredentialDataProvider = {
         OAuth2IssuerCredentialDataProvider(it)
     }
 ) {
@@ -60,6 +60,12 @@ class CredentialIssuer(
             credentialIssuer = publicContext,
             authorizationServers = setOf(authorizationService.publicContext),
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
+            authorizationEndpointUrl = if (authorizationService is SimpleAuthorizationService)
+                authorizationService.publicContext + authorizationService.authorizationEndpointPath
+            else null,
+            tokenEndpointUrl = if (authorizationService is SimpleAuthorizationService)
+                authorizationService.publicContext + authorizationService.tokenEndpointPath
+            else null,
             supportedCredentialConfigurations = mutableMapOf<String, SupportedCredentialFormat>().apply {
                 credentialSchemes.forEach { putAll(it.toSupportedCredentialFormat(issuer.cryptoAlgorithms)) }
             },
@@ -138,6 +144,7 @@ class CredentialIssuer(
                 val coseSigned = CoseSigned.deserialize(proof.cwt.decodeToByteArray(Base64UrlStrict))
                     ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
+
                 val cwt = coseSigned.payload?.let { CborWebToken.deserialize(it).getOrNull() }
                     ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_PROOF))
                         .also { Napier.w("credential: client did provide invalid CWT in proof: $proof") }

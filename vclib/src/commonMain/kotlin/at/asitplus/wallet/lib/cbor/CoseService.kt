@@ -116,9 +116,9 @@ class DefaultVerifierCoseService(
                 "Algorithm not specified"
             )
         )
-        val publicKey = signer.toCryptoPublicKey().getOrElse {
+        val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
             return KmmResult.failure<Boolean>(IllegalArgumentException("Signer not convertible"))
-                .also { Napier.w("Could not convert signer to public key: $signer") }
+                .also { Napier.w("Could not convert signer to public key: $signer", ex) }
         }
         val verified = cryptoService.verify(
             input = signatureInput,

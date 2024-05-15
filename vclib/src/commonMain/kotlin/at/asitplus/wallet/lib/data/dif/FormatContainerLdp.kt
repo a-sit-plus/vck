@@ -10,5 +10,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class FormatContainerLdp(
     @SerialName("proof_type")
-    val proofType: Collection<String>,
+    val proofType: Collection<String>? = null,
 )

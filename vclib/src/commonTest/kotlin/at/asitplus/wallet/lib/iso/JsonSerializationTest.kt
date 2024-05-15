@@ -8,8 +8,6 @@ import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.EXPIRY_DATE
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.ISSUE_DATE
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.PORTRAIT
-import io.github.aakira.napier.DebugAntilog
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
@@ -42,8 +40,7 @@ class JsonSerializationTest : FreeSpec({
             }
         """.trimIndent()
 
-        val serverRequest = ServerRequest.deserialize(input)
-        serverRequest.shouldNotBeNull()
+        val serverRequest = ServerRequest.deserialize(input).getOrThrow().shouldNotBeNull()
         println(serverRequest)
 
         serverRequest.version shouldBe "1.0"
@@ -138,16 +135,14 @@ class JsonSerializationTest : FreeSpec({
             }
         """.trimIndent()
 
-        val serverResponse = ServerResponse.deserialize(input)
-        serverResponse.shouldNotBeNull()
+        val serverResponse = ServerResponse.deserialize(input).getOrThrow().shouldNotBeNull()
         println(serverResponse)
 
         val payload = serverResponse.documents.first()
         val jws = JwsSigned.parse(payload)
         jws.shouldNotBeNull()
 
-        val mdlJws = MobileDrivingLicenceJws.deserialize(jws.payload.decodeToString())
-        mdlJws.shouldNotBeNull()
+        val mdlJws = MobileDrivingLicenceJws.deserialize(jws.payload.decodeToString()).getOrThrow().shouldNotBeNull()
         println(mdlJws)
 
         mdlJws.doctype shouldBe ConstantIndex.MobileDrivingLicence2023.isoDocType
