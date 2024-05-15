@@ -16,15 +16,15 @@ Release NEXT:
 - Change `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.
 - Add `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.
 - Add `InputEvaluator`: Input evaluator according to `DIF.PresentationExchange 2.0.0`
-- Add `AuthenticationResponseBuilder`: Data class for holding primitives required to prepare an authentication response
 - Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.
-- Add `PresentationSubmissionBuilder`: Data class for holding primitives to select credentials for a presentation response
+- Add `AuthenticationResponsePreparationState`: Data class for holding primitives required to prepare an authentication response
+- Add `PresentationPreparationState`: Data class for holding primitives to select credentials for a presentation response
   - Add `isSubmissionRequirementsSatisfied`: Evaluates whether the submission requirements are satisfied with the current selection
 - BREAKING CHANGE to `OidcSiopWallet`:
   - Remove `OidcSiopWallet.createAuthnResponseParams`
-  - add `OidcSiopWallet.startAuthenticationResponsePreparation`: Yields a `AuthenticationResponseBuilder`
-  - add `OidcSiopWallet.finalizeAuthenticationResponseResult`: Consumes an `AuthenticationResponseBuilder` and yields `AuthenticationResponseResult`
-  - add `OidcSiopWallet.refreshPresentationSubmissionBuilder`: Refreshes a `PresentationSubmissionBuilder`
+  - add `OidcSiopWallet.startAuthenticationResponsePreparation`: Yields a `AuthenticationResponsePreparationState`
+  - add `OidcSiopWallet.finalizeAuthenticationResponseResult`: Consumes an `AuthenticationResponsePreparationState` and yields `AuthenticationResponseResult`
+  - add `OidcSiopWallet.refreshPresentationPreparationState`: Refreshes a `PresentationPreparationState` by reevaluating the matchings against the currently store credentials
 
     Release 3.6.1:
  * Update to KMP-Crypto 2.6.0

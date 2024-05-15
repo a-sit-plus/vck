@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
  * Container for preparing submissions, even when serialization and deserialization is required while preparation
  */
 @Serializable
-class PresentationSubmissionBuilder(
+class PresentationPreparationState(
     val presentationDefinition: PresentationDefinition,
     val fallbackFormatHolder: FormatHolder? = null,
 ) {
@@ -97,8 +97,10 @@ class PresentationSubmissionBuilder(
 
 class InvalidSubmissionSelectionException(message: String) : Exception(message)
 
-open class InvalidInputDescriptorForSubmissionRequirementsException(message: String) : Exception(message)
+open class InvalidInputDescriptorForSubmissionRequirementsException(message: String) :
+    Exception(message)
 
-open class MissingInputDescriptorGroupException(inputDescriptor: InputDescriptor) : InvalidInputDescriptorForSubmissionRequirementsException(
-    "Input descriptor is missing field `group` and therefore does not satisfy requirements for use with submission requirements: $inputDescriptor"
-)
+open class MissingInputDescriptorGroupException(inputDescriptor: InputDescriptor) :
+    InvalidInputDescriptorForSubmissionRequirementsException(
+        "Input descriptor is missing field `group` and therefore does not satisfy requirements for use with submission requirements: $inputDescriptor"
+    )
