@@ -47,6 +47,7 @@ import kotlin.time.Duration.Companion.seconds
 class OidcSiopProtocolTest : FreeSpec({
 
     lateinit var relyingPartyUrl: String
+    lateinit var responseUrl: String
     lateinit var walletUrl: String
 
     lateinit var holderCryptoService: CryptoService
@@ -61,7 +62,9 @@ class OidcSiopProtocolTest : FreeSpec({
     beforeEach {
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
-        relyingPartyUrl = "https://example.com/rp/${uuid4()}"
+        val rpUUID = uuid4()
+        relyingPartyUrl = "https://example.com/rp/$rpUUID"
+        responseUrl = "https://example.com/rp/$rpUUID"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
         verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.didEncoded)
@@ -86,6 +89,7 @@ class OidcSiopProtocolTest : FreeSpec({
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
+            responseUrl=responseUrl,
         )
     }
 

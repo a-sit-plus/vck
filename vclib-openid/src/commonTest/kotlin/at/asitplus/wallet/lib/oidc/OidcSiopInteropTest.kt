@@ -245,11 +245,11 @@ class OidcSiopInteropTest : FreeSpec({
         parsed.shouldNotBeNull()
 
         parsed.responseUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/direct_post"
-        parsed.clientIdScheme shouldBe "x509_san_dns"
+        parsed.clientIdScheme shouldBe OpenIdConstants.ClientIdScheme.X509_SAN_DNS
         parsed.responseType shouldBe "vp_token"
         parsed.nonce shouldBe "nonce"
         parsed.clientId shouldBe "verifier-backend.eudiw.dev"
-        parsed.responseMode shouldBe "direct_post.jwt"
+        parsed.responseMode shouldBe OpenIdConstants.ResponseMode.DIRECT_POST_JWT
         parsed.audience shouldBe "https://self-issued.me/v2"
         parsed.scope shouldBe ""
         val pd = parsed.presentationDefinition

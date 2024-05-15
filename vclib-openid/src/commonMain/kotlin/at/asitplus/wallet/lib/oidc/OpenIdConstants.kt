@@ -43,7 +43,12 @@ object OpenIdConstants {
 
     @Serializable(with = ProofType.Serializer::class)
     sealed class ProofType(val stringRepresentation: String) {
-
+        override fun toString(): String = this::class.simpleName + "(" + stringRepresentation + ")"
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is ProofType) return false
+            return other.stringRepresentation == stringRepresentation
+        }
         companion object {
             private const val STRING_JWT = "jwt"
             private const val STRING_CWT = "cwt"
@@ -110,7 +115,12 @@ object OpenIdConstants {
      */
     @Serializable(with = ClientIdScheme.Serializer::class)
     sealed class ClientIdScheme(val stringRepresentation: String) {
-
+        override fun toString(): String = this::class.simpleName + "(" + stringRepresentation + ")"
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is ClientIdScheme) return false
+            return other.stringRepresentation == stringRepresentation
+        }
         companion object {
             private const val STRING_PRE_REGISTERED = "pre-registered"
             private const val STRING_REDIRECT_URI = "redirect_uri"
@@ -241,6 +251,15 @@ object OpenIdConstants {
 
     @Serializable(with = ResponseMode.Serializer::class)
     sealed class ResponseMode(val stringRepresentation: String) {
+        override fun toString(): String = this::class.simpleName + "(" + stringRepresentation + ")"
+
+        override fun hashCode() = stringRepresentation.hashCode()
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is ResponseMode) return false
+            return other.stringRepresentation == stringRepresentation
+        }
 
         companion object {
             private const val STRING_DIRECT_POST = "direct_post"
