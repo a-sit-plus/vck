@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.dif.FormatHolder
+import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.iso.IssuerSigned
@@ -144,6 +145,22 @@ interface Holder {
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = defaultPathAuthorizationValidator,
     ): KmmResult<PresentationResponseParameters>
+
+    /**
+     * Creates a mapping from the input descriptors of the presentation definition to matching
+     * credentials and the fields that would need to be disclosed.
+     *
+     * @param fallbackFormatHolder: format holder to be used in case there is no format holder in a
+     *  given presentation definition and the input descriptor.
+     *  This will mostly resolve to be the some clientMetadata.vpFormats
+     * @param pathAuthorizationValidator: Provides the user of this library with a way to enforce
+     *  authorization rules.
+     */
+    suspend fun matchInputDescriptorsAgainstCredentialStore(
+        presentationDefinition: PresentationDefinition,
+        fallbackFormatHolder: FormatHolder? = null,
+        pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = { _, _ -> true },
+    ): KmmResult<Map<InputDescriptor, HolderAgent.CandidateInputMatchContainer?>>
 
     sealed class CreatePresentationResult {
         /**

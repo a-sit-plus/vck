@@ -6,7 +6,7 @@ import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.data.dif.InputEvaluator
+import at.asitplus.wallet.lib.data.dif.FieldQueryResults
 import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceSigned
 import at.asitplus.wallet.lib.iso.Document
@@ -28,10 +28,10 @@ class VerifiablePresentationFactory(
         challenge: String,
         audienceId: String,
         credential: SubjectCredentialStore.StoreEntry,
-        inputMatching: InputEvaluator.CandidateInputMatching,
+        fieldQueryResults: FieldQueryResults?,
     ): Holder.CreatePresentationResult? {
-        val requestedClaims = inputMatching.fieldQueryResults?.mapNotNull { fieldQueryResult ->
-            fieldQueryResult?.match?.normalizedJsonPath
+        val requestedClaims = fieldQueryResults?.mapNotNull { fieldQueryResult ->
+            fieldQueryResult.value?.normalizedJsonPath
         }
 
         return when (credential) {
