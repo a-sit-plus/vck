@@ -25,8 +25,6 @@ interface Holder {
      */
     val identifier: String
 
-    val defaultPathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean
-
     /**
      * Sets the revocation list ot use for further processing of Verifiable Credentials
      *
@@ -143,24 +141,24 @@ interface Holder {
         audienceId: String,
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder? = null,
-        pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = defaultPathAuthorizationValidator,
+        pathAuthorizationValidator: PathAuthorizationValidator? = null,
     ): KmmResult<PresentationResponseParameters>
 
 
     /**
      * Creates an array of [VerifiablePresentation] and a [PresentationSubmission] from already
-     * preselected [submissionSelection].
+     * preselected [presentationSubmissionSelection].
      *
      * @param presentationDefinitionId: id of the presentation definition this submission is intended for
-     * @param submissionSelection: a preselection of input descriptors and matching credentials along
+     * @param presentationSubmissionSelection: a preselection of input descriptors and matching credentials along
      * with a description of the fields to be disclosed
      */
     suspend fun createPresentation(
         challenge: String,
         audienceId: String,
         presentationDefinitionId: String?,
-        submissionSelection: Map<InputDescriptor, HolderAgent.CandidateInputMatchContainer>,
-    ): KmmResult<Holder.PresentationResponseParameters>
+        presentationSubmissionSelection: Map<InputDescriptor, HolderAgent.CandidateInputMatchContainer>,
+    ): KmmResult<PresentationResponseParameters>
 
     /**
      * Creates a mapping from the input descriptors of the presentation definition to matching
@@ -170,12 +168,12 @@ interface Holder {
      *  given presentation definition and the input descriptor.
      *  This will mostly resolve to be the some clientMetadata.vpFormats
      * @param pathAuthorizationValidator: Provides the user of this library with a way to enforce
-     *  authorization rules.
+     *  authorization rules on attribute credentials that are to be disclosed.
      */
     suspend fun matchInputDescriptorsAgainstCredentialStore(
-        presentationDefinition: PresentationDefinition,
+        inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder? = null,
-        pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = { _, _ -> true },
+        pathAuthorizationValidator: PathAuthorizationValidator? = null,
     ): KmmResult<Map<InputDescriptor, Collection<HolderAgent.CandidateInputMatchContainer>>>
 
     sealed class CreatePresentationResult {
@@ -197,4 +195,28 @@ interface Holder {
             CreatePresentationResult()
     }
 
+}
+
+interface PathAuthorizationValidator {
+    operator fun invoke(
+        credential: SubjectCredentialStore.StoreEntry,
+        attribute: NormalizedJsonPath
+    ): Boolean
+}
+
+class LambdaPathAuthorizationValidator(
+    val evaluator: (
+        credential: SubjectCredentialStore.StoreEntry,
+        attribute: NormalizedJsonPath,
+    ) -> Boolean
+) : PathAuthorizationValidator {
+    override operator fun invoke(
+        credential: SubjectCredentialStore.StoreEntry,
+        attribute: NormalizedJsonPath
+    ): Boolean {
+        return evaluator(
+            credential,
+            attribute,
+        )
+    }
 }

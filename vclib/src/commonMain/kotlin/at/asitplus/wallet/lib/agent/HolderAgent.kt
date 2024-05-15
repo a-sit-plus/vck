@@ -42,7 +42,6 @@ class HolderAgent(
         identifier = identifier,
     ),
     private val difInputEvaluator: InputEvaluator = InputEvaluator(),
-    override val defaultPathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = { _, _ -> true }
 ) : Holder {
 
     companion object {
@@ -229,7 +228,7 @@ class HolderAgent(
         audienceId: String,
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder?,
-        pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean,
+        pathAuthorizationValidator: PathAuthorizationValidator?,
     ): KmmResult<Holder.PresentationResponseParameters> {
         val matches = matchInputDescriptorsAgainstCredentialStore(
             presentationDefinition = presentationDefinition,
@@ -238,7 +237,7 @@ class HolderAgent(
         ).getOrElse {
             return KmmResult.failure(it)
         }.map { (key, value) ->
-            if(value.isNotEmpty()) {
+            if (value.isNotEmpty()) {
                 key to value.first()
             } else {
                 // TODO: support submission requirements, where not all input descriptors may have a match
@@ -251,7 +250,7 @@ class HolderAgent(
             challenge = challenge,
             audienceId = audienceId,
             presentationDefinitionId = presentationDefinition.id,
-            submissionSelection = matches.toMap()
+            presentationSubmissionSelection = matches.toMap()
         )
     }
 
@@ -259,9 +258,9 @@ class HolderAgent(
         challenge: String,
         audienceId: String,
         presentationDefinitionId: String?,
-        submissionSelection: Map<InputDescriptor, CandidateInputMatchContainer>
+        presentationSubmissionSelection: Map<InputDescriptor, CandidateInputMatchContainer>
     ): KmmResult<Holder.PresentationResponseParameters> {
-        val submissionList = submissionSelection.toList()
+        val submissionList = presentationSubmissionSelection.toList()
         val presentationSubmission = PresentationSubmission.fromMatches(
             presentationId = presentationDefinitionId,
             matches = submissionList,
@@ -307,15 +306,27 @@ class HolderAgent(
     override suspend fun matchInputDescriptorsAgainstCredentialStore(
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder?,
-        pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean,
+        pathAuthorizationValidator: PathAuthorizationValidator?,
+    ): KmmResult<Map<InputDescriptor, Collection<CandidateInputMatchContainer>>> {
+        return matchInputDescriptorsAgainstCredentialStore(
+            inputDescriptors = presentationDefinition.inputDescriptors,
+            fallbackFormatHolder = presentationDefinition.formats ?: fallbackFormatHolder,
+            pathAuthorizationValidator = pathAuthorizationValidator,
+        )
+    }
+
+    override suspend fun matchInputDescriptorsAgainstCredentialStore(
+        inputDescriptors: Collection<InputDescriptor>,
+        fallbackFormatHolder: FormatHolder?,
+        pathAuthorizationValidator: PathAuthorizationValidator?,
     ): KmmResult<Map<InputDescriptor, Collection<CandidateInputMatchContainer>>> {
         val credentials = getValidCredentialsByPriority()
             ?: return KmmResult.failure(CredentialRetrievalException())
 
         val allMatchingResults = findInputDescriptorMatches(
-            inputDescriptors = presentationDefinition.inputDescriptors,
+            inputDescriptors = inputDescriptors,
             credentials = credentials,
-            fallbackFormatHolder = presentationDefinition.formats ?: fallbackFormatHolder,
+            fallbackFormatHolder = fallbackFormatHolder,
             pathAuthorizationValidator = pathAuthorizationValidator,
         )
         return KmmResult.success(allMatchingResults)
@@ -325,7 +336,7 @@ class HolderAgent(
         inputDescriptors: Collection<InputDescriptor>,
         credentials: Collection<SubjectCredentialStore.StoreEntry>,
         fallbackFormatHolder: FormatHolder?,
-        pathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean,
+        pathAuthorizationValidator: PathAuthorizationValidator?,
     ): Map<InputDescriptor, Collection<CandidateInputMatchContainer>> {
         return inputDescriptors.associateWith { inputDescriptor ->
             credentials.mapNotNull { credential ->
@@ -334,7 +345,7 @@ class HolderAgent(
                     credential = credential,
                     presentationDefinitionFormatHolder = fallbackFormatHolder,
                     pathAuthorizationValidator = {
-                        pathAuthorizationValidator(credential, it)
+                        pathAuthorizationValidator?.invoke(credential, it) ?: true
                     },
                 )?.let {
                     CandidateInputMatchContainer(

@@ -154,7 +154,9 @@ class OidcSiopInteropTest : FreeSpec({
         val resp = holderSiop.parseAuthenticationRequestParameters(url)
         Napier.d("resp: $resp")
 
-        val response = holderSiop.createAuthnResponse(url).getOrThrow()
+        val response = holderSiop.startAuthenticationResponsePreparation(url).getOrThrow().let {
+            holderSiop.finalizeAuthenticationResponseResult(it)
+        }.getOrThrow()
 
         response.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         val jarmParams = response.params.formUrlEncode().decodeFromPostBody<AuthenticationResponseParameters>()

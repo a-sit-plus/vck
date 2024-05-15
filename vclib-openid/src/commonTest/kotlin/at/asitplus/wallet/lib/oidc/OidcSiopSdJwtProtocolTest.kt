@@ -75,7 +75,9 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         ).also { println(it) }
         authnRequest shouldContain "jwt_sd"
 
-        val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
+        val authnResponse = holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
+            holderSiop.finalizeAuthenticationResponseResult(it)
+        }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().also { println(it) }
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
@@ -103,7 +105,9 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         authnRequest shouldContain "jwt_sd"
         authnRequest shouldContain requestedClaim
 
-        val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
+        val authnResponse = holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
+            holderSiop.finalizeAuthenticationResponseResult(it)
+        }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().also { println(it) }
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
@@ -127,8 +131,11 @@ private suspend fun assertSecondRun(
         walletUrl = walletUrl,
         requestOptions = RequestOptions(representation = ConstantIndex.CredentialRepresentation.SD_JWT)
     )
-    val authnResponse = holderSiop.createAuthnResponse(authnRequestUrl)
-    val url = (authnResponse.getOrThrow() as AuthenticationResponseResult.Redirect).url
+    val authnResponse = holderSiop.startAuthenticationResponsePreparation(authnRequestUrl).getOrThrow().let {
+        holderSiop.finalizeAuthenticationResponseResult(it)
+    }.getOrThrow()
+    authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+    val url = authnResponse.url
     val validation = verifierSiop.validateAuthnResponse(url)
     validation.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
 }
