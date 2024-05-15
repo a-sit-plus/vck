@@ -58,7 +58,7 @@ class PresentationPreparationState(
         } else {
             presentationDefinition.submissionRequirements.all {
                 it.evaluate(
-                    inputDescriptorIdToGroups = inputDescriptorMatches.keys.associate {
+                    inputDescriptorIdsToGroups = inputDescriptorMatches.keys.associate {
                         it.id to (it.group ?: throw MissingInputDescriptorGroupException(it))
                     },
                     selectedInputDescriptorIds = currentSubmissionSelection.keys.map {

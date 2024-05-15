@@ -30,11 +30,11 @@ data class SubmissionRequirement(
      * Evaluating submission requirements as per [Presentation Exchange 2.0.0 - Submission Requirement Rules](https://identity.foundation/presentation-exchange/spec/v2.0.0/#submission-requirement-rules).
      */
     fun evaluate(
-        inputDescriptorIdToGroups: Map<String, String>,
+        inputDescriptorIdsToGroups: Map<String, String>,
         selectedInputDescriptorIds: Collection<String>,
     ): Boolean = when (rule) {
         SubmissionRequirementRuleEnum.ALL -> when {
-            from != null -> inputDescriptorIdToGroups.filter {
+            from != null -> inputDescriptorIdsToGroups.filter {
                 it.value == from
             }.all {
                 selectedInputDescriptorIds.contains(it.key)
@@ -42,7 +42,7 @@ data class SubmissionRequirement(
 
             fromNested != null -> fromNested.all {
                 it.evaluate(
-                    inputDescriptorIdToGroups = inputDescriptorIdToGroups,
+                    inputDescriptorIdsToGroups = inputDescriptorIdsToGroups,
                     selectedInputDescriptorIds = selectedInputDescriptorIds,
                 )
             }
@@ -53,7 +53,7 @@ data class SubmissionRequirement(
         }
 
         SubmissionRequirementRuleEnum.PICK -> when {
-            from != null -> inputDescriptorIdToGroups.filter {
+            from != null -> inputDescriptorIdsToGroups.filter {
                 it.value == from
             }.count {
                 selectedInputDescriptorIds.contains(it.value)
@@ -61,7 +61,7 @@ data class SubmissionRequirement(
 
             fromNested != null -> fromNested.map {
                 it.evaluate(
-                    inputDescriptorIdToGroups = inputDescriptorIdToGroups,
+                    inputDescriptorIdsToGroups = inputDescriptorIdsToGroups,
                     selectedInputDescriptorIds = selectedInputDescriptorIds,
                 )
             }.count {
