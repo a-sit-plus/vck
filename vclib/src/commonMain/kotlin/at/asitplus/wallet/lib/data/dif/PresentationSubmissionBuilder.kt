@@ -41,32 +41,36 @@ class PresentationSubmissionBuilder(
             }
         }
 
-    fun isSubmissionRequirementsSatisfied(): Boolean = if (presentationDefinition.submissionRequirements == null) {
-        // default submission requirement is, that all input descriptors are answered
-        inputDescriptorMatches.keys.all {
-            // making sure, that all input descriptors are selected
-            submissionSelection.containsKey(it.id)
-        } and submissionSelection.entries.all { selection ->
-            // making sure, that all the indices are still in range
-            inputDescriptorMatches.entries.firstOrNull {
-                it.key.id == selection.key
-            }?.let { inputDescriptorMatches ->
-                inputDescriptorMatches.value.lastIndex.toUInt() >= selection.value
-            } ?: false
+    fun isSubmissionRequirementsSatisfied(): Boolean =
+        if (presentationDefinition.submissionRequirements == null) {
+            // default submission requirement is, that all input descriptors are answered
+            inputDescriptorMatches.keys.all {
+                // making sure, that all input descriptors are selected
+                submissionSelection.containsKey(it.id)
+            } and submissionSelection.entries.all { selection ->
+                // making sure, that all the indices are still in range
+                inputDescriptorMatches.entries.firstOrNull {
+                    it.key.id == selection.key
+                }?.let { inputDescriptorMatches ->
+                    inputDescriptorMatches.value.lastIndex.toUInt() >= selection.value
+                } ?: false
+            }
+        } else {
+            presentationDefinition.submissionRequirements.all {
+                it.evaluate(
+                    inputDescriptorIdToGroups = inputDescriptorMatches.keys.associate {
+                        it.id to (it.group ?: throw MissingInputDescriptorGroupException(it))
+                    },
+                    selectedInputDescriptorIds = currentSubmissionSelection.keys.map {
+                        it.id
+                    },
+                )
+            }
         }
-    } else {
-        presentationDefinition.submissionRequirements.all {
-            it.evaluate(
-                inputDescriptors = inputDescriptorMatches.keys,
-                selectedInputDescriptorIds = currentSubmissionSelection.keys.map {
-                    it.id
-                },
-            )
-        }
-    }
 
     suspend fun refreshInputDescriptors(
-        holder: Holder, pathAuthorizationValidator: PathAuthorizationValidator?
+        holder: Holder,
+        pathAuthorizationValidator: PathAuthorizationValidator?,
     ) {
         _inputDescriptorMatches = holder.matchInputDescriptorsAgainstCredentialStore(
             inputDescriptors = presentationDefinition.inputDescriptors,
@@ -75,6 +79,9 @@ class PresentationSubmissionBuilder(
         ).getOrThrow().mapValues {
             it.value.toList()
         }
+
+        // when the input descriptors are re-evaluated, then the submission selection needs to be reset
+        // - its's hard to correlate between the previous selection and the new selection
         resetSubmissionSelection()
     }
 
@@ -88,67 +95,10 @@ class PresentationSubmissionBuilder(
     }
 }
 
-/**
- * Evaluating submission requirements as per [Presentation Exchange 2.0.0 - Submission Requirement Rules](https://identity.foundation/presentation-exchange/spec/v2.0.0/#submission-requirement-rules).
- */
-fun SubmissionRequirement.evaluate(
-    inputDescriptors: Collection<InputDescriptor>,
-    selectedInputDescriptorIds: Collection<String>,
-): Boolean = when (rule) {
-    SubmissionRequirementRuleEnum.ALL -> when {
-        from != null -> inputDescriptors.filter {
-            it.group == from
-        }.all {
-            selectedInputDescriptorIds.contains(it.id)
-        }
-
-        fromNested != null -> fromNested.all {
-            it.evaluate(
-                inputDescriptors = inputDescriptors,
-                selectedInputDescriptorIds = selectedInputDescriptorIds,
-            )
-        }
-
-        else -> throw SubmissionRequirementsStructureException(
-            "neither `from` nor `fromNested` have been provided"
-        )
-    }
-
-    SubmissionRequirementRuleEnum.PICK -> when {
-        from != null -> inputDescriptors.filter {
-            it.group == from
-        }.count {
-            selectedInputDescriptorIds.contains(it.id)
-        }
-
-        fromNested != null -> fromNested.map {
-            it.evaluate(
-                inputDescriptors = inputDescriptors,
-                selectedInputDescriptorIds = selectedInputDescriptorIds,
-            )
-        }.count {
-            it
-        }
-
-        else -> throw SubmissionRequirementsStructureException(
-            "neither `from` nor `fromNested` have been provided"
-        )
-    }.let { selected ->
-        listOf(
-            this.count?.let { selected == it } ?: true,
-            this.min?.let { selected >= it } ?: true,
-            this.count?.let { selected <= it } ?: true,
-        ).all {
-            it
-        }
-    }
-
-    else -> throw SubmissionRequirementsStructureException(
-        "invalid rule: ${rule?.text}"
-    )
-}
-
-
-class SubmissionRequirementsStructureException(message: String) : Exception(message)
-
 class InvalidSubmissionSelectionException(message: String) : Exception(message)
+
+open class InvalidInputDescriptorForSubmissionRequirementsException(message: String) : Exception(message)
+
+open class MissingInputDescriptorGroupException(inputDescriptor: InputDescriptor) : InvalidInputDescriptorForSubmissionRequirementsException(
+    "Input descriptor is missing field `group` and therefore does not satisfy requirements for use with submission requirements: $inputDescriptor"
+)
