@@ -12,7 +12,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.PathAuthorizationValidator
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.data.dif.PresentationPreparationState
+import at.asitplus.wallet.lib.data.dif.PresentationSelectionValidator
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
@@ -245,12 +245,18 @@ class OidcSiopWallet(
                 clientMetadata = clientMetadata,
                 audience = audience,
                 nonce = nonce,
-                presentationPreparationState = presentationDefinition?.let {
-                    PresentationPreparationState(
+                presentationSelectionValidator = presentationDefinition?.let {
+                    PresentationSelectionValidator(
                         presentationDefinition = presentationDefinition,
                         fallbackFormatHolder = clientMetadata.vpFormats
                     ).also {
-                        refreshPresentationPreparationState(it)
+                        try {
+                            refreshPresentationPreparationState(it)
+                        } catch (e: Throwable) {
+                            return KmmResult.failure(e.also {
+                                e.message?.let { Napier.w(it) }
+                            })
+                        }
                     }
                 },
             )
@@ -260,8 +266,8 @@ class OidcSiopWallet(
     /**
      * Users of the library need to call this method in case the stored credentials change.
      */
-    suspend fun refreshPresentationPreparationState(presentationPreparationState: PresentationPreparationState) {
-        presentationPreparationState.refreshInputDescriptors(
+    suspend fun refreshPresentationPreparationState(presentationSelectionValidator: PresentationSelectionValidator) {
+        presentationSelectionValidator.refreshInputDescriptors(
             holder = holder,
             pathAuthorizationValidator = pathAuthorizationValidator,
         )
@@ -351,7 +357,7 @@ class OidcSiopWallet(
             }
 
         val presentationResultContainer =
-            authenticationResponsePreparationState.presentationPreparationState?.let {
+            authenticationResponsePreparationState.presentationSelectionValidator?.let { it ->
                 if (!it.isSubmissionRequirementsSatisfied()) {
                     Napier.w("submission requirements are not satisfied")
                     return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))

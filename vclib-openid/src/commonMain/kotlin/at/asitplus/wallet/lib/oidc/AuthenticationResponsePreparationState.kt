@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.wallet.lib.data.dif.PresentationPreparationState
+import at.asitplus.wallet.lib.data.dif.PresentationSelectionValidator
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -11,5 +11,5 @@ data class AuthenticationResponsePreparationState(
     val clientMetadata: RelyingPartyMetadata,
     val audience: String,
     val nonce: String,
-    val presentationPreparationState: PresentationPreparationState?,
+    val presentationSelectionValidator: PresentationSelectionValidator?,
 )
