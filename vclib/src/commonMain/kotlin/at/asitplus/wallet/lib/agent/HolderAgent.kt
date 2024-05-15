@@ -231,8 +231,8 @@ class HolderAgent(
         pathAuthorizationValidator: PathAuthorizationValidator?,
     ): KmmResult<Holder.PresentationResponseParameters> {
         val matches = matchInputDescriptorsAgainstCredentialStore(
-            presentationDefinition = presentationDefinition,
-            fallbackFormatHolder = fallbackFormatHolder,
+            inputDescriptors = presentationDefinition.inputDescriptors,
+            fallbackFormatHolder = presentationDefinition.formats ?: fallbackFormatHolder,
             pathAuthorizationValidator = pathAuthorizationValidator,
         ).getOrElse {
             return KmmResult.failure(it)
@@ -300,18 +300,6 @@ class HolderAgent(
             validCredentials = validCredentials,
             challenge = challenge,
             audienceId = audienceId,
-        )
-    }
-
-    override suspend fun matchInputDescriptorsAgainstCredentialStore(
-        presentationDefinition: PresentationDefinition,
-        fallbackFormatHolder: FormatHolder?,
-        pathAuthorizationValidator: PathAuthorizationValidator?,
-    ): KmmResult<Map<InputDescriptor, Collection<CandidateInputMatchContainer>>> {
-        return matchInputDescriptorsAgainstCredentialStore(
-            inputDescriptors = presentationDefinition.inputDescriptors,
-            fallbackFormatHolder = presentationDefinition.formats ?: fallbackFormatHolder,
-            pathAuthorizationValidator = pathAuthorizationValidator,
         )
     }
 

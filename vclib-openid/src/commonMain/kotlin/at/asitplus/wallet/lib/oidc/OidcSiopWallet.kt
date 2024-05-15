@@ -338,15 +338,15 @@ class OidcSiopWallet(
         }
 
         val presentationResultContainer = authenticationResponseBuilder.submissionBuilder?.let {
-            if (!it.isValid()) {
+            if (!it.isSubmissionRequirementsSatisfied()) {
                 Napier.w("submission requirements are not satisfied")
                 return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
             }
             holder.createPresentation(
                 challenge = authenticationResponseBuilder.nonce,
                 audienceId = authenticationResponseBuilder.audience,
-                presentationDefinitionId = it.presentationDefinitionId,
-                presentationSubmissionSelection = it.submissionSelection
+                presentationDefinitionId = it.presentationDefinition.id,
+                presentationSubmissionSelection = it.currentSubmissionSelection,
             ).getOrElse { exception ->
                 Napier.w("Could not create presentation: ${exception.message}")
                 return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))

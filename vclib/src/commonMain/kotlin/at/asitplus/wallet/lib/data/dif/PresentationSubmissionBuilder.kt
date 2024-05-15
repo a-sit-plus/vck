@@ -10,7 +10,8 @@ class PresentationSubmissionBuilder(
     val presentationDefinition: PresentationDefinition,
     val fallbackFormatHolder: FormatHolder? = null,
 ) {
-    private var _inputDescriptorMatches = mapOf<InputDescriptor, List<HolderAgent.CandidateInputMatchContainer>>()
+    private var _inputDescriptorMatches =
+        mapOf<InputDescriptor, List<HolderAgent.CandidateInputMatchContainer>>()
     val inputDescriptorMatches by ::_inputDescriptorMatches
 
     /**
@@ -23,12 +24,22 @@ class PresentationSubmissionBuilder(
      * then serialization and reparsing would result in a submission selection,
      * where the keys are not elements if the inputDescriptorMatches list.
      */
-    lateinit var submissionSelection: MutableMap<String, UInt>
-    init {
-        resetSubmissionSelection()
-    }
+    var submissionSelection: MutableMap<String, UInt> = mutableMapOf()
+    val currentSubmissionSelection: Map<InputDescriptor, HolderAgent.CandidateInputMatchContainer>
+        get() = submissionSelection.entries.associate { selection ->
+            inputDescriptorMatches.entries.first { entry ->
+                entry.key.id == selection.key
+            }.let { entry ->
+                entry.value.getOrNull(selection.value.toInt())?.let {
+                    entry.key to it
+                } ?: throw InvalidSubmissionSelectionException(
+                    "Cannot select credential with index ${selection.value}, only ${entry.value.size} matches available"
+                )
+            }
+        }
 
-    fun isValid(): Boolean = if (presentationDefinition.submissionRequirements == null) {
+    fun isSubmissionRequirementsSatisfied(): Boolean = if (presentationDefinition.submissionRequirements == null) {
+        // default submission requirement is, that all input descriptors are answered
         inputDescriptorMatches.keys.all {
             // making sure, that all input descriptors are selected
             submissionSelection.containsKey(it.id)
@@ -41,19 +52,12 @@ class PresentationSubmissionBuilder(
             } ?: false
         }
     } else {
-        val currentSubmissionSelection = submissionSelection.entries.mapNotNull { selection ->
-            inputDescriptorMatches.entries.first { entry ->
-                entry.key.id == selection.key
-            }.let { entry ->
-                entry.value.getOrNull(selection.value.toInt())?.let {
-                    entry.key to it
-                }
-            }
-        }.toMap()
         presentationDefinition.submissionRequirements.all {
             it.evaluate(
                 inputDescriptors = inputDescriptorMatches.keys,
-                submissionSelection = currentSubmissionSelection,
+                submissionSelection = currentSubmissionSelection.keys.map {
+                    it.id
+                },
             )
         }
     }
@@ -83,61 +87,62 @@ class PresentationSubmissionBuilder(
 
 fun SubmissionRequirement.evaluate(
     inputDescriptors: Collection<InputDescriptor>,
-    submissionSelection: Map<InputDescriptor, HolderAgent.CandidateInputMatchContainer>,
-): Boolean {
-    return when (rule) {
-        SubmissionRequirementRuleEnum.ALL -> when {
-            from != null -> inputDescriptors.filter {
-                it.group == from
-            }.all {
-                submissionSelection.keys.contains(it)
-            }
-
-            fromNested != null -> fromNested.all {
-                it.evaluate(
-                    inputDescriptors = inputDescriptors,
-                    submissionSelection = submissionSelection,
-                )
-            }
-
-            else -> throw SubmissionRequirementsStructureException(
-                "neither `from` nor `fromNested` have been provided"
-            )
+    submissionSelection: Collection<String>,
+): Boolean = when (rule) {
+    SubmissionRequirementRuleEnum.ALL -> when {
+        from != null -> inputDescriptors.filter {
+            it.group == from
+        }.all {
+            submissionSelection.contains(it.id)
         }
 
-        SubmissionRequirementRuleEnum.PICK -> when {
-            from != null -> inputDescriptors.filter {
-                it.group == from
-            }.count {
-                submissionSelection.keys.contains(it)
-            }
-
-            fromNested != null -> fromNested.map {
-                it.evaluate(
-                    inputDescriptors = inputDescriptors,
-                    submissionSelection = submissionSelection,
-                )
-            }.count {
-                it
-            }
-
-            else -> throw SubmissionRequirementsStructureException(
-                "neither `from` nor `fromNested` have been provided"
+        fromNested != null -> fromNested.all {
+            it.evaluate(
+                inputDescriptors = inputDescriptors,
+                submissionSelection = submissionSelection,
             )
-        }.let { selected ->
-            listOf(
-                this.count?.let { selected == it } ?: true,
-                this.min?.let { selected >= it } ?: true,
-                this.count?.let { selected <= it } ?: true,
-            ).all {
-                it
-            }
         }
 
         else -> throw SubmissionRequirementsStructureException(
-            "invalid rule: ${rule?.text}"
+            "neither `from` nor `fromNested` have been provided"
         )
     }
+
+    SubmissionRequirementRuleEnum.PICK -> when {
+        from != null -> inputDescriptors.filter {
+            it.group == from
+        }.count {
+            submissionSelection.contains(it.id)
+        }
+
+        fromNested != null -> fromNested.map {
+            it.evaluate(
+                inputDescriptors = inputDescriptors,
+                submissionSelection = submissionSelection,
+            )
+        }.count {
+            it
+        }
+
+        else -> throw SubmissionRequirementsStructureException(
+            "neither `from` nor `fromNested` have been provided"
+        )
+    }.let { selected ->
+        listOf(
+            this.count?.let { selected == it } ?: true,
+            this.min?.let { selected >= it } ?: true,
+            this.count?.let { selected <= it } ?: true,
+        ).all {
+            it
+        }
+    }
+
+    else -> throw SubmissionRequirementsStructureException(
+        "invalid rule: ${rule?.text}"
+    )
 }
 
+
 class SubmissionRequirementsStructureException(message: String) : Exception(message)
+
+class InvalidSubmissionSelectionException(message: String) : Exception(message)
