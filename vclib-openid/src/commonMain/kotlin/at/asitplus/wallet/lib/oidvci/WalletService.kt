@@ -223,7 +223,7 @@ class WalletService(
         val proofPayload = jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 algorithm = cryptoService.algorithm.toJwsAlgorithm(),
-                type = OpenIdConstants.ProofTypes.JWT_HEADER_TYPE,
+                type = OpenIdConstants.ProofType.JWT_HEADER_TYPE.stringRepresentation,
             ),
             payload = JsonWebToken(
                 issuer = clientId,
@@ -239,7 +239,7 @@ class WalletService(
             return KmmResult.failure(it)
         }
         val proof = CredentialRequestProof(
-            proofType = OpenIdConstants.ProofTypes.JWT,
+            proofType = OpenIdConstants.ProofType.JWT,
             jwt = proofPayload.serialize()
         )
         val result = requestOptions.representation.toCredentialRequestParameters(
@@ -269,7 +269,7 @@ class WalletService(
         val proofPayload = coseService.createSignedCose(
             protectedHeader = CoseHeader(
                 algorithm = cryptoService.algorithm.toCoseAlgorithm(),
-                contentType = OpenIdConstants.ProofTypes.CWT_HEADER_TYPE,
+                contentType = OpenIdConstants.ProofType.CWT_HEADER_TYPE.stringRepresentation,
                 certificateChain = cryptoService.certificate?.encodeToDerOrNull()
             ),
             payload = CborWebToken(
@@ -283,7 +283,7 @@ class WalletService(
             return KmmResult.failure(it)
         }
         val proof = CredentialRequestProof(
-            proofType = OpenIdConstants.ProofTypes.CWT,
+            proofType = OpenIdConstants.ProofType.CWT,
             cwt = proofPayload.serialize().encodeToString(Base64UrlStrict),
         )
         val result = requestOptions.representation.toCredentialRequestParameters(

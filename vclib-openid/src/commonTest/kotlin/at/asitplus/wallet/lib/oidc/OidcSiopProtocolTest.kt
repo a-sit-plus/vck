@@ -140,7 +140,7 @@ class OidcSiopProtocolTest : FreeSpec({
     "test with direct_post" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = RequestOptions(responseMode = OpenIdConstants.ResponseModes.DIRECT_POST)
+            requestOptions = RequestOptions(responseMode = OpenIdConstants.ResponseMode.DIRECT_POST)
         ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
@@ -157,7 +157,7 @@ class OidcSiopProtocolTest : FreeSpec({
     "test with direct_post_jwt" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = RequestOptions(responseMode = OpenIdConstants.ResponseModes.DIRECT_POST_JWT)
+            requestOptions = RequestOptions(responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
         ).also { println(it) }
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
@@ -179,7 +179,7 @@ class OidcSiopProtocolTest : FreeSpec({
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
-                responseMode = OpenIdConstants.ResponseModes.QUERY,
+                responseMode = OpenIdConstants.ResponseMode.QUERY,
                 state = expectedState
             )
         ).also { println(it) }

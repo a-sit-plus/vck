@@ -18,9 +18,9 @@ import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST_JWT
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.QUERY
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.DIRECT_POST
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.DIRECT_POST_JWT
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.QUERY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
@@ -64,7 +64,7 @@ class OidcSiopWallet(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /**
      * Need to verify the request object serialized as a JWS,
-     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdSchemes.PRE_REGISTERED]).
+     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PRE_REGISTERED]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true },
     /**
@@ -269,15 +269,15 @@ class OidcSiopWallet(
         // params.clientIdScheme is assumed to be OpenIdConstants.ClientIdSchemes.REDIRECT_URI,
         // because we'll require clientMetadata to be present, below
         val clientIdScheme = params.parameters.clientIdScheme
-        if (clientIdScheme == OpenIdConstants.ClientIdSchemes.REDIRECT_URI
+        if (clientIdScheme == OpenIdConstants.ClientIdScheme.REDIRECT_URI
             && (params.parameters.clientMetadata == null && params.parameters.clientMetadataUri == null)
         ) {
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("client_id_scheme is redirect_uri, but metadata is not set") }
         }
 
-        if ((clientIdScheme == OpenIdConstants.ClientIdSchemes.X509_SAN_DNS)
-            || (clientIdScheme == OpenIdConstants.ClientIdSchemes.X509_SAN_URI)
+        if ((clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS)
+            || (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_URI)
         ) {
             if (params.parameters.clientMetadata == null
                 || params !is AuthenticationRequestParametersFrom.JwsSigned
@@ -291,7 +291,7 @@ class OidcSiopWallet(
                     return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                         .also { Napier.w("client_id_scheme is $clientIdScheme, but no extensions were found in the leaf certificate") }
                 }
-                if (clientIdScheme == OpenIdConstants.ClientIdSchemes.X509_SAN_DNS) {
+                if (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS) {
                     val dnsNames = leaf.tbsCertificate.subjectAlternativeNames?.dnsNames
                         ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                             .also { Napier.w("client_id_scheme is $clientIdScheme, but no dnsNames were found in the leaf certificate") }
@@ -300,6 +300,7 @@ class OidcSiopWallet(
                         return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                             .also { Napier.w("client_id_scheme is $clientIdScheme, but client_id does not match any dnsName in the leaf certificate") }
 
+                    params.parameters.responseMode
                     val parsedUrl =
                         params.parameters.redirectUrl?.let { Url(it) }
                             ?: return KmmResult.failure<AuthenticationResponseParameters>(
@@ -348,11 +349,16 @@ class OidcSiopWallet(
 //        if (clientMetadata.subjectSyntaxTypesSupported == null || URN_TYPE_JWK_THUMBPRINT !in clientMetadata.subjectSyntaxTypesSupported)
 //            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
 //                .also { Napier.w("Incompatible subject syntax types algorithms") }
-        if (params.parameters.redirectUrl != null) {
+
+        if (!((clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS)
+                    || (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_URI)
+                    )
+        ) if (params.parameters.redirectUrl != null) {
             if (params.parameters.clientId != params.parameters.redirectUrl)  //TODO: Wherever this comes from, it clashes with x509_san_dns, because the client id is not an https url but a fqdn
                 return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                     .also { Napier.w("client_id does not match redirect_uri") }
         }
+
         if (params.parameters.responseType == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("response_type is not specified") }

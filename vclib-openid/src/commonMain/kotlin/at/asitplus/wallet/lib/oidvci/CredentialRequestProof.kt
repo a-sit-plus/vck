@@ -1,15 +1,16 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class CredentialRequestProof(
     /**
-     * OID4VCI: e.g. `jwt`, or `cwt`, or `ldp_vp`. See [at.asitplus.wallet.lib.oidc.OpenIdConstants.ProofTypes].
+     * OID4VCI: e.g. `jwt`, or `cwt`, or `ldp_vp`. See [at.asitplus.wallet.lib.oidc.OpenIdConstants.ProofType].
      */
     @SerialName("proof_type")
-    val proofType: String,
+    val proofType: OpenIdConstants.ProofType,
 
     /**
      * OID4VCI: A JWT (RFC7519) is used as proof of possession. When [proofType] is `jwt`, a proof object MUST include

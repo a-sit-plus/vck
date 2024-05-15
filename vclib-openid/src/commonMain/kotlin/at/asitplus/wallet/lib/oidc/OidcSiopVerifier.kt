@@ -35,11 +35,9 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.PRE_REGISTERED
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.REDIRECT_URI
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.VERIFIER_ATTESTATION
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.X509_SAN_DNS
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdSchemes.X509_SAN_URI
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.REDIRECT_URI
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.VERIFIER_ATTESTATION
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.X509_SAN_DNS
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
@@ -84,7 +82,7 @@ class OidcSiopVerifier private constructor(
      */
     private val attestationJwt: JwsSigned?,
     private val x5c: CertificateChain?,
-    private val clientIdScheme: String
+    private val clientIdScheme: OpenIdConstants.ClientIdScheme
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
@@ -147,7 +145,7 @@ class OidcSiopVerifier private constructor(
             jwsService: JwsService = DefaultJwsService(cryptoService),
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
-            clientIdScheme: String = REDIRECT_URI,
+            clientIdScheme: OpenIdConstants.ClientIdScheme = REDIRECT_URI,
         ) = OidcSiopVerifier(
             verifier = verifier,
             relyingPartyUrl = relyingPartyUrl,
@@ -209,9 +207,9 @@ class OidcSiopVerifier private constructor(
 
     data class RequestOptions(
         /**
-         * Response mode to request, see [OpenIdConstants.ResponseModes]
+         * Response mode to request, see [OpenIdConstants.ResponseMode]
          */
-        val responseMode: String? = null,
+        val responseMode: OpenIdConstants.ResponseMode? = null,
         /**
          * Required representation, see [ConstantIndex.CredentialRepresentation]
          */
