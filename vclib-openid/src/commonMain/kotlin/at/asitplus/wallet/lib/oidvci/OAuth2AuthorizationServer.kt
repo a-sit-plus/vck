@@ -30,6 +30,6 @@ interface OAuth2AuthorizationServer {
     /**
      * Provide necessary [OAuth2AuthorizationServerMetadata] JSON for a client to be able to authenticate
      */
-    suspend fun provideMetadata(): String
+    suspend fun provideMetadata(): KmmResult<OAuth2AuthorizationServerMetadata>
 }
 

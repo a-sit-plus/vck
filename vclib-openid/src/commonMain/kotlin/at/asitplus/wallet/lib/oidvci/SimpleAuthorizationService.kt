@@ -200,5 +200,5 @@ class SimpleAuthorizationService(
             .also { Napier.v("getUserInfo returns $result") }
     }
 
-    override suspend fun provideMetadata() = json.encodeToString(metadata)
+    override suspend fun provideMetadata() = KmmResult.success(metadata)
 }
