@@ -58,7 +58,7 @@ class PresentationSubmissionBuilder(
         presentationDefinition.submissionRequirements.all {
             it.evaluate(
                 inputDescriptors = inputDescriptorMatches.keys,
-                submissionSelection = currentSubmissionSelection.keys.map {
+                selectedInputDescriptorIds = currentSubmissionSelection.keys.map {
                     it.id
                 },
             )
@@ -88,21 +88,24 @@ class PresentationSubmissionBuilder(
     }
 }
 
+/**
+ * Evaluating submission requirements as per [Presentation Exchange 2.0.0 - Submission Requirement Rules](https://identity.foundation/presentation-exchange/spec/v2.0.0/#submission-requirement-rules).
+ */
 fun SubmissionRequirement.evaluate(
     inputDescriptors: Collection<InputDescriptor>,
-    submissionSelection: Collection<String>,
+    selectedInputDescriptorIds: Collection<String>,
 ): Boolean = when (rule) {
     SubmissionRequirementRuleEnum.ALL -> when {
         from != null -> inputDescriptors.filter {
             it.group == from
         }.all {
-            submissionSelection.contains(it.id)
+            selectedInputDescriptorIds.contains(it.id)
         }
 
         fromNested != null -> fromNested.all {
             it.evaluate(
                 inputDescriptors = inputDescriptors,
-                submissionSelection = submissionSelection,
+                selectedInputDescriptorIds = selectedInputDescriptorIds,
             )
         }
 
@@ -115,13 +118,13 @@ fun SubmissionRequirement.evaluate(
         from != null -> inputDescriptors.filter {
             it.group == from
         }.count {
-            submissionSelection.contains(it.id)
+            selectedInputDescriptorIds.contains(it.id)
         }
 
         fromNested != null -> fromNested.map {
             it.evaluate(
                 inputDescriptors = inputDescriptors,
-                submissionSelection = submissionSelection,
+                selectedInputDescriptorIds = selectedInputDescriptorIds,
             )
         }.count {
             it
