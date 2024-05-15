@@ -324,7 +324,7 @@ class HolderAgent(
     ): Map<InputDescriptor, CandidateInputMatchContainer?> {
         return inputDescriptors.associateWith { inputDescriptor ->
             credentials.firstNotNullOfOrNull { credential ->
-                evaluateInputDescritorAgainstCredential(
+                evaluateInputDescriptorAgainstCredential(
                     inputDescriptor = inputDescriptor,
                     credential = credential,
                     presentationDefinitionFormatHolder = fallbackFormatHolder,
@@ -341,7 +341,7 @@ class HolderAgent(
         }
     }
 
-    private fun evaluateInputDescritorAgainstCredential(
+    private fun evaluateInputDescriptorAgainstCredential(
         inputDescriptor: InputDescriptor,
         credential: SubjectCredentialStore.StoreEntry,
         presentationDefinitionFormatHolder: FormatHolder?,
