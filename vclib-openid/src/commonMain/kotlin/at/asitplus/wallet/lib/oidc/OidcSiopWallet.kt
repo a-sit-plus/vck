@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JwsSigned
@@ -197,65 +198,10 @@ class OidcSiopWallet(
                 return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
             }
             return when (request.parameters.responseMode) {
-                DIRECT_POST -> {
-                    val url = request.parameters.responseUrl
-                        ?: request.parameters.redirectUrl
-                        ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                    KmmResult.success(
-                        AuthenticationResponseResult.Post(
-                            url = url,
-                            params = responseParams.encodeToParameters()
-                        )
-                    )
-                }
-
-                DIRECT_POST_JWT -> {
-                    val url = request.parameters.responseUrl
-                        ?: request.parameters.redirectUrl
-                        ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                    jwsService.createSignedJwsAddingParams(
-                        payload = responseParams.serialize().encodeToByteArray(), addX5c = false
-                    ).fold(
-                        onSuccess = { responseParamsJws ->
-                            val jarm =
-                                AuthenticationResponseParameters(response = responseParamsJws.serialize())
-                            KmmResult.success(
-                                AuthenticationResponseResult.Post(
-                                    url = url,
-                                    params = jarm.encodeToParameters()
-                                )
-                            )
-                        },
-                        onFailure = {
-                            KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                        }
-                    )
-
-                }
-
-                QUERY -> {
-                    if (request.parameters.redirectUrl == null)
-                        return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                    val url = URLBuilder(request.parameters.redirectUrl)
-                        .apply {
-                            responseParams.encodeToParameters().forEach {
-                                this.parameters.append(it.key, it.value)
-                            }
-                        }
-                        .buildString()
-                    KmmResult.success(AuthenticationResponseResult.Redirect(url, responseParams))
-                }
-
-                FRAGMENT, null -> {
-                    // default for vp_token and id_token is fragment
-                    if (request.parameters.redirectUrl == null)
-                        return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                    val url = URLBuilder(request.parameters.redirectUrl)
-                        .apply { encodedFragment = responseParams.encodeToParameters().formUrlEncode() }
-                        .buildString()
-                    KmmResult.success(AuthenticationResponseResult.Redirect(url, responseParams))
-                }
-
+                DIRECT_POST -> KmmResult.runCatching { authnResponseDirectPost(request, responseParams) }.wrap()
+                DIRECT_POST_JWT -> KmmResult.runCatching { authnResponseDirectPostJwt(request, responseParams) }.wrap()
+                QUERY -> KmmResult.runCatching { authnResponseQuery(request, responseParams) }.wrap()
+                FRAGMENT, null -> KmmResult.runCatching { authnResponseFragment(request, responseParams) }.wrap()
                 is OTHER -> TODO()
             }
         },
@@ -263,6 +209,65 @@ class OidcSiopWallet(
             KmmResult.failure(it)
         }
     )
+
+
+    private fun authnResponseDirectPost(
+        request: AuthenticationRequestParametersFrom<*>,
+        responseParams: AuthenticationResponseParameters
+    ): AuthenticationResponseResult.Post {
+        val url = request.parameters.responseUrl
+            ?: request.parameters.redirectUrl
+            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+        return AuthenticationResponseResult.Post(url, responseParams.encodeToParameters())
+    }
+
+    private suspend fun authnResponseDirectPostJwt(
+        request: AuthenticationRequestParametersFrom<*>,
+        responseParams: AuthenticationResponseParameters
+    ): AuthenticationResponseResult.Post {
+        val url = request.parameters.responseUrl
+            ?: request.parameters.redirectUrl
+            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+        val responseParamsJws = jwsService.createSignedJwsAddingParams(
+            payload = responseParams.serialize().encodeToByteArray(), addX5c = false
+        ).getOrElse {
+            Napier.w("authnResponseDirectPostJwt error", it)
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+        }
+        val jarm = AuthenticationResponseParameters(response = responseParamsJws.serialize())
+        return AuthenticationResponseResult.Post(url, jarm.encodeToParameters())
+    }
+
+    private fun authnResponseQuery(
+        request: AuthenticationRequestParametersFrom<*>,
+        responseParams: AuthenticationResponseParameters
+    ): AuthenticationResponseResult.Redirect {
+        if (request.parameters.redirectUrl == null)
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+        val url = URLBuilder(request.parameters.redirectUrl)
+            .apply {
+                responseParams.encodeToParameters().forEach {
+                    this.parameters.append(it.key, it.value)
+                }
+            }
+            .buildString()
+        return AuthenticationResponseResult.Redirect(url, responseParams)
+    }
+
+    /**
+     * That's the default for `id_token` and `vp_token`
+     */
+    private fun authnResponseFragment(
+        request: AuthenticationRequestParametersFrom<*>,
+        responseParams: AuthenticationResponseParameters
+    ): AuthenticationResponseResult.Redirect {
+        if (request.parameters.redirectUrl == null)
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+        val url = URLBuilder(request.parameters.redirectUrl)
+            .apply { encodedFragment = responseParams.encodeToParameters().formUrlEncode() }
+            .buildString()
+        return AuthenticationResponseResult.Redirect(url, responseParams)
+    }
 
     /**
      * Creates the authentication response from the RP's [params]
