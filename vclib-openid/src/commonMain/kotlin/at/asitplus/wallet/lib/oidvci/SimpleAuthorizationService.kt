@@ -16,6 +16,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration.Companion.seconds
 
+
 /**
  * Simple authorization server implementation, to be used for [CredentialIssuer],
  * when issuing credentials directly from a local [dataProvider].
@@ -45,16 +46,16 @@ class SimpleAuthorizationService(
      */
     private val clientNonceService: NonceService = DefaultNonceService(),
     /**
-     * Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients.
+     * Used in several fields in [OAuth2AuthorizationServerMetadata], to provide endpoint URLs to clients.
      */
     override val publicContext: String = "https://wallet.a-sit.at/authorization-server",
     /**
-     * Used to build [IssuerMetadata.authorizationEndpointUrl], i.e. implementers need to forward requests
+     * Used to build [OAuth2AuthorizationServerMetadata.authorizationEndpoint], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [authorize].
      */
     val authorizationEndpointPath: String = "/authorize",
     /**
-     * Used to build [IssuerMetadata.tokenEndpointUrl], i.e. implementers need to forward requests
+     * Used to build [OAuth2AuthorizationServerMetadata.tokenEndpoint], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [token].
      */
     val tokenEndpointPath: String = "/token",
@@ -72,11 +73,11 @@ class SimpleAuthorizationService(
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`
      */
-    val metadata: IssuerMetadata by lazy {
-        IssuerMetadata(
+    val metadata: OAuth2AuthorizationServerMetadata by lazy {
+        OAuth2AuthorizationServerMetadata(
             issuer = publicContext,
-            authorizationEndpointUrl = "$publicContext$authorizationEndpointPath",
-            tokenEndpointUrl = "$publicContext$tokenEndpointPath",
+            authorizationEndpoint = "$publicContext$authorizationEndpointPath",
+            tokenEndpoint = "$publicContext$tokenEndpointPath",
         )
     }
 
@@ -205,4 +206,5 @@ class SimpleAuthorizationService(
             .also { Napier.v("getUserInfo returns $result") }
     }
 
+    override suspend fun provideMetadata() = KmmResult.success(metadata)
 }
