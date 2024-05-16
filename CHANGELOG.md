@@ -18,7 +18,7 @@ Release NEXT:
 - Add `BaseInputEvaluator`: Input evaluator according to `DIF.PresentationExchange 2.0.0`
  - Refactor `AuthenticationRequestParameters` → `AuthenticationRequestParametersFrom` to contain parsed parameters and their source
  - Update KMP-Crypto to support JWE and ECDH-ES
- - Implement `x509_san_dns` and `x509_san_uri` schemes
+ - SIOPv2: Implement `x509_san_dns` and `x509_san_uri` client ID schemes
  - Refactor OpenIdConstants to contain sealed classes, where appropriate
 
 Release 3.6.1:

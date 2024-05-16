@@ -19,7 +19,11 @@ import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.*
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.DIRECT_POST
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.DIRECT_POST_JWT
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.FRAGMENT
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.OTHER
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.QUERY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
@@ -187,9 +191,8 @@ class OidcSiopWallet(
             if (request.parameters.responseType == null) {
                 return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
             }
-            if (!request.parameters.responseType.contains(ID_TOKEN) && !request.parameters.responseType.contains(
-                    VP_TOKEN
-                )
+            if (!request.parameters.responseType.contains(ID_TOKEN)
+                && !request.parameters.responseType.contains(VP_TOKEN)
             ) {
                 return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
             }
@@ -316,9 +319,7 @@ class OidcSiopWallet(
                     ) {
                         val parsedUrl =
                             params.parameters.redirectUrl?.let { Url(it) }
-                                ?: return KmmResult.failure<AuthenticationResponseParameters>(
-                                    OAuth2Exception(Errors.INVALID_REQUEST)
-                                )
+                                ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                                     .also { Napier.w("client_id_scheme is $clientIdScheme, but no redirect_url was provided") }
                         //TODO  If the Wallet can establish trust in the Client Identifier authenticated through the certificate it may allow the client to freely choose the redirect_uri value
                         if (parsedUrl.host != params.parameters.clientId) return KmmResult.failure<AuthenticationResponseParameters>(
@@ -336,13 +337,9 @@ class OidcSiopWallet(
                     if (params.parameters.clientId != params.parameters.redirectUrl)
                         return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                             .also { Napier.w("client_id_scheme is $clientIdScheme, but client_id does not match redirect_uri") }
-
                 }
             }
-
-
         }
-
 
         // params.clientIdScheme is assumed to be OpenIdConstants.ClientIdSchemes.REDIRECT_URI,
         // because we'll require clientMetadata to be present, below
@@ -365,8 +362,7 @@ class OidcSiopWallet(
 //                .also { Napier.w("Incompatible subject syntax types algorithms") }
 
         if (!((clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS)
-                    || (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_URI)
-                    )
+                    || (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_URI))
         ) if (params.parameters.redirectUrl != null) {
             if (params.parameters.clientId != params.parameters.redirectUrl)
                 return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
