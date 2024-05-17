@@ -47,8 +47,7 @@ class OidvciProcessTest : FunSpec({
         val serializedCredential = credential.credential
         serializedCredential.shouldNotBeNull().also { println(it) }
 
-        val jws = JwsSigned.parse(serializedCredential)
-        jws.shouldNotBeNull()
+        val jws = JwsSigned.parse(serializedCredential).getOrThrow()
         val vcJws = VerifiableCredentialJws.deserialize(jws.payload.decodeToString())
         vcJws.shouldNotBeNull().also { println(it) }
     }
@@ -68,8 +67,7 @@ class OidvciProcessTest : FunSpec({
         val serializedCredential = credential.credential
         serializedCredential.shouldNotBeNull().also { println(it) }
 
-        val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~"))
-        jws.shouldNotBeNull()
+        val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~")).getOrThrow()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
             .getOrThrow().shouldNotBeNull()
 
@@ -93,8 +91,7 @@ class OidvciProcessTest : FunSpec({
         val serializedCredential = credential.credential
         serializedCredential.shouldNotBeNull().also { println(it) }
 
-        val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~"))
-        jws.shouldNotBeNull()
+        val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~")).getOrThrow()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
             .getOrThrow().shouldNotBeNull()
 

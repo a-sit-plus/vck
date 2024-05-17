@@ -1,10 +1,15 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
+import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import at.asitplus.crypto.datatypes.pki.X509Certificate
+import at.asitplus.crypto.datatypes.pki.X509Certificate
+import at.asitplus.crypto.datatypes.pki.leaf
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
@@ -18,9 +23,11 @@ import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.DIRECT_POST_JWT
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseModes.QUERY
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.DIRECT_POST
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.DIRECT_POST_JWT
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.FRAGMENT
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.OTHER
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.QUERY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
@@ -30,9 +37,8 @@ import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
-import io.ktor.util.flattenEntries
+import io.ktor.http.*
+import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -63,7 +69,7 @@ class OidcSiopWallet(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction? = null,
     /**
      * Need to verify the request object serialized as a JWS,
-     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdSchemes.PRE_REGISTERED]).
+     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PRE_REGISTERED]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
     /**
@@ -119,27 +125,35 @@ class OidcSiopWallet(
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParameters> {
+    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParametersFrom<*>> {
         val parsedParams = kotlin.run { // maybe it is a request JWS
             parseRequestObjectJws(input)
         } ?: kotlin.runCatching { // maybe it's in the URL parameters
-            Url(input).parameters.flattenEntries().toMap()
-                .decodeFromUrlQuery<AuthenticationRequestParameters>()
-        }.getOrNull() ?: kotlin.runCatching {  // maybe it is already a JSON string
-            AuthenticationRequestParameters.deserialize(input).getOrNull()
-        }.getOrNull() ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST).also {
-            Napier.w("Could not parse authentication request: $input")
-        })
+            Url(input).let {
+                AuthenticationRequestParametersFrom.Uri(
+                    it,
+                    it.parameters.flattenEntries().toMap()
+                        .decodeFromUrlQuery<AuthenticationRequestParameters>()
+                )
+            }
+        }.onFailure { it.printStackTrace() }.getOrNull()
+        ?: kotlin.runCatching {  // maybe it is already a JSON string
+            AuthenticationRequestParametersFrom.Json(
+                input, AuthenticationRequestParameters.deserialize(input).getOrThrow()
+            )
+        }.getOrNull() ?: return KmmResult.failure<AuthenticationRequestParametersFrom<*>>(
+            OAuth2Exception(Errors.INVALID_REQUEST)
+        ).also { Napier.w("Could not parse authentication request: $input") }
 
-        val extractedParams = parsedParams.let { extractRequestObject(it) ?: it }
-        if (parsedParams.clientId != null && extractedParams.clientId != parsedParams.clientId) {
-            return KmmResult.failure<AuthenticationRequestParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("ClientIds changed: ${parsedParams.clientId} to ${extractedParams.clientId}") }
+        val extractedParams = parsedParams.let { extractRequestObject(it.parameters) ?: it }
+        if (parsedParams.parameters.clientId != null && extractedParams.parameters.clientId != parsedParams.parameters.clientId) {
+            return KmmResult.failure<AuthenticationRequestParametersFrom<*>>(OAuth2Exception(Errors.INVALID_REQUEST))
+                .also { Napier.w("ClientIds changed: ${parsedParams.parameters.clientId} to ${extractedParams.parameters.clientId}") }
         }
         return KmmResult.success(extractedParams)
     }
 
-    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParameters? =
+    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParametersFrom<*>? =
         params.request?.let { requestObject ->
             parseRequestObjectJws(requestObject)
         } ?: params.requestUri?.let { uri ->
@@ -147,16 +161,22 @@ class OidcSiopWallet(
                 ?.let { parseAuthenticationRequestParameters(it).getOrNull() }
         }
 
-    private fun parseRequestObjectJws(requestObject: String): AuthenticationRequestParameters? {
-        return JwsSigned.parse(requestObject)?.let { jws ->
+    private fun parseRequestObjectJws(requestObject: String): AuthenticationRequestParametersFrom.JwsSigned? {
+        return JwsSigned.parse(requestObject).getOrNull()?.let { jws ->
             val params = AuthenticationRequestParameters.deserialize(jws.payload.decodeToString())
-                .getOrElse { ex ->
-                    Napier.w("parseRequestObjectJws: Deserialization failed", ex)
-                    return null
+                .getOrElse {
+                    return null.also {
+                        Napier.w(
+                            "parseRequestObjectJws: Deserialization failed", it
+                        )
+                    }
                 }
-            if (requestObjectJwsVerifier?.invoke(jws, params) != false) {
-                params
-            } else null.also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
+            if (requestObjectJwsVerifier.invoke(
+                    jws, params
+                )
+            ) AuthenticationRequestParametersFrom.JwsSigned(
+                jws, params
+            ) else null.also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
         }
     }
 
@@ -186,6 +206,93 @@ class OidcSiopWallet(
                 .also { Napier.w("response_type is not specified") }
         }
 
+        val clientIdScheme = parameters.clientIdScheme
+        if (clientIdScheme == OpenIdConstants.ClientIdScheme.REDIRECT_URI) {
+            if (parameters.clientMetadata == null && parameters.clientMetadataUri == null) {
+                return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST).also {
+                    Napier.w("client_id_scheme is redirect_uri, but metadata is not set")
+                })
+            }
+        }
+
+        when(clientIdScheme) {
+            OpenIdConstants.ClientIdScheme.X509_SAN_DNS,
+            OpenIdConstants.ClientIdScheme.X509_SAN_URI,
+                -> {}
+            else -> if (parameters.redirectUrl != null) {
+                if (parameters.clientId != parameters.redirectUrl) {
+                    return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST).also {
+                        Napier.w("client_id does not match redirect_uri")
+                    })
+                }
+            }
+        }
+
+        var leaf: X509Certificate? = null
+        if ((clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS) || (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_URI)) {
+            if (params.parameters.clientMetadata == null || params !is AuthenticationRequestParametersFrom.JwsSigned || params.source.header.certificateChain == null || params.source.header.certificateChain!!.isEmpty()) return KmmResult.failure<AuthenticationResponseParameters>(
+                OAuth2Exception(Errors.INVALID_REQUEST)
+            )
+                .also { Napier.w("client_id_scheme is $clientIdScheme, but metadata is not set and no x5c certificate chain is present in the original authn request") }
+            else { //basic checks done
+                leaf = params.source.header.certificateChain!!.leaf
+                if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions!!.isEmpty()) {
+                    return KmmResult.failure<AuthenticationResponseParameters>(
+                        OAuth2Exception(
+                            Errors.INVALID_REQUEST
+                        )
+                    )
+                        .also { Napier.w("client_id_scheme is $clientIdScheme, but no extensions were found in the leaf certificate") }
+                }
+                if (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS) {
+                    val dnsNames = leaf.tbsCertificate.subjectAlternativeNames?.dnsNames
+                        ?: return KmmResult.failure<AuthenticationResponseParameters>(
+                            OAuth2Exception(Errors.INVALID_REQUEST)
+                        )
+                            .also { Napier.w("client_id_scheme is $clientIdScheme, but no dnsNames were found in the leaf certificate") }
+
+                    if (!dnsNames.contains(params.parameters.clientId)) return KmmResult.failure<AuthenticationResponseParameters>(
+                        OAuth2Exception(
+                            Errors.INVALID_REQUEST
+                        )
+                    )
+                        .also { Napier.w("client_id_scheme is $clientIdScheme, but client_id does not match any dnsName in the leaf certificate") }
+
+                    if (!((params.parameters.responseMode == DIRECT_POST) || (params.parameters.responseMode == DIRECT_POST_JWT))) {
+                        val parsedUrl = params.parameters.redirectUrl?.let { Url(it) }
+                            ?: return KmmResult.failure<AuthenticationResponseParameters>(
+                                OAuth2Exception(Errors.INVALID_REQUEST)
+                            )
+                                .also { Napier.w("client_id_scheme is $clientIdScheme, but no redirect_url was provided") }
+                        //TODO  If the Wallet can establish trust in the Client Identifier authenticated through the certificate it may allow the client to freely choose the redirect_uri value
+                        if (parsedUrl.host != params.parameters.clientId) return KmmResult.failure<AuthenticationResponseParameters>(
+                            OAuth2Exception(Errors.INVALID_REQUEST)
+                        )
+                            .also { Napier.w("client_id_scheme is $clientIdScheme, but no redirect_url was provided") }
+                    }
+                } else {
+                    val uris = leaf.tbsCertificate.subjectAlternativeNames?.uris
+                        ?: return KmmResult.failure<AuthenticationResponseParameters>(
+                            OAuth2Exception(Errors.INVALID_REQUEST)
+                        )
+                            .also { Napier.w("client_id_scheme is $clientIdScheme, but no URIs were found in the leaf certificate") }
+                    if (!uris.contains(params.parameters.clientId)) return KmmResult.failure<AuthenticationResponseParameters>(
+                        OAuth2Exception(
+                            Errors.INVALID_REQUEST
+                        )
+                    )
+                        .also { Napier.w("client_id_scheme is $clientIdScheme, but client_id does not match any URIs in the leaf certificate") }
+
+                    if (params.parameters.clientId != params.parameters.redirectUrl) return KmmResult.failure<AuthenticationResponseParameters>(
+                        OAuth2Exception(
+                            Errors.INVALID_REQUEST
+                        )
+                    )
+                        .also { Napier.w("client_id_scheme is $clientIdScheme, but client_id does not match redirect_uri") }
+                }
+            }
+        }
+
         if (!responseType.contains(ID_TOKEN) && !responseType.contains(VP_TOKEN)) {
             return KmmResult.failure<AuthenticationResponsePreparationHelper>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("response_type is not supported") }
@@ -201,8 +308,20 @@ class OidcSiopWallet(
         }
 
         val targetUrl = when (parameters.responseMode) {
-            DIRECT_POST -> parameters.responseUrl ?: parameters.redirectUrl
-            DIRECT_POST_JWT -> parameters.responseUrl ?: parameters.redirectUrl
+            DIRECT_POST,
+            DIRECT_POST_JWT,
+            -> {
+                if (parameters.redirectUrl != null) {
+                    return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST).also {
+                        Napier.w("response_mode is ${parameters.responseMode}, but redirect_url is set")
+                    })
+                }
+                parameters.responseUrl
+                    ?: return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST).also {
+                        Napier.w("response_mode is ${parameters.responseMode}, but response_url is not set")
+                    })
+            }
+
             QUERY -> parameters.redirectUrl
 
             // default for vp_token and id_token is fragment
@@ -290,39 +409,29 @@ class OidcSiopWallet(
                 )
             )
 
-            DIRECT_POST_JWT -> {
-                val responseParamsJws = jwsService.createSignedJwsAddingParams(
-                    payload = responseParams.serialize().encodeToByteArray()
-                ).getOrElse {
-                    return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-                }
-
-                val jarm = AuthenticationResponseParameters(
-                    response = responseParamsJws.serialize()
+            DIRECT_POST_JWT -> KmmResult.runCatching {
+                authnResponseDirectPostJwt(
+                    authenticationResponsePreparationHelper = authenticationResponsePreparationHelper,
+                    responseParams = responseParams,
                 )
+            }.wrap()
 
-                KmmResult.success(
-                    AuthenticationResponseResult.Post(
-                        url = authenticationResponsePreparationHelper.targetUrl,
-                        params = jarm.encodeToParameters(),
-                    )
+            QUERY -> KmmResult.runCatching {
+                authnResponseQuery(
+                    authenticationResponsePreparationHelper = authenticationResponsePreparationHelper,
+                    responseParams = responseParams,
                 )
-            }
+            }.wrap()
 
-            QUERY -> {
-                val url = URLBuilder(authenticationResponsePreparationHelper.targetUrl).apply {
-                    responseParams.encodeToParameters().forEach {
-                        this.parameters.append(it.key, it.value)
-                    }
-                }.buildString()
-
-                KmmResult.success(
-                    AuthenticationResponseResult.Redirect(
-                        url = url,
-                        params = responseParams,
-                    )
+            FRAGMENT, null -> KmmResult.runCatching {
+                authnResponseFragment(
+                    authenticationResponsePreparationHelper = authenticationResponsePreparationHelper,
+                    responseParams = responseParams,
                 )
-            }
+            }.wrap()
+
+            is OTHER -> TODO()
+
 
             else -> {
                 // default for vp_token and id_token is fragment
@@ -337,6 +446,54 @@ class OidcSiopWallet(
                 )
             }
         }
+    }
+
+    private suspend fun authnResponseDirectPostJwt(
+        authenticationResponsePreparationHelper: AuthenticationResponsePreparationHelper,
+        responseParams: AuthenticationResponseParameters,
+    ): AuthenticationResponseResult.Post {
+        val responseParamsJws = jwsService.createSignedJwsAddingParams(
+            payload = responseParams.serialize().encodeToByteArray(),
+            addX5c = false,
+        ).getOrElse {
+            Napier.w("authnResponseDirectPostJwt error", it)
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+        }
+        val jarm = AuthenticationResponseParameters(response = responseParamsJws.serialize())
+
+        return AuthenticationResponseResult.Post(
+            url = authenticationResponsePreparationHelper.targetUrl,
+            params = jarm.encodeToParameters(),
+        )
+    }
+
+    private fun authnResponseQuery(
+        authenticationResponsePreparationHelper: AuthenticationResponsePreparationHelper,
+        responseParams: AuthenticationResponseParameters,
+    ): AuthenticationResponseResult.Redirect {
+        val url = URLBuilder(authenticationResponsePreparationHelper.targetUrl).apply {
+            responseParams.encodeToParameters().forEach {
+                this.parameters.append(it.key, it.value)
+            }
+        }.buildString()
+
+        return AuthenticationResponseResult.Redirect(
+            url = url,
+            params = responseParams,
+        )
+    }
+
+    /**
+     * That's the default for `id_token` and `vp_token`
+     */
+    private fun authnResponseFragment(
+        authenticationResponsePreparationHelper: AuthenticationResponsePreparationHelper,
+        responseParams: AuthenticationResponseParameters
+    ): AuthenticationResponseResult.Redirect {
+        val url = URLBuilder(authenticationResponsePreparationHelper.targetUrl).apply {
+            encodedFragment = responseParams.encodeToParameters().formUrlEncode()
+        }.buildString()
+        return AuthenticationResponseResult.Redirect(url, responseParams)
     }
 
     internal suspend fun finalizeAuthenticationResponseParameters(
@@ -458,11 +615,14 @@ class OidcSiopWallet(
         }
     }
 
-    private suspend fun retrieveAudience(clientMetadata: RelyingPartyMetadata): String? {
+    private suspend fun retrieveAudience(
+        clientMetadata: RelyingPartyMetadata,
+    ): String? {
         return clientMetadata.jsonWebKeySet?.keys?.firstOrNull()?.identifier
             ?: clientMetadata.jsonWebKeySetUrl?.let {
                 remoteResourceRetriever?.invoke(it)
                     ?.let { JsonWebKeySet.deserialize(it) }?.keys?.firstOrNull()?.identifier
+                    ?: leaf?.let { params.parameters.clientId } //TODO is this even correct ????
             }
     }
 

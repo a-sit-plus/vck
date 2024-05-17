@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
+import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.wallet.lib.oidc.jsonSerializer
@@ -59,7 +60,7 @@ class SerializationTest : FunSpec({
             types = listOf(randomString(), randomString()),
         ),
         proof = CredentialRequestProof(
-            proofType = randomString(),
+            proofType = OpenIdConstants.ProofType.OTHER(randomString()),
             jwt = randomString()
         )
     )

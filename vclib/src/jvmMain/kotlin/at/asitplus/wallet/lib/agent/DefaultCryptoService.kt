@@ -4,35 +4,28 @@ import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.*
 import at.asitplus.crypto.datatypes.EcCurve.SECP_256_R_1
-import at.asitplus.crypto.datatypes.asn1.Asn1String
-import at.asitplus.crypto.datatypes.asn1.Asn1Time
+import at.asitplus.crypto.datatypes.asn1.*
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.jws.*
-import at.asitplus.crypto.datatypes.pki.DistinguishedName
-import at.asitplus.crypto.datatypes.pki.TbsCertificate
-import at.asitplus.crypto.datatypes.pki.X509Certificate
+import at.asitplus.crypto.datatypes.pki.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.plus
-import kotlinx.datetime.toKotlinInstant
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.JCEECPublicKey
 import org.bouncycastle.jce.spec.ECPublicKeySpec
 import java.math.BigInteger
 import java.security.*
 import java.security.cert.Certificate
-import java.time.Instant
-import java.util.*
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.absoluteValue
 import kotlin.random.Random
-import kotlin.time.Duration.Companion.days
 
 
 actual open class DefaultCryptoService : CryptoService {
@@ -87,12 +80,21 @@ actual open class DefaultCryptoService : CryptoService {
         val tbsCertificate = TbsCertificate(
             version = 2,
             serialNumber = serialNumber.toByteArray(),
-            issuerName = listOf(DistinguishedName.CommonName(Asn1String.UTF8(commonName))),
+            issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
             validFrom = Asn1Time(notBeforeDate),
             validUntil = Asn1Time(notAfterDate),
             signatureAlgorithm = algorithm,
-            subjectName = listOf(DistinguishedName.CommonName(Asn1String.UTF8(commonName))),
-            publicKey = publicKey
+            subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
+            publicKey = publicKey,
+            extensions = listOf(X509CertificateExtension(
+                KnownOIDs.subjectAltName_2_5_29_17,
+                critical = false,
+                Asn1EncapsulatingOctetString(listOf(
+                    asn1Sequence {
+                      append(Asn1Primitive(SubjectAltNameImplicitTags.dNSName,
+                          Asn1String.UTF8("example.com").encodeToTlv().content))
+                    }
+                ))))
         )
         val signature =
             runBlocking {

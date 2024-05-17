@@ -38,7 +38,7 @@ class JweSerializationTest : FreeSpec({
         val type = JwsContentTypeConstants.JWT
         val serialized = """{"alg": "${algorithm.text}", "enc": "${encryption.text}", "kid": "$kid", "typ": "$type"}"""
 
-        val parsed = JweHeader.deserialize(serialized).shouldNotBeNull()
+        val parsed = JweHeader.deserialize(serialized).getOrThrow()
 
         parsed.algorithm shouldBe algorithm
         parsed.encryption shouldBe encryption
@@ -52,7 +52,7 @@ class JweSerializationTest : FreeSpec({
         val type = JwsContentTypeConstants.JWT
         val serialized = """{"alg": "foo", "enc": "${encryption.text}", "kid": "$kid", "typ": "$type"}"""
 
-        val parsed = JweHeader.deserialize(serialized).shouldNotBeNull()
+        val parsed = JweHeader.deserialize(serialized).getOrThrow()
 
         parsed.algorithm shouldBe null
         parsed.encryption shouldBe encryption
@@ -66,7 +66,7 @@ class JweSerializationTest : FreeSpec({
         val type = JwsContentTypeConstants.JWT
         val serialized = """{"alg": "${algorithm.text}", "enc": "foo", "kid": "$kid", "typ": "$type"}"""
 
-        val parsed = JweHeader.deserialize(serialized).shouldNotBeNull()
+        val parsed = JweHeader.deserialize(serialized).getOrThrow()
 
         parsed.algorithm shouldBe algorithm
         parsed.encryption shouldBe null
@@ -81,7 +81,7 @@ class JweSerializationTest : FreeSpec({
         val type = uuid4().toString()
         val serialized = """{"alg": "${algorithm.text}", "enc": "${encryption.text}", "kid": "$kid", "typ": "$type"}"""
 
-        val parsed = JweHeader.deserialize(serialized).shouldNotBeNull()
+        val parsed = JweHeader.deserialize(serialized).getOrThrow()
 
         parsed.algorithm shouldBe algorithm
         parsed.encryption shouldBe encryption

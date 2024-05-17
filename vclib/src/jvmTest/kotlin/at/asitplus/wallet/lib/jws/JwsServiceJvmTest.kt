@@ -121,7 +121,7 @@ class JwsServiceJvmTest : FreeSpec({
                             .getOrThrow()
                     signed.shouldNotBeNull()
                     val selfVerify = verifierJwsService.verifyJwsObject(signed)
-                    withClue("$algo: Signature: ${signed.signature.serialize()}") {
+                    withClue("$algo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
                         selfVerify shouldBe true
                     }
                 }
@@ -137,8 +137,7 @@ class JwsServiceJvmTest : FreeSpec({
 
                     // Parsing to our structure verifying payload
                     val signedLibObject = libObject.serialize()
-                    val parsedJwsSigned = JwsSigned.parse(signedLibObject)
-                    parsedJwsSigned.shouldNotBeNull()
+                    val parsedJwsSigned = JwsSigned.parse(signedLibObject).getOrThrow()
                     parsedJwsSigned.payload.decodeToString() shouldBe stringPayload
                     val parsedSig = parsedJwsSigned.signature.rawByteArray.encodeToString(Base64UrlStrict)
 
@@ -152,7 +151,7 @@ class JwsServiceJvmTest : FreeSpec({
                         parsedSig shouldBe libObject.signature.toString()
                     }
 
-                    withClue("$algo: Signature: ${parsedJwsSigned.signature.serialize()}") {
+                    withClue("$algo: Signature: ${parsedJwsSigned.signature.encodeToTlv().toDerHexString()}") {
                         val result = verifierJwsService.verifyJwsObject(parsedJwsSigned)
                         result shouldBe true
                     }
@@ -189,8 +188,7 @@ class JwsServiceJvmTest : FreeSpec({
                         }
                         val encryptedJwe = libJweObject.serialize()
 
-                        val parsedJwe = JweEncrypted.parse(encryptedJwe)
-                        parsedJwe.shouldNotBeNull()
+                        val parsedJwe = JweEncrypted.parse(encryptedJwe).getOrThrow()
 
                         val result = jwsService.decryptJweObject(parsedJwe, encryptedJwe).getOrThrow()
 

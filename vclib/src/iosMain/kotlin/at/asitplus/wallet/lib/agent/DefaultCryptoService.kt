@@ -17,7 +17,8 @@ import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncryption
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
-import at.asitplus.crypto.datatypes.pki.DistinguishedName
+import at.asitplus.crypto.datatypes.pki.AttributeTypeAndValue
+import at.asitplus.crypto.datatypes.pki.RelativeDistinguishedName
 import at.asitplus.crypto.datatypes.pki.TbsCertificate
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -93,11 +94,11 @@ actual class DefaultCryptoService : CryptoService {
         val tbsCertificate = TbsCertificate(
             version = 2,
             serialNumber = Random.nextBytes(4),
-            issuerName = listOf(DistinguishedName.CommonName(Asn1String.UTF8(commonName))),
+            issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
             validFrom = Asn1Time(notBeforeDate),
             validUntil = Asn1Time(notAfterDate),
             signatureAlgorithm = algorithm,
-            subjectName = listOf(DistinguishedName.CommonName(Asn1String.UTF8(commonName))),
+            subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
             publicKey = publicKey
         )
         val signature = signInt(tbsCertificate.encodeToDer())

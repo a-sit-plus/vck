@@ -166,7 +166,7 @@ data class AuthenticationRequestParameters(
      * scheme.
      */
     @SerialName("client_id_scheme")
-    val clientIdScheme: String? = null,
+    val clientIdScheme: OpenIdConstants.ClientIdScheme? = null,
 
     /**
      * OID4VP: OPTIONAL. String containing the Wallet's identifier. The Credential Issuer can use the discovery process
@@ -200,7 +200,7 @@ data class AuthenticationRequestParameters(
      * authentication process to a certain endpoint using the HTTP POST method.
      */
     @SerialName("response_mode")
-    val responseMode: String? = null,
+    val responseMode: OpenIdConstants.ResponseMode? = null,
 
     /**
      * OID4VP: OPTIONAL. The Response URI to which the Wallet MUST send the Authorization Response using an HTTPS POST

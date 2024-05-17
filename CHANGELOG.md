@@ -27,8 +27,12 @@ Release NEXT:
   - add `OidcSiopWallet.startAuthenticationResponsePreparation`: Yields a `AuthenticationResponsePreparationHelper`
   - add `OidcSiopWallet.finalizeAuthenticationResponseResult`: Consumes an `AuthenticationResponsePreparationHelper` and yields `AuthenticationResponseResult`
   - add `OidcSiopWallet.refreshPresentationPreparationHelper`: Refreshes a `PresentationPreparationHelper` by reevaluating the matchings against the currently store credentials
+ - Refactor `AuthenticationRequestParameters` → `AuthenticationRequestParametersFrom` to contain parsed parameters and their source
+ - Update KMP-Crypto to support JWE and ECDH-ES
+ - SIOPv2: Implement `x509_san_dns` and `x509_san_uri` client ID schemes
+ - Refactor OpenIdConstants to contain sealed classes, where appropriate
 
-    Release 3.6.1:
+Release 3.6.1:
  * Update to KMP-Crypto 2.6.0
 
 Release 3.6.0:

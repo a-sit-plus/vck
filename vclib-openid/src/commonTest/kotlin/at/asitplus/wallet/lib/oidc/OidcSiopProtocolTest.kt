@@ -47,6 +47,7 @@ import kotlin.time.Duration.Companion.seconds
 class OidcSiopProtocolTest : FreeSpec({
 
     lateinit var relyingPartyUrl: String
+    lateinit var responseUrl: String
     lateinit var walletUrl: String
 
     lateinit var holderCryptoService: CryptoService
@@ -61,7 +62,9 @@ class OidcSiopProtocolTest : FreeSpec({
     beforeEach {
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
-        relyingPartyUrl = "https://example.com/rp/${uuid4()}"
+        val rpUUID = uuid4()
+        relyingPartyUrl = "https://example.com/rp/$rpUUID"
+        responseUrl = "https://example.com/rp/$rpUUID"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
         verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.didEncoded)
@@ -86,6 +89,7 @@ class OidcSiopProtocolTest : FreeSpec({
             verifier = verifierAgent,
             cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
+            responseUrl = responseUrl,
         )
     }
 
@@ -131,11 +135,13 @@ class OidcSiopProtocolTest : FreeSpec({
         authnRequest.clientId shouldBe relyingPartyUrl
         val jar = authnRequest.request
         jar.shouldNotBeNull()
-        DefaultVerifierJwsService().verifyJwsObject(JwsSigned.parse(jar)!!).shouldBeTrue()
+        DefaultVerifierJwsService().verifyJwsObject(JwsSigned.parse(jar).getOrThrow())
+            .shouldBeTrue()
 
-        val authnResponse = holderSiop.startAuthenticationResponsePreparation(jar).getOrThrow().let {
-            holderSiop.finalizeAuthenticationResponseResult(it)
-        }.getOrThrow()
+        val authnResponse =
+            holderSiop.startAuthenticationResponsePreparation(jar).getOrThrow().let {
+                holderSiop.finalizeAuthenticationResponseResult(it)
+            }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
@@ -145,12 +151,13 @@ class OidcSiopProtocolTest : FreeSpec({
     "test with direct_post" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = RequestOptions(responseMode = OpenIdConstants.ResponseModes.DIRECT_POST)
+            requestOptions = RequestOptions(responseMode = OpenIdConstants.ResponseMode.DIRECT_POST)
         ).also { println(it) }
 
-        val authnResponse = holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
-            holderSiop.finalizeAuthenticationResponseResult(it)
-        }.getOrThrow()
+        val authnResponse =
+            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
+                holderSiop.finalizeAuthenticationResponseResult(it)
+            }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
             .also { println(it) }
         authnResponse.url.shouldBe(relyingPartyUrl)
@@ -164,18 +171,20 @@ class OidcSiopProtocolTest : FreeSpec({
     "test with direct_post_jwt" {
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = RequestOptions(responseMode = OpenIdConstants.ResponseModes.DIRECT_POST_JWT)
+            requestOptions = RequestOptions(responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
         ).also { println(it) }
 
-        val authnResponse = holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
-            holderSiop.finalizeAuthenticationResponseResult(it)
-        }.getOrThrow()
+        val authnResponse =
+            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
+                holderSiop.finalizeAuthenticationResponseResult(it)
+            }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
             .also { println(it) }
         authnResponse.url.shouldBe(relyingPartyUrl)
         authnResponse.params.shouldHaveSize(1)
         val jarmResponse = authnResponse.params.values.first()
-        DefaultVerifierJwsService().verifyJwsObject(JwsSigned.parse(jarmResponse)!!).shouldBeTrue()
+        DefaultVerifierJwsService().verifyJwsObject(JwsSigned.parse(jarmResponse).getOrThrow())
+            .shouldBeTrue()
 
         val result =
             verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
@@ -188,14 +197,15 @@ class OidcSiopProtocolTest : FreeSpec({
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
-                responseMode = OpenIdConstants.ResponseModes.QUERY,
+                responseMode = OpenIdConstants.ResponseMode.QUERY,
                 state = expectedState
             )
         ).also { println(it) }
 
-        val authnResponse = holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
-            holderSiop.finalizeAuthenticationResponseResult(it)
-        }.getOrThrow()
+        val authnResponse =
+            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
+                holderSiop.finalizeAuthenticationResponseResult(it)
+            }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             .also { println(it) }
 
@@ -216,7 +226,13 @@ class OidcSiopProtocolTest : FreeSpec({
 
         val parsedAuthnRequest: AuthenticationRequestParameters =
             authnRequestUrlParams.decodeFromUrlQuery()
-        val authnResponse = holderSiop.startAuthenticationResponsePreparation(parsedAuthnRequest).getOrThrow().let {
+        // TODO: fix?
+        val authnResponse = holderSiop.startAuthenticationResponsePreparation(
+            AuthenticationRequestParametersFrom.Uri(
+                Url(authnRequestUrlParams),
+                parsedAuthnRequest
+            )
+        ).getOrThrow().let {
             holderSiop.finalizeAuthenticationResponseParameters(it)
         }.getOrThrow()
         val authnResponseParams =
@@ -235,9 +251,10 @@ class OidcSiopProtocolTest : FreeSpec({
             requestOptions = RequestOptions(credentialScheme = ConstantIndex.AtomicAttribute2023)
         ).also { println(it) }
 
-        val authnResponse = holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
-            holderSiop.finalizeAuthenticationResponseResult(it)
-        }.getOrThrow()
+        val authnResponse =
+            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
+                holderSiop.finalizeAuthenticationResponseResult(it)
+            }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             .also { println(it) }
 
@@ -256,7 +273,8 @@ class OidcSiopProtocolTest : FreeSpec({
         ).getOrThrow().also { println(it) }
 
         val authnResponse =
-            holderSiop.startAuthenticationResponsePreparation(authnRequestWithRequestObject).getOrThrow().let {
+            holderSiop.startAuthenticationResponsePreparation(authnRequestWithRequestObject)
+                .getOrThrow().let {
                 holderSiop.finalizeAuthenticationResponseResult(it)
             }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -461,7 +479,7 @@ private fun verifierAttestationVerifier(trustedKey: JsonWebKey) =
             jws: JwsSigned,
             authnRequest: AuthenticationRequestParameters
         ): Boolean {
-            val attestationJwt = jws.header.attestationJwt?.let { JwsSigned.parse(it) }
+            val attestationJwt = jws.header.attestationJwt?.let { JwsSigned.parse(it).getOrThrow() }
                 ?: return false
             val verifierJwsService = DefaultVerifierJwsService()
             if (!verifierJwsService.verifyJws(attestationJwt, trustedKey))
