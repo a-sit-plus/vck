@@ -28,13 +28,16 @@ data class SubmissionRequirement(
 ) {
     /**
      * Evaluating submission requirements as per [Presentation Exchange 2.0.0 - Submission Requirement Rules](https://identity.foundation/presentation-exchange/spec/v2.0.0/#submission-requirement-rules).
+     *
+     * @param inputDescriptorGroups: a mapping from input descriptor id to the group of the input descriptor
+     * @param selectedInputDescriptorIds: a set of input descriptor ids for which a credential will be submitted
      */
     fun evaluate(
-        inputDescriptorIdsToGroups: Map<String, String>,
+        inputDescriptorGroups: Map<String, String>,
         selectedInputDescriptorIds: Collection<String>,
     ): Boolean = when (rule) {
         SubmissionRequirementRuleEnum.ALL -> when {
-            from != null -> inputDescriptorIdsToGroups.filter {
+            from != null -> inputDescriptorGroups.filter {
                 it.value == from
             }.all {
                 selectedInputDescriptorIds.contains(it.key)
@@ -42,7 +45,7 @@ data class SubmissionRequirement(
 
             fromNested != null -> fromNested.all {
                 it.evaluate(
-                    inputDescriptorIdsToGroups = inputDescriptorIdsToGroups,
+                    inputDescriptorGroups = inputDescriptorGroups,
                     selectedInputDescriptorIds = selectedInputDescriptorIds,
                 )
             }
@@ -53,7 +56,7 @@ data class SubmissionRequirement(
         }
 
         SubmissionRequirementRuleEnum.PICK -> when {
-            from != null -> inputDescriptorIdsToGroups.filter {
+            from != null -> inputDescriptorGroups.filter {
                 it.value == from
             }.count {
                 selectedInputDescriptorIds.contains(it.value)
@@ -61,7 +64,7 @@ data class SubmissionRequirement(
 
             fromNested != null -> fromNested.map {
                 it.evaluate(
-                    inputDescriptorIdsToGroups = inputDescriptorIdsToGroups,
+                    inputDescriptorGroups = inputDescriptorGroups,
                     selectedInputDescriptorIds = selectedInputDescriptorIds,
                 )
             }.count {
@@ -71,11 +74,11 @@ data class SubmissionRequirement(
             else -> throw SubmissionRequirementsStructureException(
                 "neither `from` nor `fromNested` have been provided"
             )
-        }.let { selected ->
+        }.let { numSelected ->
             listOf(
-                this.count?.let { selected == it } ?: true,
-                this.min?.let { selected >= it } ?: true,
-                this.count?.let { selected <= it } ?: true,
+                this.count?.let { numSelected == it } ?: true,
+                this.min?.let { numSelected >= it } ?: true,
+                this.max?.let { numSelected <= it } ?: true,
             ).all {
                 it
             }

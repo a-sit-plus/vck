@@ -220,7 +220,7 @@ class HolderAgent(
     @Serializable
     data class CandidateInputMatchContainer(
         val credential: SubjectCredentialStore.StoreEntry,
-        val fieldQueryResults: FieldQueryResults,
+        val disclosedAttributes: Collection<NormalizedJsonPath>,
     )
 
     override suspend fun createPresentation(
@@ -250,7 +250,9 @@ class HolderAgent(
             challenge = challenge,
             audienceId = audienceId,
             presentationDefinitionId = presentationDefinition.id,
-            presentationSubmissionSelection = matches.toMap()
+            presentationSubmissionSelection = matches.toMap().mapKeys {
+                it.key.id
+            }
         )
     }
 
@@ -258,7 +260,7 @@ class HolderAgent(
         challenge: String,
         audienceId: String,
         presentationDefinitionId: String?,
-        presentationSubmissionSelection: Map<InputDescriptor, CandidateInputMatchContainer>
+        presentationSubmissionSelection: Map<String, CandidateInputMatchContainer>
     ): KmmResult<Holder.PresentationResponseParameters> {
         val submissionList = presentationSubmissionSelection.toList()
         val presentationSubmission = PresentationSubmission.fromMatches(
@@ -268,17 +270,17 @@ class HolderAgent(
 
         val verifiablePresentations = submissionList.map { match ->
             val credential = match.second.credential
-            val fieldQueryResults = match.second.fieldQueryResults
+            val disclosedAttributes = match.second.disclosedAttributes
             verifiablePresentationFactory.createVerifiablePresentation(
                 challenge = challenge,
                 audienceId = audienceId,
                 credential = credential,
-                fieldQueryResults = fieldQueryResults,
+                disclosedAttributes = disclosedAttributes,
             ) ?: return KmmResult.failure(
                 CredentialPresentationException(
                     credential = credential,
-                    inputDescriptor = match.first,
-                    fieldQueryResults = fieldQueryResults,
+                    inputDescriptorId = match.first,
+                    disclosedAttributes = disclosedAttributes,
                 )
             )
         }
@@ -338,7 +340,9 @@ class HolderAgent(
                 )?.let {
                     CandidateInputMatchContainer(
                         credential = credential,
-                        fieldQueryResults = it,
+                        disclosedAttributes = it.values.mapNotNull { fieldQueryResult ->
+                            fieldQueryResult?.normalizedJsonPath
+                        },
                     )
                 }
             }
@@ -384,14 +388,14 @@ class HolderAgent(
 
     private fun PresentationSubmission.Companion.fromMatches(
         presentationId: String?,
-        matches: List<Pair<InputDescriptor, CandidateInputMatchContainer>>,
+        matches: List<Pair<String, CandidateInputMatchContainer>>,
     ): PresentationSubmission {
         return PresentationSubmission(
             id = uuid4().toString(),
             definitionId = presentationId,
             descriptorMap = matches.mapIndexed { index, match ->
                 PresentationSubmissionDescriptor.fromMatch(
-                    inputDescriptor = match.first,
+                    inputDescriptorId = match.first,
                     credential = match.second.credential,
                     index = if (matches.size == 1) null else index
                 )
@@ -400,12 +404,12 @@ class HolderAgent(
     }
 
     private fun PresentationSubmissionDescriptor.Companion.fromMatch(
-        inputDescriptor: InputDescriptor,
+        inputDescriptorId: String,
         credential: SubjectCredentialStore.StoreEntry,
         index: Int?
     ): PresentationSubmissionDescriptor {
         return PresentationSubmissionDescriptor(
-            id = inputDescriptor.id,
+            id = inputDescriptorId,
             format = when (credential) {
                 is SubjectCredentialStore.StoreEntry.Vc -> ClaimFormatEnum.JWT_VP
                 is SubjectCredentialStore.StoreEntry.SdJwt -> ClaimFormatEnum.JWT_SD
@@ -437,7 +441,13 @@ class AttributeNotAvailableException(
 ) : PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']: $credential")
 
 class CredentialPresentationException(
-    val inputDescriptor: InputDescriptor,
+    val inputDescriptorId: String,
     val credential: SubjectCredentialStore.StoreEntry,
-    val fieldQueryResults: FieldQueryResults,
-) : PresentationException("Presentation of $inputDescriptor failed with credential $credential and field query results: $fieldQueryResults")
+    val disclosedAttributes: Collection<NormalizedJsonPath>,
+) : PresentationException(
+    "Presentation for input descriptor with id '$inputDescriptorId' failed with credential $credential and attributes: <${
+        disclosedAttributes.joinToString(
+            ", "
+        )
+    }>"
+)

@@ -6,7 +6,6 @@ import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.data.dif.FieldQueryResults
 import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceSigned
 import at.asitplus.wallet.lib.iso.Document
@@ -28,12 +27,8 @@ class VerifiablePresentationFactory(
         challenge: String,
         audienceId: String,
         credential: SubjectCredentialStore.StoreEntry,
-        fieldQueryResults: FieldQueryResults?,
+        disclosedAttributes: Collection<NormalizedJsonPath>,
     ): Holder.CreatePresentationResult? {
-        val requestedClaims = fieldQueryResults?.mapNotNull { fieldQueryResult ->
-            fieldQueryResult.value?.normalizedJsonPath
-        }
-
         return when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> createVcPresentation(
                 challenge = challenge,
@@ -45,13 +40,13 @@ class VerifiablePresentationFactory(
                 challenge = challenge,
                 audienceId = audienceId,
                 validSdJwtCredential = credential,
-                requestedClaims = requestedClaims
+                requestedClaims = disclosedAttributes
             )
 
             is SubjectCredentialStore.StoreEntry.Iso -> createIsoPresentation(
                 challenge = challenge,
                 credential = credential,
-                requestedClaims = requestedClaims
+                requestedClaims = disclosedAttributes
             )
         }
     }
@@ -59,7 +54,7 @@ class VerifiablePresentationFactory(
     private suspend fun createIsoPresentation(
         challenge: String,
         credential: SubjectCredentialStore.StoreEntry.Iso,
-        requestedClaims: List<NormalizedJsonPath>?
+        requestedClaims: Collection<NormalizedJsonPath>
     ): Holder.CreatePresentationResult.Document? {
         val deviceSignature = coseService.createSignedCose(
             payload = challenge.encodeToByteArray(),
@@ -68,7 +63,7 @@ class VerifiablePresentationFactory(
             .also { Napier.w("Could not create DeviceAuth for presentation") }
 
         // allows disclosure of attributes from different namespaces
-        val namespaceToAttributesMap = requestedClaims?.mapNotNull { normalizedJsonPath ->
+        val namespaceToAttributesMap = requestedClaims.mapNotNull { normalizedJsonPath ->
             // namespace + attribute
             val firstTwoNameSegments = normalizedJsonPath.segments.filterIndexed { index, _ ->
                 // TODO: unsure how to deal with attributes with a depth of more than 2
@@ -85,16 +80,16 @@ class VerifiablePresentationFactory(
                 //  -> no need for selective disclosure
                 null
             }
-        }?.groupBy {
+        }.groupBy {
             // grouping by namespace
             it.first
-        }?.mapValues {
+        }.mapValues {
             // unrolling values to just the list of attribute names for that namespace
             it.value.map {
                 it.second
             }
         }
-        val disclosedItems = namespaceToAttributesMap?.mapValues { namespaceToAttributeNamesEntry ->
+        val disclosedItems = namespaceToAttributesMap.mapValues { namespaceToAttributeNamesEntry ->
             val namespace = namespaceToAttributeNamesEntry.key
             val attributeNames = namespaceToAttributeNamesEntry.value
             IssuerSignedList(attributeNames.map { attributeName ->
@@ -127,7 +122,7 @@ class VerifiablePresentationFactory(
         audienceId: String,
         challenge: String,
         validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
-        requestedClaims: List<NormalizedJsonPath>?
+        requestedClaims: Collection<NormalizedJsonPath>
     ): Holder.CreatePresentationResult.SdJwt? {
         val keyBindingJws = KeyBindingJws(
             issuedAt = Clock.System.now(),
@@ -140,19 +135,18 @@ class VerifiablePresentationFactory(
                 Napier.w("Could not create JWS for presentation", it)
                 return null
             }
-        val filteredDisclosures = validSdJwtCredential.disclosures
-            .filter {
-                it.discloseItem(requestedClaims?.mapNotNull { claimPath ->
-                    // TODO: unsure how to deal with attributes with a depth of more than 1 (if they even should be supported)
-                    //  revealing the whole attribute for now, which is as fine grained as SdJwt can do anyway
-                    claimPath.segments.firstOrNull()?.let {
-                        when (it) {
-                            is NormalizedJsonPathSegment.NameSegment -> it.memberName
-                            is NormalizedJsonPathSegment.IndexSegment -> null // can't disclose index
-                        }
+        val filteredDisclosures = validSdJwtCredential.disclosures.filter {
+            it.discloseItem(requestedClaims.mapNotNull { claimPath ->
+                // TODO: unsure how to deal with attributes with a depth of more than 1 (if they even should be supported)
+                //  revealing the whole attribute for now, which is as fine grained as SdJwt can do anyway
+                claimPath.segments.firstOrNull()?.let {
+                    when (it) {
+                        is NormalizedJsonPathSegment.NameSegment -> it.memberName
+                        is NormalizedJsonPathSegment.IndexSegment -> null // can't disclose index
                     }
-                })
-            }.keys
+                }
+            })
+        }.keys
         val sdJwt =
             (listOf(validSdJwtCredential.vcSerialized.substringBefore("~")) + filteredDisclosures + keyBinding.serialize())
                 .joinToString("~")
@@ -161,8 +155,8 @@ class VerifiablePresentationFactory(
 
 
     private fun Map.Entry<String, SelectiveDisclosureItem?>.discloseItem(requestedClaims: Collection<String>?): Boolean {
-        // do not disclose by default
         return if (requestedClaims == null) {
+            // do not disclose by default
             false
         } else {
             value?.let { it.claimName in requestedClaims } ?: false

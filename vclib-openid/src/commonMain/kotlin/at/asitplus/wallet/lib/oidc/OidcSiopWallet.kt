@@ -12,7 +12,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.PathAuthorizationValidator
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.data.dif.PresentationSelectionValidator
+import at.asitplus.wallet.lib.data.dif.PresentationPreparationHelper
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
@@ -162,37 +162,37 @@ class OidcSiopWallet(
 
     /**
      * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
-     * to create [AuthenticationResponsePreparationState] for preparing a response.
+     * to create [AuthenticationResponsePreparationHelper] for preparing a response.
      */
     suspend fun startAuthenticationResponsePreparation(
         input: String,
-    ): KmmResult<AuthenticationResponsePreparationState> = startAuthenticationResponsePreparation(
+    ): KmmResult<AuthenticationResponsePreparationHelper> = startAuthenticationResponsePreparation(
         parameters = parseAuthenticationRequestParameters(input).getOrElse {
-            return KmmResult.failure<AuthenticationResponsePreparationState>(it)
+            return KmmResult.failure<AuthenticationResponsePreparationHelper>(it)
                 .also { Napier.w("Could not parse authentication request: $input") }
         },
     )
 
     suspend fun startAuthenticationResponsePreparation(
         parameters: AuthenticationRequestParameters,
-    ): KmmResult<AuthenticationResponsePreparationState> {
+    ): KmmResult<AuthenticationResponsePreparationHelper> {
         val nonce = parameters.nonce ?: run {
-            return KmmResult.failure<AuthenticationResponsePreparationState>(OAuth2Exception(Errors.INVALID_REQUEST))
+            return KmmResult.failure<AuthenticationResponsePreparationHelper>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("nonce is null") }
         }
 
         val responseType = parameters.responseType ?: run {
-            return KmmResult.failure<AuthenticationResponsePreparationState>(OAuth2Exception(Errors.INVALID_REQUEST))
+            return KmmResult.failure<AuthenticationResponsePreparationHelper>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("response_type is not specified") }
         }
 
         if (!responseType.contains(ID_TOKEN) && !responseType.contains(VP_TOKEN)) {
-            return KmmResult.failure<AuthenticationResponsePreparationState>(OAuth2Exception(Errors.INVALID_REQUEST))
+            return KmmResult.failure<AuthenticationResponsePreparationHelper>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("response_type is not supported") }
         }
         if (parameters.redirectUrl != null) {
             if (parameters.clientId != parameters.redirectUrl) {
-                return KmmResult.failure<AuthenticationResponsePreparationState>(
+                return KmmResult.failure<AuthenticationResponsePreparationHelper>(
                     OAuth2Exception(
                         Errors.INVALID_REQUEST
                     )
@@ -212,7 +212,7 @@ class OidcSiopWallet(
         })
 
         val clientMetadata = retrieveClientMetadata(parameters)
-            ?: return KmmResult.failure<AuthenticationResponsePreparationState>(
+            ?: return KmmResult.failure<AuthenticationResponsePreparationHelper>(
                 OAuth2Exception(
                     Errors.INVALID_REQUEST
                 )
@@ -225,7 +225,7 @@ class OidcSiopWallet(
 //        }
 
         val audience = retrieveAudience(clientMetadata)
-            ?: return KmmResult.failure<AuthenticationResponsePreparationState>(
+            ?: return KmmResult.failure<AuthenticationResponsePreparationHelper>(
                 OAuth2Exception(
                     Errors.INVALID_REQUEST
                 )
@@ -233,27 +233,27 @@ class OidcSiopWallet(
 
         val presentationDefinition = retrievePresentationDefinition(parameters)
         if (!parameters.responseType.contains(VP_TOKEN) && presentationDefinition == null) {
-            return KmmResult.failure<AuthenticationResponsePreparationState>(OAuth2Exception(Errors.INVALID_REQUEST))
+            return KmmResult.failure<AuthenticationResponsePreparationHelper>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("vp_token not requested") }
         }
 
         return KmmResult.success(
-            AuthenticationResponsePreparationState(
+            AuthenticationResponsePreparationHelper(
                 parameters = parameters,
                 responseType = responseType,
                 targetUrl = targetUrl,
                 clientMetadata = clientMetadata,
                 audience = audience,
                 nonce = nonce,
-                presentationSelectionValidator = presentationDefinition?.let {
-                    PresentationSelectionValidator(
+                presentationPreparationHelper = presentationDefinition?.let {
+                    PresentationPreparationHelper(
                         presentationDefinition = presentationDefinition,
                         fallbackFormatHolder = clientMetadata.vpFormats
                     ).also {
                         try {
                             refreshPresentationPreparationState(it)
                         } catch (e: Throwable) {
-                            return KmmResult.failure(e.also {
+                            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST).also {
                                 e.message?.let { Napier.w(it) }
                             })
                         }
@@ -266,26 +266,26 @@ class OidcSiopWallet(
     /**
      * Users of the library need to call this method in case the stored credentials change.
      */
-    suspend fun refreshPresentationPreparationState(presentationSelectionValidator: PresentationSelectionValidator) {
-        presentationSelectionValidator.refreshInputDescriptors(
+    suspend fun refreshPresentationPreparationState(presentationPreparationHelper: PresentationPreparationHelper) {
+        presentationPreparationHelper.refreshInputDescriptorMatches(
             holder = holder,
             pathAuthorizationValidator = pathAuthorizationValidator,
         )
     }
 
     suspend fun finalizeAuthenticationResponseResult(
-        authenticationResponsePreparationState: AuthenticationResponsePreparationState,
+        authenticationResponsePreparationHelper: AuthenticationResponsePreparationHelper,
     ): KmmResult<AuthenticationResponseResult> {
         val responseParams = finalizeAuthenticationResponseParameters(
-            authenticationResponsePreparationState
+            authenticationResponsePreparationHelper,
         ).getOrElse {
             return KmmResult.failure(it)
         }
 
-        return when (authenticationResponsePreparationState.parameters.responseMode) {
+        return when (authenticationResponsePreparationHelper.parameters.responseMode) {
             DIRECT_POST -> KmmResult.success(
                 AuthenticationResponseResult.Post(
-                    url = authenticationResponsePreparationState.targetUrl,
+                    url = authenticationResponsePreparationHelper.targetUrl,
                     params = responseParams.encodeToParameters(),
                 )
             )
@@ -303,14 +303,14 @@ class OidcSiopWallet(
 
                 KmmResult.success(
                     AuthenticationResponseResult.Post(
-                        url = authenticationResponsePreparationState.targetUrl,
+                        url = authenticationResponsePreparationHelper.targetUrl,
                         params = jarm.encodeToParameters(),
                     )
                 )
             }
 
             QUERY -> {
-                val url = URLBuilder(authenticationResponsePreparationState.targetUrl).apply {
+                val url = URLBuilder(authenticationResponsePreparationHelper.targetUrl).apply {
                     responseParams.encodeToParameters().forEach {
                         this.parameters.append(it.key, it.value)
                     }
@@ -326,7 +326,7 @@ class OidcSiopWallet(
 
             else -> {
                 // default for vp_token and id_token is fragment
-                val url = URLBuilder(authenticationResponsePreparationState.targetUrl).apply {
+                val url = URLBuilder(authenticationResponsePreparationHelper.targetUrl).apply {
                     encodedFragment = responseParams.encodeToParameters().formUrlEncode()
                 }.buildString()
 
@@ -340,40 +340,50 @@ class OidcSiopWallet(
     }
 
     internal suspend fun finalizeAuthenticationResponseParameters(
-        authenticationResponsePreparationState: AuthenticationResponsePreparationState,
+        authenticationResponsePreparationHelper: AuthenticationResponsePreparationHelper,
     ): KmmResult<AuthenticationResponseParameters> {
         val signedIdToken =
-            if (!authenticationResponsePreparationState.responseType.contains(ID_TOKEN)) {
+            if (!authenticationResponsePreparationHelper.responseType.contains(ID_TOKEN)) {
                 null
             } else {
                 createIdToken(
-                    nonce = authenticationResponsePreparationState.nonce,
-                    audience = authenticationResponsePreparationState.parameters.redirectUrl
-                        ?: authenticationResponsePreparationState.parameters.clientId,
+                    nonce = authenticationResponsePreparationHelper.nonce,
+                    audience = authenticationResponsePreparationHelper.parameters.redirectUrl
+                        ?: authenticationResponsePreparationHelper.parameters.clientId,
                 ).getOrElse {
                     Napier.w("Could not sign id_token", it)
                     return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
                 }
             }
 
-        val presentationResultContainer =
-            authenticationResponsePreparationState.presentationSelectionValidator?.let { it ->
-                if (!it.isSubmissionRequirementsSatisfied()) {
+        val presentationResultContainer: Holder.PresentationResponseParameters? =
+            authenticationResponsePreparationHelper.presentationPreparationHelper?.let { it ->
+                val credentialSubmissions = it.inputDescriptorMatches.mapValues {
+                    // TODO: allow for manual credential selection by the user
+                    it.value.firstOrNull()
+                        ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED).also {
+                            Napier.w("submission requirements are not satisfied")
+                        })
+                }.mapKeys {
+                    it.key.id
+                }
+
+                if (!it.isSubmissionRequirementsSatisfied(credentialSubmissions.keys)) {
                     Napier.w("submission requirements are not satisfied")
                     return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
                 }
                 holder.createPresentation(
-                    challenge = authenticationResponsePreparationState.nonce,
-                    audienceId = authenticationResponsePreparationState.audience,
-                    presentationDefinitionId = it.presentationDefinition.id,
-                    presentationSubmissionSelection = it.currentSubmissionSelection,
+                    challenge = authenticationResponsePreparationHelper.nonce,
+                    audienceId = authenticationResponsePreparationHelper.audience,
+                    presentationDefinitionId = it.presentationDefinitionId,
+                    presentationSubmissionSelection = credentialSubmissions,
                 ).getOrElse { exception ->
                     Napier.w("Could not create presentation: ${exception.message}")
                     return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
                 }
             }
         presentationResultContainer?.let {
-            authenticationResponsePreparationState.clientMetadata.vpFormats?.let { supportedFormats ->
+            authenticationResponsePreparationHelper.clientMetadata.vpFormats?.let { supportedFormats ->
                 presentationResultContainer.presentationSubmission.descriptorMap?.mapIndexed { index, descriptor ->
                     val isMissingFormatSupport = when (descriptor.format) {
                         ClaimFormatEnum.JWT_VP -> supportedFormats.jwtVp?.algorithms?.contains(
@@ -405,7 +415,7 @@ class OidcSiopWallet(
         return KmmResult.success(
             AuthenticationResponseParameters(
                 idToken = signedIdToken?.serialize(),
-                state = authenticationResponsePreparationState.parameters.state,
+                state = authenticationResponsePreparationHelper.parameters.state,
                 vpToken = presentationResultContainer?.presentationResults?.map {
                     when (it) {
                         is Holder.CreatePresentationResult.Signed -> {

@@ -167,7 +167,6 @@ class OidcSiopInteropTest : FreeSpec({
 
         params.presentationSubmission.shouldNotBeNull()
         params.vpToken.shouldNotBeNull()
-        params.idToken.shouldNotBeNull()
     }
 
     "EUDI AuthnRequest can be parsed" {

@@ -150,14 +150,14 @@ interface Holder {
      * preselected [presentationSubmissionSelection].
      *
      * @param presentationDefinitionId: id of the presentation definition this submission is intended for
-     * @param presentationSubmissionSelection: a preselection of input descriptors and matching credentials along
-     * with a description of the fields to be disclosed
+     * @param presentationSubmissionSelection: a selection of input descriptors by id and
+     *  corresponding credentials along with a description of the fields to be disclosed
      */
     suspend fun createPresentation(
         challenge: String,
         audienceId: String,
         presentationDefinitionId: String?,
-        presentationSubmissionSelection: Map<InputDescriptor, HolderAgent.CandidateInputMatchContainer>,
+        presentationSubmissionSelection: Map<String, HolderAgent.CandidateInputMatchContainer>,
     ): KmmResult<PresentationResponseParameters>
 
     /**
