@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -195,28 +194,4 @@ interface Holder {
             CreatePresentationResult()
     }
 
-}
-
-interface PathAuthorizationValidator {
-    operator fun invoke(
-        credential: SubjectCredentialStore.StoreEntry,
-        attribute: NormalizedJsonPath
-    ): Boolean
-}
-
-class LambdaPathAuthorizationValidator(
-    val evaluator: (
-        credential: SubjectCredentialStore.StoreEntry,
-        attribute: NormalizedJsonPath,
-    ) -> Boolean
-) : PathAuthorizationValidator {
-    override operator fun invoke(
-        credential: SubjectCredentialStore.StoreEntry,
-        attribute: NormalizedJsonPath
-    ): Boolean {
-        return evaluator(
-            credential,
-            attribute,
-        )
-    }
 }

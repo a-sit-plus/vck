@@ -251,7 +251,7 @@ class OidcSiopWallet(
                         fallbackFormatHolder = clientMetadata.vpFormats
                     ).also {
                         try {
-                            refreshPresentationPreparationState(it)
+                            refreshPresentationPreparationHelper(it)
                         } catch (e: Throwable) {
                             return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST).also {
                                 e.message?.let { Napier.w(it) }
@@ -266,7 +266,7 @@ class OidcSiopWallet(
     /**
      * Users of the library need to call this method in case the stored credentials change.
      */
-    suspend fun refreshPresentationPreparationState(presentationPreparationHelper: PresentationPreparationHelper) {
+    suspend fun refreshPresentationPreparationHelper(presentationPreparationHelper: PresentationPreparationHelper) {
         presentationPreparationHelper.refreshInputDescriptorMatches(
             holder = holder,
             pathAuthorizationValidator = pathAuthorizationValidator,
