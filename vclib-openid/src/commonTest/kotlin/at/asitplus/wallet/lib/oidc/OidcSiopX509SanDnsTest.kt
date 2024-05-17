@@ -72,7 +72,9 @@ class OidcSiopX509SanDnsTest : FreeSpec({
             )
         ).also { println(it) }.getOrThrow()
 
-        val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+        val authnResponse = holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize()).getOrThrow().let {
+            holderSiop.finalizeAuthenticationResponseResult(it)
+        }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>().also { println(it) }
 
         val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())

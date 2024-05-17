@@ -7,34 +7,34 @@ import io.kotest.matchers.shouldBe
 
 @Suppress("unused")
 class SubmissionRequirementsTest : FreeSpec({
-    "given select all" - {
-        "given select from group" - {
+    "all" - {
+        "from" - {
             val group = "A"
             val submissionRequirement = SubmissionRequirement(
                 rule = SubmissionRequirementRuleEnum.ALL,
                 from = group,
             )
 
-            "given 1 descriptor" - {
+            "1" - {
                 val inputDescriptorId = "0"
 
-                "when descriptor is in group" - {
+                "inGroup" - {
                     val inputDescriptorGroups = mapOf(inputDescriptorId to group)
 
-                    "when descriptor is selected" - {
+                    "selected" - {
                         val selectedInputDescriptorIds = listOf(inputDescriptorId)
 
-                        "then requirement should be satisfied" {
+                        "shouldBeTrue" {
                             submissionRequirement.evaluate(
                                 inputDescriptorGroups = inputDescriptorGroups,
                                 selectedInputDescriptorIds = selectedInputDescriptorIds
                             ) shouldBe true
                         }
                     }
-                    "when descriptor is not selected" - {
+                    "notSelected" - {
                         val selectedInputDescriptorIds = listOf<String>()
 
-                        "then requirement should not be satisfied" {
+                        "shouldBeFalse" {
                             submissionRequirement.evaluate(
                                 inputDescriptorGroups = inputDescriptorGroups,
                                 selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -43,20 +43,20 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when descriptor is not in group" - {
+                "notInGroup" - {
                     val inputDescriptorGroups = mapOf(inputDescriptorId to group + "2")
 
-                    "when descriptor is selected" - {
+                    "selected" - {
                         val selectedInputDescriptorIds = listOf(inputDescriptorId)
 
-                        "then requirement should be satisfied" {
+                        "shouldBeTrue" {
                             submissionRequirement.evaluate(
                                 inputDescriptorGroups = inputDescriptorGroups,
                                 selectedInputDescriptorIds = selectedInputDescriptorIds
                             ) shouldBe true
                         }
                     }
-                    "when descriptor is not selected" - {
+                    "notSelected" - {
                         val selectedInputDescriptorIds = listOf<String>()
 
                         "then requirement should be satisfied" {
@@ -69,23 +69,23 @@ class SubmissionRequirementsTest : FreeSpec({
                 }
             }
 
-            "given 2 descriptors" - {
+            "2" - {
                 val inputDescriptor0Id = "0"
                 val inputDescriptor1Id = "1"
 
-                "when both descriptors are in group" - {
+                "bothInGroup" - {
                     val inputDescriptorGroups = mapOf(
                         inputDescriptor0Id to group,
                         inputDescriptor1Id to group,
                     )
 
-                    "when both descriptors are selected" - {
+                    "bothSelected" - {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor0Id,
                             inputDescriptor1Id,
                         )
 
-                        "then requirement should be satisfied" {
+                        "shouldBeTrue" {
                             submissionRequirement.evaluate(
                                 inputDescriptorGroups = inputDescriptorGroups,
                                 selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -93,12 +93,12 @@ class SubmissionRequirementsTest : FreeSpec({
                         }
                     }
 
-                    "when descriptor 0 is not selected" - {
+                    "secondSelected" - {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor1Id,
                         )
 
-                        "then requirement should not be satisfied" {
+                        "shouldBeFalse" {
                             submissionRequirement.evaluate(
                                 inputDescriptorGroups = inputDescriptorGroups,
                                 selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -106,7 +106,7 @@ class SubmissionRequirementsTest : FreeSpec({
                         }
                     }
 
-                    "when descriptor 1 is not selected" - {
+                    "secondSelected" - {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor0Id,
                         )
@@ -119,7 +119,7 @@ class SubmissionRequirementsTest : FreeSpec({
                         }
                     }
 
-                    "when neither descriptor is selected" - {
+                    "neither selected" - {
                         val selectedInputDescriptorIds = listOf<String>()
 
                         "then requirement should not be satisfied" {
@@ -131,19 +131,19 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when descriptors are in different groups, but descriptor 0 is in the selected group" - {
+                "first in group" - {
                     val inputDescriptorGroups = mapOf(
                         inputDescriptor0Id to group,
                         inputDescriptor1Id to (group + "2"),
                     )
 
-                    "when both descriptors are selected" - {
+                    "both selected" - {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor0Id,
                             inputDescriptor1Id,
                         )
 
-                        "then requirement should be satisfied" {
+                        "shouldBeTrue" {
                             submissionRequirement.evaluate(
                                 inputDescriptorGroups = inputDescriptorGroups,
                                 selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -151,12 +151,12 @@ class SubmissionRequirementsTest : FreeSpec({
                         }
                     }
 
-                    "when only the descriptor in the intended group is selected" - {
+                    "firstSelected" - {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor0Id,
                         )
 
-                        "then requirement should be satisfied" {
+                        "shouldBeTrue" {
                             submissionRequirement.evaluate(
                                 inputDescriptorGroups = inputDescriptorGroups,
                                 selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -164,12 +164,12 @@ class SubmissionRequirementsTest : FreeSpec({
                         }
                     }
 
-                    "when only the descriptor not in the intended group is selected" - {
+                    "secondSelected" - {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor1Id,
                         )
 
-                        "then requirement should not be satisfied" {
+                        "shouldBeFalse" {
                             submissionRequirement.evaluate(
                                 inputDescriptorGroups = inputDescriptorGroups,
                                 selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -177,12 +177,12 @@ class SubmissionRequirementsTest : FreeSpec({
                         }
                     }
 
-                    "when neither descriptor is selected" - {
+                    "neitherSelected" - {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor1Id,
                         )
 
-                        "then requirement should not be satisfied" {
+                        "shouldBeFalse" {
                             submissionRequirement.evaluate(
                                 inputDescriptorGroups = inputDescriptorGroups,
                                 selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -191,20 +191,20 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when descriptors are in same groups, but the group is not the intended one" - {
+                "groups00" - {
                     val actualGroup = group + "2"
                     val inputDescriptorGroups = mapOf(
                         inputDescriptor0Id to actualGroup,
                         inputDescriptor1Id to actualGroup,
                     )
 
-                    "when both descriptors are selected" - {
+                    "bothSelected" - {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor0Id,
                             inputDescriptor1Id,
                         )
 
-                        "then requirement should be satisfied" {
+                        "shouldBeTrue" {
                             submissionRequirement.evaluate(
                                 inputDescriptorGroups = inputDescriptorGroups,
                                 selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -212,13 +212,13 @@ class SubmissionRequirementsTest : FreeSpec({
                         }
                     }
 
-                    "when only one input descriptor is selected" - {
+                    "oneSelected" - {
                         val selectionPossibilities = listOf(
                             listOf(inputDescriptor0Id),
                             listOf(inputDescriptor1Id),
                         )
 
-                        "then requirement should be satisfied" {
+                        "shouldBeTrue" {
                             selectionPossibilities.forEach {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
@@ -228,10 +228,10 @@ class SubmissionRequirementsTest : FreeSpec({
                         }
                     }
 
-                    "when neither descriptor is selected" - {
+                    "neitherSelected" - {
                         val selectedInputDescriptorIds = listOf<String>()
 
-                        "then requirement should be satisfied" {
+                        "shouldBeTrue" {
                             submissionRequirement.evaluate(
                                 inputDescriptorGroups = inputDescriptorGroups,
                                 selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -240,19 +240,19 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when descriptors are in different groups, but neither of them is the intended one" - {
+                "groups01" - {
                     val inputDescriptorGroups = mapOf(
                         inputDescriptor0Id to group + "2",
                         inputDescriptor1Id to group + "3",
                     )
 
-                    "when both descriptors are selected" - {
+                    "bothSelected" - {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor0Id,
                             inputDescriptor1Id,
                         )
 
-                        "then requirement should be satisfied" {
+                        "shouldBeTrue" {
                             submissionRequirement.evaluate(
                                 inputDescriptorGroups = inputDescriptorGroups,
                                 selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -260,13 +260,13 @@ class SubmissionRequirementsTest : FreeSpec({
                         }
                     }
 
-                    "when only one input descriptor is selected" - {
+                    "oneSelected" - {
                         val selectionPossibilities = listOf(
                             listOf(inputDescriptor0Id),
                             listOf(inputDescriptor1Id),
                         )
 
-                        "then requirement should be satisfied" {
+                        "shouldBeTrue" {
                             selectionPossibilities.forEach {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
@@ -276,10 +276,10 @@ class SubmissionRequirementsTest : FreeSpec({
                         }
                     }
 
-                    "when neither descriptor is selected" - {
+                    "neitherSelected" - {
                         val selectedInputDescriptorIds = listOf<String>()
 
-                        "then requirement should be satisfied" {
+                        "shouldBeTrue" {
                             submissionRequirement.evaluate(
                                 inputDescriptorGroups = inputDescriptorGroups,
                                 selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -290,8 +290,8 @@ class SubmissionRequirementsTest : FreeSpec({
             }
         }
 
-        "given select from nested" - {
-            "given 1 nested requirement" - {
+        "nested" - {
+            "1" - {
                 val nestedGroup = "A"
                 val inputDescriptorId = "0"
                 val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
@@ -304,10 +304,10 @@ class SubmissionRequirementsTest : FreeSpec({
                     ),
                 )
 
-                "when nested requirement is satisfied" - {
+                "satisfied" - {
                     val selectedInputDescriptorIds = listOf(inputDescriptorId)
 
-                    "then requirement should be satisfied" {
+                    "shouldBeTrue" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -315,10 +315,10 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when nested requirement is not satisfied" - {
+                "unsatisfied" - {
                     val selectedInputDescriptorIds = listOf<String>()
 
-                    "then requirement should not be satisfied" {
+                    "shouldBeFalse" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -327,7 +327,7 @@ class SubmissionRequirementsTest : FreeSpec({
                 }
             }
 
-            "given 2 nested requirements" - {
+            "2" - {
                 val nestedGroup0 = "A"
                 val nestedGroup1 = "B"
                 val inputDescriptor0Id = "0"
@@ -350,7 +350,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     fromNested = nestedRequirements,
                 )
 
-                "when both nested requirements are satisfied" - {
+                "bothSatisfied" - {
                     val selectedInputDescriptorIds = listOf(
                         inputDescriptor0Id,
                         inputDescriptor1Id,
@@ -362,7 +362,7 @@ class SubmissionRequirementsTest : FreeSpec({
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
                         ) shouldBe true
                     }
-                    "then requirement should be satisfied" {
+                    "shouldBeTrue" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -370,7 +370,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when only first nested requirements is satisfied" - {
+                "firstSatisfied" - {
                     val selectedInputDescriptorIds = listOf(
                         inputDescriptor0Id,
                     )
@@ -382,7 +382,7 @@ class SubmissionRequirementsTest : FreeSpec({
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
                     ) shouldBe false
-                    "then requirement should not be satisfied" {
+                    "shouldBeFalse" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
@@ -390,7 +390,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when only second nested requirements is satisfied" - {
+                "secondSatisfied" - {
                     val selectedInputDescriptorIds = listOf(
                         inputDescriptor1Id,
                     )
@@ -402,7 +402,7 @@ class SubmissionRequirementsTest : FreeSpec({
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
                     ) shouldBe true
-                    "then requirement should not be satisfied" {
+                    "shouldBeFalse" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
@@ -410,7 +410,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when neither nested requirements is satisfied" - {
+                "neitherSatisfied" - {
                     val selectedInputDescriptorIds = listOf<String>()
                     nestedRequirements[0].evaluate(
                         inputDescriptorGroups = inputDescriptorGroups,
@@ -420,7 +420,7 @@ class SubmissionRequirementsTest : FreeSpec({
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
                     ) shouldBe false
-                    "then requirement should not be satisfied" {
+                    "shouldBeFalse" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
@@ -431,35 +431,35 @@ class SubmissionRequirementsTest : FreeSpec({
         }
     }
 
-    "given select pick" - {
-        "given select from group" - {
+    "pick" - {
+        "from" - {
             val group = "A"
 
-            "given pick count requirement" - {
+            "count" - {
                 val submissionRequirement = SubmissionRequirement(
                     rule = SubmissionRequirementRuleEnum.PICK, from = group, count = 1
                 )
 
-                "given 1 descriptor" - {
+                "1" - {
                     val inputDescriptorId = "0"
 
-                    "when descriptor is in group" - {
+                    "inGroup" - {
                         val inputDescriptorGroups = mapOf(inputDescriptorId to group)
 
-                        "when descriptor is selected" - {
+                        "selected" - {
                             val selectedInputDescriptorIds = listOf(inputDescriptorId)
 
-                            "then requirement should be satisfied" {
+                            "shouldBeTrue" {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
                                     selectedInputDescriptorIds = selectedInputDescriptorIds
                                 ) shouldBe true
                             }
                         }
-                        "when descriptor is not selected" - {
+                        "notSelected" - {
                             val selectedInputDescriptorIds = listOf<String>()
 
-                            "then requirement should not be satisfied" {
+                            "shouldBeFalse" {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
                                     selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -468,23 +468,23 @@ class SubmissionRequirementsTest : FreeSpec({
                         }
                     }
 
-                    "when descriptor is not in group" - {
+                    "notInGroup" - {
                         val inputDescriptorGroups = mapOf(inputDescriptorId to group + "2")
 
-                        "when descriptor is selected" - {
+                        "selected" - {
                             val selectedInputDescriptorIds = listOf(inputDescriptorId)
 
-                            "then requirement should not be satisfied" {
+                            "shouldBeFalse" {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
                                     selectedInputDescriptorIds = selectedInputDescriptorIds
                                 ) shouldBe false
                             }
                         }
-                        "when descriptor is not selected" - {
+                        "selected" - {
                             val selectedInputDescriptorIds = listOf<String>()
 
-                            "then requirement should not be satisfied" {
+                            "shouldBeFalse" {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
                                     selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -494,23 +494,23 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "given 2 descriptors" - {
+                "2" - {
                     val inputDescriptor0Id = "0"
                     val inputDescriptor1Id = "1"
 
-                    "when both descriptors are in group" - {
+                    "bothInGroup" - {
                         val inputDescriptorGroups = mapOf(
                             inputDescriptor0Id to group,
                             inputDescriptor1Id to group,
                         )
 
-                        "when both descriptors are selected" - {
+                        "bothSelected" - {
                             val selectedInputDescriptorIds = listOf(
                                 inputDescriptor0Id,
                                 inputDescriptor1Id,
                             )
 
-                            "then requirement should not be satisfied" {
+                            "shouldBeFalse" {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
                                     selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -518,12 +518,12 @@ class SubmissionRequirementsTest : FreeSpec({
                             }
                         }
 
-                        "when descriptor 0 is not selected" - {
+                        "secondSelected" - {
                             val selectedInputDescriptorIds = listOf(
                                 inputDescriptor1Id,
                             )
 
-                            "then requirement should be satisfied" {
+                            "shouldBeTrue" {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
                                     selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -531,12 +531,12 @@ class SubmissionRequirementsTest : FreeSpec({
                             }
                         }
 
-                        "when descriptor 1 is not selected" - {
+                        "firstSelected" - {
                             val selectedInputDescriptorIds = listOf(
                                 inputDescriptor0Id,
                             )
 
-                            "then requirement should be satisfied" {
+                            "shouldBeTrue" {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
                                     selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -544,10 +544,10 @@ class SubmissionRequirementsTest : FreeSpec({
                             }
                         }
 
-                        "when neither descriptor is selected" - {
+                        "neitherSelected" - {
                             val selectedInputDescriptorIds = listOf<String>()
 
-                            "then requirement should not be satisfied" {
+                            "shouldBeFalse" {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
                                     selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -556,19 +556,19 @@ class SubmissionRequirementsTest : FreeSpec({
                         }
                     }
 
-                    "when descriptors are in different groups, but descriptor 0 is in the selected group" - {
+                    "groupsT0" - {
                         val inputDescriptorGroups = mapOf(
                             inputDescriptor0Id to group,
                             inputDescriptor1Id to (group + "2"),
                         )
 
-                        "when both descriptors are selected" - {
+                        "bothSelected" - {
                             val selectedInputDescriptorIds = listOf(
                                 inputDescriptor0Id,
                                 inputDescriptor1Id,
                             )
 
-                            "then requirement should be satisfied" {
+                            "shouldBeTrue" {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
                                     selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -576,12 +576,12 @@ class SubmissionRequirementsTest : FreeSpec({
                             }
                         }
 
-                        "when only the descriptor in the intended group is selected" - {
+                        "firstSelected" - {
                             val selectedInputDescriptorIds = listOf(
                                 inputDescriptor0Id,
                             )
 
-                            "then requirement should be satisfied" {
+                            "shouldBeTrue" {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
                                     selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -589,12 +589,12 @@ class SubmissionRequirementsTest : FreeSpec({
                             }
                         }
 
-                        "when only the descriptor not in the intended group is selected" - {
+                        "secondSelected" - {
                             val selectedInputDescriptorIds = listOf(
                                 inputDescriptor1Id,
                             )
 
-                            "then requirement should not be satisfied" {
+                            "shouldBeFalse" {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
                                     selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -602,12 +602,12 @@ class SubmissionRequirementsTest : FreeSpec({
                             }
                         }
 
-                        "when neither descriptor is selected" - {
+                        "neitherSelected" - {
                             val selectedInputDescriptorIds = listOf(
                                 inputDescriptor1Id,
                             )
 
-                            "then requirement should not be satisfied" {
+                            "shouldBeFalse" {
                                 submissionRequirement.evaluate(
                                     inputDescriptorGroups = inputDescriptorGroups,
                                     selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -714,12 +714,12 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
             }
-            "given pick min requirement" - {
+            "min" - {
                 val submissionRequirement = SubmissionRequirement(
                     rule = SubmissionRequirementRuleEnum.PICK, from = group, min = 1
                 )
 
-                "given 1 descriptor" - {
+                "1" - {
                     val inputDescriptorId = "0"
 
                     "when descriptor is in group" - {
@@ -773,7 +773,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "given 2 descriptors" - {
+                "2" - {
                     val inputDescriptor0Id = "0"
                     val inputDescriptor1Id = "1"
 
@@ -993,12 +993,12 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
             }
-            "given pick max requirement" - {
+            "max" - {
                 val submissionRequirement = SubmissionRequirement(
                     rule = SubmissionRequirementRuleEnum.PICK, from = group, max = 1
                 )
 
-                "given 1 descriptor" - {
+                "1" - {
                     val inputDescriptorId = "0"
 
                     "when descriptor is in group" - {
@@ -1052,7 +1052,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "given 2 descriptors" - {
+                "2" - {
                     val inputDescriptor0Id = "0"
                     val inputDescriptor1Id = "1"
 
@@ -1274,9 +1274,9 @@ class SubmissionRequirementsTest : FreeSpec({
             }
         }
 
-        "given select from nested" - {
-            "given pick count requirement" - {
-                "given 1 nested requirement" - {
+        "nested" - {
+            "count" - {
+                "1" - {
                     val nestedGroup = "A"
                     val inputDescriptorId = "0"
                     val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
@@ -1311,7 +1311,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "given 2 nested requirements" - {
+                "2" - {
                     val nestedGroup0 = "A"
                     val nestedGroup1 = "B"
                     val inputDescriptor0Id = "0"
@@ -1415,8 +1415,8 @@ class SubmissionRequirementsTest : FreeSpec({
                 }
             }
         }
-        "given pick min requirement" - {
-            "given 1 nested requirement" - {
+        "min" - {
+            "1" - {
                 val nestedGroup = "A"
                 val inputDescriptorId = "0"
                 val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
@@ -1428,10 +1428,10 @@ class SubmissionRequirementsTest : FreeSpec({
                     ), min = 1
                 )
 
-                "when nested requirement is satisfied" - {
+                "satisfied" - {
                     val selectedInputDescriptorIds = listOf(inputDescriptorId)
 
-                    "then requirement should be satisfied" {
+                    "shouldBeTrue" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -1451,7 +1451,7 @@ class SubmissionRequirementsTest : FreeSpec({
                 }
             }
 
-            "given 2 nested requirements" - {
+            "2" - {
                 val nestedGroup0 = "A"
                 val nestedGroup1 = "B"
                 val inputDescriptor0Id = "0"
@@ -1475,7 +1475,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     min = 1
                 )
 
-                "when both nested requirements are satisfied" - {
+                "both satisfied" - {
                     val selectedInputDescriptorIds = listOf(
                         inputDescriptor0Id,
                         inputDescriptor1Id,
@@ -1487,7 +1487,7 @@ class SubmissionRequirementsTest : FreeSpec({
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
                         ) shouldBe true
                     }
-                    "then requirement should be satisfied" {
+                    "shouldBeTrue" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -1495,7 +1495,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when only first nested requirements is satisfied" - {
+                "0 is satisfied" - {
                     val selectedInputDescriptorIds = listOf(
                         inputDescriptor0Id,
                     )
@@ -1507,7 +1507,7 @@ class SubmissionRequirementsTest : FreeSpec({
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
                     ) shouldBe false
-                    "then requirement should be satisfied" {
+                    "shouldBeTrue" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
@@ -1515,7 +1515,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when only second nested requirements is satisfied" - {
+                "1 is satisfied" - {
                     val selectedInputDescriptorIds = listOf(
                         inputDescriptor1Id,
                     )
@@ -1527,7 +1527,7 @@ class SubmissionRequirementsTest : FreeSpec({
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
                     ) shouldBe true
-                    "then requirement should be satisfied" {
+                    "shouldBeFalse" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
@@ -1554,8 +1554,8 @@ class SubmissionRequirementsTest : FreeSpec({
                 }
             }
         }
-        "given pick max requirement" - {
-            "given 1 nested requirement" - {
+        "max" - {
+            "1" - {
                 val nestedGroup = "A"
                 val inputDescriptorId = "0"
                 val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
@@ -1567,10 +1567,10 @@ class SubmissionRequirementsTest : FreeSpec({
                     ), max = 1
                 )
 
-                "when nested requirement is satisfied" - {
+                "satisfied" - {
                     val selectedInputDescriptorIds = listOf(inputDescriptorId)
 
-                    "then requirement should be satisfied" {
+                    "shouldBeTrue" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -1578,10 +1578,10 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when nested requirement is not satisfied" - {
+                "unsatisfied" - {
                     val selectedInputDescriptorIds = listOf<String>()
 
-                    "then requirement should be satisfied" {
+                    "shouldBeFalse" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -1590,7 +1590,7 @@ class SubmissionRequirementsTest : FreeSpec({
                 }
             }
 
-            "given 2 nested requirements" - {
+            "2" - {
                 val nestedGroup0 = "A"
                 val nestedGroup1 = "B"
                 val inputDescriptor0Id = "0"
@@ -1614,7 +1614,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     max = 1
                 )
 
-                "when both nested requirements are satisfied" - {
+                "both satisfied" - {
                     val selectedInputDescriptorIds = listOf(
                         inputDescriptor0Id,
                         inputDescriptor1Id,
@@ -1626,7 +1626,7 @@ class SubmissionRequirementsTest : FreeSpec({
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
                         ) shouldBe true
                     }
-                    "then requirement should not be satisfied" {
+                    "shouldBeFalse" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds
@@ -1634,7 +1634,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when only first nested requirements is satisfied" - {
+                "first satisfied" - {
                     val selectedInputDescriptorIds = listOf(
                         inputDescriptor0Id,
                     )
@@ -1646,7 +1646,7 @@ class SubmissionRequirementsTest : FreeSpec({
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
                     ) shouldBe false
-                    "then requirement should be satisfied" {
+                    "shouldBeTrue" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
@@ -1654,7 +1654,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when only second nested requirements is satisfied" - {
+                "second satisfied" - {
                     val selectedInputDescriptorIds = listOf(
                         inputDescriptor1Id,
                     )
@@ -1666,7 +1666,7 @@ class SubmissionRequirementsTest : FreeSpec({
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
                     ) shouldBe true
-                    "then requirement should be satisfied" {
+                    "shouldBeTrue" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds,
@@ -1674,7 +1674,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     }
                 }
 
-                "when neither nested requirements is satisfied" - {
+                "neither satisfied" - {
                     val selectedInputDescriptorIds = listOf<String>()
                     nestedRequirements[0].evaluate(
                         inputDescriptorGroups = inputDescriptorGroups,
@@ -1684,7 +1684,7 @@ class SubmissionRequirementsTest : FreeSpec({
                         inputDescriptorGroups = inputDescriptorGroups,
                         selectedInputDescriptorIds = selectedInputDescriptorIds,
                     ) shouldBe false
-                    "then requirement should be satisfied" {
+                    "shouldBeTrue" {
                         submissionRequirement.evaluate(
                             inputDescriptorGroups = inputDescriptorGroups,
                             selectedInputDescriptorIds = selectedInputDescriptorIds,

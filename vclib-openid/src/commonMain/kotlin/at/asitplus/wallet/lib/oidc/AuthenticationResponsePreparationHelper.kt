@@ -6,10 +6,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AuthenticationResponsePreparationHelper(
     val parameters: AuthenticationRequestParameters,
+    val nonce: String,
     val responseType: String,
-    val targetUrl: String,
     val clientMetadata: RelyingPartyMetadata,
     val audience: String,
-    val nonce: String,
+    val responseModeParameters: ResponseModeParameters,
+    val clientIdSchemeParameters: ClientIdSchemeParameters?,
     val presentationPreparationHelper: PresentationPreparationHelper?,
 )
