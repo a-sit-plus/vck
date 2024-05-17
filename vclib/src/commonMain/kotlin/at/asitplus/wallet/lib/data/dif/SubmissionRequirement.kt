@@ -30,7 +30,7 @@ data class SubmissionRequirement(
      * Evaluating submission requirements as per [Presentation Exchange 2.0.0 - Submission Requirement Rules](https://identity.foundation/presentation-exchange/spec/v2.0.0/#submission-requirement-rules).
      *
      * @param inputDescriptorGroups: a mapping from input descriptor id to the group of the input descriptor
-     * @param selectedInputDescriptorIds: a set of input descriptor ids for which a credential will be submitted
+     * @param selectedInputDescriptorIds: a set of input descriptor ids for which a credential is submitted
      */
     fun evaluate(
         inputDescriptorGroups: Map<String, String>,
@@ -59,7 +59,7 @@ data class SubmissionRequirement(
             from != null -> inputDescriptorGroups.filter {
                 it.value == from
             }.count {
-                selectedInputDescriptorIds.contains(it.value)
+                selectedInputDescriptorIds.contains(it.key)
             }
 
             fromNested != null -> fromNested.map {
@@ -75,10 +75,10 @@ data class SubmissionRequirement(
                 "neither `from` nor `fromNested` have been provided"
             )
         }.let { numSelected ->
-            listOf(
-                this.count?.let { numSelected == it } ?: true,
-                this.min?.let { numSelected >= it } ?: true,
-                this.max?.let { numSelected <= it } ?: true,
+            listOfNotNull(
+                this.count?.let { numSelected == it },
+                this.min?.let { numSelected >= it },
+                this.max?.let { numSelected <= it },
             ).all {
                 it
             }
