@@ -576,7 +576,7 @@ class OidcSiopWallet(
             }
 
             val leaf = request.source.header.certificateChain!!.leaf
-            if (leaf.tbsCertificate.extensions?.isEmpty() != false) {
+            if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions?.isEmpty() == true ) {
                 return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST).also {
                     Napier.w("client_id_scheme is ${request.parameters.clientIdScheme}, but no extensions were found in the leaf certificate")
                 })
