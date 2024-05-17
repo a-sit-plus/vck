@@ -1,5 +1,6 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.wallet.lib.oidc.helpers
 
+import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import kotlinx.serialization.Serializable
 
 @Serializable

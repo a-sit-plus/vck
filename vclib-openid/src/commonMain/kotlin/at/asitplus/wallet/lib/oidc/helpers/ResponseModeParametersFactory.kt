@@ -1,6 +1,8 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.wallet.lib.oidc.helpers
 
 import at.asitplus.KmmResult
+import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
+import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 
