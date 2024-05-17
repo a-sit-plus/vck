@@ -12,7 +12,6 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -33,11 +32,9 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
-import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
-import io.ktor.util.flattenEntries
+import io.ktor.http.*
+import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -244,13 +241,11 @@ class OidcSiopWallet(
     ): AuthenticationResponseResult.Redirect {
         if (request.parameters.redirectUrl == null)
             throw OAuth2Exception(Errors.INVALID_REQUEST)
-        val url = URLBuilder(request.parameters.redirectUrl)
-            .apply {
-                responseParams.encodeToParameters().forEach {
-                    this.parameters.append(it.key, it.value)
-                }
+        val url = URLBuilder(request.parameters.redirectUrl).apply {
+            responseParams.encodeToParameters().forEach {
+                this.parameters.append(it.key, it.value)
             }
-            .buildString()
+        }.buildString()
         return AuthenticationResponseResult.Redirect(url, responseParams)
     }
 
@@ -384,7 +379,7 @@ class OidcSiopWallet(
             params.parameters.presentationDefinition ?: params.parameters.presentationDefinitionUrl?.let {
                 remoteResourceRetriever.invoke(it)
             }?.let { PresentationDefinition.deserialize(it).getOrNull() }
-            ?: params.scope?.split(" ")?.firstNotNullOfOrNull {
+            ?: params.parameters.scope?.split(" ")?.firstNotNullOfOrNull {
                 scopePresentationDefinitionRetriever?.invoke(it)
             }
         if (!params.parameters.responseType.contains(VP_TOKEN) && presentationDefinition == null)
@@ -428,7 +423,7 @@ class OidcSiopWallet(
 
         val presentationResultContainer = presentationDefinition?.let {
             holder.createPresentation(
-                challenge = params.nonce,
+                challenge = params.parameters.nonce,
                 audienceId = audience,
                 presentationDefinition = presentationDefinition,
                 fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata.vpFormats,
@@ -441,9 +436,7 @@ class OidcSiopWallet(
             clientMetadata.vpFormats?.let { supportedFormats ->
                 presentationResultContainer.presentationSubmission.descriptorMap?.mapIndexed { index, descriptor ->
                     val isMissingFormatSupport = when (descriptor.format) {
-                        ClaimFormatEnum.JWT_VP -> supportedFormats.jwtVp?.algorithms?.contains(
-                            jwsService.algorithm.identifier
-                        ) != true
+                        ClaimFormatEnum.JWT_VP -> supportedFormats.jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true
 
                         ClaimFormatEnum.JWT_SD -> supportedFormats.jwtSd?.algorithms?.contains(
                             jwsService.algorithm.identifier
@@ -469,7 +462,7 @@ class OidcSiopWallet(
         return KmmResult.success(
             AuthenticationResponseParameters(
                 idToken = signedIdToken.serialize(),
-                state = params.state,
+                state = params.parameters.state,
                 vpToken = presentationResultContainer?.presentationResults?.map {
                     when (it) {
                         is Holder.CreatePresentationResult.Signed -> {
@@ -504,19 +497,6 @@ class OidcSiopWallet(
             )
         )
     }
-
-    private fun stripNamespaces(
-        requestedClaims: List<String>,
-        requestedSchemes: MutableList<ConstantIndex.CredentialScheme>
-    ) = requestedClaims.map { claim ->
-        // NOTE: To be replaced with JSONPath implementation
-        var cleaned = claim
-        requestedSchemes.forEach { scheme ->
-            cleaned = cleaned.removePrefix("\$['${scheme.isoNamespace}']['").removeSuffix("']")
-        }
-        cleaned
-    }
-
 }
 
 /**

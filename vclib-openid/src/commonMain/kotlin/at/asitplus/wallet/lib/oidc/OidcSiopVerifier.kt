@@ -6,6 +6,8 @@ import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import at.asitplus.crypto.datatypes.pki.CertificateChain
+import at.asitplus.crypto.datatypes.pki.leaf
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
@@ -27,16 +29,13 @@ import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.data.dif.SchemaReference
-import at.asitplus.crypto.datatypes.pki.CertificateChain
-import at.asitplus.crypto.datatypes.pki.leaf
-import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
-import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.*
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.REDIRECT_URI
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.VERIFIER_ATTESTATION
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.X509_SAN_DNS
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
@@ -48,9 +47,7 @@ import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
-import io.ktor.http.quote
+import io.ktor.http.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
@@ -322,26 +319,20 @@ class OidcSiopVerifier private constructor(
                 ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
             }
         }
-        val attributeConstraint =
-            requestOptions.requestedAttributes?.let {
-                createConstraints(
-                    requestOptions.representation,
-                    requestOptions.credentialScheme,
-                    it
-                )
-            } ?: listOf()
+        val attributeConstraint = requestOptions.requestedAttributes?.let {
+            createConstraints(requestOptions.representation, requestOptions.credentialScheme, it)
+        } ?: listOf()
         val constraintFields = attributeConstraint + typeConstraint
-        val schemaReference =
-            requestOptions.credentialScheme?.schemaUri?.let { SchemaReference(it) }
-        val scope =
-            listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, requestOptions.credentialScheme?.vcType)
-                .joinToString(" ")
+        val schemaReference = requestOptions.credentialScheme?.schemaUri?.let { SchemaReference(it) }
+        val scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, requestOptions.credentialScheme?.vcType)
+            .joinToString(" ")
         return AuthenticationRequestParameters(
             responseType = "$ID_TOKEN $VP_TOKEN",
             clientId = x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
                 ?: relyingPartyUrl,
-            redirectUrl = if((requestOptions.responseMode == OpenIdConstants.ResponseMode.DIRECT_POST)
-                ||(requestOptions.responseMode == OpenIdConstants.ResponseMode.DIRECT_POST_JWT) ) null else relyingPartyUrl,
+            redirectUrl = if ((requestOptions.responseMode == OpenIdConstants.ResponseMode.DIRECT_POST)
+                || (requestOptions.responseMode == OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
+            ) null else relyingPartyUrl,
             responseUrl = responseUrl,
             clientIdScheme = clientIdScheme,
             scope = scope,
@@ -508,7 +499,7 @@ class OidcSiopVerifier private constructor(
         if (idToken.issuer != idToken.subject)
             return AuthnResponseResult.ValidationError("iss", params.state)
                 .also { Napier.d("Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}") }
-        if (idToken.audience != relyingPartyUrl?:x5c?.leaf?.tbsCertificate?.subjectAlternativeNames?.dnsNames?.firstOrNull())
+        if (idToken.audience != relyingPartyUrl ?: x5c?.leaf?.tbsCertificate?.subjectAlternativeNames?.dnsNames?.firstOrNull())
             return AuthnResponseResult.ValidationError("aud", params.state)
                 .also { Napier.d("audience not valid: ${idToken.audience}") }
         if (idToken.expiration < (clock.now() - timeLeeway))
