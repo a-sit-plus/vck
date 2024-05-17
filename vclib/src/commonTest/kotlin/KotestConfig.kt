@@ -8,10 +8,6 @@ object KotestConfig : AbstractProjectConfig() {
         Napier.base(DebugAntilog())
     }
 
-    override var displayFullTestPath: Boolean?
-        get() = false
-        set(value) {}
-
     override val duplicateTestNameMode: DuplicateTestNameMode?
         get() = DuplicateTestNameMode.Error
 
