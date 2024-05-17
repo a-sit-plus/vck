@@ -569,7 +569,7 @@ class OidcSiopWallet(
         }
 
         private fun validateAndRetrieveX509ClientIdSchemeParameters(): KmmResult<X509Certificate> {
-            if (request.parameters.clientMetadata == null || request !is AuthenticationRequestParametersFrom.JwsSigned || request.source.header.certificateChain?.isEmpty() != false) {
+            if (request.parameters.clientMetadata == null || request !is AuthenticationRequestParametersFrom.JwsSigned || request.source.header.certificateChain == null || request.source.header.certificateChain?.isEmpty() == true) {
                 return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST).also {
                     Napier.w("client_id_scheme is ${request.parameters.clientIdScheme}, but metadata is not set and no x5c certificate chain is present in the original authn request")
                 })
