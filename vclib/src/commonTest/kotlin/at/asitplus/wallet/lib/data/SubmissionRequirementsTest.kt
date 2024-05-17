@@ -299,8 +299,7 @@ class SubmissionRequirementsTest : FreeSpec({
                     rule = SubmissionRequirementRuleEnum.ALL,
                     fromNested = listOf(
                         SubmissionRequirement(
-                            rule = SubmissionRequirementRuleEnum.ALL,
-                            from = nestedGroup
+                            rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup
                         )
                     ),
                 )
@@ -340,12 +339,10 @@ class SubmissionRequirementsTest : FreeSpec({
 
                 val nestedRequirements = listOf(
                     SubmissionRequirement(
-                        rule = SubmissionRequirementRuleEnum.ALL,
-                        from = nestedGroup0
+                        rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup0
                     ),
                     SubmissionRequirement(
-                        rule = SubmissionRequirementRuleEnum.ALL,
-                        from = nestedGroup1
+                        rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup1
                     ),
                 )
                 val submissionRequirement = SubmissionRequirement(
@@ -440,9 +437,7 @@ class SubmissionRequirementsTest : FreeSpec({
 
             "given pick count requirement" - {
                 val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.PICK,
-                    from = group,
-                    count = 1
+                    rule = SubmissionRequirementRuleEnum.PICK, from = group, count = 1
                 )
 
                 "given 1 descriptor" - {
@@ -721,9 +716,7 @@ class SubmissionRequirementsTest : FreeSpec({
             }
             "given pick min requirement" - {
                 val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.PICK,
-                    from = group,
-                    min = 1
+                    rule = SubmissionRequirementRuleEnum.PICK, from = group, min = 1
                 )
 
                 "given 1 descriptor" - {
@@ -1002,9 +995,7 @@ class SubmissionRequirementsTest : FreeSpec({
             }
             "given pick max requirement" - {
                 val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.PICK,
-                    from = group,
-                    max = 1
+                    rule = SubmissionRequirementRuleEnum.PICK, from = group, max = 1
                 )
 
                 "given 1 descriptor" - {
@@ -1048,7 +1039,7 @@ class SubmissionRequirementsTest : FreeSpec({
                                 ) shouldBe true
                             }
                         }
-                        "when descriptor is selected" - {
+                        "when descriptor is not selected" - {
                             val selectedInputDescriptorIds = listOf<String>()
 
                             "then requirement should be satisfied" {
@@ -1290,14 +1281,11 @@ class SubmissionRequirementsTest : FreeSpec({
                     val inputDescriptorId = "0"
                     val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
                     val submissionRequirement = SubmissionRequirement(
-                        rule = SubmissionRequirementRuleEnum.PICK,
-                        fromNested = listOf(
+                        rule = SubmissionRequirementRuleEnum.PICK, fromNested = listOf(
                             SubmissionRequirement(
-                                rule = SubmissionRequirementRuleEnum.ALL,
-                                from = nestedGroup
+                                rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup
                             )
-                        ),
-                        count = 1
+                        ), count = 1
                     )
 
                     "when nested requirement is satisfied" - {
@@ -1335,12 +1323,10 @@ class SubmissionRequirementsTest : FreeSpec({
 
                     val nestedRequirements = listOf(
                         SubmissionRequirement(
-                            rule = SubmissionRequirementRuleEnum.ALL,
-                            from = nestedGroup0
+                            rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup0
                         ),
                         SubmissionRequirement(
-                            rule = SubmissionRequirementRuleEnum.ALL,
-                            from = nestedGroup1
+                            rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup1
                         ),
                     )
                     val submissionRequirement = SubmissionRequirement(
@@ -1435,14 +1421,11 @@ class SubmissionRequirementsTest : FreeSpec({
                 val inputDescriptorId = "0"
                 val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
                 val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.PICK,
-                    fromNested = listOf(
+                    rule = SubmissionRequirementRuleEnum.PICK, fromNested = listOf(
                         SubmissionRequirement(
-                            rule = SubmissionRequirementRuleEnum.ALL,
-                            from = nestedGroup
+                            rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup
                         )
-                    ),
-                    min = 1
+                    ), min = 1
                 )
 
                 "when nested requirement is satisfied" - {
@@ -1480,12 +1463,10 @@ class SubmissionRequirementsTest : FreeSpec({
 
                 val nestedRequirements = listOf(
                     SubmissionRequirement(
-                        rule = SubmissionRequirementRuleEnum.ALL,
-                        from = nestedGroup0
+                        rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup0
                     ),
                     SubmissionRequirement(
-                        rule = SubmissionRequirementRuleEnum.ALL,
-                        from = nestedGroup1
+                        rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup1
                     ),
                 )
                 val submissionRequirement = SubmissionRequirement(
@@ -1579,14 +1560,11 @@ class SubmissionRequirementsTest : FreeSpec({
                 val inputDescriptorId = "0"
                 val inputDescriptorGroups = mapOf(inputDescriptorId to nestedGroup)
                 val submissionRequirement = SubmissionRequirement(
-                    rule = SubmissionRequirementRuleEnum.PICK,
-                    fromNested = listOf(
+                    rule = SubmissionRequirementRuleEnum.PICK, fromNested = listOf(
                         SubmissionRequirement(
-                            rule = SubmissionRequirementRuleEnum.ALL,
-                            from = nestedGroup
+                            rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup
                         )
-                    ),
-                    max = 1
+                    ), max = 1
                 )
 
                 "when nested requirement is satisfied" - {
@@ -1624,12 +1602,10 @@ class SubmissionRequirementsTest : FreeSpec({
 
                 val nestedRequirements = listOf(
                     SubmissionRequirement(
-                        rule = SubmissionRequirementRuleEnum.ALL,
-                        from = nestedGroup0
+                        rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup0
                     ),
                     SubmissionRequirement(
-                        rule = SubmissionRequirementRuleEnum.ALL,
-                        from = nestedGroup1
+                        rule = SubmissionRequirementRuleEnum.ALL, from = nestedGroup1
                     ),
                 )
                 val submissionRequirement = SubmissionRequirement(
