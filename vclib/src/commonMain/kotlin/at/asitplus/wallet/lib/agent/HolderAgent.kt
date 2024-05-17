@@ -97,19 +97,19 @@ class HolderAgent(
             when (val vc = validator.verifyVcJws(cred.vcJws, identifier)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
-                is Verifier.VerifyCredentialResult.SuccessJwt -> acceptedVcJwt += vc.jws
-                    .also { subjectCredentialStore.storeCredential(it, cred.vcJws, cred.scheme) }
-                    .also {
+                is Verifier.VerifyCredentialResult.SuccessJwt -> acceptedVcJwt += vc.jws.also {
+                        subjectCredentialStore.storeCredential(
+                            it,
+                            cred.vcJws,
+                            cred.scheme
+                        )
+                    }.also {
                         cred.attachments?.forEach { attachment ->
                             subjectCredentialStore.storeAttachment(
-                                attachment.name,
-                                attachment.data,
-                                it.vc.id
-                            )
-                                .also {
+                                attachment.name, attachment.data, it.vc.id
+                            ).also {
                                     attachments += Holder.StoredAttachmentResult(
-                                        attachment.name,
-                                        attachment.data
+                                        attachment.name, attachment.data
                                     )
                                 }
                         }
@@ -122,13 +122,9 @@ class HolderAgent(
             when (val vc = validator.verifySdJwt(cred.vcSdJwt, identifier)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
-                is Verifier.VerifyCredentialResult.SuccessSdJwt -> acceptedSdJwt += vc.sdJwt
-                    .also {
+                is Verifier.VerifyCredentialResult.SuccessSdJwt -> acceptedSdJwt += vc.sdJwt.also {
                         subjectCredentialStore.storeCredential(
-                            it,
-                            cred.vcSdJwt,
-                            vc.disclosures,
-                            cred.scheme
+                            it, cred.vcSdJwt, vc.disclosures, cred.scheme
                         )
                     }
 
@@ -137,23 +133,17 @@ class HolderAgent(
         }
         credentialList.filterIsInstance<Holder.StoreCredentialInput.Iso>().forEach { cred ->
             val issuerKey: CoseKey? =
-                cred.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain
-                    ?.let {
-                        runCatching { X509Certificate.decodeFromDer(it) }
-                            .getOrNull()
-                            ?.publicKey
-                            ?.toCoseKey()
+                cred.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.let {
+                        runCatching { X509Certificate.decodeFromDer(it) }.getOrNull()?.publicKey?.toCoseKey()
                             ?.getOrNull()
                     }
 
             when (val result = validator.verifyIsoCred(cred.issuerSigned, issuerKey)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += result.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += result.input
-                is Verifier.VerifyCredentialResult.SuccessIso -> acceptedIso += result.issuerSigned
-                    .also {
+                is Verifier.VerifyCredentialResult.SuccessIso -> acceptedIso += result.issuerSigned.also {
                         subjectCredentialStore.storeCredential(
-                            result.issuerSigned,
-                            cred.scheme
+                            result.issuerSigned, cred.scheme
                         )
                     }
 
@@ -178,23 +168,19 @@ class HolderAgent(
      */
     override suspend fun getCredentials(): Collection<Holder.StoredCredential>? {
         val credentials = subjectCredentialStore.getCredentials().getOrNull()
-            ?: return null
-                .also { Napier.w("Got no credentials from subjectCredentialStore") }
+            ?: return null.also { Napier.w("Got no credentials from subjectCredentialStore") }
         return credentials.map {
             when (it) {
                 is SubjectCredentialStore.StoreEntry.Iso -> Holder.StoredCredential.Iso(
-                    storeEntry = it,
-                    status = Validator.RevocationStatus.UNKNOWN
+                    storeEntry = it, status = Validator.RevocationStatus.UNKNOWN
                 )
 
                 is SubjectCredentialStore.StoreEntry.Vc -> Holder.StoredCredential.Vc(
-                    storeEntry = it,
-                    status = validator.checkRevocationStatus(it.vc)
+                    storeEntry = it, status = validator.checkRevocationStatus(it.vc)
                 )
 
                 is SubjectCredentialStore.StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
-                    storeEntry = it,
-                    status = validator.checkRevocationStatus(it.sdJwt)
+                    storeEntry = it, status = validator.checkRevocationStatus(it.sdJwt)
                 )
             }
         }
@@ -246,14 +232,12 @@ class HolderAgent(
             }
         }
 
-        return createPresentation(
-            challenge = challenge,
+        return createPresentation(challenge = challenge,
             audienceId = audienceId,
             presentationDefinitionId = presentationDefinition.id,
             presentationSubmissionSelection = matches.toMap().mapKeys {
                 it.key.id
-            }
-        )
+            })
     }
 
     override suspend fun createPresentation(
@@ -294,9 +278,7 @@ class HolderAgent(
     }
 
     suspend fun createVcPresentation(
-        validCredentials: List<String>,
-        challenge: String,
-        audienceId: String
+        validCredentials: List<String>, challenge: String, audienceId: String
     ): Holder.CreatePresentationResult? {
         return verifiablePresentationFactory.createVcPresentation(
             validCredentials = validCredentials,
@@ -310,8 +292,9 @@ class HolderAgent(
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
     ): KmmResult<Map<InputDescriptor, Collection<CandidateInputMatchContainer>>> {
-        val credentials = getValidCredentialsByPriority()
-            ?: return KmmResult.failure(CredentialRetrievalException())
+        val credentials = getValidCredentialsByPriority() ?: return KmmResult.failure(
+            CredentialRetrievalException()
+        )
 
         val allMatchingResults = findInputDescriptorMatches(
             inputDescriptors = inputDescriptors,
@@ -390,8 +373,7 @@ class HolderAgent(
         presentationId: String?,
         matches: List<Pair<String, CandidateInputMatchContainer>>,
     ): PresentationSubmission {
-        return PresentationSubmission(
-            id = uuid4().toString(),
+        return PresentationSubmission(id = uuid4().toString(),
             definitionId = presentationId,
             descriptorMap = matches.mapIndexed { index, match ->
                 PresentationSubmissionDescriptor.fromMatch(
@@ -399,29 +381,23 @@ class HolderAgent(
                     credential = match.second.credential,
                     index = if (matches.size == 1) null else index
                 )
-            }
-        )
+            })
     }
 
     private fun PresentationSubmissionDescriptor.Companion.fromMatch(
-        inputDescriptorId: String,
-        credential: SubjectCredentialStore.StoreEntry,
-        index: Int?
+        inputDescriptorId: String, credential: SubjectCredentialStore.StoreEntry, index: Int?
     ): PresentationSubmissionDescriptor {
-        return PresentationSubmissionDescriptor(
-            id = inputDescriptorId,
-            format = when (credential) {
-                is SubjectCredentialStore.StoreEntry.Vc -> ClaimFormatEnum.JWT_VP
-                is SubjectCredentialStore.StoreEntry.SdJwt -> ClaimFormatEnum.JWT_SD
-                is SubjectCredentialStore.StoreEntry.Iso -> ClaimFormatEnum.MSO_MDOC
-            },
+        return PresentationSubmissionDescriptor(id = inputDescriptorId, format = when (credential) {
+            is SubjectCredentialStore.StoreEntry.Vc -> ClaimFormatEnum.JWT_VP
+            is SubjectCredentialStore.StoreEntry.SdJwt -> ClaimFormatEnum.JWT_SD
+            is SubjectCredentialStore.StoreEntry.Iso -> ClaimFormatEnum.MSO_MDOC
+        },
             // from https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-6.1-2.4
             // These objects contain a field called path, which, for this specification,
             // MUST have the value $ (top level root path) when only one Verifiable Presentation is contained in the VP Token,
             // and MUST have the value $[n] (indexed path from root) when there are multiple Verifiable Presentations,
             // where n is the index to select.
-            path = index?.let { "\$[$it]" } ?: "\$"
-        )
+            path = index?.let { "\$[$it]" } ?: "\$")
     }
 }
 
@@ -446,8 +422,6 @@ class CredentialPresentationException(
     val disclosedAttributes: Collection<NormalizedJsonPath>,
 ) : PresentationException(
     "Presentation for input descriptor with id '$inputDescriptorId' failed with credential $credential and attributes: <${
-        disclosedAttributes.joinToString(
-            ", "
-        )
+        disclosedAttributes.joinToString(", ")
     }>"
 )
