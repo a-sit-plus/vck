@@ -106,7 +106,7 @@ class SubmissionRequirementsTest : FreeSpec({
                         }
                     }
 
-                    "secondSelected" - {
+                    "firstSelected" - {
                         val selectedInputDescriptorIds = listOf(
                             inputDescriptor0Id,
                         )
@@ -481,7 +481,7 @@ class SubmissionRequirementsTest : FreeSpec({
                                 ) shouldBe false
                             }
                         }
-                        "selected" - {
+                        "notSelected" - {
                             val selectedInputDescriptorIds = listOf<String>()
 
                             "shouldBeFalse" {
