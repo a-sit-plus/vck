@@ -1,6 +1,7 @@
 # Changelog
 
 Release NEXT:
+ - Add `OAuth2AuthorizationServerMetadata` data class which implements RFC8414
  - Change usage of `OidcUserInfo` in interfaces to `OidcUserInfoExtended`, to also deserialize unknown properties
  - OID4VCI: `WalletService`: Replace parameters containing whole authentication parameters with single parameters holding `code` and `state`
  - Change several integer properties to durations, e.g. expirations (in seconds) for OIDC data classes
@@ -29,7 +30,6 @@ Release NEXT:
 
     Release 3.6.1:
  * Update to KMP-Crypto 2.6.0
-
 
 Release 3.6.0:
  - Self-Issued OpenID Provider v2:

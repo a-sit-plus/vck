@@ -25,5 +25,10 @@ interface OAuth2AuthorizationServer {
 
     // TODO How is this supposed to happen when using an external Authorization Server?
     suspend fun verifyAndRemoveClientNonce(nonce: String): Boolean
+
+    /**
+     * Provide necessary [OAuth2AuthorizationServerMetadata] JSON for a client to be able to authenticate
+     */
+    suspend fun provideMetadata(): KmmResult<OAuth2AuthorizationServerMetadata>
 }
 
