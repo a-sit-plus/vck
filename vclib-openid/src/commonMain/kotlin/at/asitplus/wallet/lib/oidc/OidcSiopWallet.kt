@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
+import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -427,26 +428,10 @@ class OidcSiopWallet(
         }
         presentationResultContainer?.let {
             clientMetadata.vpFormats?.let { supportedFormats ->
-                presentationResultContainer.presentationSubmission.descriptorMap?.mapIndexed { index, descriptor ->
-                    val isMissingFormatSupport = when (descriptor.format) {
-                        ClaimFormatEnum.JWT_VP -> supportedFormats.jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true
-
-                        ClaimFormatEnum.JWT_SD -> supportedFormats.jwtSd?.algorithms?.contains(
-                            jwsService.algorithm.identifier
-                        ) != true
-
-                        ClaimFormatEnum.MSO_MDOC -> supportedFormats.msoMdoc?.algorithms?.contains(
-                            jwsService.algorithm.identifier
-                        ) != true
-
-                        else -> true
-                    }
-
-                    if (isMissingFormatSupport) {
-                        return KmmResult.failure(
-                            OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
-                                .also { Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats") }
-                        )
+                presentationResultContainer.presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
+                    if (supportedFormats.isMissingFormatSupport(descriptor.format)) {
+                        Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
+                        return KmmResult.failure(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                     }
                 }
             }
@@ -461,6 +446,13 @@ class OidcSiopWallet(
                 presentationSubmission = presentationResultContainer?.presentationSubmission,
             )
         )
+    }
+
+    private fun FormatHolder.isMissingFormatSupport(claimFormatEnum: ClaimFormatEnum) = when (claimFormatEnum) {
+        ClaimFormatEnum.JWT_VP -> jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true
+        ClaimFormatEnum.JWT_SD -> jwtSd?.algorithms?.contains(jwsService.algorithm.identifier) != true
+        ClaimFormatEnum.MSO_MDOC -> msoMdoc?.algorithms?.contains(jwsService.algorithm.identifier) != true
+        else -> true
     }
 
     private fun verifyResponseModeDirectPost(params: AuthenticationRequestParametersFrom<*>) {
