@@ -273,7 +273,7 @@ class OidcSiopWallet(
     ): KmmResult<AuthenticationResponseParameters> {
         val clientIdScheme = params.parameters.clientIdScheme
         if (clientIdScheme == OpenIdConstants.ClientIdScheme.REDIRECT_URI) {
-            runCatching { verifyClientIdSchemeRedirectUri(params) }
+            runCatching { verifyClientMetadata(params) }
                 .onFailure { return KmmResult.failure(it) }
         }
         if (params.parameters.responseMode.isAnyDirectPost()) {
@@ -296,12 +296,9 @@ class OidcSiopWallet(
 //            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
 //                .also { Napier.w("Incompatible subject syntax types algorithms") }
 
-        if (!clientIdScheme.isAnyX509())
-            if (params.parameters.redirectUrl != null) {
-                if (params.parameters.clientId != params.parameters.redirectUrl)
-                    return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                        .also { Napier.w("client_id does not match redirect_uri") }
-            }
+        if (!clientIdScheme.isAnyX509()) {
+            runCatching { params.parameters.verifyRedirectUrl() }.getOrElse { return KmmResult.failure(it) }
+        }
 
         if (params.parameters.responseType == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
@@ -378,6 +375,14 @@ class OidcSiopWallet(
         )
     }
 
+    private fun AuthenticationRequestParameters.verifyRedirectUrl() {
+        if (redirectUrl != null) {
+            if (clientId != redirectUrl)
+                throw OAuth2Exception(Errors.INVALID_REQUEST)
+                    .also { Napier.w("client_id does not match redirect_uri") }
+        }
+    }
+
     private suspend fun AuthenticationRequestParametersFrom<*>.extractAudience(
         clientMetadata: RelyingPartyMetadata
     ) = clientMetadata.jsonWebKeySet?.keys?.firstOrNull()?.identifier
@@ -398,7 +403,7 @@ class OidcSiopWallet(
     private fun OpenIdConstants.ClientIdScheme?.isAnyX509() =
         (this == OpenIdConstants.ClientIdScheme.X509_SAN_DNS) || (this == OpenIdConstants.ClientIdScheme.X509_SAN_URI)
 
-    private fun verifyClientIdSchemeRedirectUri(params: AuthenticationRequestParametersFrom<*>) {
+    private fun verifyClientMetadata(params: AuthenticationRequestParametersFrom<*>) {
         if (params.parameters.clientMetadata == null && params.parameters.clientMetadataUri == null)
             throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("client_id_scheme is redirect_uri, but metadata is not set") }
