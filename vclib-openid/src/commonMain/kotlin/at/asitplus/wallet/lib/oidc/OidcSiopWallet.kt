@@ -288,7 +288,6 @@ class OidcSiopWallet(
             runCatching { verifyResponseModeDirectPost(params) }.onFailure { return KmmResult.failure(it) }
         }
 
-        var leaf: X509Certificate? = null
         val clientIdSchemeIsX509 = (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS)
                 || (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_URI)
         if (clientIdSchemeIsX509) {
@@ -299,7 +298,7 @@ class OidcSiopWallet(
             ) return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("client_id_scheme is $clientIdScheme, but metadata is not set and no x5c certificate chain is present in the original authn request") }
             else { //basic checks done
-                leaf = params.source.header.certificateChain!!.leaf
+                val leaf = params.source.header.certificateChain!!.leaf
                 if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions!!.isEmpty()) {
                     return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                         .also { Napier.w("client_id_scheme is $clientIdScheme, but no extensions were found in the leaf certificate") }
@@ -344,6 +343,7 @@ class OidcSiopWallet(
                 remoteResourceRetriever.invoke(uri)?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
             } ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("client metadata is not specified") }
+        val leaf = (params.source as? AuthenticationRequestParametersFrom.JwsSigned)?.source?.header?.certificateChain?.leaf
         val audience = clientMetadata.jsonWebKeySet?.keys?.firstOrNull()?.identifier
             ?: clientMetadata.jsonWebKeySetUrl?.let {
                 remoteResourceRetriever.invoke(it)
