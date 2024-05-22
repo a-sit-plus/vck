@@ -301,22 +301,9 @@ class OidcSiopWallet(
                 .getOrElse { return KmmResult.failure(it) }
         }
 
-        if (params.parameters.responseType == null)
-            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("response_type is not specified") }
-        if (!params.parameters.responseType.contains(VP_TOKEN) && params.parameters.presentationDefinition == null)
-            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("vp_token not requested") }
-        val presentationDefinition = params.parameters.presentationDefinition
-            ?: params.parameters.presentationDefinitionUrl?.let {
-                remoteResourceRetriever.invoke(it)
-            }?.let { PresentationDefinition.deserialize(it).getOrNull() }
-            ?: params.parameters.scope?.split(" ")?.firstNotNullOfOrNull {
-                scopePresentationDefinitionRetriever?.invoke(it)
-            }
-        if (!params.parameters.responseType.contains(VP_TOKEN) && presentationDefinition == null)
-            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("vp_token not requested") }
+        val presentationDefinition = params.parameters.loadPresentationDefinition()
+        runCatching { params.parameters.verifyResponseType(presentationDefinition) }
+            .onFailure { return KmmResult.failure(it) }
         if (clientMetadata.vpFormats != null) {
             runCatching { clientMetadata.vpFormats.verifySupport(jwsService.algorithm) }
                 .onFailure { return KmmResult.failure(it) }
@@ -375,6 +362,23 @@ class OidcSiopWallet(
             )
         )
     }
+
+    private fun AuthenticationRequestParameters.verifyResponseType(presentationDefinition: PresentationDefinition?) {
+        if (responseType == null)
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+                .also { Napier.w("response_type is not specified") }
+        if (!responseType.contains(VP_TOKEN) && presentationDefinition == null)
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+                .also { Napier.w("vp_token not requested") }
+    }
+
+    private suspend fun AuthenticationRequestParameters.loadPresentationDefinition() = presentationDefinition
+        ?: presentationDefinitionUrl?.let {
+            remoteResourceRetriever.invoke(it)
+        }?.let { PresentationDefinition.deserialize(it).getOrNull() }
+        ?: scope?.split(" ")?.firstNotNullOfOrNull {
+            scopePresentationDefinitionRetriever?.invoke(it)
+        }
 
     private fun AuthenticationRequestParameters.verifyRedirectUrl() {
         if (redirectUrl != null) {
