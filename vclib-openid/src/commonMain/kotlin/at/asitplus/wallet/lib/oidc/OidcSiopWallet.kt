@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.failure
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
@@ -319,12 +318,8 @@ class OidcSiopWallet(
         }
         presentationResultContainer?.let {
             clientMetadata.vpFormats?.let { supportedFormats ->
-                presentationResultContainer.presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
-                    if (supportedFormats.isMissingFormatSupport(descriptor.format)) {
-                        Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
-                        return KmmResult.failure(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                    }
-                }
+                runCatching { presentationResultContainer.verifyFormatSupport(supportedFormats) }
+                    .getOrElse { return KmmResult.failure(it) }
             }
         }
 
@@ -338,6 +333,14 @@ class OidcSiopWallet(
             )
         )
     }
+
+    private fun Holder.PresentationResponseParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
+        presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
+            if (supportedFormats.isMissingFormatSupport(descriptor.format)) {
+                Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
+                throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
+            }
+        }
 
     private suspend fun buildPresentation(
         params: AuthenticationRequestParametersFrom<*>,
