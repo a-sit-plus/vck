@@ -308,28 +308,9 @@ class OidcSiopWallet(
             runCatching { clientMetadata.vpFormats.verifySupport(jwsService.algorithm) }
                 .onFailure { return KmmResult.failure(it) }
         }
-        if (params.parameters.nonce == null) {
-            Napier.w("nonce is null in ${params.parameters}")
-            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-        }
 
-        val now = clock.now()
-        // we'll assume jwk-thumbprint
-        val agentJsonWebKey = agentPublicKey.toJsonWebKey()
-        val idToken = IdToken(
-            issuer = agentJsonWebKey.jwkThumbprint,
-            subject = agentJsonWebKey.jwkThumbprint,
-            subjectJwk = agentJsonWebKey,
-            audience = params.parameters.redirectUrl ?: params.parameters.clientId ?: agentJsonWebKey.jwkThumbprint,
-            issuedAt = now,
-            expiration = now + 60.seconds,
-            nonce = params.parameters.nonce,
-        )
-        val jwsPayload = idToken.serialize().encodeToByteArray()
-        val signedIdToken = jwsService.createSignedJwsAddingParams(payload = jwsPayload, addX5c = false).getOrElse {
-            Napier.w("Could not sign id_token", it)
-            return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
-        }
+        val signedIdToken = runCatching { buildSignedIdToken(params) }
+            .getOrElse { return KmmResult.failure(it) }
 
         val presentationResultContainer = presentationDefinition?.let {
             holder.createPresentation(
@@ -362,6 +343,31 @@ class OidcSiopWallet(
                 presentationSubmission = presentationResultContainer?.presentationSubmission,
             )
         )
+    }
+
+    private suspend fun buildSignedIdToken(params: AuthenticationRequestParametersFrom<*>): JwsSigned {
+        if (params.parameters.nonce == null) {
+            Napier.w("nonce is null in ${params.parameters}")
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+        }
+        val now = clock.now()
+        // we'll assume jwk-thumbprint
+        val agentJsonWebKey = agentPublicKey.toJsonWebKey()
+        val idToken = IdToken(
+            issuer = agentJsonWebKey.jwkThumbprint,
+            subject = agentJsonWebKey.jwkThumbprint,
+            subjectJwk = agentJsonWebKey,
+            audience = params.parameters.redirectUrl ?: params.parameters.clientId ?: agentJsonWebKey.jwkThumbprint,
+            issuedAt = now,
+            expiration = now + 60.seconds,
+            nonce = params.parameters.nonce,
+        )
+        val jwsPayload = idToken.serialize().encodeToByteArray()
+        val signedIdToken = jwsService.createSignedJwsAddingParams(payload = jwsPayload, addX5c = false).getOrElse {
+            Napier.w("Could not sign id_token", it)
+            throw OAuth2Exception(Errors.USER_CANCELLED)
+        }
+        return signedIdToken
     }
 
     private fun AuthenticationRequestParameters.verifyResponseType(presentationDefinition: PresentationDefinition?) {
