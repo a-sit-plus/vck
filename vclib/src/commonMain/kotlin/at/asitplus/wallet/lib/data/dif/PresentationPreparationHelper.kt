@@ -35,11 +35,13 @@ class PresentationPreparationHelper(
         }
 
     init {
-        if(submissionRequirements != null) {
-            inputDescriptorMatches.entries.forEach {
-                if (it.key.group == null) {
-                    // code point:7fe1e939-913c-47c9-9309-1e0d3ea39a9c
-                    throw MissingInputDescriptorGroupException(it.key)
+        "assertion:givenSubmissionRequirements_thenInputDescriptorsHaveGroup".run {
+            if(submissionRequirements != null) {
+                inputDescriptorMatches.entries.forEach {
+                    if (it.key.group == null) {
+                        // code point:7fe1e939-913c-47c9-9309-1e0d3ea39a9c
+                        throw MissingInputDescriptorGroupException(it.key)
+                    }
                 }
             }
         }
@@ -80,7 +82,7 @@ class PresentationPreparationHelper(
     ): Boolean = submissionRequirements?.all {
         it.evaluate(
             inputDescriptorGroups = inputDescriptorMatches.keys.associate {
-                it.id to it.group!! // group is checked at code point:7fe1e939-913c-47c9-9309-1e0d3ea39a9c
+                it.id to it.group!! // group is checked at assertion:givenSubmissionRequirements_thenInputDescriptorsHaveGroup
             },
             selectedInputDescriptorIds = submittedInputDescriptorIds,
         )
