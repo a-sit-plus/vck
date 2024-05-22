@@ -181,8 +181,8 @@ class OidcSiopWallet(
         input: String,
     ): KmmResult<AuthenticationResponsePreparationState> = startAuthenticationResponsePreparation(
         request = parseAuthenticationRequestParameters(input).getOrElse {
-            return KmmResult.failure<AuthenticationResponsePreparationState>(it)
-                .also { Napier.w("Could not parse authentication request: $input") }
+            Napier.w("Could not parse authentication request: $input")
+            return KmmResult.failure(it)
         },
     )
 
@@ -190,19 +190,18 @@ class OidcSiopWallet(
         request: AuthenticationRequestParametersFrom<*>,
     ): KmmResult<AuthenticationResponsePreparationState> {
         val nonce = request.parameters.nonce ?: run {
-            return KmmResult.failure<AuthenticationResponsePreparationState>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("nonce is null") }
+            Napier.w("nonce is null")
+            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
         }
 
         val responseType = request.parameters.responseType ?: run {
-            return KmmResult.failure<AuthenticationResponsePreparationState>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("response_type is not specified") }
+            Napier.w("response_type is not specified")
+            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
         }
 
         if (!responseType.contains(ID_TOKEN) && !responseType.contains(VP_TOKEN)) {
-            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST).also {
-                Napier.w("response_type is not supported")
-            })
+            Napier.w("response_type is not supported")
+            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
         }
 
         val responseModeParameters: ResponseModeParameters =
@@ -214,9 +213,8 @@ class OidcSiopWallet(
         val clientIdScheme = request.parameters.clientIdScheme
         if (clientIdScheme == OpenIdConstants.ClientIdScheme.REDIRECT_URI) {
             if (request.parameters.clientMetadata == null && request.parameters.clientMetadataUri == null) {
-                return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST).also {
-                    Napier.w("client_id_scheme is redirect_uri, but metadata is not set")
-                })
+                Napier.w("client_id_scheme is redirect_uri, but metadata is not set")
+                return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
             }
         }
 
@@ -256,8 +254,7 @@ class OidcSiopWallet(
         }
 
         return KmmResult.success(
-            AuthenticationResponsePreparationState(
-                parameters = request.parameters,
+            AuthenticationResponsePreparationState(parameters = request.parameters,
                 responseType = responseType,
                 responseModeParameters = responseModeParameters,
                 clientIdSchemeParameters = clientIdSchemeParameters,
@@ -265,20 +262,19 @@ class OidcSiopWallet(
                 audience = audience,
                 nonce = nonce,
                 presentationPreparationHelper = presentationDefinition?.let {
-                    PresentationPreparationHelper(
-                        presentationDefinition = presentationDefinition,
-                        fallbackFormatHolder = clientMetadata.vpFormats
-                    ).also {
-                        try {
+                    try {
+                        PresentationPreparationHelper(
+                            presentationDefinition = presentationDefinition,
+                            fallbackFormatHolder = clientMetadata.vpFormats
+                        ).also {
                             refreshPresentationPreparationHelper(it)
-                        } catch (e: Throwable) {
-                            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST).also {
-                                e.message?.let { Napier.w(it) }
-                            })
                         }
+                    } catch (e: Throwable) {
+                        return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST).also {
+                            e.message?.let { Napier.w(it) }
+                        })
                     }
-                },
-            )
+                })
         )
     }
 
@@ -286,7 +282,7 @@ class OidcSiopWallet(
      * Users of the library need to call this method in case the stored credentials change.
      */
     suspend fun refreshPresentationPreparationHelper(presentationPreparationHelper: PresentationPreparationHelper) {
-        presentationPreparationHelper.refreshInputDescriptorMatches(
+        presentationPreparationHelper.refreshPresentationPreparationState(
             holder = holder,
             pathAuthorizationValidator = pathAuthorizationValidator,
         )
@@ -409,25 +405,26 @@ class OidcSiopWallet(
             }
 
         val presentationResultContainer: Holder.PresentationResponseParameters? =
-            authenticationResponsePreparationState.presentationPreparationHelper?.let { it ->
-                val credentialSubmissions = it.inputDescriptorMatches.mapValues {
-                    // TODO: allow for manual credential selection by the user
-                    it.value.firstOrNull()
-                        ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED).also {
-                            Napier.w("submission requirements are not satisfied")
-                        })
-                }.mapKeys {
-                    it.key.id
-                }
+            authenticationResponsePreparationState.presentationPreparationHelper?.let { helper ->
+                val credentialSubmissions =
+                    helper.presentationPreparationState.inputDescriptorMatches.mapValues {
+                        // TODO: allow for manual credential selection by the user
+                        it.value.firstOrNull()
+                            ?: return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED).also {
+                                Napier.w("submission requirements are not satisfied")
+                            })
+                    }.mapKeys {
+                        it.key.id
+                    }
 
-                if (!it.isSubmissionRequirementsSatisfied(credentialSubmissions.keys)) {
+                if (!helper.isValidSubmission(credentialSubmissions.keys)) {
                     Napier.w("submission requirements are not satisfied")
                     return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
                 }
                 holder.createPresentation(
                     challenge = authenticationResponsePreparationState.nonce,
                     audienceId = authenticationResponsePreparationState.audience,
-                    presentationDefinitionId = it.presentationDefinitionId,
+                    presentationDefinitionId = helper.presentationDefinitionId,
                     presentationSubmissionSelection = credentialSubmissions,
                 ).getOrElse { exception ->
                     Napier.w("Could not create presentation: ${exception.message}")
@@ -454,11 +451,8 @@ class OidcSiopWallet(
                     }
 
                     if (isMissingFormatSupport) {
-                        return KmmResult.failure(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED).also {
-                            Napier.w(
-                                "Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats"
-                            )
-                        })
+                        Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
+                        return KmmResult.failure(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
                     }
                 }
             }

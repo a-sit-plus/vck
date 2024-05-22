@@ -28,7 +28,9 @@ class InputEvaluator {
     ): KmmResult<FieldQueryResults> {
         // filter by constraints
         val fieldQueryResults = inputDescriptor.constraints?.fields?.associateWith { field ->
-            val fieldQueryResult = field.path.firstNotNullOfOrNull { jsonPath ->
+            val fieldQueryResult = if (field.optional == true) {
+                null // TODO: check whether there is a use-case to allow optional fields
+            } else field.path.firstNotNullOfOrNull { jsonPath ->
                 val candidates = JsonPath(jsonPath).query(credential)
                 candidates.firstOrNull { candidate ->
                     if (pathAuthorizationValidator(candidate.normalizedJsonPath)) {
@@ -37,22 +39,17 @@ class InputEvaluator {
                         } ?: true
                     } else false
                 }
-            }
-            if ((field.optional != true) and (fieldQueryResult == null)) {
-                return KmmResult.failure(
-                    FailedFieldQueryException(field)
-                        .also { it.message?.let { Napier.d(it) } }
-                )
-            }
+            } ?: return KmmResult.failure(FailedFieldQueryException(field).also {
+                it.message?.let { Napier.d(it) }
+            })
             field.predicate?.let {
                 when (it) {
                     // TODO: RequirementEnum.NONE is not a valid field value, maybe change member type to new Enum?
                     RequirementEnum.NONE -> fieldQueryResult
                     RequirementEnum.PREFERRED -> fieldQueryResult
-                    RequirementEnum.REQUIRED -> return KmmResult.failure(
-                        MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature")
-                            .also { it.message?.let { Napier.d(it) } }
-                    )
+                    RequirementEnum.REQUIRED -> return MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature").also {
+                        it.message?.let { Napier.d(it) }
+                    }.let { KmmResult.failure(it) }
                 }
             } ?: fieldQueryResult
         } ?: mapOf()
