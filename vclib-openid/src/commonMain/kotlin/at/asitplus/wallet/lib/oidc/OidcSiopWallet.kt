@@ -289,16 +289,8 @@ class OidcSiopWallet(
         // because we'll require clientMetadata to be present, below
         val clientMetadata = runCatching { params.parameters.loadClientMetadata() }
             .getOrElse { return KmmResult.failure(it) }
-        val leaf =
-            (params.source as? AuthenticationRequestParametersFrom.JwsSigned)?.source?.header?.certificateChain?.leaf
-        val audience = clientMetadata.jsonWebKeySet?.keys?.firstOrNull()?.identifier
-            ?: clientMetadata.jsonWebKeySetUrl?.let {
-                remoteResourceRetriever.invoke(it)
-                    ?.let { JsonWebKeySet.deserialize(it).getOrNull() }?.keys?.firstOrNull()?.identifier
-                    ?: leaf?.let { params.parameters.clientId } //TODO is this even correct ????
-            }
-            ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("Could not parse audience") }
+        val audience = runCatching { params.extractAudience(clientMetadata) }
+            .getOrElse { return KmmResult.failure(it) }
         // TODO Check removed for EUDI interop
 //        if (clientMetadata.subjectSyntaxTypesSupported == null || URN_TYPE_JWK_THUMBPRINT !in clientMetadata.subjectSyntaxTypesSupported)
 //            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
@@ -385,6 +377,17 @@ class OidcSiopWallet(
             )
         )
     }
+
+    private suspend fun AuthenticationRequestParametersFrom<*>.extractAudience(
+        clientMetadata: RelyingPartyMetadata
+    ) = clientMetadata.jsonWebKeySet?.keys?.firstOrNull()?.identifier
+        ?: clientMetadata.jsonWebKeySetUrl?.let {
+            remoteResourceRetriever.invoke(it)
+                ?.let { JsonWebKeySet.deserialize(it).getOrNull() }?.keys?.firstOrNull()?.identifier
+        } ?: (source as? AuthenticationRequestParametersFrom.JwsSigned)
+            ?.source?.header?.certificateChain?.leaf?.let { parameters.clientId } //TODO is this even correct ????
+        ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            .also { Napier.w("Could not parse audience") }
 
     private suspend fun AuthenticationRequestParameters.loadClientMetadata() = clientMetadata
         ?: clientMetadataUri?.let { uri ->
