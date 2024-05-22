@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
+import at.asitplus.KmmResult.Companion.failure
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
@@ -313,15 +314,8 @@ class OidcSiopWallet(
             .getOrElse { return KmmResult.failure(it) }
 
         val presentationResultContainer = presentationDefinition?.let {
-            holder.createPresentation(
-                challenge = params.parameters.nonce,
-                audienceId = audience,
-                presentationDefinition = presentationDefinition,
-                fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata.vpFormats,
-            ).getOrElse { exception ->
-                Napier.w("Could not create presentation: ${exception.message}")
-                return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
-            }
+            runCatching { buildPresentation(params, audience, presentationDefinition, clientMetadata) }
+                .getOrElse { return KmmResult.failure(it) }
         }
         presentationResultContainer?.let {
             clientMetadata.vpFormats?.let { supportedFormats ->
@@ -343,6 +337,27 @@ class OidcSiopWallet(
                 presentationSubmission = presentationResultContainer?.presentationSubmission,
             )
         )
+    }
+
+    private suspend fun buildPresentation(
+        params: AuthenticationRequestParametersFrom<*>,
+        audience: String,
+        presentationDefinition: PresentationDefinition,
+        clientMetadata: RelyingPartyMetadata
+    ): Holder.PresentationResponseParameters {
+        if (params.parameters.nonce == null) {
+            Napier.w("nonce is null in ${params.parameters}")
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+        }
+        return holder.createPresentation(
+            challenge = params.parameters.nonce,
+            audienceId = audience,
+            presentationDefinition = presentationDefinition,
+            fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata.vpFormats,
+        ).getOrElse {
+            Napier.w("Could not create presentation", it)
+            throw OAuth2Exception(Errors.USER_CANCELLED)
+        }
     }
 
     private suspend fun buildSignedIdToken(params: AuthenticationRequestParametersFrom<*>): JwsSigned {
