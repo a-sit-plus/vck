@@ -273,12 +273,11 @@ class OidcSiopWallet(
     ): KmmResult<AuthenticationResponseParameters> {
         val clientIdScheme = params.parameters.clientIdScheme
         if (clientIdScheme == OpenIdConstants.ClientIdScheme.REDIRECT_URI) {
-            runCatching { verifyClientIdSchemeRedirectUri(params) }
-                .onFailure { return KmmResult.failure(it) }
+            runCatching { verifyClientIdSchemeRedirectUri(params) }.onFailure { return KmmResult.failure(it) }
         }
 
         val responseModeIsDirectPost =
-            (params.parameters.responseMode == DIRECT_POST) || (params.parameters.responseMode == DIRECT_POST_JWT)
+            getResponseModeIsDirectPost(params)
         if (responseModeIsDirectPost) {
             runCatching { verifyResponseModeDirectPost(params) }.onFailure { return KmmResult.failure(it) }
         }
@@ -286,8 +285,7 @@ class OidcSiopWallet(
         val clientIdSchemeIsX509 = (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS)
                 || (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_URI)
         if (clientIdSchemeIsX509) {
-            runCatching { verifyClientIdSchemeX509(params) }
-                .onFailure { return KmmResult.failure(it) }
+            runCatching { verifyClientIdSchemeX509(params) }.onFailure { return KmmResult.failure(it) }
         }
 
         // params.clientIdScheme is assumed to be OpenIdConstants.ClientIdSchemes.REDIRECT_URI,
@@ -403,7 +401,7 @@ class OidcSiopWallet(
     private fun verifyClientIdSchemeX509(params: AuthenticationRequestParametersFrom<*>) {
         val clientIdScheme = params.parameters.clientIdScheme
         val responseModeIsDirectPost =
-            (params.parameters.responseMode == DIRECT_POST) || (params.parameters.responseMode == DIRECT_POST_JWT)
+            getResponseModeIsDirectPost(params)
         if (params.parameters.clientMetadata == null
             || params !is AuthenticationRequestParametersFrom.JwsSigned
             || params.source.header.certificateChain == null
@@ -447,6 +445,9 @@ class OidcSiopWallet(
                     .also { Napier.w("client_id_scheme is $clientIdScheme, but client_id does not match redirect_uri") }
         }
     }
+
+    private fun getResponseModeIsDirectPost(params: AuthenticationRequestParametersFrom<*>) =
+        (params.parameters.responseMode == DIRECT_POST) || (params.parameters.responseMode == DIRECT_POST_JWT)
 
     private fun FormatHolder.verifySupport(jwsAlgorithm: JwsAlgorithm) {
         if (jwtVp?.algorithms != null && jwtVp?.algorithms?.contains(jwsAlgorithm.identifier) != true)
