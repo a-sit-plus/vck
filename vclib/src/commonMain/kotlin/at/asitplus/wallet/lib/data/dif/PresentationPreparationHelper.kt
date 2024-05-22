@@ -11,9 +11,9 @@ import kotlinx.serialization.Serializable
 data class PresentationPreparationHelper(
     val presentationDefinitionId: String?,
     val presentationPreparationState: PresentationPreparationState,
-    val presentationRequirementsVerifier: PresentationRequirementsVerifier,
+    val presentationSubmissionValidator: PresentationSubmissionValidator,
 ) {
-    @Throws(MissingInputDescriptorGroupException::class) constructor (
+    @Throws(PresentationSubmissionValidator.MissingInputDescriptorGroupException::class) constructor (
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder? = null,
     ) : this(
@@ -24,7 +24,7 @@ data class PresentationPreparationHelper(
             },
             fallbackFormatHolder = presentationDefinition.formats ?: fallbackFormatHolder,
         ),
-        presentationRequirementsVerifier = PresentationRequirementsVerifier.createInstance(
+        presentationSubmissionValidator = PresentationSubmissionValidator.createInstance(
             submissionRequirements = presentationDefinition.submissionRequirements,
             inputDescriptors = presentationDefinition.inputDescriptors,
         ).getOrThrow(),
@@ -43,7 +43,10 @@ data class PresentationPreparationHelper(
     fun isValidSubmission(
         submittedInputDescriptorIds: Set<String>,
     ): Boolean {
-        return if (!presentationRequirementsVerifier.isSubmissionRequirementsSatisfied(submittedInputDescriptorIds)) {
+        return if (!presentationSubmissionValidator.isSubmissionRequirementsSatisfied(
+                submittedInputDescriptorIds
+            )
+        ) {
             false
         } else {
             // do not allow submissions for unnecessary input descriptors
@@ -53,7 +56,9 @@ data class PresentationPreparationHelper(
 
     fun findUnnecessaryInputDescriptorSubmissions(submittedInputDescriptorIds: Set<String>): Set<String> {
         return submittedInputDescriptorIds.filter {
-            presentationRequirementsVerifier.isSubmissionRequirementsSatisfied(submittedInputDescriptorIds - it)
+            presentationSubmissionValidator.isSubmissionRequirementsSatisfied(
+                submittedInputDescriptorIds - it
+            )
         }.toSet()
     }
 }
