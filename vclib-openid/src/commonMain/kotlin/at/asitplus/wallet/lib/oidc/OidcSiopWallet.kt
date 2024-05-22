@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
+import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.crypto.datatypes.pki.X509Certificate
@@ -380,18 +381,8 @@ class OidcSiopWallet(
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("vp_token not requested") }
         if (clientMetadata.vpFormats != null) {
-            if (clientMetadata.vpFormats.jwtVp?.algorithms != null
-                && clientMetadata.vpFormats.jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true
-            ) return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                .also { Napier.w("Incompatible JWT algorithms") }
-            if (clientMetadata.vpFormats.jwtSd?.algorithms != null
-                && clientMetadata.vpFormats.jwtSd?.algorithms?.contains(jwsService.algorithm.identifier) != true
-            ) return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                .also { Napier.w("Incompatible JWT algorithms") }
-            if (clientMetadata.vpFormats.msoMdoc?.algorithms != null
-                && clientMetadata.vpFormats.msoMdoc?.algorithms?.contains(jwsService.algorithm.identifier) != true
-            ) return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED))
-                .also { Napier.w("Incompatible JWT algorithms") }
+            runCatching { clientMetadata.vpFormats.verifySupport(jwsService.algorithm) }
+                .onFailure { return KmmResult.failure(it) }
         }
         if (params.parameters.nonce == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
@@ -446,6 +437,18 @@ class OidcSiopWallet(
                 presentationSubmission = presentationResultContainer?.presentationSubmission,
             )
         )
+    }
+
+    private fun FormatHolder.verifySupport(jwsAlgorithm: JwsAlgorithm) {
+        if (jwtVp?.algorithms != null && jwtVp?.algorithms?.contains(jwsAlgorithm.identifier) != true)
+            throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
+                .also { Napier.w("Incompatible JWT algorithms: $jwtVp") }
+        if (jwtSd?.algorithms != null && jwtSd?.algorithms?.contains(jwsAlgorithm.identifier) != true)
+            throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
+                .also { Napier.w("Incompatible SD-JWT algorithms: $jwtSd") }
+        if (msoMdoc?.algorithms != null && msoMdoc?.algorithms?.contains(jwsAlgorithm.identifier) != true)
+            throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
+                .also { Napier.w("Incompatible MSO algorithms: $msoMdoc") }
     }
 
     private fun FormatHolder.isMissingFormatSupport(claimFormatEnum: ClaimFormatEnum) = when (claimFormatEnum) {
