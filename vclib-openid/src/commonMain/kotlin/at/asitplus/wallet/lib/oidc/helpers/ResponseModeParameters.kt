@@ -8,26 +8,26 @@ sealed interface ResponseModeParameters {
     val responseMode: OpenIdConstants.ResponseMode
 
     @Serializable
-    class DirectPost(val responseUrl: String) : ResponseModeParameters {
-        override val responseMode: OpenIdConstants.ResponseMode
+    data class DirectPost(val responseUrl: String) : ResponseModeParameters {
+        override val responseMode: OpenIdConstants.ResponseMode.DIRECT_POST
             get() = OpenIdConstants.ResponseMode.DIRECT_POST
     }
 
     @Serializable
-    class DirectPostJwt(val responseUrl: String) : ResponseModeParameters {
-        override val responseMode: OpenIdConstants.ResponseMode
+    data class DirectPostJwt(val responseUrl: String) : ResponseModeParameters {
+        override val responseMode: OpenIdConstants.ResponseMode.DIRECT_POST_JWT
             get() = OpenIdConstants.ResponseMode.DIRECT_POST_JWT
     }
 
     @Serializable
-    class Query(val redirectUrl: String) : ResponseModeParameters {
-        override val responseMode: OpenIdConstants.ResponseMode
+    data class Query(val redirectUrl: String) : ResponseModeParameters {
+        override val responseMode: OpenIdConstants.ResponseMode.QUERY
             get() = OpenIdConstants.ResponseMode.QUERY
     }
 
     @Serializable
-    class Fragment(val redirectUrl: String) : ResponseModeParameters {
-        override val responseMode: OpenIdConstants.ResponseMode
+    data class Fragment(val redirectUrl: String) : ResponseModeParameters {
+        override val responseMode: OpenIdConstants.ResponseMode.FRAGMENT
             get() = OpenIdConstants.ResponseMode.FRAGMENT
     }
 }
