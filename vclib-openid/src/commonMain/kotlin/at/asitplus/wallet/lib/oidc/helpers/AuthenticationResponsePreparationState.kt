@@ -6,7 +6,7 @@ import at.asitplus.wallet.lib.oidc.RelyingPartyMetadata
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class AuthenticationResponsePreparationHelper(
+data class AuthenticationResponsePreparationState(
     val parameters: AuthenticationRequestParameters,
     val nonce: String,
     val responseType: String,

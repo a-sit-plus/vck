@@ -18,14 +18,14 @@ Release NEXT:
 - Add `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.
 - Add `InputEvaluator`: Input evaluator according to `DIF.PresentationExchange 2.0.0`
 - Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.
-- Add `AuthenticationResponsePreparationHelper`: Data class for holding primitives required to prepare an authentication response
+- Add `AuthenticationResponsePreparationState`: Data class for holding primitives required to prepare an authentication response
 - Add `PresentationPreparationHelper`: Data class for holding primitives to select credentials for a presentation response
   - Add `isSubmissionRequirementsSatisfied`: Evaluates whether the submission requirements are satisfied with the current selection
   - Add `findUnnecessaryInputDescriptorSubmissions`: Returns input descriptor ids for which a submission would be redundant
 - BREAKING CHANGE to `OidcSiopWallet`:
   - Remove `OidcSiopWallet.createAuthnResponseParams`
-  - add `OidcSiopWallet.startAuthenticationResponsePreparation`: Yields a `AuthenticationResponsePreparationHelper`
-  - add `OidcSiopWallet.finalizeAuthenticationResponseResult`: Consumes an `AuthenticationResponsePreparationHelper` and yields `AuthenticationResponseResult`
+  - add `OidcSiopWallet.startAuthenticationResponsePreparation`: Yields a `AuthenticationResponsePreparationState`
+  - add `OidcSiopWallet.finalizeAuthenticationResponseResult`: Consumes an `AuthenticationResponsePreparationState` and yields `AuthenticationResponseResult`
   - add `OidcSiopWallet.refreshPresentationPreparationHelper`: Refreshes a `PresentationPreparationHelper` by reevaluating the matchings against the currently store credentials
  - Refactor `AuthenticationRequestParameters` → `AuthenticationRequestParametersFrom` to contain parsed parameters and their source
  - Update KMP-Crypto to support JWE and ECDH-ES
