@@ -30,18 +30,20 @@ class InputEvaluator {
         val fieldQueryResults = inputDescriptor.constraints?.fields?.associateWith { field ->
             val fieldQueryResult = if (field.optional == true) {
                 null // TODO: check whether there is a use-case to allow optional fields
-            } else field.path.firstNotNullOfOrNull { jsonPath ->
-                val candidates = JsonPath(jsonPath).query(credential)
-                candidates.firstOrNull { candidate ->
-                    if (pathAuthorizationValidator(candidate.normalizedJsonPath)) {
-                        field.filter?.let {
-                            candidate.value.satisfiesConstraintFilter(it)
-                        } ?: true
-                    } else false
-                }
-            } ?: return KmmResult.failure(FailedFieldQueryException(field).also {
-                it.message?.let { Napier.d(it) }
-            })
+            } else {
+                field.path.firstNotNullOfOrNull { jsonPath ->
+                    val candidates = JsonPath(jsonPath).query(credential)
+                    candidates.firstOrNull { candidate ->
+                        if (pathAuthorizationValidator(candidate.normalizedJsonPath)) {
+                            field.filter?.let {
+                                candidate.value.satisfiesConstraintFilter(it)
+                            } ?: true
+                        } else false
+                    }
+                } ?: return KmmResult.failure(FailedFieldQueryException(field).also {
+                    it.message?.let { Napier.d(it) }
+                })
+            }
             field.predicate?.let {
                 when (it) {
                     // TODO: RequirementEnum.NONE is not a valid field value, maybe change member type to new Enum?
