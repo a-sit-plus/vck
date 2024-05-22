@@ -119,8 +119,8 @@ class OidcSiopWallet(
      */
     suspend fun createAuthnResponse(input: String): KmmResult<AuthenticationResponseResult> {
         val parameters = parseAuthenticationRequestParameters(input).getOrElse {
-            return KmmResult.failure<AuthenticationResponseResult>(it)
-                .also { Napier.w("Could not parse authentication request: $input") }
+            Napier.w("Could not parse authentication request: $input")
+            return KmmResult.failure(it)
         }
         return createAuthnResponse(parameters)
     }
@@ -135,24 +135,24 @@ class OidcSiopWallet(
             parseRequestObjectJws(input)
         } ?: kotlin.runCatching { // maybe it's in the URL parameters
             Url(input).let {
-                AuthenticationRequestParametersFrom.Uri(
-                    it,
+                val params =
                     it.parameters.flattenEntries().toMap().decodeFromUrlQuery<AuthenticationRequestParameters>()
-                )
+                AuthenticationRequestParametersFrom.Uri(it, params)
             }
         }.onFailure { it.printStackTrace() }.getOrNull() ?: kotlin.runCatching {  // maybe it is already a JSON string
-            AuthenticationRequestParametersFrom.Json(
-                input,
-                AuthenticationRequestParameters.deserialize(input).getOrThrow()
-            )
+            val params = AuthenticationRequestParameters.deserialize(input).getOrThrow()
+            AuthenticationRequestParametersFrom.Json(input, params)
         }.getOrNull()
-        ?: return KmmResult.failure<AuthenticationRequestParametersFrom<*>>(OAuth2Exception(Errors.INVALID_REQUEST))
-            .also { Napier.w("Could not parse authentication request: $input") }
+
+        if (parsedParams == null) {
+            Napier.w("Could not parse authentication request: $input")
+            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+        }
 
         val extractedParams = parsedParams.let { extractRequestObject(it.parameters) ?: it }
         if (parsedParams.parameters.clientId != null && extractedParams.parameters.clientId != parsedParams.parameters.clientId) {
-            return KmmResult.failure<AuthenticationRequestParametersFrom<*>>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("ClientIds changed: ${parsedParams.parameters.clientId} to ${extractedParams.parameters.clientId}") }
+            Napier.w("ClientIds changed: ${parsedParams.parameters.clientId} to ${extractedParams.parameters.clientId}")
+            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
         }
         return KmmResult.success(extractedParams)
     }
@@ -308,9 +308,10 @@ class OidcSiopWallet(
             runCatching { clientMetadata.vpFormats.verifySupport(jwsService.algorithm) }
                 .onFailure { return KmmResult.failure(it) }
         }
-        if (params.parameters.nonce == null)
-            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("nonce is null") }
+        if (params.parameters.nonce == null) {
+            Napier.w("nonce is null in ${params.parameters}")
+            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
+        }
 
         val now = clock.now()
         // we'll assume jwk-thumbprint
@@ -337,8 +338,8 @@ class OidcSiopWallet(
                 presentationDefinition = presentationDefinition,
                 fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata.vpFormats,
             ).getOrElse { exception ->
-                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.USER_CANCELLED))
-                    .also { Napier.w("Could not create presentation: ${exception.message}") }
+                Napier.w("Could not create presentation: ${exception.message}")
+                return KmmResult.failure(OAuth2Exception(Errors.USER_CANCELLED))
             }
         }
         presentationResultContainer?.let {
