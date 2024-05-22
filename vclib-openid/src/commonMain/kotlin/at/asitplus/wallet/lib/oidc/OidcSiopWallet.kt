@@ -375,8 +375,8 @@ class OidcSiopWallet(
         if (!params.parameters.responseType.contains(VP_TOKEN) && params.parameters.presentationDefinition == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("vp_token not requested") }
-        val presentationDefinition =
-            params.parameters.presentationDefinition ?: params.parameters.presentationDefinitionUrl?.let {
+        val presentationDefinition = params.parameters.presentationDefinition
+            ?: params.parameters.presentationDefinitionUrl?.let {
                 remoteResourceRetriever.invoke(it)
             }?.let { PresentationDefinition.deserialize(it).getOrNull() }
             ?: params.parameters.scope?.split(" ")?.firstNotNullOfOrNull {
@@ -459,44 +459,45 @@ class OidcSiopWallet(
             }
         }
 
+        val vpToken = presentationResultContainer?.presentationResults?.map { it.toJsonPrimitive() }?.singleOrArray()
         return KmmResult.success(
             AuthenticationResponseParameters(
                 idToken = signedIdToken.serialize(),
                 state = params.parameters.state,
-                vpToken = presentationResultContainer?.presentationResults?.map {
-                    when (it) {
-                        is Holder.CreatePresentationResult.Signed -> {
-                            // must be a string
-                            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
-                            JsonPrimitive(it.jws)
-                        }
-
-                        is Holder.CreatePresentationResult.SdJwt -> {
-                            // must be a string
-                            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.5-1
-                            JsonPrimitive(it.sdJwt)
-                        }
-
-                        is Holder.CreatePresentationResult.Document -> {
-                            // must be a string
-                            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.5-1
-                            JsonPrimitive(
-                                it.document.serialize().encodeToString(Base16(strict = true))
-                            )
-                        }
-                    }
-                }?.let {
-                    if (it.size == 1) it[0]
-                    else buildJsonArray {
-                        for (value in it) {
-                            add(value)
-                        }
-                    }
-                },
+                vpToken = vpToken,
                 presentationSubmission = presentationResultContainer?.presentationSubmission,
             )
         )
     }
+
+    private fun Holder.CreatePresentationResult.toJsonPrimitive() = when (this) {
+        is Holder.CreatePresentationResult.Signed -> {
+            // must be a string
+            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
+            JsonPrimitive(jws)
+        }
+
+        is Holder.CreatePresentationResult.SdJwt -> {
+            // must be a string
+            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.5-1
+            JsonPrimitive(sdJwt)
+        }
+
+        is Holder.CreatePresentationResult.Document -> {
+            // must be a string
+            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.5-1
+            JsonPrimitive(
+                document.serialize().encodeToString(Base16(strict = true))
+            )
+        }
+    }
+
+    private fun List<JsonPrimitive>.singleOrArray() =
+        if (size == 1) {
+            this[0]
+        } else buildJsonArray {
+            forEach { add(it) }
+        }
 }
 
 /**
