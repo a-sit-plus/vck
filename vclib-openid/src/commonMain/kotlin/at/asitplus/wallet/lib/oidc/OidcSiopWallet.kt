@@ -273,28 +273,22 @@ class OidcSiopWallet(
     ): KmmResult<AuthenticationResponseParameters> {
         val clientIdScheme = params.parameters.clientIdScheme
         if (clientIdScheme == OpenIdConstants.ClientIdScheme.REDIRECT_URI) {
-            runCatching { verifyClientIdSchemeRedirectUri(params) }.onFailure { return KmmResult.failure(it) }
+            runCatching { verifyClientIdSchemeRedirectUri(params) }
+                .onFailure { return KmmResult.failure(it) }
         }
-
-        val responseModeIsDirectPost =
-            getResponseModeIsDirectPost(params)
-        if (responseModeIsDirectPost) {
-            runCatching { verifyResponseModeDirectPost(params) }.onFailure { return KmmResult.failure(it) }
+        if (params.parameters.responseMode.isAnyDirectPost()) {
+            runCatching { verifyResponseModeDirectPost(params) }
+                .onFailure { return KmmResult.failure(it) }
         }
-
-        val clientIdSchemeIsX509 = (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS)
-                || (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_URI)
-        if (clientIdSchemeIsX509) {
-            runCatching { verifyClientIdSchemeX509(params) }.onFailure { return KmmResult.failure(it) }
+        if (clientIdScheme.isAnyX509()) {
+            runCatching { verifyClientIdSchemeX509(params) }
+                .onFailure { return KmmResult.failure(it) }
         }
 
         // params.clientIdScheme is assumed to be OpenIdConstants.ClientIdSchemes.REDIRECT_URI,
         // because we'll require clientMetadata to be present, below
-        val clientMetadata = params.parameters.clientMetadata
-            ?: params.parameters.clientMetadataUri?.let { uri ->
-                remoteResourceRetriever.invoke(uri)?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
-            } ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("client metadata is not specified") }
+        val clientMetadata = runCatching { params.parameters.loadClientMetadata() }
+            .getOrElse { return KmmResult.failure(it) }
         val leaf =
             (params.source as? AuthenticationRequestParametersFrom.JwsSigned)?.source?.header?.certificateChain?.leaf
         val audience = clientMetadata.jsonWebKeySet?.keys?.firstOrNull()?.identifier
@@ -310,7 +304,7 @@ class OidcSiopWallet(
 //            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
 //                .also { Napier.w("Incompatible subject syntax types algorithms") }
 
-        if (!clientIdSchemeIsX509)
+        if (!clientIdScheme.isAnyX509())
             if (params.parameters.redirectUrl != null) {
                 if (params.parameters.clientId != params.parameters.redirectUrl)
                     return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
@@ -392,6 +386,15 @@ class OidcSiopWallet(
         )
     }
 
+    private suspend fun AuthenticationRequestParameters.loadClientMetadata() = clientMetadata
+        ?: clientMetadataUri?.let { uri ->
+            remoteResourceRetriever.invoke(uri)?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
+        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            .also { Napier.w("client metadata is not specified in ${this}") }
+
+    private fun OpenIdConstants.ClientIdScheme?.isAnyX509() =
+        (this == OpenIdConstants.ClientIdScheme.X509_SAN_DNS) || (this == OpenIdConstants.ClientIdScheme.X509_SAN_URI)
+
     private fun verifyClientIdSchemeRedirectUri(params: AuthenticationRequestParametersFrom<*>) {
         if (params.parameters.clientMetadata == null && params.parameters.clientMetadataUri == null)
             throw OAuth2Exception(Errors.INVALID_REQUEST)
@@ -400,8 +403,7 @@ class OidcSiopWallet(
 
     private fun verifyClientIdSchemeX509(params: AuthenticationRequestParametersFrom<*>) {
         val clientIdScheme = params.parameters.clientIdScheme
-        val responseModeIsDirectPost =
-            getResponseModeIsDirectPost(params)
+        val responseModeIsDirectPost = params.parameters.responseMode.isAnyDirectPost()
         if (params.parameters.clientMetadata == null
             || params !is AuthenticationRequestParametersFrom.JwsSigned
             || params.source.header.certificateChain == null
@@ -446,8 +448,7 @@ class OidcSiopWallet(
         }
     }
 
-    private fun getResponseModeIsDirectPost(params: AuthenticationRequestParametersFrom<*>) =
-        (params.parameters.responseMode == DIRECT_POST) || (params.parameters.responseMode == DIRECT_POST_JWT)
+    private fun OpenIdConstants.ResponseMode?.isAnyDirectPost() = (this == DIRECT_POST) || (this == DIRECT_POST_JWT)
 
     private fun FormatHolder.verifySupport(jwsAlgorithm: JwsAlgorithm) {
         if (jwtVp?.algorithms != null && jwtVp?.algorithms?.contains(jwsAlgorithm.identifier) != true)
