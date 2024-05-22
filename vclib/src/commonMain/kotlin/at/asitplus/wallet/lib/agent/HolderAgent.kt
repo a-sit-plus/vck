@@ -318,7 +318,10 @@ class HolderAgent(
                     credential = credential,
                     presentationDefinitionFormatHolder = fallbackFormatHolder,
                     pathAuthorizationValidator = {
-                        pathAuthorizationValidator?.invoke(credential, it) ?: true
+                        pathAuthorizationValidator?.invoke(
+                            credential = credential,
+                            attributePath = it
+                        ) ?: true
                     },
                 )?.let {
                     CandidateInputMatchContainer(
