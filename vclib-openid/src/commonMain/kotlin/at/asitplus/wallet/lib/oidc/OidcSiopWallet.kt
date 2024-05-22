@@ -280,19 +280,16 @@ class OidcSiopWallet(
                 .also { Napier.w("client_id_scheme is redirect_uri, but metadata is not set") }
         }
 
-        if ((params.parameters.responseMode == DIRECT_POST) || (params.parameters.responseMode == DIRECT_POST_JWT)) {
-            if (params.parameters.redirectUrl != null)
-                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                    .also { Napier.w("response_mode is ${params.parameters.responseMode}, but redirect_url is set") }
-            if (params.parameters.responseUrl == null)
-                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                    .also { Napier.w("response_mode is ${params.parameters.responseMode}, but response_url is not set") }
-
+        val responseModeIsDirectPost =
+            (params.parameters.responseMode == DIRECT_POST) || (params.parameters.responseMode == DIRECT_POST_JWT)
+        if (responseModeIsDirectPost) {
+            runCatching { verifyResponseModeDirectPost(params) }.onFailure { return KmmResult.failure(it) }
         }
+
         var leaf: X509Certificate? = null
-        if ((clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS)
-            || (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_URI)
-        ) {
+        val clientIdSchemeIsX509 = (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS)
+                || (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_URI)
+        if (clientIdSchemeIsX509) {
             if (params.parameters.clientMetadata == null
                 || params !is AuthenticationRequestParametersFrom.JwsSigned
                 || params.source.header.certificateChain == null
@@ -314,13 +311,10 @@ class OidcSiopWallet(
                         return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                             .also { Napier.w("client_id_scheme is $clientIdScheme, but client_id does not match any dnsName in the leaf certificate") }
 
-                    if (!((params.parameters.responseMode == DIRECT_POST) ||
-                                (params.parameters.responseMode == DIRECT_POST_JWT))
-                    ) {
-                        val parsedUrl =
-                            params.parameters.redirectUrl?.let { Url(it) }
-                                ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                                    .also { Napier.w("client_id_scheme is $clientIdScheme, but no redirect_url was provided") }
+                    if (!responseModeIsDirectPost) {
+                        val parsedUrl = params.parameters.redirectUrl?.let { Url(it) }
+                            ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+                                .also { Napier.w("client_id_scheme is $clientIdScheme, but no redirect_url was provided") }
                         //TODO  If the Wallet can establish trust in the Client Identifier authenticated through the certificate it may allow the client to freely choose the redirect_uri value
                         if (parsedUrl.host != params.parameters.clientId) return KmmResult.failure<AuthenticationResponseParameters>(
                             OAuth2Exception(Errors.INVALID_REQUEST)
@@ -361,13 +355,12 @@ class OidcSiopWallet(
 //            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
 //                .also { Napier.w("Incompatible subject syntax types algorithms") }
 
-        if (!((clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS)
-                    || (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_URI))
-        ) if (params.parameters.redirectUrl != null) {
-            if (params.parameters.clientId != params.parameters.redirectUrl)
-                return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                    .also { Napier.w("client_id does not match redirect_uri") }
-        }
+        if (!clientIdSchemeIsX509)
+            if (params.parameters.redirectUrl != null) {
+                if (params.parameters.clientId != params.parameters.redirectUrl)
+                    return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+                        .also { Napier.w("client_id does not match redirect_uri") }
+            }
 
         if (params.parameters.responseType == null)
             return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
@@ -468,6 +461,15 @@ class OidcSiopWallet(
                 presentationSubmission = presentationResultContainer?.presentationSubmission,
             )
         )
+    }
+
+    private fun verifyResponseModeDirectPost(params: AuthenticationRequestParametersFrom<*>) {
+        if (params.parameters.redirectUrl != null)
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+                .also { Napier.w("response_mode is ${params.parameters.responseMode}, but redirect_url is set") }
+        if (params.parameters.responseUrl == null)
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+                .also { Napier.w("response_mode is ${params.parameters.responseMode}, but response_url is not set") }
     }
 
     private fun Holder.CreatePresentationResult.toJsonPrimitive() = when (this) {
