@@ -271,14 +271,10 @@ class OidcSiopWallet(
     suspend fun createAuthnResponseParams(
         params: AuthenticationRequestParametersFrom<*>
     ): KmmResult<AuthenticationResponseParameters> {
-        // params.clientIdScheme is assumed to be OpenIdConstants.ClientIdSchemes.REDIRECT_URI,
-        // because we'll require clientMetadata to be present, below
         val clientIdScheme = params.parameters.clientIdScheme
-        if (clientIdScheme == OpenIdConstants.ClientIdScheme.REDIRECT_URI
-            && (params.parameters.clientMetadata == null && params.parameters.clientMetadataUri == null)
-        ) {
-            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("client_id_scheme is redirect_uri, but metadata is not set") }
+        if (clientIdScheme == OpenIdConstants.ClientIdScheme.REDIRECT_URI) {
+            runCatching { verifyClientIdSchemeRedirectUri(params) }
+                .onFailure { return KmmResult.failure(it) }
         }
 
         val responseModeIsDirectPost =
@@ -396,6 +392,12 @@ class OidcSiopWallet(
                 presentationSubmission = presentationResultContainer?.presentationSubmission,
             )
         )
+    }
+
+    private fun verifyClientIdSchemeRedirectUri(params: AuthenticationRequestParametersFrom<*>) {
+        if (params.parameters.clientMetadata == null && params.parameters.clientMetadataUri == null)
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+                .also { Napier.w("client_id_scheme is redirect_uri, but metadata is not set") }
     }
 
     private fun verifyClientIdSchemeX509(params: AuthenticationRequestParametersFrom<*>) {
