@@ -96,9 +96,9 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 }
 
                 shouldThrow<OAuth2Exception> {
-                    holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize()).getOrThrow().let {
-                        holderSiop.finalizeAuthenticationResponseResult(it)
-                    }.getOrThrow()
+                    holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize())
+                        .getOrThrow()
+                        .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
                 }
             }
 
@@ -145,9 +145,9 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 }
 
                 val authnResponse =
-                    holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize()).getOrThrow().let {
-                        holderSiop.finalizeAuthenticationResponseResult(it)
-                    }.getOrThrow()
+                    holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize())
+                        .getOrThrow()
+                        .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
                 authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                     .also { println(it) }
 
@@ -207,9 +207,9 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 }
 
                 shouldThrow<OAuth2Exception> {
-                    holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize()).getOrThrow().let {
-                        holderSiop.finalizeAuthenticationResponseResult(it)
-                    }.getOrThrow()
+                    holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize())
+                        .getOrThrow()
+                        .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
                 }
             }
 
@@ -263,9 +263,9 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 }
 
                 val authnResponse =
-                    holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize()).getOrThrow().let {
-                        holderSiop.finalizeAuthenticationResponseResult(it)
-                    }.getOrThrow()
+                    holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize())
+                        .getOrThrow()
+                        .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
                 authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                     .also { println(it) }
 
@@ -323,11 +323,10 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 Napier.d("Create response")
 
                 shouldThrow<OAuth2Exception> {
-                    holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize()).getOrThrow().let {
-                        holderSiop.finalizeAuthenticationResponseResult(it)
-                    }.getOrThrow().also {
-                        Napier.d("response: $it")
-                    }
+                    holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize())
+                        .getOrThrow()
+                        .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
+                        .also { Napier.d("response: $it") }
                 }
             }
 
@@ -382,9 +381,9 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
                 Napier.d("request: $authnRequest")
                 val authnResponse =
-                    holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize()).getOrThrow().let {
-                        holderSiop.finalizeAuthenticationResponseResult(it)
-                    }.getOrThrow()
+                    holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize())
+                        .getOrThrow()
+                        .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
                 authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                     .also { println(it) }
 
@@ -397,8 +396,14 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
     "test presentation of multiple credentials with different formats" {
         runBlocking {
-            holderAgent.storeJwtCredentials(holderCryptoService, listOf(ConstantIndex.AtomicAttribute2023.vcType))
-            holderAgent.storeIsoCredential(holderCryptoService, listOf(ConstantIndex.MobileDrivingLicence2023.vcType))
+            holderAgent.storeJwtCredentials(
+                holderCryptoService,
+                listOf(ConstantIndex.AtomicAttribute2023.vcType)
+            )
+            holderAgent.storeIsoCredential(
+                holderCryptoService,
+                listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
+            )
         }
 
         verifierSiop = OidcSiopVerifier.newInstance(
@@ -435,9 +440,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         )
 
         val authnResponse =
-            holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize()).getOrThrow().let {
-                holderSiop.finalizeAuthenticationResponseResult(it)
-            }.getOrThrow()
+            holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize()).getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             .also { println(it) }
 

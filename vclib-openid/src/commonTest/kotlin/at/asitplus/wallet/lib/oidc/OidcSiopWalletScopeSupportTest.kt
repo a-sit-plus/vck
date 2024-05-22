@@ -125,9 +125,9 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             }
 
             val authnResponse =
-                holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize()).getOrThrow().let {
-                    holderSiop.finalizeAuthenticationResponseResult(it)
-                }.getOrThrow()
+                holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize())
+                    .getOrThrow()
+                    .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
             authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .also { println(it) }
 
@@ -178,9 +178,9 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             }
 
             val authnResponse =
-                holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize()).getOrThrow().let {
-                    holderSiop.finalizeAuthenticationResponseResult(it)
-                }.getOrThrow()
+                holderSiop.startAuthenticationResponsePreparation(authnRequest.serialize())
+                    .getOrThrow()
+                    .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
             authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
                 .also { println(it) }
 

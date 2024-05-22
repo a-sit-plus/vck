@@ -173,9 +173,8 @@ private suspend fun runProcess(
         requestOptions = requestOptions
     ).also { println(it) }
 
-    val authnResponse = holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
-        holderSiop.finalizeAuthenticationResponseResult(it)
-    }.getOrThrow()
+    val authnResponse = holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow()
+        .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
     authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().also { println(it) }
 
     val result = verifierSiop.validateAuthnResponse(authnResponse.url)

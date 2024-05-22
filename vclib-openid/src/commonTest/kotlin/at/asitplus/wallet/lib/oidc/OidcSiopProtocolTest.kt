@@ -98,9 +98,8 @@ class OidcSiopProtocolTest : FreeSpec({
             .also { println(it) }
 
         val authnResponse =
-            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
-                holderSiop.finalizeAuthenticationResponseResult(it)
-            }.getOrThrow()
+            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             .also { println(it) }
 
@@ -139,9 +138,8 @@ class OidcSiopProtocolTest : FreeSpec({
             .shouldBeTrue()
 
         val authnResponse =
-            holderSiop.startAuthenticationResponsePreparation(jar).getOrThrow().let {
-                holderSiop.finalizeAuthenticationResponseResult(it)
-            }.getOrThrow()
+            holderSiop.startAuthenticationResponsePreparation(jar).getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
@@ -155,9 +153,8 @@ class OidcSiopProtocolTest : FreeSpec({
         ).also { println(it) }
 
         val authnResponse =
-            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
-                holderSiop.finalizeAuthenticationResponseResult(it)
-            }.getOrThrow()
+            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
             .also { println(it) }
         authnResponse.url.shouldBe(relyingPartyUrl)
@@ -175,9 +172,8 @@ class OidcSiopProtocolTest : FreeSpec({
         ).also { println(it) }
 
         val authnResponse =
-            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
-                holderSiop.finalizeAuthenticationResponseResult(it)
-            }.getOrThrow()
+            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
             .also { println(it) }
         authnResponse.url.shouldBe(relyingPartyUrl)
@@ -203,9 +199,8 @@ class OidcSiopProtocolTest : FreeSpec({
         ).also { println(it) }
 
         val authnResponse =
-            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
-                holderSiop.finalizeAuthenticationResponseResult(it)
-            }.getOrThrow()
+            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             .also { println(it) }
 
@@ -232,9 +227,8 @@ class OidcSiopProtocolTest : FreeSpec({
                 Url(authnRequestUrlParams),
                 parsedAuthnRequest
             )
-        ).getOrThrow().let {
-            holderSiop.finalizeAuthenticationResponseParameters(it)
-        }.getOrThrow()
+        ).getOrThrow()
+            .let { holderSiop.finalizeAuthenticationResponseParameters(it) }.getOrThrow()
         val authnResponseParams =
             authnResponse.encodeToParameters().formUrlEncode().also { println(it) }
 
@@ -252,9 +246,8 @@ class OidcSiopProtocolTest : FreeSpec({
         ).also { println(it) }
 
         val authnResponse =
-            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow().let {
-                holderSiop.finalizeAuthenticationResponseResult(it)
-            }.getOrThrow()
+            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             .also { println(it) }
 
@@ -274,9 +267,8 @@ class OidcSiopProtocolTest : FreeSpec({
 
         val authnResponse =
             holderSiop.startAuthenticationResponsePreparation(authnRequestWithRequestObject)
-                .getOrThrow().let {
-                holderSiop.finalizeAuthenticationResponseResult(it)
-            }.getOrThrow()
+                .getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             .also { println(it) }
 
@@ -310,9 +302,9 @@ class OidcSiopProtocolTest : FreeSpec({
             requestObjectJwsVerifier = verifierAttestationVerifier(sprsCryptoService.jsonWebKey)
         )
         val authnResponse =
-            holderSiop.startAuthenticationResponsePreparation(authnRequestWithRequestObject).getOrThrow().let {
-                holderSiop.finalizeAuthenticationResponseResult(it)
-            }.getOrThrow()
+            holderSiop.startAuthenticationResponsePreparation(authnRequestWithRequestObject)
+                .getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             .also { println(it) }
 
@@ -345,9 +337,9 @@ class OidcSiopProtocolTest : FreeSpec({
             requestObjectJwsVerifier = verifierAttestationVerifier(DefaultCryptoService().jsonWebKey)
         )
         shouldThrow<OAuth2Exception> {
-            holderSiop.startAuthenticationResponsePreparation(authnRequestWithRequestObject).getOrThrow().let {
-                holderSiop.finalizeAuthenticationResponseResult(it)
-            }.getOrThrow()
+            holderSiop.startAuthenticationResponsePreparation(authnRequestWithRequestObject)
+                .getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         }
     }
 
@@ -376,9 +368,9 @@ class OidcSiopProtocolTest : FreeSpec({
         )
 
         val authnResponse =
-            holderSiop.startAuthenticationResponsePreparation(authRequestUrlWithRequestUri).getOrThrow().let {
-                holderSiop.finalizeAuthenticationResponseResult(it)
-            }.getOrThrow()
+            holderSiop.startAuthenticationResponsePreparation(authRequestUrlWithRequestUri)
+                .getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             .also { println(it) }
 
@@ -412,9 +404,9 @@ class OidcSiopProtocolTest : FreeSpec({
         )
 
         val authnResponse =
-            holderSiop.startAuthenticationResponsePreparation(authRequestUrlWithRequestUri).getOrThrow().let {
-                holderSiop.finalizeAuthenticationResponseResult(it)
-            }.getOrThrow()
+            holderSiop.startAuthenticationResponsePreparation(authRequestUrlWithRequestUri)
+                .getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
             .also { println(it) }
 
@@ -448,9 +440,9 @@ class OidcSiopProtocolTest : FreeSpec({
         )
 
         shouldThrow<OAuth2Exception> {
-            holderSiop.startAuthenticationResponsePreparation(authRequestUrlWithRequestUri).getOrThrow().let {
-                holderSiop.finalizeAuthenticationResponseResult(it)
-            }.getOrThrow()
+            holderSiop.startAuthenticationResponsePreparation(authRequestUrlWithRequestUri)
+                .getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         }
     }
 })
@@ -497,9 +489,9 @@ private suspend fun verifySecondProtocolRun(
     holderSiop: OidcSiopWallet
 ) {
     val authnRequestUrl = verifierSiop.createAuthnRequestUrl(walletUrl = walletUrl)
-    val authnResponse = holderSiop.startAuthenticationResponsePreparation(authnRequestUrl).getOrThrow().let {
-        holderSiop.finalizeAuthenticationResponseResult(it)
-    }.getOrThrow()
+    val authnResponse =
+        holderSiop.startAuthenticationResponsePreparation(authnRequestUrl).getOrThrow()
+            .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
     authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
     val validation = verifierSiop.validateAuthnResponse(authnResponse.url)
     validation.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
