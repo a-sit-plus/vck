@@ -7,7 +7,6 @@ import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
-import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.crypto.datatypes.pki.leaf
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
@@ -291,49 +290,8 @@ class OidcSiopWallet(
         val clientIdSchemeIsX509 = (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS)
                 || (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_URI)
         if (clientIdSchemeIsX509) {
-            if (params.parameters.clientMetadata == null
-                || params !is AuthenticationRequestParametersFrom.JwsSigned
-                || params.source.header.certificateChain == null
-                || params.source.header.certificateChain!!.isEmpty()
-            ) return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                .also { Napier.w("client_id_scheme is $clientIdScheme, but metadata is not set and no x5c certificate chain is present in the original authn request") }
-            else { //basic checks done
-                val leaf = params.source.header.certificateChain!!.leaf
-                if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions!!.isEmpty()) {
-                    return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                        .also { Napier.w("client_id_scheme is $clientIdScheme, but no extensions were found in the leaf certificate") }
-                }
-                if (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS) {
-                    val dnsNames = leaf.tbsCertificate.subjectAlternativeNames?.dnsNames
-                        ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                            .also { Napier.w("client_id_scheme is $clientIdScheme, but no dnsNames were found in the leaf certificate") }
-
-                    if (!dnsNames.contains(params.parameters.clientId))
-                        return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                            .also { Napier.w("client_id_scheme is $clientIdScheme, but client_id does not match any dnsName in the leaf certificate") }
-
-                    if (!responseModeIsDirectPost) {
-                        val parsedUrl = params.parameters.redirectUrl?.let { Url(it) }
-                            ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                                .also { Napier.w("client_id_scheme is $clientIdScheme, but no redirect_url was provided") }
-                        //TODO  If the Wallet can establish trust in the Client Identifier authenticated through the certificate it may allow the client to freely choose the redirect_uri value
-                        if (parsedUrl.host != params.parameters.clientId) return KmmResult.failure<AuthenticationResponseParameters>(
-                            OAuth2Exception(Errors.INVALID_REQUEST)
-                        ).also { Napier.w("client_id_scheme is $clientIdScheme, but no redirect_url was provided") }
-                    }
-                } else {
-                    val uris = leaf.tbsCertificate.subjectAlternativeNames?.uris
-                        ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                            .also { Napier.w("client_id_scheme is $clientIdScheme, but no URIs were found in the leaf certificate") }
-                    if (!uris.contains(params.parameters.clientId))
-                        return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                            .also { Napier.w("client_id_scheme is $clientIdScheme, but client_id does not match any URIs in the leaf certificate") }
-
-                    if (params.parameters.clientId != params.parameters.redirectUrl)
-                        return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
-                            .also { Napier.w("client_id_scheme is $clientIdScheme, but client_id does not match redirect_uri") }
-                }
-            }
+            runCatching { verifyClientIdSchemeX509(params) }
+                .onFailure { return KmmResult.failure(it) }
         }
 
         // params.clientIdScheme is assumed to be OpenIdConstants.ClientIdSchemes.REDIRECT_URI,
@@ -343,7 +301,8 @@ class OidcSiopWallet(
                 remoteResourceRetriever.invoke(uri)?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
             } ?: return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("client metadata is not specified") }
-        val leaf = (params.source as? AuthenticationRequestParametersFrom.JwsSigned)?.source?.header?.certificateChain?.leaf
+        val leaf =
+            (params.source as? AuthenticationRequestParametersFrom.JwsSigned)?.source?.header?.certificateChain?.leaf
         val audience = clientMetadata.jsonWebKeySet?.keys?.firstOrNull()?.identifier
             ?: clientMetadata.jsonWebKeySetUrl?.let {
                 remoteResourceRetriever.invoke(it)
@@ -437,6 +396,54 @@ class OidcSiopWallet(
                 presentationSubmission = presentationResultContainer?.presentationSubmission,
             )
         )
+    }
+
+    private fun verifyClientIdSchemeX509(params: AuthenticationRequestParametersFrom<*>) {
+        val clientIdScheme = params.parameters.clientIdScheme
+        val responseModeIsDirectPost =
+            (params.parameters.responseMode == DIRECT_POST) || (params.parameters.responseMode == DIRECT_POST_JWT)
+        if (params.parameters.clientMetadata == null
+            || params !is AuthenticationRequestParametersFrom.JwsSigned
+            || params.source.header.certificateChain == null
+            || params.source.header.certificateChain!!.isEmpty()
+        ) throw OAuth2Exception(Errors.INVALID_REQUEST)
+            .also { Napier.w("client_id_scheme is $clientIdScheme, but metadata is not set and no x5c certificate chain is present in the original authn request") }
+        //basic checks done
+        val leaf = params.source.header.certificateChain!!.leaf
+        if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions!!.isEmpty()) {
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+                .also { Napier.w("client_id_scheme is $clientIdScheme, but no extensions were found in the leaf certificate") }
+        }
+        if (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS) {
+            val dnsNames = leaf.tbsCertificate.subjectAlternativeNames?.dnsNames
+                ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+                    .also { Napier.w("client_id_scheme is $clientIdScheme, but no dnsNames were found in the leaf certificate") }
+
+            if (!dnsNames.contains(params.parameters.clientId))
+                throw OAuth2Exception(Errors.INVALID_REQUEST)
+                    .also { Napier.w("client_id_scheme is $clientIdScheme, but client_id does not match any dnsName in the leaf certificate") }
+
+            if (!responseModeIsDirectPost) {
+                val parsedUrl = params.parameters.redirectUrl?.let { Url(it) }
+                    ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+                        .also { Napier.w("client_id_scheme is $clientIdScheme, but no redirect_url was provided") }
+                //TODO  If the Wallet can establish trust in the Client Identifier authenticated through the certificate it may allow the client to freely choose the redirect_uri value
+                if (parsedUrl.host != params.parameters.clientId)
+                    throw OAuth2Exception(Errors.INVALID_REQUEST)
+                        .also { Napier.w("client_id_scheme is $clientIdScheme, but no redirect_url was provided") }
+            }
+        } else {
+            val uris = leaf.tbsCertificate.subjectAlternativeNames?.uris
+                ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+                    .also { Napier.w("client_id_scheme is $clientIdScheme, but no URIs were found in the leaf certificate") }
+            if (!uris.contains(params.parameters.clientId))
+                throw OAuth2Exception(Errors.INVALID_REQUEST)
+                    .also { Napier.w("client_id_scheme is $clientIdScheme, but client_id does not match any URIs in the leaf certificate") }
+
+            if (params.parameters.clientId != params.parameters.redirectUrl)
+                throw OAuth2Exception(Errors.INVALID_REQUEST)
+                    .also { Napier.w("client_id_scheme is $clientIdScheme, but client_id does not match redirect_uri") }
+        }
     }
 
     private fun FormatHolder.verifySupport(jwsAlgorithm: JwsAlgorithm) {
