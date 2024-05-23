@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
-import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.crypto.datatypes.pki.leaf
@@ -285,8 +284,6 @@ class OidcSiopWallet(
                 .onFailure { return KmmResult.failure(it) }
         }
 
-        // params.clientIdScheme is assumed to be OpenIdConstants.ClientIdSchemes.REDIRECT_URI,
-        // because we'll require clientMetadata to be present, below
         val clientMetadata = runCatching { params.parameters.loadClientMetadata() }
             .getOrElse { return KmmResult.failure(it) }
         val audience = runCatching { params.extractAudience(clientMetadata) }
@@ -304,14 +301,8 @@ class OidcSiopWallet(
         val presentationDefinition = params.parameters.loadPresentationDefinition()
         runCatching { params.parameters.verifyResponseType(presentationDefinition) }
             .onFailure { return KmmResult.failure(it) }
-        if (clientMetadata.vpFormats != null) {
-            runCatching { clientMetadata.vpFormats.verifySupport(jwsService.algorithm) }
-                .onFailure { return KmmResult.failure(it) }
-        }
-
         val signedIdToken = runCatching { buildSignedIdToken(params) }
             .getOrElse { return KmmResult.failure(it) }
-
         val presentationResultContainer = presentationDefinition?.let {
             runCatching { buildPresentation(params, audience, presentationDefinition, clientMetadata) }
                 .getOrElse { return KmmResult.failure(it) }
@@ -487,18 +478,6 @@ class OidcSiopWallet(
     }
 
     private fun OpenIdConstants.ResponseMode?.isAnyDirectPost() = (this == DIRECT_POST) || (this == DIRECT_POST_JWT)
-
-    private fun FormatHolder.verifySupport(jwsAlgorithm: JwsAlgorithm) {
-        if (jwtVp?.algorithms != null && jwtVp?.algorithms?.contains(jwsAlgorithm.identifier) != true)
-            throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
-                .also { Napier.w("Incompatible JWT algorithms: $jwtVp") }
-        if (jwtSd?.algorithms != null && jwtSd?.algorithms?.contains(jwsAlgorithm.identifier) != true)
-            throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
-                .also { Napier.w("Incompatible SD-JWT algorithms: $jwtSd") }
-        if (msoMdoc?.algorithms != null && msoMdoc?.algorithms?.contains(jwsAlgorithm.identifier) != true)
-            throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
-                .also { Napier.w("Incompatible MSO algorithms: $msoMdoc") }
-    }
 
     private fun FormatHolder.isMissingFormatSupport(claimFormatEnum: ClaimFormatEnum) = when (claimFormatEnum) {
         ClaimFormatEnum.JWT_VP -> jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true
