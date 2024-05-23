@@ -5,29 +5,21 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import kotlinx.serialization.Serializable
 
 @Serializable
-sealed interface ClientIdSchemeParameters {
-    val clientIdScheme: OpenIdConstants.ClientIdScheme
+sealed class ClientIdSchemeParameters {
 
     @Serializable
-    class OtherClientIdSchemeParameters(override val clientIdScheme: OpenIdConstants.ClientIdScheme) :
-        ClientIdSchemeParameters
+    data class OtherClientIdSchemeParameters(val clientIdScheme: OpenIdConstants.ClientIdScheme) :
+        ClientIdSchemeParameters()
 
     @Serializable
-    sealed interface X509ClientIdSchemeParameters : ClientIdSchemeParameters {
-        val leaf: X509Certificate
+    sealed class X509ClientIdSchemeParameters : ClientIdSchemeParameters() {
 
         @Serializable
-        class X509SanDnsClientIdSchemeParameters(override val leaf: X509Certificate) :
-            X509ClientIdSchemeParameters {
-            override val clientIdScheme: OpenIdConstants.ClientIdScheme
-                get() = OpenIdConstants.ClientIdScheme.X509_SAN_DNS
-        }
+        data class X509SanDnsClientIdSchemeParameters(val leaf: X509Certificate) :
+            X509ClientIdSchemeParameters()
 
         @Serializable
-        class X509SanUriClientIdSchemeParameters(override val leaf: X509Certificate) :
-            X509ClientIdSchemeParameters {
-            override val clientIdScheme: OpenIdConstants.ClientIdScheme
-                get() = OpenIdConstants.ClientIdScheme.X509_SAN_URI
-        }
+        data class X509SanUriClientIdSchemeParameters(val leaf: X509Certificate) :
+            X509ClientIdSchemeParameters()
     }
 }
