@@ -71,8 +71,7 @@ object CredentialToJsonConverter {
         is String -> JsonPrimitive(this)
         is ByteArray -> JsonPrimitive(encodeToString(Base64Strict))
         is LocalDate -> JsonPrimitive(this.toString())
-        is DrivingPrivilege -> jsonSerializer.encodeToJsonElement(this)
         is Array<*> -> buildJsonArray { filterNotNull().forEach { add(it.toJsonElement()) } }
-        else -> JsonNull
+        else -> Json.encode(this) ?: JsonNull
     }
 }

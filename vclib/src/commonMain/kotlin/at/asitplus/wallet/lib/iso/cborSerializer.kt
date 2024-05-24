@@ -11,8 +11,8 @@ import kotlinx.serialization.encoding.CompositeEncoder
 
 object Cbor {
 
-    private val descriptorLookupFunctions = mutableListOf<DescriptorLookup>()
-    private val encoderFunctions = mutableListOf<ItemValueEncoder>()
+    private val descriptorLookupFunctions = mutableSetOf<DescriptorLookup>()
+    private val encoderFunctions = mutableSetOf<ItemValueEncoder>()
 
     init {
         descriptorLookupFunctions += {

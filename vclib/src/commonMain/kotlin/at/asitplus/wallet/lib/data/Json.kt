@@ -1,8 +1,11 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.wallet.lib.JsonValueEncoder
 import at.asitplus.wallet.lib.data.Json.serializersModules
 import at.asitplus.wallet.lib.iso.DrivingPrivilege
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
@@ -10,16 +13,24 @@ import kotlinx.serialization.modules.subclass
 object Json {
 
     val serializersModules = mutableMapOf<ConstantIndex.CredentialScheme, SerializersModule>()
+    val jsonElementEncoder = mutableSetOf<JsonValueEncoder>()
 
-    internal fun registerSerializersModule(scheme: ConstantIndex.CredentialScheme, module: SerializersModule) {
+    fun registerSerializersModule(scheme: ConstantIndex.CredentialScheme, module: SerializersModule) {
         serializersModules[scheme] = module
     }
 
     init {
-        registerSerializersModule(ConstantIndex.MobileDrivingLicence2023, SerializersModule {
-            contextual(DrivingPrivilege::class, DrivingPrivilege.serializer())
-        })
+        register {
+            if (it is DrivingPrivilege) jsonSerializer.encodeToJsonElement(it) else null
+        }
     }
+
+    fun register(function: JsonValueEncoder) {
+        jsonElementEncoder += function
+    }
+
+    fun encode(value: Any): JsonElement? =
+        jsonElementEncoder.firstNotNullOfOrNull { it.invoke(value) }
 
 }
 
