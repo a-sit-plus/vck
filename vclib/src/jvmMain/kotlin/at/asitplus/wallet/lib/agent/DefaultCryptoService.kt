@@ -1,3 +1,5 @@
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
@@ -24,6 +26,7 @@ import at.asitplus.crypto.datatypes.jws.jcaName
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.crypto.datatypes.parseFromJca
 import at.asitplus.crypto.datatypes.pki.X509Certificate
+import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.JCEECPublicKey
 import org.bouncycastle.jce.spec.ECPublicKeySpec
@@ -57,16 +60,7 @@ actual open class DefaultCryptoService : CryptoService {
     /**
      * Default constructor without arguments is ES256
      */
-    actual constructor() {
-        val keyPair =
-            KeyPairGenerator.getInstance("EC").also { it.initialize(SECP_256_R_1.keyLengthBits.toInt()) }.genKeyPair()
-        this.privateKey = keyPair.private
-        this.algorithm = CryptoAlgorithm.ES256
-        this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
-        this.jsonWebKey = publicKey.toJsonWebKey()
-        this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
-        this.certificate = X509Certificate.generateSelfSignedCertificate(this)
-    }
+    actual constructor() : this(genEc256KeyPair(), CryptoAlgorithm.ES256, null)
 
     /**
      * Constructor which allows all public keys implemented in `KMP-Crypto`
@@ -160,7 +154,17 @@ actual open class DefaultCryptoService : CryptoService {
         MessageDigest.getInstance(digest.jcaName).digest(input)
     }.wrap()
 
+    actual companion object {
+        actual fun withSelfSignedCert(extensions: List<X509CertificateExtension>): CryptoService {
+            return DefaultCryptoService(genEc256KeyPair(), CryptoAlgorithm.ES256, null)
+        }
+    }
 }
+
+private fun genEc256KeyPair(): KeyPair =
+    KeyPairGenerator.getInstance("EC")
+        .also { it.initialize(SECP_256_R_1.keyLengthBits.toInt()) }
+        .genKeyPair()
 
 actual open class DefaultVerifierCryptoService : VerifierCryptoService {
 
