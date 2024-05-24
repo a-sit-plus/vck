@@ -313,15 +313,11 @@ class OidcSiopVerifier private constructor(
         requestOptions: RequestOptions = RequestOptions(),
     ) = AuthenticationRequestParameters(
         responseType = "$ID_TOKEN $VP_TOKEN",
-        clientId = x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
-            ?: relyingPartyUrl,
-        redirectUrl = if ((requestOptions.responseMode == OpenIdConstants.ResponseMode.DIRECT_POST)
-            || (requestOptions.responseMode == OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
-        ) null else relyingPartyUrl,
+        clientId = buildClientId(),
+        redirectUrl = requestOptions.buildRedirectUrl(),
         responseUrl = responseUrl,
         clientIdScheme = clientIdScheme,
-        scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, requestOptions.credentialScheme?.vcType)
-            .joinToString(" "),
+        scope = requestOptions.buildScope(),
         nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
         clientMetadata = requestOptions.clientMetadataUrl?.let { null } ?: metadata,
         clientMetadataUri = requestOptions.clientMetadataUrl,
@@ -336,6 +332,16 @@ class OidcSiopVerifier private constructor(
             ),
         ),
     )
+
+    private fun RequestOptions.buildScope() = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.vcType)
+        .joinToString(" ")
+
+    private fun buildClientId() = (x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
+        ?: relyingPartyUrl)
+
+    private fun RequestOptions.buildRedirectUrl() = if ((responseMode == OpenIdConstants.ResponseMode.DIRECT_POST)
+        || (responseMode == OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
+    ) null else relyingPartyUrl
 
     private fun RequestOptions.toInputDescriptor() = InputDescriptor(
         id = credentialScheme?.let {
