@@ -53,7 +53,7 @@ actual open class DefaultCryptoService : CryptoService {
         this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
         this.jsonWebKey = publicKey.toJsonWebKey()
         this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
-        this.certificate = generateSelfSignedCertificate()
+        this.certificate = X509Certificate.generateSelfSignedCertificate(this)
     }
 
     /**
@@ -68,42 +68,8 @@ actual open class DefaultCryptoService : CryptoService {
         this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
         this.jsonWebKey = publicKey.toJsonWebKey()
         this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
-        this.certificate =
-            certificate?.let { X509Certificate.decodeFromDer(it.encoded) } ?: generateSelfSignedCertificate()
-    }
-
-    private fun generateSelfSignedCertificate(): X509Certificate {
-        val serialNumber: BigInteger = BigInteger.valueOf(Random.nextLong().absoluteValue)
-        val commonName = "DefaultCryptoService"
-        val notBeforeDate = Clock.System.now()
-        val notAfterDate = notBeforeDate.plus(30, DateTimeUnit.SECOND)
-        val tbsCertificate = TbsCertificate(
-            version = 2,
-            serialNumber = serialNumber.toByteArray(),
-            issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
-            validFrom = Asn1Time(notBeforeDate),
-            validUntil = Asn1Time(notAfterDate),
-            signatureAlgorithm = algorithm,
-            subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
-            publicKey = publicKey,
-            extensions = listOf(X509CertificateExtension(
-                KnownOIDs.subjectAltName_2_5_29_17,
-                critical = false,
-                Asn1EncapsulatingOctetString(listOf(
-                    asn1Sequence {
-                      append(Asn1Primitive(SubjectAltNameImplicitTags.dNSName,
-                          Asn1String.UTF8("example.com").encodeToTlv().content))
-                    }
-                ))))
-        )
-        val signature =
-            runBlocking {
-                runCatching { tbsCertificate.encodeToDer() }
-                    .wrap()
-                    .transform { sign(it) }
-                    .getOrThrow()
-            }
-        return X509Certificate(tbsCertificate, algorithm, signature)
+        this.certificate = certificate?.let { X509Certificate.decodeFromDer(it.encoded) }
+            ?: X509Certificate.generateSelfSignedCertificate(this)
     }
 
     override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> = runCatching {
@@ -212,4 +178,43 @@ open class JvmEphemeralKeyHolder(private val ecCurve: EcCurve) : EphemeralKeyHol
         CryptoPublicKey.fromJcaPublicKey(keyPair.public).map { it.toJsonWebKey() }.getOrNull()
     }
 
+}
+
+fun X509Certificate.Companion.generateSelfSignedCertificate(
+    cryptoService: CryptoService,
+    commonName: String = "DefaultCryptoService"
+): X509Certificate {
+    val serialNumber: BigInteger = BigInteger.valueOf(Random.nextLong().absoluteValue)
+    val notBeforeDate = Clock.System.now()
+    val notAfterDate = notBeforeDate.plus(30, DateTimeUnit.SECOND)
+    val tbsCertificate = TbsCertificate(
+        version = 2,
+        serialNumber = serialNumber.toByteArray(),
+        issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
+        validFrom = Asn1Time(notBeforeDate),
+        validUntil = Asn1Time(notAfterDate),
+        signatureAlgorithm = cryptoService.algorithm,
+        subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
+        publicKey = cryptoService.publicKey,
+        extensions = listOf(X509CertificateExtension(
+            KnownOIDs.subjectAltName_2_5_29_17,
+            critical = false,
+            Asn1EncapsulatingOctetString(listOf(
+                asn1Sequence {
+                    append(
+                        Asn1Primitive(
+                            SubjectAltNameImplicitTags.dNSName,
+                            Asn1String.UTF8("example.com").encodeToTlv().content
+                        )
+                    )
+                }
+            ))))
+    )
+    val signature = runBlocking {
+        runCatching { tbsCertificate.encodeToDer() }
+            .wrap()
+            .transform { cryptoService.sign(it) }
+            .getOrThrow()
+    }
+    return X509Certificate(tbsCertificate, cryptoService.algorithm, signature)
 }
