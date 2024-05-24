@@ -311,52 +311,50 @@ class OidcSiopVerifier private constructor(
      */
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions = RequestOptions(),
-    ): AuthenticationRequestParameters {
-        val typeConstraint = requestOptions.toTypeConstraint()
-        val attributeConstraint = requestOptions.toAttributeConstraints()
-        val constraintFields = attributeConstraint + typeConstraint
-        val schemaReference = requestOptions.credentialScheme?.schemaUri?.let { SchemaReference(it) }
-        val scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, requestOptions.credentialScheme?.vcType)
-            .joinToString(" ")
-        return AuthenticationRequestParameters(
-            responseType = "$ID_TOKEN $VP_TOKEN",
-            clientId = x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
-                ?: relyingPartyUrl,
-            redirectUrl = if ((requestOptions.responseMode == OpenIdConstants.ResponseMode.DIRECT_POST)
-                || (requestOptions.responseMode == OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
-            ) null else relyingPartyUrl,
-            responseUrl = responseUrl,
-            clientIdScheme = clientIdScheme,
-            scope = scope,
-            nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
-            clientMetadata = requestOptions.clientMetadataUrl?.let { null } ?: metadata,
-            clientMetadataUri = requestOptions.clientMetadataUrl,
-            idTokenType = IdTokenType.SUBJECT_SIGNED.text,
-            responseMode = requestOptions.responseMode,
-            state = requestOptions.state,
-            presentationDefinition = PresentationDefinition(
-                id = uuid4().toString(),
-                formats = requestOptions.representation.toFormatHolder(),
-                inputDescriptors = listOf(
-                    InputDescriptor(
-                        id = requestOptions.credentialScheme?.let {
-                            when (requestOptions.representation) {
-                                /**
-                                 * doctype is not really an attribute that can be presented,
-                                 * encoding it into the descriptor id as in the following non-normative example fow now:
-                                 * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
-                                 */
-                                ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoDocType
-                                else -> null
-                            }
-                        } ?: uuid4().toString(),
-                        schema = listOfNotNull(schemaReference),
-                        constraints = Constraint(fields = constraintFields.filterNotNull()),
-                    )
-                ),
+    ) = AuthenticationRequestParameters(
+        responseType = "$ID_TOKEN $VP_TOKEN",
+        clientId = x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
+            ?: relyingPartyUrl,
+        redirectUrl = if ((requestOptions.responseMode == OpenIdConstants.ResponseMode.DIRECT_POST)
+            || (requestOptions.responseMode == OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
+        ) null else relyingPartyUrl,
+        responseUrl = responseUrl,
+        clientIdScheme = clientIdScheme,
+        scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, requestOptions.credentialScheme?.vcType)
+            .joinToString(" "),
+        nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
+        clientMetadata = requestOptions.clientMetadataUrl?.let { null } ?: metadata,
+        clientMetadataUri = requestOptions.clientMetadataUrl,
+        idTokenType = IdTokenType.SUBJECT_SIGNED.text,
+        responseMode = requestOptions.responseMode,
+        state = requestOptions.state,
+        presentationDefinition = PresentationDefinition(
+            id = uuid4().toString(),
+            formats = requestOptions.representation.toFormatHolder(),
+            inputDescriptors = listOf(
+                requestOptions.toInputDescriptor()
             ),
-        )
-    }
+        ),
+    )
+
+    private fun RequestOptions.toInputDescriptor() = InputDescriptor(
+        id = credentialScheme?.let {
+            when (representation) {
+                /**
+                 * doctype is not really an attribute that can be presented,
+                 * encoding it into the descriptor id as in the following non-normative example fow now:
+                 * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
+                 */
+                ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoDocType
+                else -> null
+            }
+        } ?: uuid4().toString(),
+        schema = listOfNotNull(credentialScheme?.schemaUri?.let { SchemaReference(it) }),
+        constraints = toConstraint(),
+    )
+
+    private fun RequestOptions.toConstraint() =
+        Constraint(fields = (toAttributeConstraints() + toTypeConstraint()).filterNotNull())
 
     private fun RequestOptions.toAttributeConstraints() = requestedAttributes?.let {
         createConstraints(representation, credentialScheme, it)
