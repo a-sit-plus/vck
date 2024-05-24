@@ -362,9 +362,9 @@ class OidcSiopVerifier private constructor(
     private fun RequestOptions.toConstraint() =
         Constraint(fields = (toAttributeConstraints() + toTypeConstraint()).filterNotNull())
 
-    private fun RequestOptions.toAttributeConstraints() = requestedAttributes?.let {
-        createConstraints(representation, credentialScheme, it)
-    } ?: listOf()
+    private fun RequestOptions.toAttributeConstraints() =
+        requestedAttributes?.createConstraints(representation, credentialScheme)
+            ?: listOf()
 
     private fun RequestOptions.toTypeConstraint() = credentialScheme?.let {
         when (representation) {
@@ -388,11 +388,10 @@ class OidcSiopVerifier private constructor(
         )
     )
 
-    private fun createConstraints(
+    private fun List<String>.createConstraints(
         credentialRepresentation: ConstantIndex.CredentialRepresentation,
         credentialScheme: ConstantIndex.CredentialScheme?,
-        attributeTypes: List<String>,
-    ): Collection<ConstraintField> = attributeTypes.map {
+    ): Collection<ConstraintField> = map {
         if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
             credentialScheme.toConstraintField(it)
         else
