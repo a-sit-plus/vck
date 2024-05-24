@@ -580,7 +580,8 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
         is LocalDate -> LocalDate.serializer()
         is Boolean -> Boolean.serializer()
         is ByteArray -> ByteArraySerializer()
-        else -> Cbor.lookupDescriptor(element) ?: error("descriptor not found for $element")
+        is Any -> Cbor.lookupDescriptor(element) ?: error("descriptor not found for $element")
+        else -> error("descriptor not found for $element")
     }
 
 

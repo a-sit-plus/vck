@@ -6,6 +6,10 @@ import at.asitplus.wallet.lib.data.AriesGoalCodeParser
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.registerSerializersModule
+import at.asitplus.wallet.lib.iso.Cbor
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.CompositeEncoder
 import kotlinx.serialization.modules.SerializersModule
 
 /**
@@ -29,7 +33,12 @@ object LibraryInitializer {
          * ```
          */
         val serializersModule: SerializersModule,
+
+        val itemValueLookup: (DescriptorLookup)? = null,
+
+        val itemValueEncoder: (ItemValueEncoder)? = null,
     )
+
 
     /**
      * Register the extension library with information from [data].
@@ -38,6 +47,13 @@ object LibraryInitializer {
         AriesGoalCodeParser.registerGoalCode(data.credentialScheme)
         AttributeIndex.registerAttributeType(data.credentialScheme)
         registerSerializersModule(data.credentialScheme, data.serializersModule)
+        data.itemValueLookup?.let { Cbor.register(it) }
+        data.itemValueEncoder?.let { Cbor.register(it) }
     }
 
 }
+typealias ItemValueEncoder
+        = (descriptor: SerialDescriptor, index: Int, compositeEncoder: CompositeEncoder, value: Any) -> Boolean
+
+typealias DescriptorLookup
+        = (element: Any) -> KSerializer<*>?
