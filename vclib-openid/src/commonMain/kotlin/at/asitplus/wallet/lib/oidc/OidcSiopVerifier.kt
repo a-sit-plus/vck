@@ -312,13 +312,7 @@ class OidcSiopVerifier private constructor(
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions = RequestOptions(),
     ): AuthenticationRequestParameters {
-        val typeConstraint = requestOptions.credentialScheme?.let {
-            when (requestOptions.representation) {
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.vcConstraint()
-                ConstantIndex.CredentialRepresentation.SD_JWT -> it.vcConstraint()
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
-            }
-        }
+        val typeConstraint = requestOptions.toTypeConstraint()
         val attributeConstraint = requestOptions.requestedAttributes?.let {
             createConstraints(requestOptions.representation, requestOptions.credentialScheme, it)
         } ?: listOf()
@@ -364,6 +358,14 @@ class OidcSiopVerifier private constructor(
                 ),
             ),
         )
+    }
+
+    private fun RequestOptions.toTypeConstraint() = credentialScheme?.let {
+        when (representation) {
+            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.vcConstraint()
+            ConstantIndex.CredentialRepresentation.SD_JWT -> it.vcConstraint()
+            ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
+        }
     }
 
     private fun ConstantIndex.CredentialRepresentation.toFormatHolder() = when (this) {
