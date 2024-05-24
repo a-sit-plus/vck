@@ -2,30 +2,42 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.*
+import at.asitplus.crypto.datatypes.CryptoAlgorithm
+import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.CryptoSignature
+import at.asitplus.crypto.datatypes.Digest
+import at.asitplus.crypto.datatypes.EcCurve
 import at.asitplus.crypto.datatypes.EcCurve.SECP_256_R_1
-import at.asitplus.crypto.datatypes.asn1.*
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
-import at.asitplus.crypto.datatypes.jws.*
-import at.asitplus.crypto.datatypes.pki.*
-import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.plus
+import at.asitplus.crypto.datatypes.fromJcaPublicKey
+import at.asitplus.crypto.datatypes.getJcaPublicKey
+import at.asitplus.crypto.datatypes.jcaName
+import at.asitplus.crypto.datatypes.jcaParams
+import at.asitplus.crypto.datatypes.jcaSignatureBytes
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
+import at.asitplus.crypto.datatypes.jws.JweAlgorithm
+import at.asitplus.crypto.datatypes.jws.JweEncryption
+import at.asitplus.crypto.datatypes.jws.jcaKeySpecName
+import at.asitplus.crypto.datatypes.jws.jcaName
+import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import at.asitplus.crypto.datatypes.parseFromJca
+import at.asitplus.crypto.datatypes.pki.X509Certificate
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.JCEECPublicKey
 import org.bouncycastle.jce.spec.ECPublicKeySpec
 import java.math.BigInteger
-import java.security.*
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.MessageDigest
+import java.security.PrivateKey
+import java.security.Signature
 import java.security.cert.Certificate
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
-import kotlin.math.absoluteValue
-import kotlin.random.Random
 
 
 actual open class DefaultCryptoService : CryptoService {
@@ -178,43 +190,4 @@ open class JvmEphemeralKeyHolder(private val ecCurve: EcCurve) : EphemeralKeyHol
         CryptoPublicKey.fromJcaPublicKey(keyPair.public).map { it.toJsonWebKey() }.getOrNull()
     }
 
-}
-
-fun X509Certificate.Companion.generateSelfSignedCertificate(
-    cryptoService: CryptoService,
-    commonName: String = "DefaultCryptoService"
-): X509Certificate {
-    val serialNumber: BigInteger = BigInteger.valueOf(Random.nextLong().absoluteValue)
-    val notBeforeDate = Clock.System.now()
-    val notAfterDate = notBeforeDate.plus(30, DateTimeUnit.SECOND)
-    val tbsCertificate = TbsCertificate(
-        version = 2,
-        serialNumber = serialNumber.toByteArray(),
-        issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
-        validFrom = Asn1Time(notBeforeDate),
-        validUntil = Asn1Time(notAfterDate),
-        signatureAlgorithm = cryptoService.algorithm,
-        subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
-        publicKey = cryptoService.publicKey,
-        extensions = listOf(X509CertificateExtension(
-            KnownOIDs.subjectAltName_2_5_29_17,
-            critical = false,
-            Asn1EncapsulatingOctetString(listOf(
-                asn1Sequence {
-                    append(
-                        Asn1Primitive(
-                            SubjectAltNameImplicitTags.dNSName,
-                            Asn1String.UTF8("example.com").encodeToTlv().content
-                        )
-                    )
-                }
-            ))))
-    )
-    val signature = runBlocking {
-        runCatching { tbsCertificate.encodeToDer() }
-            .wrap()
-            .transform { cryptoService.sign(it) }
-            .getOrThrow()
-    }
-    return X509Certificate(tbsCertificate, cryptoService.algorithm, signature)
 }

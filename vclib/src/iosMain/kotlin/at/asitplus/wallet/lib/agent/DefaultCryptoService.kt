@@ -88,25 +88,7 @@ actual class DefaultCryptoService : CryptoService {
         val publicKeyData = SecKeyCopyExternalRepresentation(secPublicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
         publicKey = CryptoPublicKey.Ec.fromAnsiX963Bytes(data.toByteArray())
-        val commonName = "DefaultCryptoService"
-        val notBeforeDate = Clock.System.now()
-        val notAfterDate = notBeforeDate.plus(30, DateTimeUnit.SECOND)
-        val tbsCertificate = TbsCertificate(
-            version = 2,
-            serialNumber = Random.nextBytes(4),
-            issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
-            validFrom = Asn1Time(notBeforeDate),
-            validUntil = Asn1Time(notAfterDate),
-            signatureAlgorithm = algorithm,
-            subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
-            publicKey = publicKey
-        )
-        val signature = signInt(tbsCertificate.encodeToDer())
-        this.certificate = X509Certificate(
-            tbsCertificate = tbsCertificate,
-            signatureAlgorithm = algorithm,
-            signature = CryptoSignature.decodeFromDer(signature)
-        )
+        this.certificate = X509Certificate.generateSelfSignedCertificate(this)
     }
 
     private fun signInt(input: ByteArray): ByteArray {
