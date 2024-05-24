@@ -507,7 +507,9 @@ class OidcSiopVerifier private constructor(
         if (idToken.issuer != idToken.subject)
             return AuthnResponseResult.ValidationError("iss", params.state)
                 .also { Napier.d("Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}") }
-        if (idToken.audience != relyingPartyUrl ?: x5c?.leaf?.tbsCertificate?.subjectAlternativeNames?.dnsNames?.firstOrNull())
+        val expectedAudience = relyingPartyUrl
+            ?: x5c?.leaf?.tbsCertificate?.subjectAlternativeNames?.dnsNames?.firstOrNull()
+        if (idToken.audience != expectedAudience)
             return AuthnResponseResult.ValidationError("aud", params.state)
                 .also { Napier.d("audience not valid: ${idToken.audience}") }
         if (idToken.expiration < (clock.now() - timeLeeway))
@@ -541,7 +543,6 @@ class OidcSiopVerifier private constructor(
         val validationResults = descriptors.map { descriptor ->
             val relatedPresentation =
                 JsonPath(descriptor.cumulativeJsonPath).query(verifiablePresentation).first().value
-
             val result = runCatching {
                 when (descriptor.format) {
                     ClaimFormatEnum.JWT_VP -> verifyJwtVpResult(relatedPresentation, idToken)
@@ -566,23 +567,23 @@ class OidcSiopVerifier private constructor(
     ) = when (this) {
         is Verifier.VerifyPresentationResult.InvalidStructure ->
             AuthnResponseResult.Error("parse vp failed", state)
-                .also { Napier.w("VP error: ${this}") }
-
-        is Verifier.VerifyPresentationResult.Success ->
-            AuthnResponseResult.Success(vp, state)
-                .also { Napier.i("VP success: ${this}") }
+                .also { Napier.w("VP error: $this") }
 
         is Verifier.VerifyPresentationResult.NotVerified ->
             AuthnResponseResult.ValidationError("vpToken", state)
-                .also { Napier.w("VP error: ${this}") }
+                .also { Napier.w("VP error: $this") }
+
+        is Verifier.VerifyPresentationResult.Success ->
+            AuthnResponseResult.Success(vp, state)
+                .also { Napier.i("VP success: $this") }
 
         is Verifier.VerifyPresentationResult.SuccessIso ->
             AuthnResponseResult.SuccessIso(document, state)
-                .also { Napier.i("VP success: ${this}") }
+                .also { Napier.i("VP success: $this") }
 
         is Verifier.VerifyPresentationResult.SuccessSdJwt ->
             AuthnResponseResult.SuccessSdJwt(sdJwt, disclosures, state)
-                .also { Napier.i("VP success: ${this}") }
+                .also { Napier.i("VP success: $this") }
     }
 
     private fun verifyMsoMdocResult(
