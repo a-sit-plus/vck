@@ -1,3 +1,5 @@
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
@@ -11,6 +13,7 @@ import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncryption
 import at.asitplus.crypto.datatypes.pki.X509Certificate
+import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 
 interface CryptoService {
 
@@ -102,6 +105,12 @@ interface EphemeralKeyHolder {
     val publicJsonWebKey: JsonWebKey?
 }
 
-expect class DefaultCryptoService() : CryptoService
+expect class DefaultCryptoService() : CryptoService {
+    companion object {
+        fun withSelfSignedCert(
+            extensions: List<X509CertificateExtension> = listOf()
+        ): CryptoService
+    }
+}
 
 expect class DefaultVerifierCryptoService() : VerifierCryptoService
