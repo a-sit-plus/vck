@@ -97,7 +97,7 @@ class DummyCredentialDataProvider(
                 if (claimNames.isNullOrContains(EXPIRY_DATE))
                     issuerSignedItem(EXPIRY_DATE, "2033-01-01", digestId++) else null,
                 if (claimNames.isNullOrContains(DRIVING_PRIVILEGES))
-                    issuerSignedItem(DRIVING_PRIVILEGES, drivingPrivilege, digestId++) else null,
+                    issuerSignedItem(DRIVING_PRIVILEGES, arrayOf(drivingPrivilege), digestId++) else null,
             )
 
             credentials.add(

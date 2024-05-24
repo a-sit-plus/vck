@@ -149,7 +149,7 @@ class Issuer {
             buildIssuerSignedItem(DOCUMENT_NUMBER, "123456789", 2U),
             buildIssuerSignedItem(ISSUE_DATE, "2023-01-01", 3U),
             buildIssuerSignedItem(EXPIRY_DATE, "2033-01-31", 4U),
-            buildIssuerSignedItem(DRIVING_PRIVILEGES, drivingPrivilege, 4U),
+            buildIssuerSignedItem(DRIVING_PRIVILEGES, arrayOf(drivingPrivilege), 4U),
         )
 
         val mso = MobileSecurityObject(
@@ -297,16 +297,9 @@ private fun extractDataDrivingPrivileges(
 }
 
 
-fun buildIssuerSignedItem(elementIdentifier: String, elementValue: String, digestId: UInt) = IssuerSignedItem(
+fun buildIssuerSignedItem(elementIdentifier: String, elementValue: Any, digestId: UInt) = IssuerSignedItem(
     digestId = digestId,
     random = Random.nextBytes(16),
     elementIdentifier = elementIdentifier,
     elementValue = elementValue
-)
-
-fun buildIssuerSignedItem(elementIdentifier: String, elementValue: DrivingPrivilege, digestId: UInt) = IssuerSignedItem(
-    digestId = digestId,
-    random = Random.nextBytes(16),
-    elementIdentifier = elementIdentifier,
-    elementValue = arrayOf(elementValue)
 )

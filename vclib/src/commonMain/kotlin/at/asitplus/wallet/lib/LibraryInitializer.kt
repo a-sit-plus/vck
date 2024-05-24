@@ -5,7 +5,7 @@ package at.asitplus.wallet.lib
 import at.asitplus.wallet.lib.data.AriesGoalCodeParser
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.registerSerializersModule
+import at.asitplus.wallet.lib.data.Json
 import at.asitplus.wallet.lib.iso.Cbor
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -33,12 +33,7 @@ object LibraryInitializer {
          * ```
          */
         val serializersModule: SerializersModule,
-
-        val itemValueLookup: (DescriptorLookup)? = null,
-
-        val itemValueEncoder: (ItemValueEncoder)? = null,
     )
-
 
     /**
      * Register the extension library with information from [data].
@@ -46,9 +41,17 @@ object LibraryInitializer {
     fun registerExtensionLibrary(data: ExtensionLibraryInfo) {
         AriesGoalCodeParser.registerGoalCode(data.credentialScheme)
         AttributeIndex.registerAttributeType(data.credentialScheme)
-        registerSerializersModule(data.credentialScheme, data.serializersModule)
-        data.itemValueLookup?.let { Cbor.register(it) }
-        data.itemValueEncoder?.let { Cbor.register(it) }
+        Json.registerSerializersModule(data.credentialScheme, data.serializersModule)
+    }
+
+    fun registerExtensionLibrary(
+        data: ExtensionLibraryInfo,
+        itemValueLookup: DescriptorLookup,
+        itemValueEncoder: ItemValueEncoder
+    ) {
+        registerExtensionLibrary(data)
+        itemValueLookup.let { Cbor.register(it) }
+        itemValueEncoder.let { Cbor.register(it) }
     }
 
 }
