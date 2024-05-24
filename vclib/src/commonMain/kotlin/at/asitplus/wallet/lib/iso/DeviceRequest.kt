@@ -555,20 +555,12 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
     private fun CompositeEncoder.encodeAnything(value: IssuerSignedItem, index: Int) {
-        val descriptor = when (val it = value.elementValue) {
-            is String -> buildDescriptor(it, String.serializer())
-            is Int -> buildDescriptor(it, Int.serializer())
-            // TODO write tag 1004
-            is LocalDate -> buildDescriptor(it, LocalDate.serializer())
-            is Boolean -> buildDescriptor(it, Boolean.serializer())
-            is ByteArray -> buildDescriptor(it, ByteArraySerializer())
-            is Array<*> -> buildDescriptor(
-                it as Array<DrivingPrivilege>,
-                ArraySerializer(DrivingPrivilege.serializer())
-            ) //TODO: this needs to come from external library baaed on actual type from value.elementIdentifier so we only have an else branch
-            else -> error("$it is not supported")
+        val descriptor = buildClassSerialDescriptor("IssuerSignedItem") {
+            element("digestID", Long.serializer().descriptor)
+            element("random", ByteArraySerializer().descriptor)
+            element("elementIdentifier", String.serializer().descriptor)
+            element("elementValue", buildDescriptorElementValue(value.elementValue).descriptor)
         }
 
         when (val it = value.elementValue) {
@@ -578,27 +570,18 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
             is LocalDate -> encodeSerializableElement(descriptor, index, LocalDate.serializer(), it)
             is Boolean -> encodeBooleanElement(descriptor, index, it)
             is ByteArray -> encodeSerializableElement(descriptor, index, ByteArraySerializer(), it)
-            is Array<*> -> encodeSerializableElement(
-                descriptor,
-                index,
-                ArraySerializer(DrivingPrivilege.serializer()),
-                it as Array<DrivingPrivilege>
-            )
-
-            else -> {
-                //actually we want the else branch and no hardcoded array stuff
-            }
+            else -> Cbor.encode(descriptor, index, this, it)
         }
     }
 
-    //TODO dont use serializer as parameter, but get it from somewhere based on value.elementIdentifier
-    private inline fun <reified T> buildDescriptor(element: T, serializer: KSerializer<T>) =
-        buildClassSerialDescriptor("IssuerSignedItem") { //TODO move this whole thing to the top and construct
-            element("digestID", Long.serializer().descriptor)
-            element("random", ByteArraySerializer().descriptor)
-            element("elementIdentifier", String.serializer().descriptor)
-            element("elementValue", serializer.descriptor)
-        }
+    private inline fun <reified T> buildDescriptorElementValue(element: T) = when (element) {
+        is String -> String.serializer()
+        is Int -> Int.serializer()
+        is LocalDate -> LocalDate.serializer()
+        is Boolean -> Boolean.serializer()
+        is ByteArray -> ByteArraySerializer()
+        else -> Cbor.lookupDescriptor(element) ?: error("descriptor not found for $element")
+    }
 
 
     override fun deserialize(decoder: Decoder): IssuerSignedItem {

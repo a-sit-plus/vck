@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseHeader
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.CoseSigned
@@ -15,8 +14,6 @@ import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.GIVEN_NAME
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.ISSUE_DATE
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.PORTRAIT
-import io.github.aakira.napier.DebugAntilog
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
