@@ -36,7 +36,6 @@ import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.Signature
-import java.security.cert.Certificate
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
 import javax.crypto.spec.GCMParameterSpec
@@ -60,7 +59,7 @@ actual open class DefaultCryptoService : CryptoService {
     /**
      * Default constructor without arguments is ES256
      */
-    actual constructor() : this(genEc256KeyPair(), CryptoAlgorithm.ES256, null)
+    actual constructor() : this(genEc256KeyPair(), CryptoAlgorithm.ES256)
 
     /**
      * Constructor which allows all public keys implemented in `KMP-Crypto`
@@ -68,14 +67,17 @@ actual open class DefaultCryptoService : CryptoService {
      * it's mandatory
      * Also used for custom certificates
      */
-    constructor(keyPair: KeyPair, algorithm: CryptoAlgorithm, certificate: Certificate? = null) {
+    constructor(
+        keyPair: KeyPair,
+        algorithm: CryptoAlgorithm,
+        certificateExtensions: List<X509CertificateExtension> = listOf()
+    ) {
         this.privateKey = keyPair.private
         this.algorithm = algorithm
         this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
         this.jsonWebKey = publicKey.toJsonWebKey()
         this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
-        this.certificate = certificate?.let { X509Certificate.decodeFromDer(it.encoded) }
-            ?: X509Certificate.generateSelfSignedCertificate(this)
+        this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
     }
 
     override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> = runCatching {
@@ -155,9 +157,8 @@ actual open class DefaultCryptoService : CryptoService {
     }.wrap()
 
     actual companion object {
-        actual fun withSelfSignedCert(extensions: List<X509CertificateExtension>): CryptoService {
-            return DefaultCryptoService(genEc256KeyPair(), CryptoAlgorithm.ES256, null)
-        }
+        actual fun withSelfSignedCert(extensions: List<X509CertificateExtension>): CryptoService =
+            DefaultCryptoService(genEc256KeyPair(), CryptoAlgorithm.ES256, extensions)
     }
 }
 

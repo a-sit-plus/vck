@@ -70,7 +70,9 @@ actual class DefaultCryptoService : CryptoService {
     override val coseKey: CoseKey
         get() = publicKey.toCoseKey(CoseAlgorithm.ES256).getOrNull()!!
 
-    actual constructor() {
+    actual constructor() : this(listOf())
+
+    constructor(certificateExtensions: List<X509CertificateExtension>) {
         val query = CFDictionaryCreateMutable(null, 2, null, null).apply {
             CFDictionaryAddValue1(this, kSecAttrKeyType, kSecAttrKeyTypeEC)
             CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
@@ -80,7 +82,7 @@ actual class DefaultCryptoService : CryptoService {
         val publicKeyData = SecKeyCopyExternalRepresentation(secPublicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
         publicKey = CryptoPublicKey.Ec.fromAnsiX963Bytes(data.toByteArray())
-        this.certificate = X509Certificate.generateSelfSignedCertificate(this)
+        this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
     }
 
     private fun signInt(input: ByteArray): ByteArray {
@@ -155,9 +157,8 @@ actual class DefaultCryptoService : CryptoService {
     }
 
     actual companion object {
-        actual fun withSelfSignedCert(extensions: List<X509CertificateExtension>): CryptoService {
-            return DefaultCryptoService()
-        }
+        actual fun withSelfSignedCert(extensions: List<X509CertificateExtension>): CryptoService =
+            DefaultCryptoService(certificateExtensions = extensions)
     }
 }
 
