@@ -313,9 +313,7 @@ class OidcSiopVerifier private constructor(
         requestOptions: RequestOptions = RequestOptions(),
     ): AuthenticationRequestParameters {
         val typeConstraint = requestOptions.toTypeConstraint()
-        val attributeConstraint = requestOptions.requestedAttributes?.let {
-            createConstraints(requestOptions.representation, requestOptions.credentialScheme, it)
-        } ?: listOf()
+        val attributeConstraint = requestOptions.toAttributeConstraints()
         val constraintFields = attributeConstraint + typeConstraint
         val schemaReference = requestOptions.credentialScheme?.schemaUri?.let { SchemaReference(it) }
         val scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, requestOptions.credentialScheme?.vcType)
@@ -360,10 +358,14 @@ class OidcSiopVerifier private constructor(
         )
     }
 
+    private fun RequestOptions.toAttributeConstraints() = requestedAttributes?.let {
+        createConstraints(representation, credentialScheme, it)
+    } ?: listOf()
+
     private fun RequestOptions.toTypeConstraint() = credentialScheme?.let {
         when (representation) {
-            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.vcConstraint()
-            ConstantIndex.CredentialRepresentation.SD_JWT -> it.vcConstraint()
+            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.toVcConstraint()
+            ConstantIndex.CredentialRepresentation.SD_JWT -> it.toVcConstraint()
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
         }
     }
@@ -374,7 +376,7 @@ class OidcSiopVerifier private constructor(
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
     }
 
-    private fun ConstantIndex.CredentialScheme.vcConstraint() = ConstraintField(
+    private fun ConstantIndex.CredentialScheme.toVcConstraint() = ConstraintField(
         path = listOf("$.type"),
         filter = ConstraintFilter(
             type = "string",
@@ -388,20 +390,20 @@ class OidcSiopVerifier private constructor(
         attributeTypes: List<String>,
     ): Collection<ConstraintField> = attributeTypes.map {
         if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-            ConstraintField(
-                path = listOf(
-                    NormalizedJsonPath(
-                        NormalizedJsonPathSegment.NameSegment(
-                            credentialScheme?.isoNamespace ?: "mdoc"
-                        ),
-                        NormalizedJsonPathSegment.NameSegment(it),
-                    ).toString()
-                ),
-                intentToRetain = false
-            )
+            credentialScheme.toConstraintField(it)
         else
             ConstraintField(path = listOf("\$[${it.quote()}]"))
     }
+
+    private fun ConstantIndex.CredentialScheme?.toConstraintField(attributeType: String) = ConstraintField(
+        path = listOf(
+            NormalizedJsonPath(
+                NormalizedJsonPathSegment.NameSegment(this?.isoNamespace ?: "mdoc"),
+                NormalizedJsonPathSegment.NameSegment(attributeType),
+            ).toString()
+        ),
+        intentToRetain = false
+    )
 
 
     sealed class AuthnResponseResult {
