@@ -14,6 +14,30 @@ object Cbor {
     private val descriptorLookupFunctions = mutableListOf<DescriptorLookup>()
     private val encoderFunctions = mutableListOf<ItemValueEncoder>()
 
+    init {
+        descriptorLookupFunctions += {
+            when (it) {
+                is Array<*> -> ArraySerializer(DrivingPrivilege.serializer())
+                else -> null
+            }
+        }
+        encoderFunctions += { descriptor, index, compositeEncoder, value ->
+            if (value is Array<*>) {
+                true.also {
+                    @Suppress("UNCHECKED_CAST")
+                    compositeEncoder.encodeSerializableElement(
+                        descriptor,
+                        index,
+                        ArraySerializer(DrivingPrivilege.serializer()),
+                        value as Array<DrivingPrivilege>
+                    )
+                }
+            } else {
+                false
+            }
+        }
+    }
+
     fun register(function: DescriptorLookup) {
         descriptorLookupFunctions += function
     }
@@ -24,23 +48,10 @@ object Cbor {
 
     fun lookupDescriptor(element: Any): KSerializer<*>? {
         return descriptorLookupFunctions.firstNotNullOfOrNull { it.invoke(element) }
-            ?: when (element) {
-                is Array<*> -> ArraySerializer(DrivingPrivilege.serializer())
-                else -> null
-            }
     }
 
-    @Suppress("UNCHECKED_CAST")
     fun encode(descriptor: SerialDescriptor, index: Int, compositeEncoder: CompositeEncoder, value: Any) {
         encoderFunctions.firstOrNull { it.invoke(descriptor, index, compositeEncoder, value) }
-            ?: if (value is Array<*>) {
-                compositeEncoder.encodeSerializableElement(
-                    descriptor,
-                    index,
-                    ArraySerializer(DrivingPrivilege.serializer()),
-                    value as Array<DrivingPrivilege>
-                )
-            } else Unit
     }
 }
 
