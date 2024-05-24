@@ -52,6 +52,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -541,56 +542,17 @@ class OidcSiopVerifier private constructor(
             val relatedPresentation =
                 JsonPath(descriptor.cumulativeJsonPath).query(verifiablePresentation).first().value
 
-            val format = descriptor.format
-            val result = when (format) {
-                ClaimFormatEnum.JWT_VP -> when (relatedPresentation) {
-                    // must be a string
-                    // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
-                    is JsonPrimitive -> verifier.verifyPresentation(
-                        relatedPresentation.content,
-                        idToken.nonce
-                    )
-
-                    else -> return AuthnResponseResult.ValidationError(
-                        "Invalid presentation format",
-                        params.state
-                    ).also { Napier.w("Invalid presentation format: $relatedPresentation") }
+            val result = runCatching {
+                when (descriptor.format) {
+                    ClaimFormatEnum.JWT_VP -> verifyJwtVpResult(relatedPresentation, idToken)
+                    ClaimFormatEnum.JWT_SD -> verifyJwtSdResult(relatedPresentation, idToken)
+                    ClaimFormatEnum.MSO_MDOC -> verifyMsoMdocResult(relatedPresentation, idToken)
+                    else -> throw IllegalArgumentException()
                 }
-
-                ClaimFormatEnum.JWT_SD -> when (relatedPresentation) {
-                    // must be a string
-                    // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.5-1
-                    is JsonPrimitive -> verifier.verifyPresentation(
-                        relatedPresentation.content,
-                        idToken.nonce
-                    )
-
-                    else -> return AuthnResponseResult.ValidationError(
-                        "Invalid presentation format",
-                        params.state
-                    ).also { Napier.w("Invalid presentation format: $relatedPresentation") }
-                }
-
-                ClaimFormatEnum.MSO_MDOC -> when (relatedPresentation) {
-                    // must be a string
-                    // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.5-1
-                    is JsonPrimitive -> verifier.verifyPresentation(
-                        relatedPresentation.content,
-                        idToken.nonce
-                    )
-
-                    else -> return AuthnResponseResult.ValidationError(
-                        "Invalid presentation format",
-                        params.state
-                    ).also { Napier.w("Invalid presentation format: $relatedPresentation") }
-                }
-
-                else -> return AuthnResponseResult.ValidationError(
-                    "descriptor format not known",
-                    params.state
-                ).also { Napier.w("Descriptor format not known: $format") }
+            }.getOrElse {
+                return AuthnResponseResult.ValidationError("Invalid presentation format", params.state)
+                    .also { Napier.w("Invalid presentation format: $relatedPresentation") }
             }
-
             when (result) {
                 is Verifier.VerifyPresentationResult.InvalidStructure ->
                     AuthnResponseResult.Error("parse vp failed", params.state)
@@ -621,6 +583,36 @@ class OidcSiopVerifier private constructor(
         return if (validationResults.size != 1) AuthnResponseResult.VerifiablePresentationValidationResults(
             validationResults = validationResults
         ) else validationResults[0]
+    }
+
+    private fun verifyMsoMdocResult(
+        relatedPresentation: JsonElement,
+        idToken: IdToken
+    ) = when (relatedPresentation) {
+        // must be a string
+        // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.5-1
+        is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, idToken.nonce)
+        else -> throw IllegalArgumentException()
+    }
+
+    private fun verifyJwtSdResult(
+        relatedPresentation: JsonElement,
+        idToken: IdToken
+    ) = when (relatedPresentation) {
+        // must be a string
+        // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.5-1
+        is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, idToken.nonce)
+        else -> throw IllegalArgumentException()
+    }
+
+    private fun verifyJwtVpResult(
+        relatedPresentation: JsonElement,
+        idToken: IdToken
+    ) = when (relatedPresentation) {
+        // must be a string
+        // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
+        is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, idToken.nonce)
+        else -> throw IllegalArgumentException()
     }
 }
 
