@@ -553,36 +553,36 @@ class OidcSiopVerifier private constructor(
                 return AuthnResponseResult.ValidationError("Invalid presentation format", params.state)
                     .also { Napier.w("Invalid presentation format: $relatedPresentation") }
             }
-            when (result) {
-                is Verifier.VerifyPresentationResult.InvalidStructure ->
-                    AuthnResponseResult.Error("parse vp failed", params.state)
-                        .also { Napier.w("VP error: $result") }
-
-                is Verifier.VerifyPresentationResult.Success ->
-                    AuthnResponseResult.Success(result.vp, params.state)
-                        .also { Napier.i("VP success: $result") }
-
-                is Verifier.VerifyPresentationResult.NotVerified ->
-                    AuthnResponseResult.ValidationError("vpToken", params.state)
-                        .also { Napier.w("VP error: $result") }
-
-                is Verifier.VerifyPresentationResult.SuccessIso ->
-                    AuthnResponseResult.SuccessIso(result.document, params.state)
-                        .also { Napier.i("VP success: $result") }
-
-                is Verifier.VerifyPresentationResult.SuccessSdJwt ->
-                    AuthnResponseResult.SuccessSdJwt(
-                        result.sdJwt,
-                        result.disclosures,
-                        params.state
-                    )
-                        .also { Napier.i("VP success: $result") }
-            }
+            result.mapToAuthnResponseResult(params.state)
         }
 
-        return if (validationResults.size != 1) AuthnResponseResult.VerifiablePresentationValidationResults(
-            validationResults = validationResults
-        ) else validationResults[0]
+        return if (validationResults.size != 1) {
+            AuthnResponseResult.VerifiablePresentationValidationResults(validationResults)
+        } else validationResults[0]
+    }
+
+    private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(
+        state: String?
+    ) = when (this) {
+        is Verifier.VerifyPresentationResult.InvalidStructure ->
+            AuthnResponseResult.Error("parse vp failed", state)
+                .also { Napier.w("VP error: ${this}") }
+
+        is Verifier.VerifyPresentationResult.Success ->
+            AuthnResponseResult.Success(vp, state)
+                .also { Napier.i("VP success: ${this}") }
+
+        is Verifier.VerifyPresentationResult.NotVerified ->
+            AuthnResponseResult.ValidationError("vpToken", state)
+                .also { Napier.w("VP error: ${this}") }
+
+        is Verifier.VerifyPresentationResult.SuccessIso ->
+            AuthnResponseResult.SuccessIso(document, state)
+                .also { Napier.i("VP success: ${this}") }
+
+        is Verifier.VerifyPresentationResult.SuccessSdJwt ->
+            AuthnResponseResult.SuccessSdJwt(sdJwt, disclosures, state)
+                .also { Napier.i("VP success: ${this}") }
     }
 
     private fun verifyMsoMdocResult(
