@@ -4,7 +4,7 @@ package at.asitplus.wallet.lib.jws
 import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.CryptoSignature
-import at.asitplus.crypto.datatypes.EcCurve
+import at.asitplus.crypto.datatypes.ECCurve
 import at.asitplus.crypto.datatypes.asn1.Asn1String
 import at.asitplus.crypto.datatypes.asn1.Asn1Time
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
@@ -76,12 +76,12 @@ private fun randomCertificate() = X509Certificate(
     TbsCertificate(
         serialNumber = Random.nextBytes(16),
         issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.Printable("Test")))),
-        publicKey = CryptoPublicKey.Ec(EcCurve.SECP_256_R_1, Random.nextBytes(32),Random.nextBytes(32)),
+        publicKey = CryptoPublicKey.EC(ECCurve.SECP_256_R_1, Random.nextBytes(32),Random.nextBytes(32)),
         signatureAlgorithm = CryptoAlgorithm.ES256,
         subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.Printable("Test")))),
         validFrom = Asn1Time(Clock.System.now()),
         validUntil = Asn1Time(Clock.System.now()),
     ),
     CryptoAlgorithm.ES256,
-    CryptoSignature.EC(Random.nextBytes(16), Random.nextBytes(16))
+    CryptoSignature.EC.fromRawBytes(ECCurve.SECP_256_R_1, Random.nextBytes(ECCurve.SECP_256_R_1.scalarLength.bytes.toInt()*2)),
 )

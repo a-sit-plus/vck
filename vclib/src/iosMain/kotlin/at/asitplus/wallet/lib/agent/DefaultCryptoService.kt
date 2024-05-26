@@ -6,9 +6,10 @@ import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.CryptoSignature
-import at.asitplus.crypto.datatypes.EcCurve
+import at.asitplus.crypto.datatypes.ECCurve
 import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseKey
+import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.io.Base64Strict
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
@@ -18,33 +19,11 @@ import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.cinterop.ByteVar
-import kotlinx.cinterop.CPointer
-import kotlinx.cinterop.MemScope
-import kotlinx.cinterop.allocArrayOf
-import kotlinx.cinterop.get
-import kotlinx.cinterop.memScoped
-import kotlinx.cinterop.reinterpret
+import kotlinx.cinterop.*
 import platform.CoreFoundation.CFDataRef
 import platform.CoreFoundation.CFDictionaryCreateMutable
-import platform.Foundation.CFBridgingRelease
-import platform.Foundation.CFBridgingRetain
-import platform.Foundation.NSData
-import platform.Foundation.NSNumber
-import platform.Foundation.create
-import platform.Security.SecKeyCopyExternalRepresentation
-import platform.Security.SecKeyCopyPublicKey
-import platform.Security.SecKeyCreateRandomKey
-import platform.Security.SecKeyCreateSignature
-import platform.Security.SecKeyCreateWithData
-import platform.Security.SecKeyRef
-import platform.Security.SecKeyVerifySignature
-import platform.Security.kSecAttrKeyClass
-import platform.Security.kSecAttrKeyClassPublic
-import platform.Security.kSecAttrKeySizeInBits
-import platform.Security.kSecAttrKeyType
-import platform.Security.kSecAttrKeyTypeEC
-import platform.Security.kSecKeyAlgorithmECDSASignatureMessageX962SHA256
+import platform.Foundation.*
+import platform.Security.*
 import platform.CoreFoundation.CFDictionaryAddValue as CFDictionaryAddValue1
 
 
@@ -68,7 +47,7 @@ actual class DefaultCryptoService : CryptoService {
         get() = publicKey.toJsonWebKey()
 
     override val coseKey: CoseKey
-        get() = publicKey.toCoseKey(CoseAlgorithm.ES256).getOrNull()!!
+        get() = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrNull()!!
 
     actual constructor() : this(listOf())
 
@@ -81,7 +60,7 @@ actual class DefaultCryptoService : CryptoService {
         secPublicKey = SecKeyCopyPublicKey(secPrivateKey)!!
         val publicKeyData = SecKeyCopyExternalRepresentation(secPublicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
-        publicKey = CryptoPublicKey.Ec.fromAnsiX963Bytes(data.toByteArray())
+        publicKey = CryptoPublicKey.EC.fromAnsiX963Bytes(data.toByteArray())
         this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
     }
 
@@ -96,7 +75,7 @@ actual class DefaultCryptoService : CryptoService {
     }
 
     override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> {
-        return KmmResult.success(CryptoSignature.decodeFromDer(signInt(input)))
+        return KmmResult.success(CryptoSignature.EC.decodeFromDer(signInt(input)).withCurve(algorithm.curve!!))
     }
 
     override fun encrypt(
@@ -128,7 +107,7 @@ actual class DefaultCryptoService : CryptoService {
             KmmResult.failure(IllegalArgumentException())
     }
 
-    override fun generateEphemeralKeyPair(ecCurve: EcCurve): KmmResult<EphemeralKeyHolder> {
+    override fun generateEphemeralKeyPair(ecCurve: ECCurve): KmmResult<EphemeralKeyHolder> {
         val query = CFDictionaryCreateMutable(null, 2, null, null).apply {
             CFDictionaryAddValue1(this, kSecAttrKeyType, kSecAttrKeyTypeEC)
             CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
@@ -145,11 +124,11 @@ actual class DefaultCryptoService : CryptoService {
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray> {
-        return KmmResult.success("sharedSecret-${algorithm.text}".encodeToByteArray())
+        return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
     }
 
     override fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
-        return KmmResult.success("sharedSecret-${algorithm.text}".encodeToByteArray())
+        return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
     }
 
     override fun messageDigest(input: ByteArray, digest: at.asitplus.crypto.datatypes.Digest): KmmResult<ByteArray> {
@@ -174,7 +153,7 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
         publicKey: CryptoPublicKey
     ): KmmResult<Boolean> {
         // TODO RSA
-        if (publicKey !is CryptoPublicKey.Ec) {
+        if (publicKey !is CryptoPublicKey.EC) {
             return KmmResult.failure(IllegalArgumentException("Public key is not an EC key"))
         }
         memScoped {
@@ -204,7 +183,7 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
 
 data class DefaultEphemeralKeyHolder(val publicKey: SecKeyRef, val privateKey: SecKeyRef? = null) : EphemeralKeyHolder {
 
-    override val publicJsonWebKey = CryptoPublicKey.Ec.fromAnsiX963Bytes(
+    override val publicJsonWebKey = CryptoPublicKey.EC.fromAnsiX963Bytes(
         (CFBridgingRelease(
             SecKeyCopyExternalRepresentation(
                 publicKey,

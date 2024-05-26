@@ -178,7 +178,7 @@ class JwsServiceJvmTest : FreeSpec({
                 if (thisConfiguration.first == "EC") {
                     "Encrypted object from ext. library can be decrypted with int. library" {
                         val stringPayload = jsonSerializer.encodeToString(randomPayload)
-                        val libJweHeader = JWEHeader.Builder(JWEAlgorithm(jweAlgorithm.text), EncryptionMethod.A256GCM)
+                        val libJweHeader = JWEHeader.Builder(JWEAlgorithm(jweAlgorithm.identifier), EncryptionMethod.A256GCM)
                             .type(JOSEObjectType(JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON))
                             .contentType(JwsContentTypeConstants.DIDCOMM_PLAIN_JSON)
                             .keyID(cryptoService.jsonWebKey.keyId)
