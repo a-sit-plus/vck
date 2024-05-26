@@ -23,3 +23,7 @@ gradlePlugin {
         implementationClass = "at.asitplus.gradle.VcLibConventions"
     }
 }
+
+kotlin {
+    jvmToolchain(17)
+}

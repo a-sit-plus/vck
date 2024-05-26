@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.jws
 
-import at.asitplus.crypto.datatypes.EcCurve
+import at.asitplus.crypto.datatypes.ECCurve
 import at.asitplus.crypto.datatypes.asn1.ensureSize
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import io.kotest.core.spec.style.FreeSpec
@@ -13,11 +13,11 @@ import java.security.interfaces.ECPublicKey
 
 class JsonWebKeyJvmTest : FreeSpec({
 
-    lateinit var ecCurve: EcCurve
+    lateinit var ecCurve: ECCurve
     lateinit var keyPair: KeyPair
 
     beforeTest {
-        ecCurve = EcCurve.SECP_256_R_1
+        ecCurve = ECCurve.SECP_256_R_1
         keyPair = KeyPairGenerator.getInstance("EC").also {
             it.initialize(256)
         }.genKeyPair()
@@ -30,12 +30,12 @@ class JsonWebKeyJvmTest : FreeSpec({
 
         jsonWebKey.x shouldBe xFromBc
         jsonWebKey.y shouldBe yFromBc
-        jsonWebKey.keyId.shouldNotBeNull()
-        jsonWebKey.keyId shouldHaveMinLength 32
+        jsonWebKey.identifier.shouldNotBeNull()
+        jsonWebKey.identifier shouldHaveMinLength 32
 
         "it can be recreated" {
-            val recreatedJwk = JsonWebKey.fromDid(jsonWebKey.keyId!!).getOrThrow()
-            recreatedJwk.keyId shouldBe jsonWebKey.keyId
+            val recreatedJwk = JsonWebKey.fromDid(jsonWebKey.didEncoded!!).getOrThrow()
+            recreatedJwk.keyId shouldBe jsonWebKey.didEncoded!!
             recreatedJwk.x shouldBe jsonWebKey.x
             recreatedJwk.y shouldBe jsonWebKey.y
         }
@@ -49,13 +49,13 @@ class JsonWebKeyJvmTest : FreeSpec({
 
         jsonWebKey.x shouldBe xFromBc
         jsonWebKey.y shouldBe yFromBc
-        jsonWebKey.keyId.shouldNotBeNull()
-        jsonWebKey.keyId shouldHaveMinLength 32
+        jsonWebKey.identifier.shouldNotBeNull()
+        jsonWebKey.identifier shouldHaveMinLength 32
         jsonWebKey.toCryptoPublicKey().getOrThrow().iosEncoded shouldBe  ansiX962
 
         "it can be recreated" {
-            val recreatedJwk = JsonWebKey.fromDid(jsonWebKey.keyId!!).getOrThrow()
-            recreatedJwk.keyId shouldBe jsonWebKey.keyId
+            val recreatedJwk = JsonWebKey.fromDid(jsonWebKey.didEncoded!!).getOrThrow()
+            recreatedJwk.keyId shouldBe jsonWebKey.didEncoded
             recreatedJwk.x shouldBe jsonWebKey.x
             recreatedJwk.y shouldBe jsonWebKey.y
             jsonWebKey.toCryptoPublicKey().getOrThrow().iosEncoded shouldBe ansiX962

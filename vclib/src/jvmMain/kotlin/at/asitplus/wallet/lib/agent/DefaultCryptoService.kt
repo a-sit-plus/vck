@@ -8,8 +8,8 @@ import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.CryptoSignature
 import at.asitplus.crypto.datatypes.Digest
-import at.asitplus.crypto.datatypes.EcCurve
-import at.asitplus.crypto.datatypes.EcCurve.SECP_256_R_1
+import at.asitplus.crypto.datatypes.ECCurve
+import at.asitplus.crypto.datatypes.ECCurve.SECP_256_R_1
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
@@ -18,12 +18,7 @@ import at.asitplus.crypto.datatypes.getJcaPublicKey
 import at.asitplus.crypto.datatypes.jcaName
 import at.asitplus.crypto.datatypes.jcaParams
 import at.asitplus.crypto.datatypes.jcaSignatureBytes
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
-import at.asitplus.crypto.datatypes.jws.JweAlgorithm
-import at.asitplus.crypto.datatypes.jws.JweEncryption
-import at.asitplus.crypto.datatypes.jws.jcaKeySpecName
-import at.asitplus.crypto.datatypes.jws.jcaName
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import at.asitplus.crypto.datatypes.jws.*
 import at.asitplus.crypto.datatypes.parseFromJca
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
@@ -74,7 +69,7 @@ actual open class DefaultCryptoService : CryptoService {
     ) {
         this.privateKey = keyPair.private
         this.algorithm = algorithm
-        this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
+        this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow().also { it.jwkId=it.didEncoded }
         this.jsonWebKey = publicKey.toJsonWebKey()
         this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
         this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
@@ -149,7 +144,7 @@ actual open class DefaultCryptoService : CryptoService {
         }.generateSecret()
     }.wrap()
 
-    override fun generateEphemeralKeyPair(ecCurve: EcCurve): KmmResult<EphemeralKeyHolder> =
+    override fun generateEphemeralKeyPair(ecCurve: ECCurve): KmmResult<EphemeralKeyHolder> =
         KmmResult.success(JvmEphemeralKeyHolder(ecCurve))
 
     override fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray> = runCatching {
@@ -186,7 +181,7 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
         }.wrap()
 }
 
-open class JvmEphemeralKeyHolder(private val ecCurve: EcCurve) : EphemeralKeyHolder {
+open class JvmEphemeralKeyHolder(private val ecCurve: ECCurve) : EphemeralKeyHolder {
 
     val keyPair: KeyPair =
         KeyPairGenerator.getInstance("EC").also { it.initialize(ecCurve.keyLengthBits.toInt()) }.genKeyPair()
