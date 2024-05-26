@@ -353,6 +353,7 @@ class OidcSiopVerifier private constructor(
         ),
     )
 
+    // TODO rethink for non-vc-jwt types
     private fun RequestOptions.buildScope() = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.vcType)
         .joinToString(" ")
 
@@ -389,7 +390,7 @@ class OidcSiopVerifier private constructor(
     private fun RequestOptions.toTypeConstraint() = credentialScheme?.let {
         when (representation) {
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.toVcConstraint()
-            ConstantIndex.CredentialRepresentation.SD_JWT -> it.toVcConstraint()
+            ConstantIndex.CredentialRepresentation.SD_JWT -> it.toSdJwtConstraint()
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
         }
     }
@@ -405,6 +406,14 @@ class OidcSiopVerifier private constructor(
         filter = ConstraintFilter(
             type = "string",
             pattern = vcType,
+        )
+    )
+
+    private fun ConstantIndex.CredentialScheme.toSdJwtConstraint() = ConstraintField(
+        path = listOf("$.vct"),
+        filter = ConstraintFilter(
+            type = "string",
+            pattern = sdJwtType ?: schemaUri,
         )
     )
 

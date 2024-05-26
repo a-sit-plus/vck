@@ -70,7 +70,6 @@ class CredentialIssuer(
                 credentialSchemes.forEach { putAll(it.toSupportedCredentialFormat(issuer.cryptoAlgorithms)) }
             },
             supportsCredentialIdentifiers = true,
-            displayProperties = credentialSchemes.map { DisplayProperties(it.vcType, "en") }.toSet()
         )
     }
 

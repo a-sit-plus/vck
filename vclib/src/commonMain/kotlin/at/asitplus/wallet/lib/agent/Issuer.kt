@@ -71,6 +71,7 @@ interface Issuer {
      */
     val cryptoAlgorithms: Set<CryptoAlgorithm>
 
+    // TODO Extract to pass credential scheme only!
     /**
      * Issues credentials for some [attributeTypes] (i.e. some of
      * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with its public

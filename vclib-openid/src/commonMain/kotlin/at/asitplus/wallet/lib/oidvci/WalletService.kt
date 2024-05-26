@@ -310,9 +310,7 @@ class WalletService(
         ConstantIndex.CredentialRepresentation.SD_JWT -> AuthorizationDetails(
             type = CREDENTIAL_TYPE_OPENID,
             format = toFormat(),
-            credentialDefinition = SupportedCredentialFormatDefinition(
-                types = listOf(VERIFIABLE_CREDENTIAL, credentialScheme.vcType),
-            ),
+            sdJwtVcType = credentialScheme.sdJwtType ?: credentialScheme.schemaUri,
             claims = requestedAttributes?.toRequestedClaimsSdJwt(credentialScheme),
         )
 
@@ -340,9 +338,7 @@ class WalletService(
         ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialRequestParameters(
             format = toFormat(),
             claims = requestedAttributes?.toRequestedClaimsSdJwt(credentialScheme),
-            credentialDefinition = SupportedCredentialFormatDefinition(
-                types = listOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
-            ),
+            sdJwtVcType = credentialScheme.sdJwtType ?: credentialScheme.schemaUri,
             proof = proof
         )
 
@@ -355,7 +351,7 @@ class WalletService(
     }
 
     private fun Collection<String>.toRequestedClaimsSdJwt(credentialScheme: ConstantIndex.CredentialScheme) =
-        mapOf(credentialScheme.vcType to this.associateWith { RequestedCredentialClaimSpecification() })
+        mapOf((credentialScheme.sdJwtType ?: credentialScheme.vcType) to this.associateWith { RequestedCredentialClaimSpecification() })
 
     private fun Collection<String>.toRequestedClaimsIso(credentialScheme: ConstantIndex.CredentialScheme) =
         mapOf(credentialScheme.isoNamespace to this.associateWith { RequestedCredentialClaimSpecification() })

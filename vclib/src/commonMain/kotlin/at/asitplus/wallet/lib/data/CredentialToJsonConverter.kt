@@ -41,7 +41,8 @@ object CredentialToJsonConverter {
                     }
                 }.filterNotNull().toMap()
                 buildJsonObject {
-                    put("type", JsonPrimitive(credential.scheme.vcType))
+                    // TODO test this
+                    put("vct", JsonPrimitive(credential.scheme.sdJwtType ?: credential.scheme.vcType))
                     pairs.forEach {
                         put(it.key, it.value)
                     }

@@ -2,8 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
-import at.asitplus.crypto.datatypes.cose.CoseHeader
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.io.Base64Strict
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
@@ -19,7 +17,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
-import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -36,7 +33,6 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.ktor.util.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -114,17 +110,18 @@ class IssuerAgent(
                 failed += Issuer.FailedAttribute(attributeType, IllegalArgumentException("type not resolved to scheme"))
                 continue
             }
-            (dataProviderOverride ?: dataProvider).getCredential(subjectPublicKey, scheme, representation, claimNames).fold(
-                onSuccess = { toBeIssued ->
-                    toBeIssued.forEach { credentialToBeIssued ->
-                        issueCredential(credentialToBeIssued, subjectPublicKey, scheme).also { result ->
-                            failed += result.failed
-                            successful += result.successful
+            (dataProviderOverride ?: dataProvider).getCredential(subjectPublicKey, scheme, representation, claimNames)
+                .fold(
+                    onSuccess = { toBeIssued ->
+                        toBeIssued.forEach { credentialToBeIssued ->
+                            issueCredential(credentialToBeIssued, subjectPublicKey, scheme).also { result ->
+                                failed += result.failed
+                                successful += result.successful
+                            }
                         }
-                    }
-                },
-                onFailure = { failed += Issuer.FailedAttribute(attributeType, it) }
-            )
+                    },
+                    onFailure = { failed += Issuer.FailedAttribute(attributeType, it) }
+                )
         }
         return Issuer.IssuedCredentialResult(successful = successful, failed = failed)
     }
@@ -285,7 +282,7 @@ class IssuerAgent(
             issuedAt = issuanceDate,
             jwtId = vcId,
             disclosureDigests = disclosureDigests,
-            verifiableCredentialType = scheme.vcType,
+            verifiableCredentialType = scheme.sdJwtType ?: scheme.schemaUri,
             selectiveDisclosureAlgorithm = "sha-256",
             confirmationKey = subjectPublicKey.toJsonWebKey(),
             credentialStatus = credentialStatus,

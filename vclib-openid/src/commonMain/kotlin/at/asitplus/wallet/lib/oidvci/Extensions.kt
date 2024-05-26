@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.descriptors.serialDescriptor
 
 fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<CryptoAlgorithm>) = mapOf(
     this.isoNamespace to SupportedCredentialFormat.forIsoMdoc(
@@ -33,8 +34,8 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
     ),
     encodeToCredentialIdentifier(CredentialFormatEnum.VC_SD_JWT) to SupportedCredentialFormat.forSdJwt(
         format = CredentialFormatEnum.VC_SD_JWT,
-        scope = vcType,
-        sdJwtVcType = vcType,
+        scope = sdJwtType ?: schemaUri,
+        sdJwtVcType = sdJwtType ?: schemaUri,
         supportedBindingMethods = setOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
         supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toSet(),
         sdJwtClaims = claimNames.associateWith { RequestedCredentialClaimSpecification() }
@@ -44,6 +45,7 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
 /**
  * Reverse functionality of [decodeFromCredentialIdentifier]
  */
+// TODO rethink for non-vc-jwt
 private fun ConstantIndex.CredentialScheme.encodeToCredentialIdentifier(format: CredentialFormatEnum) =
     "$vcType#${format.text}"
 

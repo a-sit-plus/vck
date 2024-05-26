@@ -18,12 +18,15 @@ object ConstantIndex {
 
         /**
          * Name of the subclass of [CredentialSubject] and thus the `type` of the credential,
-         * when using [CredentialRepresentation.PLAIN_JWT].
-         *
-         * Is for also used for `vct` when using [CredentialRepresentation.SD_JWT],
-         * which will be removed in a future version of this library.
+         * when using [CredentialRepresentation.PLAIN_JWT]. Will not be used for other representations.
          */
         val vcType: String
+
+        /**
+         * Type used for `vct` when using [CredentialRepresentation.SD_JWT].
+         */
+        val sdJwtType: String?
+            get() = null
 
         /**
          * Namespace to use for attributes of this credential type.
@@ -53,6 +56,7 @@ object ConstantIndex {
     object AtomicAttribute2023 : CredentialScheme {
         override val schemaUri: String = "https://wallet.a-sit.at/schemas/1.0.0/AtomicAttribute2023.json"
         override val vcType: String = "AtomicAttribute2023"
+        override val sdJwtType: String = "AtomicAttribute2023"
         override val isoNamespace: String = "at.a-sit.wallet.atomic-attribute-2023"
         override val isoDocType: String = "at.a-sit.wallet.atomic-attribute-2023.iso"
         override val claimNames: Collection<String> = listOf()
