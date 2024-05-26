@@ -71,7 +71,11 @@ actual open class DefaultCryptoService : CryptoService {
     }.wrap()
 
     override fun encrypt(
-        key: ByteArray, iv: ByteArray, aad: ByteArray, input: ByteArray, algorithm: JweEncryption
+        key: ByteArray,
+        iv: ByteArray,
+        aad: ByteArray,
+        input: ByteArray,
+        algorithm: JweEncryption
     ): KmmResult<AuthenticatedCiphertext> = runCatching {
         val jcaCiphertext = Cipher.getInstance(algorithm.jcaName).also {
             it.init(
@@ -83,13 +87,17 @@ actual open class DefaultCryptoService : CryptoService {
         }.doFinal(input)
         val ciphertext = jcaCiphertext.dropLast(algorithm.ivLengthBits / 8).toByteArray()
         val authtag = jcaCiphertext.takeLast(algorithm.ivLengthBits / 8).toByteArray()
-
         AuthenticatedCiphertext(ciphertext, authtag)
     }.wrap()
 
 
     override suspend fun decrypt(
-        key: ByteArray, iv: ByteArray, aad: ByteArray, input: ByteArray, authTag: ByteArray, algorithm: JweEncryption
+        key: ByteArray,
+        iv: ByteArray,
+        aad: ByteArray,
+        input: ByteArray,
+        authTag: ByteArray,
+        algorithm: JweEncryption
     ): KmmResult<ByteArray> = runCatching {
         Cipher.getInstance(algorithm.jcaName).also {
             it.init(
@@ -102,14 +110,16 @@ actual open class DefaultCryptoService : CryptoService {
     }.wrap()
 
     override fun performKeyAgreement(
-        ephemeralKey: EphemeralKeyHolder, recipientKey: JsonWebKey, algorithm: JweAlgorithm
+        ephemeralKey: EphemeralKeyHolder,
+        recipientKey: JsonWebKey,
+        algorithm: JweAlgorithm
     ): KmmResult<ByteArray> = runCatching {
         require(ephemeralKey is JvmEphemeralKeyHolder) { "JVM Type expected" }
-
+        val jvmKey = recipientKey.toCryptoPublicKey().transform { it1 -> it1.getJcaPublicKey() }.getOrThrow()
         KeyAgreement.getInstance(algorithm.jcaName).also {
             it.init(ephemeralKey.keyPair.private)
             it.doPhase(
-                recipientKey.toCryptoPublicKey().transform { it1 -> it1.getJcaPublicKey() }.getOrThrow(), true
+                jvmKey, true
             )
         }.generateSecret()
     }.wrap()
@@ -119,11 +129,11 @@ actual open class DefaultCryptoService : CryptoService {
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray> = runCatching {
         val parameterSpec = ECNamedCurveTable.getParameterSpec(ephemeralKey.curve?.jcaName)
-        val ecPoint =
-            parameterSpec.curve.validatePoint(BigInteger(1, ephemeralKey.x), BigInteger(1, ephemeralKey.y))
+        val xBigInteger = BigInteger(1, ephemeralKey.x)
+        val yBigInteger = BigInteger(1, ephemeralKey.y)
+        val ecPoint = parameterSpec.curve.validatePoint(xBigInteger, yBigInteger)
         val ecPublicKeySpec = ECPublicKeySpec(ecPoint, parameterSpec)
         val publicKey = JCEECPublicKey("EC", ecPublicKeySpec)
-
         KeyAgreement.getInstance(algorithm.jcaName).also {
             it.init(privateKey)
             it.doPhase(publicKey, true)
@@ -157,14 +167,13 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
         signature: CryptoSignature,
         algorithm: CryptoAlgorithm,
         publicKey: CryptoPublicKey,
-    ): KmmResult<Boolean> =
-        runCatching {
-            Signature.getInstance(algorithm.jcaName).apply {
-                algorithm.jcaParams?.let { setParameter(it) }
-                initVerify(publicKey.getJcaPublicKey().getOrThrow())
-                update(input)
-            }.verify(signature.jcaSignatureBytes)
-        }.wrap()
+    ): KmmResult<Boolean> = runCatching {
+        Signature.getInstance(algorithm.jcaName).apply {
+            algorithm.jcaParams?.let { setParameter(it) }
+            initVerify(publicKey.getJcaPublicKey().getOrThrow())
+            update(input)
+        }.verify(signature.jcaSignatureBytes)
+    }.wrap()
 }
 
 open class JvmEphemeralKeyHolder(private val ecCurve: ECCurve) : EphemeralKeyHolder {
