@@ -299,21 +299,28 @@ class WalletService(
         credentialScheme: ConstantIndex.CredentialScheme,
         requestedAttributes: Set<String>?
     ) = when (this) {
-        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> AuthorizationDetails(
+            type = CREDENTIAL_TYPE_OPENID,
+            format = toFormat(),
+            credentialDefinition = SupportedCredentialFormatDefinition(
+                types = listOf(VERIFIABLE_CREDENTIAL, credentialScheme.vcType),
+            ),
+        )
+
         ConstantIndex.CredentialRepresentation.SD_JWT -> AuthorizationDetails(
             type = CREDENTIAL_TYPE_OPENID,
             format = toFormat(),
             credentialDefinition = SupportedCredentialFormatDefinition(
                 types = listOf(VERIFIABLE_CREDENTIAL, credentialScheme.vcType),
             ),
-            claims = requestedAttributes?.toRequestedClaims(credentialScheme),
+            claims = requestedAttributes?.toRequestedClaimsSdJwt(credentialScheme),
         )
 
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> AuthorizationDetails(
             type = CREDENTIAL_TYPE_OPENID,
             format = toFormat(),
             docType = credentialScheme.isoDocType,
-            claims = requestedAttributes?.toRequestedClaims(credentialScheme)
+            claims = requestedAttributes?.toRequestedClaimsIso(credentialScheme)
         )
     }
 
@@ -322,10 +329,17 @@ class WalletService(
         requestedAttributes: Set<String>?,
         proof: CredentialRequestProof
     ) = when (this) {
-        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialRequestParameters(
+            format = toFormat(),
+            credentialDefinition = SupportedCredentialFormatDefinition(
+                types = listOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
+            ),
+            proof = proof
+        )
+
         ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialRequestParameters(
             format = toFormat(),
-            claims = requestedAttributes?.toRequestedClaims(credentialScheme),
+            claims = requestedAttributes?.toRequestedClaimsSdJwt(credentialScheme),
             credentialDefinition = SupportedCredentialFormatDefinition(
                 types = listOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType,
             ),
@@ -335,12 +349,15 @@ class WalletService(
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialRequestParameters(
             format = toFormat(),
             docType = credentialScheme.isoDocType,
-            claims = requestedAttributes?.toRequestedClaims(credentialScheme),
+            claims = requestedAttributes?.toRequestedClaimsIso(credentialScheme),
             proof = proof
         )
     }
 
-    private fun Collection<String>.toRequestedClaims(credentialScheme: ConstantIndex.CredentialScheme) =
+    private fun Collection<String>.toRequestedClaimsSdJwt(credentialScheme: ConstantIndex.CredentialScheme) =
+        mapOf(credentialScheme.vcType to this.associateWith { RequestedCredentialClaimSpecification() })
+
+    private fun Collection<String>.toRequestedClaimsIso(credentialScheme: ConstantIndex.CredentialScheme) =
         mapOf(credentialScheme.isoNamespace to this.associateWith { RequestedCredentialClaimSpecification() })
 
 }

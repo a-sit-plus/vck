@@ -282,15 +282,15 @@ class IssuerAgent(
             notBefore = issuanceDate,
             issuer = identifier,
             expiration = expirationDate,
+            issuedAt = issuanceDate,
             jwtId = vcId,
             disclosureDigests = disclosureDigests,
-            type = listOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, scheme.vcType),
+            verifiableCredentialType = scheme.vcType,
             selectiveDisclosureAlgorithm = "sha-256",
             confirmationKey = subjectPublicKey.toJsonWebKey(),
             credentialStatus = credentialStatus,
         ).serialize().encodeToByteArray()
-        // TODO Which content type to use for SD-JWT inside an JWS?
-        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrElse {
+        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.SD_JWT, jwsPayload).getOrElse {
             Napier.w("Could not wrap credential in SD-JWT", it)
             return Issuer.IssuedCredentialResult(
                 failed = listOf(Issuer.FailedAttribute(scheme.vcType, RuntimeException("signing failed")))

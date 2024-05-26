@@ -2,6 +2,7 @@
 
 Release 3.7.1:
  - SIOPv2: Support encrypting response objects, if requested by verifiers
+ - Refactor `VerifiableCredentialSdJwt` to implement draft 03 of SD-JWT for VC
 
 Release 3.7.0:
  - Add `OAuth2AuthorizationServerMetadata` data class which implements RFC8414

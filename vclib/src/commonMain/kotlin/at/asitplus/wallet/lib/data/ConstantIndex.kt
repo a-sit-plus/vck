@@ -19,7 +19,11 @@ object ConstantIndex {
         val schemaUri: String
 
         /**
-         * Name of the subclass of [CredentialSubject] and thus the `type` of the credential.
+         * Name of the subclass of [CredentialSubject] and thus the `type` of the credential,
+         * when using [CredentialRepresentation.PLAIN_JWT].
+         *
+         * Is for also used for `vct` when using [CredentialRepresentation.SD_JWT],
+         * which will be removed in a future version of this library.
          */
         val vcType: String
 

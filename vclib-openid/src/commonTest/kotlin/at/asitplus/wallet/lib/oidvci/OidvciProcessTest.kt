@@ -72,7 +72,8 @@ class OidvciProcessTest : FunSpec({
             .getOrThrow().shouldNotBeNull()
 
         println(sdJwt)
-        sdJwt.disclosureDigests.size shouldBeGreaterThan 1
+        sdJwt.disclosureDigests.shouldNotBeNull()
+        sdJwt.disclosureDigests!!.size shouldBeGreaterThan 1
     }
 
     test("process with W3C VC SD-JWT one requested claim") {
@@ -96,7 +97,8 @@ class OidvciProcessTest : FunSpec({
             .getOrThrow().shouldNotBeNull()
 
         println(sdJwt)
-        sdJwt.disclosureDigests.size shouldBe 1
+        sdJwt.disclosureDigests.shouldNotBeNull()
+        sdJwt.disclosureDigests!!.size shouldBe 1
     }
 
     test("process with ISO mobile driving licence") {

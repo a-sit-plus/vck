@@ -456,6 +456,7 @@ class OidcSiopVerifier private constructor(
          * Successfully decoded and validated the response from the Wallet (W3C credential in SD-JWT)
          */
         data class SuccessSdJwt(
+            val jwsSigned: JwsSigned,
             val sdJwt: VerifiableCredentialSdJwt,
             val disclosures: List<SelectiveDisclosureItem>,
             val state: String?,
@@ -607,7 +608,7 @@ class OidcSiopVerifier private constructor(
                 .also { Napier.i("VP success: $this") }
 
         is Verifier.VerifyPresentationResult.SuccessSdJwt ->
-            AuthnResponseResult.SuccessSdJwt(sdJwt, disclosures, state)
+            AuthnResponseResult.SuccessSdJwt(jwsSigned, sdJwt, disclosures, state)
                 .also { Napier.i("VP success: $this") }
     }
 
