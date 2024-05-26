@@ -32,6 +32,7 @@ kotlin {
         commonTest {
             dependencies {
                 implementation("at.asitplus.wallet:eupidcredential:1.0.0")
+                implementation("at.asitplus.wallet:mobiledrivinglicence:1.0.0-SNAPSHOT")
             }
         }
 
@@ -99,6 +100,11 @@ publishing {
             signing.isRequired = false
         }
     }
+}
+
+repositories {
+    maven(url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+    mavenCentral()
 }
 
 signing {

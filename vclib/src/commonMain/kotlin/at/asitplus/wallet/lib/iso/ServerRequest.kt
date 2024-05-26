@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.data.jsonSerializer
-import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -66,7 +65,7 @@ data class ServerResponse(
     @SerialName("version")
     val version: String,
     /**
-     * A single document is a [JwsSigned], whose payload is a [MobileDrivingLicenceJws]
+     * A single document is a [JwsSigned], whose payload may be a `MobileDrivingLicenceJws`
      */
     @SerialName("documents")
     val documents: Array<String>,

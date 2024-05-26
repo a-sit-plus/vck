@@ -5,7 +5,6 @@ object AriesGoalCodeParser {
 
     init {
         registerGoalCode(ConstantIndex.AtomicAttribute2023)
-        registerGoalCode(ConstantIndex.MobileDrivingLicence2023)
     }
 
     fun parseGoalCode(goalCode: String) = when (goalCode) {

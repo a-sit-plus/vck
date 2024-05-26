@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.assertions.throwables.shouldThrow
@@ -60,7 +61,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 runBlocking {
                     holderAgent.storeJwtCredentials(
                         holderCryptoService,
-                        listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
+                        listOf(MobileDrivingLicenceScheme.isoNamespace)
                     )
                     holderAgent.storeSdJwtCredential(
                         holderCryptoService,
@@ -109,7 +110,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     )
                     holderAgent.storeJwtCredentials(
                         holderCryptoService,
-                        listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
+                        listOf(MobileDrivingLicenceScheme.isoNamespace)
                     )
                     holderAgent.storeSdJwtCredential(
                         holderCryptoService,
@@ -165,7 +166,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     )
                     holderAgent.storeSdJwtCredential(
                         holderCryptoService,
-                        listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
+                        listOf(MobileDrivingLicenceScheme.isoNamespace)
                     )
                     holderAgent.storeIsoCredential(
                         holderCryptoService,
@@ -219,7 +220,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     )
                     holderAgent.storeSdJwtCredential(
                         holderCryptoService,
-                        listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
+                        listOf(MobileDrivingLicenceScheme.isoNamespace)
                     )
                     holderAgent.storeIsoCredential(
                         holderCryptoService,
@@ -279,7 +280,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     )
                     holderAgent.storeIsoCredential(
                         holderCryptoService,
-                        listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
+                        listOf(MobileDrivingLicenceScheme.isoNamespace)
                     )
                 }
 
@@ -336,7 +337,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     )
                     holderAgent.storeIsoCredential(
                         holderCryptoService,
-                        listOf(ConstantIndex.MobileDrivingLicence2023.vcType)
+                        listOf(MobileDrivingLicenceScheme.isoNamespace)
                     )
                 }
 
@@ -384,7 +385,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
     "test presentation of multiple credentials with different formats" {
         runBlocking {
             holderAgent.storeJwtCredentials(holderCryptoService, listOf(ConstantIndex.AtomicAttribute2023.vcType))
-            holderAgent.storeIsoCredential(holderCryptoService, listOf(ConstantIndex.MobileDrivingLicence2023.vcType))
+            holderAgent.storeIsoCredential(holderCryptoService, listOf(MobileDrivingLicenceScheme.isoNamespace))
         }
 
         verifierSiop = OidcSiopVerifier.newInstance(
@@ -401,7 +402,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         )
         val authnRequest2 = verifierSiop.createAuthnRequest(
             requestOptions = OidcSiopVerifier.RequestOptions(
-                credentialScheme = ConstantIndex.MobileDrivingLicence2023,
+                credentialScheme = MobileDrivingLicenceScheme,
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
             ),
         )

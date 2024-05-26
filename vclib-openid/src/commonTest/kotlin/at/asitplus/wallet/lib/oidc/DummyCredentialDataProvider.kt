@@ -10,15 +10,16 @@ import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.iso.DrivingPrivilege
-import at.asitplus.wallet.lib.iso.DrivingPrivilegeCode
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.EXPIRY_DATE
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.FAMILY_NAME
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.GIVEN_NAME
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.ISSUE_DATE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUE_DATE
+import at.asitplus.wallet.mdl.DrivingPrivilege
+import at.asitplus.wallet.mdl.DrivingPrivilegeCode
+import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
@@ -76,7 +77,7 @@ class DummyCredentialDataProvider(
             }
         }
 
-        if (credentialScheme == ConstantIndex.MobileDrivingLicence2023) {
+        if (credentialScheme == MobileDrivingLicenceScheme) {
             val drivingPrivilege = DrivingPrivilege(
                 vehicleCategoryCode = "B",
                 issueDate = LocalDate.parse("2023-01-01"),

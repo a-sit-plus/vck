@@ -9,8 +9,9 @@ import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
+import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -50,7 +51,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(
                     subjectPublicKey = holderCryptoService.publicKey,
-                    attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType),
+                    attributeTypes = listOf(MobileDrivingLicenceScheme.isoNamespace),
                     representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
                 ).toStoreCredentialInput()
             )
@@ -80,7 +81,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             walletUrl,
             OidcSiopVerifier.RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                credentialScheme = ConstantIndex.MobileDrivingLicence2023,
+                credentialScheme = MobileDrivingLicenceScheme,
                 requestedAttributes = listOf(
                     MobileDrivingLicenceDataElements.GIVEN_NAME
                 ),
@@ -125,7 +126,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             walletUrl,
             OidcSiopVerifier.RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                credentialScheme = ConstantIndex.MobileDrivingLicence2023,
+                credentialScheme = MobileDrivingLicenceScheme,
                 requestedAttributes = listOf(requestedClaim),
             ),
             holderSiop,
@@ -147,7 +148,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         )
         val requestOptions = OidcSiopVerifier.RequestOptions(
             representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-            credentialScheme = ConstantIndex.MobileDrivingLicence2023,
+            credentialScheme = MobileDrivingLicenceScheme,
             requestedAttributes = listOf(requestedClaim),
             responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
             encryption = true
@@ -182,7 +183,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             walletUrl,
             OidcSiopVerifier.RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                credentialScheme = ConstantIndex.MobileDrivingLicence2023,
+                credentialScheme = MobileDrivingLicenceScheme,
                 requestedAttributes = listOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
             ),
             holderSiop,

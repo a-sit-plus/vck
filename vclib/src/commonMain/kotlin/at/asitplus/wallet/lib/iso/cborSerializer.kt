@@ -5,7 +5,6 @@ import at.asitplus.wallet.lib.ItemValueDecoder
 import at.asitplus.wallet.lib.ItemValueEncoder
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.builtins.ArraySerializer
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.CompositeDecoder
@@ -16,38 +15,6 @@ object Cbor {
     private val descriptorLookupFunctions = mutableSetOf<DescriptorLookup>()
     private val encoderFunctions = mutableSetOf<ItemValueEncoder>()
     private val decoderFunctions = mutableSetOf<ItemValueDecoder>()
-
-    init {
-        descriptorLookupFunctions += {
-            when (it) {
-                is Array<*> -> ArraySerializer(DrivingPrivilege.serializer())
-                else -> null
-            }
-        }
-        encoderFunctions += { descriptor, index, compositeEncoder, value ->
-            if (value is Array<*>) {
-                true.also {
-                    @Suppress("UNCHECKED_CAST")
-                    compositeEncoder.encodeSerializableElement(
-                        descriptor,
-                        index,
-                        ArraySerializer(DrivingPrivilege.serializer()),
-                        value as Array<DrivingPrivilege>
-                    )
-                }
-            } else {
-                false
-            }
-        }
-        decoderFunctions += { descriptor, index, compositeDecoder ->
-            compositeDecoder.decodeSerializableElement(
-                descriptor,
-                index,
-                ArraySerializer(DrivingPrivilege.serializer())
-            )
-
-        }
-    }
 
     fun register(function: DescriptorLookup) {
         descriptorLookupFunctions += function

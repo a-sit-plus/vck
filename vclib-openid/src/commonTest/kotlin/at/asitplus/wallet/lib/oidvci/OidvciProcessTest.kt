@@ -6,10 +6,11 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
+import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -23,12 +24,12 @@ class OidvciProcessTest : FunSpec({
 
     val authorizationService = SimpleAuthorizationService(
         dataProvider = DummyOAuth2DataProvider,
-        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023)
+        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme)
     )
     val issuer = CredentialIssuer(
         authorizationService = authorizationService,
         issuer = IssuerAgent.newDefaultInstance(),
-        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023),
+        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
         buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
     )
 
@@ -108,7 +109,7 @@ class OidvciProcessTest : FunSpec({
             issuer,
             client,
             WalletService.RequestOptions(
-                ConstantIndex.MobileDrivingLicence2023,
+                MobileDrivingLicenceScheme,
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
             )
         )
@@ -131,7 +132,7 @@ class OidvciProcessTest : FunSpec({
             issuer,
             client,
             WalletService.RequestOptions(
-                ConstantIndex.MobileDrivingLicence2023,
+                credentialScheme = MobileDrivingLicenceScheme,
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 requestedAttributes = setOf(MobileDrivingLicenceDataElements.DOCUMENT_NUMBER)
             )

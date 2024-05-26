@@ -37,10 +37,6 @@ class OidcSiopInteropTest : FreeSpec({
     lateinit var holderAgent: Holder
     lateinit var holderSiop: OidcSiopWallet
 
-    beforeSpec {
-        at.asitplus.wallet.eupid.Initializer.initWithVcLib()
-    }
-
     beforeEach {
         holderCryptoService = DefaultCryptoService()
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)

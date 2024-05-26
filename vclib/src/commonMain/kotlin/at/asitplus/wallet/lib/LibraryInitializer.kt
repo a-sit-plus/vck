@@ -46,6 +46,7 @@ object LibraryInitializer {
         Json.registerSerializersModule(data.credentialScheme, data.serializersModule)
     }
 
+    // TODO Documentation
     fun registerExtensionLibrary(
         data: ExtensionLibraryInfo,
         itemValueLookup: DescriptorLookup,

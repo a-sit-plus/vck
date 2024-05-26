@@ -10,14 +10,15 @@ import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.EXPIRY_DATE
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.FAMILY_NAME
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.GIVEN_NAME
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.ISSUE_DATE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUE_DATE
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.lib.oidvci.OidcUserInfo
 import at.asitplus.wallet.lib.oidvci.OidcUserInfoExtended
+import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
@@ -72,7 +73,7 @@ class DummyOAuth2IssuerCredentialDataProvider(
             }
         }
 
-        if (credentialScheme == ConstantIndex.MobileDrivingLicence2023) {
+        if (credentialScheme == MobileDrivingLicenceScheme) {
             var digestId = 0U
             val issuerSignedItems = listOfNotNull(
                 if (claimNames.isNullOrContains(FAMILY_NAME) && userInfo.userInfo.familyName != null)
