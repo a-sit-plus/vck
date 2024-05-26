@@ -217,6 +217,9 @@ class OidcSiopWallet(
         return AuthenticationResponseResult.Post(url, response.params.encodeToParameters())
     }
 
+    /**
+     * Per OID4VP, the response may either be signed, or encrypted (never signed and encrypted!)
+     */
     private suspend fun authnResponseDirectPostJwt(
         request: AuthenticationRequestParametersFrom<*>,
         response: AuthenticationResponse
@@ -224,14 +227,18 @@ class OidcSiopWallet(
         val url = request.parameters.responseUrl
             ?: request.parameters.redirectUrl
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-        val responseParamsJws = jwsService.createSignedJwsAddingParams(
+        val responseSerialized = buildJarm(response)
+        val jarm = AuthenticationResponseParameters(response = responseSerialized)
+        return AuthenticationResponseResult.Post(url, jarm.encodeToParameters())
+    }
+
+    private suspend fun buildJarm(response: AuthenticationResponse): String {
+        return jwsService.createSignedJwsAddingParams(
             payload = response.params.serialize().encodeToByteArray(), addX5c = false
-        ).getOrElse {
+        ).map { it.serialize() }.getOrElse {
             Napier.w("authnResponseDirectPostJwt error", it)
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
-        val jarm = AuthenticationResponseParameters(response = responseParamsJws.serialize())
-        return AuthenticationResponseResult.Post(url, jarm.encodeToParameters())
     }
 
     private fun authnResponseQuery(
