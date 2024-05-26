@@ -7,15 +7,11 @@ import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.CryptoSignature
 import at.asitplus.crypto.datatypes.ECCurve
-import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.io.Base64Strict
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
-import at.asitplus.crypto.datatypes.jws.JweAlgorithm
-import at.asitplus.crypto.datatypes.jws.JweEncryption
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import at.asitplus.crypto.datatypes.jws.*
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -60,7 +56,7 @@ actual class DefaultCryptoService : CryptoService {
         secPublicKey = SecKeyCopyPublicKey(secPrivateKey)!!
         val publicKeyData = SecKeyCopyExternalRepresentation(secPublicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
-        publicKey = CryptoPublicKey.EC.fromAnsiX963Bytes(data.toByteArray())
+        publicKey = CryptoPublicKey.EC.fromAnsiX963Bytes(data.toByteArray()).apply { jwkId = didEncoded }
         this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
     }
 
