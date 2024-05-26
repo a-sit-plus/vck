@@ -5,6 +5,7 @@ import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
+import at.asitplus.crypto.datatypes.jws.JweHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.crypto.datatypes.pki.leaf
@@ -41,6 +42,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -232,14 +234,38 @@ class OidcSiopWallet(
         return AuthenticationResponseResult.Post(url, jarm.encodeToParameters())
     }
 
-    private suspend fun buildJarm(response: AuthenticationResponse): String {
-        return jwsService.createSignedJwsAddingParams(
-            payload = response.params.serialize().encodeToByteArray(), addX5c = false
-        ).map { it.serialize() }.getOrElse {
-            Napier.w("authnResponseDirectPostJwt error", it)
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
+    private suspend fun buildJarm(response: AuthenticationResponse) =
+        if (response.clientMetadata.requestsEncryption()) {
+            val alg = response.clientMetadata.authorizationEncryptedResponseAlg!!
+            val enc = response.clientMetadata.authorizationEncryptedResponseEncoding!!
+            val jwk = response.jsonWebKeys.first()
+            jwsService.encryptJweObject(
+                header = JweHeader(
+                    algorithm = alg,
+                    encryption = enc,
+                    type = null,
+                    agreementPartyVInfo = Random.Default.nextBytes(16), // TODO nonce from authn request
+                    keyId = jwk.keyId,
+                ),
+                payload = response.params.serialize().encodeToByteArray(),
+                recipientKey = jwk,
+                jweAlgorithm = alg,
+                jweEncryption = enc,
+            ).map { it.serialize() }.getOrElse {
+                Napier.w("buildJarm error", it)
+                throw OAuth2Exception(Errors.INVALID_REQUEST)
+            }
+        } else {
+            jwsService.createSignedJwsAddingParams(
+                payload = response.params.serialize().encodeToByteArray(), addX5c = false
+            ).map { it.serialize() }.getOrElse {
+                Napier.w("buildJarm error", it)
+                throw OAuth2Exception(Errors.INVALID_REQUEST)
+            }
         }
-    }
+
+    private fun RelyingPartyMetadata.requestsEncryption() =
+        authorizationEncryptedResponseAlg != null && authorizationEncryptedResponseEncoding != null
 
     private fun authnResponseQuery(
         request: AuthenticationRequestParametersFrom<*>,
