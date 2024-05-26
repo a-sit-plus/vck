@@ -5,11 +5,22 @@ import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.Digest
 import at.asitplus.crypto.datatypes.asn1.encodeTo4Bytes
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
-import at.asitplus.crypto.datatypes.jws.*
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
+import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
+import at.asitplus.crypto.datatypes.jws.JweAlgorithm
+import at.asitplus.crypto.datatypes.jws.JweDecrypted
+import at.asitplus.crypto.datatypes.jws.JweEncrypted
+import at.asitplus.crypto.datatypes.jws.JweEncryption
+import at.asitplus.crypto.datatypes.jws.JweHeader
+import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsExtensions.prependWith4BytesSize
+import at.asitplus.crypto.datatypes.jws.JwsHeader
+import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.JwsSigned.Companion.prepareJwsSignatureInput
+import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
+import at.asitplus.wallet.lib.agent.EphemeralKeyHolder
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
@@ -21,9 +32,19 @@ import kotlin.random.Random
 interface JwsService {
 
     /**
-     * Algorithm which will be used to sign JWs in [createSignedJws], [createSignedJwt], [createSignedJwsAddingParams].
+     * Algorithm which will be used to sign JWS in [createSignedJws], [createSignedJwt], [createSignedJwsAddingParams].
      */
     val algorithm: JwsAlgorithm
+
+    /**
+     * Algorithm which can be used to encrypt JWE, that can be decrypted with [decryptJweObject].
+     */
+    val encryptionAlgorithm: JweAlgorithm
+
+    /**
+     * Encoding which can be used to encrypt JWE, that can be decrypted with [decryptJweObject].
+     */
+    val encryptionEncoding: JweEncryption
 
     suspend fun createSignedJwt(
         type: String,
@@ -45,6 +66,14 @@ interface JwsService {
         addJsonWebKey: Boolean = true,
         addX5c: Boolean = false
     ): KmmResult<JwsSigned>
+
+    suspend fun encryptJweObject(
+        header: JweHeader? = null,
+        payload: ByteArray,
+        recipientKey: JsonWebKey,
+        jweAlgorithm: JweAlgorithm,
+        jweEncryption: JweEncryption
+    ): KmmResult<JweEncrypted>
 
     fun encryptJweObject(
         type: String,
@@ -72,6 +101,12 @@ interface VerifierJwsService {
 class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
     override val algorithm: JwsAlgorithm = cryptoService.algorithm.toJwsAlgorithm()
+
+    // TODO: Get from crypto service
+    override val encryptionAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES
+
+    // TODO: Get from crypto service
+    override val encryptionEncoding: JweEncryption = JweEncryption.A256GCM
 
     override suspend fun createSignedJwt(
         type: String,
@@ -151,6 +186,28 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         return KmmResult.success(JweDecrypted(header, plaintext))
     }
 
+    override suspend fun encryptJweObject(
+        header: JweHeader?,
+        payload: ByteArray,
+        recipientKey: JsonWebKey,
+        jweAlgorithm: JweAlgorithm,
+        jweEncryption: JweEncryption,
+    ): KmmResult<JweEncrypted> {
+        val crv = recipientKey.curve
+            ?: return KmmResult.failure(IllegalArgumentException("No curve in recipient key"))
+        val ephemeralKeyPair = cryptoService.generateEphemeralKeyPair(crv).getOrElse {
+            Napier.w("No ephemeral key pair from native code", it)
+            return KmmResult.failure(it)
+        }
+        val jweHeader = (header ?: JweHeader(jweAlgorithm, jweEncryption, type = null)).copy(
+            algorithm = jweAlgorithm,
+            encryption = jweEncryption,
+            jsonWebKey = cryptoService.jsonWebKey,
+            ephemeralKeyPair = ephemeralKeyPair.publicJsonWebKey
+        )
+        return encryptJwe(ephemeralKeyPair, recipientKey, jweAlgorithm, jweEncryption, jweHeader, payload)
+    }
+
     override fun encryptJweObject(
         type: String,
         payload: ByteArray,
@@ -173,17 +230,28 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             contentType = contentType,
             ephemeralKeyPair = ephemeralKeyPair.publicJsonWebKey
         )
-        val z = cryptoService.performKeyAgreement(ephemeralKeyPair, recipientKey, jweAlgorithm)
-            .getOrElse {
-                Napier.w("No Z value from native code", it)
-                return KmmResult.failure(it)
-            }
-        val kdf = prependWithAdditionalInfo(z, jweEncryption, null, null)
+        return encryptJwe(ephemeralKeyPair, recipientKey, jweAlgorithm, jweEncryption, jweHeader, payload)
+    }
+
+    private fun encryptJwe(
+        ephemeralKeyPair: EphemeralKeyHolder,
+        recipientKey: JsonWebKey,
+        jweAlgorithm: JweAlgorithm,
+        jweEncryption: JweEncryption,
+        jweHeader: JweHeader,
+        payload: ByteArray
+    ): KmmResult<JweEncrypted> {
+        val z = cryptoService.performKeyAgreement(ephemeralKeyPair, recipientKey, jweAlgorithm).getOrElse {
+            Napier.w("No Z value from native code", it)
+            return KmmResult.failure(it)
+        }
+        val kdf =
+            prependWithAdditionalInfo(z, jweEncryption, jweHeader.agreementPartyUInfo, jweHeader.agreementPartyVInfo)
         val key = cryptoService.messageDigest(kdf, Digest.SHA256).getOrElse {
             Napier.w("No digest from native code", it)
             return KmmResult.failure(it)
         }
-        val iv = Random.Default.nextBytes(jweEncryption.ivLengthBits / 8)
+        val iv = Random.nextBytes(jweEncryption.ivLengthBits / 8)
         val headerSerialized = jweHeader.serialize()
         val aad = headerSerialized.encodeToByteArray()
         val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
