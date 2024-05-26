@@ -152,10 +152,7 @@ class OidcSiopWallet(
         }
 
         val extractedParams = parsedParams.let { extractRequestObject(it.parameters) ?: it }
-        if (parsedParams.parameters.clientId != null && extractedParams.parameters.clientId != parsedParams.parameters.clientId) {
-            Napier.w("ClientIds changed: ${parsedParams.parameters.clientId} to ${extractedParams.parameters.clientId}")
-            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-        }
+            .also { Napier.i("parsed authentication request: $it") }
         return KmmResult.success(extractedParams)
     }
 

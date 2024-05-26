@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class FormatContainerJwt(
+    // TODO make this a collection of Json Web Algorithms from kmp-crypto
     @SerialName("alg")
     val algorithms: Collection<String>? = null,
 )
