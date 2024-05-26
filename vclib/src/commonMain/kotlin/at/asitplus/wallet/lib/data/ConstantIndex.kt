@@ -54,6 +54,17 @@ object ConstantIndex {
          * or [CredentialRepresentation.ISO_MDOC].
          */
         val claimNames: Collection<String>
+            get() = listOf()
+
+        /**
+         * Supported representations for this credential
+         */
+        val supportedRepresentations: Collection<CredentialRepresentation>
+            get() = listOf(
+                CredentialRepresentation.PLAIN_JWT,
+                CredentialRepresentation.SD_JWT,
+                CredentialRepresentation.ISO_MDOC
+            )
     }
 
     object AtomicAttribute2023 : CredentialScheme {
@@ -64,5 +75,15 @@ object ConstantIndex {
         override val isoDocType: String = "at.a-sit.wallet.atomic-attribute-2023.iso"
         override val claimNames: Collection<String> = listOf()
     }
+
+    val CredentialScheme.supportsSdJwt
+        get() = supportedRepresentations.contains(ConstantIndex.CredentialRepresentation.SD_JWT) && sdJwtType != null
+
+    val CredentialScheme.supportsVcJwt
+        get() = supportedRepresentations.contains(ConstantIndex.CredentialRepresentation.PLAIN_JWT) && vcType != null
+
+    val CredentialScheme.supportsIso
+        get() = supportedRepresentations.contains(ConstantIndex.CredentialRepresentation.ISO_MDOC)
+                && isoNamespace != null && isoDocType != null
 
 }
