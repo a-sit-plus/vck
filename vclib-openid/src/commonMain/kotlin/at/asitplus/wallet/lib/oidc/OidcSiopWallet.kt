@@ -207,7 +207,6 @@ class OidcSiopWallet(
         }
     )
 
-
     private fun authnResponseDirectPost(
         request: AuthenticationRequestParametersFrom<*>,
         responseParams: AuthenticationResponseParameters

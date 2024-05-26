@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
+import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -136,6 +137,39 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         document.invalidItems.shouldBeEmpty()
     }
 
+    "Selective Disclosure with mDL and encryption" {
+        val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
+        verifierSiop = OidcSiopVerifier.newInstance(
+            verifier = verifierAgent,
+            cryptoService = verifierCryptoService,
+            relyingPartyUrl = relyingPartyUrl,
+            responseUrl = relyingPartyUrl + "/${uuid4()}"
+        )
+        val requestOptions = OidcSiopVerifier.RequestOptions(
+            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            credentialScheme = ConstantIndex.MobileDrivingLicence2023,
+            requestedAttributes = listOf(requestedClaim),
+            responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
+            encryption = true
+        )
+        val authnRequest = verifierSiop.createAuthnRequestUrl(
+            walletUrl = walletUrl,
+            requestOptions = requestOptions
+        ).also { println(it) }
+
+        val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
+        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+
+        val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
+        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
+
+        val document = result.document
+
+        document.validItems.shouldNotBeEmpty()
+        document.validItems.shouldBeSingleton()
+        document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
+        document.invalidItems.shouldBeEmpty()
+    }
 
     "Selective Disclosure with mDL JSON Path syntax" {
         verifierSiop = OidcSiopVerifier.newInstance(
