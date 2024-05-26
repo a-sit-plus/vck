@@ -211,11 +211,11 @@ class PresentProofProtocol(
         val verifierIdentifier = verifier?.identifier
             ?: return null
         val claimsConstraints = requestedClaims?.map(this::buildConstraintFieldForClaim) ?: listOf()
-        val typeConstraints = buildConstraintFieldForType(credentialScheme.vcType)
+        val typeConstraints = buildConstraintFieldForType(credentialScheme.vcType!!)
         val presentationDefinition = PresentationDefinition(
             inputDescriptors = listOf(
                 InputDescriptor(
-                    name = credentialScheme.vcType,
+                    name = credentialScheme.vcType!!,
                     schema = SchemaReference(uri = credentialScheme.schemaUri),
                     constraints = Constraint(
                         fields = claimsConstraints + typeConstraints

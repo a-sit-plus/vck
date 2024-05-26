@@ -2,7 +2,7 @@
 
 Release 3.8.0:
  - Extract credential classes for Mobile Driving Licence according to ISO 18013-5 into separate library, see <https://github.com/a-sit-plus/mobile-driving-licence-credential>
- - Update `CredentialScheme` to contain types for SD-JWT representations
+ - Update `CredentialScheme` to contain types for SD-JWT representations, and make properties for other representations optional
 
 Release 3.7.1:
  - SIOPv2: Support encrypting response objects, if requested by verifiers

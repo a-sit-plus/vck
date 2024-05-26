@@ -20,7 +20,8 @@ object ConstantIndex {
          * Name of the subclass of [CredentialSubject] and thus the `type` of the credential,
          * when using [CredentialRepresentation.PLAIN_JWT]. Will not be used for other representations.
          */
-        val vcType: String
+        val vcType: String?
+            get() = null
 
         /**
          * Type used for `vct` when using [CredentialRepresentation.SD_JWT].
