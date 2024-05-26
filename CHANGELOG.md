@@ -1,7 +1,7 @@
 # Changelog
 
 Release 3.7.1:
- - tbd
+ - SIOPv2: Support encrypting response objects, if requested by verifiers
 
 Release 3.7.0:
  - Add `OAuth2AuthorizationServerMetadata` data class which implements RFC8414
