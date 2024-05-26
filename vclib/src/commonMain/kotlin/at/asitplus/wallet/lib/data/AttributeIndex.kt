@@ -32,7 +32,8 @@ object AttributeIndex {
      */
     fun resolveIsoNamespace(namespace: String): ConstantIndex.CredentialScheme? {
         // allow for extension to the namespace by appending ".countryname" or anything else, according to spec
-        return schemeSet.firstOrNull { it.isoNamespace.startsWith(namespace) || namespace.startsWith(it.isoNamespace) }
+        return schemeSet.filter { it.isoNamespace != null }
+            .firstOrNull { it.isoNamespace!!.startsWith(namespace) || namespace.startsWith(it.isoNamespace!!) }
     }
 
     /**
@@ -40,7 +41,8 @@ object AttributeIndex {
      */
     fun resolveIsoDoctype(docType: String): ConstantIndex.CredentialScheme? {
         // allow for extension to the namespace by appending ".countryname" or anything else, according to spec
-        return schemeSet.firstOrNull { it.isoDocType.startsWith(docType) || docType.startsWith(it.isoDocType) }
+        return schemeSet.filter { it.isoDocType != null }
+            .firstOrNull { it.isoDocType!!.startsWith(docType) || docType.startsWith(it.isoDocType!!) }
     }
 
 }

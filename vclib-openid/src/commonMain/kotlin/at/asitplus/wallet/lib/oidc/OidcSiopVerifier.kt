@@ -372,7 +372,7 @@ class OidcSiopVerifier private constructor(
                  * encoding it into the descriptor id as in the following non-normative example fow now:
                  * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
                  */
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoDocType
+                ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoDocType!!
                 else -> null
             }
         } ?: uuid4().toString(),

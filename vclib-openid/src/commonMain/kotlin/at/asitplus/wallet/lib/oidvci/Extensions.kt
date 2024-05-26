@@ -9,20 +9,21 @@ import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.descriptors.serialDescriptor
 
-fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<CryptoAlgorithm>) = mapOf(
-    this.isoNamespace to SupportedCredentialFormat.forIsoMdoc(
-        format = CredentialFormatEnum.MSO_MDOC,
-        scope = vcType,
-        docType = isoDocType,
-        supportedBindingMethods = setOf(OpenIdConstants.BINDING_METHOD_COSE_KEY),
-        supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toSet(),
-        isoClaims = mapOf(
-            isoNamespace to claimNames.associateWith { RequestedCredentialClaimSpecification() }
+fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<CryptoAlgorithm>): Map<String, SupportedCredentialFormat> {
+    val iso = this.isoNamespace?.let { isoNamespace ->
+        isoNamespace to SupportedCredentialFormat.forIsoMdoc(
+            format = CredentialFormatEnum.MSO_MDOC,
+            scope = vcType,
+            docType = isoDocType!!,
+            supportedBindingMethods = setOf(OpenIdConstants.BINDING_METHOD_COSE_KEY),
+            supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toSet(),
+            isoClaims = mapOf(
+                isoNamespace to claimNames.associateWith { RequestedCredentialClaimSpecification() }
+            )
         )
-    ),
-    encodeToCredentialIdentifier(CredentialFormatEnum.JWT_VC) to SupportedCredentialFormat.forVcJwt(
+    }
+    val jwtVc = encodeToCredentialIdentifier(CredentialFormatEnum.JWT_VC) to SupportedCredentialFormat.forVcJwt(
         format = CredentialFormatEnum.JWT_VC,
         scope = vcType,
         credentialDefinition = SupportedCredentialFormatDefinition(
@@ -31,8 +32,8 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
         ),
         supportedBindingMethods = setOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
         supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toSet(),
-    ),
-    encodeToCredentialIdentifier(CredentialFormatEnum.VC_SD_JWT) to SupportedCredentialFormat.forSdJwt(
+    )
+    val sdJwt = encodeToCredentialIdentifier(CredentialFormatEnum.VC_SD_JWT) to SupportedCredentialFormat.forSdJwt(
         format = CredentialFormatEnum.VC_SD_JWT,
         scope = sdJwtType ?: schemaUri,
         sdJwtVcType = sdJwtType ?: schemaUri,
@@ -40,7 +41,8 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
         supportedSigningAlgorithms = cryptoAlgorithms.map { it.toJwsAlgorithm().identifier }.toSet(),
         sdJwtClaims = claimNames.associateWith { RequestedCredentialClaimSpecification() }
     )
-)
+    return listOfNotNull(iso, jwtVc, sdJwt).toMap()
+}
 
 /**
  * Reverse functionality of [decodeFromCredentialIdentifier]

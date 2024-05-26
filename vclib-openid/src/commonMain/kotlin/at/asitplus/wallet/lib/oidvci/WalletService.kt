@@ -354,7 +354,7 @@ class WalletService(
         mapOf((credentialScheme.sdJwtType ?: credentialScheme.vcType) to this.associateWith { RequestedCredentialClaimSpecification() })
 
     private fun Collection<String>.toRequestedClaimsIso(credentialScheme: ConstantIndex.CredentialScheme) =
-        mapOf(credentialScheme.isoNamespace to this.associateWith { RequestedCredentialClaimSpecification() })
+        mapOf(credentialScheme.isoNamespace!! to this.associateWith { RequestedCredentialClaimSpecification() })
 
 }
 

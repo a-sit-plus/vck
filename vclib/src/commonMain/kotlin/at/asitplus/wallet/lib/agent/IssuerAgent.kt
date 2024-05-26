@@ -161,7 +161,7 @@ class IssuerAgent(
             version = "1.0",
             digestAlgorithm = "SHA-256",
             valueDigests = mapOf(
-                scheme.isoNamespace to ValueDigestList(credential.issuerSignedItems.map {
+                scheme.isoNamespace!! to ValueDigestList(credential.issuerSignedItems.map {
                     ValueDigest.fromIssuerSigned(it)
                 })
             ),
@@ -175,7 +175,7 @@ class IssuerAgent(
                     )
                 ).also { Napier.w("Could not transform SubjectPublicKey to COSE Key", ex) }
             }),
-            docType = scheme.isoDocType,
+            docType = scheme.isoDocType!!,
             validityInfo = ValidityInfo(
                 signed = issuanceDate,
                 validFrom = issuanceDate,
@@ -184,7 +184,7 @@ class IssuerAgent(
         )
         val issuerSigned = IssuerSigned(
             namespaces = mapOf(
-                scheme.isoNamespace to IssuerSignedList.withItems(credential.issuerSignedItems)
+                scheme.isoNamespace!! to IssuerSignedList.withItems(credential.issuerSignedItems)
             ),
             issuerAuth = coseService.createSignedCose(
                 payload = mso.serializeForIssuerAuth(),

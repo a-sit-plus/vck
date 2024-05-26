@@ -29,22 +29,24 @@ object ConstantIndex {
             get() = null
 
         /**
-         * Namespace to use for attributes of this credential type.
+         * Namespace to use for attributes of this credential type, when using [CredentialRepresentation.ISO_MDOC].
          *
          * From ISO/IEC 18013-5:
          * There is no requirement for the `NameSpace` format. An approach to avoid collisions is to use the
          * following general format: `[Reverse Domain].[Domain Specific Extension]`.
          */
-        val isoNamespace: String
+        val isoNamespace: String?
+            get() = null
 
         /**
-         * ISO DocType to use for attributes of this credential type.
+         * ISO DocType to use for attributes of this credential type, when using [CredentialRepresentation.ISO_MDOC].
          *
          * From ISO/IEC 18013-5:
          * There is no requirement for the `DocType` format. An approach to avoid collisions is to use the
          * following general format: `[Reverse Domain].[Domain Specific Extension]`.
          */
-        val isoDocType: String
+        val isoDocType: String?
+            get() = null
 
         /**
          * List of claims that may be issued separately when requested in format [CredentialRepresentation.SD_JWT]
