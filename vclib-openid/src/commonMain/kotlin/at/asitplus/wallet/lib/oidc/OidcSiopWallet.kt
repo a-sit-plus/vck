@@ -170,10 +170,9 @@ class OidcSiopWallet(
                 return null
                     .also { Napier.w("parseRequestObjectJws: Deserialization failed", it) }
             }
-            if (requestObjectJwsVerifier.invoke(jws, params)) AuthenticationRequestParametersFrom.JwsSigned(
-                jws,
-                params
-            ) else null
+            if (requestObjectJwsVerifier.invoke(jws, params))
+                AuthenticationRequestParametersFrom.JwsSigned(jws, params)
+            else null
                 .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
         }
     }
@@ -185,7 +184,7 @@ class OidcSiopWallet(
     suspend fun createAuthnResponse(
         request: AuthenticationRequestParametersFrom<*>
     ): KmmResult<AuthenticationResponseResult> = createAuthnResponseParams(request).fold(
-        onSuccess = { responseParams ->
+        onSuccess = { response ->
             if (request.parameters.responseType == null) {
                 return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
             }
@@ -195,10 +194,10 @@ class OidcSiopWallet(
                 return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
             }
             return when (request.parameters.responseMode) {
-                DIRECT_POST -> KmmResult.runCatching { authnResponseDirectPost(request, responseParams) }.wrap()
-                DIRECT_POST_JWT -> KmmResult.runCatching { authnResponseDirectPostJwt(request, responseParams) }.wrap()
-                QUERY -> KmmResult.runCatching { authnResponseQuery(request, responseParams) }.wrap()
-                FRAGMENT, null -> KmmResult.runCatching { authnResponseFragment(request, responseParams) }.wrap()
+                DIRECT_POST -> KmmResult.runCatching { authnResponseDirectPost(request, response) }.wrap()
+                DIRECT_POST_JWT -> KmmResult.runCatching { authnResponseDirectPostJwt(request, response) }.wrap()
+                QUERY -> KmmResult.runCatching { authnResponseQuery(request, response) }.wrap()
+                FRAGMENT, null -> KmmResult.runCatching { authnResponseFragment(request, response) }.wrap()
                 is OTHER -> TODO()
             }
         },
@@ -209,23 +208,23 @@ class OidcSiopWallet(
 
     private fun authnResponseDirectPost(
         request: AuthenticationRequestParametersFrom<*>,
-        responseParams: AuthenticationResponseParameters
+        response: AuthenticationResponse
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
             ?: request.parameters.redirectUrl
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-        return AuthenticationResponseResult.Post(url, responseParams.encodeToParameters())
+        return AuthenticationResponseResult.Post(url, response.params.encodeToParameters())
     }
 
     private suspend fun authnResponseDirectPostJwt(
         request: AuthenticationRequestParametersFrom<*>,
-        responseParams: AuthenticationResponseParameters
+        response: AuthenticationResponse
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
             ?: request.parameters.redirectUrl
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
         val responseParamsJws = jwsService.createSignedJwsAddingParams(
-            payload = responseParams.serialize().encodeToByteArray(), addX5c = false
+            payload = response.params.serialize().encodeToByteArray(), addX5c = false
         ).getOrElse {
             Napier.w("authnResponseDirectPostJwt error", it)
             throw OAuth2Exception(Errors.INVALID_REQUEST)
@@ -236,16 +235,16 @@ class OidcSiopWallet(
 
     private fun authnResponseQuery(
         request: AuthenticationRequestParametersFrom<*>,
-        responseParams: AuthenticationResponseParameters
+        response: AuthenticationResponse
     ): AuthenticationResponseResult.Redirect {
         if (request.parameters.redirectUrl == null)
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         val url = URLBuilder(request.parameters.redirectUrl).apply {
-            responseParams.encodeToParameters().forEach {
+            response.params.encodeToParameters().forEach {
                 this.parameters.append(it.key, it.value)
             }
         }.buildString()
-        return AuthenticationResponseResult.Redirect(url, responseParams)
+        return AuthenticationResponseResult.Redirect(url, response.params)
     }
 
     /**
@@ -253,14 +252,14 @@ class OidcSiopWallet(
      */
     private fun authnResponseFragment(
         request: AuthenticationRequestParametersFrom<*>,
-        responseParams: AuthenticationResponseParameters
+        response: AuthenticationResponse
     ): AuthenticationResponseResult.Redirect {
         if (request.parameters.redirectUrl == null)
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         val url = URLBuilder(request.parameters.redirectUrl)
-            .apply { encodedFragment = responseParams.encodeToParameters().formUrlEncode() }
+            .apply { encodedFragment = response.params.encodeToParameters().formUrlEncode() }
             .buildString()
-        return AuthenticationResponseResult.Redirect(url, responseParams)
+        return AuthenticationResponseResult.Redirect(url, response.params)
     }
 
     /**
@@ -268,7 +267,7 @@ class OidcSiopWallet(
      */
     suspend fun createAuthnResponseParams(
         params: AuthenticationRequestParametersFrom<*>
-    ): KmmResult<AuthenticationResponseParameters> {
+    ): KmmResult<AuthenticationResponse> {
         val clientIdScheme = params.parameters.clientIdScheme
         if (clientIdScheme == OpenIdConstants.ClientIdScheme.REDIRECT_URI) {
             runCatching { params.parameters.verifyClientMetadata() }
@@ -314,13 +313,14 @@ class OidcSiopWallet(
         }
 
         val vpToken = presentationResultContainer?.presentationResults?.map { it.toJsonPrimitive() }?.singleOrArray()
+        val parameters = AuthenticationResponseParameters(
+            idToken = signedIdToken.serialize(),
+            state = params.parameters.state,
+            vpToken = vpToken,
+            presentationSubmission = presentationResultContainer?.presentationSubmission,
+        )
         return KmmResult.success(
-            AuthenticationResponseParameters(
-                idToken = signedIdToken.serialize(),
-                state = params.parameters.state,
-                vpToken = vpToken,
-                presentationSubmission = presentationResultContainer?.presentationSubmission,
-            )
+            AuthenticationResponse(parameters, clientMetadata)
         )
     }
 

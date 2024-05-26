@@ -213,7 +213,7 @@ class OidcSiopProtocolTest : FreeSpec({
                 Url(authnRequestUrlParams),
                 parsedAuthnRequest
             )
-        ).getOrThrow()
+        ).getOrThrow().params
         val authnResponseParams =
             authnResponse.encodeToParameters().formUrlEncode().also { println(it) }
 
