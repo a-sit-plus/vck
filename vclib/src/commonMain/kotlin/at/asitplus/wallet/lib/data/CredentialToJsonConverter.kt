@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.crypto.datatypes.io.Base64Strict
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
-import at.asitplus.wallet.lib.iso.DrivingPrivilege
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonElement

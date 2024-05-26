@@ -12,7 +12,6 @@ import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.DrivingPrivilege
 import at.asitplus.wallet.lib.iso.DrivingPrivilegeCode
-import at.asitplus.wallet.lib.iso.ElementValue
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
 import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES

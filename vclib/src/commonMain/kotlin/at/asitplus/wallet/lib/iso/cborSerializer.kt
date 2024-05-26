@@ -1,18 +1,21 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.wallet.lib.DescriptorLookup
+import at.asitplus.wallet.lib.ItemValueDecoder
 import at.asitplus.wallet.lib.ItemValueEncoder
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ArraySerializer
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.CompositeEncoder
 
 object Cbor {
 
     private val descriptorLookupFunctions = mutableSetOf<DescriptorLookup>()
     private val encoderFunctions = mutableSetOf<ItemValueEncoder>()
+    private val decoderFunctions = mutableSetOf<ItemValueDecoder>()
 
     init {
         descriptorLookupFunctions += {
@@ -36,6 +39,14 @@ object Cbor {
                 false
             }
         }
+        decoderFunctions += { descriptor, index, compositeDecoder ->
+            compositeDecoder.decodeSerializableElement(
+                descriptor,
+                index,
+                ArraySerializer(DrivingPrivilege.serializer())
+            )
+
+        }
     }
 
     fun register(function: DescriptorLookup) {
@@ -46,6 +57,10 @@ object Cbor {
         encoderFunctions += function
     }
 
+    fun register(function: ItemValueDecoder) {
+        decoderFunctions += function
+    }
+
     fun lookupDescriptor(element: Any): KSerializer<*>? {
         return descriptorLookupFunctions.firstNotNullOfOrNull { it.invoke(element) }
     }
@@ -53,6 +68,11 @@ object Cbor {
     fun encode(descriptor: SerialDescriptor, index: Int, compositeEncoder: CompositeEncoder, value: Any) {
         encoderFunctions.firstOrNull { it.invoke(descriptor, index, compositeEncoder, value) }
     }
+
+    fun decode(descriptor: SerialDescriptor, index: Int, compositeDecoder: CompositeDecoder): Any? =
+        decoderFunctions.firstNotNullOfOrNull {
+            runCatching { it.invoke(descriptor, index, compositeDecoder) }.getOrNull()
+        }
 }
 
 @OptIn(ExperimentalSerializationApi::class)

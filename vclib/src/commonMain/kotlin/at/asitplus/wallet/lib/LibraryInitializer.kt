@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.data.Json
 import at.asitplus.wallet.lib.iso.Cbor
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.CompositeEncoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.modules.SerializersModule
@@ -49,17 +50,22 @@ object LibraryInitializer {
         data: ExtensionLibraryInfo,
         itemValueLookup: DescriptorLookup,
         itemValueEncoder: ItemValueEncoder,
+        itemValueDecoder: ItemValueDecoder,
         jsonValueEncoder: JsonValueEncoder,
     ) {
         registerExtensionLibrary(data)
         Cbor.register(itemValueLookup)
         Cbor.register(itemValueEncoder)
+        Cbor.register(itemValueDecoder)
         Json.register(jsonValueEncoder)
     }
 
 }
 typealias ItemValueEncoder
         = (descriptor: SerialDescriptor, index: Int, compositeEncoder: CompositeEncoder, value: Any) -> Boolean
+
+typealias ItemValueDecoder
+         = (descriptor: SerialDescriptor, index: Int, compositeDecoder: CompositeDecoder) -> Any
 
 typealias DescriptorLookup
         = (element: Any) -> KSerializer<*>?

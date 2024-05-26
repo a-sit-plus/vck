@@ -7,11 +7,8 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.iso.DrivingPrivilege
-import at.asitplus.wallet.lib.iso.ElementValue
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import kotlinx.datetime.Clock
-import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 

@@ -11,7 +11,6 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ArraySerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.ByteString
@@ -23,12 +22,10 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
-import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.descriptors.listSerialDescriptor
 import kotlinx.serialization.descriptors.mapSerialDescriptor
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.encoding.CompositeDecoder
-import kotlinx.serialization.encoding.CompositeEncoder
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.encoding.decodeStructure
@@ -536,148 +533,6 @@ object ByteStringWrapperItemsRequestSerializer : KSerializer<ByteStringWrapper<I
     }
 
 }
-
-object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
-
-    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("IssuerSignedItem") {
-        element("digestID", Long.serializer().descriptor)
-        element("random", ByteArraySerializer().descriptor)
-        element("elementIdentifier", String.serializer().descriptor)
-        element("elementValue", String.serializer().descriptor)
-    }
-
-    override fun serialize(encoder: Encoder, value: IssuerSignedItem) {
-        encoder.encodeStructure(descriptor) {
-            encodeLongElement(descriptor, 0, value.digestId.toLong())
-            encodeSerializableElement(descriptor, 1, ByteArraySerializer(), value.random)
-            encodeStringElement(descriptor, 2, value.elementIdentifier)
-            encodeAnything(value, 3)
-        }
-    }
-
-    private fun CompositeEncoder.encodeAnything(value: IssuerSignedItem, index: Int) {
-        val descriptor = buildClassSerialDescriptor("IssuerSignedItem") {
-            element("digestID", Long.serializer().descriptor)
-            element("random", ByteArraySerializer().descriptor)
-            element("elementIdentifier", String.serializer().descriptor)
-            element("elementValue", buildDescriptorElementValue(value.elementValue).descriptor)
-        }
-
-        when (val it = value.elementValue) {
-            is String -> encodeStringElement(descriptor, index, it)
-            is Int -> encodeIntElement(descriptor, index, it)
-            // TODO write tag 1004
-            is LocalDate -> encodeSerializableElement(descriptor, index, LocalDate.serializer(), it)
-            is Boolean -> encodeBooleanElement(descriptor, index, it)
-            is ByteArray -> encodeSerializableElement(descriptor, index, ByteArraySerializer(), it)
-            else -> Cbor.encode(descriptor, index, this, it)
-        }
-    }
-
-    private inline fun <reified T> buildDescriptorElementValue(element: T) = when (element) {
-        is String -> String.serializer()
-        is Int -> Int.serializer()
-        is LocalDate -> LocalDate.serializer()
-        is Boolean -> Boolean.serializer()
-        is ByteArray -> ByteArraySerializer()
-        is Any -> Cbor.lookupDescriptor(element) ?: error("descriptor not found for $element")
-        else -> error("descriptor not found for $element")
-    }
-
-
-    override fun deserialize(decoder: Decoder): IssuerSignedItem {
-        var digestId = 0U
-        lateinit var random: ByteArray
-        lateinit var elementIdentifier: String
-        lateinit var elementValue: Any
-        decoder.decodeStructure(descriptor) {
-            while (true) {
-                val name = decodeStringElement(descriptor, 0)
-                val index = descriptor.getElementIndex(name)
-                when (name) {
-                    "digestID" -> digestId = decodeLongElement(descriptor, index).toUInt()
-                    "random" -> random = decodeSerializableElement(descriptor, index, ByteArraySerializer())
-                    "elementIdentifier" -> elementIdentifier = decodeStringElement(descriptor, index)
-                    "elementValue" -> elementValue = decodeAnything(index)
-                }
-                if (index == 3) break
-            }
-        }
-        return IssuerSignedItem(
-            digestId = digestId,
-            random = random,
-            elementIdentifier = elementIdentifier,
-            elementValue = elementValue
-        )
-    }
-
-    private fun CompositeDecoder.decodeAnything(index: Int): Any {
-        runCatching { return decodeStringElement(descriptor, index) }
-        runCatching { return decodeSerializableElement(descriptor, index, ByteArraySerializer()) }
-        runCatching {
-            return decodeSerializableElement(
-                descriptor,
-                index,
-                ArraySerializer(DrivingPrivilege.serializer())
-            )
-        }
-        runCatching { return decodeBooleanElement(descriptor, index) }
-        runCatching { return decodeSerializableElement(descriptor, index, LocalDate.serializer()) }
-        throw IllegalArgumentException("Could not decode value")
-    }
-}
-/*
-object ElementValueSerializer : KSerializer<ElementValue> {
-
-    @OptIn(InternalSerializationApi::class)
-    // Use StructureKind.LIST to prevent the indices ("0") from getting serialized for driving privileges
-    override val descriptor: SerialDescriptor = buildSerialDescriptor("ElementValueSerializer", StructureKind.LIST)
-
-    override fun serialize(encoder: Encoder, value: ElementValue) {
-        value.bytes?.let {
-            encoder.encodeSerializableValue(ByteArraySerializer(), it)
-        } ?: value.date?.let {
-            // TODO write tag 1004
-            encoder.encodeSerializableValue(LocalDate.serializer(), it)
-        } ?: value.string?.let {
-            encoder.encodeString(it)
-        } ?: value.drivingPrivilege?.let {
-            encoder.encodeSerializableValue(ArraySerializer(DrivingPrivilege.serializer()), it)
-        } ?: value.boolean?.let {
-            encoder.encodeBoolean(it)
-        } ?: throw IllegalArgumentException("No value exists")
-    }
-
-    override fun deserialize(decoder: Decoder): ElementValue {
-        runCatching {
-            return ElementValue(
-                bytes = decoder.decodeSerializableValue(ByteArraySerializer())
-            )
-        }
-        runCatching {
-            return ElementValue(
-                drivingPrivilege = decoder.decodeSerializableValue(ArraySerializer(DrivingPrivilege.serializer()))
-            )
-        }
-        runCatching {
-            return ElementValue(
-                boolean = decoder.decodeBoolean()
-            )
-        }
-        runCatching {
-            val string = decoder.decodeString()
-            runCatching {
-                LocalDate.parse(string)
-            }.onSuccess {
-                return ElementValue(date = it)
-            }.onFailure {
-                return ElementValue(string = string)
-            }
-        }
-        throw IllegalArgumentException("Could not decode instance of ElementValue")
-    }
-
-}*/
 
 fun ByteArray.stripCborTag(tag: Byte) = this.dropWhile { it == 0xd8.toByte() }.dropWhile { it == tag }.toByteArray()
 
