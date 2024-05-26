@@ -377,12 +377,9 @@ class OidcSiopVerifier private constructor(
      * encoding it into the descriptor id as in the following non-normative example fow now:
      * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
      */
-    private fun RequestOptions.buildId() = credentialScheme?.let {
-        when (representation) {
-            ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoDocType!!
-            else -> null
-        }
-    } ?: uuid4().toString()
+    private fun RequestOptions.buildId() =
+        if (credentialScheme?.isoDocType != null && representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
+            credentialScheme.isoDocType!! else uuid4().toString()
 
     private fun RequestOptions.toConstraint() =
         Constraint(fields = (toAttributeConstraints() + toTypeConstraint()).filterNotNull())
