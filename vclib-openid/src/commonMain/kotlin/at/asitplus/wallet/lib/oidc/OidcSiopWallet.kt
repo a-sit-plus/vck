@@ -405,14 +405,15 @@ class OidcSiopWallet(
 
     private suspend fun AuthenticationRequestParametersFrom<*>.extractAudience(
         clientMetadata: RelyingPartyMetadata
-    ) = clientMetadata.jsonWebKeySet?.keys?.firstOrNull()?.identifier
-        ?: clientMetadata.jsonWebKeySetUrl?.let {
-            remoteResourceRetriever.invoke(it)
-                ?.let { JsonWebKeySet.deserialize(it).getOrNull() }?.keys?.firstOrNull()?.identifier
-        } ?: (source as? AuthenticationRequestParametersFrom.JwsSigned)
+    ) = clientMetadata.loadJsonWebKeySet()?.keys?.firstOrNull()?.identifier
+        ?: (source as? AuthenticationRequestParametersFrom.JwsSigned)
             ?.source?.header?.certificateChain?.leaf?.let { parameters.clientId } //TODO is this even correct ????
         ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
             .also { Napier.w("Could not parse audience") }
+
+    private suspend fun RelyingPartyMetadata.loadJsonWebKeySet() =
+        this.jsonWebKeySet ?: jsonWebKeySetUrl?.let { remoteResourceRetriever.invoke(it) }
+            ?.let { JsonWebKeySet.deserialize(it).getOrNull() }
 
     private suspend fun AuthenticationRequestParameters.loadClientMetadata() = clientMetadata
         ?: clientMetadataUri?.let { uri ->
