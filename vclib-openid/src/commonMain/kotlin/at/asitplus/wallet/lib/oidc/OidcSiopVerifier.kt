@@ -16,6 +16,8 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
+import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -365,20 +367,22 @@ class OidcSiopVerifier private constructor(
     ) null else relyingPartyUrl
 
     private fun RequestOptions.toInputDescriptor() = InputDescriptor(
-        id = credentialScheme?.let {
-            when (representation) {
-                /**
-                 * doctype is not really an attribute that can be presented,
-                 * encoding it into the descriptor id as in the following non-normative example fow now:
-                 * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
-                 */
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoDocType!!
-                else -> null
-            }
-        } ?: uuid4().toString(),
+        id = buildId(),
         schema = listOfNotNull(credentialScheme?.schemaUri?.let { SchemaReference(it) }),
         constraints = toConstraint(),
     )
+
+    /**
+     * doctype is not really an attribute that can be presented,
+     * encoding it into the descriptor id as in the following non-normative example fow now:
+     * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
+     */
+    private fun RequestOptions.buildId() = credentialScheme?.let {
+        when (representation) {
+            ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoDocType!!
+            else -> null
+        }
+    } ?: uuid4().toString()
 
     private fun RequestOptions.toConstraint() =
         Constraint(fields = (toAttributeConstraints() + toTypeConstraint()).filterNotNull())
@@ -401,21 +405,23 @@ class OidcSiopVerifier private constructor(
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
     }
 
-    private fun ConstantIndex.CredentialScheme.toVcConstraint() = ConstraintField(
-        path = listOf("$.type"),
-        filter = ConstraintFilter(
-            type = "string",
-            pattern = vcType,
-        )
-    )
+    private fun ConstantIndex.CredentialScheme.toVcConstraint() = if (supportsVcJwt)
+        ConstraintField(
+            path = listOf("$.type"),
+            filter = ConstraintFilter(
+                type = "string",
+                pattern = vcType,
+            )
+        ) else null
 
-    private fun ConstantIndex.CredentialScheme.toSdJwtConstraint() = ConstraintField(
-        path = listOf("$.vct"),
-        filter = ConstraintFilter(
-            type = "string",
-            pattern = sdJwtType ?: schemaUri,
-        )
-    )
+    private fun ConstantIndex.CredentialScheme.toSdJwtConstraint() = if (supportsSdJwt)
+        ConstraintField(
+            path = listOf("$.vct"),
+            filter = ConstraintFilter(
+                type = "string",
+                pattern = sdJwtType!!
+            )
+        ) else null
 
     private fun List<String>.createConstraints(
         credentialRepresentation: ConstantIndex.CredentialRepresentation,
