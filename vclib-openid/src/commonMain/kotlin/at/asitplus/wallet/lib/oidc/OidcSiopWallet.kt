@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
@@ -284,6 +285,9 @@ class OidcSiopWallet(
 
         val clientMetadata = runCatching { params.parameters.loadClientMetadata() }
             .getOrElse { return KmmResult.failure(it) }
+        val certKey =
+            (params as? AuthenticationRequestParametersFrom.JwsSigned)?.source?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
+        val jsonWebKeySet = clientMetadata.loadJsonWebKeySet()?.keys.combine(certKey)
         val audience = runCatching { params.extractAudience(clientMetadata) }
             .getOrElse { return KmmResult.failure(it) }
         // TODO Check removed for EUDI interop
@@ -320,7 +324,7 @@ class OidcSiopWallet(
             presentationSubmission = presentationResultContainer?.presentationSubmission,
         )
         return KmmResult.success(
-            AuthenticationResponse(parameters, clientMetadata)
+            AuthenticationResponse(parameters, clientMetadata, jsonWebKeySet)
         )
     }
 
@@ -542,4 +546,8 @@ typealias ScopePresentationDefinitionRetriever = suspend (String) -> Presentatio
  */
 fun interface RequestObjectJwsVerifier {
     operator fun invoke(jws: JwsSigned, authnRequest: AuthenticationRequestParameters): Boolean
+}
+
+private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> {
+    return certKey?.let { (this ?: listOf()) + certKey } ?: this ?: listOf()
 }
