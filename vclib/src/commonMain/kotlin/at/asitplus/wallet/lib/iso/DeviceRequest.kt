@@ -6,7 +6,6 @@ import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.cose.CoseSigned
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -404,64 +403,6 @@ data class IssuerSignedItem(
     }
 }
 
-/**
- * Convenience class to enable serialization of (nearly) "any" value in [IssuerSignedItem.elementValue]
- */
-data class ElementValue(
-    val bytes: ByteArray? = null,
-    @ValueTags(1004u)
-    val date: LocalDate? = null,
-    val string: String? = null,
-    val drivingPrivilege: Array<DrivingPrivilege>? = null,
-    val boolean: Boolean? = null,
-) {
-    fun serialize() = cborSerializer.encodeToByteArray(this)
-
-    override fun toString(): String {
-        return "ElementValue(bytes=${bytes?.encodeToString(Base16(strict = true))}," +
-                " date=${date}," +
-                " string=$string," +
-                " drivingPrivilege=$drivingPrivilege," +
-                " boolean=$boolean)"
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as ElementValue
-
-        if (bytes != null) {
-            if (other.bytes == null) return false
-            if (!bytes.contentEquals(other.bytes)) return false
-        } else if (other.bytes != null) return false
-        if (date != other.date) return false
-        if (string != other.string) return false
-        if (drivingPrivilege != null) {
-            if (other.drivingPrivilege == null) return false
-            if (!drivingPrivilege.contentEquals(other.drivingPrivilege)) return false
-        } else if (other.drivingPrivilege != null) return false
-        if (boolean != other.boolean) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = bytes?.contentHashCode() ?: 0
-        result = 31 * result + (date?.hashCode() ?: 0)
-        result = 31 * result + (string?.hashCode() ?: 0)
-        result = 31 * result + (drivingPrivilege?.contentHashCode() ?: 0)
-        result = 31 * result + (boolean?.hashCode() ?: 0)
-        return result
-    }
-
-    companion object {
-        fun deserialize(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray<ElementValue>(it)
-        }.wrap()
-    }
-}
-
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
@@ -475,10 +416,6 @@ data class DeviceSigned(
     @SerialName("deviceAuth")
     val deviceAuth: DeviceAuth,
 ) {
-    fun extractDeviceNameSpaces(): Map<String, Map<String, ElementValue>> {
-        return cborSerializer.decodeFromByteArray(namespaces)
-    }
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -495,13 +432,6 @@ data class DeviceSigned(
         return result
     }
 
-    companion object {
-        fun withDeviceNameSpaces(value: Map<String, Map<String, ElementValue>>, deviceAuth: DeviceAuth) =
-            DeviceSigned(
-                namespaces = cborSerializer.encodeToByteArray(value),
-                deviceAuth = deviceAuth
-            )
-    }
 }
 
 
