@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.wallet.lib.DescriptorLookup
+import at.asitplus.wallet.lib.SerializerLookup
 import at.asitplus.wallet.lib.ItemValueDecoder
 import at.asitplus.wallet.lib.ItemValueEncoder
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -12,12 +12,12 @@ import kotlinx.serialization.encoding.CompositeEncoder
 
 object Cbor {
 
-    private val descriptorLookupFunctions = mutableSetOf<DescriptorLookup>()
+    private val serializerLookupFunctions = mutableSetOf<SerializerLookup>()
     private val encoderFunctions = mutableSetOf<ItemValueEncoder>()
     private val decoderFunctions = mutableSetOf<ItemValueDecoder>()
 
-    fun register(function: DescriptorLookup) {
-        descriptorLookupFunctions += function
+    fun register(function: SerializerLookup) {
+        serializerLookupFunctions += function
     }
 
     fun register(function: ItemValueEncoder) {
@@ -28,8 +28,8 @@ object Cbor {
         decoderFunctions += function
     }
 
-    fun lookupDescriptor(element: Any): KSerializer<*>? {
-        return descriptorLookupFunctions.firstNotNullOfOrNull { it.invoke(element) }
+    fun lookupSerializer(element: Any): KSerializer<*>? {
+        return serializerLookupFunctions.firstNotNullOfOrNull { it.invoke(element) }
     }
 
     fun encode(descriptor: SerialDescriptor, index: Int, compositeEncoder: CompositeEncoder, value: Any) {

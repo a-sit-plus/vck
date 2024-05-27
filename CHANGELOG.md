@@ -4,6 +4,7 @@ Release 3.8.0:
  - Extract credential classes for Mobile Driving Licence according to ISO 18013-5 into separate library, see <https://github.com/a-sit-plus/mobile-driving-licence-credential>
  - Implementers need to specify supported credential representations in `CredentialScheme`
  - Update `CredentialScheme` to split up properties for representations
+ - Refactor methods in `LibraryInitializer`, deprecating the old ones, to accomodate additional parameters for serializing ISO credentials
 
 Release 3.7.1:
  - SIOPv2: Support encrypting response objects, if requested by verifiers

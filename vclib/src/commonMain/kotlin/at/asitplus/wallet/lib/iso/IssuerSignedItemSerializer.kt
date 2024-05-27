@@ -61,7 +61,7 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
         is Instant -> InstantStringSerializer()
         is Boolean -> Boolean.serializer()
         is ByteArray -> ByteArraySerializer()
-        is Any -> Cbor.lookupDescriptor(element) ?: error("descriptor not found for $element")
+        is Any -> Cbor.lookupSerializer(element) ?: error("descriptor not found for $element")
         else -> error("descriptor not found for $element")
     }
 
