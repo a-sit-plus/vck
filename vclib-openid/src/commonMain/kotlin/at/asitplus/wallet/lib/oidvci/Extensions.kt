@@ -27,7 +27,7 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
         )
     } else null
     val jwtVc = if (supportsVcJwt) {
-        encodeToCredentialIdentifier(CredentialFormatEnum.JWT_VC) to SupportedCredentialFormat.forVcJwt(
+        encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC) to SupportedCredentialFormat.forVcJwt(
             format = CredentialFormatEnum.JWT_VC,
             scope = vcType!!,
             credentialDefinition = SupportedCredentialFormatDefinition(
@@ -39,7 +39,7 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
         )
     } else null
     val sdJwt = if (supportsSdJwt) {
-        encodeToCredentialIdentifier(CredentialFormatEnum.VC_SD_JWT) to SupportedCredentialFormat.forSdJwt(
+        encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT) to SupportedCredentialFormat.forSdJwt(
             format = CredentialFormatEnum.VC_SD_JWT,
             scope = sdJwtType!!,
             sdJwtVcType = sdJwtType!!,
@@ -54,17 +54,16 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
 /**
  * Reverse functionality of [decodeFromCredentialIdentifier]
  */
-// TODO rethink for non-vc-jwt
-private fun ConstantIndex.CredentialScheme.encodeToCredentialIdentifier(format: CredentialFormatEnum) =
-    "$vcType#${format.text}"
+private fun encodeToCredentialIdentifier(type: String, format: CredentialFormatEnum) =
+    "$type#${format.text}"
 
 /**
- * Reverse functionality of [ConstantIndex.CredentialScheme.encodeToCredentialIdentifier]
+ * Reverse functionality of [encodeToCredentialIdentifier]
  */
 fun decodeFromCredentialIdentifier(input: String): Pair<String, CredentialFormatEnum> {
-    val vcTypeOrIsoNamespace = input.substringBeforeLast("#")
+    val typeOrSdJwtType = input.substringBeforeLast("#")
     val format = CredentialFormatEnum.parse(input.substringAfterLast("#")) ?: CredentialFormatEnum.MSO_MDOC
-    return Pair(vcTypeOrIsoNamespace, format)
+    return Pair(typeOrSdJwtType, format)
 }
 
 fun CredentialFormatEnum.toRepresentation() = when (this) {

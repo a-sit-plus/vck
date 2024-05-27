@@ -355,8 +355,7 @@ class OidcSiopVerifier private constructor(
         ),
     )
 
-    // TODO rethink for non-vc-jwt types
-    private fun RequestOptions.buildScope() = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.vcType)
+    private fun RequestOptions.buildScope() = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.sdJwtType, credentialScheme?.vcType, credentialScheme?.isoNamespace)
         .joinToString(" ")
 
     private fun buildClientId() = (x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }

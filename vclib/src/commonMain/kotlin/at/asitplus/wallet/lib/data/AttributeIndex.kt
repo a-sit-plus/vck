@@ -22,9 +22,15 @@ object AttributeIndex {
     /**
      * Matches the passed [type] against all known types from [ConstantIndex.CredentialScheme.vcType]
      */
-    // TODO rethink for non-vc-jwt types
     fun resolveAttributeType(type: String): ConstantIndex.CredentialScheme? {
         return schemeSet.firstOrNull { it.vcType == type }
+    }
+
+    /**
+     * Matches the passed [sdJwtType] against all known types from [ConstantIndex.CredentialScheme.sdJwtType]
+     */
+    fun resolveSdJwtAttributeType(sdJwtType: String): ConstantIndex.CredentialScheme? {
+        return schemeSet.firstOrNull { it.sdJwtType == sdJwtType }
     }
 
     /**

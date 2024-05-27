@@ -104,6 +104,7 @@ class IssuerAgent(
         val successful = mutableListOf<Issuer.IssuedCredential>()
         for (attributeType in attributeTypes) {
             val scheme = AttributeIndex.resolveAttributeType(attributeType)
+                ?: AttributeIndex.resolveSdJwtAttributeType(attributeType)
                 ?: AttributeIndex.resolveIsoNamespace(attributeType)
                 ?: AttributeIndex.resolveSchemaUri(attributeType)
             if (scheme == null) {
