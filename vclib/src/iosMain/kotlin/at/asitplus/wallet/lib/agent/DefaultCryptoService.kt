@@ -56,7 +56,8 @@ actual class DefaultCryptoService : CryptoService {
         secPublicKey = SecKeyCopyPublicKey(secPrivateKey)!!
         val publicKeyData = SecKeyCopyExternalRepresentation(secPublicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
-        publicKey = CryptoPublicKey.EC.fromAnsiX963Bytes(data.toByteArray()).apply { jwkId = didEncoded }
+        publicKey =
+            CryptoPublicKey.EC.fromAnsiX963Bytes(ECCurve.SECP_256_R_1, data.toByteArray()).apply { jwkId = didEncoded }
         this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
     }
 
@@ -112,7 +113,7 @@ actual class DefaultCryptoService : CryptoService {
             ?: return KmmResult.failure(Exception("Cannot create in-memory private key"))
         val publicKey = SecKeyCopyPublicKey(privateKey)
             ?: return KmmResult.failure(Exception("Cannot create public key"))
-        return KmmResult.success(DefaultEphemeralKeyHolder(publicKey, privateKey))
+        return KmmResult.success(DefaultEphemeralKeyHolder(ecCurve,publicKey, privateKey))
     }
 
     override fun performKeyAgreement(
@@ -177,9 +178,9 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
 
 }
 
-data class DefaultEphemeralKeyHolder(val publicKey: SecKeyRef, val privateKey: SecKeyRef? = null) : EphemeralKeyHolder {
+data class DefaultEphemeralKeyHolder(val crv : ECCurve, val publicKey: SecKeyRef, val privateKey: SecKeyRef? = null) : EphemeralKeyHolder {
 
-    override val publicJsonWebKey = CryptoPublicKey.EC.fromAnsiX963Bytes(
+    override val publicJsonWebKey = CryptoPublicKey.EC.fromAnsiX963Bytes(crv,
         (CFBridgingRelease(
             SecKeyCopyExternalRepresentation(
                 publicKey,
