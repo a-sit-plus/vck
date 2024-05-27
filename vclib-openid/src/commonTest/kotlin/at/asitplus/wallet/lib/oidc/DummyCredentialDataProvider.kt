@@ -37,7 +37,8 @@ class DummyCredentialDataProvider(
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>?
     ): KmmResult<List<CredentialToBeIssued>> {
-        val expiration = clock.now() + defaultLifetime
+        val issuance = clock.now()
+        val expiration = issuance + defaultLifetime
         val credentials = mutableListOf<CredentialToBeIssued>()
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
             val subjectId = subjectPublicKey.didEncoded
@@ -110,10 +111,18 @@ class DummyCredentialDataProvider(
 
         if (credentialScheme == EuPidScheme) {
             val subjectId = subjectPublicKey.didEncoded
+            val familyName = "Musterfrau"
+            val givenName = "Maria"
+            val birthDate = LocalDate.parse("1970-01-01")
+            val issuingCountry = "AT"
             val claims = listOfNotNull(
-                optionalClaim(claimNames, EuPidScheme.Attributes.FAMILY_NAME, "Musterfrau"),
-                optionalClaim(claimNames, EuPidScheme.Attributes.GIVEN_NAME, "Maria"),
-                optionalClaim(claimNames, EuPidScheme.Attributes.BIRTH_DATE, LocalDate.parse("1970-01-01")),
+                optionalClaim(claimNames, EuPidScheme.Attributes.FAMILY_NAME, familyName),
+                optionalClaim(claimNames, EuPidScheme.Attributes.GIVEN_NAME, givenName),
+                optionalClaim(claimNames, EuPidScheme.Attributes.BIRTH_DATE, birthDate),
+                optionalClaim(claimNames, EuPidScheme.Attributes.ISSUANCE_DATE, issuance),
+                optionalClaim(claimNames, EuPidScheme.Attributes.EXPIRY_DATE, expiration),
+                optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_COUNTRY, issuingCountry),
+                optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_AUTHORITY, issuingCountry),
             )
             credentials += when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
@@ -124,9 +133,13 @@ class DummyCredentialDataProvider(
                     CredentialToBeIssued.VcJwt(
                         EuPidCredential(
                             id = subjectId,
-                            familyName = "Musterfrau",
-                            givenName = "Maria",
-                            birthDate = LocalDate.parse("1970-01-01")
+                            familyName = familyName,
+                            givenName = givenName,
+                            birthDate = birthDate,
+                            issuanceDate = issuance,
+                            expiryDate = expiration,
+                            issuingCountry = issuingCountry,
+                            issuingAuthority = issuingCountry,
                         ),
                         expiration,
                     )

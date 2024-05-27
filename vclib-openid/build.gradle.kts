@@ -31,7 +31,7 @@ kotlin {
 
         commonTest {
             dependencies {
-                implementation("at.asitplus.wallet:eupidcredential:1.0.0")
+                implementation("at.asitplus.wallet:eupidcredential:2.1.0-SNAPSHOT")
                 implementation("at.asitplus.wallet:mobiledrivinglicence:1.0.0-SNAPSHOT")
             }
         }
