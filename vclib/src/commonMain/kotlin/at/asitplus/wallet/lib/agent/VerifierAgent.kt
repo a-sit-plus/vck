@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.iso.Document
@@ -28,12 +30,18 @@ class VerifierAgent private constructor(
             identifier = identifier
         )
 
-        /**
-         * Explicitly short argument list to use it from Swift
-         */
+        @Deprecated(
+            message = "Use other constructor",
+            replaceWith = ReplaceWith("newDefaultInstance(cryptoPublicKey)")
+        )
         fun newDefaultInstance(identifier: String): VerifierAgent = VerifierAgent(
             validator = Validator.newDefaultInstance(),
             identifier = identifier
+        )
+
+        fun newDefaultInstance(cryptoPublicKey: CryptoPublicKey): VerifierAgent = VerifierAgent(
+            validator = Validator.newDefaultInstance(),
+            identifier = cryptoPublicKey.toJsonWebKey().identifier
         )
 
         /**
@@ -41,7 +49,7 @@ class VerifierAgent private constructor(
          */
         fun newRandomInstance(): VerifierAgent = VerifierAgent(
             validator = Validator.newDefaultInstance(),
-            identifier = DefaultCryptoService().publicKey.didEncoded,
+            identifier = DefaultCryptoService().publicKey.toJsonWebKey().identifier,
         )
     }
 

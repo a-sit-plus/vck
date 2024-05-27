@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.io.Base64Strict
@@ -226,9 +227,15 @@ class Validator(
         if (keyBinding.audience != localId)
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Audience not correct: ${keyBinding.audience}") }
-        if (sdJwtResult.sdJwt.subject != null && jwsKeyBindingParsed.header.keyId != sdJwtResult.sdJwt.subject)
+        if (sdJwtResult.sdJwt.confirmationKey != null) {
+            if (jwsKeyBindingParsed.header.jsonWebKey != sdJwtResult.sdJwt.confirmationKey) {
+                return Verifier.VerifyPresentationResult.InvalidStructure(input)
+                    .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject: ${sdJwtResult.sdJwt}") }
+            }
+        } else if (jwsKeyBindingParsed.header.keyId != sdJwtResult.sdJwt.subject) {
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
-                .also { Napier.w("verifyVpSdJwt: Key Binding does not prove possession of subject key: ${jwsKeyBindingParsed.header.keyId}") }
+                .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject: ${sdJwtResult.sdJwt}") }
+        }
         val hashInput = input.substringBeforeLast("~") + "~"
         if (!keyBinding.sdHash.contentEquals(hashInput.encodeToByteArray().sha256()))
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
@@ -338,11 +345,13 @@ class Validator(
             return Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.w("VC: Could not parse payload", ex) }
         }
-        localId?.let {
-            if (vcJws.subject != it)
-                return Verifier.VerifyCredentialResult.InvalidStructure(it)
-                    .also { Napier.d("VC: sub invalid") }
-        }
+        // TODO Rework identifiers in holders and everywhere, shouldn't be dids
+//        localId?.let {
+//            if (vcJws.subject != it) {
+//                return Verifier.VerifyCredentialResult.InvalidStructure(it)
+//                    .also { Napier.d("VC: sub invalid") }
+//            }
+//        }
         if (checkRevocationStatus(vcJws) == RevocationStatus.REVOKED)
             return Verifier.VerifyCredentialResult.Revoked(input, vcJws)
                 .also { Napier.d("VC: revoked") }

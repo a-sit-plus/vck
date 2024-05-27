@@ -249,14 +249,15 @@ class IssuerAgent(
         val vcId = "urn:uuid:${uuid4()}"
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-        val subjectId = subjectPublicKey.toJsonWebKey().keyId ?: return Issuer.IssuedCredentialResult(
-            failed = listOf(
-                Issuer.FailedAttribute(
-                    scheme.schemaUri,
-                    DataSourceProblem("subjectPublicKey transformation error")
+        val subjectId = subjectPublicKey.toJsonWebKey().didEncoded
+            ?: return Issuer.IssuedCredentialResult(
+                failed = listOf(
+                    Issuer.FailedAttribute(
+                        scheme.schemaUri,
+                        DataSourceProblem("subjectPublicKey transformation error")
+                    )
                 )
-            )
-        ).also { Napier.w("subjectPublicKey could not be transformed to a JWK") }
+            ).also { Napier.w("subjectPublicKey could not be transformed to a JWK") }
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
             credential = IssuerCredentialStore.Credential.VcSd(vcId, credential.claims, scheme),
             subjectPublicKey = subjectPublicKey,

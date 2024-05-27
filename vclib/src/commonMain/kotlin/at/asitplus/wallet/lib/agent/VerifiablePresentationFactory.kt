@@ -173,7 +173,7 @@ class VerifiablePresentationFactory(
                 algorithm = jwsService.algorithm,
             ),
             payload = jwsPayload,
-            addKeyId = true,
+            addKeyId = false,
             addJsonWebKey = true,
             addX5c = false
         ).getOrElse {

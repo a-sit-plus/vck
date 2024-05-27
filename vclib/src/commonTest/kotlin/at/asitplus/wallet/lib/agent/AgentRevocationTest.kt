@@ -34,7 +34,7 @@ class AgentRevocationTest : FreeSpec({
             dataProvider = DummyCredentialDataProvider()
         )
         verifierCryptoService = DefaultCryptoService()
-        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.didEncoded)
+        verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey)
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
 
