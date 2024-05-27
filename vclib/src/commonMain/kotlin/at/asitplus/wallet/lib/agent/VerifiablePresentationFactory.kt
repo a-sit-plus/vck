@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.crypto.datatypes.jws.JwsHeader
+import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.wallet.lib.cbor.CoseService
@@ -17,6 +18,7 @@ import at.asitplus.wallet.lib.iso.IssuerSignedList
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.serialization.cbor.ByteStringWrapper
@@ -143,9 +145,21 @@ class VerifiablePresentationFactory(
                 }
             })
         }.keys
-        val issuerJwt = listOf(validSdJwtCredential.vcSerialized.substringBefore("~"))
-        val issuerJwtPlusDisclosures = (issuerJwt + filteredDisclosures)
-            .joinToString("~", postfix = "~")
+        val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
+        val keyBinding = createKeyBindingJws(audienceId, challenge, issuerJwtPlusDisclosures) ?: return null
+        val jwsFromIssuer = JwsSigned.parse(validSdJwtCredential.vcSerialized.substringBefore("~")).getOrElse {
+            Napier.w("Could not re-create JWS from stored SD-JWT", it)
+            return null
+        }
+        val sdJwt = SdJwtSigned.serializePresentation(jwsFromIssuer, filteredDisclosures, keyBinding)
+        return Holder.CreatePresentationResult.SdJwt(sdJwt)
+    }
+
+    private suspend fun createKeyBindingJws(
+        audienceId: String,
+        challenge: String,
+        issuerJwtPlusDisclosures: String,
+    ): JwsSigned? {
         val keyBindingJws = KeyBindingJws(
             issuedAt = Clock.System.now(),
             audience = audienceId,
@@ -153,7 +167,7 @@ class VerifiablePresentationFactory(
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256()
         )
         val jwsPayload = keyBindingJws.serialize().encodeToByteArray()
-        val keyBinding = jwsService.createSignedJwsAddingParams(
+        return jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 type = JwsContentTypeConstants.KB_JWT,
                 algorithm = jwsService.algorithm,
@@ -166,11 +180,7 @@ class VerifiablePresentationFactory(
             Napier.w("Could not create JWS for presentation", it)
             return null
         }
-
-        val sdJwt = issuerJwtPlusDisclosures + keyBinding.serialize()
-        return Holder.CreatePresentationResult.SdJwt(sdJwt)
     }
-
 
     private fun Map.Entry<String, SelectiveDisclosureItem?>.discloseItem(requestedClaims: Collection<String>?): Boolean {
         // do not disclose by default

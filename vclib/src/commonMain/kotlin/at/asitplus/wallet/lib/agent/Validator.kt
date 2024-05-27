@@ -369,11 +369,10 @@ class Validator(
         Napier.d("Verifying SD-JWT $input")
         val sdJwtSigned = SdJwtSigned.parse(input)
             ?: return Verifier.VerifyCredentialResult.InvalidStructure(input)
-                .also { Napier.w("verifySdJwt: Could not parse SD-JWT") }
+                .also { Napier.w("verifySdJwt: Could not parse SD-JWT from $input") }
         if (!verifierJwsService.verifyJwsObject(sdJwtSigned.jws))
             return Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.w("verifySdJwt: Signature invalid") }
-
         val payload = sdJwtSigned.jws.payload.decodeToString()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(payload).getOrElse { ex ->
             return Verifier.VerifyCredentialResult.InvalidStructure(input)
@@ -387,7 +386,6 @@ class Validator(
         val isRevoked = checkRevocationStatus(sdJwt) == RevocationStatus.REVOKED
         if (isRevoked)
             Napier.d("verifySdJwt: revoked")
-
         // it's important to read again from source string to prevent different formats in serialization
         val disclosureInputs = sdJwtSigned.rawDisclosures.map { it.hashDisclosure() }
         disclosureInputs.forEach { discInput ->
