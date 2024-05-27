@@ -26,6 +26,7 @@ import com.nimbusds.jose.crypto.RSADecrypter
 import com.nimbusds.jose.crypto.RSAEncrypter
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.crypto.RSASSAVerifier
+import com.nimbusds.jose.jwk.JWK
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -128,8 +129,10 @@ class JwsServiceJvmTest : FreeSpec({
 
                 "Signed object from ext. library can be verified with int. library" {
                     val stringPayload = jsonSerializer.encodeToString(randomPayload)
-                    val libHeader = JWSHeader.Builder(JWSAlgorithm(algo.name)).type(JOSEObjectType("JWT"))
-                        .keyID(cryptoService.jsonWebKey.keyId).build()
+                    val libHeader = JWSHeader.Builder(JWSAlgorithm(algo.name))
+                        .type(JOSEObjectType("JWT"))
+                        .jwk(JWK.parse(cryptoService.jsonWebKey.serialize()))
+                        .build()
                     val libObject = JWSObject(libHeader, Payload(stringPayload)).also {
                         it.sign(jvmSigner)
                     }
@@ -178,11 +181,12 @@ class JwsServiceJvmTest : FreeSpec({
                 if (thisConfiguration.first == "EC") {
                     "Encrypted object from ext. library can be decrypted with int. library" {
                         val stringPayload = jsonSerializer.encodeToString(randomPayload)
-                        val libJweHeader = JWEHeader.Builder(JWEAlgorithm(jweAlgorithm.identifier), EncryptionMethod.A256GCM)
-                            .type(JOSEObjectType(JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON))
-                            .contentType(JwsContentTypeConstants.DIDCOMM_PLAIN_JSON)
-                            .keyID(cryptoService.jsonWebKey.keyId)
-                            .build()
+                        val libJweHeader =
+                            JWEHeader.Builder(JWEAlgorithm(jweAlgorithm.identifier), EncryptionMethod.A256GCM)
+                                .type(JOSEObjectType(JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON))
+                                .jwk(JWK.parse(cryptoService.jsonWebKey.serialize()))
+                                .contentType(JwsContentTypeConstants.DIDCOMM_PLAIN_JSON)
+                                .build()
                         val libJweObject = JWEObject(libJweHeader, Payload(stringPayload)).also {
                             it.encrypt(jvmEncrypter)
                         }

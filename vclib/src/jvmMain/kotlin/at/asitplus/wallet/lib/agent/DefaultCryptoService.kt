@@ -76,7 +76,7 @@ actual open class DefaultCryptoService : CryptoService {
     ) {
         this.privateKey = keyPair.private
         this.algorithm = algorithm
-        this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow().also { it.jwkId = it.didEncoded }
+        this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
         this.jsonWebKey = publicKey.toJsonWebKey()
         this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
         this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)

@@ -56,8 +56,7 @@ actual class DefaultCryptoService : CryptoService {
         secPublicKey = SecKeyCopyPublicKey(secPrivateKey)!!
         val publicKeyData = SecKeyCopyExternalRepresentation(secPublicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
-        publicKey =
-            CryptoPublicKey.EC.fromAnsiX963Bytes(ECCurve.SECP_256_R_1, data.toByteArray()).apply { jwkId = didEncoded }
+        publicKey = CryptoPublicKey.EC.fromAnsiX963Bytes(ECCurve.SECP_256_R_1, data.toByteArray())
         this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
     }
 
