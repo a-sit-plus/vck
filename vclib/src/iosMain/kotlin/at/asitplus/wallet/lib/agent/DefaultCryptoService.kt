@@ -6,53 +6,20 @@ import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.CryptoSignature
-import at.asitplus.crypto.datatypes.EcCurve
-import at.asitplus.crypto.datatypes.asn1.Asn1String
-import at.asitplus.crypto.datatypes.asn1.Asn1Time
-import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
+import at.asitplus.crypto.datatypes.ECCurve
 import at.asitplus.crypto.datatypes.cose.CoseKey
+import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.io.Base64Strict
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
-import at.asitplus.crypto.datatypes.jws.JweAlgorithm
-import at.asitplus.crypto.datatypes.jws.JweEncryption
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
-import at.asitplus.crypto.datatypes.pki.AttributeTypeAndValue
-import at.asitplus.crypto.datatypes.pki.RelativeDistinguishedName
-import at.asitplus.crypto.datatypes.pki.TbsCertificate
+import at.asitplus.crypto.datatypes.jws.*
 import at.asitplus.crypto.datatypes.pki.X509Certificate
+import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.cinterop.ByteVar
-import kotlinx.cinterop.CPointer
-import kotlinx.cinterop.MemScope
-import kotlinx.cinterop.allocArrayOf
-import kotlinx.cinterop.get
-import kotlinx.cinterop.memScoped
-import kotlinx.cinterop.reinterpret
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.plus
+import kotlinx.cinterop.*
 import platform.CoreFoundation.CFDataRef
 import platform.CoreFoundation.CFDictionaryCreateMutable
-import platform.Foundation.CFBridgingRelease
-import platform.Foundation.CFBridgingRetain
-import platform.Foundation.NSData
-import platform.Foundation.NSNumber
-import platform.Foundation.create
-import platform.Security.SecKeyCopyExternalRepresentation
-import platform.Security.SecKeyCopyPublicKey
-import platform.Security.SecKeyCreateRandomKey
-import platform.Security.SecKeyCreateSignature
-import platform.Security.SecKeyCreateWithData
-import platform.Security.SecKeyRef
-import platform.Security.SecKeyVerifySignature
-import platform.Security.kSecAttrKeyClass
-import platform.Security.kSecAttrKeyClassPublic
-import platform.Security.kSecAttrKeySizeInBits
-import platform.Security.kSecAttrKeyType
-import platform.Security.kSecAttrKeyTypeEC
-import platform.Security.kSecKeyAlgorithmECDSASignatureMessageX962SHA256
-import kotlin.random.Random
+import platform.Foundation.*
+import platform.Security.*
 import platform.CoreFoundation.CFDictionaryAddValue as CFDictionaryAddValue1
 
 
@@ -76,9 +43,11 @@ actual class DefaultCryptoService : CryptoService {
         get() = publicKey.toJsonWebKey()
 
     override val coseKey: CoseKey
-        get() = publicKey.toCoseKey(CoseAlgorithm.ES256).getOrNull()!!
+        get() = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrNull()!!
 
-    actual constructor() {
+    actual constructor() : this(listOf())
+
+    constructor(certificateExtensions: List<X509CertificateExtension>) {
         val query = CFDictionaryCreateMutable(null, 2, null, null).apply {
             CFDictionaryAddValue1(this, kSecAttrKeyType, kSecAttrKeyTypeEC)
             CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
@@ -87,26 +56,9 @@ actual class DefaultCryptoService : CryptoService {
         secPublicKey = SecKeyCopyPublicKey(secPrivateKey)!!
         val publicKeyData = SecKeyCopyExternalRepresentation(secPublicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
-        publicKey = CryptoPublicKey.Ec.fromAnsiX963Bytes(data.toByteArray())
-        val commonName = "DefaultCryptoService"
-        val notBeforeDate = Clock.System.now()
-        val notAfterDate = notBeforeDate.plus(30, DateTimeUnit.SECOND)
-        val tbsCertificate = TbsCertificate(
-            version = 2,
-            serialNumber = Random.nextBytes(4),
-            issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
-            validFrom = Asn1Time(notBeforeDate),
-            validUntil = Asn1Time(notAfterDate),
-            signatureAlgorithm = algorithm,
-            subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
-            publicKey = publicKey
-        )
-        val signature = signInt(tbsCertificate.encodeToDer())
-        this.certificate = X509Certificate(
-            tbsCertificate = tbsCertificate,
-            signatureAlgorithm = algorithm,
-            signature = CryptoSignature.decodeFromDer(signature)
-        )
+        publicKey =
+            CryptoPublicKey.EC.fromAnsiX963Bytes(ECCurve.SECP_256_R_1, data.toByteArray()).apply { jwkId = didEncoded }
+        this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
     }
 
     private fun signInt(input: ByteArray): ByteArray {
@@ -120,7 +72,7 @@ actual class DefaultCryptoService : CryptoService {
     }
 
     override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> {
-        return KmmResult.success(CryptoSignature.decodeFromDer(signInt(input)))
+        return KmmResult.success(CryptoSignature.EC.decodeFromDer(signInt(input)).withCurve(algorithm.curve!!))
     }
 
     override fun encrypt(
@@ -152,7 +104,7 @@ actual class DefaultCryptoService : CryptoService {
             KmmResult.failure(IllegalArgumentException())
     }
 
-    override fun generateEphemeralKeyPair(ecCurve: EcCurve): KmmResult<EphemeralKeyHolder> {
+    override fun generateEphemeralKeyPair(ecCurve: ECCurve): KmmResult<EphemeralKeyHolder> {
         val query = CFDictionaryCreateMutable(null, 2, null, null).apply {
             CFDictionaryAddValue1(this, kSecAttrKeyType, kSecAttrKeyTypeEC)
             CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
@@ -161,7 +113,7 @@ actual class DefaultCryptoService : CryptoService {
             ?: return KmmResult.failure(Exception("Cannot create in-memory private key"))
         val publicKey = SecKeyCopyPublicKey(privateKey)
             ?: return KmmResult.failure(Exception("Cannot create public key"))
-        return KmmResult.success(DefaultEphemeralKeyHolder(publicKey, privateKey))
+        return KmmResult.success(DefaultEphemeralKeyHolder(ecCurve,publicKey, privateKey))
     }
 
     override fun performKeyAgreement(
@@ -169,17 +121,21 @@ actual class DefaultCryptoService : CryptoService {
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray> {
-        return KmmResult.success("sharedSecret-${algorithm.text}".encodeToByteArray())
+        return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
     }
 
     override fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
-        return KmmResult.success("sharedSecret-${algorithm.text}".encodeToByteArray())
+        return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
     }
 
     override fun messageDigest(input: ByteArray, digest: at.asitplus.crypto.datatypes.Digest): KmmResult<ByteArray> {
         return KmmResult.success(input)
     }
 
+    actual companion object {
+        actual fun withSelfSignedCert(extensions: List<X509CertificateExtension>): CryptoService =
+            DefaultCryptoService(certificateExtensions = extensions)
+    }
 }
 
 @Suppress("UNCHECKED_CAST")
@@ -194,7 +150,7 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
         publicKey: CryptoPublicKey
     ): KmmResult<Boolean> {
         // TODO RSA
-        if (publicKey !is CryptoPublicKey.Ec) {
+        if (publicKey !is CryptoPublicKey.EC) {
             return KmmResult.failure(IllegalArgumentException("Public key is not an EC key"))
         }
         memScoped {
@@ -222,9 +178,16 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
 
 }
 
-data class DefaultEphemeralKeyHolder(val publicKey: SecKeyRef, val privateKey: SecKeyRef? = null) : EphemeralKeyHolder {
+data class DefaultEphemeralKeyHolder(val crv : ECCurve, val publicKey: SecKeyRef, val privateKey: SecKeyRef? = null) : EphemeralKeyHolder {
 
-    override val publicJsonWebKey = CryptoPublicKey.Ec.fromAnsiX963Bytes((CFBridgingRelease(SecKeyCopyExternalRepresentation(publicKey, null)) as NSData).toByteArray()).toJsonWebKey()
+    override val publicJsonWebKey = CryptoPublicKey.EC.fromAnsiX963Bytes(crv,
+        (CFBridgingRelease(
+            SecKeyCopyExternalRepresentation(
+                publicKey,
+                null
+            )
+        ) as NSData).toByteArray()
+    ).toJsonWebKey()
 }
 
 inline fun MemScope.toData(array: ByteArray): NSData =

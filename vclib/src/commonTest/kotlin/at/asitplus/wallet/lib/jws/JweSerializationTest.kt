@@ -25,7 +25,7 @@ class JweSerializationTest : FreeSpec({
 
         val serialized = jweHeader.serialize()
 
-        serialized shouldContain """"${algorithm.text}""""
+        serialized shouldContain """"${algorithm.identifier}""""
         serialized shouldContain """"${encryption.text}""""
         serialized shouldContain """"$kid""""
         serialized shouldContain """"$type""""
@@ -36,7 +36,7 @@ class JweSerializationTest : FreeSpec({
         val algorithm = JweAlgorithm.ECDH_ES
         val encryption = JweEncryption.A256GCM
         val type = JwsContentTypeConstants.JWT
-        val serialized = """{"alg": "${algorithm.text}", "enc": "${encryption.text}", "kid": "$kid", "typ": "$type"}"""
+        val serialized = """{"alg": "${algorithm.identifier}", "enc": "${encryption.text}", "kid": "$kid", "typ": "$type"}"""
 
         val parsed = JweHeader.deserialize(serialized).getOrThrow()
 
@@ -54,7 +54,7 @@ class JweSerializationTest : FreeSpec({
 
         val parsed = JweHeader.deserialize(serialized).getOrThrow()
 
-        parsed.algorithm shouldBe null
+        parsed.algorithm?.identifier shouldBe "foo"
         parsed.encryption shouldBe encryption
         parsed.keyId shouldBe kid
         parsed.type shouldBe type
@@ -64,7 +64,7 @@ class JweSerializationTest : FreeSpec({
         val kid = uuid4().toString()
         val algorithm = JweAlgorithm.ECDH_ES
         val type = JwsContentTypeConstants.JWT
-        val serialized = """{"alg": "${algorithm.text}", "enc": "foo", "kid": "$kid", "typ": "$type"}"""
+        val serialized = """{"alg": "${algorithm.identifier}", "enc": "foo", "kid": "$kid", "typ": "$type"}"""
 
         val parsed = JweHeader.deserialize(serialized).getOrThrow()
 
@@ -79,7 +79,7 @@ class JweSerializationTest : FreeSpec({
         val algorithm = JweAlgorithm.ECDH_ES
         val encryption = JweEncryption.A256GCM
         val type = uuid4().toString()
-        val serialized = """{"alg": "${algorithm.text}", "enc": "${encryption.text}", "kid": "$kid", "typ": "$type"}"""
+        val serialized = """{"alg": "${algorithm.identifier}", "enc": "${encryption.text}", "kid": "$kid", "typ": "$type"}"""
 
         val parsed = JweHeader.deserialize(serialized).getOrThrow()
 

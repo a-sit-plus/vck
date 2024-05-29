@@ -1,10 +1,9 @@
 package at.asitplus.wallet.lib.jws
 
 
-import at.asitplus.crypto.datatypes.CryptoAlgorithm
-import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.CryptoSignature
-import at.asitplus.crypto.datatypes.EcCurve
+import at.asitplus.crypto.datatypes.*
+import at.asitplus.crypto.datatypes.CryptoPublicKey.EC.Companion.asPublicKey
+import at.asitplus.crypto.datatypes.CryptoPublicKey.EC.Companion.fromUncompressed
 import at.asitplus.crypto.datatypes.asn1.Asn1String
 import at.asitplus.crypto.datatypes.asn1.Asn1Time
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
@@ -14,7 +13,11 @@ import at.asitplus.crypto.datatypes.pki.AttributeTypeAndValue
 import at.asitplus.crypto.datatypes.pki.RelativeDistinguishedName
 import at.asitplus.crypto.datatypes.pki.TbsCertificate
 import at.asitplus.crypto.datatypes.pki.X509Certificate
+import at.asitplus.crypto.ecmath.times
 import com.benasher44.uuid.uuid4
+import com.ionspin.kotlin.bignum.integer.BigInteger
+import com.ionspin.kotlin.bignum.integer.Sign
+import com.ionspin.kotlin.bignum.modular.ModularBigInteger
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -76,12 +79,16 @@ private fun randomCertificate() = X509Certificate(
     TbsCertificate(
         serialNumber = Random.nextBytes(16),
         issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.Printable("Test")))),
-        publicKey = CryptoPublicKey.Ec(EcCurve.SECP_256_R_1, Random.nextBytes(32),Random.nextBytes(32)),
+        publicKey = ECCurve.SECP_256_R_1.getNOTCRYPTORandomPublicKey(),
         signatureAlgorithm = CryptoAlgorithm.ES256,
         subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.Printable("Test")))),
         validFrom = Asn1Time(Clock.System.now()),
         validUntil = Asn1Time(Clock.System.now()),
     ),
     CryptoAlgorithm.ES256,
-    CryptoSignature.EC(Random.nextBytes(16), Random.nextBytes(16))
+    CryptoSignature.EC.fromRawBytes(ECCurve.SECP_256_R_1, Random.nextBytes(ECCurve.SECP_256_R_1.scalarLength.bytes.toInt()*2)),
 )
+fun ECCurve.getNOTCRYPTORandomNonzeroScalar() = generateSequence {
+    ModularBigInteger.creatorForModulo(this.order).fromBigInteger(BigInteger.fromByteArray(Random.nextBytes(scalarLength.bytes.toInt()), Sign.POSITIVE))
+}.first { !it.isZero() }
+fun ECCurve.getNOTCRYPTORandomPublicKey() = getNOTCRYPTORandomNonzeroScalar().times(generator).asPublicKey()

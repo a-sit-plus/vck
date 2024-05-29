@@ -52,6 +52,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -311,59 +312,67 @@ class OidcSiopVerifier private constructor(
      */
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions = RequestOptions(),
-    ): AuthenticationRequestParameters {
-        val typeConstraint = requestOptions.credentialScheme?.let {
-            when (requestOptions.representation) {
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.vcConstraint()
-                ConstantIndex.CredentialRepresentation.SD_JWT -> it.vcConstraint()
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
-            }
-        }
-        val attributeConstraint = requestOptions.requestedAttributes?.let {
-            createConstraints(requestOptions.representation, requestOptions.credentialScheme, it)
-        } ?: listOf()
-        val constraintFields = attributeConstraint + typeConstraint
-        val schemaReference = requestOptions.credentialScheme?.schemaUri?.let { SchemaReference(it) }
-        val scope = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, requestOptions.credentialScheme?.vcType)
-            .joinToString(" ")
-        return AuthenticationRequestParameters(
-            responseType = "$ID_TOKEN $VP_TOKEN",
-            clientId = x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
-                ?: relyingPartyUrl,
-            redirectUrl = if ((requestOptions.responseMode == OpenIdConstants.ResponseMode.DIRECT_POST)
-                || (requestOptions.responseMode == OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
-            ) null else relyingPartyUrl,
-            responseUrl = responseUrl,
-            clientIdScheme = clientIdScheme,
-            scope = scope,
-            nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
-            clientMetadata = requestOptions.clientMetadataUrl?.let { null } ?: metadata,
-            clientMetadataUri = requestOptions.clientMetadataUrl,
-            idTokenType = IdTokenType.SUBJECT_SIGNED.text,
-            responseMode = requestOptions.responseMode,
-            state = requestOptions.state,
-            presentationDefinition = PresentationDefinition(
-                id = uuid4().toString(),
-                formats = requestOptions.representation.toFormatHolder(),
-                inputDescriptors = listOf(
-                    InputDescriptor(
-                        id = requestOptions.credentialScheme?.let {
-                            when (requestOptions.representation) {
-                                /**
-                                 * doctype is not really an attribute that can be presented,
-                                 * encoding it into the descriptor id as in the following non-normative example fow now:
-                                 * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
-                                 */
-                                ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoDocType
-                                else -> null
-                            }
-                        } ?: uuid4().toString(),
-                        schema = listOfNotNull(schemaReference),
-                        constraints = Constraint(fields = constraintFields.filterNotNull()),
-                    )
-                ),
+    ) = AuthenticationRequestParameters(
+        responseType = "$ID_TOKEN $VP_TOKEN",
+        clientId = buildClientId(),
+        redirectUrl = requestOptions.buildRedirectUrl(),
+        responseUrl = responseUrl,
+        clientIdScheme = clientIdScheme,
+        scope = requestOptions.buildScope(),
+        nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
+        clientMetadata = requestOptions.clientMetadataUrl?.let { null } ?: metadata,
+        clientMetadataUri = requestOptions.clientMetadataUrl,
+        idTokenType = IdTokenType.SUBJECT_SIGNED.text,
+        responseMode = requestOptions.responseMode,
+        state = requestOptions.state,
+        presentationDefinition = PresentationDefinition(
+            id = uuid4().toString(),
+            formats = requestOptions.representation.toFormatHolder(),
+            inputDescriptors = listOf(
+                requestOptions.toInputDescriptor()
             ),
-        )
+        ),
+    )
+
+    private fun RequestOptions.buildScope() = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.vcType)
+        .joinToString(" ")
+
+    private fun buildClientId() = (x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
+        ?: relyingPartyUrl)
+
+    private fun RequestOptions.buildRedirectUrl() = if ((responseMode == OpenIdConstants.ResponseMode.DIRECT_POST)
+        || (responseMode == OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
+    ) null else relyingPartyUrl
+
+    private fun RequestOptions.toInputDescriptor() = InputDescriptor(
+        id = credentialScheme?.let {
+            when (representation) {
+                /**
+                 * doctype is not really an attribute that can be presented,
+                 * encoding it into the descriptor id as in the following non-normative example fow now:
+                 * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
+                 */
+                ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoDocType
+                else -> null
+            }
+        } ?: uuid4().toString(),
+        schema = listOfNotNull(credentialScheme?.schemaUri?.let { SchemaReference(it) }),
+        constraints = toConstraint(),
+    )
+
+    private fun RequestOptions.toConstraint() =
+        Constraint(fields = (toAttributeConstraints() + toTypeConstraint()).filterNotNull())
+
+    private fun RequestOptions.toAttributeConstraints() =
+        requestedAttributes?.createConstraints(representation, credentialScheme)
+            ?: listOf()
+
+    private fun RequestOptions.toTypeConstraint() = credentialScheme?.let {
+        when (representation) {
+            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.toVcConstraint()
+            ConstantIndex.CredentialRepresentation.SD_JWT -> it.toVcConstraint()
+            ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
+        }
     }
 
     private fun ConstantIndex.CredentialRepresentation.toFormatHolder() = when (this) {
@@ -372,7 +381,7 @@ class OidcSiopVerifier private constructor(
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
     }
 
-    private fun ConstantIndex.CredentialScheme.vcConstraint() = ConstraintField(
+    private fun ConstantIndex.CredentialScheme.toVcConstraint() = ConstraintField(
         path = listOf("$.type"),
         filter = ConstraintFilter(
             type = "string",
@@ -380,26 +389,25 @@ class OidcSiopVerifier private constructor(
         )
     )
 
-    private fun createConstraints(
+    private fun List<String>.createConstraints(
         credentialRepresentation: ConstantIndex.CredentialRepresentation,
         credentialScheme: ConstantIndex.CredentialScheme?,
-        attributeTypes: List<String>,
-    ): Collection<ConstraintField> = attributeTypes.map {
+    ): Collection<ConstraintField> = map {
         if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-            ConstraintField(
-                path = listOf(
-                    NormalizedJsonPath(
-                        NormalizedJsonPathSegment.NameSegment(
-                            credentialScheme?.isoNamespace ?: "mdoc"
-                        ),
-                        NormalizedJsonPathSegment.NameSegment(it),
-                    ).toString()
-                ),
-                intentToRetain = false
-            )
+            credentialScheme.toConstraintField(it)
         else
             ConstraintField(path = listOf("\$[${it.quote()}]"))
     }
+
+    private fun ConstantIndex.CredentialScheme?.toConstraintField(attributeType: String) = ConstraintField(
+        path = listOf(
+            NormalizedJsonPath(
+                NormalizedJsonPathSegment.NameSegment(this?.isoNamespace ?: "mdoc"),
+                NormalizedJsonPathSegment.NameSegment(attributeType),
+            ).toString()
+        ),
+        intentToRetain = false
+    )
 
 
     sealed class AuthnResponseResult {
@@ -499,7 +507,9 @@ class OidcSiopVerifier private constructor(
         if (idToken.issuer != idToken.subject)
             return AuthnResponseResult.ValidationError("iss", params.state)
                 .also { Napier.d("Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}") }
-        if (idToken.audience != relyingPartyUrl ?: x5c?.leaf?.tbsCertificate?.subjectAlternativeNames?.dnsNames?.firstOrNull())
+        val expectedAudience = relyingPartyUrl
+            ?: x5c?.leaf?.tbsCertificate?.subjectAlternativeNames?.dnsNames?.firstOrNull()
+        if (idToken.audience != expectedAudience)
             return AuthnResponseResult.ValidationError("aud", params.state)
                 .also { Napier.d("audience not valid: ${idToken.audience}") }
         if (idToken.expiration < (clock.now() - timeLeeway))
@@ -533,87 +543,77 @@ class OidcSiopVerifier private constructor(
         val validationResults = descriptors.map { descriptor ->
             val relatedPresentation =
                 JsonPath(descriptor.cumulativeJsonPath).query(verifiablePresentation).first().value
-
-            val format = descriptor.format
-            val result = when (format) {
-                ClaimFormatEnum.JWT_VP -> when (relatedPresentation) {
-                    // must be a string
-                    // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
-                    is JsonPrimitive -> verifier.verifyPresentation(
-                        relatedPresentation.content,
-                        idToken.nonce
-                    )
-
-                    else -> return AuthnResponseResult.ValidationError(
-                        "Invalid presentation format",
-                        params.state
-                    ).also { Napier.w("Invalid presentation format: $relatedPresentation") }
+            val result = runCatching {
+                when (descriptor.format) {
+                    ClaimFormatEnum.JWT_VP -> verifyJwtVpResult(relatedPresentation, idToken)
+                    ClaimFormatEnum.JWT_SD -> verifyJwtSdResult(relatedPresentation, idToken)
+                    ClaimFormatEnum.MSO_MDOC -> verifyMsoMdocResult(relatedPresentation, idToken)
+                    else -> throw IllegalArgumentException()
                 }
-
-                ClaimFormatEnum.JWT_SD -> when (relatedPresentation) {
-                    // must be a string
-                    // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.5-1
-                    is JsonPrimitive -> verifier.verifyPresentation(
-                        relatedPresentation.content,
-                        idToken.nonce
-                    )
-
-                    else -> return AuthnResponseResult.ValidationError(
-                        "Invalid presentation format",
-                        params.state
-                    ).also { Napier.w("Invalid presentation format: $relatedPresentation") }
-                }
-
-                ClaimFormatEnum.MSO_MDOC -> when (relatedPresentation) {
-                    // must be a string
-                    // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.5-1
-                    is JsonPrimitive -> verifier.verifyPresentation(
-                        relatedPresentation.content,
-                        idToken.nonce
-                    )
-
-                    else -> return AuthnResponseResult.ValidationError(
-                        "Invalid presentation format",
-                        params.state
-                    ).also { Napier.w("Invalid presentation format: $relatedPresentation") }
-                }
-
-                else -> return AuthnResponseResult.ValidationError(
-                    "descriptor format not known",
-                    params.state
-                ).also { Napier.w("Descriptor format not known: $format") }
+            }.getOrElse {
+                return AuthnResponseResult.ValidationError("Invalid presentation format", params.state)
+                    .also { Napier.w("Invalid presentation format: $relatedPresentation") }
             }
-
-            when (result) {
-                is Verifier.VerifyPresentationResult.InvalidStructure ->
-                    AuthnResponseResult.Error("parse vp failed", params.state)
-                        .also { Napier.w("VP error: $result") }
-
-                is Verifier.VerifyPresentationResult.Success ->
-                    AuthnResponseResult.Success(result.vp, params.state)
-                        .also { Napier.i("VP success: $result") }
-
-                is Verifier.VerifyPresentationResult.NotVerified ->
-                    AuthnResponseResult.ValidationError("vpToken", params.state)
-                        .also { Napier.w("VP error: $result") }
-
-                is Verifier.VerifyPresentationResult.SuccessIso ->
-                    AuthnResponseResult.SuccessIso(result.document, params.state)
-                        .also { Napier.i("VP success: $result") }
-
-                is Verifier.VerifyPresentationResult.SuccessSdJwt ->
-                    AuthnResponseResult.SuccessSdJwt(
-                        result.sdJwt,
-                        result.disclosures,
-                        params.state
-                    )
-                        .also { Napier.i("VP success: $result") }
-            }
+            result.mapToAuthnResponseResult(params.state)
         }
 
-        return if (validationResults.size != 1) AuthnResponseResult.VerifiablePresentationValidationResults(
-            validationResults = validationResults
-        ) else validationResults[0]
+        return if (validationResults.size != 1) {
+            AuthnResponseResult.VerifiablePresentationValidationResults(validationResults)
+        } else validationResults[0]
+    }
+
+    private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(
+        state: String?
+    ) = when (this) {
+        is Verifier.VerifyPresentationResult.InvalidStructure ->
+            AuthnResponseResult.Error("parse vp failed", state)
+                .also { Napier.w("VP error: $this") }
+
+        is Verifier.VerifyPresentationResult.NotVerified ->
+            AuthnResponseResult.ValidationError("vpToken", state)
+                .also { Napier.w("VP error: $this") }
+
+        is Verifier.VerifyPresentationResult.Success ->
+            AuthnResponseResult.Success(vp, state)
+                .also { Napier.i("VP success: $this") }
+
+        is Verifier.VerifyPresentationResult.SuccessIso ->
+            AuthnResponseResult.SuccessIso(document, state)
+                .also { Napier.i("VP success: $this") }
+
+        is Verifier.VerifyPresentationResult.SuccessSdJwt ->
+            AuthnResponseResult.SuccessSdJwt(sdJwt, disclosures, state)
+                .also { Napier.i("VP success: $this") }
+    }
+
+    private fun verifyMsoMdocResult(
+        relatedPresentation: JsonElement,
+        idToken: IdToken
+    ) = when (relatedPresentation) {
+        // must be a string
+        // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.5-1
+        is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, idToken.nonce)
+        else -> throw IllegalArgumentException()
+    }
+
+    private fun verifyJwtSdResult(
+        relatedPresentation: JsonElement,
+        idToken: IdToken
+    ) = when (relatedPresentation) {
+        // must be a string
+        // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.5-1
+        is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, idToken.nonce)
+        else -> throw IllegalArgumentException()
+    }
+
+    private fun verifyJwtVpResult(
+        relatedPresentation: JsonElement,
+        idToken: IdToken
+    ) = when (relatedPresentation) {
+        // must be a string
+        // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
+        is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, idToken.nonce)
+        else -> throw IllegalArgumentException()
     }
 }
 

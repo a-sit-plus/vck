@@ -1,12 +1,9 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.crypto.datatypes.asn1.*
+import at.asitplus.crypto.datatypes.pki.SubjectAltNameImplicitTags
+import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
@@ -31,8 +28,19 @@ class OidcSiopX509SanDnsTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
+        val extensions = listOf(X509CertificateExtension(
+            KnownOIDs.subjectAltName_2_5_29_17,
+            critical = false,
+            Asn1EncapsulatingOctetString(listOf(
+                Asn1.Sequence {
+                    +Asn1Primitive(
+                        SubjectAltNameImplicitTags.dNSName,
+                        Asn1String.UTF8("example.com").encodeToTlv().content
+                    )
+                }
+            ))))
         holderCryptoService = DefaultCryptoService()
-        verifierCryptoService = DefaultCryptoService()
+        verifierCryptoService = DefaultCryptoService.withSelfSignedCert(extensions)
         responseUrl = "https://example.com"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)

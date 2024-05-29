@@ -1,31 +1,26 @@
+@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.*
-import at.asitplus.crypto.datatypes.EcCurve.SECP_256_R_1
-import at.asitplus.crypto.datatypes.asn1.*
+import at.asitplus.crypto.datatypes.ECCurve.SECP_256_R_1
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.jws.*
-import at.asitplus.crypto.datatypes.pki.*
-import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.plus
+import at.asitplus.crypto.datatypes.pki.X509Certificate
+import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.JCEECPublicKey
 import org.bouncycastle.jce.spec.ECPublicKeySpec
 import java.math.BigInteger
 import java.security.*
-import java.security.cert.Certificate
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
-import kotlin.math.absoluteValue
-import kotlin.random.Random
 
 
 actual open class DefaultCryptoService : CryptoService {
@@ -45,16 +40,7 @@ actual open class DefaultCryptoService : CryptoService {
     /**
      * Default constructor without arguments is ES256
      */
-    actual constructor() {
-        val keyPair =
-            KeyPairGenerator.getInstance("EC").also { it.initialize(SECP_256_R_1.keyLengthBits.toInt()) }.genKeyPair()
-        this.privateKey = keyPair.private
-        this.algorithm = CryptoAlgorithm.ES256
-        this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
-        this.jsonWebKey = publicKey.toJsonWebKey()
-        this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
-        this.certificate = generateSelfSignedCertificate()
-    }
+    actual constructor() : this(genEc256KeyPair(), CryptoAlgorithm.ES256)
 
     /**
      * Constructor which allows all public keys implemented in `KMP-Crypto`
@@ -62,48 +48,17 @@ actual open class DefaultCryptoService : CryptoService {
      * it's mandatory
      * Also used for custom certificates
      */
-    constructor(keyPair: KeyPair, algorithm: CryptoAlgorithm, certificate: Certificate? = null) {
+    constructor(
+        keyPair: KeyPair,
+        algorithm: CryptoAlgorithm,
+        certificateExtensions: List<X509CertificateExtension> = listOf()
+    ) {
         this.privateKey = keyPair.private
         this.algorithm = algorithm
-        this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
+        this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow().also { it.jwkId = it.didEncoded }
         this.jsonWebKey = publicKey.toJsonWebKey()
         this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
-        this.certificate =
-            certificate?.let { X509Certificate.decodeFromDer(it.encoded) } ?: generateSelfSignedCertificate()
-    }
-
-    private fun generateSelfSignedCertificate(): X509Certificate {
-        val serialNumber: BigInteger = BigInteger.valueOf(Random.nextLong().absoluteValue)
-        val commonName = "DefaultCryptoService"
-        val notBeforeDate = Clock.System.now()
-        val notAfterDate = notBeforeDate.plus(30, DateTimeUnit.SECOND)
-        val tbsCertificate = TbsCertificate(
-            version = 2,
-            serialNumber = serialNumber.toByteArray(),
-            issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
-            validFrom = Asn1Time(notBeforeDate),
-            validUntil = Asn1Time(notAfterDate),
-            signatureAlgorithm = algorithm,
-            subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
-            publicKey = publicKey,
-            extensions = listOf(X509CertificateExtension(
-                KnownOIDs.subjectAltName_2_5_29_17,
-                critical = false,
-                Asn1EncapsulatingOctetString(listOf(
-                    asn1Sequence {
-                      append(Asn1Primitive(SubjectAltNameImplicitTags.dNSName,
-                          Asn1String.UTF8("example.com").encodeToTlv().content))
-                    }
-                ))))
-        )
-        val signature =
-            runBlocking {
-                runCatching { tbsCertificate.encodeToDer() }
-                    .wrap()
-                    .transform { sign(it) }
-                    .getOrThrow()
-            }
-        return X509Certificate(tbsCertificate, algorithm, signature)
+        this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
     }
 
     override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> = runCatching {
@@ -175,14 +130,23 @@ actual open class DefaultCryptoService : CryptoService {
         }.generateSecret()
     }.wrap()
 
-    override fun generateEphemeralKeyPair(ecCurve: EcCurve): KmmResult<EphemeralKeyHolder> =
+    override fun generateEphemeralKeyPair(ecCurve: ECCurve): KmmResult<EphemeralKeyHolder> =
         KmmResult.success(JvmEphemeralKeyHolder(ecCurve))
 
     override fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray> = runCatching {
         MessageDigest.getInstance(digest.jcaName).digest(input)
     }.wrap()
 
+    actual companion object {
+        actual fun withSelfSignedCert(extensions: List<X509CertificateExtension>): CryptoService =
+            DefaultCryptoService(genEc256KeyPair(), CryptoAlgorithm.ES256, extensions)
+    }
 }
+
+private fun genEc256KeyPair(): KeyPair =
+    KeyPairGenerator.getInstance("EC")
+        .also { it.initialize(SECP_256_R_1.keyLengthBits.toInt()) }
+        .genKeyPair()
 
 actual open class DefaultVerifierCryptoService : VerifierCryptoService {
 
@@ -203,7 +167,7 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
         }.wrap()
 }
 
-open class JvmEphemeralKeyHolder(private val ecCurve: EcCurve) : EphemeralKeyHolder {
+open class JvmEphemeralKeyHolder(private val ecCurve: ECCurve) : EphemeralKeyHolder {
 
     val keyPair: KeyPair =
         KeyPairGenerator.getInstance("EC").also { it.initialize(ecCurve.keyLengthBits.toInt()) }.genKeyPair()

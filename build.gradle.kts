@@ -14,3 +14,13 @@ tasks.getByName("dokkaHtmlMultiModule") {
 val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
+
+
+allprojects {
+    repositories {
+        maven {
+            url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+            name = "bigNum"
+        }
+    }
+}
