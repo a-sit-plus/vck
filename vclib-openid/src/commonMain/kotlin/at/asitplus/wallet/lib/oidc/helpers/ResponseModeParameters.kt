@@ -1,23 +1,18 @@
 package at.asitplus.wallet.lib.oidc.helpers
 
-import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import kotlinx.serialization.Serializable
 
 @Serializable
-sealed class ResponseModeParameters(val responseMode: OpenIdConstants.ResponseMode) {
+sealed class ResponseModeParameters {
     @Serializable
-    data class DirectPost(val responseUrl: String) :
-        ResponseModeParameters(OpenIdConstants.ResponseMode.DIRECT_POST)
+    data class DirectPost(val responseUrl: String) : ResponseModeParameters()
 
     @Serializable
-    data class DirectPostJwt(val responseUrl: String) :
-        ResponseModeParameters(OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
+    data class DirectPostJwt(val responseUrl: String) : ResponseModeParameters()
 
     @Serializable
-    data class Query(val redirectUrl: String) :
-        ResponseModeParameters(OpenIdConstants.ResponseMode.QUERY)
+    data class Query(val redirectUrl: String) : ResponseModeParameters()
 
     @Serializable
-    data class Fragment(val redirectUrl: String) :
-        ResponseModeParameters(OpenIdConstants.ResponseMode.FRAGMENT)
+    data class Fragment(val redirectUrl: String) : ResponseModeParameters()
 }
