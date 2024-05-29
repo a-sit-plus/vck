@@ -12,6 +12,10 @@ sealed class ClientIdSchemeParameters {
         ClientIdSchemeParameters()
 
     @Serializable
+    data object RedirectUriClientIdSchemeParameters :
+        ClientIdSchemeParameters()
+
+    @Serializable
     sealed class X509ClientIdSchemeParameters : ClientIdSchemeParameters() {
 
         @Serializable

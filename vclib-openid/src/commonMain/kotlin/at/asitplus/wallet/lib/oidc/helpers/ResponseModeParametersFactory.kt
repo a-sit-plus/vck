@@ -8,16 +8,17 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 
 
-class ResponseModeParametersFactory(val requestParameters: AuthenticationRequestParameters) {
+internal class ResponseModeParametersFactory(val requestParameters: AuthenticationRequestParameters) {
     fun createResponseModeParameters(): KmmResult<ResponseModeParameters> = KmmResult.runCatching {
         when (requestParameters.responseMode) {
+            null, // default for vp_token and id_token is fragment
+            OpenIdConstants.ResponseMode.FRAGMENT -> createFragmentResponseModeParameters()
+
             OpenIdConstants.ResponseMode.DIRECT_POST -> createDirectPostResponseModeParameters()
             OpenIdConstants.ResponseMode.DIRECT_POST_JWT -> createDirectPostJwtResponseModeParameters()
             OpenIdConstants.ResponseMode.QUERY -> createQueryResponseModeParameters()
 
-            // default for vp_token and id_token is fragment
-            null, OpenIdConstants.ResponseMode.FRAGMENT -> createFragmentResponseModeParameters()
-            else -> TODO()
+            is OpenIdConstants.ResponseMode.OTHER -> TODO()
         }
     }.wrap()
 
@@ -35,18 +36,6 @@ class ResponseModeParametersFactory(val requestParameters: AuthenticationRequest
         return ResponseModeParameters.DirectPostJwt(
             responseUrl = responseUrl
         )
-    }
-
-    private fun validatePostTypeResponseModeParametersAndExtractResponseUrl(): String {
-        if (requestParameters.redirectUrl != null) {
-            Napier.w("response_mode is ${requestParameters.responseMode}, but redirect_url is set")
-            throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
-        }
-        if (requestParameters.responseUrl == null) {
-            Napier.w("response_mode is ${requestParameters.responseMode}, but response_url is not set")
-            throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
-        }
-        return requestParameters.responseUrl
     }
 
 
@@ -69,5 +58,21 @@ class ResponseModeParametersFactory(val requestParameters: AuthenticationRequest
         return ResponseModeParameters.Query(
             redirectUrl = requestParameters.redirectUrl
         )
+    }
+
+
+
+
+
+    private fun validatePostTypeResponseModeParametersAndExtractResponseUrl(): String {
+        if (requestParameters.redirectUrl != null) {
+            Napier.w("response_mode is ${requestParameters.responseMode}, but redirect_url is set")
+            throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
+        }
+        if (requestParameters.responseUrl == null) {
+            Napier.w("response_mode is ${requestParameters.responseMode}, but response_url is not set")
+            throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
+        }
+        return requestParameters.responseUrl
     }
 }

@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JwsSigned
@@ -27,17 +26,14 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
 import at.asitplus.wallet.lib.oidc.helpers.AuthenticationResponsePreparationState
-import at.asitplus.wallet.lib.oidc.helpers.ClientIdSchemeParameters
+import at.asitplus.wallet.lib.oidc.helpers.AuthenticationResponseResultFactory
 import at.asitplus.wallet.lib.oidc.helpers.ClientIdSchemeParametersFactory
 import at.asitplus.wallet.lib.oidc.helpers.ResponseModeParameters
 import at.asitplus.wallet.lib.oidc.helpers.ResponseModeParametersFactory
 import at.asitplus.wallet.lib.oidvci.IssuerMetadata
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import io.ktor.util.flattenEntries
 import io.matthewnelson.encoding.base16.Base16
@@ -121,19 +117,6 @@ class OidcSiopWallet private constructor(
             idTokenTypesSupported = setOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,
         )
-    }
-
-    /**
-     * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
-     * to create [AuthenticationResponseResult] that can be sent back to the Verifier, see
-     * [AuthenticationResponseResult].
-     */
-    suspend fun createAuthnResponse(input: String): KmmResult<AuthenticationResponseResult> {
-        val parameters = parseAuthenticationRequestParameters(input).getOrElse {
-            Napier.w("Could not parse authentication request: $input")
-            return KmmResult.failure(it)
-        }
-        return createAuthnResponse(parameters)
     }
 
     /**
@@ -315,91 +298,6 @@ class OidcSiopWallet private constructor(
         ).createAuthenticationResponseResult()
     }
 
-    class AuthenticationResponseResultFactory(
-        val jwsService: JwsService,
-        val responseModeParameters: ResponseModeParameters,
-        val responseParameters: AuthenticationResponseParameters,
-    ) {
-        suspend fun createAuthenticationResponseResult(): KmmResult<AuthenticationResponseResult> {
-            return when (responseModeParameters) {
-                is ResponseModeParameters.DirectPost -> KmmResult.success(
-                    AuthenticationResponseResult.Post(
-                        url = responseModeParameters.responseUrl,
-                        params = responseParameters.encodeToParameters(),
-                    )
-                )
-
-                is ResponseModeParameters.DirectPostJwt -> KmmResult.runCatching {
-                    authnResponseDirectPostJwt(
-                        responseUrl = responseModeParameters.responseUrl,
-                        responseParams = responseParameters,
-                    )
-                }.wrap()
-
-                is ResponseModeParameters.Query -> KmmResult.runCatching {
-                    authnResponseQuery(
-                        redirectUrl = responseModeParameters.redirectUrl,
-                        responseParams = responseParameters,
-                    )
-                }.wrap()
-
-                is ResponseModeParameters.Fragment -> KmmResult.runCatching {
-                    authnResponseFragment(
-                        redirectUrl = responseModeParameters.redirectUrl,
-                        responseParams = responseParameters,
-                    )
-                }.wrap()
-            }
-        }
-
-        private suspend fun authnResponseDirectPostJwt(
-            responseUrl: String,
-            responseParams: AuthenticationResponseParameters,
-        ): AuthenticationResponseResult.Post {
-            val responseParamsJws = jwsService.createSignedJwsAddingParams(
-                payload = responseParams.serialize().encodeToByteArray(),
-                addX5c = false,
-            ).getOrElse {
-                Napier.w("authnResponseDirectPostJwt error", it)
-                throw OAuth2Exception(Errors.INVALID_REQUEST)
-            }
-            val jarm = AuthenticationResponseParameters(response = responseParamsJws.serialize())
-
-            return AuthenticationResponseResult.Post(
-                url = responseUrl,
-                params = jarm.encodeToParameters(),
-            )
-        }
-
-        private fun authnResponseQuery(
-            redirectUrl: String,
-            responseParams: AuthenticationResponseParameters,
-        ): AuthenticationResponseResult.Redirect {
-            val url = URLBuilder(redirectUrl).apply {
-                responseParams.encodeToParameters().forEach {
-                    this.parameters.append(it.key, it.value)
-                }
-            }.buildString()
-
-            return AuthenticationResponseResult.Redirect(
-                url = url,
-                params = responseParams,
-            )
-        }
-
-        /**
-         * That's the default for `id_token` and `vp_token`
-         */
-        private fun authnResponseFragment(
-            redirectUrl: String, responseParams: AuthenticationResponseParameters
-        ): AuthenticationResponseResult.Redirect {
-            val url = URLBuilder(redirectUrl).apply {
-                encodedFragment = responseParams.encodeToParameters().formUrlEncode()
-            }.buildString()
-            return AuthenticationResponseResult.Redirect(url, responseParams)
-        }
-    }
-
 
     internal suspend fun finalizeAuthenticationResponseParameters(
         authenticationResponsePreparationState: AuthenticationResponsePreparationState,
@@ -437,7 +335,7 @@ class OidcSiopWallet private constructor(
             AuthenticationResponseParameters(
                 idToken = signedIdToken?.serialize(),
                 state = authenticationResponsePreparationState.parameters.state,
-                vpToken = presentationResultContainer?.presentationResults?.map { it.toJsonPrimitive() }
+                vpToken = presentationResultContainer?.presentationResults?.map { it.toVerifiablePresentationToken() }
                     ?.singleOrArray(),
                 presentationSubmission = presentationResultContainer?.presentationSubmission,
             ),
@@ -543,7 +441,7 @@ class OidcSiopWallet private constructor(
             else -> true
         }
 
-    private fun Holder.CreatePresentationResult.toJsonPrimitive() = when (this) {
+    private fun Holder.CreatePresentationResult.toVerifiablePresentationToken() = when (this) {
         is Holder.CreatePresentationResult.Signed -> {
             // must be a string
             // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
