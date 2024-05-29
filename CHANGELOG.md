@@ -13,7 +13,8 @@ UNRELEASED Release 4.0.0:
    - add `OidcSiopWallet.startAuthenticationResponsePreparation`: Yields a `AuthenticationResponsePreparationState`
    - add `OidcSiopWallet.finalizeAuthenticationResponseResult`: Consumes an `AuthenticationResponsePreparationState` and yields `AuthenticationResponseResult`
    - add `OidcSiopWallet.refreshPresentationPreparationState`: Refreshes a `PresentationPreparationState` by reevaluating the matchings against the currently store credentials
-
+ - Remove `BaseInputEvaluator`: Implementation moved to `InputEvaluator`
+ - 
 
 Release 3.7.0:
  - Add `OAuth2AuthorizationServerMetadata` data class which implements RFC8414
@@ -30,6 +31,7 @@ Release 3.7.0:
 - Change `OidcSiopVerifier.validateAuthnResponse`: Supports new presentation semantics, where the vp_token may be a array of verifiable presentations.
 - Change `OidcSiopWallet.createAuthnResponseParams`: Feed the newly required parameters to `Holder.createPresentation`; Changed output semantics to potentially submit a list of verifiable presentations
 - Change `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.
+- Add `BaseInputEvaluator`: Input evaluator according to `DIF.PresentationExchange 2.0.0`
 - Refactor `AuthenticationRequestParameters` → `AuthenticationRequestParametersFrom` to contain parsed parameters and their source
 - Update KMP-Crypto to support JWE and ECDH-ES
 - SIOPv2: Implement `x509_san_dns` and `x509_san_uri` client ID schemes
