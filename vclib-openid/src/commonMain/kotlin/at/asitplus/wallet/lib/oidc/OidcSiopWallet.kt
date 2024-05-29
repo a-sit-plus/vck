@@ -211,14 +211,6 @@ class OidcSiopWallet private constructor(
             ResponseModeParametersFactory(request.parameters).createResponseModeParameters()
                 .getOrElse { return KmmResult.failure(it) }
 
-        val clientIdScheme = request.parameters.clientIdScheme
-        if (clientIdScheme == OpenIdConstants.ClientIdScheme.REDIRECT_URI) {
-            if (request.parameters.clientMetadata == null && request.parameters.clientMetadataUri == null) {
-                Napier.w("client_id_scheme is redirect_uri, but metadata is not set")
-                return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-            }
-        }
-
         val clientIdSchemeParameters =
             ClientIdSchemeParametersFactory(request).createClientIdSchemeParameters().getOrElse {
                 return KmmResult.failure(it)
