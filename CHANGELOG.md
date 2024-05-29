@@ -26,7 +26,7 @@ Release NEXT:
   - Remove `OidcSiopWallet.createAuthnResponseParams`
   - add `OidcSiopWallet.startAuthenticationResponsePreparation`: Yields a `AuthenticationResponsePreparationState`
   - add `OidcSiopWallet.finalizeAuthenticationResponseResult`: Consumes an `AuthenticationResponsePreparationState` and yields `AuthenticationResponseResult`
-  - add `OidcSiopWallet.refreshPresentationPreparationHelper`: Refreshes a `PresentationPreparationHelper` by reevaluating the matchings against the currently store credentials
+  - add `OidcSiopWallet.refreshPresentationPreparationState`: Refreshes a `PresentationPreparationState` by reevaluating the matchings against the currently store credentials
  - Refactor `AuthenticationRequestParameters` → `AuthenticationRequestParametersFrom` to contain parsed parameters and their source
  - Update KMP-Crypto to support JWE and ECDH-ES
  - SIOPv2: Implement `x509_san_dns` and `x509_san_uri` client ID schemes

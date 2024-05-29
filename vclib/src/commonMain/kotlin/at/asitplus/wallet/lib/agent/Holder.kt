@@ -1,15 +1,25 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.jsonpath.core.NodeList
+import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
+import at.asitplus.wallet.lib.data.dif.ConstraintField
 import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class InputDescriptorCredentialSubmission(
+    val credential: SubjectCredentialStore.StoreEntry,
+    val disclosedAttributes: Collection<NormalizedJsonPath>,
+)
 
 /**
  * Summarizes operations for a Holder in the sense of the [W3C VC Data Model](https://w3c.github.io/vc-data-model/).
@@ -129,6 +139,8 @@ interface Holder {
      * Creates an array of [VerifiablePresentation] and a [PresentationSubmission] to match
      * the [presentationDefinition].
      *
+     * Fails in case the default submission is not a valid submission.
+     *
      * @param fallbackFormatHolder: format holder to be used in case there is no format holder in a
      *  given presentation definition and the input descriptor.
      *  This will mostly resolve to be the some clientMetadata.vpFormats
@@ -148,6 +160,9 @@ interface Holder {
      * Creates an array of [VerifiablePresentation] and a [PresentationSubmission] from already
      * preselected [presentationSubmissionSelection].
      *
+     * Assumptions:
+     *  - the presentation submission selection is a valid submission regarding the submission requirements
+     *
      * @param presentationDefinitionId: id of the presentation definition this submission is intended for
      * @param presentationSubmissionSelection: a selection of input descriptors by id and
      *  corresponding credentials along with a description of the fields to be disclosed
@@ -156,7 +171,7 @@ interface Holder {
         challenge: String,
         audienceId: String,
         presentationDefinitionId: String?,
-        presentationSubmissionSelection: Map<String, HolderAgent.CandidateInputMatchContainer>,
+        presentationSubmissionSelection: Map<String, InputDescriptorCredentialSubmission>,
     ): KmmResult<PresentationResponseParameters>
 
     /**
@@ -173,7 +188,7 @@ interface Holder {
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
-    ): KmmResult<Map<InputDescriptor, Collection<HolderAgent.CandidateInputMatchContainer>>>
+    ): KmmResult<Map<InputDescriptor, Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>>>
 
     sealed class CreatePresentationResult {
         /**
@@ -195,3 +210,24 @@ interface Holder {
     }
 
 }
+
+fun Map<InputDescriptor, Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>>.toDefaultSubmission(): Map<String, InputDescriptorCredentialSubmission> {
+    return mapNotNull { descriptorCredentialMatches ->
+        descriptorCredentialMatches.value.entries.firstNotNullOfOrNull { credentialConstraintFieldMatches ->
+            InputDescriptorCredentialSubmission(
+                credential = credentialConstraintFieldMatches.key,
+                disclosedAttributes = credentialConstraintFieldMatches.value.values.mapNotNull {
+                    it.firstOrNull()?.normalizedJsonPath
+                },
+            )
+        }?.let {
+            descriptorCredentialMatches.key.id to it
+        }
+    }.toMap()
+}
+
+/**
+ * Implementations should return true, when the credential attribute may be disclosed to the verifier.
+ */
+typealias PathAuthorizationValidator =
+            (credential: SubjectCredentialStore.StoreEntry, attributePath: NormalizedJsonPath) -> Boolean

@@ -2,9 +2,11 @@ package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
 import at.asitplus.jsonpath.JsonPath
+import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NodeListEntry
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import io.github.aakira.napier.Napier
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -14,33 +16,29 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 
-typealias FieldQueryResult = Pair<ConstraintField, NodeListEntry?>
-typealias FieldQueryResults = Map<ConstraintField, NodeListEntry?>
-
 /**
  * Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
  */
 class InputEvaluator {
-    fun evaluateFieldQueryResults(
+    fun evaluateConstraintFieldMatches(
         inputDescriptor: InputDescriptor,
         credential: JsonElement,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
-    ): KmmResult<FieldQueryResults> {
+    ): KmmResult<Map<ConstraintField, NodeList>> {
         // filter by constraints
         val fieldQueryResults = inputDescriptor.constraints?.fields?.associateWith { field ->
-            val fieldQueryResult = if (field.optional == true) {
-                null // TODO: check whether there is a use-case to allow optional fields
-            } else {
-                field.path.firstNotNullOfOrNull { jsonPath ->
-                    val candidates = JsonPath(jsonPath).query(credential)
-                    candidates.firstOrNull { candidate ->
-                        if (pathAuthorizationValidator(candidate.normalizedJsonPath)) {
-                            field.filter?.let {
-                                candidate.value.satisfiesConstraintFilter(it)
-                            } ?: true
-                        } else false
-                    }
-                } ?: return KmmResult.failure(FailedFieldQueryException(field).also {
+            val fieldQueryResult = field.path.flatMap { jsonPath ->
+                val candidates = JsonPath(jsonPath).query(credential)
+                candidates.filter { candidate ->
+                    if (pathAuthorizationValidator(candidate.normalizedJsonPath)) {
+                        field.filter?.let {
+                            candidate.value.satisfiesConstraintFilter(it)
+                        } ?: true
+                    } else false
+                }
+            }
+            if(fieldQueryResult.isEmpty() && field.optional != true) {
+                return KmmResult.failure(FailedFieldQueryException(field).also {
                     it.message?.let { Napier.d(it) }
                 })
             }
