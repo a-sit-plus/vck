@@ -133,8 +133,8 @@ class OidcSiopWallet private constructor(
                     .decodeFromUrlQuery<AuthenticationRequestParameters>()
                 AuthenticationRequestParametersFrom.Uri(it, params)
             }
-        }.onFailure { it.printStackTrace() }.getOrNull()
-        ?: kotlin.runCatching {  // maybe it is already a JSON string
+        }.onFailure { it.printStackTrace() }.getOrNull() ?: kotlin.runCatching {
+            // maybe it is already a JSON string
             val params = AuthenticationRequestParameters.deserialize(input).getOrThrow()
             AuthenticationRequestParametersFrom.Json(input, params)
         }.getOrNull()
