@@ -1,6 +1,6 @@
 # Changelog
 
-UNRELEASED Release 3.8.0:
+UNRELEASED Release 4.0.0:
  - Add `InputEvaluator`: Input evaluator according to `DIF.PresentationExchange 2.0.0`
  - Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.
  - Add `AuthenticationResponsePreparationState`: Data class for holding primitives required to prepare an authentication response
