@@ -1,7 +1,19 @@
 # Changelog
 
-Release 3.7.1:
- - tbd
+UNRELEASED Release 3.8.0:
+ - Add `InputEvaluator`: Input evaluator according to `DIF.PresentationExchange 2.0.0`
+ - Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.
+ - Add `AuthenticationResponsePreparationState`: Data class for holding primitives required to prepare an authentication response
+ - Add `PresentationPreparationState`: Data class for holding primitives to select credentials for a presentation response
+   - Add `isValidSubmission`: Evaluates whether the submission requirements are satisfied with the current selection, and whether there are no redundant input descriptors
+   - Add `isSubmissionRequirementsSatisfied`: Evaluates whether the submission requirements are satisfied with the current selection
+   - Add `findUnnecessaryInputDescriptorSubmissions`: Returns input descriptor ids for which a submission would be redundant
+ - BREAKING CHANGE to `OidcSiopWallet`: presentation is now a two-step process
+   - Remove `OidcSiopWallet.createAuthnResponseParams`: 
+   - add `OidcSiopWallet.startAuthenticationResponsePreparation`: Yields a `AuthenticationResponsePreparationState`
+   - add `OidcSiopWallet.finalizeAuthenticationResponseResult`: Consumes an `AuthenticationResponsePreparationState` and yields `AuthenticationResponseResult`
+   - add `OidcSiopWallet.refreshPresentationPreparationState`: Refreshes a `PresentationPreparationState` by reevaluating the matchings against the currently store credentials
+
 
 Release 3.7.0:
  - Add `OAuth2AuthorizationServerMetadata` data class which implements RFC8414
@@ -18,22 +30,10 @@ Release 3.7.0:
 - Change `OidcSiopVerifier.validateAuthnResponse`: Supports new presentation semantics, where the vp_token may be a array of verifiable presentations.
 - Change `OidcSiopWallet.createAuthnResponseParams`: Feed the newly required parameters to `Holder.createPresentation`; Changed output semantics to potentially submit a list of verifiable presentations
 - Change `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.
-- Add `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.
-- Add `InputEvaluator`: Input evaluator according to `DIF.PresentationExchange 2.0.0`
-- Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.
-- Add `AuthenticationResponsePreparationState`: Data class for holding primitives required to prepare an authentication response
-- Add `PresentationPreparationHelper`: Data class for holding primitives to select credentials for a presentation response
-  - Add `isSubmissionRequirementsSatisfied`: Evaluates whether the submission requirements are satisfied with the current selection
-  - Add `findUnnecessaryInputDescriptorSubmissions`: Returns input descriptor ids for which a submission would be redundant
-- BREAKING CHANGE to `OidcSiopWallet`:
-  - Remove `OidcSiopWallet.createAuthnResponseParams`
-  - add `OidcSiopWallet.startAuthenticationResponsePreparation`: Yields a `AuthenticationResponsePreparationState`
-  - add `OidcSiopWallet.finalizeAuthenticationResponseResult`: Consumes an `AuthenticationResponsePreparationState` and yields `AuthenticationResponseResult`
-  - add `OidcSiopWallet.refreshPresentationPreparationState`: Refreshes a `PresentationPreparationState` by reevaluating the matchings against the currently store credentials
- - Refactor `AuthenticationRequestParameters` → `AuthenticationRequestParametersFrom` to contain parsed parameters and their source
- - Update KMP-Crypto to support JWE and ECDH-ES
- - SIOPv2: Implement `x509_san_dns` and `x509_san_uri` client ID schemes
- - Refactor `OpenIdConstants` to contain sealed classes, where appropriate
+- Refactor `AuthenticationRequestParameters` → `AuthenticationRequestParametersFrom` to contain parsed parameters and their source
+- Update KMP-Crypto to support JWE and ECDH-ES
+- SIOPv2: Implement `x509_san_dns` and `x509_san_uri` client ID schemes
+- Refactor `OpenIdConstants` to contain sealed classes, where appropriate
 
 Release 3.6.1:
  * Update to KMP-Crypto 2.6.0
