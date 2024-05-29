@@ -51,7 +51,7 @@ import kotlin.time.Duration.Companion.seconds
  *
  * The [holder] creates the Authentication Response, see [OidcSiopVerifier] for the verifier.
  */
-class OidcSiopWallet private constructor(
+class OidcSiopWallet(
     private val holder: Holder,
     private val agentPublicKey: CryptoPublicKey,
     private val jwsService: JwsService,
