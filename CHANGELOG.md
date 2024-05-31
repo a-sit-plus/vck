@@ -1,5 +1,8 @@
 # Changelog
 
+Release 3.7.1:
+ - tbd
+
 Release 3.7.0:
  - Add `OAuth2AuthorizationServerMetadata` data class which implements RFC8414
  - Change usage of `OidcUserInfo` in interfaces to `OidcUserInfoExtended`, to also deserialize unknown properties
@@ -19,7 +22,7 @@ Release 3.7.0:
  - Refactor `AuthenticationRequestParameters` → `AuthenticationRequestParametersFrom` to contain parsed parameters and their source
  - Update KMP-Crypto to 3.1.0, to support JWE and ECDH-ES
  - SIOPv2: Implement `x509_san_dns` and `x509_san_uri` client ID schemes
- - Refactor OpenIdConstants to contain sealed classes, where appropriate
+ - Refactor `OpenIdConstants` to contain sealed classes, where appropriate
 
 Release 3.6.1:
  * Update to KMP-Crypto 2.6.0
