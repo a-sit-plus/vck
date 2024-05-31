@@ -37,7 +37,7 @@ actual class DefaultCryptoService : CryptoService {
     private val secPublicKey: SecKeyRef
     override val algorithm = CryptoAlgorithm.ES256
     override val publicKey: CryptoPublicKey
-    override val certificate: X509Certificate
+    override val certificate: X509Certificate?
 
     override val jsonWebKey: JsonWebKey
         get() = publicKey.toJsonWebKey()
