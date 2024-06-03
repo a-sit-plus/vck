@@ -1,5 +1,15 @@
 # Changelog
 
+Release NEXT:
+ - Kotlin 2.0.0
+ - Gradle 8.8
+ - Bouncy Castle 1.78.1
+ - Kotest 5.9.0
+ - Ktor 2.3.11
+ - kotlinx.datetime 0.6.0
+ - kotlinx.coroutines 1.8.1
+ - KmmResult 1.6.0
+
 Release 3.8.0:
  - Extract credential classes for Mobile Driving Licence according to ISO 18013-5 into separate library, see <https://github.com/a-sit-plus/mobile-driving-licence-credential>
  - Implementers need to specify supported credential representations in `CredentialScheme`
