@@ -106,6 +106,47 @@ interface EphemeralKeyHolder {
 }
 
 expect class DefaultCryptoService() : CryptoService {
+    override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature>
+    override fun encrypt(
+        key: ByteArray,
+        iv: ByteArray,
+        aad: ByteArray,
+        input: ByteArray,
+        algorithm: JweEncryption
+    ): KmmResult<AuthenticatedCiphertext>
+
+    override suspend fun decrypt(
+        key: ByteArray,
+        iv: ByteArray,
+        aad: ByteArray,
+        input: ByteArray,
+        authTag: ByteArray,
+        algorithm: JweEncryption
+    ): KmmResult<ByteArray>
+
+    override fun generateEphemeralKeyPair(ecCurve: ECCurve): KmmResult<EphemeralKeyHolder>
+    override fun performKeyAgreement(
+        ephemeralKey: EphemeralKeyHolder,
+        recipientKey: JsonWebKey,
+        algorithm: JweAlgorithm
+    ): KmmResult<ByteArray>
+
+    override fun performKeyAgreement(
+        ephemeralKey: JsonWebKey,
+        algorithm: JweAlgorithm
+    ): KmmResult<ByteArray>
+
+    override fun messageDigest(
+        input: ByteArray,
+        digest: Digest
+    ): KmmResult<ByteArray>
+
+    override val algorithm: CryptoAlgorithm
+    override val publicKey: CryptoPublicKey
+    override val jsonWebKey: JsonWebKey
+    override val coseKey: CoseKey
+    override val certificate: X509Certificate?
+
     companion object {
         fun withSelfSignedCert(
             extensions: List<X509CertificateExtension> = listOf()
@@ -113,4 +154,12 @@ expect class DefaultCryptoService() : CryptoService {
     }
 }
 
-expect class DefaultVerifierCryptoService() : VerifierCryptoService
+expect class DefaultVerifierCryptoService() : VerifierCryptoService {
+    override val supportedAlgorithms: List<CryptoAlgorithm>
+    override fun verify(
+        input: ByteArray,
+        signature: CryptoSignature,
+        algorithm: CryptoAlgorithm,
+        publicKey: CryptoPublicKey
+    ): KmmResult<Boolean>
+}
