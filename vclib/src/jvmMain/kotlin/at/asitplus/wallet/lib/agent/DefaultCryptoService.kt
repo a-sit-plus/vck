@@ -27,15 +27,15 @@ actual open class DefaultCryptoService : CryptoService {
 
     private val privateKey: PrivateKey
 
-    final override val algorithm: CryptoAlgorithm
+    actual final override val algorithm: CryptoAlgorithm
 
-    final override val publicKey: CryptoPublicKey
+    actual final override val publicKey: CryptoPublicKey
 
-    final override val certificate: X509Certificate
+    actual final override val certificate: X509Certificate?
 
-    final override val jsonWebKey: JsonWebKey
+    actual final override val jsonWebKey: JsonWebKey
 
-    final override val coseKey: CoseKey
+    actual final override val coseKey: CoseKey
 
     /**
      * Default constructor without arguments is ES256
@@ -61,7 +61,7 @@ actual open class DefaultCryptoService : CryptoService {
         this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
     }
 
-    override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> = runCatching {
+    actual override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> = runCatching {
         val sig = Signature.getInstance(algorithm.jcaName).apply {
             this@DefaultCryptoService.algorithm.jcaParams?.let { setParameter(it) }
             initSign(privateKey)
@@ -70,7 +70,7 @@ actual open class DefaultCryptoService : CryptoService {
         CryptoSignature.parseFromJca(sig, algorithm)
     }.wrap()
 
-    override fun encrypt(
+   actual override fun encrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -87,11 +87,12 @@ actual open class DefaultCryptoService : CryptoService {
         }.doFinal(input)
         val ciphertext = jcaCiphertext.dropLast(algorithm.ivLengthBits / 8).toByteArray()
         val authtag = jcaCiphertext.takeLast(algorithm.ivLengthBits / 8).toByteArray()
+
         AuthenticatedCiphertext(ciphertext, authtag)
     }.wrap()
 
 
-    override suspend fun decrypt(
+   actual override suspend fun decrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -109,7 +110,7 @@ actual open class DefaultCryptoService : CryptoService {
         }.doFinal(input + authTag)
     }.wrap()
 
-    override fun performKeyAgreement(
+   actual override fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
@@ -124,7 +125,7 @@ actual open class DefaultCryptoService : CryptoService {
         }.generateSecret()
     }.wrap()
 
-    override fun performKeyAgreement(
+    actual override fun performKeyAgreement(
         ephemeralKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray> = runCatching {
@@ -134,16 +135,17 @@ actual open class DefaultCryptoService : CryptoService {
         val ecPoint = parameterSpec.curve.validatePoint(xBigInteger, yBigInteger)
         val ecPublicKeySpec = ECPublicKeySpec(ecPoint, parameterSpec)
         val publicKey = JCEECPublicKey("EC", ecPublicKeySpec)
+
         KeyAgreement.getInstance(algorithm.jcaName).also {
             it.init(privateKey)
             it.doPhase(publicKey, true)
         }.generateSecret()
     }.wrap()
 
-    override fun generateEphemeralKeyPair(ecCurve: ECCurve): KmmResult<EphemeralKeyHolder> =
+    actual override fun generateEphemeralKeyPair(ecCurve: ECCurve): KmmResult<EphemeralKeyHolder> =
         KmmResult.success(JvmEphemeralKeyHolder(ecCurve))
 
-    override fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray> = runCatching {
+    actual override fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray> = runCatching {
         MessageDigest.getInstance(digest.jcaName).digest(input)
     }.wrap()
 
@@ -160,9 +162,9 @@ private fun genEc256KeyPair(): KeyPair =
 
 actual open class DefaultVerifierCryptoService : VerifierCryptoService {
 
-    override val supportedAlgorithms: List<CryptoAlgorithm> = CryptoAlgorithm.entries.filter { it.isEc }
+    actual override val supportedAlgorithms: List<CryptoAlgorithm> = CryptoAlgorithm.entries.filter { it.isEc }
 
-    override fun verify(
+    actual override fun verify(
         input: ByteArray,
         signature: CryptoSignature,
         algorithm: CryptoAlgorithm,

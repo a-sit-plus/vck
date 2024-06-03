@@ -168,7 +168,7 @@ class OidcSiopWallet(
         return JwsSigned.parse(requestObject).getOrNull()?.let { jws ->
             val params = AuthenticationRequestParameters.deserialize(jws.payload.decodeToString()).getOrElse {
                 return null
-                    .also { Napier.w("parseRequestObjectJws: Deserialization failed", it) }
+                    .apply { Napier.w("parseRequestObjectJws: Deserialization failed", it) }
             }
             if (requestObjectJwsVerifier.invoke(jws, params))
                 AuthenticationRequestParametersFrom.JwsSigned(jws, params)
