@@ -32,10 +32,10 @@ Release 3.7.0:
 - Change `OidcSiopWallet.createAuthnResponseParams`: Feed the newly required parameters to `Holder.createPresentation`; Changed output semantics to potentially submit a list of verifiable presentations
 - Change `HolderAgent.createPresentation`: Changed function signature; Changed output semantics.
 - Add `BaseInputEvaluator`: Input evaluator according to `DIF.PresentationExchange 2.0.0`
-- Refactor `AuthenticationRequestParameters` → `AuthenticationRequestParametersFrom` to contain parsed parameters and their source
-- Update KMP-Crypto to support JWE and ECDH-ES
-- SIOPv2: Implement `x509_san_dns` and `x509_san_uri` client ID schemes
-- Refactor `OpenIdConstants` to contain sealed classes, where appropriate
+ - Refactor `AuthenticationRequestParameters` → `AuthenticationRequestParametersFrom` to contain parsed parameters and their source
+ - Update KMP-Crypto to 3.1.0, to support JWE and ECDH-ES
+ - SIOPv2: Implement `x509_san_dns` and `x509_san_uri` client ID schemes
+ - Refactor `OpenIdConstants` to contain sealed classes, where appropriate
 
 Release 3.6.1:
  * Update to KMP-Crypto 2.6.0

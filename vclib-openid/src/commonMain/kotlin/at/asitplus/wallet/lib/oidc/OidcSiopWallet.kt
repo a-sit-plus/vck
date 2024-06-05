@@ -395,9 +395,10 @@ class OidcSiopWallet(
     }
 
     private fun verifyResponseTypeForPresentationDefinition(responseType: String) {
-        if (!responseType.contains(VP_TOKEN)) throw OAuth2Exception(
-            Errors.INVALID_REQUEST
-        ).also { Napier.w("vp_token not requested") }
+        if (!responseType.contains(VP_TOKEN)) {
+            Napier.w("vp_token not requested")
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+        }
     }
 
     private suspend fun AuthenticationRequestParameters.loadPresentationDefinition() =
@@ -416,14 +417,19 @@ class OidcSiopWallet(
                 ?.let { JsonWebKeySet.deserialize(it).getOrNull() }?.keys?.firstOrNull()?.identifier
         }
         ?: (source as? AuthenticationRequestParametersFrom.JwsSigned)?.source?.header?.certificateChain?.leaf?.let { parameters.clientId } //TODO is this even correct ????
-        ?: throw OAuth2Exception(Errors.INVALID_REQUEST).also { Napier.w("Could not parse audience") }
+        ?: run {
+            Napier.w("Could not parse audience")
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+        }
 
     private suspend fun AuthenticationRequestParameters.loadClientMetadata() =
         clientMetadata ?: clientMetadataUri?.let { uri ->
             remoteResourceRetriever.invoke(uri)
                 ?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
+        } ?: run {
+            Napier.w("client metadata is not specified in ${this}")
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
-        ?: throw OAuth2Exception(Errors.INVALID_REQUEST).also { Napier.w("client metadata is not specified in ${this}") }
 
     private fun FormatHolder.isMissingFormatSupport(claimFormatEnum: ClaimFormatEnum) =
         when (claimFormatEnum) {
