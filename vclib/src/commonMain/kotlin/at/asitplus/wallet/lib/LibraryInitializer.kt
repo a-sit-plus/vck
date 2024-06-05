@@ -6,8 +6,8 @@ import at.asitplus.wallet.lib.data.AriesGoalCodeParser
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
-import at.asitplus.wallet.lib.data.Json
-import at.asitplus.wallet.lib.iso.Cbor
+import at.asitplus.wallet.lib.data.JsonCredentialSerializer
+import at.asitplus.wallet.lib.iso.CborCredentialSerializer
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.CompositeDecoder
@@ -63,7 +63,7 @@ object LibraryInitializer {
         AttributeIndex.registerAttributeType(credentialScheme)
         if (credentialScheme.supportsVcJwt)
             AriesGoalCodeParser.registerGoalCode(credentialScheme)
-        serializersModule?.let { Json.registerSerializersModule(credentialScheme, it) }
+        serializersModule?.let { JsonCredentialSerializer.registerSerializersModule(credentialScheme, it) }
     }
 
     /**
@@ -87,10 +87,10 @@ object LibraryInitializer {
         jsonValueEncoder: JsonValueEncoder,
     ) {
         registerExtensionLibrary(credentialScheme, serializersModule)
-        Cbor.register(serializerLookup)
-        Cbor.register(itemValueEncoder)
-        Cbor.register(itemValueDecoder)
-        Json.register(jsonValueEncoder)
+        CborCredentialSerializer.register(serializerLookup)
+        CborCredentialSerializer.register(itemValueEncoder)
+        CborCredentialSerializer.register(itemValueDecoder)
+        JsonCredentialSerializer.register(jsonValueEncoder)
     }
 
 }

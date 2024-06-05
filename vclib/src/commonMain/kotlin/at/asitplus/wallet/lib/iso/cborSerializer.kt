@@ -10,7 +10,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.CompositeEncoder
 
-object Cbor {
+internal object CborCredentialSerializer {
 
     private val serializerLookupFunctions = mutableSetOf<SerializerLookup>()
     private val encoderFunctions = mutableSetOf<ItemValueEncoder>()

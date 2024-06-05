@@ -50,7 +50,7 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
             is Instant -> encodeSerializableElement(descriptor, index, InstantStringSerializer(), it)
             is Boolean -> encodeBooleanElement(descriptor, index, it)
             is ByteArray -> encodeSerializableElement(descriptor, index, ByteArraySerializer(), it)
-            else -> Cbor.encode(descriptor, index, this, it)
+            else -> CborCredentialSerializer.encode(descriptor, index, this, it)
         }
     }
 
@@ -61,7 +61,7 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
         is Instant -> InstantStringSerializer()
         is Boolean -> Boolean.serializer()
         is ByteArray -> ByteArraySerializer()
-        is Any -> Cbor.lookupSerializer(element) ?: error("descriptor not found for $element")
+        is Any -> CborCredentialSerializer.lookupSerializer(element) ?: error("descriptor not found for $element")
         else -> error("descriptor not found for $element")
     }
 
@@ -99,7 +99,7 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
         runCatching { return decodeSerializableElement(descriptor, index, LocalDate.serializer()) }
         runCatching { return decodeSerializableElement(descriptor, index, InstantStringSerializer()) }
         runCatching {
-            return Cbor.decode(descriptor, index, this)
+            return CborCredentialSerializer.decode(descriptor, index, this)
                 ?: throw IllegalArgumentException("Could not decode value at $index")
         }
         throw IllegalArgumentException("Could not decode value at $index")

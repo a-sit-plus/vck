@@ -1,14 +1,14 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.wallet.lib.JsonValueEncoder
-import at.asitplus.wallet.lib.data.Json.serializersModules
+import at.asitplus.wallet.lib.data.JsonCredentialSerializer.serializersModules
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 
-object Json {
+internal object JsonCredentialSerializer {
 
     val serializersModules = mutableMapOf<ConstantIndex.CredentialScheme, SerializersModule>()
     val jsonElementEncoder = mutableSetOf<JsonValueEncoder>()
