@@ -36,12 +36,11 @@ class HolderAgent(
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val jwsService: JwsService,
     private val coseService: CoseService,
-    override val identifier: String,
     override val publicKey: CryptoPublicKey,
     private val verifiablePresentationFactory: VerifiablePresentationFactory = VerifiablePresentationFactory(
         jwsService = jwsService,
         coseService = coseService,
-        identifier = identifier,
+        identifier = publicKey.didEncoded,
     ),
     private val difInputEvaluator: InputEvaluator = InputEvaluator(),
     override val defaultPathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = { _, _ -> true }
@@ -55,7 +54,6 @@ class HolderAgent(
         subjectCredentialStore = subjectCredentialStore,
         jwsService = DefaultJwsService(cryptoService),
         coseService = DefaultCoseService(cryptoService),
-        identifier = cryptoService.publicKey.didEncoded,
         publicKey = cryptoService.publicKey
     )
 

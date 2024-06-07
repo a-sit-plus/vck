@@ -21,12 +21,6 @@ import at.asitplus.wallet.lib.iso.IssuerSigned
 interface Holder {
 
     /**
-     * The identifier for this agent, typically the `keyId` from the cryptographic key,
-     * e.g. `did:key:mAB...` or `urn:ietf:params:oauth:jwk-thumbprint:sha256:...`
-     */
-    val identifier: String
-
-    /**
      * The public key for this agent, i.e. the "holder key" that the credentials get bound to.
      */
     val publicKey: CryptoPublicKey
