@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -24,6 +25,11 @@ interface Holder {
      * e.g. `did:key:mAB...` or `urn:ietf:params:oauth:jwk-thumbprint:sha256:...`
      */
     val identifier: String
+
+    /**
+     * The public key for this agent, i.e. the "holder key" that the credentials get bound to.
+     */
+    val publicKey: CryptoPublicKey
 
     val defaultPathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean
 
