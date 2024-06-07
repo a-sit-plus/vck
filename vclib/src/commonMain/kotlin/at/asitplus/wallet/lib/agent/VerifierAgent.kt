@@ -18,19 +18,16 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 class VerifierAgent private constructor(
     private val validator: Validator,
     override val publicKey: CryptoPublicKey,
-    override val identifier: String
 ) : Verifier {
 
     constructor(publicKey: CryptoPublicKey) : this(
         validator = Validator.newDefaultInstance(),
         publicKey = publicKey,
-        identifier = publicKey.toJsonWebKey().identifier
     )
 
     constructor(): this(
         validator = Validator.newDefaultInstance(),
         publicKey = DefaultCryptoService().publicKey,
-        identifier = "tododelete"
     )
 
     override fun setRevocationList(it: String): Boolean {
@@ -43,11 +40,11 @@ class VerifierAgent private constructor(
     override fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
         val sdJwtSigned = runCatching { SdJwtSigned.parse(it) }.getOrNull()
         if (sdJwtSigned != null) {
-            return validator.verifyVpSdJwt(it, challenge, identifier, publicKey)
+            return validator.verifyVpSdJwt(it, challenge, publicKey)
         }
         val jwsSigned = JwsSigned.parse(it).getOrNull()
         if (jwsSigned != null) {
-            return validator.verifyVpJws(it, challenge, identifier, publicKey)
+            return validator.verifyVpJws(it, challenge, publicKey)
         }
         val document = it.decodeToByteArrayOrNull(Base16(strict = true))
             ?.let { bytes -> Document.deserialize(bytes).getOrNull() }
@@ -73,7 +70,7 @@ class VerifierAgent private constructor(
     }
 
     override fun verifyVcJws(it: String): Verifier.VerifyCredentialResult {
-        return validator.verifyVcJws(it, identifier, publicKey)
+        return validator.verifyVcJws(it, publicKey)
     }
 
 }

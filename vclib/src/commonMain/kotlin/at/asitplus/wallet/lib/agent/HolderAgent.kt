@@ -81,7 +81,7 @@ class HolderAgent(
         val rejected = mutableListOf<String>()
         val attachments = mutableListOf<Holder.StoredAttachmentResult>()
         credentialList.filterIsInstance<Holder.StoreCredentialInput.Vc>().forEach { cred ->
-            when (val vc = validator.verifyVcJws(cred.vcJws, identifier, publicKey)) {
+            when (val vc = validator.verifyVcJws(cred.vcJws, publicKey)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.SuccessJwt -> acceptedVcJwt += vc.jws
@@ -106,7 +106,7 @@ class HolderAgent(
             }
         }
         credentialList.filterIsInstance<Holder.StoreCredentialInput.SdJwt>().forEach { cred ->
-            when (val vc = validator.verifySdJwt(cred.vcSdJwt, identifier, publicKey)) {
+            when (val vc = validator.verifySdJwt(cred.vcSdJwt, publicKey)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.SuccessSdJwt -> acceptedSdJwt += vc.sdJwt

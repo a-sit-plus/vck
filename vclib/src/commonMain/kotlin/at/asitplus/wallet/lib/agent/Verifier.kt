@@ -21,12 +21,8 @@ import at.asitplus.wallet.lib.iso.IssuerSigned
 interface Verifier {
 
     /**
-     * The identifier for this agent, typically the `keyId` from the cryptographic key,
-     * e.g. `did:key:mAB...` or `urn:ietf:params:oauth:jwk-thumbprint:sha256:...`
+     * The public key for this agent, i.e. the one used to validate the audience of a VP against
      */
-    @Deprecated(message = "Use public keys!")
-    val identifier: String
-
     val publicKey: CryptoPublicKey
 
     /**

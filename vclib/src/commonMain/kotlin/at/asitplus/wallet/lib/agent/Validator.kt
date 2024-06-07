@@ -156,12 +156,11 @@ class Validator(
      *
      * @param input JWS in compact representation
      * @param challenge Nonce that the verifier has sent to the holder
-     * @param localId Local keyId of the verifier
+     * @param publicKey Local key of the verifier
      */
     fun verifyVpJws(
         input: String,
         challenge: String,
-        localId: String,
         publicKey: CryptoPublicKey
     ): Verifier.VerifyPresentationResult {
         Napier.d("Verifying VP $input")
@@ -176,13 +175,13 @@ class Validator(
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("VP: Could not parse payload", ex) }
         }
-        val parsedVp = parser.parseVpJws(input, vpJws, kid, challenge, localId, publicKey)
+        val parsedVp = parser.parseVpJws(input, vpJws, kid, challenge, publicKey)
         if (parsedVp !is Parser.ParseVpResult.Success) {
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.d("VP: Could not parse content") }
         }
         val parsedVcList = parsedVp.jws.vp.verifiableCredential
-            .map { verifyVcJws(it, null, null) }
+            .map { verifyVcJws(it, null) }
         val validVcList = parsedVcList
             .filterIsInstance<Verifier.VerifyCredentialResult.SuccessJwt>()
             .map { it.jws }
@@ -206,11 +205,10 @@ class Validator(
     fun verifyVpSdJwt(
         input: String,
         challenge: String,
-        localId: String,
         publicKey: CryptoPublicKey
     ): Verifier.VerifyPresentationResult {
-        Napier.d("verifyVpSdJwt: '$input', '$challenge', '$localId'")
-        val sdJwtResult = verifySdJwt(input, null, null)
+        Napier.d("verifyVpSdJwt: '$input', '$challenge', '$publicKey'")
+        val sdJwtResult = verifySdJwt(input, null)
         if (sdJwtResult !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Could not verify SD-JWT: $sdJwtResult") }
@@ -226,7 +224,7 @@ class Validator(
         if (keyBinding.challenge != challenge)
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Challenge not correct: ${keyBinding.challenge}") }
-        if (keyBinding.audience != localId)
+        if (!publicKey.matchesIdentifier(keyBinding.audience))
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Audience not correct: ${keyBinding.audience}") }
         if (sdJwtResult.sdJwt.confirmationKey != null) {
@@ -332,9 +330,9 @@ class Validator(
      * Validates the content of a JWS, expected to contain a Verifiable Credential.
      *
      * @param input JWS in compact representation
-     * @param localId Optionally the local keyId, to verify VC was issued to correct subject
+     * @param publicKey Optionally the local key, to verify VC was issued to correct subject
      */
-    fun verifyVcJws(input: String, localId: String?, publicKey: CryptoPublicKey?): Verifier.VerifyCredentialResult {
+    fun verifyVcJws(input: String, publicKey: CryptoPublicKey?): Verifier.VerifyCredentialResult {
         Napier.d("Verifying VC-JWS $input")
         val jws = JwsSigned.parse(input).getOrNull()
             ?: return Verifier.VerifyCredentialResult.InvalidStructure(input)
@@ -347,13 +345,12 @@ class Validator(
             return Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.w("VC: Could not parse payload", ex) }
         }
-        // TODO Rework identifiers in holders and everywhere, shouldn't be dids
-//        localId?.let {
-//            if (vcJws.subject != it) {
-//                return Verifier.VerifyCredentialResult.InvalidStructure(it)
-//                    .also { Napier.d("VC: sub invalid") }
-//            }
-//        }
+        publicKey?.let {
+            if (!it.matchesIdentifier(vcJws.subject)) {
+                return Verifier.VerifyCredentialResult.InvalidStructure(input)
+                    .also { Napier.d("VC: sub invalid") }
+            }
+        }
         if (checkRevocationStatus(vcJws) == RevocationStatus.REVOKED)
             return Verifier.VerifyCredentialResult.Revoked(input, vcJws)
                 .also { Napier.d("VC: revoked") }
@@ -374,9 +371,9 @@ class Validator(
      * Validates the content of a SD-JWT, expected to contain a [VerifiableCredentialSdJwt].
      *
      * @param input SD-JWT in compact representation, i.e. `$jws~$disclosure1~$disclosure2...`
-     * @param localId Optionally the local keyId, to verify VC was issued to correct subject
+     * @param publicKey Optionally the local key, to verify SD-JWT was issued to correct subject
      */
-    fun verifySdJwt(input: String, localId: String?, publicKey: CryptoPublicKey?): Verifier.VerifyCredentialResult {
+    fun verifySdJwt(input: String, publicKey: CryptoPublicKey?): Verifier.VerifyCredentialResult {
         Napier.d("Verifying SD-JWT $input")
         val sdJwtSigned = SdJwtSigned.parse(input)
             ?: return Verifier.VerifyCredentialResult.InvalidStructure(input)
@@ -389,9 +386,9 @@ class Validator(
             return Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.w("verifySdJwt: Could not parse payload", ex) }
         }
-        localId?.let {
-            if (sdJwt.subject != it)
-                return Verifier.VerifyCredentialResult.InvalidStructure(it)
+        if (publicKey != null && sdJwt.subject != null) {
+            if (!publicKey.matchesIdentifier(sdJwt.subject))
+                return Verifier.VerifyCredentialResult.InvalidStructure(input)
                     .also { Napier.d("verifySdJwt: sub invalid") }
         }
         val isRevoked = checkRevocationStatus(sdJwt) == RevocationStatus.REVOKED

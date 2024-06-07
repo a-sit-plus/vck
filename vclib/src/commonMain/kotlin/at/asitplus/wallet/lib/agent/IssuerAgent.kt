@@ -254,15 +254,7 @@ class IssuerAgent(
         val vcId = "urn:uuid:${uuid4()}"
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-        val subjectId = subjectPublicKey.toJsonWebKey().didEncoded
-            ?: return Issuer.IssuedCredentialResult(
-                failed = listOf(
-                    Issuer.FailedAttribute(
-                        scheme.schemaUri,
-                        DataSourceProblem("subjectPublicKey transformation error")
-                    )
-                )
-            ).also { Napier.w("subjectPublicKey could not be transformed to a JWK") }
+        val subjectId = subjectPublicKey.didEncoded
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
             credential = IssuerCredentialStore.Credential.VcSd(vcId, credential.claims, scheme),
             subjectPublicKey = subjectPublicKey,
@@ -343,7 +335,7 @@ class IssuerAgent(
      * It returns true if all revocations was successful.
      */
     override fun revokeCredentials(credentialsToRevoke: List<String>): Boolean =
-        credentialsToRevoke.map { validator.verifyVcJws(it, null, null) }
+        credentialsToRevoke.map { validator.verifyVcJws(it, null) }
             .filterIsInstance<Verifier.VerifyCredentialResult.SuccessJwt>()
             .all {
                 issuerCredentialStore.revoke(
