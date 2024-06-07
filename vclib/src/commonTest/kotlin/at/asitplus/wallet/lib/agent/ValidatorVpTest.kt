@@ -46,10 +46,7 @@ class ValidatorVpTest : FreeSpec({
         )
         holderCredentialStore = InMemorySubjectCredentialStore()
         holderCryptoService = DefaultCryptoService()
-        holder = HolderAgent.newDefaultInstance(
-            cryptoService = holderCryptoService,
-            subjectCredentialStore = holderCredentialStore,
-        )
+        holder = HolderAgent(holderCryptoService, holderCredentialStore)
         holderJwsService = DefaultJwsService(holderCryptoService)
         verifier = VerifierAgent()
         challenge = uuid4().toString()

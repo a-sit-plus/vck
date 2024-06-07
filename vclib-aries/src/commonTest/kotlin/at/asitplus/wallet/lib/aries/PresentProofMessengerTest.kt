@@ -34,7 +34,7 @@ class PresentProofMessengerTest : FreeSpec() {
             verifierCryptoService = DefaultCryptoService()
             issuerCryptoService = DefaultCryptoService()
             holderCredentialStore = InMemorySubjectCredentialStore()
-            holder = HolderAgent.newDefaultInstance(holderCryptoService, subjectCredentialStore = holderCredentialStore)
+            holder = HolderAgent(holderCryptoService, holderCredentialStore)
             verifier = VerifierAgent(verifierCryptoService.publicKey)
             issuer = IssuerAgent.newDefaultInstance(issuerCryptoService, dataProvider = DummyCredentialDataProvider())
             verifierChallenge = uuid4().toString()

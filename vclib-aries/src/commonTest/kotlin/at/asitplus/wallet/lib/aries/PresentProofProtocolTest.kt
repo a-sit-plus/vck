@@ -20,7 +20,7 @@ class PresentProofProtocolTest : FreeSpec({
     beforeEach {
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
-        holder = HolderAgent.newDefaultInstance(holderCryptoService)
+        holder = HolderAgent(holderCryptoService)
         verifier = VerifierAgent(verifierCryptoService.publicKey)
         holderProtocol = PresentProofProtocol.newHolderInstance(
             holder = holder,

@@ -40,7 +40,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
-        holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
+        holderAgent = HolderAgent(holderCryptoService)
         verifierAgent = VerifierAgent(verifierCryptoService.publicKey)
 
         holderSiop = OidcSiopWallet.newDefaultInstance(

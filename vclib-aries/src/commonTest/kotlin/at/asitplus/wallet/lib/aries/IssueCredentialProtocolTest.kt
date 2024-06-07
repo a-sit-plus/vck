@@ -22,7 +22,7 @@ class IssueCredentialProtocolTest : FreeSpec({
         issuerCryptoService = DefaultCryptoService()
         holderCryptoService = DefaultCryptoService()
         issuer = IssuerAgent.newDefaultInstance(issuerCryptoService, dataProvider = DummyCredentialDataProvider())
-        holder = HolderAgent.newDefaultInstance(holderCryptoService)
+        holder = HolderAgent(holderCryptoService)
         issuerProtocol = IssueCredentialProtocol.newIssuerInstance(
             issuer = issuer,
             serviceEndpoint = "https://example.com/issue?${uuid4()}",

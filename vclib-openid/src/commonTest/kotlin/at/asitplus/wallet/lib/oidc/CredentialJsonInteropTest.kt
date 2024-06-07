@@ -29,8 +29,7 @@ class CredentialJsonInteropTest : FreeSpec({
     beforeEach {
         holderCryptoService = DefaultCryptoService()
         subjectCredentialStore = InMemorySubjectCredentialStore()
-        holderAgent =
-            HolderAgent.newDefaultInstance(holderCryptoService, subjectCredentialStore = subjectCredentialStore)
+        holderAgent = HolderAgent(holderCryptoService, subjectCredentialStore)
         issuerAgent = IssuerAgent.newDefaultInstance(
             DefaultCryptoService(),
             dataProvider = DummyCredentialDataProvider(),

@@ -43,7 +43,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         verifierCryptoService = DefaultCryptoService.withSelfSignedCert(extensions)
         responseUrl = "https://example.com"
         walletUrl = "https://example.com/wallet/${uuid4()}"
-        holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
+        holderAgent = HolderAgent(holderCryptoService)
         verifierAgent = VerifierAgent(verifierCryptoService.publicKey)
         runBlocking {
             holderAgent.storeCredentials(

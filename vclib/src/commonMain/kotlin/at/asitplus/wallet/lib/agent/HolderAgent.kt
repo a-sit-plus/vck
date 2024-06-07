@@ -47,35 +47,17 @@ class HolderAgent(
     override val defaultPathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = { _, _ -> true }
 ) : Holder {
 
-    companion object {
-        fun newDefaultInstance(
-            cryptoService: CryptoService = DefaultCryptoService(),
-            verifierCryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
-            subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
-        ) = HolderAgent(
-            validator = Validator.newDefaultInstance(verifierCryptoService, Parser()),
-            subjectCredentialStore = subjectCredentialStore,
-            jwsService = DefaultJwsService(cryptoService),
-            coseService = DefaultCoseService(cryptoService),
-            identifier = cryptoService.publicKey.didEncoded,
-            publicKey = cryptoService.publicKey,
-        )
-
-        /**
-         * Explicitly short argument list to use it from Swift
-         */
-        fun newDefaultInstance(
-            cryptoService: CryptoService = DefaultCryptoService(),
-            subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
-        ) = HolderAgent(
-            validator = Validator.newDefaultInstance(DefaultVerifierCryptoService(), Parser()),
-            subjectCredentialStore = subjectCredentialStore,
-            jwsService = DefaultJwsService(cryptoService),
-            coseService = DefaultCoseService(cryptoService),
-            identifier = cryptoService.publicKey.didEncoded,
-            publicKey = cryptoService.publicKey,
-        )
-    }
+    constructor(
+        cryptoService: CryptoService,
+        subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore()
+    ) : this(
+        validator = Validator.newDefaultInstance(DefaultVerifierCryptoService(), Parser()),
+        subjectCredentialStore = subjectCredentialStore,
+        jwsService = DefaultJwsService(cryptoService),
+        coseService = DefaultCoseService(cryptoService),
+        identifier = cryptoService.publicKey.didEncoded,
+        publicKey = cryptoService.publicKey
+    )
 
     /**
      * Sets the revocation list ot use for further processing of Verifiable Credentials

@@ -79,7 +79,7 @@ class OidcSiopWallet(
     companion object {
         fun newDefaultInstance(
             cryptoService: CryptoService = DefaultCryptoService(),
-            holder: Holder = HolderAgent.newDefaultInstance(cryptoService),
+            holder: Holder = HolderAgent(cryptoService),
             jwsService: JwsService = DefaultJwsService(cryptoService),
             clock: Clock = Clock.System,
             clientId: String = "https://wallet.a-sit.at/",
