@@ -53,7 +53,6 @@ class IssuerAgent(
     private val jwsService: JwsService,
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
-    override val identifier: String,
     override val publicKey: CryptoPublicKey,
     override val cryptoAlgorithms: Set<CryptoAlgorithm>,
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
@@ -67,7 +66,6 @@ class IssuerAgent(
         jwsService = DefaultJwsService(cryptoService),
         coseService = DefaultCoseService(cryptoService),
         dataProvider = dataProvider,
-        identifier = cryptoService.publicKey.didEncoded,
         publicKey = cryptoService.publicKey,
         cryptoAlgorithms = setOf(cryptoService.algorithm),
     )
@@ -82,7 +80,6 @@ class IssuerAgent(
         jwsService = DefaultJwsService(cryptoService),
         coseService = DefaultCoseService(cryptoService),
         dataProvider = dataProvider,
-        identifier = cryptoService.publicKey.didEncoded,
         publicKey = cryptoService.publicKey,
         cryptoAlgorithms = setOf(cryptoService.algorithm),
     )
@@ -222,7 +219,7 @@ class IssuerAgent(
         val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
         val vc = VerifiableCredential(
             id = vcId,
-            issuer = identifier,
+            issuer = publicKey.didEncoded,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             credentialStatus = credentialStatus,
@@ -274,7 +271,7 @@ class IssuerAgent(
         val jwsPayload = VerifiableCredentialSdJwt(
             subject = subjectId,
             notBefore = issuanceDate,
-            issuer = identifier,
+            issuer = publicKey.didEncoded,
             expiration = expirationDate,
             issuedAt = issuanceDate,
             jwtId = vcId,
@@ -309,7 +306,7 @@ class IssuerAgent(
         val subject = RevocationListSubject("$revocationListUrl#list", revocationList)
         val credential = VerifiableCredential(
             id = revocationListUrl,
-            issuer = identifier,
+            issuer = publicKey.didEncoded,
             issuanceDate = clock.now(),
             lifetime = revocationListLifetime,
             credentialSubject = subject

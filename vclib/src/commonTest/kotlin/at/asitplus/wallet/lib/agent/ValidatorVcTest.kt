@@ -374,7 +374,7 @@ class ValidatorVcTest : FreeSpec() {
         val credentialStatus = CredentialStatus(revocationListUrl, statusListIndex)
         return VerifiableCredential(
             id = vcId,
-            issuer = issuer.identifier,
+            issuer = issuer.publicKey.didEncoded,
             credentialStatus = credentialStatus,
             credentialSubject = sub,
             credentialType = type,
