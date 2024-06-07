@@ -161,7 +161,8 @@ class Validator(
     fun verifyVpJws(
         input: String,
         challenge: String,
-        localId: String
+        localId: String,
+        publicKey: CryptoPublicKey
     ): Verifier.VerifyPresentationResult {
         Napier.d("Verifying VP $input")
         val jws = JwsSigned.parse(input).getOrNull() ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
@@ -175,13 +176,13 @@ class Validator(
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("VP: Could not parse payload", ex) }
         }
-        val parsedVp = parser.parseVpJws(input, vpJws, kid, challenge, localId)
+        val parsedVp = parser.parseVpJws(input, vpJws, kid, challenge, localId, publicKey)
         if (parsedVp !is Parser.ParseVpResult.Success) {
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.d("VP: Could not parse content") }
         }
         val parsedVcList = parsedVp.jws.vp.verifiableCredential
-            .map { verifyVcJws(it, null) }
+            .map { verifyVcJws(it, null, null) }
         val validVcList = parsedVcList
             .filterIsInstance<Verifier.VerifyCredentialResult.SuccessJwt>()
             .map { it.jws }
@@ -205,10 +206,11 @@ class Validator(
     fun verifyVpSdJwt(
         input: String,
         challenge: String,
-        localId: String
+        localId: String,
+        publicKey: CryptoPublicKey
     ): Verifier.VerifyPresentationResult {
         Napier.d("verifyVpSdJwt: '$input', '$challenge', '$localId'")
-        val sdJwtResult = verifySdJwt(input, null)
+        val sdJwtResult = verifySdJwt(input, null, null)
         if (sdJwtResult !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Could not verify SD-JWT: $sdJwtResult") }
@@ -332,7 +334,7 @@ class Validator(
      * @param input JWS in compact representation
      * @param localId Optionally the local keyId, to verify VC was issued to correct subject
      */
-    fun verifyVcJws(input: String, localId: String?): Verifier.VerifyCredentialResult {
+    fun verifyVcJws(input: String, localId: String?, publicKey: CryptoPublicKey?): Verifier.VerifyCredentialResult {
         Napier.d("Verifying VC-JWS $input")
         val jws = JwsSigned.parse(input).getOrNull()
             ?: return Verifier.VerifyCredentialResult.InvalidStructure(input)
@@ -374,7 +376,7 @@ class Validator(
      * @param input SD-JWT in compact representation, i.e. `$jws~$disclosure1~$disclosure2...`
      * @param localId Optionally the local keyId, to verify VC was issued to correct subject
      */
-    fun verifySdJwt(input: String, localId: String?): Verifier.VerifyCredentialResult {
+    fun verifySdJwt(input: String, localId: String?, publicKey: CryptoPublicKey?): Verifier.VerifyCredentialResult {
         Napier.d("Verifying SD-JWT $input")
         val sdJwtSigned = SdJwtSigned.parse(input)
             ?: return Verifier.VerifyCredentialResult.InvalidStructure(input)

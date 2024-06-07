@@ -2,6 +2,8 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.crypto.datatypes.jws.jwkId
+import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
@@ -82,4 +84,21 @@ interface Verifier {
         data class InvalidStructure(val input: String) : VerifyCredentialResult()
     }
 
+}
+
+/**
+ * Verifies that [input] is a valid identifier for this key
+ */
+fun CryptoPublicKey.matchesIdentifier(input: String): Boolean {
+    if (jwkId == input)
+        return true
+    if (didEncoded == input)
+        return true
+    if (toJsonWebKey().keyId == input)
+        return true
+    if (toJsonWebKey().identifier == input)
+        return true
+    if (toJsonWebKey().didEncoded == input)
+        return true
+    return false
 }

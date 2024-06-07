@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -33,7 +34,7 @@ class Parser(
      * @param challenge the nonce sent from the verifier to the holder creating the VP
      * @param localIdentifier the identifier (e.g. `keyId`) of the verifier that has requested the VP from the holder
      */
-    fun parseVpJws(input: String, challenge: String, localIdentifier: String): ParseVpResult {
+    fun parseVpJws(input: String, challenge: String, localIdentifier: String, publicKey: CryptoPublicKey): ParseVpResult {
         Napier.d("Parsing VP $input")
         val jws = JwsSigned.parse(input).getOrNull() ?: return ParseVpResult.InvalidStructure(input)
             .also { Napier.w("Could not parse JWS") }
@@ -43,7 +44,7 @@ class Parser(
             return ParseVpResult.InvalidStructure(input)
                 .also { Napier.w("Could not parse payload", ex) }
         }
-        return parseVpJws(input, vpJws, kid, challenge, localIdentifier)
+        return parseVpJws(input, vpJws, kid, challenge, localIdentifier, publicKey)
     }
 
     fun parseVpJws(
@@ -51,7 +52,8 @@ class Parser(
         vpJws: VerifiablePresentationJws,
         kid: String? = null,
         challenge: String,
-        localIdentifier: String
+        localIdentifier: String,
+        publicKey: CryptoPublicKey,
     ): ParseVpResult {
         if (vpJws.challenge != challenge)
             return ParseVpResult.InvalidStructure(it)

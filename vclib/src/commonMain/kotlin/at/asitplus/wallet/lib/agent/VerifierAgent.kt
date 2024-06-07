@@ -43,11 +43,11 @@ class VerifierAgent private constructor(
     override fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
         val sdJwtSigned = runCatching { SdJwtSigned.parse(it) }.getOrNull()
         if (sdJwtSigned != null) {
-            return validator.verifyVpSdJwt(it, challenge, identifier)
+            return validator.verifyVpSdJwt(it, challenge, identifier, publicKey)
         }
         val jwsSigned = JwsSigned.parse(it).getOrNull()
         if (jwsSigned != null) {
-            return validator.verifyVpJws(it, challenge, identifier)
+            return validator.verifyVpJws(it, challenge, identifier, publicKey)
         }
         val document = it.decodeToByteArrayOrNull(Base16(strict = true))
             ?.let { bytes -> Document.deserialize(bytes).getOrNull() }
@@ -73,7 +73,7 @@ class VerifierAgent private constructor(
     }
 
     override fun verifyVcJws(it: String): Verifier.VerifyCredentialResult {
-        return validator.verifyVcJws(it, identifier)
+        return validator.verifyVcJws(it, identifier, publicKey)
     }
 
 }

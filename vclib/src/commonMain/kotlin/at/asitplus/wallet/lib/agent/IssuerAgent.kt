@@ -338,7 +338,7 @@ class IssuerAgent(
      * It returns true if all revocations was successful.
      */
     override fun revokeCredentials(credentialsToRevoke: List<String>): Boolean =
-        credentialsToRevoke.map { validator.verifyVcJws(it, null) }
+        credentialsToRevoke.map { validator.verifyVcJws(it, null, null) }
             .filterIsInstance<Verifier.VerifyCredentialResult.SuccessJwt>()
             .all {
                 issuerCredentialStore.revoke(
