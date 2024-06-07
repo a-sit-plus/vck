@@ -59,30 +59,33 @@ class IssuerAgent(
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
 ) : Issuer {
 
-    companion object {
-        fun newDefaultInstance(
-            cryptoService: CryptoService = DefaultCryptoService(),
-            verifierCryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
-            issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
-            clock: Clock = Clock.System,
-            timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
-            dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
-        ): IssuerAgent = IssuerAgent(
-            validator = Validator.newDefaultInstance(
-                cryptoService = verifierCryptoService,
-                parser = Parser(clock.now().toEpochMilliseconds())
-            ),
-            issuerCredentialStore = issuerCredentialStore,
-            jwsService = DefaultJwsService(cryptoService),
-            coseService = DefaultCoseService(cryptoService),
-            dataProvider = dataProvider,
-            identifier = cryptoService.publicKey.didEncoded,
-            publicKey = cryptoService.publicKey,
-            cryptoAlgorithms = setOf(cryptoService.algorithm),
-            timePeriodProvider = timePeriodProvider,
-            clock = clock,
-        )
-    }
+    constructor(
+        cryptoService: CryptoService = DefaultCryptoService(),
+        dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
+    ) : this(
+        validator = Validator.newDefaultInstance(),
+        jwsService = DefaultJwsService(cryptoService),
+        coseService = DefaultCoseService(cryptoService),
+        dataProvider = dataProvider,
+        identifier = cryptoService.publicKey.didEncoded,
+        publicKey = cryptoService.publicKey,
+        cryptoAlgorithms = setOf(cryptoService.algorithm),
+    )
+
+    constructor(
+        cryptoService: CryptoService = DefaultCryptoService(),
+        issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
+        dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
+    ) : this(
+        validator = Validator.newDefaultInstance(),
+        issuerCredentialStore = issuerCredentialStore,
+        jwsService = DefaultJwsService(cryptoService),
+        coseService = DefaultCoseService(cryptoService),
+        dataProvider = dataProvider,
+        identifier = cryptoService.publicKey.didEncoded,
+        publicKey = cryptoService.publicKey,
+        cryptoAlgorithms = setOf(cryptoService.algorithm),
+    )
 
     /**
      * Issues credentials for some [attributeTypes] (i.e. some of

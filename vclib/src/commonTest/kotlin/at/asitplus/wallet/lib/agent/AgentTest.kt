@@ -31,9 +31,10 @@ class AgentTest : FreeSpec({
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
-        issuer = IssuerAgent.newDefaultInstance(
-            issuerCredentialStore = issuerCredentialStore,
-            dataProvider = DummyCredentialDataProvider(),
+        issuer = IssuerAgent(
+            DefaultCryptoService(),
+            issuerCredentialStore,
+            DummyCredentialDataProvider(),
         )
         holderCryptoService = DefaultCryptoService()
         holder = HolderAgent(holderCryptoService, holderCredentialStore)

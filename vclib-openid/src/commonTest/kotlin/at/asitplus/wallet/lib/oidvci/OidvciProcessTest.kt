@@ -28,7 +28,7 @@ class OidvciProcessTest : FunSpec({
     )
     val issuer = CredentialIssuer(
         authorizationService = authorizationService,
-        issuer = IssuerAgent.newDefaultInstance(),
+        issuer = IssuerAgent(),
         credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
         buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
     )

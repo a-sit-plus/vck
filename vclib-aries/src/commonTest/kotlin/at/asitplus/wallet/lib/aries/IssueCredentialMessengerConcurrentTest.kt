@@ -26,7 +26,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
     init {
         beforeEach {
             issuerCryptoService = DefaultCryptoService()
-            issuer = IssuerAgent.newDefaultInstance(issuerCryptoService, dataProvider = DummyCredentialDataProvider())
+            issuer = IssuerAgent(issuerCryptoService, DummyCredentialDataProvider())
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
             issuerMessenger = initIssuerMessenger(ConstantIndex.AtomicAttribute2023)
         }

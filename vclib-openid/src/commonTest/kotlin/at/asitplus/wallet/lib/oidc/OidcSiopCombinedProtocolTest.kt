@@ -436,9 +436,9 @@ private suspend fun Holder.storeJwtCredentials(
     attributeTypes: List<String>
 ) {
     storeCredentials(
-        IssuerAgent.newDefaultInstance(
+        IssuerAgent(
             DefaultCryptoService(),
-            dataProvider = DummyCredentialDataProvider(),
+            DummyCredentialDataProvider(),
         ).issueCredential(
             subjectPublicKey = holderCryptoService.publicKey,
             attributeTypes = attributeTypes,
@@ -452,9 +452,9 @@ private suspend fun Holder.storeSdJwtCredential(
     attributeTypes: List<String>
 ) {
     storeCredentials(
-        IssuerAgent.newDefaultInstance(
+        IssuerAgent(
             DefaultCryptoService(),
-            dataProvider = DummyCredentialDataProvider(),
+            DummyCredentialDataProvider(),
         ).issueCredential(
             subjectPublicKey = holderCryptoService.publicKey,
             attributeTypes = attributeTypes,
@@ -467,9 +467,9 @@ private suspend fun Holder.storeIsoCredential(
     holderCryptoService: CryptoService,
     attributeTypes: List<String>
 ) = storeCredentials(
-    IssuerAgent.newDefaultInstance(
+    IssuerAgent(
         DefaultCryptoService(),
-        dataProvider = DummyCredentialDataProvider(),
+        DummyCredentialDataProvider(),
     ).issueCredential(
         subjectPublicKey = holderCryptoService.publicKey,
         attributeTypes = attributeTypes,

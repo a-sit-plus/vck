@@ -30,10 +30,7 @@ class CredentialJsonInteropTest : FreeSpec({
         holderCryptoService = DefaultCryptoService()
         subjectCredentialStore = InMemorySubjectCredentialStore()
         holderAgent = HolderAgent(holderCryptoService, subjectCredentialStore)
-        issuerAgent = IssuerAgent.newDefaultInstance(
-            DefaultCryptoService(),
-            dataProvider = DummyCredentialDataProvider(),
-        )
+        issuerAgent = IssuerAgent(DefaultCryptoService(), DummyCredentialDataProvider())
     }
 
     "Plain jwt credential path resolving" {

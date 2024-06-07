@@ -35,9 +35,9 @@ class PresentProofProtocolTest : FreeSpec({
 
     "presentProofGenericWithInvitation" {
         holder.storeCredentials(
-            IssuerAgent.newDefaultInstance(
+            IssuerAgent(
                 DefaultCryptoService(),
-                dataProvider = DummyCredentialDataProvider(),
+                DummyCredentialDataProvider(),
             ).issueCredential(
                 subjectPublicKey = holderCryptoService.publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
@@ -69,9 +69,9 @@ class PresentProofProtocolTest : FreeSpec({
 
     "presentProofGenericDirect" {
         holder.storeCredentials(
-            IssuerAgent.newDefaultInstance(
+            IssuerAgent(
                 DefaultCryptoService(),
-                dataProvider = DummyCredentialDataProvider(),
+                DummyCredentialDataProvider(),
             ).issueCredential(
                 subjectPublicKey = holderCryptoService.publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),

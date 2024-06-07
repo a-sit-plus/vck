@@ -42,9 +42,9 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         verifierAgent = VerifierAgent(verifierCryptoService.publicKey)
         runBlocking {
             holderAgent.storeCredentials(
-                IssuerAgent.newDefaultInstance(
+                IssuerAgent(
                     DefaultCryptoService(),
-                    dataProvider = DummyCredentialDataProvider(),
+                    DummyCredentialDataProvider(),
                 ).issueCredential(
                     subjectPublicKey = holderCryptoService.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),

@@ -44,9 +44,9 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         holderAgent = HolderAgent(holderCryptoService)
         verifierAgent = VerifierAgent(verifierCryptoService.publicKey)
         runBlocking {
-            val issuerAgent = IssuerAgent.newDefaultInstance(
+            val issuerAgent = IssuerAgent(
                 DefaultCryptoService(),
-                dataProvider = DummyCredentialDataProvider(),
+                DummyCredentialDataProvider(),
             )
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(

@@ -36,9 +36,9 @@ class ValidatorVcTest : FreeSpec() {
         beforeEach {
             issuerCredentialStore = InMemoryIssuerCredentialStore()
             issuerCryptoService = DefaultCryptoService()
-            issuer = IssuerAgent.newDefaultInstance(
-                cryptoService = issuerCryptoService,
-                issuerCredentialStore = issuerCredentialStore,
+            issuer = IssuerAgent(
+                issuerCryptoService,
+                issuerCredentialStore,
             )
             issuerJwsService = DefaultJwsService(issuerCryptoService)
             verifierCryptoService = DefaultCryptoService()
