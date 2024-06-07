@@ -39,7 +39,7 @@ class AgentSdJwtTest : FreeSpec({
             subjectCredentialStore = holderCredentialStore,
             cryptoService = holderCryptoService,
         )
-        verifier = VerifierAgent.newRandomInstance()
+        verifier = VerifierAgent()
         challenge = uuid4().toString()
     }
 

@@ -35,7 +35,7 @@ class PresentProofMessengerTest : FreeSpec() {
             issuerCryptoService = DefaultCryptoService()
             holderCredentialStore = InMemorySubjectCredentialStore()
             holder = HolderAgent.newDefaultInstance(holderCryptoService, subjectCredentialStore = holderCredentialStore)
-            verifier = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey)
+            verifier = VerifierAgent(verifierCryptoService.publicKey)
             issuer = IssuerAgent.newDefaultInstance(issuerCryptoService, dataProvider = DummyCredentialDataProvider())
             verifierChallenge = uuid4().toString()
             holderServiceEndpoint = "https://example.com/present-proof?${uuid4()}"

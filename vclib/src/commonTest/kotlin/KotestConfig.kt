@@ -4,6 +4,7 @@ import io.kotest.core.config.AbstractProjectConfig
 
 class KotestConfig : AbstractProjectConfig() {
     init {
+        Napier.takeLogarithm()
         Napier.base(DebugAntilog())
     }
 }

@@ -51,7 +51,7 @@ class ValidatorVpTest : FreeSpec({
             subjectCredentialStore = holderCredentialStore,
         )
         holderJwsService = DefaultJwsService(holderCryptoService)
-        verifier = VerifierAgent.newRandomInstance()
+        verifier = VerifierAgent()
         challenge = uuid4().toString()
 
         runBlocking {

@@ -66,7 +66,7 @@ class OidcSiopProtocolTest : FreeSpec({
         responseUrl = "https://example.com/rp/$rpUUID"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
-        verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey)
+        verifierAgent = VerifierAgent(verifierCryptoService.publicKey)
         runBlocking {
             holderAgent.storeCredentials(
                 IssuerAgent.newDefaultInstance(

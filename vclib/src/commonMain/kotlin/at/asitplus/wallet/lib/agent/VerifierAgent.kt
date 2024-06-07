@@ -17,41 +17,21 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
  */
 class VerifierAgent private constructor(
     private val validator: Validator,
+    override val publicKey: CryptoPublicKey,
     override val identifier: String
 ) : Verifier {
 
-    companion object {
-        fun newDefaultInstance(
-            identifier: String,
-            cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
-            validator: Validator = Validator.newDefaultInstance(cryptoService),
-        ): VerifierAgent = VerifierAgent(
-            validator = validator,
-            identifier = identifier
-        )
+    constructor(publicKey: CryptoPublicKey) : this(
+        validator = Validator.newDefaultInstance(),
+        publicKey = publicKey,
+        identifier = publicKey.toJsonWebKey().identifier
+    )
 
-        @Deprecated(
-            message = "Use other constructor",
-            replaceWith = ReplaceWith("newDefaultInstance(cryptoPublicKey)")
-        )
-        fun newDefaultInstance(identifier: String): VerifierAgent = VerifierAgent(
-            validator = Validator.newDefaultInstance(),
-            identifier = identifier
-        )
-
-        fun newDefaultInstance(cryptoPublicKey: CryptoPublicKey): VerifierAgent = VerifierAgent(
-            validator = Validator.newDefaultInstance(),
-            identifier = cryptoPublicKey.toJsonWebKey().identifier
-        )
-
-        /**
-         * Creates a new verifier for a random `identifier`
-         */
-        fun newRandomInstance(): VerifierAgent = VerifierAgent(
-            validator = Validator.newDefaultInstance(),
-            identifier = DefaultCryptoService().publicKey.toJsonWebKey().identifier,
-        )
-    }
+    constructor(): this(
+        validator = Validator.newDefaultInstance(),
+        publicKey = DefaultCryptoService().publicKey,
+        identifier = "tododelete"
+    )
 
     override fun setRevocationList(it: String): Boolean {
         return validator.setRevocationList(it)

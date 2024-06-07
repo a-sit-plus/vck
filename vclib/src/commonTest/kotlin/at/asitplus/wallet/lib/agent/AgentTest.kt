@@ -40,7 +40,7 @@ class AgentTest : FreeSpec({
             cryptoService = holderCryptoService,
             subjectCredentialStore = holderCredentialStore,
         )
-        verifier = VerifierAgent.newDefaultInstance(holderCryptoService.publicKey)
+        verifier = VerifierAgent(holderCryptoService.publicKey)
         challenge = uuid4().toString()
     }
 

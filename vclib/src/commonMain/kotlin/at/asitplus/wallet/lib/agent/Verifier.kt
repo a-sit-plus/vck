@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.KeyBindingJws
@@ -21,7 +22,10 @@ interface Verifier {
      * The identifier for this agent, typically the `keyId` from the cryptographic key,
      * e.g. `did:key:mAB...` or `urn:ietf:params:oauth:jwk-thumbprint:sha256:...`
      */
+    @Deprecated(message = "Use public keys!")
     val identifier: String
+
+    val publicKey: CryptoPublicKey
 
     /**
      * Set the revocation list to use for validating VCs (from [Issuer.issueRevocationListCredential])
