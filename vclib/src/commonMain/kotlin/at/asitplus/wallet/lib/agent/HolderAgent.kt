@@ -36,11 +36,11 @@ class HolderAgent(
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val jwsService: JwsService,
     private val coseService: CoseService,
-    override val publicKey: CryptoPublicKey,
+    override val publicKey: PublicKeyAdapter,
     private val verifiablePresentationFactory: VerifiablePresentationFactory = VerifiablePresentationFactory(
         jwsService = jwsService,
         coseService = coseService,
-        identifier = publicKey.didEncoded,
+        identifier = publicKey.identifier,
     ),
     private val difInputEvaluator: InputEvaluator = InputEvaluator(),
     override val defaultPathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = { _, _ -> true }
@@ -54,7 +54,7 @@ class HolderAgent(
         subjectCredentialStore = subjectCredentialStore,
         jwsService = DefaultJwsService(cryptoService),
         coseService = DefaultCoseService(cryptoService),
-        publicKey = cryptoService.publicKey
+        publicKey = InMemoryPublicKeyAdapter(cryptoService.publicKey)
     )
 
     /**
@@ -79,7 +79,7 @@ class HolderAgent(
         val rejected = mutableListOf<String>()
         val attachments = mutableListOf<Holder.StoredAttachmentResult>()
         credentialList.filterIsInstance<Holder.StoreCredentialInput.Vc>().forEach { cred ->
-            when (val vc = validator.verifyVcJws(cred.vcJws, publicKey)) {
+            when (val vc = validator.verifyVcJws(cred.vcJws, publicKey.publicKey)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.SuccessJwt -> acceptedVcJwt += vc.jws
@@ -104,7 +104,7 @@ class HolderAgent(
             }
         }
         credentialList.filterIsInstance<Holder.StoreCredentialInput.SdJwt>().forEach { cred ->
-            when (val vc = validator.verifySdJwt(cred.vcSdJwt, publicKey)) {
+            when (val vc = validator.verifySdJwt(cred.vcSdJwt, publicKey.publicKey)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.SuccessSdJwt -> acceptedSdJwt += vc.sdJwt

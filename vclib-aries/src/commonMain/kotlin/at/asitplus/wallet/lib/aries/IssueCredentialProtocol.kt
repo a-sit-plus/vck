@@ -188,8 +188,7 @@ class IssueCredentialProtocol(
         credentialScheme: ConstantIndex.CredentialScheme,
         parentThreadId: String? = null,
     ): RequestCredential? {
-        val subject = holder?.publicKey?.didEncoded
-            ?: return null
+        val subject = holder?.publicKey?.identifier ?: return null
         val credentialManifest = CredentialManifest(
             issuer = "somebody",
             subject = subject,

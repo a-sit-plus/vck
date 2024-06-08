@@ -165,7 +165,7 @@ class ValidatorVpTest : FreeSpec({
         val vp = VerifiablePresentation(validCredentials)
         val vpSerialized = vp.toJws(
             challenge = challenge,
-            issuerId = holder.publicKey.didEncoded,
+            issuerId = holder.publicKey.identifier,
             audienceId = verifier.publicKey.didEncoded,
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
@@ -209,7 +209,7 @@ class ValidatorVpTest : FreeSpec({
         val vpSerialized = VerifiablePresentationJws(
             vp = vp,
             challenge = challenge,
-            issuer = holder.publicKey.didEncoded,
+            issuer = holder.publicKey.identifier,
             audience = verifier.publicKey.didEncoded,
             jwtId = "wrong_jwtId",
         ).serialize()
@@ -235,7 +235,7 @@ class ValidatorVpTest : FreeSpec({
 
         val vpSerialized = vp.toJws(
             challenge = challenge,
-            issuerId = holder.publicKey.didEncoded,
+            issuerId = holder.publicKey.identifier,
             audienceId = verifier.publicKey.didEncoded,
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
