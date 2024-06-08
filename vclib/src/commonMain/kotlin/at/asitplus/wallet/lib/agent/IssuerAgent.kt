@@ -53,7 +53,7 @@ class IssuerAgent(
     private val jwsService: JwsService,
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
-    override val publicKey: CryptoPublicKey,
+    override val publicKey: PublicKeyAdapter,
     override val cryptoAlgorithms: Set<CryptoAlgorithm>,
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
 ) : Issuer {
@@ -66,7 +66,7 @@ class IssuerAgent(
         jwsService = DefaultJwsService(cryptoService),
         coseService = DefaultCoseService(cryptoService),
         dataProvider = dataProvider,
-        publicKey = cryptoService.publicKey,
+        publicKey = InMemoryPublicKeyAdapter(cryptoService.publicKey),
         cryptoAlgorithms = setOf(cryptoService.algorithm),
     )
 
@@ -80,7 +80,7 @@ class IssuerAgent(
         jwsService = DefaultJwsService(cryptoService),
         coseService = DefaultCoseService(cryptoService),
         dataProvider = dataProvider,
-        publicKey = cryptoService.publicKey,
+        publicKey = InMemoryPublicKeyAdapter(cryptoService.publicKey),
         cryptoAlgorithms = setOf(cryptoService.algorithm),
     )
 
@@ -219,7 +219,7 @@ class IssuerAgent(
         val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
         val vc = VerifiableCredential(
             id = vcId,
-            issuer = publicKey.didEncoded,
+            issuer = publicKey.identifier,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             credentialStatus = credentialStatus,
@@ -271,7 +271,7 @@ class IssuerAgent(
         val jwsPayload = VerifiableCredentialSdJwt(
             subject = subjectId,
             notBefore = issuanceDate,
-            issuer = publicKey.didEncoded,
+            issuer = publicKey.identifier,
             expiration = expirationDate,
             issuedAt = issuanceDate,
             jwtId = vcId,
@@ -306,7 +306,7 @@ class IssuerAgent(
         val subject = RevocationListSubject("$revocationListUrl#list", revocationList)
         val credential = VerifiableCredential(
             id = revocationListUrl,
-            issuer = publicKey.didEncoded,
+            issuer = publicKey.identifier,
             issuanceDate = clock.now(),
             lifetime = revocationListLifetime,
             credentialSubject = subject
