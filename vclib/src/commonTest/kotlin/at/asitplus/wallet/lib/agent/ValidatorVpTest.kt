@@ -67,7 +67,7 @@ class ValidatorVpTest : FreeSpec({
     "correct challenge in VP leads to Success" {
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.publicKey.didEncoded,
+            audienceId = verifier.publicKey.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -85,7 +85,7 @@ class ValidatorVpTest : FreeSpec({
             .filterIsInstance<Holder.StoredCredential.Vc>()
             .map { it.storeEntry.vcSerialized }
             .map { it.reversed() }
-        val vp = holder.createVcPresentation(holderVcSerialized, challenge, verifier.publicKey.didEncoded)
+        val vp = holder.createVcPresentation(holderVcSerialized, challenge, verifier.publicKey.identifier)
         vp.shouldNotBeNull()
 
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
@@ -99,7 +99,7 @@ class ValidatorVpTest : FreeSpec({
     "wrong challenge in VP leads to InvalidStructure" {
         val presentationParameters = holder.createPresentation(
             challenge = "challenge",
-            audienceId = verifier.publicKey.didEncoded,
+            audienceId = verifier.publicKey.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -126,7 +126,7 @@ class ValidatorVpTest : FreeSpec({
     "valid parsed presentation should separate revoked and valid credentials" {
         val presentationResults = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.publicKey.didEncoded,
+            audienceId = verifier.publicKey.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationResults.shouldNotBeNull()
@@ -166,7 +166,7 @@ class ValidatorVpTest : FreeSpec({
         val vpSerialized = vp.toJws(
             challenge = challenge,
             issuerId = holder.publicKey.identifier,
-            audienceId = verifier.publicKey.didEncoded,
+            audienceId = verifier.publicKey.identifier,
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
         val vpJws =
@@ -187,8 +187,8 @@ class ValidatorVpTest : FreeSpec({
         val vpSerialized = VerifiablePresentationJws(
             vp = vp,
             challenge = challenge,
-            issuer = verifier.publicKey.didEncoded,
-            audience = verifier.publicKey.didEncoded,
+            issuer = verifier.publicKey.identifier,
+            audience = verifier.publicKey.identifier,
             jwtId = vp.id,
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
@@ -210,7 +210,7 @@ class ValidatorVpTest : FreeSpec({
             vp = vp,
             challenge = challenge,
             issuer = holder.publicKey.identifier,
-            audience = verifier.publicKey.didEncoded,
+            audience = verifier.publicKey.identifier,
             jwtId = "wrong_jwtId",
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
@@ -236,7 +236,7 @@ class ValidatorVpTest : FreeSpec({
         val vpSerialized = vp.toJws(
             challenge = challenge,
             issuerId = holder.publicKey.identifier,
-            audienceId = verifier.publicKey.didEncoded,
+            audienceId = verifier.publicKey.identifier,
         ).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
         val vpJws =
