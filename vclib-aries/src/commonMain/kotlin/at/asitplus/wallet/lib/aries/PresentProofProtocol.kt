@@ -208,7 +208,7 @@ class PresentProofProtocol(
         credentialScheme: ConstantIndex.CredentialScheme,
         parentThreadId: String? = null,
     ): RequestPresentation? {
-        val verifierIdentifier = verifier?.publicKey?.didEncoded ?: return null
+        val verifierIdentifier = verifier?.publicKey?.identifier ?: return null
         val claimsConstraints = requestedClaims?.map(this::buildConstraintFieldForClaim) ?: listOf()
         val typeConstraints = buildConstraintFieldForType(credentialScheme.vcType!!)
         val presentationDefinition = PresentationDefinition(

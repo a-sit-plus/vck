@@ -61,7 +61,7 @@ class AgentSdJwtTest : FreeSpec({
         issueDummyCredentials(holder, issuer, holderCryptoService)
         val presentationParameters = holder.createPresentation(
             challenge,
-            verifier.publicKey.didEncoded,
+            verifier.publicKey.identifier,
             presentationDefinition = givenNamePresentationDefinition
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -81,7 +81,7 @@ class AgentSdJwtTest : FreeSpec({
         issueDummyCredentials(holder, issuer, holderCryptoService)
         val presentationParameters = holder.createPresentation(
             challenge,
-            verifier.publicKey.didEncoded,
+            verifier.publicKey.identifier,
             presentationDefinition = givenNamePresentationDefinition
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -91,7 +91,7 @@ class AgentSdJwtTest : FreeSpec({
         // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
         val malformedVpSdJwt = vp.sdJwt.replaceAfterLast(
             "~",
-            createFreshSdJwtKeyBinding(challenge, verifier.publicKey.didEncoded).substringAfterLast("~")
+            createFreshSdJwtKeyBinding(challenge, verifier.publicKey.identifier).substringAfterLast("~")
         )
 
         val verified = verifier.verifyPresentation(malformedVpSdJwt, challenge)
@@ -103,7 +103,7 @@ class AgentSdJwtTest : FreeSpec({
         val malformedChallenge = challenge.reversed()
         val presentationParameters = holder.createPresentation(
             malformedChallenge,
-            verifier.publicKey.didEncoded,
+            verifier.publicKey.identifier,
             presentationDefinition = givenNamePresentationDefinition
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -119,7 +119,7 @@ class AgentSdJwtTest : FreeSpec({
         issueDummyCredentials(holder, issuer, holderCryptoService)
         val presentationParameters = holder.createPresentation(
             challenge,
-            verifier.publicKey.didEncoded,
+            verifier.publicKey.identifier,
             presentationDefinition = givenNamePresentationDefinition
         ).getOrNull()
         presentationParameters.shouldNotBeNull()

@@ -214,7 +214,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let {
                         VerifiableCredentialJws(
                             vc = it,
-                            subject = verifier.publicKey.didEncoded,
+                            subject = verifier.publicKey.identifier,
                             notBefore = it.issuanceDate,
                             issuer = it.issuer,
                             expiration = Clock.System.now() + 1.hours,
@@ -385,7 +385,7 @@ class ValidatorVcTest : FreeSpec() {
 
     private fun wrapVcInJws(
         it: VerifiableCredential,
-        subject: String = verifier.publicKey.didEncoded,
+        subject: String = verifier.publicKey.identifier,
         issuer: String = it.issuer,
         jwtId: String = it.id,
         issuanceDate: Instant = it.issuanceDate,
@@ -408,7 +408,7 @@ class ValidatorVcTest : FreeSpec() {
     private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String? {
         val jwsHeader = JwsHeader(
             algorithm = JwsAlgorithm.ES256,
-            keyId = verifier.publicKey.didEncoded,
+            keyId = verifier.publicKey.identifier,
             type = JwsContentTypeConstants.JWT
         )
         val jwsPayload = vcJws.serialize().encodeToByteArray()
