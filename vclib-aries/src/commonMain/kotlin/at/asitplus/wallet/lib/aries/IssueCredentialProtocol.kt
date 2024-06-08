@@ -142,7 +142,7 @@ class IssueCredentialProtocol(
     }
 
     private fun createOobInvitation(): InternalNextMessage {
-        val recipientKey = issuer?.publicKey?.didEncoded
+        val recipientKey = issuer?.publicKey?.identifier
             ?: return InternalNextMessage.IncorrectState("issuer")
         val message = OutOfBandInvitation(
             body = OutOfBandInvitationBody(

@@ -99,7 +99,7 @@ class AgentTest : FreeSpec({
 
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = issuer.publicKey.didEncoded,
+            audienceId = issuer.publicKey.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
