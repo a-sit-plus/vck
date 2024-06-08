@@ -23,7 +23,7 @@ interface Holder {
     /**
      * The public key for this agent, i.e. the "holder key" that the credentials get bound to.
      */
-    val publicKey: CryptoPublicKey
+    val publicKey: PublicKeyAdapter
 
     val defaultPathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean
 

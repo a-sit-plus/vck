@@ -159,7 +159,7 @@ class PresentProofProtocol(
     }
 
     private fun createOobInvitation(): InternalNextMessage {
-        val recipientKey = holder?.publicKey?.didEncoded
+        val recipientKey = holder?.publicKey?.identifier
             ?: return InternalNextMessage.IncorrectState("holder")
         val message = OutOfBandInvitation(
             body = OutOfBandInvitationBody(
