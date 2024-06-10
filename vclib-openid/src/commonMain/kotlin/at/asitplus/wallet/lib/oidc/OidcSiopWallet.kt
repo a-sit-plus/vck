@@ -34,6 +34,9 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonPrimitive
@@ -222,25 +225,30 @@ class OidcSiopWallet(
         val url = request.parameters.responseUrl
             ?: request.parameters.redirectUrl
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-        val responseSerialized = buildJarm(response)
+        val responseSerialized = buildJarm(request, response)
         val jarm = AuthenticationResponseParameters(response = responseSerialized)
         return AuthenticationResponseResult.Post(url, jarm.encodeToParameters())
     }
 
-    private suspend fun buildJarm(response: AuthenticationResponse) =
+    private suspend fun buildJarm(request: AuthenticationRequestParametersFrom<*>, response: AuthenticationResponse) =
         if (response.clientMetadata != null && response.jsonWebKeys != null && response.clientMetadata.requestsEncryption()) {
             val alg = response.clientMetadata.authorizationEncryptedResponseAlg!!
             val enc = response.clientMetadata.authorizationEncryptedResponseEncoding!!
             val jwk = response.jsonWebKeys.first()
+            val nonce = runCatching { request.parameters.nonce?.decodeToByteArray(Base64()) }.getOrNull()
+                ?: runCatching { request.parameters.nonce?.encodeToByteArray() }.getOrNull()
+                ?: Random.Default.nextBytes(16)
+            val payload = response.params.serialize().encodeToByteArray()
             jwsService.encryptJweObject(
                 header = JweHeader(
                     algorithm = alg,
                     encryption = enc,
                     type = null,
-                    agreementPartyVInfo = Random.Default.nextBytes(16), // TODO nonce from authn request
+                    agreementPartyVInfo = nonce.encodeToByteArray(Base64()),
+                    agreementPartyUInfo = Random.nextBytes(16),
                     keyId = jwk.keyId,
                 ),
-                payload = response.params.serialize().encodeToByteArray(),
+                payload = payload,
                 recipientKey = jwk,
                 jweAlgorithm = alg,
                 jweEncryption = enc,
