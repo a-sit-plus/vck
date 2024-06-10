@@ -38,7 +38,7 @@ class AgentTest : FreeSpec({
         )
         holderKeyPair = RandomKeyPairAdapter()
         holder = HolderAgent(holderKeyPair, holderCredentialStore)
-        verifier = VerifierAgent(holderKeyPair.publicKey)
+        verifier = VerifierAgent(holderKeyPair)
         challenge = uuid4().toString()
     }
 

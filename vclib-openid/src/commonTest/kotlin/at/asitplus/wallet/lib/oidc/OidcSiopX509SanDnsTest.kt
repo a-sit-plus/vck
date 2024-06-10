@@ -19,7 +19,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
     lateinit var walletUrl: String
 
     lateinit var holderKeyPair: KeyPairAdapter
-    lateinit var verifierCryptoService: CryptoService
+    lateinit var verifierKeyPair: KeyPairAdapter
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -40,11 +40,11 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                 }
             ))))
         holderKeyPair = RandomKeyPairAdapter()
-        verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter(extensions))
+        verifierKeyPair = RandomKeyPairAdapter(extensions)
         responseUrl = "https://example.com"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)
-        verifierAgent = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
+        verifierAgent = VerifierAgent(verifierKeyPair)
         runBlocking {
             holderAgent.storeCredentials(
                 IssuerAgent(
@@ -64,10 +64,9 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         )
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
-            cryptoService = verifierCryptoService,
             relyingPartyUrl = null,
             responseUrl = responseUrl,
-            x5c = listOf(verifierCryptoService.keyPairAdapter.certificate!!)
+            x5c = listOf(verifierKeyPair.certificate!!)
         )
     }
 

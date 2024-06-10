@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
@@ -30,7 +28,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
     lateinit var relyingPartyUrl: String
 
     lateinit var holderKeyPair: KeyPairAdapter
-    lateinit var verifierCryptoService: CryptoService
+    lateinit var verifierKeyPair: KeyPairAdapter
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -40,10 +38,10 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
     beforeEach {
         holderKeyPair = RandomKeyPairAdapter()
-        verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+        verifierKeyPair = RandomKeyPairAdapter()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)
-        verifierAgent = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
+        verifierAgent = VerifierAgent(verifierKeyPair)
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
             keyPairAdapter = holderKeyPair,
@@ -51,7 +49,6 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         )
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
-            cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
         )
     }
@@ -77,7 +74,6 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
                 verifierSiop = OidcSiopVerifier.newInstance(
                     verifier = verifierAgent,
-                    cryptoService = verifierCryptoService,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -125,7 +121,6 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 }
                 verifierSiop = OidcSiopVerifier.newInstance(
                     verifier = verifierAgent,
-                    cryptoService = verifierCryptoService,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -178,7 +173,6 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
                 verifierSiop = OidcSiopVerifier.newInstance(
                     verifier = verifierAgent,
-                    cryptoService = verifierCryptoService,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -232,7 +226,6 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
                 verifierSiop = OidcSiopVerifier.newInstance(
                     verifier = verifierAgent,
-                    cryptoService = verifierCryptoService,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -288,7 +281,6 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
                 verifierSiop = OidcSiopVerifier.newInstance(
                     verifier = verifierAgent,
-                    cryptoService = verifierCryptoService,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -345,7 +337,6 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
                 verifierSiop = OidcSiopVerifier.newInstance(
                     verifier = verifierAgent,
-                    cryptoService = verifierCryptoService,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -392,7 +383,6 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
-            cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
         )
 

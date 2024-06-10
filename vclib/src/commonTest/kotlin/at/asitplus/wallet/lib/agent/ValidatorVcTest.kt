@@ -31,7 +31,7 @@ class ValidatorVcTest : FreeSpec() {
     private lateinit var issuerJwsService: JwsService
     private lateinit var issuerKeyPair: KeyPairAdapter
     private lateinit var verifier: Verifier
-    private lateinit var verifierCryptoService: CryptoService
+    private lateinit var verifierKeyPair: KeyPairAdapter
 
     private val dataProvider: IssuerCredentialDataProvider = DummyCredentialDataProvider()
     private val revocationListUrl: String = "https://wallet.a-sit.at/backend/credentials/status/1"
@@ -42,13 +42,13 @@ class ValidatorVcTest : FreeSpec() {
             issuerKeyPair = RandomKeyPairAdapter()
             issuer = IssuerAgent(issuerKeyPair, issuerCredentialStore)
             issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyPair))
-            verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
-            verifier = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
+            verifierKeyPair = RandomKeyPairAdapter()
+            verifier = VerifierAgent(verifierKeyPair)
         }
 
         "credentials are valid for" {
             issuer.issueCredential(
-                subjectPublicKey = verifierCryptoService.keyPairAdapter.publicKey,
+                subjectPublicKey = verifierKeyPair.publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }
@@ -59,7 +59,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "revoked credentials are not valid" {
             issuer.issueCredential(
-                subjectPublicKey = verifierCryptoService.keyPairAdapter.publicKey,
+                subjectPublicKey = verifierKeyPair.publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).successful
@@ -97,7 +97,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "credential with invalid JWS format is not valid" {
             issuer.issueCredential(
-                subjectPublicKey = verifierCryptoService.keyPairAdapter.publicKey,
+                subjectPublicKey = verifierKeyPair.publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).successful
@@ -113,7 +113,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 nameFn = ::credentialNameFn,
                 dataProvider.getCredential(
-                    verifierCryptoService.keyPairAdapter.publicKey,
+                    verifierKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).getOrThrow()
@@ -131,7 +131,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 nameFn = ::credentialNameFn,
                 dataProvider.getCredential(
-                    verifierCryptoService.keyPairAdapter.publicKey,
+                    verifierKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).getOrThrow()
@@ -150,7 +150,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 nameFn = ::credentialNameFn,
                 dataProvider.getCredential(
-                    verifierCryptoService.keyPairAdapter.publicKey,
+                    verifierKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).getOrThrow()
@@ -169,7 +169,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 nameFn = ::credentialNameFn,
                 dataProvider.getCredential(
-                    verifierCryptoService.keyPairAdapter.publicKey,
+                    verifierKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).getOrThrow()
@@ -187,7 +187,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 nameFn = ::credentialNameFn,
                 dataProvider.getCredential(
-                    verifierCryptoService.keyPairAdapter.publicKey,
+                    verifierKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).getOrThrow()
@@ -206,7 +206,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 nameFn = ::credentialNameFn,
                 dataProvider.getCredential(
-                    verifierCryptoService.keyPairAdapter.publicKey,
+                    verifierKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).getOrThrow()
@@ -234,7 +234,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 nameFn = ::credentialNameFn,
                 dataProvider.getCredential(
-                    verifierCryptoService.keyPairAdapter.publicKey,
+                    verifierKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).getOrThrow()
@@ -252,7 +252,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 nameFn = ::credentialNameFn,
                 dataProvider.getCredential(
-                    verifierCryptoService.keyPairAdapter.publicKey,
+                    verifierKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).getOrThrow()
@@ -271,7 +271,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 nameFn = ::credentialNameFn,
                 dataProvider.getCredential(
-                    verifierCryptoService.keyPairAdapter.publicKey,
+                    verifierKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).getOrThrow()
@@ -290,7 +290,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 nameFn = ::credentialNameFn,
                 dataProvider.getCredential(
-                    verifierCryptoService.keyPairAdapter.publicKey,
+                    verifierKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).getOrThrow()
@@ -309,7 +309,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 nameFn = ::credentialNameFn,
                 dataProvider.getCredential(
-                    verifierCryptoService.keyPairAdapter.publicKey,
+                    verifierKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).getOrThrow()
@@ -328,7 +328,7 @@ class ValidatorVcTest : FreeSpec() {
             withData(
                 nameFn = ::credentialNameFn,
                 dataProvider.getCredential(
-                    verifierCryptoService.keyPairAdapter.publicKey,
+                    verifierKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).getOrThrow()

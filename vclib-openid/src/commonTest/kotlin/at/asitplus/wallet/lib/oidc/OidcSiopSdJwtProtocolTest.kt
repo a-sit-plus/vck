@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
@@ -27,7 +25,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     lateinit var walletUrl: String
 
     lateinit var holderKeyPair: KeyPairAdapter
-    lateinit var verifierCryptoService: CryptoService
+    lateinit var verifierKeyPair: KeyPairAdapter
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -37,11 +35,11 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
 
     beforeEach {
         holderKeyPair = RandomKeyPairAdapter()
-        verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+        verifierKeyPair = RandomKeyPairAdapter()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)
-        verifierAgent = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
+        verifierAgent = VerifierAgent(verifierKeyPair)
         runBlocking {
             holderAgent.storeCredentials(
                 IssuerAgent(
@@ -61,7 +59,6 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         )
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
-            cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
         )
     }
@@ -90,7 +87,6 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         val requestedClaim = "given-name"
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
-            cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(

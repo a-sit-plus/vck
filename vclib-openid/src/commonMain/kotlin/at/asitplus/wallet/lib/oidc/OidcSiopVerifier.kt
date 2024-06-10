@@ -13,7 +13,9 @@ import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
+import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
@@ -93,11 +95,10 @@ class OidcSiopVerifier private constructor(
     companion object {
         fun newInstance(
             verifier: Verifier,
-            cryptoService: CryptoService,
             relyingPartyUrl: String,
             responseUrl: String? = null,
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-            jwsService: JwsService = DefaultJwsService(cryptoService),
+            jwsService: JwsService = DefaultJwsService(DefaultCryptoService(verifier.publicKey)),
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
             attestationJwt: JwsSigned,
@@ -105,7 +106,7 @@ class OidcSiopVerifier private constructor(
             verifier = verifier,
             relyingPartyUrl = relyingPartyUrl,
             responseUrl = responseUrl,
-            agentPublicKey = cryptoService.keyPairAdapter.publicKey,
+            agentPublicKey = verifier.publicKey.publicKey,
             jwsService = jwsService,
             verifierJwsService = verifierJwsService,
             timeLeewaySeconds = timeLeewaySeconds,
@@ -117,11 +118,10 @@ class OidcSiopVerifier private constructor(
 
         fun newInstance(
             verifier: Verifier,
-            cryptoService: CryptoService,
             relyingPartyUrl: String?,
             responseUrl: String? = null,
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-            jwsService: JwsService = DefaultJwsService(cryptoService),
+            jwsService: JwsService = DefaultJwsService(DefaultCryptoService(verifier.publicKey)),
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
             x5c: CertificateChain,
@@ -129,7 +129,7 @@ class OidcSiopVerifier private constructor(
             verifier = verifier,
             relyingPartyUrl = relyingPartyUrl,
             responseUrl = responseUrl,
-            agentPublicKey = cryptoService.keyPairAdapter.publicKey,
+            agentPublicKey = verifier.publicKey.publicKey,
             jwsService = jwsService,
             verifierJwsService = verifierJwsService,
             timeLeewaySeconds = timeLeewaySeconds,
@@ -142,11 +142,10 @@ class OidcSiopVerifier private constructor(
 
         fun newInstance(
             verifier: Verifier,
-            cryptoService: CryptoService,
             relyingPartyUrl: String,
             responseUrl: String? = null,
             verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-            jwsService: JwsService = DefaultJwsService(cryptoService),
+            jwsService: JwsService = DefaultJwsService(DefaultCryptoService(verifier.publicKey)),
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
             clientIdScheme: OpenIdConstants.ClientIdScheme = REDIRECT_URI,
@@ -154,7 +153,7 @@ class OidcSiopVerifier private constructor(
             verifier = verifier,
             relyingPartyUrl = relyingPartyUrl,
             responseUrl = responseUrl,
-            agentPublicKey = cryptoService.keyPairAdapter.publicKey,
+            agentPublicKey = verifier.publicKey.publicKey,
             jwsService = jwsService,
             verifierJwsService = verifierJwsService,
             timeLeewaySeconds = timeLeewaySeconds,

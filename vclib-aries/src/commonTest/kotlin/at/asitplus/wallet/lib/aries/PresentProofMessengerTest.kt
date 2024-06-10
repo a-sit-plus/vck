@@ -17,7 +17,7 @@ import kotlin.time.toDuration
 class PresentProofMessengerTest : FreeSpec() {
 
     private lateinit var holderKeyPair: KeyPairAdapter
-    private lateinit var verifierCryptoService: CryptoService
+    private lateinit var verifierKeyPair: KeyPairAdapter
     private lateinit var issuerKeyPair: KeyPairAdapter
     private lateinit var holderCredentialStore: SubjectCredentialStore
     private lateinit var holder: Holder
@@ -31,11 +31,11 @@ class PresentProofMessengerTest : FreeSpec() {
 
         beforeEach {
             holderKeyPair = RandomKeyPairAdapter()
-            verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+            verifierKeyPair = RandomKeyPairAdapter()
             issuerKeyPair = RandomKeyPairAdapter()
             holderCredentialStore = InMemorySubjectCredentialStore()
             holder = HolderAgent(holderKeyPair, holderCredentialStore)
-            verifier = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
+            verifier = VerifierAgent(verifierKeyPair)
             issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
             verifierChallenge = uuid4().toString()
             holderServiceEndpoint = "https://example.com/present-proof?${uuid4()}"
@@ -57,7 +57,7 @@ class PresentProofMessengerTest : FreeSpec() {
             )
             val verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
-                messageWrapper = MessageWrapper(verifierCryptoService),
+                messageWrapper = MessageWrapper(verifierKeyPair),
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
             )
 
@@ -103,7 +103,7 @@ class PresentProofMessengerTest : FreeSpec() {
             )
             val verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
-                messageWrapper = MessageWrapper(verifierCryptoService),
+                messageWrapper = MessageWrapper(verifierKeyPair),
                 challengeForPresentation = verifierChallenge,
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
                 requestedClaims = listOf(attributeName)

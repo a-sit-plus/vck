@@ -6,7 +6,6 @@ import at.asitplus.crypto.datatypes.jws.JsonWebToken
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
-import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -52,7 +51,7 @@ class OidcSiopProtocolTest : FreeSpec({
     lateinit var walletUrl: String
 
     lateinit var holderKeyPair: KeyPairAdapter
-    lateinit var verifierCryptoService: CryptoService
+    lateinit var verifierKeyPair: KeyPairAdapter
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -62,13 +61,13 @@ class OidcSiopProtocolTest : FreeSpec({
 
     beforeEach {
         holderKeyPair = RandomKeyPairAdapter()
-        verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+        verifierKeyPair = RandomKeyPairAdapter()
         val rpUUID = uuid4()
         relyingPartyUrl = "https://example.com/rp/$rpUUID"
         responseUrl = "https://example.com/rp/$rpUUID"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)
-        verifierAgent = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
+        verifierAgent = VerifierAgent(verifierKeyPair)
         runBlocking {
             holderAgent.storeCredentials(
                 IssuerAgent(
@@ -88,7 +87,6 @@ class OidcSiopProtocolTest : FreeSpec({
         )
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
-            cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
             responseUrl = responseUrl,
         )
@@ -265,10 +263,9 @@ class OidcSiopProtocolTest : FreeSpec({
 
     "test with request object and Attestation JWT" {
         val sprsCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
-        val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierCryptoService)
+        val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyPair)
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
-            cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
             attestationJwt = attestationJwt
         )
@@ -297,11 +294,10 @@ class OidcSiopProtocolTest : FreeSpec({
     }
     "test with request object and invalid Attestation JWT" {
         val sprsCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
-        val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierCryptoService)
+        val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyPair)
 
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
-            cryptoService = verifierCryptoService,
             relyingPartyUrl = relyingPartyUrl,
             attestationJwt = attestationJwt
         )
@@ -413,7 +409,7 @@ class OidcSiopProtocolTest : FreeSpec({
 private suspend fun buildAttestationJwt(
     sprsCryptoService: DefaultCryptoService,
     relyingPartyUrl: String,
-    verifierCryptoService: CryptoService
+    verifierKeyPair: KeyPairAdapter
 ): JwsSigned = DefaultJwsService(sprsCryptoService).createSignedJws(
     header = JwsHeader(
         algorithm = sprsCryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm(),
@@ -424,7 +420,7 @@ private suspend fun buildAttestationJwt(
         issuedAt = Clock.System.now(),
         expiration = Clock.System.now().plus(10.seconds),
         notBefore = Clock.System.now(),
-        confirmationKey = verifierCryptoService.keyPairAdapter.jsonWebKey,
+        confirmationKey = verifierKeyPair.jsonWebKey,
     ).serialize().encodeToByteArray()
 ).getOrThrow()
 
