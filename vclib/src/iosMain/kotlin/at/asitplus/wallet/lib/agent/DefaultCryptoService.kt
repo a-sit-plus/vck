@@ -36,7 +36,6 @@ actual class DefaultCryptoService : CryptoService {
 
     private val secPrivateKey: SecKeyRef
     private val secPublicKey: SecKeyRef
-    actual override val algorithm = CryptoAlgorithm.ES256
     actual override val publicKey: CryptoPublicKey
     actual override val certificate: X509Certificate?
     actual override val keyPairAdapter: KeyPairAdapter
@@ -45,7 +44,7 @@ actual class DefaultCryptoService : CryptoService {
         get() = publicKey.toJsonWebKey()
 
     actual override val coseKey: CoseKey
-        get() = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrNull()!!
+        get() = publicKey.toCoseKey(keyPairAdapter.signingAlgorithm.toCoseAlgorithm()).getOrNull()!!
 
     actual constructor() : this(listOf())
 
@@ -177,7 +176,7 @@ actual fun RandomKeyPairAdapter(): KeyPairAdapter {
     val certificate = X509Certificate.generateSelfSignedCertificate(publicKey, signingAlgorithm) { it ->
         DefaultCryptoService(secPrivateKey, secPublicKey).sign(it)
     }
-    return IosKeyPairAdapter(secPrivateKey, secPublicKey, CryptoAlgorithm.ES256, certificate)
+    return IosKeyPairAdapter(secPrivateKey, secPublicKey, signingAlgorithm, certificate)
 }
 
 class IosKeyPairAdapter(

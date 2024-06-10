@@ -223,7 +223,7 @@ class WalletService(
     ): KmmResult<CredentialRequestParameters> {
         val proofPayload = jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
-                algorithm = cryptoService.algorithm.toJwsAlgorithm(),
+                algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm(),
                 type = OpenIdConstants.ProofType.JWT_HEADER_TYPE.stringRepresentation,
             ),
             payload = JsonWebToken(
@@ -270,7 +270,7 @@ class WalletService(
     ): KmmResult<CredentialRequestParameters> {
         val proofPayload = coseService.createSignedCose(
             protectedHeader = CoseHeader(
-                algorithm = cryptoService.algorithm.toCoseAlgorithm(),
+                algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toCoseAlgorithm(),
                 contentType = OpenIdConstants.ProofType.CWT_HEADER_TYPE.stringRepresentation,
                 certificateChain = cryptoService.certificate?.encodeToDerOrNull()
             ),

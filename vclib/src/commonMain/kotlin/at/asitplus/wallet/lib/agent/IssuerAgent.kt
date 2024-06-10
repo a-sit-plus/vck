@@ -70,7 +70,7 @@ class IssuerAgent(
         coseService = DefaultCoseService(cryptoService),
         dataProvider = dataProvider,
         publicKey = InMemoryPublicKeyAdapter(cryptoService.publicKey),
-        cryptoAlgorithms = setOf(cryptoService.algorithm),
+        cryptoAlgorithms = setOf(cryptoService.keyPairAdapter.signingAlgorithm),
     )
 
     constructor(
@@ -84,7 +84,7 @@ class IssuerAgent(
         coseService = DefaultCoseService(cryptoService),
         dataProvider = dataProvider,
         publicKey = InMemoryPublicKeyAdapter(cryptoService.publicKey),
-        cryptoAlgorithms = setOf(cryptoService.algorithm),
+        cryptoAlgorithms = setOf(cryptoService.keyPairAdapter.signingAlgorithm),
     )
 
     /**

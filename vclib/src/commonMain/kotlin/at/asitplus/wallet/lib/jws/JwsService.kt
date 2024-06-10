@@ -100,7 +100,7 @@ interface VerifierJwsService {
 
 class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
-    override val algorithm: JwsAlgorithm = cryptoService.algorithm.toJwsAlgorithm()
+    override val algorithm: JwsAlgorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm()
 
     // TODO: Get from crypto service
     override val encryptionAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES
@@ -114,7 +114,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         contentType: String?
     ): KmmResult<JwsSigned> = createSignedJws(
         JwsHeader(
-            algorithm = cryptoService.algorithm.toJwsAlgorithm(),
+            algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm(),
             keyId = cryptoService.publicKey.didEncoded,
             type = type,
             contentType = contentType
@@ -122,7 +122,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     )
 
     override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): KmmResult<JwsSigned> {
-        if (header.algorithm != cryptoService.algorithm.toJwsAlgorithm()
+        if (header.algorithm != cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm()
             || header.jsonWebKey?.let { it != cryptoService.jsonWebKey } == true
         ) {
             return KmmResult.failure(IllegalArgumentException("Algorithm or JSON Web Key not matching to cryptoService"))
@@ -143,8 +143,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         addJsonWebKey: Boolean,
         addX5c: Boolean
     ): KmmResult<JwsSigned> {
-        var copy = header?.copy(algorithm = cryptoService.algorithm.toJwsAlgorithm())
-            ?: JwsHeader(algorithm = cryptoService.algorithm.toJwsAlgorithm())
+        var copy = header?.copy(algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm())
+            ?: JwsHeader(algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm())
         if (addKeyId)
             copy = copy.copy(keyId = cryptoService.jsonWebKey.keyId)
         if (addJsonWebKey)
