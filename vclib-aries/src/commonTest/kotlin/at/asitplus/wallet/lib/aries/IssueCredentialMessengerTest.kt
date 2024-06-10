@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -19,7 +20,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 class IssueCredentialMessengerTest : FreeSpec() {
 
     private lateinit var issuerCryptoService: CryptoService
-    private lateinit var holderCryptoService: CryptoService
+    private lateinit var holderKeyPair: KeyPairAdapter
     private lateinit var issuer: Issuer
     private lateinit var holder: Holder
     private lateinit var issuerServiceEndpoint: String
@@ -29,9 +30,9 @@ class IssueCredentialMessengerTest : FreeSpec() {
     init {
         beforeEach {
             issuerCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
-            holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+            holderKeyPair = RandomKeyPairAdapter()
             issuer = IssuerAgent(issuerCryptoService, DummyCredentialDataProvider())
-            holder = HolderAgent(holderCryptoService)
+            holder = HolderAgent(holderKeyPair)
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
             holderMessenger = initHolderMessenger(ConstantIndex.AtomicAttribute2023)
         }
@@ -51,7 +52,7 @@ class IssueCredentialMessengerTest : FreeSpec() {
     private fun initHolderMessenger(scheme: ConstantIndex.CredentialScheme) =
         IssueCredentialMessenger.newHolderInstance(
             holder = holder,
-            messageWrapper = MessageWrapper(holderCryptoService),
+            messageWrapper = MessageWrapper(holderKeyPair),
             credentialScheme = scheme,
         )
 

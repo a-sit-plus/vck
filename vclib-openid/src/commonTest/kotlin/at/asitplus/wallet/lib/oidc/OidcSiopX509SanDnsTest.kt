@@ -18,7 +18,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
     lateinit var responseUrl: String
     lateinit var walletUrl: String
 
-    lateinit var holderCryptoService: CryptoService
+    lateinit var holderKeyPair: KeyPairAdapter
     lateinit var verifierCryptoService: CryptoService
 
     lateinit var holderAgent: Holder
@@ -39,11 +39,11 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                     )
                 }
             ))))
-        holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+        holderKeyPair = RandomKeyPairAdapter()
         verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter(extensions))
         responseUrl = "https://example.com"
         walletUrl = "https://example.com/wallet/${uuid4()}"
-        holderAgent = HolderAgent(holderCryptoService)
+        holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
         runBlocking {
             holderAgent.storeCredentials(
@@ -51,7 +51,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                     DefaultCryptoService(RandomKeyPairAdapter()),
                     DummyCredentialDataProvider(),
                 ).issueCredential(
-                    subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+                    subjectPublicKey = holderKeyPair.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                 ).toStoreCredentialInput()
@@ -59,8 +59,8 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         }
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
+            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
-            cryptoService = holderCryptoService
         )
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,

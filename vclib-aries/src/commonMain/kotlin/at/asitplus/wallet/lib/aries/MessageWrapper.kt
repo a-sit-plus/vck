@@ -8,6 +8,8 @@ import at.asitplus.crypto.datatypes.jws.JweEncryption
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -17,8 +19,8 @@ import at.asitplus.wallet.lib.msg.JsonWebMessage
 import io.github.aakira.napier.Napier
 
 class MessageWrapper(
-    private val cryptoService: CryptoService,
-    private val jwsService: JwsService = DefaultJwsService(cryptoService),
+    private val keyPairAdapter: KeyPairAdapter,
+    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
 ) {
 

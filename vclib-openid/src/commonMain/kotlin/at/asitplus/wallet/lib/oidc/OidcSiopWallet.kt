@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.FormatHolder
@@ -79,9 +80,9 @@ class OidcSiopWallet(
 ) {
     companion object {
         fun newDefaultInstance(
-            cryptoService: CryptoService = DefaultCryptoService(RandomKeyPairAdapter()),
-            holder: Holder = HolderAgent(cryptoService),
-            jwsService: JwsService = DefaultJwsService(cryptoService),
+            keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
+            holder: Holder = HolderAgent(keyPairAdapter),
+            jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
             clock: Clock = Clock.System,
             clientId: String = "https://wallet.a-sit.at/",
             remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
@@ -89,7 +90,7 @@ class OidcSiopWallet(
             scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever? = { null },
         ) = OidcSiopWallet(
             holder = holder,
-            agentPublicKey = cryptoService.keyPairAdapter.publicKey,
+            agentPublicKey = keyPairAdapter.publicKey,
             jwsService = jwsService,
             clock = clock,
             clientId = clientId,

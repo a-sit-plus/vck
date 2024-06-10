@@ -31,7 +31,7 @@ class ValidatorVpTest : FreeSpec({
     lateinit var holder: HolderAgent
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var holderJwsService: JwsService
-    lateinit var holderCryptoService: CryptoService
+    lateinit var holderKeyPair: KeyPairAdapter
     lateinit var verifier: Verifier
     lateinit var challenge: String
 
@@ -46,15 +46,15 @@ class ValidatorVpTest : FreeSpec({
             DummyCredentialDataProvider(),
         )
         holderCredentialStore = InMemorySubjectCredentialStore()
-        holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
-        holder = HolderAgent(holderCryptoService, holderCredentialStore)
-        holderJwsService = DefaultJwsService(holderCryptoService)
+        holderKeyPair = RandomKeyPairAdapter()
+        holder = HolderAgent(holderKeyPair, holderCredentialStore)
+        holderJwsService = DefaultJwsService(DefaultCryptoService(holderKeyPair))
         verifier = VerifierAgent()
         challenge = uuid4().toString()
 
         runBlocking {
             issuedCredential = issuer.issueCredential(
-                subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+                subjectPublicKey = holderKeyPair.publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             )

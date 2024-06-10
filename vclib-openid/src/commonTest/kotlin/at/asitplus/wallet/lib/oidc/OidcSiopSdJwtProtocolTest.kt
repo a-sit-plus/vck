@@ -5,6 +5,7 @@ import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -25,7 +26,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     lateinit var relyingPartyUrl: String
     lateinit var walletUrl: String
 
-    lateinit var holderCryptoService: CryptoService
+    lateinit var holderKeyPair: KeyPairAdapter
     lateinit var verifierCryptoService: CryptoService
 
     lateinit var holderAgent: Holder
@@ -35,11 +36,11 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+        holderKeyPair = RandomKeyPairAdapter()
         verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
-        holderAgent = HolderAgent(holderCryptoService)
+        holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
         runBlocking {
             holderAgent.storeCredentials(
@@ -47,7 +48,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
                     DefaultCryptoService(RandomKeyPairAdapter()),
                     DummyCredentialDataProvider(),
                 ).issueCredential(
-                    subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+                    subjectPublicKey = holderKeyPair.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                 ).toStoreCredentialInput()
@@ -55,8 +56,8 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         }
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
+            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
-            cryptoService = holderCryptoService
         )
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
