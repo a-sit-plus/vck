@@ -21,7 +21,7 @@ class PresentProofProtocolTest : FreeSpec({
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
         holder = HolderAgent(holderCryptoService)
-        verifier = VerifierAgent(verifierCryptoService.publicKey)
+        verifier = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
         holderProtocol = PresentProofProtocol.newHolderInstance(
             holder = holder,
             serviceEndpoint = "https://example.com/",
@@ -39,7 +39,7 @@ class PresentProofProtocolTest : FreeSpec({
                 DefaultCryptoService(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
-                subjectPublicKey = holderCryptoService.publicKey,
+                subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).toStoreCredentialInput()
@@ -73,7 +73,7 @@ class PresentProofProtocolTest : FreeSpec({
                 DefaultCryptoService(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
-                subjectPublicKey = holderCryptoService.publicKey,
+                subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).toStoreCredentialInput()

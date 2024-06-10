@@ -39,14 +39,14 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderCryptoService)
-        verifierAgent = VerifierAgent(verifierCryptoService.publicKey)
+        verifierAgent = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
         runBlocking {
             holderAgent.storeCredentials(
                 IssuerAgent(
                     DefaultCryptoService(),
                     DummyCredentialDataProvider(),
                 ).issueCredential(
-                    subjectPublicKey = holderCryptoService.publicKey,
+                    subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                 ).toStoreCredentialInput()

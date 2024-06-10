@@ -69,7 +69,7 @@ class IssuerAgent(
         jwsService = DefaultJwsService(cryptoService),
         coseService = DefaultCoseService(cryptoService),
         dataProvider = dataProvider,
-        publicKey = InMemoryPublicKeyAdapter(cryptoService.publicKey),
+        publicKey = InMemoryPublicKeyAdapter(cryptoService.keyPairAdapter.publicKey),
         cryptoAlgorithms = setOf(cryptoService.keyPairAdapter.signingAlgorithm),
     )
 
@@ -83,7 +83,7 @@ class IssuerAgent(
         jwsService = DefaultJwsService(cryptoService),
         coseService = DefaultCoseService(cryptoService),
         dataProvider = dataProvider,
-        publicKey = InMemoryPublicKeyAdapter(cryptoService.publicKey),
+        publicKey = InMemoryPublicKeyAdapter(cryptoService.keyPairAdapter.publicKey),
         cryptoAlgorithms = setOf(cryptoService.keyPairAdapter.signingAlgorithm),
     )
 

@@ -35,7 +35,7 @@ class PresentProofMessengerTest : FreeSpec() {
             issuerCryptoService = DefaultCryptoService()
             holderCredentialStore = InMemorySubjectCredentialStore()
             holder = HolderAgent(holderCryptoService, holderCredentialStore)
-            verifier = VerifierAgent(verifierCryptoService.publicKey)
+            verifier = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
             issuer = IssuerAgent(issuerCryptoService, DummyCredentialDataProvider())
             verifierChallenge = uuid4().toString()
             holderServiceEndpoint = "https://example.com/present-proof?${uuid4()}"
@@ -44,7 +44,7 @@ class PresentProofMessengerTest : FreeSpec() {
         "presentProof" {
             holder.storeCredentials(
                 issuer.issueCredential(
-                    holderCryptoService.publicKey,
+                    holderCryptoService.keyPairAdapter.publicKey,
                     listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).toStoreCredentialInput()
@@ -84,7 +84,7 @@ class PresentProofMessengerTest : FreeSpec() {
 
         "selectiveDisclosure" {
             val issuedCredential = issuer.issueCredential(
-                holderCryptoService.publicKey,
+                holderCryptoService.keyPairAdapter.publicKey,
                 listOf(ConstantIndex.AtomicAttribute2023.vcType),
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             )

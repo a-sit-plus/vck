@@ -54,7 +54,7 @@ class HolderAgent(
         subjectCredentialStore = subjectCredentialStore,
         jwsService = DefaultJwsService(cryptoService),
         coseService = DefaultCoseService(cryptoService),
-        publicKey = InMemoryPublicKeyAdapter(cryptoService.publicKey)
+        publicKey = InMemoryPublicKeyAdapter(cryptoService.keyPairAdapter.publicKey)
     )
 
     /**

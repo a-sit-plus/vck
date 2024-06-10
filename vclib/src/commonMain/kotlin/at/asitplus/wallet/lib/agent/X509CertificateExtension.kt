@@ -34,7 +34,7 @@ fun X509Certificate.Companion.generateSelfSignedCertificate(
         validUntil = Asn1Time(notAfterDate),
         signatureAlgorithm = cryptoService.keyPairAdapter.signingAlgorithm,
         subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
-        publicKey = cryptoService.publicKey,
+        publicKey = cryptoService.keyPairAdapter.publicKey,
         extensions = extensions
     )
     val signature = runBlocking {

@@ -54,7 +54,7 @@ class ValidatorVpTest : FreeSpec({
 
         runBlocking {
             issuedCredential = issuer.issueCredential(
-                subjectPublicKey = holderCryptoService.publicKey,
+                subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             )

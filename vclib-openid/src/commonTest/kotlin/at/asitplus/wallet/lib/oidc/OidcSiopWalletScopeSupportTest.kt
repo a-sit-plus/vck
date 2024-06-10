@@ -86,7 +86,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             verifierCryptoService = DefaultCryptoService()
             relyingPartyUrl = "https://example.com/rp/${uuid4()}"
             holderAgent = HolderAgent(holderCryptoService)
-            verifierAgent = VerifierAgent(verifierCryptoService.publicKey)
+            verifierAgent = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
 
             holderSiop = OidcSiopWallet.newDefaultInstance(
                 holder = holderAgent,
@@ -108,7 +108,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
                 )
                 holderAgent.storeCredentials(
                     issuerAgent.issueCredential(
-                        subjectPublicKey = holderCryptoService.publicKey,
+                        subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
                         attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                         representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
                     ).toStoreCredentialInput()
@@ -153,7 +153,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
                 )
                 holderAgent.storeCredentials(
                     issuerAgent.issueCredential(
-                        subjectPublicKey = holderCryptoService.publicKey,
+                        subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
                         attributeTypes = listOf(MobileDrivingLicenceScheme.isoNamespace),
                         representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
                     ).toStoreCredentialInput()

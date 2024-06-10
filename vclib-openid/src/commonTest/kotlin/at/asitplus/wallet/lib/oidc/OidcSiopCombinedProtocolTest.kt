@@ -41,7 +41,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         verifierCryptoService = DefaultCryptoService()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         holderAgent = HolderAgent(holderCryptoService)
-        verifierAgent = VerifierAgent(verifierCryptoService.publicKey)
+        verifierAgent = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
@@ -440,7 +440,7 @@ private suspend fun Holder.storeJwtCredentials(
             DefaultCryptoService(),
             DummyCredentialDataProvider(),
         ).issueCredential(
-            subjectPublicKey = holderCryptoService.publicKey,
+            subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
             attributeTypes = attributeTypes,
             representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         ).toStoreCredentialInput()
@@ -456,7 +456,7 @@ private suspend fun Holder.storeSdJwtCredential(
             DefaultCryptoService(),
             DummyCredentialDataProvider(),
         ).issueCredential(
-            subjectPublicKey = holderCryptoService.publicKey,
+            subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
             attributeTypes = attributeTypes,
             representation = ConstantIndex.CredentialRepresentation.SD_JWT,
         ).toStoreCredentialInput()
@@ -471,7 +471,7 @@ private suspend fun Holder.storeIsoCredential(
         DefaultCryptoService(),
         DummyCredentialDataProvider(),
     ).issueCredential(
-        subjectPublicKey = holderCryptoService.publicKey,
+        subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
         attributeTypes = attributeTypes,
         representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
     ).toStoreCredentialInput()
