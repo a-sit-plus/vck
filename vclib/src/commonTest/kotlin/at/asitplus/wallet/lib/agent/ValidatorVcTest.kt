@@ -4,7 +4,11 @@ import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.CredentialStatus
+import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -25,7 +29,7 @@ class ValidatorVcTest : FreeSpec() {
     private lateinit var issuer: Issuer
     private lateinit var issuerCredentialStore: IssuerCredentialStore
     private lateinit var issuerJwsService: JwsService
-    private lateinit var issuerCryptoService: CryptoService
+    private lateinit var issuerKeyPair: KeyPairAdapter
     private lateinit var verifier: Verifier
     private lateinit var verifierCryptoService: CryptoService
 
@@ -35,12 +39,9 @@ class ValidatorVcTest : FreeSpec() {
     init {
         beforeEach {
             issuerCredentialStore = InMemoryIssuerCredentialStore()
-            issuerCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
-            issuer = IssuerAgent(
-                issuerCryptoService,
-                issuerCredentialStore,
-            )
-            issuerJwsService = DefaultJwsService(issuerCryptoService)
+            issuerKeyPair = RandomKeyPairAdapter()
+            issuer = IssuerAgent(issuerKeyPair, issuerCredentialStore)
+            issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyPair))
             verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
             verifier = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
         }
@@ -120,7 +121,7 @@ class ValidatorVcTest : FreeSpec() {
                 issueCredential(it)
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
-                    ?.let {
+                    .let {
                         verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                     }
             }
@@ -157,7 +158,7 @@ class ValidatorVcTest : FreeSpec() {
                 issueCredential(it)
                     .let { wrapVcInJws(it, subject = "vc.id") }
                     .let { signJws(it) }
-                    ?.let {
+                    .let {
                         verifier.verifyVcJws(it)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
@@ -175,7 +176,7 @@ class ValidatorVcTest : FreeSpec() {
             ) {
                 issueCredential(it)
                     .let { wrapVcInJws(it, issuer = "vc.issuer") }
-                    .let { signJws(it) }?.let {
+                    .let { signJws(it) }.let {
                         verifier.verifyVcJws(it)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
@@ -194,7 +195,7 @@ class ValidatorVcTest : FreeSpec() {
                 issueCredential(it)
                     .let { wrapVcInJws(it, jwtId = "vc.jwtId") }
                     .let { signJws(it) }
-                    ?.let {
+                    .let {
                         verifier.verifyVcJws(it)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
@@ -222,7 +223,7 @@ class ValidatorVcTest : FreeSpec() {
                         )
                     }
                     .let { signJws(it) }
-                    ?.let {
+                    .let {
                         verifier.verifyVcJws(it)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
@@ -241,7 +242,7 @@ class ValidatorVcTest : FreeSpec() {
                 issueCredential(it, expirationDate = null)
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
-                    ?.let {
+                    .let {
                         verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                     }
             }
@@ -259,7 +260,7 @@ class ValidatorVcTest : FreeSpec() {
                 issueCredential(it, expirationDate = Clock.System.now() + 1.hours)
                     .let { wrapVcInJws(it, expirationDate = Clock.System.now() - 1.hours) }
                     .let { signJws(it) }
-                    ?.let {
+                    .let {
                         verifier.verifyVcJws(it)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
@@ -278,7 +279,7 @@ class ValidatorVcTest : FreeSpec() {
                 it.let { issueCredential(it, expirationDate = Clock.System.now() + 1.hours) }
                     .let { wrapVcInJws(it, expirationDate = Clock.System.now() + 2.hours) }
                     .let { signJws(it) }
-                    ?.let {
+                    .let {
                         verifier.verifyVcJws(it)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
@@ -297,7 +298,7 @@ class ValidatorVcTest : FreeSpec() {
                 it.let { issueCredential(it) }
                     .let { wrapVcInJws(it, issuanceDate = Clock.System.now() + 2.hours) }
                     .let { signJws(it) }
-                    ?.let {
+                    .let {
                         verifier.verifyVcJws(it)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
@@ -316,7 +317,7 @@ class ValidatorVcTest : FreeSpec() {
                 issueCredential(it, issuanceDate = Clock.System.now() + 1.hours)
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
-                    ?.let {
+                    .let {
                         verifier.verifyVcJws(it)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
@@ -335,7 +336,7 @@ class ValidatorVcTest : FreeSpec() {
                 issueCredential(it, issuanceDate = Clock.System.now() - 1.hours)
                     .let { wrapVcInJws(it, issuanceDate = Clock.System.now()) }
                     .let { signJws(it) }
-                    ?.let {
+                    .let {
                         verifier.verifyVcJws(it)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
@@ -347,8 +348,10 @@ class ValidatorVcTest : FreeSpec() {
         when (it) {
             is CredentialToBeIssued.Iso -> (it::class.simpleName ?: "Iso") + "-" +
                     it.issuerSignedItems.hashCode()
+
             is CredentialToBeIssued.VcJwt -> (it::class.simpleName ?: "VcJwt") + "-" +
                     it.subject.hashCode()
+
             is CredentialToBeIssued.VcSd -> (it::class.simpleName ?: "VcSd") + "-" +
                     it.claims.hashCode()
         }
@@ -366,7 +369,7 @@ class ValidatorVcTest : FreeSpec() {
         val exp = expirationDate ?: (Clock.System.now() + 60.seconds)
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
             credential = IssuerCredentialStore.Credential.VcJwt(vcId, sub, ConstantIndex.AtomicAttribute2023),
-            subjectPublicKey = issuerCryptoService.keyPairAdapter.publicKey,
+            subjectPublicKey = issuerKeyPair.publicKey,
             issuanceDate = issuanceDate,
             expirationDate = exp,
             timePeriod = FixedTimePeriodProvider.timePeriod
@@ -416,7 +419,7 @@ class ValidatorVcTest : FreeSpec() {
             jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
                     "." + jwsPayload.encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
-        val signature = issuerCryptoService.sign(signatureInputBytes)
+        val signature = DefaultCryptoService(issuerKeyPair).sign(signatureInputBytes)
             .getOrElse { return null }
         return JwsSigned(jwsHeader, jwsPayload, signature, signatureInput).serialize()
     }

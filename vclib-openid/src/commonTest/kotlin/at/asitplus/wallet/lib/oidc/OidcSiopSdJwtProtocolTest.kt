@@ -45,7 +45,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         runBlocking {
             holderAgent.storeCredentials(
                 IssuerAgent(
-                    DefaultCryptoService(RandomKeyPairAdapter()),
+                    RandomKeyPairAdapter(),
                     DummyCredentialDataProvider(),
                 ).issueCredential(
                     subjectPublicKey = holderKeyPair.publicKey,

@@ -18,7 +18,7 @@ class PresentProofMessengerTest : FreeSpec() {
 
     private lateinit var holderKeyPair: KeyPairAdapter
     private lateinit var verifierCryptoService: CryptoService
-    private lateinit var issuerCryptoService: CryptoService
+    private lateinit var issuerKeyPair: KeyPairAdapter
     private lateinit var holderCredentialStore: SubjectCredentialStore
     private lateinit var holder: Holder
     private lateinit var verifier: Verifier
@@ -32,11 +32,11 @@ class PresentProofMessengerTest : FreeSpec() {
         beforeEach {
             holderKeyPair = RandomKeyPairAdapter()
             verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
-            issuerCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+            issuerKeyPair = RandomKeyPairAdapter()
             holderCredentialStore = InMemorySubjectCredentialStore()
             holder = HolderAgent(holderKeyPair, holderCredentialStore)
             verifier = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
-            issuer = IssuerAgent(issuerCryptoService, DummyCredentialDataProvider())
+            issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
             verifierChallenge = uuid4().toString()
             holderServiceEndpoint = "https://example.com/present-proof?${uuid4()}"
         }

@@ -47,7 +47,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         verifierAgent = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
         runBlocking {
             val issuerAgent = IssuerAgent(
-                DefaultCryptoService(RandomKeyPairAdapter()),
+                RandomKeyPairAdapter(),
                 DummyCredentialDataProvider(),
             )
             holderAgent.storeCredentials(

@@ -29,7 +29,7 @@ class AgentRevocationTest : FreeSpec({
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
-            DefaultCryptoService(RandomKeyPairAdapter()),
+            RandomKeyPairAdapter(),
             issuerCredentialStore,
             DummyCredentialDataProvider()
         )
@@ -72,7 +72,7 @@ class AgentRevocationTest : FreeSpec({
 
     "encoding to a known value works" {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(DefaultCryptoService(RandomKeyPairAdapter()), issuerCredentialStore)
+        issuer = IssuerAgent(RandomKeyPairAdapter(), issuerCredentialStore)
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 
@@ -88,7 +88,7 @@ class AgentRevocationTest : FreeSpec({
 
     "decoding a known value works" {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(DefaultCryptoService(RandomKeyPairAdapter()), issuerCredentialStore)
+        issuer = IssuerAgent(RandomKeyPairAdapter(), issuerCredentialStore)
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 

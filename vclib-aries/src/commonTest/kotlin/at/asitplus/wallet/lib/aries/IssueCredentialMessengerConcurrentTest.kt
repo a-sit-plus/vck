@@ -1,10 +1,9 @@
 package at.asitplus.wallet.lib.aries
 
-import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -19,15 +18,15 @@ import kotlinx.coroutines.launch
 
 class IssueCredentialMessengerConcurrentTest : FreeSpec() {
 
-    private lateinit var issuerCryptoService: CryptoService
+    private lateinit var issuerKeyPair: KeyPairAdapter
     private lateinit var issuer: Issuer
     private lateinit var issuerServiceEndpoint: String
     private lateinit var issuerMessenger: IssueCredentialMessenger
 
     init {
         beforeEach {
-            issuerCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
-            issuer = IssuerAgent(issuerCryptoService, DummyCredentialDataProvider())
+            issuerKeyPair = RandomKeyPairAdapter()
+            issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
             issuerMessenger = initIssuerMessenger(ConstantIndex.AtomicAttribute2023)
         }
@@ -58,7 +57,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
     private fun initIssuerMessenger(scheme: ConstantIndex.CredentialScheme) =
         IssueCredentialMessenger.newIssuerInstance(
             issuer = issuer,
-            messageWrapper = MessageWrapper(issuerCryptoService),
+            messageWrapper = MessageWrapper(issuerKeyPair),
             serviceEndpoint = issuerServiceEndpoint,
             credentialScheme = scheme,
         )
