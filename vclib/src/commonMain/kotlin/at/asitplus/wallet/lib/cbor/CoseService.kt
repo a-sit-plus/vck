@@ -67,8 +67,8 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         if (addKeyId) copyProtectedHeader =
             copyProtectedHeader.copy(kid = cryptoService.keyPairAdapter.publicKey.didEncoded.encodeToByteArray())
 
-        val copyUnprotectedHeader = if (addCertificate && cryptoService.certificate != null) {
-            (unprotectedHeader ?: CoseHeader()).copy(certificateChain = cryptoService.certificate!!.encodeToDer())
+        val copyUnprotectedHeader = if (addCertificate && cryptoService.keyPairAdapter.certificate != null) {
+            (unprotectedHeader ?: CoseHeader()).copy(certificateChain = cryptoService.keyPairAdapter.certificate!!.encodeToDer())
         } else {
             unprotectedHeader
         }

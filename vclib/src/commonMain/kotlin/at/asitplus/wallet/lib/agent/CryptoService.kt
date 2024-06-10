@@ -11,7 +11,6 @@ import at.asitplus.crypto.datatypes.ECCurve
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncryption
-import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 
 interface CryptoService {
@@ -58,12 +57,6 @@ interface CryptoService {
     fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray>
 
     val keyPairAdapter: KeyPairAdapter
-
-    /**
-     * May be used in [at.asitplus.wallet.lib.cbor.CoseService] to transport the signing key for a COSE structure.
-     * a `null` value signifies that raw public keys are used and no certificate is present
-     */
-    val certificate: X509Certificate?
 
 }
 

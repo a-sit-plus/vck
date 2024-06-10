@@ -47,8 +47,6 @@ actual open class DefaultCryptoService : CryptoService {
 
     private val privateKey: PrivateKey
 
-    actual final override val certificate: X509Certificate
-
     actual final override val keyPairAdapter: KeyPairAdapter
 
     /**
@@ -61,7 +59,6 @@ actual open class DefaultCryptoService : CryptoService {
         keyPairAdapter as JvmKeyPairAdapter
         this.keyPairAdapter = keyPairAdapter
         this.privateKey = keyPairAdapter.keyPair.private
-        this.certificate = X509Certificate.generateSelfSignedCertificate(this)
     }
 
     /**
@@ -76,7 +73,7 @@ actual open class DefaultCryptoService : CryptoService {
         certificateExtensions: List<X509CertificateExtension> = listOf()
     ) {
         this.privateKey = keyPair.private
-        this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
+        val certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
         this.keyPairAdapter = JvmKeyPairAdapter(keyPair, CryptoAlgorithm.ES256, certificate)
     }
 

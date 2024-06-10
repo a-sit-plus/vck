@@ -150,7 +150,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         if (addJsonWebKey)
             copy = copy.copy(jsonWebKey = cryptoService.keyPairAdapter.jsonWebKey)
         if (addX5c)
-            copy = copy.copy(certificateChain = listOf(cryptoService!!.certificate!!)) //TODO cleanup/nullchecks
+            copy = copy.copy(certificateChain = listOf(cryptoService!!.keyPairAdapter.certificate!!)) //TODO cleanup/nullchecks
         return createSignedJws(copy, payload)
     }
 

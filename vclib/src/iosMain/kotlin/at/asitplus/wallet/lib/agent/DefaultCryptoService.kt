@@ -36,7 +36,6 @@ actual class DefaultCryptoService : CryptoService {
 
     private val secPrivateKey: SecKeyRef
     private val secPublicKey: SecKeyRef
-    actual override val certificate: X509Certificate?
     actual override val keyPairAdapter: KeyPairAdapter
     actual constructor() : this(listOf())
 
@@ -46,7 +45,6 @@ actual class DefaultCryptoService : CryptoService {
         this.keyPairAdapter = keyPairAdapter
         this.secPrivateKey = keyPairAdapter.secPrivateKey
         this.secPublicKey = keyPairAdapter.secPublicKey
-        this.certificate = X509Certificate.generateSelfSignedCertificate(this)
     }
 
     constructor(certificateExtensions: List<X509CertificateExtension>) {
@@ -56,16 +54,13 @@ actual class DefaultCryptoService : CryptoService {
         }
         secPrivateKey = SecKeyCreateRandomKey(query, null)!!
         secPublicKey = SecKeyCopyPublicKey(secPrivateKey)!!
-        this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
+        val certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
         this.keyPairAdapter = IosKeyPairAdapter(secPrivateKey, secPublicKey, CryptoAlgorithm.ES256, certificate)
     }
 
     constructor(secPrivateKey: SecKeyRef, secPublicKey: SecKeyRef) {
         this.secPrivateKey = secPrivateKey
         this.secPublicKey = secPublicKey
-        val publicKeyData = SecKeyCopyExternalRepresentation(secPublicKey, null)
-        val data = CFBridgingRelease(publicKeyData) as NSData
-        this.certificate = null
         this.keyPairAdapter = IosKeyPairAdapter(secPrivateKey, secPublicKey, CryptoAlgorithm.ES256, null)
     }
 
