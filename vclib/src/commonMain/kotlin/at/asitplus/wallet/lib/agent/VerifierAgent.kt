@@ -1,8 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JwsSigned
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.iso.Document
@@ -17,17 +15,17 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
  */
 class VerifierAgent private constructor(
     private val validator: Validator,
-    override val publicKey: PublicKeyAdapter,
+    override val publicKey: KeyPairAdapter,
 ) : Verifier {
 
-    constructor(publicKey: CryptoPublicKey) : this(
+    constructor(keyPairAdapter: KeyPairAdapter) : this(
         validator = Validator.newDefaultInstance(),
-        publicKey = InMemoryPublicKeyAdapter(publicKey),
+        publicKey = keyPairAdapter,
     )
 
     constructor(): this(
         validator = Validator.newDefaultInstance(),
-        publicKey = InMemoryPublicKeyAdapter(RandomKeyPairAdapter().publicKey),
+        publicKey = RandomKeyPairAdapter(),
     )
 
     override fun setRevocationList(it: String): Boolean {

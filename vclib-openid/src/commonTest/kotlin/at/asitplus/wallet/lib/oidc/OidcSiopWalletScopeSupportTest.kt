@@ -2,8 +2,6 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
@@ -17,8 +15,8 @@ import at.asitplus.wallet.lib.data.dif.ConstraintField
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.SchemaReference
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
@@ -75,7 +73,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         lateinit var relyingPartyUrl: String
 
         lateinit var holderKeyPair: KeyPairAdapter
-        lateinit var verifierCryptoService: CryptoService
+        lateinit var verifierKeyPair: KeyPairAdapter
 
         lateinit var holderAgent: Holder
         lateinit var verifierAgent: Verifier
@@ -85,10 +83,10 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
 
         beforeEach {
             holderKeyPair = RandomKeyPairAdapter()
-            verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+            verifierKeyPair = RandomKeyPairAdapter()
             relyingPartyUrl = "https://example.com/rp/${uuid4()}"
             holderAgent = HolderAgent(holderKeyPair)
-            verifierAgent = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
+            verifierAgent = VerifierAgent(verifierKeyPair)
 
             holderSiop = OidcSiopWallet.newDefaultInstance(
                 keyPairAdapter = holderKeyPair,
@@ -97,7 +95,6 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             )
             verifierSiop = OidcSiopVerifier.newInstance(
                 verifier = verifierAgent,
-                cryptoService = verifierCryptoService,
                 relyingPartyUrl = relyingPartyUrl,
             )
         }

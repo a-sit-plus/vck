@@ -23,7 +23,7 @@ interface Verifier {
     /**
      * The public key for this agent, i.e. the one used to validate the audience of a VP against
      */
-    val publicKey: PublicKeyAdapter
+    val publicKey: KeyPairAdapter
 
     /**
      * Set the revocation list to use for validating VCs (from [Issuer.issueRevocationListCredential])
