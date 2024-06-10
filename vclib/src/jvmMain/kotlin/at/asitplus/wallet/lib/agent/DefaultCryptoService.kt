@@ -24,7 +24,6 @@ import at.asitplus.crypto.datatypes.jws.JweEncryption
 import at.asitplus.crypto.datatypes.jws.isAuthenticatedEncryption
 import at.asitplus.crypto.datatypes.jws.jcaKeySpecName
 import at.asitplus.crypto.datatypes.jws.jcaName
-import at.asitplus.crypto.datatypes.jws.jwkId
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.crypto.datatypes.parseFromJca
 import at.asitplus.crypto.datatypes.pki.X509Certificate
@@ -58,10 +57,24 @@ actual open class DefaultCryptoService : CryptoService {
 
     actual final override val coseKey: CoseKey
 
+    final override val keyPairAdapter: KeyPairAdapter
+
     /**
      * Default constructor without arguments is ES256
      */
     actual constructor() : this(genEc256KeyPair(), CryptoAlgorithm.ES256)
+
+    actual constructor(keyPairAdapter: KeyPairAdapter) {
+        assert(keyPairAdapter is JvmKeyPairAdapter)
+        keyPairAdapter as JvmKeyPairAdapter
+        this.keyPairAdapter = keyPairAdapter
+        this.privateKey = keyPairAdapter.keyPair.private
+        this.algorithm = keyPairAdapter.signingAlgorithm
+        this.publicKey = keyPairAdapter.publicKey
+        this.jsonWebKey = publicKey.toJsonWebKey()
+        this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
+        this.certificate = X509Certificate.generateSelfSignedCertificate(this)
+    }
 
     /**
      * Constructor which allows all public keys implemented in `KMP-Crypto`
@@ -80,6 +93,7 @@ actual open class DefaultCryptoService : CryptoService {
         this.jsonWebKey = publicKey.toJsonWebKey()
         this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
         this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
+        this.keyPairAdapter = JvmKeyPairAdapter(keyPair, CryptoAlgorithm.ES256, certificate)
     }
 
     actual override suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature> = runCatching {
@@ -191,6 +205,31 @@ actual open class DefaultCryptoService : CryptoService {
         actual fun withSelfSignedCert(extensions: List<X509CertificateExtension>): CryptoService =
             DefaultCryptoService(genEc256KeyPair(), CryptoAlgorithm.ES256, extensions)
     }
+}
+
+class JvmKeyPairAdapter(
+    val keyPair: KeyPair,
+    override val signingAlgorithm: CryptoAlgorithm,
+    override val certificate: X509Certificate?
+) : KeyPairAdapter {
+    override val publicKey: CryptoPublicKey
+        get() = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
+    override val identifier: String
+        get() = publicKey.didEncoded
+    override val jsonWebKey: JsonWebKey
+        get() = publicKey.toJsonWebKey()
+    override val coseKey: CoseKey
+        get() = publicKey.toCoseKey(signingAlgorithm.toCoseAlgorithm()).getOrThrow()
+}
+
+actual fun RandomKeyPairAdapter(): KeyPairAdapter {
+    val keyPair = genEc256KeyPair()
+    val signingAlgorithm = CryptoAlgorithm.ES256
+    val publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
+    val certificate = X509Certificate.generateSelfSignedCertificate(publicKey, signingAlgorithm) { it ->
+        DefaultCryptoService(keyPair, signingAlgorithm).sign(it)
+    }
+    return JvmKeyPairAdapter(keyPair, signingAlgorithm, certificate)
 }
 
 private fun genEc256KeyPair(): KeyPair =

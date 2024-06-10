@@ -67,7 +67,7 @@ class CredentialIssuer(
                 authorizationService.publicContext + authorizationService.tokenEndpointPath
             else null,
             supportedCredentialConfigurations = mutableMapOf<String, SupportedCredentialFormat>().apply {
-                credentialSchemes.forEach { putAll(it.toSupportedCredentialFormat(issuer.cryptoAlgorithms)) }
+                credentialSchemes.forEach { putAll(it.toSupportedCredentialFormat(issuer.publicKey.signingAlgorithms)) }
             },
             supportsCredentialIdentifiers = true,
         )
@@ -79,7 +79,7 @@ class CredentialIssuer(
      */
     suspend fun credentialOffer(): CredentialOffer = CredentialOffer(
         credentialIssuer = publicContext,
-        configurationIds = credentialSchemes.flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).keys },
+        configurationIds = credentialSchemes.flatMap { it.toSupportedCredentialFormat(issuer.publicKey.signingAlgorithms).keys },
         grants = CredentialOfferGrants(
             authorizationCode = CredentialOfferGrantsAuthCode(
                 issuerState = uuid4().toString(), // TODO remember this state, for subsequent requests from the Wallet

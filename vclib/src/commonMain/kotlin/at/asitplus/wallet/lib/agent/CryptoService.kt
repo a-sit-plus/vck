@@ -54,6 +54,8 @@ interface CryptoService {
 
     fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray>
 
+    val keyPairAdapter: KeyPairAdapter
+
     val algorithm: CryptoAlgorithm
 
     // TODO Also use an adapter here? and put jsonWebKey and coseKey into that
@@ -62,6 +64,7 @@ interface CryptoService {
     val jsonWebKey: JsonWebKey
 
     val coseKey: CoseKey
+
 
     /**
      * May be used in [at.asitplus.wallet.lib.cbor.CoseService] to transport the signing key for a COSE structure.
@@ -148,12 +151,14 @@ expect class DefaultCryptoService() : CryptoService {
         digest: Digest
     ): KmmResult<ByteArray>
 
+    override val keyPairAdapter: KeyPairAdapter
     override val algorithm: CryptoAlgorithm
     override val publicKey: CryptoPublicKey
     override val jsonWebKey: JsonWebKey
     override val coseKey: CoseKey
     override val certificate: X509Certificate?
-
+    
+    constructor(keyPairAdapter: KeyPairAdapter)
     companion object {
         fun withSelfSignedCert(
             extensions: List<X509CertificateExtension> = listOf()
