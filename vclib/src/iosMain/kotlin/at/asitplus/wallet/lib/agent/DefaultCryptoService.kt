@@ -71,8 +71,8 @@ actual class DefaultCryptoService : CryptoService {
         }
     }
 
-    actual override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> {
-        return KmmResult.success(CryptoSignature.EC.decodeFromDer(signInt(input)).withCurve(algorithm.curve!!))
+    actual override suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature> {
+        return KmmResult.success(CryptoSignature.decodeFromDer(signInt(input)))
     }
 
     actual override fun encrypt(
