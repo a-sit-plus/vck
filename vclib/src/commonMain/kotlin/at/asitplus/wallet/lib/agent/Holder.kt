@@ -140,6 +140,7 @@ interface Holder {
      */
     suspend fun createPresentation(
         challenge: String,
+        // TODO Pass a public key adapter here
         audienceId: String,
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder? = null,

@@ -58,6 +58,9 @@ class IssuerAgent(
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
 ) : Issuer {
 
+    // TODO use constructor with one key instance only
+    // or restrict the interface of PublicKeyAdapter somehow?
+
     constructor(
         cryptoService: CryptoService = DefaultCryptoService(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,

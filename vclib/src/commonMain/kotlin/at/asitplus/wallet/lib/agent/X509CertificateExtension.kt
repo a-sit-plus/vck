@@ -1,7 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
 
+import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.crypto.datatypes.CryptoAlgorithm
+import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.CryptoSignature
 import at.asitplus.crypto.datatypes.asn1.Asn1String
 import at.asitplus.crypto.datatypes.asn1.Asn1Time
 import at.asitplus.crypto.datatypes.pki.AttributeTypeAndValue
@@ -40,4 +44,31 @@ fun X509Certificate.Companion.generateSelfSignedCertificate(
             .getOrThrow()
     }
     return X509Certificate(tbsCertificate, cryptoService.algorithm, signature)
+}
+
+fun X509Certificate.Companion.generateSelfSignedCertificate(
+    publicKey: CryptoPublicKey,
+    algorithm: CryptoAlgorithm,
+    signer: suspend (ByteArray) -> KmmResult<CryptoSignature>,
+): X509Certificate {
+    val notBeforeDate = Clock.System.now()
+    val notAfterDate = notBeforeDate.plus(30, DateTimeUnit.SECOND)
+    val tbsCertificate = TbsCertificate(
+        version = 2,
+        serialNumber = Random.nextBytes(8),
+        issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8("Default")))),
+        validFrom = Asn1Time(notBeforeDate),
+        validUntil = Asn1Time(notAfterDate),
+        signatureAlgorithm = algorithm,
+        subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8("Default")))),
+        publicKey = publicKey,
+        extensions = listOf()
+    )
+    val signature = runBlocking {
+        runCatching { tbsCertificate.encodeToDer() }
+            .wrap()
+            .transform { signer(it) }
+            .getOrThrow()
+    }
+    return X509Certificate(tbsCertificate, algorithm, signature)
 }
