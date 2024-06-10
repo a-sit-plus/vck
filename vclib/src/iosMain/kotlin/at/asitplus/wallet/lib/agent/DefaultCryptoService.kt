@@ -34,17 +34,16 @@ import platform.CoreFoundation.CFDictionaryAddValue as CFDictionaryAddValue1
 @Suppress("UNCHECKED_CAST")
 actual class DefaultCryptoService : CryptoService {
 
-    private val secPrivateKey: SecKeyRef
-    private val secPublicKey: SecKeyRef
     actual override val keyPairAdapter: KeyPairAdapter
+    private val iosKeyPairAdapter: IosKeyPairAdapter
+
     actual constructor() : this(listOf())
 
     actual constructor(keyPairAdapter: KeyPairAdapter) {
         assert(keyPairAdapter is IosKeyPairAdapter)
         keyPairAdapter as IosKeyPairAdapter
         this.keyPairAdapter = keyPairAdapter
-        this.secPrivateKey = keyPairAdapter.secPrivateKey
-        this.secPublicKey = keyPairAdapter.secPublicKey
+        this.iosKeyPairAdapter = keyPairAdapter
     }
 
     constructor(certificateExtensions: List<X509CertificateExtension>) {
@@ -52,23 +51,23 @@ actual class DefaultCryptoService : CryptoService {
             CFDictionaryAddValue1(this, kSecAttrKeyType, kSecAttrKeyTypeEC)
             CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
         }
-        secPrivateKey = SecKeyCreateRandomKey(query, null)!!
-        secPublicKey = SecKeyCopyPublicKey(secPrivateKey)!!
+        val secPrivateKey = SecKeyCreateRandomKey(query, null)!!
+        val secPublicKey = SecKeyCopyPublicKey(secPrivateKey)!!
         val certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
-        this.keyPairAdapter = IosKeyPairAdapter(secPrivateKey, secPublicKey, CryptoAlgorithm.ES256, certificate)
+        this.iosKeyPairAdapter = IosKeyPairAdapter(secPrivateKey, secPublicKey, CryptoAlgorithm.ES256, certificate)
+        this.keyPairAdapter = iosKeyPairAdapter
     }
 
     constructor(secPrivateKey: SecKeyRef, secPublicKey: SecKeyRef) {
-        this.secPrivateKey = secPrivateKey
-        this.secPublicKey = secPublicKey
-        this.keyPairAdapter = IosKeyPairAdapter(secPrivateKey, secPublicKey, CryptoAlgorithm.ES256, null)
+        this.iosKeyPairAdapter = IosKeyPairAdapter(secPrivateKey, secPublicKey, CryptoAlgorithm.ES256, null)
+        this.keyPairAdapter = iosKeyPairAdapter
     }
 
     private fun signInt(input: ByteArray): ByteArray {
         memScoped {
             val inputData = CFBridgingRetain(toData(input)) as CFDataRef
             val signature =
-                SecKeyCreateSignature(secPrivateKey, kSecKeyAlgorithmECDSASignatureMessageX962SHA256, inputData, null)
+                SecKeyCreateSignature(iosKeyPairAdapter.secPrivateKey, kSecKeyAlgorithmECDSASignatureMessageX962SHA256, inputData, null)
             val data = CFBridgingRelease(signature) as NSData
             return data.toByteArray()
         }
