@@ -503,10 +503,10 @@ class OidcSiopWallet(
     private fun OpenIdConstants.ResponseMode?.isAnyDirectPost() = (this == DIRECT_POST) || (this == DIRECT_POST_JWT)
 
     private fun FormatHolder.isMissingFormatSupport(claimFormatEnum: ClaimFormatEnum) = when (claimFormatEnum) {
-        ClaimFormatEnum.JWT_VP -> jwtVp?.algorithms?.contains(jwsService.algorithm.identifier) != true
-        ClaimFormatEnum.JWT_SD -> jwtSd?.algorithms?.contains(jwsService.algorithm.identifier) != true
-        ClaimFormatEnum.MSO_MDOC -> msoMdoc?.algorithms?.contains(jwsService.algorithm.identifier) != true
-        else -> true
+        ClaimFormatEnum.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm.identifier) } ?: false
+        ClaimFormatEnum.JWT_SD -> jwtSd?.algorithms?.let { !it.contains(jwsService.algorithm.identifier) } ?: false
+        ClaimFormatEnum.MSO_MDOC -> msoMdoc?.algorithms?.let { !it.contains(jwsService.algorithm.identifier) } ?: false
+        else -> false
     }
 
     private fun AuthenticationRequestParameters.verifyResponseModeDirectPost() {
