@@ -40,7 +40,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                 }
             ))))
         holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
-        verifierCryptoService = DefaultCryptoService.withSelfSignedCert(extensions)
+        verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter(extensions))
         responseUrl = "https://example.com"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderCryptoService)

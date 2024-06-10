@@ -35,7 +35,6 @@ import java.math.BigInteger
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.MessageDigest
-import java.security.PrivateKey
 import java.security.Signature
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
@@ -65,10 +64,8 @@ actual open class DefaultCryptoService : CryptoService {
     constructor(
         keyPair: KeyPair,
         algorithm: CryptoAlgorithm,
-        certificateExtensions: List<X509CertificateExtension> = listOf()
     ) {
-        val certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
-        this.jvmKeyPairAdapter = JvmKeyPairAdapter(keyPair, algorithm, certificate)
+        this.jvmKeyPairAdapter = JvmKeyPairAdapter(keyPair, algorithm, null)
         this.keyPairAdapter = jvmKeyPairAdapter
     }
 
@@ -177,10 +174,6 @@ actual open class DefaultCryptoService : CryptoService {
         MessageDigest.getInstance(digest.jcaName).digest(input)
     }.wrap()
 
-    actual companion object {
-        actual fun withSelfSignedCert(extensions: List<X509CertificateExtension>): CryptoService =
-            DefaultCryptoService(genEc256KeyPair(), CryptoAlgorithm.ES256, extensions)
-    }
 }
 
 class JvmKeyPairAdapter(
@@ -198,12 +191,18 @@ class JvmKeyPairAdapter(
         get() = publicKey.toCoseKey(signingAlgorithm.toCoseAlgorithm()).getOrThrow()
 }
 
-actual fun RandomKeyPairAdapter(): KeyPairAdapter {
+actual fun RandomKeyPairAdapter(extensions: List<X509CertificateExtension>): KeyPairAdapter {
     val keyPair = genEc256KeyPair()
     val signingAlgorithm = CryptoAlgorithm.ES256
     val publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
-    val certificate = X509Certificate.generateSelfSignedCertificate(publicKey, signingAlgorithm) { it ->
-        DefaultCryptoService(keyPair, signingAlgorithm).sign(it)
+    val certificate = X509Certificate.generateSelfSignedCertificate(publicKey, signingAlgorithm, extensions) {
+        runCatching {
+            CryptoSignature.parseFromJca(Signature.getInstance(signingAlgorithm.jcaName).apply {
+                signingAlgorithm.jcaParams?.let { setParameter(it) }
+                initSign(keyPair.private)
+                update(it)
+            }.sign(), signingAlgorithm)
+        }.wrap()
     }
     return JvmKeyPairAdapter(keyPair, signingAlgorithm, certificate)
 }
