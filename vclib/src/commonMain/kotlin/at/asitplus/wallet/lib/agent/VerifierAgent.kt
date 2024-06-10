@@ -27,7 +27,7 @@ class VerifierAgent private constructor(
 
     constructor(): this(
         validator = Validator.newDefaultInstance(),
-        publicKey = InMemoryPublicKeyAdapter(DefaultCryptoService().publicKey),
+        publicKey = InMemoryPublicKeyAdapter(DefaultCryptoService().keyPairAdapter.publicKey),
     )
 
     override fun setRevocationList(it: String): Boolean {

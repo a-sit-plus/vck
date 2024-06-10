@@ -161,7 +161,7 @@ suspend fun issueDummyCredentials(
     holderCryptoService: CryptoService
 ) {
     val result = issuer.issueCredential(
-        subjectPublicKey = holderCryptoService.publicKey,
+        subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
         attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
         representation = ConstantIndex.CredentialRepresentation.SD_JWT,
     )

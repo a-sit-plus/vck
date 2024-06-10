@@ -37,7 +37,7 @@ class CredentialJsonInteropTest : FreeSpec({
         runBlocking {
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(
-                    subjectPublicKey = holderCryptoService.publicKey,
+                    subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).toStoreCredentialInput()
@@ -59,7 +59,7 @@ class CredentialJsonInteropTest : FreeSpec({
         runBlocking {
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(
-                    subjectPublicKey = holderCryptoService.publicKey,
+                    subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                     claimNames = listOf("given-name", "family-name", "date-of-birth", "is-active"),
@@ -79,7 +79,7 @@ class CredentialJsonInteropTest : FreeSpec({
         runBlocking {
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(
-                    subjectPublicKey = holderCryptoService.publicKey,
+                    subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                     claimNames = listOf("given-name", "family-name", "date-of-birth", "is-active"),

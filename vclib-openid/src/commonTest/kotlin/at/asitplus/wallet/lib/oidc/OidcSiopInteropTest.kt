@@ -46,7 +46,7 @@ class OidcSiopInteropTest : FreeSpec({
                     DefaultCryptoService(),
                     DummyCredentialDataProvider(),
                 ).issueCredential(
-                    subjectPublicKey = holderCryptoService.publicKey,
+                    subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
                     attributeTypes = listOf(EuPidScheme.vcType),
                     representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                     claimNames = EuPidScheme.claimNames

@@ -36,7 +36,6 @@ actual class DefaultCryptoService : CryptoService {
 
     private val secPrivateKey: SecKeyRef
     private val secPublicKey: SecKeyRef
-    actual override val publicKey: CryptoPublicKey
     actual override val certificate: X509Certificate?
     actual override val keyPairAdapter: KeyPairAdapter
     actual constructor() : this(listOf())
@@ -47,7 +46,6 @@ actual class DefaultCryptoService : CryptoService {
         this.keyPairAdapter = keyPairAdapter
         this.secPrivateKey = keyPairAdapter.secPrivateKey
         this.secPublicKey = keyPairAdapter.secPublicKey
-        this.publicKey = keyPairAdapter.publicKey
         this.certificate = X509Certificate.generateSelfSignedCertificate(this)
     }
 
@@ -58,9 +56,6 @@ actual class DefaultCryptoService : CryptoService {
         }
         secPrivateKey = SecKeyCreateRandomKey(query, null)!!
         secPublicKey = SecKeyCopyPublicKey(secPrivateKey)!!
-        val publicKeyData = SecKeyCopyExternalRepresentation(secPublicKey, null)
-        val data = CFBridgingRelease(publicKeyData) as NSData
-        publicKey = CryptoPublicKey.EC.fromAnsiX963Bytes(ECCurve.SECP_256_R_1, data.toByteArray())
         this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
         this.keyPairAdapter = IosKeyPairAdapter(secPrivateKey, secPublicKey, CryptoAlgorithm.ES256, certificate)
     }
@@ -70,7 +65,6 @@ actual class DefaultCryptoService : CryptoService {
         this.secPublicKey = secPublicKey
         val publicKeyData = SecKeyCopyExternalRepresentation(secPublicKey, null)
         val data = CFBridgingRelease(publicKeyData) as NSData
-        this.publicKey = CryptoPublicKey.EC.fromAnsiX963Bytes(ECCurve.SECP_256_R_1, data.toByteArray())
         this.certificate = null
         this.keyPairAdapter = IosKeyPairAdapter(secPrivateKey, secPublicKey, CryptoAlgorithm.ES256, null)
     }

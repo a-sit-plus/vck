@@ -34,7 +34,7 @@ class AgentRevocationTest : FreeSpec({
             DummyCredentialDataProvider()
         )
         verifierCryptoService = DefaultCryptoService()
-        verifier = VerifierAgent(verifierCryptoService.publicKey)
+        verifier = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
 
@@ -55,7 +55,7 @@ class AgentRevocationTest : FreeSpec({
 
     "credentials should contain status information" {
         val result = issuer.issueCredential(
-            subjectPublicKey = verifierCryptoService.publicKey,
+            subjectPublicKey = verifierCryptoService.keyPairAdapter.publicKey,
             attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
             representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )
@@ -127,7 +127,7 @@ private fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: L
         val vcId = uuid4().toString()
         val revListIndex = storeGetNextIndex(
             credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred, ConstantIndex.AtomicAttribute2023),
-            subjectPublicKey = DefaultCryptoService().publicKey,
+            subjectPublicKey = DefaultCryptoService().keyPairAdapter.publicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             timePeriod = FixedTimePeriodProvider.timePeriod
@@ -147,7 +147,7 @@ private fun IssuerCredentialStore.revokeRandomCredentials(): MutableList<Long> {
         val vcId = uuid4().toString()
         val revListIndex = storeGetNextIndex(
             credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred, ConstantIndex.AtomicAttribute2023),
-            subjectPublicKey = DefaultCryptoService().publicKey,
+            subjectPublicKey = DefaultCryptoService().keyPairAdapter.publicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             timePeriod = FixedTimePeriodProvider.timePeriod

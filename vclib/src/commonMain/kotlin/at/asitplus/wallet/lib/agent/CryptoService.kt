@@ -59,10 +59,6 @@ interface CryptoService {
 
     val keyPairAdapter: KeyPairAdapter
 
-    // TODO Also use an adapter here? and put jsonWebKey and coseKey into that
-    val publicKey: CryptoPublicKey
-
-
     /**
      * May be used in [at.asitplus.wallet.lib.cbor.CoseService] to transport the signing key for a COSE structure.
      * a `null` value signifies that raw public keys are used and no certificate is present

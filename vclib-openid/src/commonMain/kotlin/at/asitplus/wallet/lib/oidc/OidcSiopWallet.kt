@@ -88,7 +88,7 @@ class OidcSiopWallet(
             scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever? = { null },
         ) = OidcSiopWallet(
             holder = holder,
-            agentPublicKey = cryptoService.publicKey,
+            agentPublicKey = cryptoService.keyPairAdapter.publicKey,
             jwsService = jwsService,
             clock = clock,
             clientId = clientId,
