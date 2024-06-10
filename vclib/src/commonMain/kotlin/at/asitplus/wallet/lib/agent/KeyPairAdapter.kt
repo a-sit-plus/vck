@@ -5,6 +5,7 @@ import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.pki.X509Certificate
+import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 
 /**
  * Abstracts the management of key material away from [CryptoService].
@@ -26,4 +27,4 @@ interface KeyPairAdapter {
 /**
  * Generate a new key pair adapter with a random key, e.g. used in tests
  */
-expect fun RandomKeyPairAdapter(): KeyPairAdapter
+expect fun RandomKeyPairAdapter(extensions: List<X509CertificateExtension> = listOf()): KeyPairAdapter

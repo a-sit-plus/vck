@@ -14,6 +14,7 @@ import at.asitplus.crypto.datatypes.io.Base64Strict
 import at.asitplus.crypto.datatypes.jws.*
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
+import at.asitplus.wallet.lib.agent.DefaultCryptoService.Companion.signInt
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.cinterop.*
 import platform.CoreFoundation.CFDataRef
@@ -44,35 +45,8 @@ actual class DefaultCryptoService : CryptoService {
         this.iosKeyPairAdapter = keyPairAdapter
     }
 
-    constructor(certificateExtensions: List<X509CertificateExtension>) {
-        val query = CFDictionaryCreateMutable(null, 2, null, null).apply {
-            CFDictionaryAddValue1(this, kSecAttrKeyType, kSecAttrKeyTypeEC)
-            CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
-        }
-        val secPrivateKey = SecKeyCreateRandomKey(query, null)!!
-        val secPublicKey = SecKeyCopyPublicKey(secPrivateKey)!!
-        val certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
-        this.iosKeyPairAdapter = IosKeyPairAdapter(secPrivateKey, secPublicKey, CryptoAlgorithm.ES256, certificate)
-        this.keyPairAdapter = iosKeyPairAdapter
-    }
-
-    constructor(secPrivateKey: SecKeyRef, secPublicKey: SecKeyRef) {
-        this.iosKeyPairAdapter = IosKeyPairAdapter(secPrivateKey, secPublicKey, CryptoAlgorithm.ES256, null)
-        this.keyPairAdapter = iosKeyPairAdapter
-    }
-
-    private fun signInt(input: ByteArray): ByteArray {
-        memScoped {
-            val inputData = CFBridgingRetain(toData(input)) as CFDataRef
-            val signature =
-                SecKeyCreateSignature(iosKeyPairAdapter.secPrivateKey, kSecKeyAlgorithmECDSASignatureMessageX962SHA256, inputData, null)
-            val data = CFBridgingRelease(signature) as NSData
-            return data.toByteArray()
-        }
-    }
-
     actual override suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature> {
-        return KmmResult.success(CryptoSignature.decodeFromDer(signInt(input)))
+        return KmmResult.success(CryptoSignature.decodeFromDer(signInt(input, iosKeyPairAdapter.secPrivateKey)))
     }
 
     actual override fun encrypt(
@@ -135,13 +109,21 @@ actual class DefaultCryptoService : CryptoService {
         return KmmResult.success(input)
     }
 
-    actual companion object {
-        actual fun withSelfSignedCert(extensions: List<X509CertificateExtension>): CryptoService =
-            DefaultCryptoService(certificateExtensions = extensions)
+    companion object {
+        fun signInt(input: ByteArray, privateKeyRef: SecKeyRef): ByteArray {
+            memScoped {
+                val inputData = CFBridgingRetain(toData(input)) as CFDataRef
+                val signature =
+                    SecKeyCreateSignature(privateKeyRef, kSecKeyAlgorithmECDSASignatureMessageX962SHA256, inputData, null)
+                val data = CFBridgingRelease(signature) as NSData
+                return data.toByteArray()
+            }
+        }
     }
+
 }
 
-actual fun RandomKeyPairAdapter(): KeyPairAdapter {
+actual fun RandomKeyPairAdapter(extensions: List<X509CertificateExtension>): KeyPairAdapter {
     val query = CFDictionaryCreateMutable(null, 2, null, null).apply {
         CFDictionaryAddValue1(this, kSecAttrKeyType, kSecAttrKeyTypeEC)
         CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
@@ -152,8 +134,9 @@ actual fun RandomKeyPairAdapter(): KeyPairAdapter {
     val data = CFBridgingRelease(publicKeyData) as NSData
     val publicKey = CryptoPublicKey.EC.fromAnsiX963Bytes(ECCurve.SECP_256_R_1, data.toByteArray())
     val signingAlgorithm = CryptoAlgorithm.ES256
-    val certificate = X509Certificate.generateSelfSignedCertificate(publicKey, signingAlgorithm) { it ->
-        DefaultCryptoService(secPrivateKey, secPublicKey).sign(it)
+    val certificate = X509Certificate.generateSelfSignedCertificate(publicKey, signingAlgorithm, extensions) {
+        val intSign = signInt(it, secPrivateKey)
+        KmmResult.success(CryptoSignature.decodeFromDer(intSign))
     }
     return IosKeyPairAdapter(secPrivateKey, secPublicKey, signingAlgorithm, certificate)
 }

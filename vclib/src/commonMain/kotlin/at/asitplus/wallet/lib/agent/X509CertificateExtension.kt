@@ -20,35 +20,9 @@ import kotlinx.datetime.plus
 import kotlin.random.Random
 
 fun X509Certificate.Companion.generateSelfSignedCertificate(
-    cryptoService: CryptoService,
-    commonName: String = "DefaultCryptoService",
-    extensions: List<X509CertificateExtension> = listOf()
-): X509Certificate {
-    val notBeforeDate = Clock.System.now()
-    val notAfterDate = notBeforeDate.plus(30, DateTimeUnit.SECOND)
-    val tbsCertificate = TbsCertificate(
-        version = 2,
-        serialNumber = Random.nextBytes(8),
-        issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
-        validFrom = Asn1Time(notBeforeDate),
-        validUntil = Asn1Time(notAfterDate),
-        signatureAlgorithm = cryptoService.keyPairAdapter.signingAlgorithm,
-        subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
-        publicKey = cryptoService.keyPairAdapter.publicKey,
-        extensions = extensions
-    )
-    val signature = runBlocking {
-        runCatching { tbsCertificate.encodeToDer() }
-            .wrap()
-            .transform { cryptoService.sign(it) }
-            .getOrThrow()
-    }
-    return X509Certificate(tbsCertificate, cryptoService.keyPairAdapter.signingAlgorithm, signature)
-}
-
-fun X509Certificate.Companion.generateSelfSignedCertificate(
     publicKey: CryptoPublicKey,
     algorithm: CryptoAlgorithm,
+    extensions: List<X509CertificateExtension> = listOf(),
     signer: suspend (ByteArray) -> KmmResult<CryptoSignature>,
 ): X509Certificate {
     val notBeforeDate = Clock.System.now()
@@ -62,7 +36,7 @@ fun X509Certificate.Companion.generateSelfSignedCertificate(
         signatureAlgorithm = algorithm,
         subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8("Default")))),
         publicKey = publicKey,
-        extensions = listOf()
+        extensions = extensions
     )
     val signature = runBlocking {
         runCatching { tbsCertificate.encodeToDer() }

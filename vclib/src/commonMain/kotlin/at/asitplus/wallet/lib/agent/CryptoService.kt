@@ -11,7 +11,6 @@ import at.asitplus.crypto.datatypes.ECCurve
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncryption
-import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 
 interface CryptoService {
 
@@ -139,11 +138,6 @@ expect class DefaultCryptoService : CryptoService {
 
     override val keyPairAdapter: KeyPairAdapter
     constructor(keyPairAdapter: KeyPairAdapter)
-    companion object {
-        fun withSelfSignedCert(
-            extensions: List<X509CertificateExtension> = listOf()
-        ): CryptoService
-    }
 }
 
 expect class DefaultVerifierCryptoService() : VerifierCryptoService {
