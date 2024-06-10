@@ -21,11 +21,7 @@ import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.DIRECT_POST
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.DIRECT_POST_JWT
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.FRAGMENT
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.OTHER
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.QUERY
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.*
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
@@ -232,7 +228,7 @@ class OidcSiopWallet(
     }
 
     private suspend fun buildJarm(response: AuthenticationResponse) =
-        if (response.clientMetadata.requestsEncryption()) {
+        if (response.clientMetadata != null && response.jsonWebKeys != null && response.clientMetadata.requestsEncryption()) {
             val alg = response.clientMetadata.authorizationEncryptedResponseAlg!!
             val enc = response.clientMetadata.authorizationEncryptedResponseEncoding!!
             val jwk = response.jsonWebKeys.first()
@@ -313,17 +309,12 @@ class OidcSiopWallet(
                 .onFailure { return KmmResult.failure(it) }
         }
 
-        val clientMetadata = runCatching { params.parameters.loadClientMetadata() }
-            .getOrElse { return KmmResult.failure(it) }
-        val certKey =
-            (params as? AuthenticationRequestParametersFrom.JwsSigned)?.source?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
-        val jsonWebKeySet = clientMetadata.loadJsonWebKeySet()?.keys.combine(certKey)
+        val clientMetadata = runCatching { params.parameters.loadClientMetadata() }.getOrNull()
+        val certKey = (params as? AuthenticationRequestParametersFrom.JwsSigned)
+            ?.source?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
+        val jsonWebKeySet = clientMetadata?.loadJsonWebKeySet()?.keys?.combine(certKey)
         val audience = runCatching { params.extractAudience(clientMetadata) }
             .getOrElse { return KmmResult.failure(it) }
-        // TODO Check removed for EUDI interop
-//        if (clientMetadata.subjectSyntaxTypesSupported == null || URN_TYPE_JWK_THUMBPRINT !in clientMetadata.subjectSyntaxTypesSupported)
-//            return KmmResult.failure<AuthenticationResponseParameters>(OAuth2Exception(Errors.SUBJECT_SYNTAX_TYPES_NOT_SUPPORTED))
-//                .also { Napier.w("Incompatible subject syntax types algorithms") }
 
         if (!clientIdScheme.isAnyX509()) {
             runCatching { params.parameters.verifyRedirectUrl() }
@@ -340,7 +331,7 @@ class OidcSiopWallet(
                 .getOrElse { return KmmResult.failure(it) }
         }
         presentationResultContainer?.let {
-            clientMetadata.vpFormats?.let { supportedFormats ->
+            clientMetadata?.vpFormats?.let { supportedFormats ->
                 runCatching { presentationResultContainer.verifyFormatSupport(supportedFormats) }
                     .getOrElse { return KmmResult.failure(it) }
             }
@@ -370,7 +361,7 @@ class OidcSiopWallet(
         params: AuthenticationRequestParametersFrom<*>,
         audience: String,
         presentationDefinition: PresentationDefinition,
-        clientMetadata: RelyingPartyMetadata
+        clientMetadata: RelyingPartyMetadata?
     ): Holder.PresentationResponseParameters {
         if (params.parameters.nonce == null) {
             Napier.w("nonce is null in ${params.parameters}")
@@ -380,7 +371,7 @@ class OidcSiopWallet(
             challenge = params.parameters.nonce,
             audienceId = audience,
             presentationDefinition = presentationDefinition,
-            fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata.vpFormats,
+            fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata?.vpFormats,
         ).getOrElse {
             Napier.w("Could not create presentation", it)
             throw OAuth2Exception(Errors.USER_CANCELLED)
@@ -438,10 +429,9 @@ class OidcSiopWallet(
     }
 
     private suspend fun AuthenticationRequestParametersFrom<*>.extractAudience(
-        clientMetadata: RelyingPartyMetadata
-    ) = clientMetadata.loadJsonWebKeySet()?.keys?.firstOrNull()?.identifier
-        ?: (source as? AuthenticationRequestParametersFrom.JwsSigned)
-            ?.source?.header?.certificateChain?.leaf?.let { parameters.clientId } //TODO is this even correct ????
+        clientMetadata: RelyingPartyMetadata?
+    ) = clientMetadata?.loadJsonWebKeySet()?.keys?.firstOrNull()?.identifier
+        ?: parameters.clientId
         ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
             .also { Napier.w("Could not parse audience") }
 
@@ -453,7 +443,7 @@ class OidcSiopWallet(
         ?: clientMetadataUri?.let { uri ->
             remoteResourceRetriever.invoke(uri)?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
         } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-            .also { Napier.w("client metadata is not specified in ${this}") }
+            .also { Napier.w("client metadata is not specified in $this") }
 
     private fun OpenIdConstants.ClientIdScheme?.isAnyX509() =
         (this == OpenIdConstants.ClientIdScheme.X509_SAN_DNS) || (this == OpenIdConstants.ClientIdScheme.X509_SAN_URI)
@@ -467,8 +457,7 @@ class OidcSiopWallet(
     private fun AuthenticationRequestParametersFrom<*>.verifyClientIdSchemeX509() {
         val clientIdScheme = parameters.clientIdScheme
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
-        if (parameters.clientMetadata == null
-            || this !is AuthenticationRequestParametersFrom.JwsSigned
+        if (this !is AuthenticationRequestParametersFrom.JwsSigned
             || source.header.certificateChain == null
             || source.header.certificateChain!!.isEmpty()
         ) throw OAuth2Exception(Errors.INVALID_REQUEST)

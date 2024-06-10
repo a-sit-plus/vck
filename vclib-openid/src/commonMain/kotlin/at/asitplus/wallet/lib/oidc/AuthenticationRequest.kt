@@ -13,4 +13,10 @@ sealed class AuthenticationRequestParametersFrom<T>(val source: T, val parameter
 
     class Json(jsonString: String, parameters: AuthenticationRequestParameters) :
         AuthenticationRequestParametersFrom<String>(jsonString, parameters)
+
+    override fun toString(): String {
+        return "AuthenticationRequestParametersFrom(source=$source, parameters=$parameters)"
+    }
+
+
 }
