@@ -123,7 +123,7 @@ class DefaultVerifierCoseService(
         val verified = cryptoService.verify(
             input = signatureInput,
             signature = coseSigned.signature,
-            algorithm = algorithm.toCryptoAlgorithm(),
+            algorithm = algorithm.toX509SignatureAlgorithm(),
             publicKey = publicKey
         )
         val result = verified.getOrElse {

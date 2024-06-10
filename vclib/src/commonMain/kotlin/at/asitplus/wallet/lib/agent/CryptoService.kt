@@ -3,11 +3,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.crypto.datatypes.CryptoAlgorithm
-import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.CryptoSignature
-import at.asitplus.crypto.datatypes.Digest
-import at.asitplus.crypto.datatypes.ECCurve
+import at.asitplus.crypto.datatypes.*
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
@@ -17,7 +13,17 @@ import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 
 interface CryptoService {
 
-    suspend fun sign(input: ByteArray): KmmResult<CryptoSignature>
+    suspend fun sign(input: ByteArray): KmmResult<CryptoSignature.RawByteEncodable> =
+        doSign(input).map {
+            when (it) {
+                is CryptoSignature.RawByteEncodable -> it
+                is CryptoSignature.NotRawByteEncodable -> when (it) {
+                    is CryptoSignature.EC.IndefiniteLength -> it.withCurve((publicKey as CryptoPublicKey.EC).curve)
+                }
+            }
+    }
+
+    suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature>
 
     fun encrypt(
         key: ByteArray,
@@ -106,7 +112,7 @@ interface EphemeralKeyHolder {
 }
 
 expect class DefaultCryptoService() : CryptoService {
-    override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature>
+    override suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature>
     override fun encrypt(
         key: ByteArray,
         iv: ByteArray,
