@@ -48,7 +48,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         runBlocking {
             holderAgent.storeCredentials(
                 IssuerAgent(
-                    DefaultCryptoService(RandomKeyPairAdapter()),
+                    RandomKeyPairAdapter(),
                     DummyCredentialDataProvider(),
                 ).issueCredential(
                     subjectPublicKey = holderKeyPair.publicKey,

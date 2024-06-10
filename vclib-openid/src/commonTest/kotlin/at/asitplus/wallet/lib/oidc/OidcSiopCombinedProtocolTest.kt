@@ -439,7 +439,7 @@ private suspend fun Holder.storeJwtCredentials(
 ) {
     storeCredentials(
         IssuerAgent(
-            DefaultCryptoService(RandomKeyPairAdapter()),
+            RandomKeyPairAdapter(),
             DummyCredentialDataProvider(),
         ).issueCredential(
             subjectPublicKey = holderKeyPair.publicKey,
@@ -455,7 +455,7 @@ private suspend fun Holder.storeSdJwtCredential(
 ) {
     storeCredentials(
         IssuerAgent(
-            DefaultCryptoService(RandomKeyPairAdapter()),
+            RandomKeyPairAdapter(),
             DummyCredentialDataProvider(),
         ).issueCredential(
             subjectPublicKey = holderKeyPair.publicKey,
@@ -470,7 +470,7 @@ private suspend fun Holder.storeIsoCredential(
     attributeTypes: List<String>
 ) = storeCredentials(
     IssuerAgent(
-        DefaultCryptoService(RandomKeyPairAdapter()),
+        RandomKeyPairAdapter(),
         DummyCredentialDataProvider(),
     ).issueCredential(
         subjectPublicKey = holderKeyPair.publicKey,

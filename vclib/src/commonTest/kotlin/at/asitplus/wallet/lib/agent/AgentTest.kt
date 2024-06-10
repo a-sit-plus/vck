@@ -32,7 +32,7 @@ class AgentTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
-            DefaultCryptoService(RandomKeyPairAdapter()),
+            RandomKeyPairAdapter(),
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )

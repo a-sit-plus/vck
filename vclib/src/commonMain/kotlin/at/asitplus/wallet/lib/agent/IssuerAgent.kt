@@ -53,38 +53,35 @@ class IssuerAgent(
     private val jwsService: JwsService,
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
-    override val publicKey: PublicKeyAdapter,
+    override val publicKey: KeyPairAdapter,
     override val cryptoAlgorithms: Set<CryptoAlgorithm>,
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
 ) : Issuer {
 
-    // TODO use constructor with one key instance only
-    // or restrict the interface of PublicKeyAdapter somehow?
-
     constructor(
-        cryptoService: CryptoService = DefaultCryptoService(RandomKeyPairAdapter()),
+        keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
         validator = Validator.newDefaultInstance(),
-        jwsService = DefaultJwsService(cryptoService),
-        coseService = DefaultCoseService(cryptoService),
+        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
+        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
         dataProvider = dataProvider,
-        publicKey = InMemoryPublicKeyAdapter(cryptoService.keyPairAdapter.publicKey),
-        cryptoAlgorithms = setOf(cryptoService.keyPairAdapter.signingAlgorithm),
+        publicKey = keyPairAdapter,
+        cryptoAlgorithms = setOf(keyPairAdapter.signingAlgorithm),
     )
 
     constructor(
-        cryptoService: CryptoService = DefaultCryptoService(RandomKeyPairAdapter()),
+        keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
         issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
         validator = Validator.newDefaultInstance(),
         issuerCredentialStore = issuerCredentialStore,
-        jwsService = DefaultJwsService(cryptoService),
-        coseService = DefaultCoseService(cryptoService),
+        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
+        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
         dataProvider = dataProvider,
-        publicKey = InMemoryPublicKeyAdapter(cryptoService.keyPairAdapter.publicKey),
-        cryptoAlgorithms = setOf(cryptoService.keyPairAdapter.signingAlgorithm),
+        publicKey = keyPairAdapter,
+        cryptoAlgorithms = setOf(keyPairAdapter.signingAlgorithm),
     )
 
     /**

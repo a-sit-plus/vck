@@ -11,7 +11,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class IssueCredentialProtocolTest : FreeSpec({
 
-    lateinit var issuerCryptoService: CryptoService
+    lateinit var issuerKeyPair: KeyPairAdapter
     lateinit var holderKeyPair: KeyPairAdapter
     lateinit var issuer: Issuer
     lateinit var holder: Holder
@@ -19,9 +19,9 @@ class IssueCredentialProtocolTest : FreeSpec({
     lateinit var holderProtocol: IssueCredentialProtocol
 
     beforeEach {
-        issuerCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+        issuerKeyPair = RandomKeyPairAdapter()
         holderKeyPair = RandomKeyPairAdapter()
-        issuer = IssuerAgent(issuerCryptoService, DummyCredentialDataProvider())
+        issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
         holder = HolderAgent(holderKeyPair)
         issuerProtocol = IssueCredentialProtocol.newIssuerInstance(
             issuer = issuer,
@@ -40,7 +40,7 @@ class IssueCredentialProtocolTest : FreeSpec({
         val invitationMessage = oobInvitation.message
 
         val parsedInvitation =
-            holderProtocol.parseMessage(invitationMessage, issuerCryptoService.keyPairAdapter.jsonWebKey)
+            holderProtocol.parseMessage(invitationMessage, issuerKeyPair.jsonWebKey)
         parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val requestCredential = parsedInvitation.message
 
@@ -50,7 +50,7 @@ class IssueCredentialProtocolTest : FreeSpec({
         val issueCredential = parsedRequestCredential.message
 
         val parsedIssueCredential =
-            holderProtocol.parseMessage(issueCredential, issuerCryptoService.keyPairAdapter.jsonWebKey)
+            holderProtocol.parseMessage(issueCredential, issuerKeyPair.jsonWebKey)
         parsedIssueCredential.shouldBeInstanceOf<InternalNextMessage.Finished>()
 
         val issuedCredential = parsedIssueCredential.lastMessage
@@ -67,7 +67,7 @@ class IssueCredentialProtocolTest : FreeSpec({
         val issueCredential = parsedRequestCredential.message
 
         val parsedIssueCredential =
-            holderProtocol.parseMessage(issueCredential, issuerCryptoService.keyPairAdapter.jsonWebKey)
+            holderProtocol.parseMessage(issueCredential, issuerKeyPair.jsonWebKey)
         parsedIssueCredential.shouldBeInstanceOf<InternalNextMessage.Finished>()
 
         val issuedCredential = parsedIssueCredential.lastMessage
@@ -81,7 +81,7 @@ class IssueCredentialProtocolTest : FreeSpec({
                 threadId = uuid4().toString(),
                 attachment = JwmAttachment(id = uuid4().toString(), "mimeType", JwmAttachmentData())
             ),
-            issuerCryptoService.keyPairAdapter.jsonWebKey
+            issuerKeyPair.jsonWebKey
         )
         parsed.shouldBeInstanceOf<InternalNextMessage.IncorrectState>()
     }
@@ -92,7 +92,7 @@ class IssueCredentialProtocolTest : FreeSpec({
         val invitationMessage = oobInvitation.message
 
         val parsedInvitation =
-            holderProtocol.parseMessage(invitationMessage, issuerCryptoService.keyPairAdapter.jsonWebKey)
+            holderProtocol.parseMessage(invitationMessage, issuerKeyPair.jsonWebKey)
         parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val requestCredential = parsedInvitation.message
 
