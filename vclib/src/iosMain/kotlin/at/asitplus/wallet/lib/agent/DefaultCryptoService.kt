@@ -40,9 +40,6 @@ actual class DefaultCryptoService : CryptoService {
     actual override val certificate: X509Certificate?
     actual override val keyPairAdapter: KeyPairAdapter
 
-    actual override val jsonWebKey: JsonWebKey
-        get() = publicKey.toJsonWebKey()
-
     actual override val coseKey: CoseKey
         get() = publicKey.toCoseKey(keyPairAdapter.signingAlgorithm.toCoseAlgorithm()).getOrNull()!!
 

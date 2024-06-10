@@ -59,8 +59,6 @@ interface CryptoService {
     // TODO Also use an adapter here? and put jsonWebKey and coseKey into that
     val publicKey: CryptoPublicKey
 
-    val jsonWebKey: JsonWebKey
-
     val coseKey: CoseKey
 
 
