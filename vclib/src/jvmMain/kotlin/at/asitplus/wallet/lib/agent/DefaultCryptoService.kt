@@ -45,9 +45,9 @@ import javax.crypto.spec.SecretKeySpec
 
 actual open class DefaultCryptoService : CryptoService {
 
-    private val privateKey: PrivateKey
-
     actual final override val keyPairAdapter: KeyPairAdapter
+
+    private val jvmKeyPairAdapter: JvmKeyPairAdapter
 
     /**
      * Default constructor without arguments is ES256
@@ -57,8 +57,8 @@ actual open class DefaultCryptoService : CryptoService {
     actual constructor(keyPairAdapter: KeyPairAdapter) {
         assert(keyPairAdapter is JvmKeyPairAdapter)
         keyPairAdapter as JvmKeyPairAdapter
+        this.jvmKeyPairAdapter = keyPairAdapter
         this.keyPairAdapter = keyPairAdapter
-        this.privateKey = keyPairAdapter.keyPair.private
     }
 
     /**
@@ -72,15 +72,15 @@ actual open class DefaultCryptoService : CryptoService {
         algorithm: CryptoAlgorithm,
         certificateExtensions: List<X509CertificateExtension> = listOf()
     ) {
-        this.privateKey = keyPair.private
         val certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
-        this.keyPairAdapter = JvmKeyPairAdapter(keyPair, CryptoAlgorithm.ES256, certificate)
+        this.jvmKeyPairAdapter = JvmKeyPairAdapter(keyPair, algorithm, certificate)
+        this.keyPairAdapter = jvmKeyPairAdapter
     }
 
     actual override suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature> = runCatching {
         val sig = Signature.getInstance(keyPairAdapter.signingAlgorithm.jcaName).apply {
             this@DefaultCryptoService.keyPairAdapter.signingAlgorithm.jcaParams?.let { setParameter(it) }
-            initSign(privateKey)
+            initSign(jvmKeyPairAdapter.keyPair.private)
             update(input)
         }.sign()
         CryptoSignature.parseFromJca(sig, keyPairAdapter.signingAlgorithm)
@@ -170,7 +170,7 @@ actual open class DefaultCryptoService : CryptoService {
         val publicKey = JCEECPublicKey("EC", ecPublicKeySpec)
 
         KeyAgreement.getInstance(algorithm.jcaName).also {
-            it.init(privateKey)
+            it.init(jvmKeyPairAdapter.keyPair.private)
             it.doPhase(publicKey, true)
         }.generateSecret()
     }.wrap()
