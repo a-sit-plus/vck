@@ -39,10 +39,6 @@ actual class DefaultCryptoService : CryptoService {
     actual override val publicKey: CryptoPublicKey
     actual override val certificate: X509Certificate?
     actual override val keyPairAdapter: KeyPairAdapter
-
-    actual override val coseKey: CoseKey
-        get() = publicKey.toCoseKey(keyPairAdapter.signingAlgorithm.toCoseAlgorithm()).getOrNull()!!
-
     actual constructor() : this(listOf())
 
     actual constructor(keyPairAdapter: KeyPairAdapter) {
