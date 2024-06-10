@@ -30,9 +30,9 @@ class PresentProofMessengerTest : FreeSpec() {
     init {
 
         beforeEach {
-            holderCryptoService = DefaultCryptoService()
-            verifierCryptoService = DefaultCryptoService()
-            issuerCryptoService = DefaultCryptoService()
+            holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+            verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+            issuerCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
             holderCredentialStore = InMemorySubjectCredentialStore()
             holder = HolderAgent(holderCryptoService, holderCredentialStore)
             verifier = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)

@@ -5,6 +5,7 @@ import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
@@ -25,7 +26,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
 
     init {
         beforeEach {
-            issuerCryptoService = DefaultCryptoService()
+            issuerCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
             issuer = IssuerAgent(issuerCryptoService, DummyCredentialDataProvider())
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
             issuerMessenger = initIssuerMessenger(ConstantIndex.AtomicAttribute2023)
@@ -46,7 +47,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
     }
 
     private fun initHolderMessenger(): IssueCredentialMessenger {
-        val cryptoService = DefaultCryptoService()
+        val cryptoService = DefaultCryptoService(RandomKeyPairAdapter())
         return IssueCredentialMessenger.newHolderInstance(
             holder = HolderAgent(cryptoService),
             messageWrapper = MessageWrapper(cryptoService),

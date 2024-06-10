@@ -8,6 +8,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.InMemorySubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
@@ -27,10 +28,10 @@ class CredentialJsonInteropTest : FreeSpec({
     lateinit var holderAgent: Holder
 
     beforeEach {
-        holderCryptoService = DefaultCryptoService()
+        holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
         subjectCredentialStore = InMemorySubjectCredentialStore()
         holderAgent = HolderAgent(holderCryptoService, subjectCredentialStore)
-        issuerAgent = IssuerAgent(DefaultCryptoService(), DummyCredentialDataProvider())
+        issuerAgent = IssuerAgent(DefaultCryptoService(RandomKeyPairAdapter()), DummyCredentialDataProvider())
     }
 
     "Plain jwt credential path resolving" {

@@ -37,8 +37,6 @@ actual class DefaultCryptoService : CryptoService {
     actual override val keyPairAdapter: KeyPairAdapter
     private val iosKeyPairAdapter: IosKeyPairAdapter
 
-    actual constructor() : this(listOf())
-
     actual constructor(keyPairAdapter: KeyPairAdapter) {
         assert(keyPairAdapter is IosKeyPairAdapter)
         keyPairAdapter as IosKeyPairAdapter

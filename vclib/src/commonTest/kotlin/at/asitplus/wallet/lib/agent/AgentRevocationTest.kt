@@ -29,11 +29,11 @@ class AgentRevocationTest : FreeSpec({
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
-            DefaultCryptoService(),
+            DefaultCryptoService(RandomKeyPairAdapter()),
             issuerCredentialStore,
             DummyCredentialDataProvider()
         )
-        verifierCryptoService = DefaultCryptoService()
+        verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
         verifier = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
@@ -72,7 +72,7 @@ class AgentRevocationTest : FreeSpec({
 
     "encoding to a known value works" {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(DefaultCryptoService(), issuerCredentialStore)
+        issuer = IssuerAgent(DefaultCryptoService(RandomKeyPairAdapter()), issuerCredentialStore)
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 
@@ -88,7 +88,7 @@ class AgentRevocationTest : FreeSpec({
 
     "decoding a known value works" {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(DefaultCryptoService(), issuerCredentialStore)
+        issuer = IssuerAgent(DefaultCryptoService(RandomKeyPairAdapter()), issuerCredentialStore)
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 
@@ -127,7 +127,7 @@ private fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: L
         val vcId = uuid4().toString()
         val revListIndex = storeGetNextIndex(
             credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred, ConstantIndex.AtomicAttribute2023),
-            subjectPublicKey = DefaultCryptoService().keyPairAdapter.publicKey,
+            subjectPublicKey = RandomKeyPairAdapter().publicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             timePeriod = FixedTimePeriodProvider.timePeriod
@@ -147,7 +147,7 @@ private fun IssuerCredentialStore.revokeRandomCredentials(): MutableList<Long> {
         val vcId = uuid4().toString()
         val revListIndex = storeGetNextIndex(
             credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred, ConstantIndex.AtomicAttribute2023),
-            subjectPublicKey = DefaultCryptoService().keyPairAdapter.publicKey,
+            subjectPublicKey = RandomKeyPairAdapter().publicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             timePeriod = FixedTimePeriodProvider.timePeriod

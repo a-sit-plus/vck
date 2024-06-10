@@ -10,6 +10,7 @@ import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -59,7 +60,7 @@ class WalletService(
      * Used to prove possession of the key material to create [CredentialRequestProof],
      * i.e. the holder key.
      */
-    private val cryptoService: CryptoService = DefaultCryptoService(),
+    private val cryptoService: CryptoService = DefaultCryptoService(RandomKeyPairAdapter()),
     /**
      * Used to prove possession of the key material to create [CredentialRequestProof].
      */

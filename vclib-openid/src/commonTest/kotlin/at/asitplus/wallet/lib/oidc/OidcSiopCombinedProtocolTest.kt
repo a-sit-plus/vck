@@ -5,6 +5,7 @@ import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -37,8 +38,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderCryptoService = DefaultCryptoService()
-        verifierCryptoService = DefaultCryptoService()
+        holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+        verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         holderAgent = HolderAgent(holderCryptoService)
         verifierAgent = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
@@ -437,7 +438,7 @@ private suspend fun Holder.storeJwtCredentials(
 ) {
     storeCredentials(
         IssuerAgent(
-            DefaultCryptoService(),
+            DefaultCryptoService(RandomKeyPairAdapter()),
             DummyCredentialDataProvider(),
         ).issueCredential(
             subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
@@ -453,7 +454,7 @@ private suspend fun Holder.storeSdJwtCredential(
 ) {
     storeCredentials(
         IssuerAgent(
-            DefaultCryptoService(),
+            DefaultCryptoService(RandomKeyPairAdapter()),
             DummyCredentialDataProvider(),
         ).issueCredential(
             subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
@@ -468,7 +469,7 @@ private suspend fun Holder.storeIsoCredential(
     attributeTypes: List<String>
 ) = storeCredentials(
     IssuerAgent(
-        DefaultCryptoService(),
+        DefaultCryptoService(RandomKeyPairAdapter()),
         DummyCredentialDataProvider(),
     ).issueCredential(
         subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
