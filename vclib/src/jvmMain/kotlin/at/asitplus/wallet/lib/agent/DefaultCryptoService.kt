@@ -47,8 +47,6 @@ actual open class DefaultCryptoService : CryptoService {
 
     private val privateKey: PrivateKey
 
-    actual final override val algorithm: CryptoAlgorithm
-
     actual final override val publicKey: CryptoPublicKey
 
     actual final override val certificate: X509Certificate?
@@ -69,10 +67,9 @@ actual open class DefaultCryptoService : CryptoService {
         keyPairAdapter as JvmKeyPairAdapter
         this.keyPairAdapter = keyPairAdapter
         this.privateKey = keyPairAdapter.keyPair.private
-        this.algorithm = keyPairAdapter.signingAlgorithm
         this.publicKey = keyPairAdapter.publicKey
         this.jsonWebKey = publicKey.toJsonWebKey()
-        this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
+        this.coseKey = publicKey.toCoseKey(keyPairAdapter.signingAlgorithm.toCoseAlgorithm()).getOrThrow()
         this.certificate = X509Certificate.generateSelfSignedCertificate(this)
     }
 
@@ -88,7 +85,6 @@ actual open class DefaultCryptoService : CryptoService {
         certificateExtensions: List<X509CertificateExtension> = listOf()
     ) {
         this.privateKey = keyPair.private
-        this.algorithm = algorithm
         this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
         this.jsonWebKey = publicKey.toJsonWebKey()
         this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
@@ -97,12 +93,12 @@ actual open class DefaultCryptoService : CryptoService {
     }
 
     actual override suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature> = runCatching {
-        val sig = Signature.getInstance(algorithm.jcaName).apply {
-            this@DefaultCryptoService.algorithm.jcaParams?.let { setParameter(it) }
+        val sig = Signature.getInstance(keyPairAdapter.signingAlgorithm.jcaName).apply {
+            this@DefaultCryptoService.keyPairAdapter.signingAlgorithm.jcaParams?.let { setParameter(it) }
             initSign(privateKey)
             update(input)
         }.sign()
-        CryptoSignature.parseFromJca(sig, algorithm)
+        CryptoSignature.parseFromJca(sig, keyPairAdapter.signingAlgorithm)
     }.wrap()
 
     actual override fun encrypt(

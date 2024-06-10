@@ -32,7 +32,7 @@ fun X509Certificate.Companion.generateSelfSignedCertificate(
         issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
         validFrom = Asn1Time(notBeforeDate),
         validUntil = Asn1Time(notAfterDate),
-        signatureAlgorithm = cryptoService.algorithm,
+        signatureAlgorithm = cryptoService.keyPairAdapter.signingAlgorithm,
         subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8(commonName)))),
         publicKey = cryptoService.publicKey,
         extensions = extensions
@@ -43,7 +43,7 @@ fun X509Certificate.Companion.generateSelfSignedCertificate(
             .transform { cryptoService.sign(it) }
             .getOrThrow()
     }
-    return X509Certificate(tbsCertificate, cryptoService.algorithm, signature)
+    return X509Certificate(tbsCertificate, cryptoService.keyPairAdapter.signingAlgorithm, signature)
 }
 
 fun X509Certificate.Companion.generateSelfSignedCertificate(
