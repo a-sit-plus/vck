@@ -35,13 +35,13 @@ class ValidatorVcTest : FreeSpec() {
     init {
         beforeEach {
             issuerCredentialStore = InMemoryIssuerCredentialStore()
-            issuerCryptoService = DefaultCryptoService()
+            issuerCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
             issuer = IssuerAgent(
                 issuerCryptoService,
                 issuerCredentialStore,
             )
             issuerJwsService = DefaultJwsService(issuerCryptoService)
-            verifierCryptoService = DefaultCryptoService()
+            verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
             verifier = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
         }
 
@@ -83,7 +83,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "wrong subject keyId is not be valid" {
             issuer.issueCredential(
-                subjectPublicKey = DefaultCryptoService().keyPairAdapter.publicKey,
+                subjectPublicKey = RandomKeyPairAdapter().publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).successful

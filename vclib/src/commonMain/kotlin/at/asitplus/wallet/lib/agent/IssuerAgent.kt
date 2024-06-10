@@ -62,7 +62,7 @@ class IssuerAgent(
     // or restrict the interface of PublicKeyAdapter somehow?
 
     constructor(
-        cryptoService: CryptoService = DefaultCryptoService(),
+        cryptoService: CryptoService = DefaultCryptoService(RandomKeyPairAdapter()),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
         validator = Validator.newDefaultInstance(),
@@ -74,7 +74,7 @@ class IssuerAgent(
     )
 
     constructor(
-        cryptoService: CryptoService = DefaultCryptoService(),
+        cryptoService: CryptoService = DefaultCryptoService(RandomKeyPairAdapter()),
         issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(

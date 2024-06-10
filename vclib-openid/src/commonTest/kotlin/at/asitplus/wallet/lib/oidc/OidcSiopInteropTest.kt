@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
@@ -38,12 +39,12 @@ class OidcSiopInteropTest : FreeSpec({
     lateinit var holderSiop: OidcSiopWallet
 
     beforeEach {
-        holderCryptoService = DefaultCryptoService()
+        holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
         holderAgent = HolderAgent(holderCryptoService)
         runBlocking {
             holderAgent.storeCredentials(
                 IssuerAgent(
-                    DefaultCryptoService(),
+                    DefaultCryptoService(RandomKeyPairAdapter()),
                     DummyCredentialDataProvider(),
                 ).issueCredential(
                     subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
@@ -286,7 +287,7 @@ class OidcSiopInteropTest : FreeSpec({
 
     "Request in request URI" {
         val input = "mdoc-openid4vp://?request_uri=https%3A%2F%2Fexample.com%2Fd15b5b6f-7821-4031-9a18-ebe491b720a6"
-        val jws = DefaultJwsService(DefaultCryptoService()).createSignedJwsAddingParams(
+        val jws = DefaultJwsService(DefaultCryptoService(RandomKeyPairAdapter())).createSignedJwsAddingParams(
             payload = AuthenticationRequestParameters(
                 nonce = "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ==",
                 state = "ef391e30-bacc-4441-af5d-7f42fb682e02",

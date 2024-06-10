@@ -18,8 +18,8 @@ class PresentProofProtocolTest : FreeSpec({
     lateinit var verifierProtocol: PresentProofProtocol
 
     beforeEach {
-        holderCryptoService = DefaultCryptoService()
-        verifierCryptoService = DefaultCryptoService()
+        holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+        verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
         holder = HolderAgent(holderCryptoService)
         verifier = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
         holderProtocol = PresentProofProtocol.newHolderInstance(
@@ -36,7 +36,7 @@ class PresentProofProtocolTest : FreeSpec({
     "presentProofGenericWithInvitation" {
         holder.storeCredentials(
             IssuerAgent(
-                DefaultCryptoService(),
+                DefaultCryptoService(RandomKeyPairAdapter()),
                 DummyCredentialDataProvider(),
             ).issueCredential(
                 subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
@@ -70,7 +70,7 @@ class PresentProofProtocolTest : FreeSpec({
     "presentProofGenericDirect" {
         holder.storeCredentials(
             IssuerAgent(
-                DefaultCryptoService(),
+                DefaultCryptoService(RandomKeyPairAdapter()),
                 DummyCredentialDataProvider(),
             ).issueCredential(
                 subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,

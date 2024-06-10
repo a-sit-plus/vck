@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
@@ -78,7 +79,7 @@ class OidcSiopWallet(
 ) {
     companion object {
         fun newDefaultInstance(
-            cryptoService: CryptoService = DefaultCryptoService(),
+            cryptoService: CryptoService = DefaultCryptoService(RandomKeyPairAdapter()),
             holder: Holder = HolderAgent(cryptoService),
             jwsService: JwsService = DefaultJwsService(cryptoService),
             clock: Clock = Clock.System,

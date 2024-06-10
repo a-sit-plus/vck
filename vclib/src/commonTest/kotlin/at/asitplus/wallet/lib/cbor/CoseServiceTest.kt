@@ -5,6 +5,7 @@ import at.asitplus.crypto.datatypes.cose.CoseHeader
 import at.asitplus.crypto.datatypes.cose.CoseSigned
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -21,7 +22,7 @@ class CoseServiceTest : FreeSpec({
     lateinit var randomPayload: ByteArray
 
     beforeEach {
-        cryptoService = DefaultCryptoService()
+        cryptoService = DefaultCryptoService(RandomKeyPairAdapter())
         coseService = DefaultCoseService(cryptoService)
         verifierCoseService = DefaultVerifierCoseService()
         randomPayload = Random.nextBytes(32)

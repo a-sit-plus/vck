@@ -41,12 +41,12 @@ class ValidatorVpTest : FreeSpec({
         validator = Validator.newDefaultInstance(DefaultVerifierCryptoService())
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
-            DefaultCryptoService(),
+            DefaultCryptoService(RandomKeyPairAdapter()),
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
         holderCredentialStore = InMemorySubjectCredentialStore()
-        holderCryptoService = DefaultCryptoService()
+        holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
         holder = HolderAgent(holderCryptoService, holderCredentialStore)
         holderJwsService = DefaultJwsService(holderCryptoService)
         verifier = VerifierAgent()

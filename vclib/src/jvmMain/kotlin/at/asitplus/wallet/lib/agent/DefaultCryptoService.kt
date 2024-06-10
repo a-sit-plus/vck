@@ -49,11 +49,6 @@ actual open class DefaultCryptoService : CryptoService {
 
     private val jvmKeyPairAdapter: JvmKeyPairAdapter
 
-    /**
-     * Default constructor without arguments is ES256
-     */
-    actual constructor() : this(genEc256KeyPair(), CryptoAlgorithm.ES256)
-
     actual constructor(keyPairAdapter: KeyPairAdapter) {
         assert(keyPairAdapter is JvmKeyPairAdapter)
         keyPairAdapter as JvmKeyPairAdapter

@@ -101,7 +101,7 @@ interface EphemeralKeyHolder {
     val publicJsonWebKey: JsonWebKey?
 }
 
-expect class DefaultCryptoService() : CryptoService {
+expect class DefaultCryptoService : CryptoService {
     override suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature>
     override fun encrypt(
         key: ByteArray,
@@ -138,12 +138,6 @@ expect class DefaultCryptoService() : CryptoService {
     ): KmmResult<ByteArray>
 
     override val keyPairAdapter: KeyPairAdapter
-    override val algorithm: CryptoAlgorithm
-    override val publicKey: CryptoPublicKey
-    override val jsonWebKey: JsonWebKey
-    override val coseKey: CoseKey
-    override val certificate: X509Certificate?
-    
     constructor(keyPairAdapter: KeyPairAdapter)
     companion object {
         fun withSelfSignedCert(

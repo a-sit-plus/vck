@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
@@ -27,8 +28,8 @@ class IssueCredentialMessengerTest : FreeSpec() {
 
     init {
         beforeEach {
-            issuerCryptoService = DefaultCryptoService()
-            holderCryptoService = DefaultCryptoService()
+            issuerCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+            holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
             issuer = IssuerAgent(issuerCryptoService, DummyCredentialDataProvider())
             holder = HolderAgent(holderCryptoService)
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"

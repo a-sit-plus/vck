@@ -31,11 +31,11 @@ class AgentSdJwtTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
-            DefaultCryptoService(),
+            DefaultCryptoService(RandomKeyPairAdapter()),
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
-        holderCryptoService = DefaultCryptoService()
+        holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
         holder = HolderAgent(holderCryptoService, holderCredentialStore)
         verifier = VerifierAgent()
         challenge = uuid4().toString()
@@ -140,8 +140,8 @@ class AgentSdJwtTest : FreeSpec({
 })
 
 suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {
-    val issuer = IssuerAgent(DefaultCryptoService(), DummyCredentialDataProvider())
-    val holderCryptoService = DefaultCryptoService()
+    val issuer = IssuerAgent(DefaultCryptoService(RandomKeyPairAdapter()), DummyCredentialDataProvider())
+    val holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
     val holder = HolderAgent(holderCryptoService)
     issueDummyCredentials(holder, issuer, holderCryptoService)
     val presentationResult = holder.createPresentation(
