@@ -440,6 +440,7 @@ class OidcSiopWallet(
         clientMetadata: RelyingPartyMetadata?
     ) = clientMetadata?.loadJsonWebKeySet()?.keys?.firstOrNull()?.identifier
         ?: parameters.clientId
+        ?: parameters.audience
         ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
             .also { Napier.w("Could not parse audience") }
 
