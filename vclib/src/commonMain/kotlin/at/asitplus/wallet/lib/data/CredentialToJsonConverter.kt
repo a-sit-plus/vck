@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.data
 
+import at.asitplus.crypto.datatypes.io.Base64Strict
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
-import at.asitplus.wallet.lib.iso.ElementValue
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
@@ -39,7 +41,7 @@ object CredentialToJsonConverter {
                     }
                 }.filterNotNull().toMap()
                 buildJsonObject {
-                    put("type", JsonPrimitive(credential.scheme.vcType))
+                    put("vct", JsonPrimitive(credential.scheme.sdJwtType ?: credential.scheme.vcType))
                     pairs.forEach {
                         put(it.key, it.value)
                     }
@@ -63,21 +65,12 @@ object CredentialToJsonConverter {
         }
     }
 
-    private fun ElementValue.toJsonElement(): JsonElement = this.boolean?.let {
-        JsonPrimitive(it) }
-        ?: this.string?.let {
-            JsonPrimitive(it) }
-        ?: this.bytes?.let {
-            buildJsonArray {
-                it.forEach { this.add(JsonPrimitive(it.toInt())) }
-            }
-        } ?: this.drivingPrivilege?.let { drivingPrivilegeArray ->
-            buildJsonArray {
-                drivingPrivilegeArray.forEach {
-                    this.add(jsonSerializer.encodeToJsonElement(it))
-                }
-            }
-        } ?: this.date?.let {
-            JsonPrimitive(it.toString())
-        } ?: JsonNull
+    private fun Any.toJsonElement(): JsonElement = when (this) {
+        is Boolean -> JsonPrimitive(this)
+        is String -> JsonPrimitive(this)
+        is ByteArray -> JsonPrimitive(encodeToString(Base64Strict))
+        is LocalDate -> JsonPrimitive(this.toString())
+        is Array<*> -> buildJsonArray { filterNotNull().forEach { add(it.toJsonElement()) } }
+        else -> JsonCredentialSerializer.encode(this) ?: JsonNull
+    }
 }

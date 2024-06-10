@@ -5,7 +5,6 @@ object AriesGoalCodeParser {
 
     init {
         registerGoalCode(ConstantIndex.AtomicAttribute2023)
-        registerGoalCode(ConstantIndex.MobileDrivingLicence2023)
     }
 
     fun parseGoalCode(goalCode: String) = when (goalCode) {
@@ -20,7 +19,7 @@ object AriesGoalCodeParser {
 
     fun getAriesName(credentialScheme: ConstantIndex.CredentialScheme): String {
         val builder = StringBuilder()
-        credentialScheme.vcType.forEachIndexed { index, char ->
+        credentialScheme.vcType!!.forEachIndexed { index, char ->
             if (char.isUpperCase() && index > 0) builder.append("-").append(char.lowercaseChar())
             else builder.append(char)
         }

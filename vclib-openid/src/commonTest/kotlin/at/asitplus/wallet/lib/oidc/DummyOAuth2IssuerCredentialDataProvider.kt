@@ -9,17 +9,16 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.iso.DrivingPrivilege
-import at.asitplus.wallet.lib.iso.ElementValue
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.EXPIRY_DATE
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.FAMILY_NAME
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.GIVEN_NAME
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.ISSUE_DATE
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.lib.oidvci.OidcUserInfo
 import at.asitplus.wallet.lib.oidvci.OidcUserInfoExtended
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUE_DATE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
@@ -38,13 +37,16 @@ class DummyOAuth2IssuerCredentialDataProvider(
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>?
     ): KmmResult<List<CredentialToBeIssued>> {
-        val expiration = clock.now() + defaultLifetime
+        val issuance = clock.now()
+        val expiration = issuance + defaultLifetime
         val credentials = mutableListOf<CredentialToBeIssued>()
+        val familyName = userInfo.userInfo.familyName
+        val givenName = userInfo.userInfo.givenName
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
             val subjectId = subjectPublicKey.didEncoded
             val claims = listOfNotNull(
-                userInfo.userInfo.givenName?.let { optionalClaim(claimNames, "given_name", it) },
-                userInfo.userInfo.familyName?.let { optionalClaim(claimNames, "family_name", it) },
+                givenName?.let { optionalClaim(claimNames, "given_name", it) },
+                familyName?.let { optionalClaim(claimNames, "family_name", it) },
                 optionalClaim(claimNames, "subject", userInfo.userInfo.subject),
                 userInfo.userInfo.birthDate?.let { optionalClaim(claimNames, "date-of-birth", it) },
             )
@@ -74,13 +76,13 @@ class DummyOAuth2IssuerCredentialDataProvider(
             }
         }
 
-        if (credentialScheme == ConstantIndex.MobileDrivingLicence2023) {
+        if (credentialScheme == MobileDrivingLicenceScheme) {
             var digestId = 0U
             val issuerSignedItems = listOfNotNull(
-                if (claimNames.isNullOrContains(FAMILY_NAME) && userInfo.userInfo.familyName != null)
-                    issuerSignedItem(FAMILY_NAME, userInfo.userInfo.familyName!!, digestId++) else null,
-                if (claimNames.isNullOrContains(GIVEN_NAME) && userInfo.userInfo.givenName != null)
-                    issuerSignedItem(GIVEN_NAME, userInfo.userInfo.givenName!!, digestId++) else null,
+                if (claimNames.isNullOrContains(FAMILY_NAME) && familyName != null)
+                    issuerSignedItem(FAMILY_NAME, familyName!!, digestId++) else null,
+                if (claimNames.isNullOrContains(GIVEN_NAME) && givenName != null)
+                    issuerSignedItem(GIVEN_NAME, givenName!!, digestId++) else null,
                 if (claimNames.isNullOrContains(DOCUMENT_NUMBER))
                     issuerSignedItem(DOCUMENT_NUMBER, "123456789", digestId++) else null,
                 if (claimNames.isNullOrContains(ISSUE_DATE))
@@ -99,14 +101,16 @@ class DummyOAuth2IssuerCredentialDataProvider(
 
         if (credentialScheme == EuPidScheme) {
             val subjectId = subjectPublicKey.didEncoded
+            val birthDate = LocalDate.parse(userInfo.userInfo.birthDate ?: "1970-01-01")
+            val issuingCountry = "AT"
             val claims = listOfNotNull(
-                userInfo.userInfo.familyName?.let { optionalClaim(claimNames, EuPidScheme.Attributes.FAMILY_NAME, it) },
-                userInfo.userInfo.givenName?.let { optionalClaim(claimNames, EuPidScheme.Attributes.GIVEN_NAME, it) },
-                optionalClaim(
-                    claimNames,
-                    EuPidScheme.Attributes.BIRTH_DATE,
-                    LocalDate.parse(userInfo.userInfo.birthDate ?: "1970-01-01")
-                ),
+                optionalClaim(claimNames, EuPidScheme.Attributes.FAMILY_NAME, familyName ?: "Unknown"),
+                optionalClaim(claimNames, EuPidScheme.Attributes.GIVEN_NAME, givenName ?: "Unknown"),
+                optionalClaim(claimNames, EuPidScheme.Attributes.BIRTH_DATE, birthDate),
+                optionalClaim(claimNames, EuPidScheme.Attributes.ISSUANCE_DATE, issuance),
+                optionalClaim(claimNames, EuPidScheme.Attributes.EXPIRY_DATE, expiration),
+                optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_COUNTRY, issuingCountry),
+                optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_AUTHORITY, issuingCountry),
             )
             credentials += when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
@@ -117,9 +121,13 @@ class DummyOAuth2IssuerCredentialDataProvider(
                     CredentialToBeIssued.VcJwt(
                         EuPidCredential(
                             id = subjectId,
-                            familyName = userInfo.userInfo.familyName ?: "Unknown",
-                            givenName = userInfo.userInfo.givenName ?: "Unknown",
-                            birthDate = LocalDate.parse(userInfo.userInfo.birthDate ?: "1970-01-01")
+                            familyName = familyName ?: "Unknown",
+                            givenName = givenName ?: "Unknown",
+                            birthDate = birthDate,
+                            issuanceDate = issuance,
+                            expiryDate = expiration,
+                            issuingCountry = issuingCountry,
+                            issuingAuthority = issuingCountry,
                         ),
                         expiration,
                     )
@@ -150,14 +158,7 @@ class DummyOAuth2IssuerCredentialDataProvider(
             digestId = digestId,
             random = Random.nextBytes(16),
             elementIdentifier = name,
-            elementValue = when (value) {
-                is String -> ElementValue(string = value)
-                is ByteArray -> ElementValue(bytes = value)
-                is LocalDate -> ElementValue(date = value)
-                is Boolean -> ElementValue(boolean = value)
-                is DrivingPrivilege -> ElementValue(drivingPrivilege = arrayOf(value))
-                else -> ElementValue(string = value.toString())
-            }
+            elementValue = value
         )
 }
 

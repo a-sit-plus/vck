@@ -148,9 +148,12 @@ data class AuthenticationRequestParameters(
     val presentationDefinitionUrl: String? = null,
 
     /**
-     * OID4VP: A string containing an HTTPS URL pointing to a resource where a Presentation Definition JSON object can
-     * be retrieved. This parameter MUST be present when `presentation_definition` parameter, or a `scope` value
-     * representing a Presentation Definition is not present.
+     * RFC9396: The request parameter `authorization_details` contains, in JSON notation, an array of objects.
+     * Each JSON object contains the data to specify the authorization requirements for a certain type of resource.
+     * The type of resource or access requirement is determined by the [AuthorizationDetails.type] field.
+     *
+     * OID4VCI: This parameter MUST be used to convey th details about the Credentials the Wallet wants to obtain.
+     * This specification introduces a new authorization details type `openid_credential`.
      */
     @SerialName("authorization_details")
     val authorizationDetails: AuthorizationDetails? = null,

@@ -2,18 +2,14 @@ package at.asitplus.wallet.lib.aries
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.jws.jwkId
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.iso.ElementValue
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import kotlinx.datetime.Clock
-import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
@@ -75,12 +71,6 @@ class DummyCredentialDataProvider(
             digestId = digestId,
             random = Random.nextBytes(16),
             elementIdentifier = name,
-            elementValue = when (value) {
-                is String -> ElementValue(string = value)
-                is ByteArray -> ElementValue(bytes = value)
-                is LocalDate -> ElementValue(date = value)
-                is Boolean -> ElementValue(boolean = value)
-                else -> ElementValue(string = value.toString())
-            }
+            elementValue = value
         )
 }

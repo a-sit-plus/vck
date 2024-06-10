@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER
+import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainAll
@@ -17,22 +18,18 @@ import io.ktor.http.*
 
 class OidvciInteropTest : FunSpec({
 
-    beforeSpec {
-        at.asitplus.wallet.eupid.Initializer.initWithVcLib()
-    }
-
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
 
     beforeEach {
         authorizationService = SimpleAuthorizationService(
             dataProvider = DummyOAuth2DataProvider,
-            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023)
+            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme)
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
             issuer = IssuerAgent.newDefaultInstance(),
-            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, ConstantIndex.MobileDrivingLicence2023),
+            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
             buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
         )
     }

@@ -100,6 +100,11 @@ publishing {
     }
 }
 
+repositories {
+    maven(url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+    mavenCentral()
+}
+
 signing {
     val signingKeyId: String? by project
     val signingKey: String? by project

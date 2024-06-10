@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
+import at.asitplus.crypto.datatypes.jws.JweEncryption
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.CryptoService
@@ -31,10 +32,6 @@ class OidcSiopInteropTest : FreeSpec({
     lateinit var holderCryptoService: CryptoService
     lateinit var holderAgent: Holder
     lateinit var holderSiop: OidcSiopWallet
-
-    beforeSpec {
-        at.asitplus.wallet.eupid.Initializer.initWithVcLib()
-    }
 
     beforeEach {
         holderCryptoService = DefaultCryptoService()
@@ -275,9 +272,9 @@ class OidcSiopInteropTest : FreeSpec({
         cm.shouldNotBeNull()
         cm.subjectSyntaxTypesSupported.shouldNotBeNull() shouldHaveSingleElement "urn:ietf:params:oauth:jwk-thumbprint"
         cm.authorizationEncryptedResponseAlg shouldBe JweAlgorithm.ECDH_ES
-        cm.authorizationEncryptedResponseEncoding shouldBe "A128CBC-HS256"
+        cm.authorizationEncryptedResponseEncoding shouldBe JweEncryption.A128CBC_HS256
         cm.idTokenEncryptedResponseAlg shouldBe JweAlgorithm.RSA_OAEP_256
-        cm.idTokenEncryptedResponseEncoding shouldBe "A128CBC-HS256"
+        cm.idTokenEncryptedResponseEncoding shouldBe JweEncryption.A128CBC_HS256
         cm.idTokenSignedResponseAlg shouldBe JwsAlgorithm.RS256
         cm.jsonWebKeySetUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/jarm/" +
                 "xgagB1vsIrWhMLixoJTCVZZvOHsZ8QrulEFxc0bjJdMRyzqO6j2-UB00gmOZraocfoknlxXY-kaoLlX8kygqxw/jwks.json"

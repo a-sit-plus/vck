@@ -6,13 +6,10 @@ import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.cose.CoseSigned
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.LocalDate
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ArraySerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.ByteString
@@ -24,7 +21,6 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
-import kotlinx.serialization.descriptors.buildSerialDescriptor
 import kotlinx.serialization.descriptors.listSerialDescriptor
 import kotlinx.serialization.descriptors.mapSerialDescriptor
 import kotlinx.serialization.encodeToByteArray
@@ -358,7 +354,7 @@ object IssuerSignedListSerializer : KSerializer<IssuerSignedList> {
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
  */
-@Serializable
+@Serializable(with = IssuerSignedItemSerializer::class)
 data class IssuerSignedItem(
     @SerialName("digestID")
     val digestId: UInt,
@@ -368,7 +364,7 @@ data class IssuerSignedItem(
     @SerialName("elementIdentifier")
     val elementIdentifier: String,
     @SerialName("elementValue")
-    val elementValue: ElementValue,
+    val elementValue: Any,
 ) {
 
     fun serialize() = cborSerializer.encodeToByteArray(this)
@@ -407,65 +403,6 @@ data class IssuerSignedItem(
     }
 }
 
-/**
- * Convenience class to enable serialization of (nearly) "any" value in [IssuerSignedItem.elementValue]
- */
-@Serializable(with = ElementValueSerializer::class)
-data class ElementValue(
-    val bytes: ByteArray? = null,
-    @ValueTags(1004u)
-    val date: LocalDate? = null,
-    val string: String? = null,
-    val drivingPrivilege: Array<DrivingPrivilege>? = null,
-    val boolean: Boolean? = null,
-) {
-    fun serialize() = cborSerializer.encodeToByteArray(this)
-
-    override fun toString(): String {
-        return "ElementValue(bytes=${bytes?.encodeToString(Base16(strict = true))}," +
-                " date=${date}," +
-                " string=$string," +
-                " drivingPrivilege=$drivingPrivilege," +
-                " boolean=$boolean)"
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as ElementValue
-
-        if (bytes != null) {
-            if (other.bytes == null) return false
-            if (!bytes.contentEquals(other.bytes)) return false
-        } else if (other.bytes != null) return false
-        if (date != other.date) return false
-        if (string != other.string) return false
-        if (drivingPrivilege != null) {
-            if (other.drivingPrivilege == null) return false
-            if (!drivingPrivilege.contentEquals(other.drivingPrivilege)) return false
-        } else if (other.drivingPrivilege != null) return false
-        if (boolean != other.boolean) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = bytes?.contentHashCode() ?: 0
-        result = 31 * result + (date?.hashCode() ?: 0)
-        result = 31 * result + (string?.hashCode() ?: 0)
-        result = 31 * result + (drivingPrivilege?.contentHashCode() ?: 0)
-        result = 31 * result + (boolean?.hashCode() ?: 0)
-        return result
-    }
-
-    companion object {
-        fun deserialize(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray<ElementValue>(it)
-        }.wrap()
-    }
-}
-
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
@@ -479,10 +416,6 @@ data class DeviceSigned(
     @SerialName("deviceAuth")
     val deviceAuth: DeviceAuth,
 ) {
-    fun extractDeviceNameSpaces(): Map<String, Map<String, ElementValue>> {
-        return cborSerializer.decodeFromByteArray(namespaces)
-    }
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -499,13 +432,6 @@ data class DeviceSigned(
         return result
     }
 
-    companion object {
-        fun withDeviceNameSpaces(value: Map<String, Map<String, ElementValue>>, deviceAuth: DeviceAuth) =
-            DeviceSigned(
-                namespaces = cborSerializer.encodeToByteArray(value),
-                deviceAuth = deviceAuth
-            )
-    }
 }
 
 
@@ -534,58 +460,6 @@ object ByteStringWrapperItemsRequestSerializer : KSerializer<ByteStringWrapper<I
     override fun deserialize(decoder: Decoder): ByteStringWrapper<ItemsRequest> {
         val bytes = decoder.decodeSerializableValue(ByteArraySerializer())
         return ByteStringWrapper(cborSerializer.decodeFromByteArray(bytes), bytes)
-    }
-
-}
-
-object ElementValueSerializer : KSerializer<ElementValue> {
-
-    @OptIn(InternalSerializationApi::class)
-    // Use StructureKind.LIST to prevent the indices ("0") from getting serialized for driving privileges
-    override val descriptor: SerialDescriptor = buildSerialDescriptor("ElementValueSerializer", StructureKind.LIST)
-
-    override fun serialize(encoder: Encoder, value: ElementValue) {
-        value.bytes?.let {
-            encoder.encodeSerializableValue(ByteArraySerializer(), it)
-        } ?: value.date?.let {
-            // TODO write tag 1004
-            encoder.encodeSerializableValue(LocalDate.serializer(), it)
-        } ?: value.string?.let {
-            encoder.encodeString(it)
-        } ?: value.drivingPrivilege?.let {
-            encoder.encodeSerializableValue(ArraySerializer(DrivingPrivilege.serializer()), it)
-        } ?: value.boolean?.let {
-            encoder.encodeBoolean(it)
-        } ?: throw IllegalArgumentException("No value exists")
-    }
-
-    override fun deserialize(decoder: Decoder): ElementValue {
-        runCatching {
-            return ElementValue(
-                bytes = decoder.decodeSerializableValue(ByteArraySerializer())
-            )
-        }
-        runCatching {
-            return ElementValue(
-                drivingPrivilege = decoder.decodeSerializableValue(ArraySerializer(DrivingPrivilege.serializer()))
-            )
-        }
-        runCatching {
-            return ElementValue(
-                boolean = decoder.decodeBoolean()
-            )
-        }
-        runCatching {
-            val string = decoder.decodeString()
-            runCatching {
-                LocalDate.parse(string)
-            }.onSuccess {
-                return ElementValue(date = it)
-            }.onFailure {
-                return ElementValue(string = string)
-            }
-        }
-        throw IllegalArgumentException("Could not decode instance of ElementValue")
     }
 
 }

@@ -6,7 +6,6 @@ object AttributeIndex {
 
     init {
         schemeSet += ConstantIndex.AtomicAttribute2023
-        schemeSet += ConstantIndex.MobileDrivingLicence2023
     }
 
     internal fun registerAttributeType(scheme: ConstantIndex.CredentialScheme) {
@@ -28,11 +27,19 @@ object AttributeIndex {
     }
 
     /**
+     * Matches the passed [sdJwtType] against all known types from [ConstantIndex.CredentialScheme.sdJwtType]
+     */
+    fun resolveSdJwtAttributeType(sdJwtType: String): ConstantIndex.CredentialScheme? {
+        return schemeSet.firstOrNull { it.sdJwtType == sdJwtType }
+    }
+
+    /**
      * Matches the passed [namespace] against all known namespace from [ConstantIndex.CredentialScheme.isoNamespace]
      */
     fun resolveIsoNamespace(namespace: String): ConstantIndex.CredentialScheme? {
         // allow for extension to the namespace by appending ".countryname" or anything else, according to spec
-        return schemeSet.firstOrNull { it.isoNamespace.startsWith(namespace) || namespace.startsWith(it.isoNamespace) }
+        return schemeSet.filter { it.isoNamespace != null }
+            .firstOrNull { it.isoNamespace!!.startsWith(namespace) || namespace.startsWith(it.isoNamespace!!) }
     }
 
     /**
@@ -40,7 +47,8 @@ object AttributeIndex {
      */
     fun resolveIsoDoctype(docType: String): ConstantIndex.CredentialScheme? {
         // allow for extension to the namespace by appending ".countryname" or anything else, according to spec
-        return schemeSet.firstOrNull { it.isoDocType.startsWith(docType) || docType.startsWith(it.isoDocType) }
+        return schemeSet.filter { it.isoDocType != null }
+            .firstOrNull { it.isoDocType!!.startsWith(docType) || docType.startsWith(it.isoDocType!!) }
     }
 
 }

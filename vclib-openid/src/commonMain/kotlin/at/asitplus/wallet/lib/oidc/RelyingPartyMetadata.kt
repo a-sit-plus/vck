@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
+import at.asitplus.crypto.datatypes.jws.JweEncryption
 import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.data.dif.FormatHolder
 import kotlinx.serialization.SerialName
@@ -80,7 +81,7 @@ data class RelyingPartyMetadata(
      * provided.
      */
     @SerialName("authorization_encrypted_response_enc")
-    val authorizationEncryptedResponseEncoding: String? = null,
+    val authorizationEncryptedResponseEncoding: JweEncryption? = null,
 
     /**
      * OIDC Registration: OPTIONAL. JWE alg algorithm REQUIRED for encrypting the ID Token issued to this Client.
@@ -96,7 +97,7 @@ data class RelyingPartyMetadata(
      * When [idTokenEncryptedResponseEncoding] is included, [idTokenEncryptedResponseAlg] MUST also be provided.
      */
     @SerialName("id_token_encrypted_response_enc")
-    val idTokenEncryptedResponseEncoding: String? = null,
+    val idTokenEncryptedResponseEncoding: JweEncryption? = null,
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array of strings representing URI scheme identifiers and optionally method names of

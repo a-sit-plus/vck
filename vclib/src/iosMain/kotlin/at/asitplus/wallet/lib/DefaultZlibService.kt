@@ -15,7 +15,7 @@ import platform.Foundation.decompressedDataUsingAlgorithm
 
 actual class DefaultZlibService actual constructor() : ZlibService {
 
-    override fun compress(input: ByteArray): ByteArray? {
+    actual override fun compress(input: ByteArray): ByteArray? {
         memScoped {
             val data = toData(input)
             val errorPointer = alloc<ObjCObjectVar<NSError?>>()
@@ -54,7 +54,7 @@ actual class DefaultZlibService actual constructor() : ZlibService {
     private fun UInt.toByteArray(size: Int = 4): ByteArray =
         ByteArray(size) { i -> (this.toLong() shr (i * 8)).toByte() }.reversedArray()
 
-    override fun decompress(input: ByteArray): ByteArray? {
+    actual override fun decompress(input: ByteArray): ByteArray? {
         memScoped {
             var data = toData(input)
             if (input.size > 1 && input[0] == 0x78.toByte() && input[1] == 0x9C.toByte()) {

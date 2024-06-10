@@ -194,7 +194,7 @@ class IssueCredentialProtocol(
             issuer = "somebody",
             subject = subject,
             credential = CredentialDefinition(
-                name = credentialScheme.vcType,
+                name = credentialScheme.vcType!!,
                 schema = SchemaReference(uri = credentialScheme.schemaUri),
             )
         )

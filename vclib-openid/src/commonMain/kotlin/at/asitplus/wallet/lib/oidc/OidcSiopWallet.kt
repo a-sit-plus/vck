@@ -2,7 +2,9 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
+import at.asitplus.crypto.datatypes.jws.JweHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.crypto.datatypes.pki.leaf
@@ -41,6 +43,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -145,10 +148,7 @@ class OidcSiopWallet(
         }
 
         val extractedParams = parsedParams.let { extractRequestObject(it.parameters) ?: it }
-        if (parsedParams.parameters.clientId != null && extractedParams.parameters.clientId != parsedParams.parameters.clientId) {
-            Napier.w("ClientIds changed: ${parsedParams.parameters.clientId} to ${extractedParams.parameters.clientId}")
-            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-        }
+            .also { Napier.i("parsed authentication request: $it") }
         return KmmResult.success(extractedParams)
     }
 
@@ -276,16 +276,23 @@ class OidcSiopWallet(
         authenticationResponsePreparationState: AuthenticationResponsePreparationState,
         inputDescriptorCredentialSubmissions: Map<String, InputDescriptorCredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponseResult> {
-        val responseParams = finalizeAuthenticationResponseParameters(
+        val response = finalizeAuthenticationResponseParameters(
             authenticationResponsePreparationState,
             inputDescriptorCredentialSubmissions = inputDescriptorCredentialSubmissions,
         ).getOrElse {
             return KmmResult.failure(it)
         }
 
+        /* TODO: rectify authnResponseDirectPostJwt
+                val responseSerialized = buildJarm(response)
+        val jarm = AuthenticationResponseParameters(response = responseSerialized)
+        return AuthenticationResponseResult.Post(url, jarm.encodeToParameters())
+
+         */
+
         return AuthenticationResponseResultFactory(
             jwsService = jwsService,
-            responseParameters = responseParams,
+            responseParameters = response,
             responseModeParameters = authenticationResponsePreparationState.responseModeParameters
         ).createAuthenticationResponseResult()
     }
@@ -294,7 +301,7 @@ class OidcSiopWallet(
     internal suspend fun finalizeAuthenticationResponseParameters(
         authenticationResponsePreparationState: AuthenticationResponsePreparationState,
         inputDescriptorCredentialSubmissions: Map<String, InputDescriptorCredentialSubmission>? = null,
-    ): KmmResult<AuthenticationResponseParameters> {
+    ): KmmResult<AuthenticationResponse> {
         val signedIdToken =
             if (!authenticationResponsePreparationState.responseType.contains(ID_TOKEN)) {
                 null
@@ -323,14 +330,24 @@ class OidcSiopWallet(
             }
         }
 
+        val certKey = // TODO: fix
+            (authenticationResponsePreparationState.parameters as? AuthenticationRequestParametersFrom.JwsSigned)?.source?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
+        val jsonWebKeySet = authenticationResponsePreparationState.clientMetadata.loadJsonWebKeySet()?.keys.combine(certKey)
+
+        val vpToken = presentationResultContainer?.presentationResults?.map { it.toVerifiablePresentationToken() }
+            ?.singleOrArray()
+        val authenticationResponseParameters = AuthenticationResponseParameters(
+            idToken = signedIdToken?.serialize(),
+            state = authenticationResponsePreparationState.parameters.state,
+            vpToken = vpToken,
+            presentationSubmission = presentationResultContainer?.presentationSubmission,
+        )
         return KmmResult.success(
-            AuthenticationResponseParameters(
-                idToken = signedIdToken?.serialize(),
-                state = authenticationResponsePreparationState.parameters.state,
-                vpToken = presentationResultContainer?.presentationResults?.map { it.toVerifiablePresentationToken() }
-                    ?.singleOrArray(),
-                presentationSubmission = presentationResultContainer?.presentationSubmission,
-            ),
+            AuthenticationResponse(
+                authenticationResponseParameters,
+                authenticationResponsePreparationState.parameters,
+                jsonWebKeySet,
+            )
         )
     }
 
@@ -369,6 +386,39 @@ class OidcSiopWallet(
             throw OAuth2Exception(Errors.USER_CANCELLED)
         }
     }
+
+    private suspend fun buildJarm(response: AuthenticationResponse) =
+        if (response.clientMetadata.requestsEncryption()) {
+            val alg = response.clientMetadata.authorizationEncryptedResponseAlg!!
+            val enc = response.clientMetadata.authorizationEncryptedResponseEncoding!!
+            val jwk = response.jsonWebKeys.first()
+            jwsService.encryptJweObject(
+                header = JweHeader(
+                    algorithm = alg,
+                    encryption = enc,
+                    type = null,
+                    agreementPartyVInfo = Random.Default.nextBytes(16), // TODO nonce from authn request
+                    keyId = jwk.keyId,
+                ),
+                payload = response.params.serialize().encodeToByteArray(),
+                recipientKey = jwk,
+                jweAlgorithm = alg,
+                jweEncryption = enc,
+            ).map { it.serialize() }.getOrElse {
+                Napier.w("buildJarm error", it)
+                throw OAuth2Exception(Errors.INVALID_REQUEST)
+            }
+        } else {
+            jwsService.createSignedJwsAddingParams(
+                payload = response.params.serialize().encodeToByteArray(), addX5c = false
+            ).map { it.serialize() }.getOrElse {
+                Napier.w("buildJarm error", it)
+                throw OAuth2Exception(Errors.INVALID_REQUEST)
+            }
+        }
+
+    private fun RelyingPartyMetadata.requestsEncryption() =
+        authorizationEncryptedResponseAlg != null && authorizationEncryptedResponseEncoding != null
 
     private suspend fun buildSignedIdToken(
         audience: String?,
@@ -411,16 +461,16 @@ class OidcSiopWallet(
 
     private suspend fun AuthenticationRequestParametersFrom<*>.extractAudience(
         clientMetadata: RelyingPartyMetadata
-    ) = clientMetadata.jsonWebKeySet?.keys?.firstOrNull()?.identifier
-        ?: clientMetadata.jsonWebKeySetUrl?.let {
-            remoteResourceRetriever.invoke(it)
-                ?.let { JsonWebKeySet.deserialize(it).getOrNull() }?.keys?.firstOrNull()?.identifier
-        }
-        ?: (source as? AuthenticationRequestParametersFrom.JwsSigned)?.source?.header?.certificateChain?.leaf?.let { parameters.clientId } //TODO is this even correct ????
-        ?: run {
-            Napier.w("Could not parse audience")
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
-        }
+    ) = clientMetadata.loadJsonWebKeySet()?.keys?.firstOrNull()?.identifier
+        ?: (source as? AuthenticationRequestParametersFrom.JwsSigned)
+            ?.source?.header?.certificateChain?.leaf?.let { parameters.clientId } //TODO is this even correct ????
+        ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            .also { Napier.w("Could not parse audience") }
+
+    private suspend fun RelyingPartyMetadata.loadJsonWebKeySet() =
+        this.jsonWebKeySet ?: jsonWebKeySetUrl?.let { remoteResourceRetriever.invoke(it) }
+            ?.let { JsonWebKeySet.deserialize(it).getOrNull() }
+
 
     private suspend fun AuthenticationRequestParameters.loadClientMetadata() =
         clientMetadata ?: clientMetadataUri?.let { uri ->
@@ -484,3 +534,7 @@ typealias ScopePresentationDefinitionRetriever = suspend (String) -> Presentatio
  * Implementations need to verify the passed [JwsSigned] and return its result
  */
 typealias RequestObjectJwsVerifier = (jws: JwsSigned, authnRequest: AuthenticationRequestParameters) -> Boolean
+
+private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> {
+    return certKey?.let { (this ?: listOf()) + certKey } ?: this ?: listOf()
+}

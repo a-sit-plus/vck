@@ -35,14 +35,14 @@ actual class DefaultCryptoService : CryptoService {
 
     private val secPrivateKey: SecKeyRef
     private val secPublicKey: SecKeyRef
-    override val algorithm = CryptoAlgorithm.ES256
-    override val publicKey: CryptoPublicKey
-    override val certificate: X509Certificate
+    actual override val algorithm = CryptoAlgorithm.ES256
+    actual override val publicKey: CryptoPublicKey
+    actual override val certificate: X509Certificate?
 
-    override val jsonWebKey: JsonWebKey
+    actual override val jsonWebKey: JsonWebKey
         get() = publicKey.toJsonWebKey()
 
-    override val coseKey: CoseKey
+    actual override val coseKey: CoseKey
         get() = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrNull()!!
 
     actual constructor() : this(listOf())
@@ -71,11 +71,11 @@ actual class DefaultCryptoService : CryptoService {
         }
     }
 
-    override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> {
+    actual override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> {
         return KmmResult.success(CryptoSignature.EC.decodeFromDer(signInt(input)).withCurve(algorithm.curve!!))
     }
 
-    override fun encrypt(
+    actual override fun encrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -90,7 +90,7 @@ actual class DefaultCryptoService : CryptoService {
         )
     }
 
-    override suspend fun decrypt(
+    actual override suspend fun decrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -104,7 +104,7 @@ actual class DefaultCryptoService : CryptoService {
             KmmResult.failure(IllegalArgumentException())
     }
 
-    override fun generateEphemeralKeyPair(ecCurve: ECCurve): KmmResult<EphemeralKeyHolder> {
+    actual override fun generateEphemeralKeyPair(ecCurve: ECCurve): KmmResult<EphemeralKeyHolder> {
         val query = CFDictionaryCreateMutable(null, 2, null, null).apply {
             CFDictionaryAddValue1(this, kSecAttrKeyType, kSecAttrKeyTypeEC)
             CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
@@ -116,7 +116,7 @@ actual class DefaultCryptoService : CryptoService {
         return KmmResult.success(DefaultEphemeralKeyHolder(ecCurve,publicKey, privateKey))
     }
 
-    override fun performKeyAgreement(
+    actual override fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
@@ -124,11 +124,14 @@ actual class DefaultCryptoService : CryptoService {
         return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
     }
 
-    override fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
+    actual override fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
         return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
     }
 
-    override fun messageDigest(input: ByteArray, digest: at.asitplus.crypto.datatypes.Digest): KmmResult<ByteArray> {
+    actual override fun messageDigest(
+        input: ByteArray,
+        digest: at.asitplus.crypto.datatypes.Digest
+    ): KmmResult<ByteArray> {
         return KmmResult.success(input)
     }
 
@@ -141,9 +144,9 @@ actual class DefaultCryptoService : CryptoService {
 @Suppress("UNCHECKED_CAST")
 actual class DefaultVerifierCryptoService : VerifierCryptoService {
 
-    override val supportedAlgorithms: List<CryptoAlgorithm> = CryptoAlgorithm.entries.filter { it.isEc }
+    actual override val supportedAlgorithms: List<CryptoAlgorithm> = CryptoAlgorithm.entries.filter { it.isEc }
 
-    override fun verify(
+    actual override fun verify(
         input: ByteArray,
         signature: CryptoSignature,
         algorithm: CryptoAlgorithm,

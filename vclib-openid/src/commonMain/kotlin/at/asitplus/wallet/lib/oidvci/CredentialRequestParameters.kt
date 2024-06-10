@@ -47,6 +47,7 @@ data class CredentialRequestParameters(
      * Credential(s) issued with those claim(s).
      */
     @SerialName("claims")
+    // TODO Verify format for ISO-MDOC and SD-JWT
     val claims: Map<String, Map<String, RequestedCredentialClaimSpecification>>? = null,
 
     /**

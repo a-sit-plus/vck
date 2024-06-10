@@ -3,7 +3,7 @@ import io.github.aakira.napier.Napier
 import io.kotest.core.config.AbstractProjectConfig
 import io.kotest.core.names.DuplicateTestNameMode
 
-object KotestConfig : AbstractProjectConfig() {
+class KotestConfig : AbstractProjectConfig() {
     init {
         Napier.base(DebugAntilog())
     }

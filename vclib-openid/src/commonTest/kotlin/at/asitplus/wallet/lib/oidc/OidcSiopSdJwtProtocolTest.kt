@@ -73,7 +73,6 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
                 requestedAttributes = listOf("given-name")
             ),
         ).also { println(it) }
-        authnRequest shouldContain "jwt_sd"
 
         val authnResponse =
             holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow()
@@ -103,7 +102,6 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
                 requestedAttributes = listOf(requestedClaim)
             )
         ).also { println(it) }
-        authnRequest shouldContain "jwt_sd"
         authnRequest shouldContain requestedClaim
 
         val authnResponse =

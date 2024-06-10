@@ -15,8 +15,9 @@ import at.asitplus.wallet.lib.data.dif.ConstraintField
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.SchemaReference
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
@@ -41,20 +42,19 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         }
         val testScopePresentationDefinitionRetriever = mapOf(
             testScopes.EmptyPresentationRequest to PresentationDefinition(
-                id = uuid4().toString(),
-                inputDescriptors = listOf()
+                id = uuid4().toString(), inputDescriptors = listOf()
             ),
             testScopes.MdocMdlWithGivenName to PresentationDefinition(
-                id = uuid4().toString(),
-                inputDescriptors = listOf(
+                id = uuid4().toString(), inputDescriptors = listOf(
                     InputDescriptor(
-                        id = ConstantIndex.MobileDrivingLicence2023.isoDocType,
-                        constraints = Constraint(
+                        id = MobileDrivingLicenceScheme.isoDocType, constraints = Constraint(
                             fields = listOf(
                                 ConstraintField(
                                     path = listOf(
                                         NormalizedJsonPath(
-                                            NormalizedJsonPathSegment.NameSegment(ConstantIndex.MobileDrivingLicence2023.isoNamespace),
+                                            NormalizedJsonPathSegment.NameSegment(
+                                                MobileDrivingLicenceScheme.isoNamespace
+                                            ),
                                             NormalizedJsonPathSegment.NameSegment(
                                                 MobileDrivingLicenceDataElements.GIVEN_NAME
                                             ),
@@ -62,9 +62,8 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
                                     ),
                                 )
                             )
-                        ),
-                        schema = listOf(
-                            SchemaReference(ConstantIndex.MobileDrivingLicence2023.schemaUri)
+                        ), schema = listOf(
+                            SchemaReference(MobileDrivingLicenceScheme.schemaUri)
                         )
                     )
                 )
@@ -164,7 +163,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
                 holderAgent.storeCredentials(
                     issuerAgent.issueCredential(
                         subjectPublicKey = holderCryptoService.publicKey,
-                        attributeTypes = listOf(ConstantIndex.MobileDrivingLicence2023.vcType),
+                        attributeTypes = listOf(MobileDrivingLicenceScheme.isoNamespace),
                         representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
                     ).toStoreCredentialInput()
                 )

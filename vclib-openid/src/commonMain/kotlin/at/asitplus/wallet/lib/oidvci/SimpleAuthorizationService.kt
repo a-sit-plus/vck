@@ -149,6 +149,7 @@ class SimpleAuthorizationService(
         if (params.authorizationDetails != null) {
             // TODO verify params.authorizationDetails.claims and so on
             params.authorizationDetails.credentialIdentifiers?.forEach { credentialIdentifier ->
+                // TODO work out mapping of credential identifiers in authorization details to schemes
                 if (!credentialSchemes.map { it.vcType }.contains(credentialIdentifier)) {
                     return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_GRANT))
                         .also { Napier.w("token: client requested invalid credential identifier: $credentialIdentifier") }

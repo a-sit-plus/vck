@@ -5,6 +5,7 @@ build/
 local.properties
 !**/src/main/**/build/
 !**/src/test/**/build/
+.kotlin
 
 ### STS ###
 .apt_generated

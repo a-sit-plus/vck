@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements
-
 object ConstantIndex {
 
     enum class CredentialRepresentation {
@@ -19,49 +17,73 @@ object ConstantIndex {
         val schemaUri: String
 
         /**
-         * Name of the subclass of [CredentialSubject] and thus the `type` of the credential.
+         * Name of the subclass of [CredentialSubject] and thus the `type` of the credential,
+         * when using [CredentialRepresentation.PLAIN_JWT]. Will not be used for other representations.
          */
-        val vcType: String
+        val vcType: String?
+            get() = null
 
         /**
-         * Namespace to use for attributes of this credential type.
+         * Type used for `vct` when using [CredentialRepresentation.SD_JWT].
+         */
+        val sdJwtType: String?
+            get() = null
+
+        /**
+         * Namespace to use for attributes of this credential type, when using [CredentialRepresentation.ISO_MDOC].
          *
          * From ISO/IEC 18013-5:
          * There is no requirement for the `NameSpace` format. An approach to avoid collisions is to use the
          * following general format: `[Reverse Domain].[Domain Specific Extension]`.
          */
-        val isoNamespace: String
+        val isoNamespace: String?
+            get() = null
 
         /**
-         * ISO DocType to use for attributes of this credential type.
+         * ISO DocType to use for attributes of this credential type, when using [CredentialRepresentation.ISO_MDOC].
          *
          * From ISO/IEC 18013-5:
          * There is no requirement for the `DocType` format. An approach to avoid collisions is to use the
          * following general format: `[Reverse Domain].[Domain Specific Extension]`.
          */
-        val isoDocType: String
+        val isoDocType: String?
+            get() = null
 
         /**
          * List of claims that may be issued separately when requested in format [CredentialRepresentation.SD_JWT]
          * or [CredentialRepresentation.ISO_MDOC].
          */
         val claimNames: Collection<String>
+            get() = listOf()
+
+        /**
+         * Supported representations for this credential
+         */
+        val supportedRepresentations: Collection<CredentialRepresentation>
+            get() = listOf(
+                CredentialRepresentation.PLAIN_JWT,
+                CredentialRepresentation.SD_JWT,
+                CredentialRepresentation.ISO_MDOC
+            )
     }
 
     object AtomicAttribute2023 : CredentialScheme {
         override val schemaUri: String = "https://wallet.a-sit.at/schemas/1.0.0/AtomicAttribute2023.json"
         override val vcType: String = "AtomicAttribute2023"
+        override val sdJwtType: String = "AtomicAttribute2023"
         override val isoNamespace: String = "at.a-sit.wallet.atomic-attribute-2023"
         override val isoDocType: String = "at.a-sit.wallet.atomic-attribute-2023.iso"
         override val claimNames: Collection<String> = listOf()
     }
 
-    object MobileDrivingLicence2023 : CredentialScheme {
-        override val schemaUri: String = "https://wallet.a-sit.at/schemas/1.0.0/MobileDrivingLicence2023.json"
-        override val vcType: String = "MobileDrivingLicence"
-        override val isoNamespace: String = "org.iso.18013.5.1"
-        override val isoDocType: String = "org.iso.18013.5.1.mDL"
-        override val claimNames: Collection<String> = MobileDrivingLicenceDataElements.ALL_ELEMENTS.toList()
-    }
+    val CredentialScheme.supportsSdJwt
+        get() = supportedRepresentations.contains(ConstantIndex.CredentialRepresentation.SD_JWT) && sdJwtType != null
+
+    val CredentialScheme.supportsVcJwt
+        get() = supportedRepresentations.contains(ConstantIndex.CredentialRepresentation.PLAIN_JWT) && vcType != null
+
+    val CredentialScheme.supportsIso
+        get() = supportedRepresentations.contains(ConstantIndex.CredentialRepresentation.ISO_MDOC)
+                && isoNamespace != null && isoDocType != null
 
 }

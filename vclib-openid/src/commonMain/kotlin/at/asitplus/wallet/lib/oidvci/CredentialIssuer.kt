@@ -70,7 +70,6 @@ class CredentialIssuer(
                 credentialSchemes.forEach { putAll(it.toSupportedCredentialFormat(issuer.cryptoAlgorithms)) }
             },
             supportsCredentialIdentifiers = true,
-            displayProperties = credentialSchemes.map { DisplayProperties(it.vcType, "en") }.toSet()
         )
     }
 
@@ -186,14 +185,14 @@ class CredentialIssuer(
             }
 
             params.credentialIdentifier != null -> {
-                val (vcType, representation) = decodeFromCredentialIdentifier(params.credentialIdentifier)
-                if (vcType.isEmpty()) {
+                val (type, representation) = decodeFromCredentialIdentifier(params.credentialIdentifier)
+                if (type.isEmpty()) {
                     return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                         .also { Napier.w("credential: client did not provide correct credential identifier: ${params.credentialIdentifier}") }
                 }
                 issuer.issueCredential(
                     subjectPublicKey = subjectPublicKey,
-                    attributeTypes = listOf(vcType),
+                    attributeTypes = listOf(type),
                     representation = representation.toRepresentation(),
                     claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
                     dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)

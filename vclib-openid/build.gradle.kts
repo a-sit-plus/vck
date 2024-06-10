@@ -31,7 +31,10 @@ kotlin {
 
         commonTest {
             dependencies {
-                implementation("at.asitplus.wallet:eupidcredential:1.0.0")
+                implementation("at.asitplus.wallet:eupidcredential:2.1.0-SNAPSHOT"){
+                    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-serialization-json") //TODO remove me once everything's updated to conventions with new serialization
+                }
+                implementation("at.asitplus.wallet:mobiledrivinglicence:1.0.0-SNAPSHOT")
             }
         }
 
@@ -99,6 +102,11 @@ publishing {
             signing.isRequired = false
         }
     }
+}
+
+repositories {
+    maven(url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+    mavenCentral()
 }
 
 signing {

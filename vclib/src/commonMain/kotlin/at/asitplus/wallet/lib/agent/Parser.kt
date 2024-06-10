@@ -124,13 +124,10 @@ class Parser(
         if (kid != null && sdJwt.issuer != kid)
             return ParseVcResult.InvalidStructure(it)
                 .also { Napier.d("iss invalid") }
-        if (!sdJwt.type.contains(VERIFIABLE_CREDENTIAL))
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.d("type invalid") }
         if (sdJwt.expiration != null && sdJwt.expiration < (clock.now() - timeLeeway))
             return ParseVcResult.InvalidStructure(it)
                 .also { Napier.d("exp invalid") }
-        if (sdJwt.notBefore > (clock.now() + timeLeeway))
+        if (sdJwt.notBefore != null && sdJwt.notBefore > (clock.now() + timeLeeway))
             return ParseVcResult.InvalidStructure(it)
                 .also { Napier.d("nbf invalid") }
         Napier.d("SD-JWT is valid")

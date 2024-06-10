@@ -222,6 +222,7 @@ class Validator(
 
         Napier.d("verifyVpSdJwt: Valid")
         return Verifier.VerifyPresentationResult.SuccessSdJwt(
+            jwsSigned = sdJwtResult.jwsSigned,
             sdJwt = sdJwtResult.sdJwt,
             disclosures = sdJwtResult.disclosures.values.filterNotNull(),
             isRevoked = sdJwtResult.isRevoked,
@@ -379,16 +380,16 @@ class Validator(
         // it's important to read again from source string to prevent different formats in serialization
         val disclosureInputs = rawDisclosures
             .map { it.encodeToByteArray().toByteString().sha256().base64Url() }
-        disclosureInputs.forEach {
-            if (!sdJwt.disclosureDigests.contains(it)) {
+        disclosureInputs.forEach { discInput ->
+            if (sdJwt.disclosureDigests?.contains(discInput) != true) {
                 return Verifier.VerifyCredentialResult.InvalidStructure(input)
-                    .also { Napier.w("verifySdJwt: Digest of disclosure not contained in SD-JWT: $it") }
+                    .also { Napier.w("verifySdJwt: Digest of disclosure not contained in SD-JWT: $discInput") }
             }
         }
         val kid = jws.header.keyId
         return when (parser.parseSdJwt(input, sdJwt, kid)) {
             is Parser.ParseVcResult.SuccessSdJwt ->
-                Verifier.VerifyCredentialResult.SuccessSdJwt(sdJwt, disclosures, isRevoked)
+                Verifier.VerifyCredentialResult.SuccessSdJwt(jws, sdJwt, disclosures, isRevoked)
                     .also { Napier.d("verifySdJwt: Valid") }
 
             else -> Verifier.VerifyCredentialResult.InvalidStructure(input)

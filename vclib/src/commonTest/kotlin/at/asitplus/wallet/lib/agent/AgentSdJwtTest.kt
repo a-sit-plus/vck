@@ -132,7 +132,7 @@ class AgentSdJwtTest : FreeSpec({
         issuer.revokeCredentialsWithId(
             holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
-                .associate { it.sdJwt.jwtId to it.sdJwt.notBefore }) shouldBe true
+                .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }) shouldBe true
         verifier.setRevocationList(issuer.issueRevocationListCredential()!!) shouldBe true
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
         verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()

@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
+import at.asitplus.crypto.datatypes.jws.JweEncrypted
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
@@ -15,6 +16,8 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
+import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -165,7 +168,7 @@ class OidcSiopVerifier private constructor(
     private val containerJwt =
         FormatContainerJwt(algorithms = verifierJwsService.supportedAlgorithms.map { it.identifier })
 
-    private val metadata by lazy {
+    val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = relyingPartyUrl?.let { listOf(it) },
             jsonWebKeySet = JsonWebKeySet(listOf(agentPublicKey.toJsonWebKey())),
@@ -175,6 +178,18 @@ class OidcSiopVerifier private constructor(
                 jwtVp = containerJwt,
                 jwtSd = containerJwt,
             )
+        )
+    }
+
+    /**
+     * Creates the [RelyingPartyMetadata], but with parameters set to request encryption of pushed authentication
+     * responses, see [RelyingPartyMetadata.authorizationEncryptedResponseAlg]
+     * and [RelyingPartyMetadata.authorizationEncryptedResponseEncoding].
+     */
+    val metadataWithEncryption by lazy {
+        metadata.copy(
+            authorizationEncryptedResponseAlg = jwsService.encryptionAlgorithm,
+            authorizationEncryptedResponseEncoding = jwsService.encryptionEncoding
         )
     }
 
@@ -234,6 +249,11 @@ class OidcSiopVerifier private constructor(
          * Optional URL to include [metadata] by reference instead of by value (directly embedding in authn request)
          */
         val clientMetadataUrl: String? = null,
+        /**
+         * Set this value to include metadata with encryption parameters set. Beware if setting this value and also
+         * [clientMetadataUrl], that the URL shall point to [getCreateMetadataWithEncryption].
+         */
+        val encryption: Boolean = false,
     )
 
     /**
@@ -320,7 +340,8 @@ class OidcSiopVerifier private constructor(
         clientIdScheme = clientIdScheme,
         scope = requestOptions.buildScope(),
         nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
-        clientMetadata = requestOptions.clientMetadataUrl?.let { null } ?: metadata,
+        clientMetadata = requestOptions.clientMetadataUrl?.let { null }
+            ?: if (requestOptions.encryption) metadataWithEncryption else metadata,
         clientMetadataUri = requestOptions.clientMetadataUrl,
         idTokenType = IdTokenType.SUBJECT_SIGNED.text,
         responseMode = requestOptions.responseMode,
@@ -334,7 +355,7 @@ class OidcSiopVerifier private constructor(
         ),
     )
 
-    private fun RequestOptions.buildScope() = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.vcType)
+    private fun RequestOptions.buildScope() = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.sdJwtType, credentialScheme?.vcType, credentialScheme?.isoNamespace)
         .joinToString(" ")
 
     private fun buildClientId() = (x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
@@ -345,20 +366,19 @@ class OidcSiopVerifier private constructor(
     ) null else relyingPartyUrl
 
     private fun RequestOptions.toInputDescriptor() = InputDescriptor(
-        id = credentialScheme?.let {
-            when (representation) {
-                /**
-                 * doctype is not really an attribute that can be presented,
-                 * encoding it into the descriptor id as in the following non-normative example fow now:
-                 * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
-                 */
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> it.isoDocType
-                else -> null
-            }
-        } ?: uuid4().toString(),
+        id = buildId(),
         schema = listOfNotNull(credentialScheme?.schemaUri?.let { SchemaReference(it) }),
         constraints = toConstraint(),
     )
+
+    /**
+     * doctype is not really an attribute that can be presented,
+     * encoding it into the descriptor id as in the following non-normative example fow now:
+     * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
+     */
+    private fun RequestOptions.buildId() =
+        if (credentialScheme?.isoDocType != null && representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
+            credentialScheme.isoDocType!! else uuid4().toString()
 
     private fun RequestOptions.toConstraint() =
         Constraint(fields = (toAttributeConstraints() + toTypeConstraint()).filterNotNull())
@@ -370,7 +390,7 @@ class OidcSiopVerifier private constructor(
     private fun RequestOptions.toTypeConstraint() = credentialScheme?.let {
         when (representation) {
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.toVcConstraint()
-            ConstantIndex.CredentialRepresentation.SD_JWT -> it.toVcConstraint()
+            ConstantIndex.CredentialRepresentation.SD_JWT -> it.toSdJwtConstraint()
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
         }
     }
@@ -381,13 +401,23 @@ class OidcSiopVerifier private constructor(
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
     }
 
-    private fun ConstantIndex.CredentialScheme.toVcConstraint() = ConstraintField(
-        path = listOf("$.type"),
-        filter = ConstraintFilter(
-            type = "string",
-            pattern = vcType,
-        )
-    )
+    private fun ConstantIndex.CredentialScheme.toVcConstraint() = if (supportsVcJwt)
+        ConstraintField(
+            path = listOf("$.type"),
+            filter = ConstraintFilter(
+                type = "string",
+                pattern = vcType,
+            )
+        ) else null
+
+    private fun ConstantIndex.CredentialScheme.toSdJwtConstraint() = if (supportsSdJwt)
+        ConstraintField(
+            path = listOf("$.vct"),
+            filter = ConstraintFilter(
+                type = "string",
+                pattern = sdJwtType!!
+            )
+        ) else null
 
     private fun List<String>.createConstraints(
         credentialRepresentation: ConstantIndex.CredentialRepresentation,
@@ -437,6 +467,7 @@ class OidcSiopVerifier private constructor(
          * Successfully decoded and validated the response from the Wallet (W3C credential in SD-JWT)
          */
         data class SuccessSdJwt(
+            val jwsSigned: JwsSigned,
             val sdJwt: VerifiableCredentialSdJwt,
             val disclosures: List<SelectiveDisclosureItem>,
             val state: String?,
@@ -489,6 +520,12 @@ class OidcSiopVerifier private constructor(
                 }
                 AuthenticationResponseParameters.deserialize(jarmResponse.payload.decodeToString())
                     .getOrNull()?.let { return validateAuthnResponse(it) }
+            }
+            JweEncrypted.parse(params.response).getOrNull()?.let { jarmResponse ->
+                jwsService.decryptJweObject(jarmResponse, params.response).getOrNull()?.let { decrypted ->
+                    AuthenticationResponseParameters.deserialize(decrypted.payload.decodeToString())
+                        .getOrNull()?.let { return validateAuthnResponse(it) }
+                }
             }
         }
         val idTokenJws = params.idToken
@@ -582,7 +619,7 @@ class OidcSiopVerifier private constructor(
                 .also { Napier.i("VP success: $this") }
 
         is Verifier.VerifyPresentationResult.SuccessSdJwt ->
-            AuthnResponseResult.SuccessSdJwt(sdJwt, disclosures, state)
+            AuthnResponseResult.SuccessSdJwt(jwsSigned, sdJwt, disclosures, state)
                 .also { Napier.i("VP success: $this") }
     }
 

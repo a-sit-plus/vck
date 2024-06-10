@@ -10,16 +10,16 @@ import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.iso.DrivingPrivilege
-import at.asitplus.wallet.lib.iso.DrivingPrivilegeCode
-import at.asitplus.wallet.lib.iso.ElementValue
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.EXPIRY_DATE
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.FAMILY_NAME
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.GIVEN_NAME
-import at.asitplus.wallet.lib.iso.MobileDrivingLicenceDataElements.ISSUE_DATE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUE_DATE
+import at.asitplus.wallet.mdl.DrivingPrivilege
+import at.asitplus.wallet.mdl.DrivingPrivilegeCode
+import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
@@ -37,7 +37,8 @@ class DummyCredentialDataProvider(
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>?
     ): KmmResult<List<CredentialToBeIssued>> {
-        val expiration = clock.now() + defaultLifetime
+        val issuance = clock.now()
+        val expiration = issuance + defaultLifetime
         val credentials = mutableListOf<CredentialToBeIssued>()
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
             val subjectId = subjectPublicKey.didEncoded
@@ -77,7 +78,7 @@ class DummyCredentialDataProvider(
             }
         }
 
-        if (credentialScheme == ConstantIndex.MobileDrivingLicence2023) {
+        if (credentialScheme == MobileDrivingLicenceScheme) {
             val drivingPrivilege = DrivingPrivilege(
                 vehicleCategoryCode = "B",
                 issueDate = LocalDate.parse("2023-01-01"),
@@ -97,7 +98,7 @@ class DummyCredentialDataProvider(
                 if (claimNames.isNullOrContains(EXPIRY_DATE))
                     issuerSignedItem(EXPIRY_DATE, "2033-01-01", digestId++) else null,
                 if (claimNames.isNullOrContains(DRIVING_PRIVILEGES))
-                    issuerSignedItem(DRIVING_PRIVILEGES, drivingPrivilege, digestId++) else null,
+                    issuerSignedItem(DRIVING_PRIVILEGES, arrayOf(drivingPrivilege), digestId++) else null,
             )
 
             credentials.add(
@@ -110,10 +111,18 @@ class DummyCredentialDataProvider(
 
         if (credentialScheme == EuPidScheme) {
             val subjectId = subjectPublicKey.didEncoded
+            val familyName = "Musterfrau"
+            val givenName = "Maria"
+            val birthDate = LocalDate.parse("1970-01-01")
+            val issuingCountry = "AT"
             val claims = listOfNotNull(
-                optionalClaim(claimNames, EuPidScheme.Attributes.FAMILY_NAME, "Musterfrau"),
-                optionalClaim(claimNames, EuPidScheme.Attributes.GIVEN_NAME, "Maria"),
-                optionalClaim(claimNames, EuPidScheme.Attributes.BIRTH_DATE, LocalDate.parse("1970-01-01")),
+                optionalClaim(claimNames, EuPidScheme.Attributes.FAMILY_NAME, familyName),
+                optionalClaim(claimNames, EuPidScheme.Attributes.GIVEN_NAME, givenName),
+                optionalClaim(claimNames, EuPidScheme.Attributes.BIRTH_DATE, birthDate),
+                optionalClaim(claimNames, EuPidScheme.Attributes.ISSUANCE_DATE, issuance),
+                optionalClaim(claimNames, EuPidScheme.Attributes.EXPIRY_DATE, expiration),
+                optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_COUNTRY, issuingCountry),
+                optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_AUTHORITY, issuingCountry),
             )
             credentials += when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
@@ -124,9 +133,13 @@ class DummyCredentialDataProvider(
                     CredentialToBeIssued.VcJwt(
                         EuPidCredential(
                             id = subjectId,
-                            familyName = "Musterfrau",
-                            givenName = "Maria",
-                            birthDate = LocalDate.parse("1970-01-01")
+                            familyName = familyName,
+                            givenName = givenName,
+                            birthDate = birthDate,
+                            issuanceDate = issuance,
+                            expiryDate = expiration,
+                            issuingCountry = issuingCountry,
+                            issuingAuthority = issuingCountry,
                         ),
                         expiration,
                     )
@@ -157,13 +170,6 @@ class DummyCredentialDataProvider(
             digestId = digestId,
             random = Random.nextBytes(16),
             elementIdentifier = name,
-            elementValue = when (value) {
-                is String -> ElementValue(string = value)
-                is ByteArray -> ElementValue(bytes = value)
-                is LocalDate -> ElementValue(date = value)
-                is Boolean -> ElementValue(boolean = value)
-                is DrivingPrivilege -> ElementValue(drivingPrivilege = arrayOf(value))
-                else -> ElementValue(string = value.toString())
-            }
+            elementValue = value
         )
 }
