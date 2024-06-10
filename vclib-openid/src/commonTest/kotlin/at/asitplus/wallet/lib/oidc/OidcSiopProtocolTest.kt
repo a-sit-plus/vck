@@ -279,7 +279,7 @@ class OidcSiopProtocolTest : FreeSpec({
         holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
-            requestObjectJwsVerifier = verifierAttestationVerifier(sprsCryptoService.jsonWebKey)
+            requestObjectJwsVerifier = verifierAttestationVerifier(sprsCryptoService.keyPairAdapter.jsonWebKey)
         )
         val authnResponse =
             holderSiop.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
@@ -311,7 +311,7 @@ class OidcSiopProtocolTest : FreeSpec({
         holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
             cryptoService = holderCryptoService,
-            requestObjectJwsVerifier = verifierAttestationVerifier(DefaultCryptoService().jsonWebKey)
+            requestObjectJwsVerifier = verifierAttestationVerifier(DefaultCryptoService().keyPairAdapter.jsonWebKey)
         )
         shouldThrow<OAuth2Exception> {
             holderSiop.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
@@ -422,7 +422,7 @@ private suspend fun buildAttestationJwt(
         issuedAt = Clock.System.now(),
         expiration = Clock.System.now().plus(10.seconds),
         notBefore = Clock.System.now(),
-        confirmationKey = verifierCryptoService.jsonWebKey,
+        confirmationKey = verifierCryptoService.keyPairAdapter.jsonWebKey,
     ).serialize().encodeToByteArray()
 ).getOrThrow()
 

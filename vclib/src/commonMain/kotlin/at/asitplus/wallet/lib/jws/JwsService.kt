@@ -123,7 +123,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
     override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): KmmResult<JwsSigned> {
         if (header.algorithm != cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm()
-            || header.jsonWebKey?.let { it != cryptoService.jsonWebKey } == true
+            || header.jsonWebKey?.let { it != cryptoService.keyPairAdapter.jsonWebKey } == true
         ) {
             return KmmResult.failure(IllegalArgumentException("Algorithm or JSON Web Key not matching to cryptoService"))
         }
@@ -146,9 +146,9 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         var copy = header?.copy(algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm())
             ?: JwsHeader(algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm())
         if (addKeyId)
-            copy = copy.copy(keyId = cryptoService.jsonWebKey.keyId)
+            copy = copy.copy(keyId = cryptoService.keyPairAdapter.jsonWebKey.keyId)
         if (addJsonWebKey)
-            copy = copy.copy(jsonWebKey = cryptoService.jsonWebKey)
+            copy = copy.copy(jsonWebKey = cryptoService.keyPairAdapter.jsonWebKey)
         if (addX5c)
             copy = copy.copy(certificateChain = listOf(cryptoService!!.certificate!!)) //TODO cleanup/nullchecks
         return createSignedJws(copy, payload)
@@ -202,7 +202,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val jweHeader = (header ?: JweHeader(jweAlgorithm, jweEncryption, type = null)).copy(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
-            jsonWebKey = cryptoService.jsonWebKey,
+            jsonWebKey = cryptoService.keyPairAdapter.jsonWebKey,
             ephemeralKeyPair = ephemeralKeyPair.publicJsonWebKey
         )
         return encryptJwe(ephemeralKeyPair, recipientKey, jweAlgorithm, jweEncryption, jweHeader, payload)
@@ -225,7 +225,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val jweHeader = JweHeader(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
-            jsonWebKey = cryptoService.jsonWebKey,
+            jsonWebKey = cryptoService.keyPairAdapter.jsonWebKey,
             type = type,
             contentType = contentType,
             ephemeralKeyPair = ephemeralKeyPair.publicJsonWebKey
