@@ -272,7 +272,7 @@ class WalletService(
             protectedHeader = CoseHeader(
                 algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toCoseAlgorithm(),
                 contentType = OpenIdConstants.ProofType.CWT_HEADER_TYPE.stringRepresentation,
-                certificateChain = cryptoService.certificate?.encodeToDerOrNull()
+                certificateChain = cryptoService.keyPairAdapter.certificate?.encodeToDerOrNull()
             ),
             payload = CborWebToken(
                 issuer = clientId,

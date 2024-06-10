@@ -67,7 +67,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
             cryptoService = verifierCryptoService,
             relyingPartyUrl = null,
             responseUrl = responseUrl,
-            x5c = listOf(verifierCryptoService.certificate!!)
+            x5c = listOf(verifierCryptoService.keyPairAdapter.certificate!!)
         )
     }
 
