@@ -3,8 +3,11 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.crypto.datatypes.*
-import at.asitplus.crypto.datatypes.cose.CoseKey
+import at.asitplus.crypto.datatypes.CryptoAlgorithm
+import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.CryptoSignature
+import at.asitplus.crypto.datatypes.Digest
+import at.asitplus.crypto.datatypes.ECCurve
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncryption
@@ -58,8 +61,6 @@ interface CryptoService {
 
     // TODO Also use an adapter here? and put jsonWebKey and coseKey into that
     val publicKey: CryptoPublicKey
-
-    val coseKey: CoseKey
 
 
     /**

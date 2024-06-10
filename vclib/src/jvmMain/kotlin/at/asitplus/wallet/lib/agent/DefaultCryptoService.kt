@@ -51,9 +51,7 @@ actual open class DefaultCryptoService : CryptoService {
 
     actual final override val certificate: X509Certificate?
 
-    actual final override val coseKey: CoseKey
-
-    final override val keyPairAdapter: KeyPairAdapter
+    actual final override val keyPairAdapter: KeyPairAdapter
 
     /**
      * Default constructor without arguments is ES256
@@ -66,7 +64,6 @@ actual open class DefaultCryptoService : CryptoService {
         this.keyPairAdapter = keyPairAdapter
         this.privateKey = keyPairAdapter.keyPair.private
         this.publicKey = keyPairAdapter.publicKey
-        this.coseKey = publicKey.toCoseKey(keyPairAdapter.signingAlgorithm.toCoseAlgorithm()).getOrThrow()
         this.certificate = X509Certificate.generateSelfSignedCertificate(this)
     }
 
@@ -83,7 +80,6 @@ actual open class DefaultCryptoService : CryptoService {
     ) {
         this.privateKey = keyPair.private
         this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
-        this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
         this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
         this.keyPairAdapter = JvmKeyPairAdapter(keyPair, CryptoAlgorithm.ES256, certificate)
     }
