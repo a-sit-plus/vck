@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.jsonpath.JsonPath
-import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.InMemorySubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -21,16 +21,16 @@ import kotlinx.serialization.json.JsonPrimitive
 @Suppress("unused")
 class CredentialJsonInteropTest : FreeSpec({
 
-    lateinit var holderCryptoService: CryptoService
+    lateinit var holderKeyPair: KeyPairAdapter
 
     lateinit var issuerAgent: Issuer
     lateinit var subjectCredentialStore: SubjectCredentialStore
     lateinit var holderAgent: Holder
 
     beforeEach {
-        holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+        holderKeyPair = RandomKeyPairAdapter()
         subjectCredentialStore = InMemorySubjectCredentialStore()
-        holderAgent = HolderAgent(holderCryptoService, subjectCredentialStore)
+        holderAgent = HolderAgent(holderKeyPair, subjectCredentialStore)
         issuerAgent = IssuerAgent(DefaultCryptoService(RandomKeyPairAdapter()), DummyCredentialDataProvider())
     }
 
@@ -38,7 +38,7 @@ class CredentialJsonInteropTest : FreeSpec({
         runBlocking {
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(
-                    subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+                    subjectPublicKey = holderKeyPair.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).toStoreCredentialInput()
@@ -60,7 +60,7 @@ class CredentialJsonInteropTest : FreeSpec({
         runBlocking {
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(
-                    subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+                    subjectPublicKey = holderKeyPair.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                     claimNames = listOf("given-name", "family-name", "date-of-birth", "is-active"),
@@ -80,7 +80,7 @@ class CredentialJsonInteropTest : FreeSpec({
         runBlocking {
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(
-                    subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+                    subjectPublicKey = holderKeyPair.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                     claimNames = listOf("given-name", "family-name", "date-of-birth", "is-active"),

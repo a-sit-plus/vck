@@ -23,7 +23,7 @@ class AgentTest : FreeSpec({
     lateinit var issuer: Issuer
     lateinit var holder: Holder
     lateinit var verifier: Verifier
-    lateinit var holderCryptoService: CryptoService
+    lateinit var holderKeyPair: KeyPairAdapter
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var challenge: String
@@ -36,15 +36,15 @@ class AgentTest : FreeSpec({
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
-        holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
-        holder = HolderAgent(holderCryptoService, holderCredentialStore)
-        verifier = VerifierAgent(holderCryptoService.keyPairAdapter.publicKey)
+        holderKeyPair = RandomKeyPairAdapter()
+        holder = HolderAgent(holderKeyPair, holderCredentialStore)
+        verifier = VerifierAgent(holderKeyPair.publicKey)
         challenge = uuid4().toString()
     }
 
     "simple walk-through success" {
         val credentials = issuer.issueCredential(
-            subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+            subjectPublicKey = holderKeyPair.publicKey,
             attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
             representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )
@@ -67,7 +67,7 @@ class AgentTest : FreeSpec({
     "simple walk-through success with attachments" {
         // DummyCredentialProvider issues an attachment for "picture"
         val credentials = issuer.issueCredential(
-            subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+            subjectPublicKey = holderKeyPair.publicKey,
             attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
             representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )
@@ -90,7 +90,7 @@ class AgentTest : FreeSpec({
 
     "wrong keyId in presentation leads to InvalidStructure" {
         val credentials = issuer.issueCredential(
-            subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+            subjectPublicKey = holderKeyPair.publicKey,
             attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
             representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )
@@ -112,7 +112,7 @@ class AgentTest : FreeSpec({
 
     "revoked credentials must not be validated" {
         val credentials = issuer.issueCredential(
-            subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+            subjectPublicKey = holderKeyPair.publicKey,
             attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
             representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )
@@ -137,7 +137,7 @@ class AgentTest : FreeSpec({
 
         "when setting a revocation list before storing credentials" {
             val credentials = issuer.issueCredential(
-                subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+                subjectPublicKey = holderKeyPair.publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             )
@@ -164,7 +164,7 @@ class AgentTest : FreeSpec({
 
         "and when setting a revocation list after storing credentials" {
             val credentials = issuer.issueCredential(
-                subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+                subjectPublicKey = holderKeyPair.publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             )
@@ -200,7 +200,7 @@ class AgentTest : FreeSpec({
 
         "when they are valid" - {
             val credentials = issuer.issueCredential(
-                subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+                subjectPublicKey = holderKeyPair.publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             )
@@ -234,7 +234,7 @@ class AgentTest : FreeSpec({
 
         "when the issuer has revoked them" {
             val credentials = issuer.issueCredential(
-                subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+                subjectPublicKey = holderKeyPair.publicKey,
                 attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             )
@@ -271,7 +271,7 @@ class AgentTest : FreeSpec({
 
     "valid presentation is valid" {
         val credentials = issuer.issueCredential(
-            subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+            subjectPublicKey = holderKeyPair.publicKey,
             attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
             representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )
@@ -295,7 +295,7 @@ class AgentTest : FreeSpec({
 
     "valid presentation is valid -- some other attributes revoked" {
         val credentials = issuer.issueCredential(
-            subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+            subjectPublicKey = holderKeyPair.publicKey,
             attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
             representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )
@@ -312,7 +312,7 @@ class AgentTest : FreeSpec({
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
 
         val credentialsToRevoke = issuer.issueCredential(
-            subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+            subjectPublicKey = holderKeyPair.publicKey,
             attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
             representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )

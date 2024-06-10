@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -50,7 +51,7 @@ class OidcSiopProtocolTest : FreeSpec({
     lateinit var responseUrl: String
     lateinit var walletUrl: String
 
-    lateinit var holderCryptoService: CryptoService
+    lateinit var holderKeyPair: KeyPairAdapter
     lateinit var verifierCryptoService: CryptoService
 
     lateinit var holderAgent: Holder
@@ -60,13 +61,13 @@ class OidcSiopProtocolTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+        holderKeyPair = RandomKeyPairAdapter()
         verifierCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
         val rpUUID = uuid4()
         relyingPartyUrl = "https://example.com/rp/$rpUUID"
         responseUrl = "https://example.com/rp/$rpUUID"
         walletUrl = "https://example.com/wallet/${uuid4()}"
-        holderAgent = HolderAgent(holderCryptoService)
+        holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierCryptoService.keyPairAdapter.publicKey)
         runBlocking {
             holderAgent.storeCredentials(
@@ -74,7 +75,7 @@ class OidcSiopProtocolTest : FreeSpec({
                     DefaultCryptoService(RandomKeyPairAdapter()),
                     DummyCredentialDataProvider(),
                 ).issueCredential(
-                    subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+                    subjectPublicKey = holderKeyPair.publicKey,
                     attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
                     representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
                 ).toStoreCredentialInput()
@@ -82,8 +83,8 @@ class OidcSiopProtocolTest : FreeSpec({
         }
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
+            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
-            cryptoService = holderCryptoService
         )
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
@@ -278,8 +279,8 @@ class OidcSiopProtocolTest : FreeSpec({
 
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
+            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
-            cryptoService = holderCryptoService,
             requestObjectJwsVerifier = verifierAttestationVerifier(sprsCryptoService.keyPairAdapter.jsonWebKey)
         )
         val authnResponse =
@@ -310,8 +311,8 @@ class OidcSiopProtocolTest : FreeSpec({
         ).getOrThrow().also { println(it) }
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
+            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
-            cryptoService = holderCryptoService,
             requestObjectJwsVerifier = verifierAttestationVerifier(RandomKeyPairAdapter().jsonWebKey)
         )
         shouldThrow<OAuth2Exception> {
@@ -334,8 +335,8 @@ class OidcSiopProtocolTest : FreeSpec({
         }.buildString()
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
+            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
-            cryptoService = holderCryptoService,
             remoteResourceRetriever = {
                 if (it == requestUrl) authnRequest else null
             }
@@ -365,8 +366,8 @@ class OidcSiopProtocolTest : FreeSpec({
         }.buildString()
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
+            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
-            cryptoService = holderCryptoService,
             remoteResourceRetriever = {
                 if (it == requestUrl) jar.serialize() else null
             }
@@ -395,8 +396,8 @@ class OidcSiopProtocolTest : FreeSpec({
         }.buildString()
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
+            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
-            cryptoService = holderCryptoService,
             remoteResourceRetriever = {
                 if (it == requestUrl) jar.serialize() else null
             },

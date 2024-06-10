@@ -47,10 +47,10 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
     }
 
     private fun initHolderMessenger(): IssueCredentialMessenger {
-        val cryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+        val keyPair = RandomKeyPairAdapter()
         return IssueCredentialMessenger.newHolderInstance(
-            holder = HolderAgent(cryptoService),
-            messageWrapper = MessageWrapper(cryptoService),
+            holder = HolderAgent(keyPair),
+            messageWrapper = MessageWrapper(keyPair),
             credentialScheme = ConstantIndex.AtomicAttribute2023,
         )
     }

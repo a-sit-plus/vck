@@ -24,7 +24,7 @@ class AgentSdJwtTest : FreeSpec({
     lateinit var verifier: Verifier
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
-    lateinit var holderCryptoService: CryptoService
+    lateinit var holderKeyPair: KeyPairAdapter
     lateinit var challenge: String
 
     beforeEach {
@@ -35,8 +35,8 @@ class AgentSdJwtTest : FreeSpec({
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
-        holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
-        holder = HolderAgent(holderCryptoService, holderCredentialStore)
+        holderKeyPair = RandomKeyPairAdapter()
+        holder = HolderAgent(holderKeyPair, holderCredentialStore)
         verifier = VerifierAgent()
         challenge = uuid4().toString()
     }
@@ -58,7 +58,7 @@ class AgentSdJwtTest : FreeSpec({
     )
 
     "simple walk-through success" {
-        issueDummyCredentials(holder, issuer, holderCryptoService)
+        issueDummyCredentials(holder, issuer, holderKeyPair)
         val presentationParameters = holder.createPresentation(
             challenge,
             verifier.publicKey.identifier,
@@ -78,7 +78,7 @@ class AgentSdJwtTest : FreeSpec({
     }
 
     "wrong key binding jwt" {
-        issueDummyCredentials(holder, issuer, holderCryptoService)
+        issueDummyCredentials(holder, issuer, holderKeyPair)
         val presentationParameters = holder.createPresentation(
             challenge,
             verifier.publicKey.identifier,
@@ -99,7 +99,7 @@ class AgentSdJwtTest : FreeSpec({
     }
 
     "wrong challenge in key binding jwt" {
-        issueDummyCredentials(holder, issuer, holderCryptoService)
+        issueDummyCredentials(holder, issuer, holderKeyPair)
         val malformedChallenge = challenge.reversed()
         val presentationParameters = holder.createPresentation(
             malformedChallenge,
@@ -116,7 +116,7 @@ class AgentSdJwtTest : FreeSpec({
     }
 
     "revoked sd jwt" {
-        issueDummyCredentials(holder, issuer, holderCryptoService)
+        issueDummyCredentials(holder, issuer, holderKeyPair)
         val presentationParameters = holder.createPresentation(
             challenge,
             verifier.publicKey.identifier,
@@ -141,9 +141,9 @@ class AgentSdJwtTest : FreeSpec({
 
 suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {
     val issuer = IssuerAgent(DefaultCryptoService(RandomKeyPairAdapter()), DummyCredentialDataProvider())
-    val holderCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
-    val holder = HolderAgent(holderCryptoService)
-    issueDummyCredentials(holder, issuer, holderCryptoService)
+    val holderKeyPair = RandomKeyPairAdapter()
+    val holder = HolderAgent(holderKeyPair)
+    issueDummyCredentials(holder, issuer, holderKeyPair)
     val presentationResult = holder.createPresentation(
         challenge = challenge,
         audienceId = verifierId,
@@ -158,10 +158,10 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
 suspend fun issueDummyCredentials(
     holder: Holder,
     issuer: Issuer,
-    holderCryptoService: CryptoService
+    holderKeyPair: KeyPairAdapter
 ) {
     val result = issuer.issueCredential(
-        subjectPublicKey = holderCryptoService.keyPairAdapter.publicKey,
+        subjectPublicKey = holderKeyPair.publicKey,
         attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
         representation = ConstantIndex.CredentialRepresentation.SD_JWT,
     )
