@@ -12,7 +12,7 @@ enum class ClaimFormatEnum(val text: String) {
     JWT("jwt"),
     JWT_VC("jwt_vc"),
     JWT_VP("jwt_vp"),
-    JWT_SD("jwt_sd"),  // NOTE This value is not official
+    JWT_SD("vc+sd-jwt"),
     LDP("ldp"),
     LDP_VC("ldp_vc"),
     LDP_VP("ldp_vp"),
