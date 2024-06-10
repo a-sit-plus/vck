@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NodeListEntry
 import at.asitplus.jsonpath.core.NormalizedJsonPath
@@ -21,13 +22,13 @@ typealias FieldQueryResults = Map<ConstraintField, NodeListEntry?>
  * Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
  */
 class InputEvaluator {
+    // filter by constraints
     fun evaluateFieldQueryResults(
         inputDescriptor: InputDescriptor,
         credential: JsonElement,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
-    ): KmmResult<FieldQueryResults> {
-        // filter by constraints
-        val fieldQueryResults = inputDescriptor.constraints?.fields?.associateWith { field ->
+    ): KmmResult<FieldQueryResults> = kotlin.runCatching {
+        (inputDescriptor.constraints?.fields?.associateWith { field ->
             val fieldQueryResult = field.path.firstNotNullOfOrNull { jsonPath ->
                 val candidates = JsonPath(jsonPath).query(credential)
                 candidates.firstOrNull { candidate ->
@@ -39,26 +40,21 @@ class InputEvaluator {
                 }
             }
             if ((field.optional != true) and (fieldQueryResult == null)) {
-                return KmmResult.failure(
-                    FailedFieldQueryException(field)
-                        .also { it.message?.let { Napier.d(it) } }
-                )
+                throw FailedFieldQueryException(field)
+                    .also { Napier.w("evaluateFieldQueryResult failed", it) }
             }
             field.predicate?.let {
                 when (it) {
                     // TODO: RequirementEnum.NONE is not a valid field value, maybe change member type to new Enum?
                     RequirementEnum.NONE -> fieldQueryResult
                     RequirementEnum.PREFERRED -> fieldQueryResult
-                    RequirementEnum.REQUIRED -> return KmmResult.failure(
-                        MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature")
-                            .also { it.message?.let { Napier.d(it) } }
-                    )
+                    RequirementEnum.REQUIRED ->
+                        throw MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature")
+                            .also { Napier.w("evaluateFieldQueryResult failed", it) }
                 }
             } ?: fieldQueryResult
-        } ?: mapOf()
-
-        return KmmResult.success(fieldQueryResults)
-    }
+        } ?: mapOf())
+    }.wrap()
 }
 
 internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Boolean {
