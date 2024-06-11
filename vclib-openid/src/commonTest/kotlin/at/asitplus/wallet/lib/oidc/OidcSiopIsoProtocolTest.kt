@@ -65,8 +65,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         }
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
-            holder = holderAgent,
-            cryptoService = holderCryptoService
+            holder = holderAgent, cryptoService = holderCryptoService
         )
     }
 
@@ -77,16 +76,13 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(
-            verifierSiop,
-            walletUrl,
-            OidcSiopVerifier.RequestOptions(
+            verifierSiop, walletUrl, OidcSiopVerifier.RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = MobileDrivingLicenceScheme,
                 requestedAttributes = listOf(
                     MobileDrivingLicenceDataElements.GIVEN_NAME
                 ),
-            ),
-            holderSiop
+            ), holderSiop
         )
 
         document.validItems.shouldNotBeEmpty()
@@ -100,14 +96,11 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(
-            verifierSiop,
-            walletUrl,
-            OidcSiopVerifier.RequestOptions(
+            verifierSiop, walletUrl, OidcSiopVerifier.RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
                 requestedAttributes = listOf("given-name"),
-            ),
-            holderSiop
+            ), holderSiop
         )
 
         document.validItems.shouldNotBeEmpty()
@@ -154,14 +147,16 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             encryption = true
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(
-            walletUrl = walletUrl,
-            requestOptions = requestOptions
+            walletUrl = walletUrl, requestOptions = requestOptions
         ).also { println(it) }
 
-        val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
+        val authnResponse =
+            holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow()
+                .let { holderSiop.finalizeAuthenticationResponseResult(it) }.getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-        val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
+        val result =
+            verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
 
         val document = result.document
@@ -204,8 +199,7 @@ private suspend fun runProcess(
     holderSiop: OidcSiopWallet,
 ): IsoDocumentParsed {
     val authnRequest = verifierSiop.createAuthnRequestUrl(
-        walletUrl = walletUrl,
-        requestOptions = requestOptions
+        walletUrl = walletUrl, requestOptions = requestOptions
     ).also { println(it) }
 
     val authnResponse = holderSiop.startAuthenticationResponsePreparation(authnRequest).getOrThrow()
