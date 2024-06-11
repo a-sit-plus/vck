@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -64,6 +65,7 @@ interface Verifier {
              */
             val jwsSigned: JwsSigned,
             val sdJwt: VerifiableCredentialSdJwt,
+            val keyBindingJws: JwsSigned?,
             /**
              * Map of original serialized disclosure item to parsed item
              */

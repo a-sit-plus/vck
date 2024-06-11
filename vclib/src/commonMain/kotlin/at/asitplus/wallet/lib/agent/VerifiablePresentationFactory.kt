@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.IssuerSignedList
+import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import io.github.aakira.napier.Napier
@@ -130,10 +131,26 @@ class VerifiablePresentationFactory(
         validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
         requestedClaims: List<NormalizedJsonPath>?
     ): Holder.CreatePresentationResult.SdJwt? {
+        val filteredDisclosures = validSdJwtCredential.disclosures.filter {
+            it.discloseItem(requestedClaims?.mapNotNull { claimPath ->
+                // TODO: unsure how to deal with attributes with a depth of more than 1 (if they even should be supported)
+                //  revealing the whole attribute for now, which is as fine grained as SdJwt can do anyway
+                claimPath.segments.firstOrNull()?.let {
+                    when (it) {
+                        is NormalizedJsonPathSegment.NameSegment -> it.memberName
+                        is NormalizedJsonPathSegment.IndexSegment -> null // can't disclose index
+                    }
+                }
+            })
+        }.keys
+        val issuerJwt = listOf(validSdJwtCredential.vcSerialized.substringBefore("~"))
+        val issuerJwtPlusDisclosures = (issuerJwt + filteredDisclosures)
+            .joinToString("~", postfix = "~")
         val keyBindingJws = KeyBindingJws(
             issuedAt = Clock.System.now(),
             audience = audienceId,
-            challenge = challenge
+            challenge = challenge,
+            sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256()
         )
         val jwsPayload = keyBindingJws.serialize().encodeToByteArray()
         val keyBinding = jwsService.createSignedJwsAddingParams(
@@ -149,22 +166,8 @@ class VerifiablePresentationFactory(
             Napier.w("Could not create JWS for presentation", it)
             return null
         }
-        val filteredDisclosures = validSdJwtCredential.disclosures
-            .filter {
-                it.discloseItem(requestedClaims?.mapNotNull { claimPath ->
-                    // TODO: unsure how to deal with attributes with a depth of more than 1 (if they even should be supported)
-                    //  revealing the whole attribute for now, which is as fine grained as SdJwt can do anyway
-                    claimPath.segments.firstOrNull()?.let {
-                        when (it) {
-                            is NormalizedJsonPathSegment.NameSegment -> it.memberName
-                            is NormalizedJsonPathSegment.IndexSegment -> null // can't disclose index
-                        }
-                    }
-                })
-            }.keys
-        val sdJwt =
-            (listOf(validSdJwtCredential.vcSerialized.substringBefore("~")) + filteredDisclosures + keyBinding.serialize())
-                .joinToString("~")
+
+        val sdJwt = issuerJwtPlusDisclosures + keyBinding.serialize()
         return Holder.CreatePresentationResult.SdJwt(sdJwt)
     }
 

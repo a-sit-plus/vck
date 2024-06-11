@@ -6,7 +6,6 @@ import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 
 /**
  * Representation of a signed SD-JWT (payload is [VerifiableCredentialSdJwt]),
@@ -16,7 +15,8 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 data class SdJwtSigned(
     val jws: JwsSigned,
     val disclosures: Map<String, SelectiveDisclosureItem?>,
-    val keyBindingJws: JwsSigned? = null
+    val keyBindingJws: JwsSigned? = null,
+    val rawDisclosures: List<String>,
 ) {
 
     override fun equals(other: Any?): Boolean {
@@ -28,6 +28,7 @@ data class SdJwtSigned(
         if (jws != other.jws) return false
         if (disclosures != other.disclosures) return false
         if (keyBindingJws != other.keyBindingJws) return false
+        if (rawDisclosures != other.rawDisclosures) return false
 
         return true
     }
@@ -36,6 +37,7 @@ data class SdJwtSigned(
         var result = jws.hashCode()
         result = 31 * result + disclosures.hashCode()
         result = 31 * result + (keyBindingJws?.hashCode() ?: 0)
+        result = 31 * result + rawDisclosures.hashCode()
         return result
     }
 
@@ -47,7 +49,7 @@ data class SdJwtSigned(
             val jws = JwsSigned.parse(stringList.first()).getOrNull()
                 ?: return null.also { Napier.w("Could not parse JWS from SD-JWT: $input") }
             val rawDisclosures = stringList.drop(1)
-                .mapNotNull { it.decodeToByteArrayOrNull(Base64UrlStrict) }
+                .filterNot { it.contains(".") }
             val disclosures = stringList.drop(1).take(rawDisclosures.count())
                 .associateWith {
                     SelectiveDisclosureItem.deserialize(it.decodeToByteArray(Base64UrlStrict).decodeToString())
@@ -55,9 +57,8 @@ data class SdJwtSigned(
                 }
             val keyBindingString = stringList.drop(1 + rawDisclosures.size).firstOrNull()
             val keyBindingJws = keyBindingString?.let { JwsSigned.parse(it).getOrNull() }
-            return SdJwtSigned(jws, disclosures, keyBindingJws)
+            return SdJwtSigned(jws, disclosures, keyBindingJws, rawDisclosures)
         }
     }
-
 
 }

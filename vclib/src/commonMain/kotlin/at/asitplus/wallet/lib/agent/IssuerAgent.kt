@@ -4,7 +4,6 @@ import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.io.Base64Strict
-import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.io.BitSet
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.DataSourceProblem
@@ -17,6 +16,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -36,7 +36,6 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import okio.ByteString.Companion.toByteString
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
@@ -271,10 +270,9 @@ class IssuerAgent(
 
         val disclosures = credential.claims
             .map { SelectiveDisclosureItem(Random.nextBytes(32), it.name, it.value) }
-            .map { it.serialize() }
-            .map { it.encodeToByteArray().encodeToString(Base64UrlStrict) }
+            .map { it.toDisclosure() }
         val disclosureDigests = disclosures
-            .map { it.encodeToByteArray().toByteString().sha256().base64Url() }
+            .map { it.hashDisclosure() }
         val jwsPayload = VerifiableCredentialSdJwt(
             subject = subjectId,
             notBefore = issuanceDate,
