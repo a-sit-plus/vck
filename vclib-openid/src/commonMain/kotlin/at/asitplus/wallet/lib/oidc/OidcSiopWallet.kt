@@ -329,28 +329,28 @@ class OidcSiopWallet(
                 .getOrElse { return KmmResult.failure(it) }
         }
 
-        val presentationDefinition = params.parameters.loadPresentationDefinition()
-        runCatching { params.parameters.verifyResponseType(presentationDefinition) }
-            .onFailure { return KmmResult.failure(it) }
-        val signedIdToken = runCatching { buildSignedIdToken(params) }
+        val idToken = runCatching { buildSignedIdToken(params)?.serialize() }
             .getOrElse { return KmmResult.failure(it) }
-        val presentationResultContainer = presentationDefinition?.let {
-            runCatching { buildPresentation(params, audience, presentationDefinition, clientMetadata) }
-                .getOrElse { return KmmResult.failure(it) }
-        }
-        presentationResultContainer?.let {
-            clientMetadata?.vpFormats?.let { supportedFormats ->
-                runCatching { presentationResultContainer.verifyFormatSupport(supportedFormats) }
-                    .getOrElse { return KmmResult.failure(it) }
-            }
-        }
 
-        val vpToken = presentationResultContainer?.presentationResults?.map { it.toJsonPrimitive() }?.singleOrArray()
+        val resultContainer = runCatching {
+            params.parameters.loadPresentationDefinition()?.let { presentationDefinition ->
+                params.parameters.verifyResponseType(presentationDefinition)
+                buildPresentation(params, audience, presentationDefinition, clientMetadata).also { container ->
+                    clientMetadata?.vpFormats?.let { supportedFormats ->
+                        container.verifyFormatSupport(supportedFormats)
+                    }
+                }
+            }
+        }.getOrElse { return KmmResult.failure(it) }
+
+        val vpToken = resultContainer?.presentationResults?.map { it.toJsonPrimitive() }?.singleOrArray()
+        val presentationSubmission = resultContainer?.presentationSubmission
+
         val parameters = AuthenticationResponseParameters(
-            idToken = signedIdToken.serialize(),
             state = params.parameters.state,
+            idToken = idToken,
             vpToken = vpToken,
-            presentationSubmission = presentationResultContainer?.presentationSubmission,
+            presentationSubmission = presentationSubmission,
         )
         return KmmResult.success(
             AuthenticationResponse(parameters, clientMetadata, jsonWebKeySet)
@@ -386,7 +386,10 @@ class OidcSiopWallet(
         }
     }
 
-    private suspend fun buildSignedIdToken(params: AuthenticationRequestParametersFrom<*>): JwsSigned {
+    private suspend fun buildSignedIdToken(params: AuthenticationRequestParametersFrom<*>): JwsSigned? {
+        if (params.parameters.responseType?.contains(ID_TOKEN) != true) {
+            return null
+        }
         if (params.parameters.nonce == null) {
             Napier.w("nonce is null in ${params.parameters}")
             throw OAuth2Exception(Errors.INVALID_REQUEST)
@@ -420,13 +423,16 @@ class OidcSiopWallet(
                 .also { Napier.w("vp_token not requested") }
     }
 
-    private suspend fun AuthenticationRequestParameters.loadPresentationDefinition() = presentationDefinition
-        ?: presentationDefinitionUrl?.let {
-            remoteResourceRetriever.invoke(it)
-        }?.let { PresentationDefinition.deserialize(it).getOrNull() }
-        ?: scope?.split(" ")?.firstNotNullOfOrNull {
-            scopePresentationDefinitionRetriever?.invoke(it)
-        }
+    private suspend fun AuthenticationRequestParameters.loadPresentationDefinition() =
+        if (responseType?.contains(VP_TOKEN) == true) {
+            presentationDefinition
+                ?: presentationDefinitionUrl?.let {
+                    remoteResourceRetriever.invoke(it)
+                }?.let { PresentationDefinition.deserialize(it).getOrNull() }
+                ?: scope?.split(" ")?.firstNotNullOfOrNull {
+                    scopePresentationDefinitionRetriever?.invoke(it)
+                }
+        } else null
 
     private fun AuthenticationRequestParameters.verifyRedirectUrl() {
         if (redirectUrl != null) {
