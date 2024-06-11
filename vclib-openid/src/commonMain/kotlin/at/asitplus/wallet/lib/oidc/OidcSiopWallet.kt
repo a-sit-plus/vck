@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
@@ -132,28 +131,27 @@ class OidcSiopWallet(
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParametersFrom<*>> {
-        val parsedParams = kotlin.run { // maybe it is a request JWS
-            parseRequestObjectJws(input)
-        } ?: kotlin.runCatching { // maybe it's in the URL parameters
-            Url(input).let {
-                val params =
-                    it.parameters.flattenEntries().toMap().decodeFromUrlQuery<AuthenticationRequestParameters>()
-                AuthenticationRequestParametersFrom.Uri(it, params)
-            }
-        }.onFailure { it.printStackTrace() }.getOrNull() ?: kotlin.runCatching {  // maybe it is already a JSON string
-            val params = AuthenticationRequestParameters.deserialize(input).getOrThrow()
-            AuthenticationRequestParametersFrom.Json(input, params)
-        }.getOrNull()
-
-        if (parsedParams == null) {
-            Napier.w("Could not parse authentication request: $input")
-            return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-        }
+    suspend fun parseAuthenticationRequestParameters(input: String)
+            : KmmResult<AuthenticationRequestParametersFrom<*>> = catching {
+        // maybe it is a request JWS
+        val parsedParams = kotlin.run { parseRequestObjectJws(input) }
+            ?: kotlin.runCatching { // maybe it's in the URL parameters
+                Url(input).let {
+                    val params = it.parameters.flattenEntries().toMap()
+                        .decodeFromUrlQuery<AuthenticationRequestParameters>()
+                    AuthenticationRequestParametersFrom.Uri(it, params)
+                }
+            }.onFailure { it.printStackTrace() }.getOrNull()
+            ?: kotlin.runCatching {  // maybe it is already a JSON string
+                val params = AuthenticationRequestParameters.deserialize(input).getOrThrow()
+                AuthenticationRequestParametersFrom.Json(input, params)
+            }.getOrNull()
+            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+                .also { Napier.w("Could not parse authentication request: $input") }
 
         val extractedParams = parsedParams.let { extractRequestObject(it.parameters) ?: it }
-            .also { Napier.i("parsed authentication request: $it") }
-        return KmmResult.success(extractedParams)
+            .also { Napier.i("Parsed authentication request: $it") }
+        extractedParams
     }
 
     private suspend fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParametersFrom<*>? =
@@ -183,28 +181,23 @@ class OidcSiopWallet(
      */
     suspend fun createAuthnResponse(
         request: AuthenticationRequestParametersFrom<*>
-    ): KmmResult<AuthenticationResponseResult> = createAuthnResponseParams(request).fold(
-        onSuccess = { response ->
-            if (request.parameters.responseType == null) {
-                return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-            }
-            if (!request.parameters.responseType.contains(ID_TOKEN)
-                && !request.parameters.responseType.contains(VP_TOKEN)
-            ) {
-                return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
-            }
-            return when (request.parameters.responseMode) {
-                DIRECT_POST -> KmmResult.runCatching { authnResponseDirectPost(request, response) }.wrap()
-                DIRECT_POST_JWT -> KmmResult.runCatching { authnResponseDirectPostJwt(request, response) }.wrap()
-                QUERY -> KmmResult.runCatching { authnResponseQuery(request, response) }.wrap()
-                FRAGMENT, null -> KmmResult.runCatching { authnResponseFragment(request, response) }.wrap()
-                is OTHER -> TODO()
-            }
-        },
-        onFailure = {
-            KmmResult.failure(it)
+    ): KmmResult<AuthenticationResponseResult> = catching {
+        val response = createAuthnResponseParams(request).getOrThrow()
+        if (request.parameters.responseType == null
+            || (!request.parameters.responseType.contains(ID_TOKEN)
+                    && !request.parameters.responseType.contains(VP_TOKEN))
+        ) {
+            Napier.w("createAuthnResponse: Unknown response_type ${request.parameters.responseType}")
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
-    )
+        when (request.parameters.responseMode) {
+            DIRECT_POST -> authnResponseDirectPost(request, response)
+            DIRECT_POST_JWT -> authnResponseDirectPostJwt(request, response)
+            QUERY -> authnResponseQuery(request, response)
+            FRAGMENT, null -> authnResponseFragment(request, response)
+            is OTHER -> TODO()
+        }
+    }
 
     private fun authnResponseDirectPost(
         request: AuthenticationRequestParametersFrom<*>,
