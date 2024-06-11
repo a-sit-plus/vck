@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
@@ -302,46 +303,36 @@ class OidcSiopWallet(
      */
     suspend fun createAuthnResponseParams(
         params: AuthenticationRequestParametersFrom<*>
-    ): KmmResult<AuthenticationResponse> {
+    ): KmmResult<AuthenticationResponse> = catching {
         val clientIdScheme = params.parameters.clientIdScheme
         if (clientIdScheme == OpenIdConstants.ClientIdScheme.REDIRECT_URI) {
-            runCatching { params.parameters.verifyClientMetadata() }
-                .onFailure { return KmmResult.failure(it) }
+            params.parameters.verifyClientMetadata()
         }
         if (params.parameters.responseMode.isAnyDirectPost()) {
-            runCatching { params.parameters.verifyResponseModeDirectPost() }
-                .onFailure { return KmmResult.failure(it) }
+            params.parameters.verifyResponseModeDirectPost()
         }
         if (clientIdScheme.isAnyX509()) {
-            runCatching { params.verifyClientIdSchemeX509() }
-                .onFailure { return KmmResult.failure(it) }
+            params.verifyClientIdSchemeX509()
         }
 
         val clientMetadata = runCatching { params.parameters.loadClientMetadata() }.getOrNull()
         val certKey = (params as? AuthenticationRequestParametersFrom.JwsSigned)
             ?.source?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val jsonWebKeySet = clientMetadata?.loadJsonWebKeySet()?.keys?.combine(certKey)
-        val audience = runCatching { params.extractAudience(clientMetadata) }
-            .getOrElse { return KmmResult.failure(it) }
-
+        val audience = params.extractAudience(clientMetadata)
         if (!clientIdScheme.isAnyX509()) {
-            runCatching { params.parameters.verifyRedirectUrl() }
-                .getOrElse { return KmmResult.failure(it) }
+            params.parameters.verifyRedirectUrl()
         }
 
-        val idToken = runCatching { buildSignedIdToken(params)?.serialize() }
-            .getOrElse { return KmmResult.failure(it) }
-
-        val resultContainer = runCatching {
-            params.parameters.loadPresentationDefinition()?.let { presentationDefinition ->
-                params.parameters.verifyResponseType(presentationDefinition)
-                buildPresentation(params, audience, presentationDefinition, clientMetadata).also { container ->
-                    clientMetadata?.vpFormats?.let { supportedFormats ->
-                        container.verifyFormatSupport(supportedFormats)
-                    }
+        val idToken = buildSignedIdToken(params)?.serialize()
+        val resultContainer = params.parameters.loadPresentationDefinition()?.let { presentationDefinition ->
+            params.parameters.verifyResponseType(presentationDefinition)
+            buildPresentation(params, audience, presentationDefinition, clientMetadata).also { container ->
+                clientMetadata?.vpFormats?.let { supportedFormats ->
+                    container.verifyFormatSupport(supportedFormats)
                 }
             }
-        }.getOrElse { return KmmResult.failure(it) }
+        }
 
         val vpToken = resultContainer?.presentationResults?.map { it.toJsonPrimitive() }?.singleOrArray()
         val presentationSubmission = resultContainer?.presentationSubmission
@@ -352,9 +343,7 @@ class OidcSiopWallet(
             vpToken = vpToken,
             presentationSubmission = presentationSubmission,
         )
-        return KmmResult.success(
-            AuthenticationResponse(parameters, clientMetadata, jsonWebKeySet)
-        )
+        AuthenticationResponse(parameters, clientMetadata, jsonWebKeySet)
     }
 
     private fun Holder.PresentationResponseParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
