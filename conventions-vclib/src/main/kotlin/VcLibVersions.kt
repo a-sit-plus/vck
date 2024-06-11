@@ -2,7 +2,7 @@ object VcLibVersions {
     const val uuid = "0.8.1"
     const val encoding = "1.2.3"
     const val okio = "3.5.0"
-    const val kmpcrypto = "3.2.0-SNAPSHOT"
+    const val kmpcrypto = "3.2.0"
     const val jsonpath = "2.1.0"
     const val bignum = "0.3.9"
 

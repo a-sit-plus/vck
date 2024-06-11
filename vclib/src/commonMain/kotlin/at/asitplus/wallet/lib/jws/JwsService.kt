@@ -324,7 +324,7 @@ class DefaultVerifierJwsService(
         val verified = cryptoService.verify(
             input = jwsObject.plainSignatureInput.encodeToByteArray(),
             signature = jwsObject.signature,
-            algorithm = jwsObject.header.algorithm.toCryptoAlgorithm(),
+            algorithm = jwsObject.header.algorithm.toX509SignatureAlgorithm(),
             publicKey = publicKey,
         )
         val falseVar = false // workaround kotlin bug for linking xcframework

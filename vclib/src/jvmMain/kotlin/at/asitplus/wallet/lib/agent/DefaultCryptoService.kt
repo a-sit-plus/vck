@@ -61,7 +61,7 @@ actual open class DefaultCryptoService : CryptoService {
         this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
     }
 
-    actual override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature> = runCatching {
+    actual override suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature> = runCatching {
         val sig = Signature.getInstance(algorithm.jcaName).apply {
             this@DefaultCryptoService.algorithm.jcaParams?.let { setParameter(it) }
             initSign(privateKey)
@@ -70,7 +70,7 @@ actual open class DefaultCryptoService : CryptoService {
         CryptoSignature.parseFromJca(sig, algorithm)
     }.wrap()
 
-   actual override fun encrypt(
+    actual override fun encrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -92,7 +92,7 @@ actual open class DefaultCryptoService : CryptoService {
     }.wrap()
 
 
-   actual override suspend fun decrypt(
+    actual override suspend fun decrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -110,7 +110,7 @@ actual open class DefaultCryptoService : CryptoService {
         }.doFinal(input + authTag)
     }.wrap()
 
-   actual override fun performKeyAgreement(
+    actual override fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
