@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.wallet.lib.cbor.CoseService
@@ -135,11 +136,19 @@ class VerifiablePresentationFactory(
             challenge = challenge
         )
         val jwsPayload = keyBindingJws.serialize().encodeToByteArray()
-        val keyBinding =
-            jwsService.createSignedJwt(JwsContentTypeConstants.KB_JWT, jwsPayload).getOrElse {
-                Napier.w("Could not create JWS for presentation", it)
-                return null
-            }
+        val keyBinding = jwsService.createSignedJwsAddingParams(
+            header = JwsHeader(
+                type = JwsContentTypeConstants.KB_JWT,
+                algorithm = jwsService.algorithm,
+            ),
+            payload = jwsPayload,
+            addKeyId = true,
+            addJsonWebKey = true,
+            addX5c = false
+        ).getOrElse {
+            Napier.w("Could not create JWS for presentation", it)
+            return null
+        }
         val filteredDisclosures = validSdJwtCredential.disclosures
             .filter {
                 it.discloseItem(requestedClaims?.mapNotNull { claimPath ->
