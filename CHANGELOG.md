@@ -5,15 +5,16 @@ UNRELEASED Release 4.0.0:
 - Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.
 - Add `AuthenticationResponsePreparationState`: Data class for holding primitives required to prepare an authentication response
 - Add `PresentationPreparationState`: Data class for holding primitives to select credentials for a presentation response
-    - Add `isValidSubmission`: Evaluates whether the submission requirements are satisfied with the current selection, and whether there are no redundant input descriptors
-    - Add `isSubmissionRequirementsSatisfied`: Evaluates whether the submission requirements are satisfied with the current selection
-    - Add `findUnnecessaryInputDescriptorSubmissions`: Returns input descriptor ids for which a submission would be redundant
+  - Add `isValidSubmission`: Evaluates whether the submission requirements are satisfied with the current selection, and whether there are no redundant input descriptors
+  - Add `isSubmissionRequirementsSatisfied`: Evaluates whether the submission requirements are satisfied with the current selection
+  - Add `findUnnecessaryInputDescriptorSubmissions`: Returns input descriptor ids for which a submission would be redundant
 - BREAKING CHANGE to `OidcSiopWallet`: presentation is now a two-step process
-    - Remove `OidcSiopWallet.createAuthnResponseParams`:
-    - add `OidcSiopWallet.startAuthenticationResponsePreparation`: Yields a `AuthenticationResponsePreparationState`
-    - add `OidcSiopWallet.finalizeAuthenticationResponseResult`: Consumes an `AuthenticationResponsePreparationState` and yields `AuthenticationResponseResult`
-    - add `OidcSiopWallet.refreshPresentationPreparationState`: Refreshes a `PresentationPreparationState` by reevaluating the matchings against the currently store credentials
+  - Remove `OidcSiopWallet.createAuthnResponseParams`:
+  - add `OidcSiopWallet.startAuthenticationResponsePreparation`: Yields a `AuthenticationResponsePreparationState`
+  - add `OidcSiopWallet.finalizeAuthenticationResponseResult`: Consumes an `AuthenticationResponsePreparationState` and yields `AuthenticationResponseResult`
+  - add `OidcSiopWallet.refreshPresentationPreparationState`: Refreshes a `PresentationPreparationState` by reevaluating the matchings against the currently store credentials
 - Remove `BaseInputEvaluator`: Implementation moved to `InputEvaluator`
+- Refactor `AuthenticationRequestParametersFrom` → `AuthenticationRequest` with serializability
  - Kotlin 2.0.0
  - Gradle 8.8
  - Bouncy Castle 1.78.1
