@@ -21,6 +21,7 @@ import at.asitplus.crypto.datatypes.jcaSignatureBytes
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncryption
+import at.asitplus.crypto.datatypes.jws.isAuthenticatedEncryption
 import at.asitplus.crypto.datatypes.jws.jcaKeySpecName
 import at.asitplus.crypto.datatypes.jws.jcaName
 import at.asitplus.crypto.datatypes.jws.jwkId
@@ -97,7 +98,7 @@ actual open class DefaultCryptoService : CryptoService {
         input: ByteArray,
         algorithm: JweEncryption
     ): KmmResult<AuthenticatedCiphertext> = runCatching {
-        val jcaCiphertext = Cipher.getInstance(algorithm.jcaName.replace("CBC/NoPadding", "CBC/PKCS5Padding")).also {
+        val jcaCiphertext = Cipher.getInstance(algorithm.jcaName).also {
             if (algorithm.isAuthenticatedEncryption) {
                 it.init(
                     Cipher.ENCRYPT_MODE,
@@ -225,9 +226,3 @@ open class JvmEphemeralKeyHolder(private val ecCurve: ECCurve) : EphemeralKeyHol
     }
 
 }
-
-val JweEncryption.isAuthenticatedEncryption
-    get() = when (this) {
-        JweEncryption.A128GCM, JweEncryption.A192GCM, JweEncryption.A256GCM -> true
-        JweEncryption.A128CBC_HS256, JweEncryption.A192CBC_HS384, JweEncryption.A256CBC_HS512 -> false
-    }
