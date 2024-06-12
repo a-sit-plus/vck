@@ -8,9 +8,7 @@ sealed class ResponseModeParameters {
     data class DirectPost(val responseUrl: String) : ResponseModeParameters()
 
     @Serializable
-    data class DirectPostJwt(
-        val responseUrl: String,
-    ) : ResponseModeParameters()
+    data class DirectPostJwt(val responseUrl: String) : ResponseModeParameters()
 
     @Serializable
     data class Query(val redirectUrl: String) : ResponseModeParameters()
