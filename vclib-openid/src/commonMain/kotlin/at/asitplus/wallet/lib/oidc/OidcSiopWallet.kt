@@ -242,8 +242,8 @@ class OidcSiopWallet(
             ).also {
                 refreshPresentationPreparationState(it)
             }
-        }?.getOrElse { exception ->
-            exception.message?.also { Napier.w { it } }
+        }?.getOrElse {
+            Napier.w("presentationPreparationState failed", it)
             return KmmResult.failure(OAuth2Exception(Errors.INVALID_REQUEST))
         }
 
