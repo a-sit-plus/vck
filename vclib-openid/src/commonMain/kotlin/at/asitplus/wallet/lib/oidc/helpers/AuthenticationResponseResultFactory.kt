@@ -28,40 +28,32 @@ class AuthenticationResponseResultFactory(
     suspend fun createAuthenticationResponseResult(
         responsePreparationState: AuthenticationResponsePreparationState,
         responseParameters: AuthenticationResponseParameters,
-    ): KmmResult<AuthenticationResponseResult> {
-        return when (responsePreparationState.responseModeParameters) {
-            is ResponseModeParameters.DirectPost -> KmmResult.success(
-                AuthenticationResponseResult.Post(
-                    url = responsePreparationState.responseModeParameters.responseUrl,
-                    params = responseParameters.encodeToParameters(),
-                )
+    ): KmmResult<AuthenticationResponseResult> = runCatching {
+        when (responsePreparationState.responseModeParameters) {
+            is ResponseModeParameters.DirectPost -> AuthenticationResponseResult.Post(
+                url = responsePreparationState.responseModeParameters.responseUrl,
+                params = responseParameters.encodeToParameters(),
             )
 
-            is ResponseModeParameters.DirectPostJwt -> KmmResult.runCatching {
-                authnResponseDirectPostJwt(
-                    requestSource = responsePreparationState.request.source,
-                    responseModeParameters = responsePreparationState.responseModeParameters,
-                    clientMetadata = responsePreparationState.clientMetadata,
-                    clientJsonWebKeySet = responsePreparationState.clientJsonWebKeySet,
-                    responseParameters = responseParameters,
-                )
-            }.wrap()
+            is ResponseModeParameters.DirectPostJwt -> authnResponseDirectPostJwt(
+                requestSource = responsePreparationState.request.source,
+                responseModeParameters = responsePreparationState.responseModeParameters,
+                clientMetadata = responsePreparationState.clientMetadata,
+                clientJsonWebKeySet = responsePreparationState.clientJsonWebKeySet,
+                responseParameters = responseParameters,
+            )
 
-            is ResponseModeParameters.Query -> KmmResult.runCatching {
-                authnResponseQuery(
-                    responseModeParameters = responsePreparationState.responseModeParameters,
-                    responseParameters = responseParameters,
-                )
-            }.wrap()
+            is ResponseModeParameters.Query -> authnResponseQuery(
+                responseModeParameters = responsePreparationState.responseModeParameters,
+                responseParameters = responseParameters,
+            )
 
-            is ResponseModeParameters.Fragment -> KmmResult.runCatching {
-                authnResponseFragment(
-                    responseModeParameters = responsePreparationState.responseModeParameters,
-                    responseParameters = responseParameters,
-                )
-            }.wrap()
+            is ResponseModeParameters.Fragment -> authnResponseFragment(
+                responseModeParameters = responsePreparationState.responseModeParameters,
+                responseParameters = responseParameters,
+            )
         }
-    }
+    }.wrap()
 
     private suspend fun authnResponseDirectPostJwt(
         requestSource: AuthenticationRequestSource,
