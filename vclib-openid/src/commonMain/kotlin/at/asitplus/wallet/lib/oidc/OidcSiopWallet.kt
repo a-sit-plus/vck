@@ -368,8 +368,8 @@ class OidcSiopWallet(
             audienceId = authenticationResponsePreparationState.audience,
             presentationDefinitionId = presentationPreparationState.presentationDefinitionId,
             presentationSubmissionSelection = credentialSubmissions,
-        ).getOrElse { exception ->
-            Napier.w("Could not create presentation: ${exception.message}")
+        ).getOrElse {
+            Napier.w("Could not create presentation", it)
             throw OAuth2Exception(Errors.USER_CANCELLED)
         }
     }
