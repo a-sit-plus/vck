@@ -96,11 +96,14 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(
-            verifierSiop, walletUrl, OidcSiopVerifier.RequestOptions(
+            verifierSiop,
+            walletUrl,
+            OidcSiopVerifier.RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
                 requestedAttributes = listOf("given-name"),
-            ), holderSiop
+            ),
+            holderSiop,
         )
 
         document.validItems.shouldNotBeEmpty()
