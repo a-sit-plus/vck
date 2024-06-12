@@ -124,19 +124,24 @@ class OidcSiopWallet(
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParametersFrom<*>> {
+    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequest> {
         val parsedParams = kotlin.run { // maybe it is a request JWS
             parseRequestObjectJws(input)
         } ?: kotlin.runCatching { // maybe it's in the URL parameters
             Url(input).let {
                 val params = it.parameters.flattenEntries().toMap()
                     .decodeFromUrlQuery<AuthenticationRequestParameters>()
-                AuthenticationRequestParametersFrom.Uri(it, params)
+                AuthenticationRequest(
+                    source = AuthenticationRequestSource.Uri(it), parameters = params
+                )
             }
         }.onFailure { it.printStackTrace() }.getOrNull() ?: kotlin.runCatching {
             // maybe it is already a JSON string
             val params = AuthenticationRequestParameters.deserialize(input).getOrThrow()
-            AuthenticationRequestParametersFrom.Json(input, params)
+            AuthenticationRequest(
+                source = AuthenticationRequestSource.Json(input),
+                parameters = params,
+            )
         }.getOrNull()
 
         if (parsedParams == null) {
@@ -149,7 +154,7 @@ class OidcSiopWallet(
         return KmmResult.success(extractedParams)
     }
 
-    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParametersFrom<*>? =
+    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequest? =
         params.request?.let { requestObject ->
             parseRequestObjectJws(requestObject)
         } ?: params.requestUri?.let { uri ->
@@ -157,7 +162,7 @@ class OidcSiopWallet(
                 ?.let { parseAuthenticationRequestParameters(it).getOrNull() }
         }
 
-    private fun parseRequestObjectJws(requestObject: String): AuthenticationRequestParametersFrom.JwsSigned? {
+    private fun parseRequestObjectJws(requestObject: String): AuthenticationRequest? {
         return JwsSigned.parse(requestObject).getOrNull()?.let { jws ->
             val params = AuthenticationRequestParameters.deserialize(jws.payload.decodeToString())
                 .getOrElse {
@@ -165,8 +170,10 @@ class OidcSiopWallet(
                     return null
                 }
             if (requestObjectJwsVerifier.invoke(jws, params)) {
-                AuthenticationRequestParametersFrom.JwsSigned(
-                    jwsSigned = jws,
+                AuthenticationRequest(
+                    source = AuthenticationRequestSource.JwsSigned(
+                        jwsSigned = jws,
+                    ),
                     parameters = params,
                 )
             } else null.also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
@@ -187,7 +194,7 @@ class OidcSiopWallet(
     )
 
     suspend fun startAuthenticationResponsePreparation(
-        request: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequest,
     ): KmmResult<AuthenticationResponsePreparationState> {
         val nonce = request.parameters.nonce ?: run {
             Napier.w("nonce is null")
@@ -226,7 +233,7 @@ class OidcSiopWallet(
 
         val responseModeParameters: ResponseModeParameters =
             ResponseModeParametersFactory.createResponseModeParameters(
-                request = AuthenticationRequest.createInstance(request),
+                request = request,
             ).getOrElse { return KmmResult.failure(it) }
 
         val presentationDefinition = request.parameters.loadPresentationDefinition()?.also {
@@ -249,7 +256,7 @@ class OidcSiopWallet(
 
         return KmmResult.success(
             AuthenticationResponsePreparationState(
-                request = AuthenticationRequest.createInstance(request),
+                request = request,
                 responseType = responseType,
                 responseModeParameters = responseModeParameters,
                 clientIdSchemeParameters = clientIdSchemeParameters,
@@ -325,8 +332,9 @@ class OidcSiopWallet(
             }
         }
 
-        val vpToken = presentationResultContainer?.presentationResults?.map { it.toVerifiablePresentationToken() }
-            ?.singleOrArray()
+        val vpToken = presentationResultContainer?.presentationResults?.map {
+            it.toVerifiablePresentationToken()
+        }?.singleOrArray()
         val authenticationResponseParameters = AuthenticationResponseParameters(
             idToken = signedIdToken?.serialize(),
             state = authenticationResponsePreparationState.request.parameters.state,
@@ -412,13 +420,11 @@ class OidcSiopWallet(
                 scopePresentationDefinitionRetriever.invoke(it)
             }
 
-    private suspend fun AuthenticationRequestParametersFrom<*>.extractAudience(
+    private fun AuthenticationRequest.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?
     ) = clientJsonWebKeySet?.keys?.firstOrNull()?.identifier
-        ?: (source as? AuthenticationRequestParametersFrom.JwsSigned)
-            ?.source?.header?.certificateChain?.leaf?.let { parameters.clientId } //TODO is this even correct ????
-        ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-            .also { Napier.w("Could not parse audience") }
+        ?: (source as? AuthenticationRequestSource.JwsSigned)?.jwsSigned?.header?.certificateChain?.leaf?.let { parameters.clientId } //TODO is this even correct ????
+        ?: throw OAuth2Exception(Errors.INVALID_REQUEST).also { Napier.w("Could not parse audience") }
 
     private suspend fun RelyingPartyMetadata.loadJsonWebKeySet() =
         this.jsonWebKeySet ?: jsonWebKeySetUrl?.let { remoteResourceRetriever.invoke(it) }

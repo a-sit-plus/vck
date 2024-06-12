@@ -4,14 +4,15 @@ import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.crypto.datatypes.pki.leaf
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
+import at.asitplus.wallet.lib.oidc.AuthenticationRequest
+import at.asitplus.wallet.lib.oidc.AuthenticationRequestSource
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import io.ktor.http.Url
 
 
-internal class ClientIdSchemeParametersFactory(val request: AuthenticationRequestParametersFrom<*>) {
+internal class ClientIdSchemeParametersFactory(val request: AuthenticationRequest) {
     fun createClientIdSchemeParameters(): KmmResult<ClientIdSchemeParameters?> {
         return KmmResult.runCatching {
             when (request.parameters.clientIdScheme) {
@@ -54,16 +55,16 @@ internal class ClientIdSchemeParametersFactory(val request: AuthenticationReques
         }
     }
 
-    private fun AuthenticationRequestParametersFrom<*>.validateAndRetrieveX509ClientIdSchemeParameters(): X509Certificate {
+    private fun AuthenticationRequest.validateAndRetrieveX509ClientIdSchemeParameters(): X509Certificate {
         val clientIdScheme = parameters.clientIdScheme
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
-        if (parameters.clientMetadata == null || this !is AuthenticationRequestParametersFrom.JwsSigned || source.header.certificateChain == null || source.header.certificateChain!!.isEmpty()) {
+        if (parameters.clientMetadata == null || source !is AuthenticationRequestSource.JwsSigned || source.jwsSigned.header.certificateChain == null || source.jwsSigned.header.certificateChain!!.isEmpty()) {
             Napier.w("client_id_scheme is $clientIdScheme, but metadata is not set and no x5c certificate chain is present in the original authn request")
             throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
         }
 
         //basic checks done
-        val leaf = source.header.certificateChain!!.leaf
+        val leaf = source.jwsSigned.header.certificateChain!!.leaf
         if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions!!.isEmpty()) {
             throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST).also { Napier.w("client_id_scheme is $clientIdScheme, but no extensions were found in the leaf certificate") }
         }
