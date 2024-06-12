@@ -10,29 +10,26 @@ import kotlinx.serialization.encodeToString
 // TODO: possibly replace this with AuthenticationRequestParametersFrom<*> once it's serializable? or the other way?
 @Serializable
 data class AuthenticationRequest(
-    @Serializable
     val source: AuthenticationRequestSource,
     val parameters: AuthenticationRequestParameters,
 ) {
     fun serialize() = jsonSerializer.encodeToString(this)
 
-    fun toAuthenticationRequestParametersFrom(): AuthenticationRequestParametersFrom<*> {
-        return when(source) {
-            is AuthenticationRequestSource.Json -> AuthenticationRequestParametersFrom.Json(
-                jsonString = source.jsonString,
-                parameters = parameters,
-            )
+    fun toAuthenticationRequestParametersFrom() = when (source) {
+        is AuthenticationRequestSource.Json -> AuthenticationRequestParametersFrom.Json(
+            jsonString = source.jsonString,
+            parameters = parameters,
+        )
 
-            is AuthenticationRequestSource.JwsSigned -> AuthenticationRequestParametersFrom.JwsSigned(
-                jwsSigned = source.jwsSigned,
-                parameters = parameters,
-            )
+        is AuthenticationRequestSource.JwsSigned -> AuthenticationRequestParametersFrom.JwsSigned(
+            jwsSigned = source.jwsSigned,
+            parameters = parameters,
+        )
 
-            is AuthenticationRequestSource.Uri -> AuthenticationRequestParametersFrom.Uri(
-                url = source.url,
-                parameters = parameters,
-            )
-        }
+        is AuthenticationRequestSource.Uri -> AuthenticationRequestParametersFrom.Uri(
+            url = source.url,
+            parameters = parameters,
+        )
     }
 
     companion object {
@@ -40,8 +37,8 @@ data class AuthenticationRequest(
             jsonSerializer.decodeFromString<AuthenticationRequest>(it)
         }.wrap()
 
-        fun createInstance(parametersFrom: AuthenticationRequestParametersFrom<*>): AuthenticationRequest {
-            return AuthenticationRequest(
+        fun createInstance(parametersFrom: AuthenticationRequestParametersFrom<*>) =
+            AuthenticationRequest(
                 source = when (parametersFrom) {
                     is AuthenticationRequestParametersFrom.JwsSigned -> AuthenticationRequestSource.JwsSigned(
                         jwsSigned = parametersFrom.source
@@ -54,9 +51,7 @@ data class AuthenticationRequest(
                     is AuthenticationRequestParametersFrom.Uri -> AuthenticationRequestSource.Uri(
                         url = parametersFrom.source
                     )
-                },
-                parameters = parametersFrom.parameters
+                }, parameters = parametersFrom.parameters
             )
-        }
     }
 }
