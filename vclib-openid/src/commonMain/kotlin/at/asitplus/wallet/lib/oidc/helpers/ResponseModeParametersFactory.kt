@@ -15,7 +15,7 @@ internal object ResponseModeParametersFactory {
     ): KmmResult<ResponseModeParameters> = KmmResult.runCatching {
         when (request.parameters.responseMode) {
             null, // default for vp_token and id_token is fragment
-            OpenIdConstants.ResponseMode.FRAGMENT -> createFragmentResponseModeParameters(request.parameters)
+            OpenIdConstants.ResponseMode.FRAGMENT -> createFragmentResponseModeParameters(request)
 
             OpenIdConstants.ResponseMode.DIRECT_POST -> createDirectPostResponseModeParameters(
                 request
@@ -25,7 +25,7 @@ internal object ResponseModeParametersFactory {
                 request,
             )
 
-            OpenIdConstants.ResponseMode.QUERY -> createQueryResponseModeParameters(request.parameters)
+            OpenIdConstants.ResponseMode.QUERY -> createQueryResponseModeParameters(request)
 
             is OpenIdConstants.ResponseMode.OTHER -> TODO()
         }
