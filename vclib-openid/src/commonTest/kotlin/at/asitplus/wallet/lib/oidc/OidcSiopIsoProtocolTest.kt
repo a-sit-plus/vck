@@ -153,7 +153,8 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             encryption = true
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(
-            walletUrl = walletUrl, requestOptions = requestOptions
+            walletUrl = walletUrl,
+            requestOptions = requestOptions,
         ).also { println(it) }
 
         val authnResponse =
