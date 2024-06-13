@@ -14,7 +14,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
  */
 data class SdJwtSigned(
     val jws: JwsSigned,
-    val disclosures: Map<String, SelectiveDisclosureItem?>,
+    val disclosures: Map<String, SelectiveDisclosureItem>,
     val keyBindingJws: JwsSigned? = null,
     val rawDisclosures: List<String>,
 ) {
@@ -48,12 +48,16 @@ data class SdJwtSigned(
             if (stringList.isEmpty()) return null.also { Napier.w("Could not parse SD-JWT: $input") }
             val jws = JwsSigned.parse(stringList.first()).getOrNull()
                 ?: return null.also { Napier.w("Could not parse JWS from SD-JWT: $input") }
-            val rawDisclosures = stringList.drop(1)
+            val stringListWithoutJws = stringList.drop(1)
+            val rawDisclosures = stringListWithoutJws
                 .filterNot { it.contains(".") }
-            val disclosures = stringList.drop(1).take(rawDisclosures.count())
+            val disclosures = stringListWithoutJws.take(rawDisclosures.count())
                 .associateWith {
-                    SelectiveDisclosureItem.deserialize(it.decodeToByteArray(Base64UrlStrict).decodeToString())
-                        .getOrNull()
+                    val decoded = it.decodeToByteArray(Base64UrlStrict).decodeToString()
+                    SelectiveDisclosureItem.deserialize(decoded).getOrElse { ex ->
+                        Napier.w("Could not parse SD Item: $it", ex)
+                        return null
+                    }
                 }
             val keyBindingString = stringList.drop(1 + rawDisclosures.size).firstOrNull()
             val keyBindingJws = keyBindingString?.let { JwsSigned.parse(it).getOrNull() }

@@ -388,7 +388,6 @@ class Validator(
         if (isRevoked)
             Napier.d("verifySdJwt: revoked")
 
-        val disclosures = sdJwtSigned.disclosures.filterValues { it != null }
         // it's important to read again from source string to prevent different formats in serialization
         val disclosureInputs = sdJwtSigned.rawDisclosures.map { it.hashDisclosure() }
         disclosureInputs.forEach { discInput ->
@@ -397,7 +396,6 @@ class Validator(
                     .also { Napier.w("verifySdJwt: Digest of disclosure not contained in SD-JWT: $discInput") }
             }
         }
-        // TODO verify sd_hash
         val kid = sdJwtSigned.jws.header.keyId
         return when (parser.parseSdJwt(input, sdJwt, kid)) {
             is Parser.ParseVcResult.SuccessSdJwt ->
@@ -405,10 +403,9 @@ class Validator(
                     sdJwtSigned.jws,
                     sdJwt,
                     sdJwtSigned.keyBindingJws,
-                    disclosures,
+                    sdJwtSigned.disclosures,
                     isRevoked
-                )
-                    .also { Napier.d("verifySdJwt: Valid") }
+                ).also { Napier.d("verifySdJwt: Valid") }
 
             else -> Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.d("verifySdJwt: Invalid structure from Parser") }
