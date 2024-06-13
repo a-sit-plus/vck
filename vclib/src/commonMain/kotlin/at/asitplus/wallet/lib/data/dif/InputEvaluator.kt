@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.data.dif
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.jsonpath.JsonPath
-import at.asitplus.jsonpath.core.NodeListEntry
+import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.JsonArray
@@ -15,23 +15,21 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 
-typealias FieldQueryResult = Pair<ConstraintField, NodeListEntry?>
-typealias FieldQueryResults = Map<ConstraintField, NodeListEntry?>
-
 /**
  * Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
  */
 class InputEvaluator {
     // filter by constraints
-    fun evaluateFieldQueryResults(
+    fun evaluateConstraintFieldMatches(
         inputDescriptor: InputDescriptor,
         credential: JsonElement,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
-    ): KmmResult<FieldQueryResults> = kotlin.runCatching {
-        (inputDescriptor.constraints?.fields?.associateWith { field ->
-            val fieldQueryResult = field.path.firstNotNullOfOrNull { jsonPath ->
+    ): KmmResult<Map<ConstraintField, NodeList>> = runCatching {
+        // filter by constraints
+        inputDescriptor.constraints?.fields?.associateWith { field ->
+            val fieldQueryResult = field.path.flatMap { jsonPath ->
                 val candidates = JsonPath(jsonPath).query(credential)
-                candidates.firstOrNull { candidate ->
+                candidates.filter { candidate ->
                     if (pathAuthorizationValidator(candidate.normalizedJsonPath)) {
                         field.filter?.let {
                             candidate.value.satisfiesConstraintFilter(it)
@@ -39,21 +37,22 @@ class InputEvaluator {
                     } else false
                 }
             }
-            if ((field.optional != true) and (fieldQueryResult == null)) {
-                throw FailedFieldQueryException(field)
-                    .also { Napier.w("evaluateFieldQueryResult failed", it) }
+            if (fieldQueryResult.isEmpty() && field.optional != true) {
+                throw FailedFieldQueryException(field).also {
+                    Napier.w("evaluateFieldQueryResult failed", it)
+                }
             }
             field.predicate?.let {
                 when (it) {
                     // TODO: RequirementEnum.NONE is not a valid field value, maybe change member type to new Enum?
                     RequirementEnum.NONE -> fieldQueryResult
                     RequirementEnum.PREFERRED -> fieldQueryResult
-                    RequirementEnum.REQUIRED ->
-                        throw MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature")
-                            .also { Napier.w("evaluateFieldQueryResult failed", it) }
+                    RequirementEnum.REQUIRED -> throw MissingFeatureSupportException("Predicate feature from https://identity.foundation/presentation-exchange/spec/v2.0.0/#predicate-feature").also {
+                        Napier.w("evaluateFieldQueryResult failed", it)
+                    }
                 }
             } ?: fieldQueryResult
-        } ?: mapOf())
+        } ?: mapOf()
     }.wrap()
 }
 

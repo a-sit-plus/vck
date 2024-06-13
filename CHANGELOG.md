@@ -1,6 +1,13 @@
 # Changelog
 
 Release 4.0.0:
+ - Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.
+ - Add `PresentationSubmissionValidator`: 
+   - Add `isValidSubmission`: Evaluates, whether all submission requirements is satisfied, and fails on redundantly submitted credentials.
+   - Add `findUnnecessaryInputDescriptorSubmissions`: Returns a list of redundantly submitted credentials.
+ - Rename `BaseInputEvaluator` -> `InputEvaluator`
+   - Change `evaluateFieldQueryResults` -> `evaluateConstraintFieldMatches`: Returns all matching fields now, not just the first match
+ - Change `Holder.matchInputDescriptorsAgainstCredentialStore`: Returns all matching credentials now, not just the first match
  - Do not use or assume DID as key identifiers and subjects in credentials
  - Replace list of attribute types in `Issuer.issueCredentials` with one concrete `CredentialScheme` to be passed
  - Remove functionality related to "attachments" to verifable credentials in JWT format

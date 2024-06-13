@@ -79,7 +79,7 @@ class ValidatorVpTest : FreeSpec({
             .filterIsInstance<Holder.StoredCredential.Vc>()
             .map { it.storeEntry.vcSerialized }
             .map { it.reversed() }
-        val vp = holder.createVcPresentation(holderVcSerialized, challenge, verifier.keyPair.identifier)
+        val vp = holder.createVcPresentation(holderVcSerialized, challenge, verifier.keyPair.identifier).getOrNull()
         vp.shouldNotBeNull()
 
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()

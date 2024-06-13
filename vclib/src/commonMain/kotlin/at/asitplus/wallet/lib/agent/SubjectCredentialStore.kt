@@ -61,7 +61,9 @@ interface SubjectCredentialStore {
             : KmmResult<List<StoreEntry>>
 
     @Serializable
-    sealed class StoreEntry {
+    sealed interface StoreEntry {
+        val scheme: ConstantIndex.CredentialScheme
+
         @Serializable
         data class Vc(
             @SerialName("vc-serialized")
@@ -69,8 +71,8 @@ interface SubjectCredentialStore {
             @SerialName("vc")
             val vc: VerifiableCredentialJws,
             @SerialName("scheme")
-            val scheme: ConstantIndex.CredentialScheme
-        ) : StoreEntry()
+            override val scheme: ConstantIndex.CredentialScheme
+        ) : StoreEntry
 
         @Serializable
         data class SdJwt(
@@ -84,16 +86,16 @@ interface SubjectCredentialStore {
             @SerialName("disclosures")
             val disclosures: Map<String, SelectiveDisclosureItem?>,
             @SerialName("scheme")
-            val scheme: ConstantIndex.CredentialScheme
-        ) : StoreEntry()
+            override val scheme: ConstantIndex.CredentialScheme
+        ) : StoreEntry
 
         @Serializable
         data class Iso(
             @SerialName("issuer-signed")
             val issuerSigned: IssuerSigned,
             @SerialName("scheme")
-            val scheme: ConstantIndex.CredentialScheme
-        ) : StoreEntry()
+            override val scheme: ConstantIndex.CredentialScheme
+        ) : StoreEntry
     }
 
 }
