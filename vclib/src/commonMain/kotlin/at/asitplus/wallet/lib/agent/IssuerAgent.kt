@@ -4,7 +4,6 @@ import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.io.Base64Strict
-import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.io.BitSet
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.DataSourceProblem
@@ -17,6 +16,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -36,7 +36,6 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import okio.ByteString.Companion.toByteString
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
@@ -54,34 +53,36 @@ class IssuerAgent(
     private val jwsService: JwsService,
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
-    override val identifier: String,
+    override val publicKey: CryptoPublicKey,
     override val cryptoAlgorithms: Set<CryptoAlgorithm>,
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
 ) : Issuer {
 
-    companion object {
-        fun newDefaultInstance(
-            cryptoService: CryptoService = DefaultCryptoService(),
-            verifierCryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
-            issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
-            clock: Clock = Clock.System,
-            timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
-            dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
-        ): IssuerAgent = IssuerAgent(
-            validator = Validator.newDefaultInstance(
-                cryptoService = verifierCryptoService,
-                parser = Parser(clock.now().toEpochMilliseconds())
-            ),
-            issuerCredentialStore = issuerCredentialStore,
-            jwsService = DefaultJwsService(cryptoService),
-            coseService = DefaultCoseService(cryptoService),
-            dataProvider = dataProvider,
-            identifier = cryptoService.publicKey.didEncoded,
-            cryptoAlgorithms = setOf(cryptoService.algorithm),
-            timePeriodProvider = timePeriodProvider,
-            clock = clock,
-        )
-    }
+    constructor(
+        cryptoService: CryptoService = DefaultCryptoService(),
+        dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
+    ) : this(
+        validator = Validator.newDefaultInstance(),
+        jwsService = DefaultJwsService(cryptoService),
+        coseService = DefaultCoseService(cryptoService),
+        dataProvider = dataProvider,
+        publicKey = cryptoService.publicKey,
+        cryptoAlgorithms = setOf(cryptoService.algorithm),
+    )
+
+    constructor(
+        cryptoService: CryptoService = DefaultCryptoService(),
+        issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
+        dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
+    ) : this(
+        validator = Validator.newDefaultInstance(),
+        issuerCredentialStore = issuerCredentialStore,
+        jwsService = DefaultJwsService(cryptoService),
+        coseService = DefaultCoseService(cryptoService),
+        dataProvider = dataProvider,
+        publicKey = cryptoService.publicKey,
+        cryptoAlgorithms = setOf(cryptoService.algorithm),
+    )
 
     /**
      * Issues credentials for some [attributeTypes] (i.e. some of
@@ -218,7 +219,7 @@ class IssuerAgent(
         val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
         val vc = VerifiableCredential(
             id = vcId,
-            issuer = identifier,
+            issuer = publicKey.didEncoded,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             credentialStatus = credentialStatus,
@@ -250,14 +251,7 @@ class IssuerAgent(
         val vcId = "urn:uuid:${uuid4()}"
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
-        val subjectId = subjectPublicKey.toJsonWebKey().keyId ?: return Issuer.IssuedCredentialResult(
-            failed = listOf(
-                Issuer.FailedAttribute(
-                    scheme.schemaUri,
-                    DataSourceProblem("subjectPublicKey transformation error")
-                )
-            )
-        ).also { Napier.w("subjectPublicKey could not be transformed to a JWK") }
+        val subjectId = subjectPublicKey.didEncoded
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
             credential = IssuerCredentialStore.Credential.VcSd(vcId, credential.claims, scheme),
             subjectPublicKey = subjectPublicKey,
@@ -271,14 +265,13 @@ class IssuerAgent(
 
         val disclosures = credential.claims
             .map { SelectiveDisclosureItem(Random.nextBytes(32), it.name, it.value) }
-            .map { it.serialize() }
-            .map { it.encodeToByteArray().encodeToString(Base64UrlStrict) }
+            .map { it.toDisclosure() }
         val disclosureDigests = disclosures
-            .map { it.encodeToByteArray().toByteString().sha256().base64Url() }
+            .map { it.hashDisclosure() }
         val jwsPayload = VerifiableCredentialSdJwt(
             subject = subjectId,
             notBefore = issuanceDate,
-            issuer = identifier,
+            issuer = publicKey.didEncoded,
             expiration = expirationDate,
             issuedAt = issuanceDate,
             jwtId = vcId,
@@ -313,7 +306,7 @@ class IssuerAgent(
         val subject = RevocationListSubject("$revocationListUrl#list", revocationList)
         val credential = VerifiableCredential(
             id = revocationListUrl,
-            issuer = identifier,
+            issuer = publicKey.didEncoded,
             issuanceDate = clock.now(),
             lifetime = revocationListLifetime,
             credentialSubject = subject

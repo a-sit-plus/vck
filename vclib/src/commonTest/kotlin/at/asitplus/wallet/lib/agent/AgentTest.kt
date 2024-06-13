@@ -31,16 +31,14 @@ class AgentTest : FreeSpec({
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
-        issuer = IssuerAgent.newDefaultInstance(
-            issuerCredentialStore = issuerCredentialStore,
-            dataProvider = DummyCredentialDataProvider(),
+        issuer = IssuerAgent(
+            DefaultCryptoService(),
+            issuerCredentialStore,
+            DummyCredentialDataProvider(),
         )
         holderCryptoService = DefaultCryptoService()
-        holder = HolderAgent.newDefaultInstance(
-            cryptoService = holderCryptoService,
-            subjectCredentialStore = holderCredentialStore,
-        )
-        verifier = VerifierAgent.newDefaultInstance(holder.identifier)
+        holder = HolderAgent(holderCryptoService, holderCredentialStore)
+        verifier = VerifierAgent(holderCryptoService.publicKey)
         challenge = uuid4().toString()
     }
 
@@ -55,7 +53,7 @@ class AgentTest : FreeSpec({
 
         val presentationParameters = holder.createPresentation(
             challenge,
-            verifier.identifier,
+            verifier.publicKey.didEncoded,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -79,7 +77,7 @@ class AgentTest : FreeSpec({
 
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.identifier,
+            audienceId = verifier.publicKey.didEncoded,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -101,7 +99,7 @@ class AgentTest : FreeSpec({
 
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = issuer.identifier,
+            audienceId = issuer.publicKey.didEncoded,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -159,7 +157,7 @@ class AgentTest : FreeSpec({
             storedCredentials.notVerified.shouldBeEmpty()
             holder.createPresentation(
                 challenge = challenge,
-                audienceId = verifier.identifier,
+                audienceId = verifier.publicKey.didEncoded,
                 presentationDefinition = singularPresentationDefinition,
             ).getOrNull() shouldBe null
         }
@@ -186,7 +184,7 @@ class AgentTest : FreeSpec({
 
             holder.createPresentation(
                 challenge = challenge,
-                audienceId = verifier.identifier,
+                audienceId = verifier.publicKey.didEncoded,
                 presentationDefinition = singularPresentationDefinition,
             ).getOrNull() shouldBe null
         }
@@ -266,7 +264,7 @@ class AgentTest : FreeSpec({
     "building presentation without necessary credentials" {
         holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.identifier,
+            audienceId = verifier.publicKey.didEncoded,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull() shouldBe null
     }
@@ -281,7 +279,7 @@ class AgentTest : FreeSpec({
         holder.storeCredentials(credentials.toStoreCredentialInput())
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.identifier,
+            audienceId = verifier.publicKey.didEncoded,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -305,7 +303,7 @@ class AgentTest : FreeSpec({
         holder.storeCredentials(credentials.toStoreCredentialInput())
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.identifier,
+            audienceId = verifier.publicKey.didEncoded,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()

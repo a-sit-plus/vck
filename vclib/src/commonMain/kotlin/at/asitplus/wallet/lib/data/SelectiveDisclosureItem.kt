@@ -1,7 +1,10 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.crypto.datatypes.io.Base64UrlStrict
+import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.SelectiveDisclosureItemSerializer
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -18,6 +21,13 @@ data class SelectiveDisclosureItem(
 ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)
+
+    /**
+     * Creates a disclosure, as described in section 5.2 of
+     * [draft-ietf-oauth-selective-disclosure-jwt-08](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
+     */
+    fun toDisclosure() = serialize().encodeToByteArray().encodeToString(Base64UrlStrict)
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -42,6 +52,12 @@ data class SelectiveDisclosureItem(
         fun deserialize(it: String) = kotlin.runCatching {
             jsonSerializer.decodeFromString<SelectiveDisclosureItem>(it)
         }.wrap()
+
+        /**
+         * Hashes a disclosure from [SelectiveDisclosureItem.toDisclosure] according to section 5.2.3 of
+         * [draft-ietf-oauth-selective-disclosure-jwt-08](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/)
+         **/
+        fun String.hashDisclosure() = encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
     }
 
 }

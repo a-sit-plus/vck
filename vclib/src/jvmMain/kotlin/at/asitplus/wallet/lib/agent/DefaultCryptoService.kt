@@ -4,19 +4,40 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.*
+import at.asitplus.crypto.datatypes.CryptoAlgorithm
+import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.CryptoSignature
+import at.asitplus.crypto.datatypes.Digest
+import at.asitplus.crypto.datatypes.ECCurve
 import at.asitplus.crypto.datatypes.ECCurve.SECP_256_R_1
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
-import at.asitplus.crypto.datatypes.jws.*
+import at.asitplus.crypto.datatypes.fromJcaPublicKey
+import at.asitplus.crypto.datatypes.getJcaPublicKey
+import at.asitplus.crypto.datatypes.jcaName
+import at.asitplus.crypto.datatypes.jcaParams
+import at.asitplus.crypto.datatypes.jcaSignatureBytes
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
+import at.asitplus.crypto.datatypes.jws.JweAlgorithm
+import at.asitplus.crypto.datatypes.jws.JweEncryption
+import at.asitplus.crypto.datatypes.jws.isAuthenticatedEncryption
+import at.asitplus.crypto.datatypes.jws.jcaKeySpecName
+import at.asitplus.crypto.datatypes.jws.jcaName
+import at.asitplus.crypto.datatypes.jws.jwkId
+import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import at.asitplus.crypto.datatypes.parseFromJca
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.JCEECPublicKey
 import org.bouncycastle.jce.spec.ECPublicKeySpec
 import java.math.BigInteger
-import java.security.*
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.MessageDigest
+import java.security.PrivateKey
+import java.security.Signature
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
 import javax.crypto.spec.GCMParameterSpec
@@ -55,7 +76,7 @@ actual open class DefaultCryptoService : CryptoService {
     ) {
         this.privateKey = keyPair.private
         this.algorithm = algorithm
-        this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow().also { it.jwkId = it.didEncoded }
+        this.publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
         this.jsonWebKey = publicKey.toJsonWebKey()
         this.coseKey = publicKey.toCoseKey(algorithm.toCoseAlgorithm()).getOrThrow()
         this.certificate = X509Certificate.generateSelfSignedCertificate(this, extensions = certificateExtensions)
@@ -78,17 +99,27 @@ actual open class DefaultCryptoService : CryptoService {
         algorithm: JweEncryption
     ): KmmResult<AuthenticatedCiphertext> = runCatching {
         val jcaCiphertext = Cipher.getInstance(algorithm.jcaName).also {
-            it.init(
-                Cipher.ENCRYPT_MODE,
-                SecretKeySpec(key, algorithm.jcaKeySpecName),
-                GCMParameterSpec(algorithm.ivLengthBits, iv)
-            )
-            it.updateAAD(aad)
+            if (algorithm.isAuthenticatedEncryption) {
+                it.init(
+                    Cipher.ENCRYPT_MODE,
+                    SecretKeySpec(key, algorithm.jcaKeySpecName),
+                    GCMParameterSpec(algorithm.ivLengthBits, iv)
+                )
+                it.updateAAD(aad)
+            } else {
+                it.init(
+                    Cipher.ENCRYPT_MODE,
+                    SecretKeySpec(key, algorithm.jcaKeySpecName),
+                )
+            }
         }.doFinal(input)
-        val ciphertext = jcaCiphertext.dropLast(algorithm.ivLengthBits / 8).toByteArray()
-        val authtag = jcaCiphertext.takeLast(algorithm.ivLengthBits / 8).toByteArray()
-
-        AuthenticatedCiphertext(ciphertext, authtag)
+        if (algorithm.isAuthenticatedEncryption) {
+            val ciphertext = jcaCiphertext.dropLast(algorithm.ivLengthBits / 8).toByteArray()
+            val authtag = jcaCiphertext.takeLast(algorithm.ivLengthBits / 8).toByteArray()
+            AuthenticatedCiphertext(ciphertext, authtag)
+        } else {
+            AuthenticatedCiphertext(jcaCiphertext, byteArrayOf())
+        }
     }.wrap()
 
 
@@ -101,12 +132,19 @@ actual open class DefaultCryptoService : CryptoService {
         algorithm: JweEncryption
     ): KmmResult<ByteArray> = runCatching {
         Cipher.getInstance(algorithm.jcaName).also {
-            it.init(
-                Cipher.DECRYPT_MODE,
-                SecretKeySpec(key, algorithm.jcaKeySpecName),
-                GCMParameterSpec(algorithm.ivLengthBits, iv)
-            )
-            it.updateAAD(aad)
+            if (algorithm.isAuthenticatedEncryption) {
+                it.init(
+                    Cipher.DECRYPT_MODE,
+                    SecretKeySpec(key, algorithm.jcaKeySpecName),
+                    GCMParameterSpec(algorithm.ivLengthBits, iv)
+                )
+                it.updateAAD(aad)
+            } else {
+                it.init(
+                    Cipher.DECRYPT_MODE,
+                    SecretKeySpec(key, algorithm.jcaKeySpecName),
+                )
+            }
         }.doFinal(input + authTag)
     }.wrap()
 

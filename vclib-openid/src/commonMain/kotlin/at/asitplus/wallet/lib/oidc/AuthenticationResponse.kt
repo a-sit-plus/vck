@@ -9,6 +9,6 @@ import at.asitplus.crypto.datatypes.jws.JsonWebKey
  */
 data class AuthenticationResponse(
     val params: AuthenticationResponseParameters,
-    val clientMetadata: RelyingPartyMetadata,
-    val jsonWebKeys: Collection<JsonWebKey>,
+    val clientMetadata: RelyingPartyMetadata?,
+    val jsonWebKeys: Collection<JsonWebKey>?,
 )

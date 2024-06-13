@@ -30,16 +30,14 @@ class AgentSdJwtTest : FreeSpec({
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
-        issuer = IssuerAgent.newDefaultInstance(
-            issuerCredentialStore = issuerCredentialStore,
-            dataProvider = DummyCredentialDataProvider(),
+        issuer = IssuerAgent(
+            DefaultCryptoService(),
+            issuerCredentialStore,
+            DummyCredentialDataProvider(),
         )
         holderCryptoService = DefaultCryptoService()
-        holder = HolderAgent.newDefaultInstance(
-            subjectCredentialStore = holderCredentialStore,
-            cryptoService = holderCryptoService,
-        )
-        verifier = VerifierAgent.newRandomInstance()
+        holder = HolderAgent(holderCryptoService, holderCredentialStore)
+        verifier = VerifierAgent()
         challenge = uuid4().toString()
     }
 
@@ -63,7 +61,7 @@ class AgentSdJwtTest : FreeSpec({
         issueDummyCredentials(holder, issuer, holderCryptoService)
         val presentationParameters = holder.createPresentation(
             challenge,
-            verifier.identifier,
+            verifier.publicKey.didEncoded,
             presentationDefinition = givenNamePresentationDefinition
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -83,7 +81,7 @@ class AgentSdJwtTest : FreeSpec({
         issueDummyCredentials(holder, issuer, holderCryptoService)
         val presentationParameters = holder.createPresentation(
             challenge,
-            verifier.identifier,
+            verifier.publicKey.didEncoded,
             presentationDefinition = givenNamePresentationDefinition
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -93,7 +91,7 @@ class AgentSdJwtTest : FreeSpec({
         // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
         val malformedVpSdJwt = vp.sdJwt.replaceAfterLast(
             "~",
-            createFreshSdJwtKeyBinding(challenge, verifier.identifier).substringAfterLast("~")
+            createFreshSdJwtKeyBinding(challenge, verifier.publicKey.didEncoded).substringAfterLast("~")
         )
 
         val verified = verifier.verifyPresentation(malformedVpSdJwt, challenge)
@@ -105,7 +103,7 @@ class AgentSdJwtTest : FreeSpec({
         val malformedChallenge = challenge.reversed()
         val presentationParameters = holder.createPresentation(
             malformedChallenge,
-            verifier.identifier,
+            verifier.publicKey.didEncoded,
             presentationDefinition = givenNamePresentationDefinition
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -121,7 +119,7 @@ class AgentSdJwtTest : FreeSpec({
         issueDummyCredentials(holder, issuer, holderCryptoService)
         val presentationParameters = holder.createPresentation(
             challenge,
-            verifier.identifier,
+            verifier.publicKey.didEncoded,
             presentationDefinition = givenNamePresentationDefinition
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -142,11 +140,9 @@ class AgentSdJwtTest : FreeSpec({
 })
 
 suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {
-    val issuer = IssuerAgent.newDefaultInstance(
-        dataProvider = DummyCredentialDataProvider(),
-    )
+    val issuer = IssuerAgent(DefaultCryptoService(), DummyCredentialDataProvider())
     val holderCryptoService = DefaultCryptoService()
-    val holder = HolderAgent.newDefaultInstance(cryptoService = holderCryptoService)
+    val holder = HolderAgent(holderCryptoService)
     issueDummyCredentials(holder, issuer, holderCryptoService)
     val presentationResult = holder.createPresentation(
         challenge = challenge,

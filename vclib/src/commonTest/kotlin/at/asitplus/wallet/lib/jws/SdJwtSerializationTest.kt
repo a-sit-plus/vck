@@ -2,11 +2,13 @@ package at.asitplus.wallet.lib.jws
 
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 
@@ -62,6 +64,20 @@ class SdJwtSerializationTest : FreeSpec({
 
         val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
         deserialized shouldBe item
+    }
+
+    "Serialization is correct for Example from spec" {
+        val salt = "_26bc4LT-ac6q2KI6cBW5es".decodeToByteArray(Base64UrlStrict)
+        val name = "family_name"
+        val value = "Möbius"
+        val item = SelectiveDisclosureItem(salt, name, value)
+
+        val disclosure = item.toDisclosure()
+
+        // different whitespaces may lead to a different string, obviously!
+        disclosure shouldBe "WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsImZhbWlseV9uYW1lIiwiTcO2Yml1cyJd"
+
+        "WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIkZSIl0".hashDisclosure() shouldBe "w0I8EKcdCtUPkGCNUrfwVp2xEgNjtoIDlOxc9-PlOhs"
     }
 
 })

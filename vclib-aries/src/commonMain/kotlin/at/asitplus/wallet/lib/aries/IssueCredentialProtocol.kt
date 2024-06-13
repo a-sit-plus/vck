@@ -142,7 +142,7 @@ class IssueCredentialProtocol(
     }
 
     private fun createOobInvitation(): InternalNextMessage {
-        val recipientKey = issuer?.identifier
+        val recipientKey = issuer?.publicKey?.didEncoded
             ?: return InternalNextMessage.IncorrectState("issuer")
         val message = OutOfBandInvitation(
             body = OutOfBandInvitationBody(
@@ -188,7 +188,7 @@ class IssueCredentialProtocol(
         credentialScheme: ConstantIndex.CredentialScheme,
         parentThreadId: String? = null,
     ): RequestCredential? {
-        val subject = holder?.identifier
+        val subject = holder?.publicKey?.didEncoded
             ?: return null
         val credentialManifest = CredentialManifest(
             issuer = "somebody",

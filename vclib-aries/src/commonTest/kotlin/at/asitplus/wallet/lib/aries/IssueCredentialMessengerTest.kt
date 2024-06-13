@@ -29,8 +29,8 @@ class IssueCredentialMessengerTest : FreeSpec() {
         beforeEach {
             issuerCryptoService = DefaultCryptoService()
             holderCryptoService = DefaultCryptoService()
-            issuer = IssuerAgent.newDefaultInstance(issuerCryptoService, dataProvider = DummyCredentialDataProvider())
-            holder = HolderAgent.newDefaultInstance(holderCryptoService)
+            issuer = IssuerAgent(issuerCryptoService, DummyCredentialDataProvider())
+            holder = HolderAgent(holderCryptoService)
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
             holderMessenger = initHolderMessenger(ConstantIndex.AtomicAttribute2023)
         }

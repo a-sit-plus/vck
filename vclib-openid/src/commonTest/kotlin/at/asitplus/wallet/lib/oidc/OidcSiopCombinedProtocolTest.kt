@@ -40,8 +40,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         holderCryptoService = DefaultCryptoService()
         verifierCryptoService = DefaultCryptoService()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
-        holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
-        verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.didEncoded)
+        holderAgent = HolderAgent(holderCryptoService)
+        verifierAgent = VerifierAgent(verifierCryptoService.publicKey)
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
             holder = holderAgent,
@@ -458,9 +458,9 @@ private suspend fun Holder.storeJwtCredentials(
     attributeTypes: List<String>
 ) {
     storeCredentials(
-        IssuerAgent.newDefaultInstance(
+        IssuerAgent(
             DefaultCryptoService(),
-            dataProvider = DummyCredentialDataProvider(),
+            DummyCredentialDataProvider(),
         ).issueCredential(
             subjectPublicKey = holderCryptoService.publicKey,
             attributeTypes = attributeTypes,
@@ -474,9 +474,9 @@ private suspend fun Holder.storeSdJwtCredential(
     attributeTypes: List<String>
 ) {
     storeCredentials(
-        IssuerAgent.newDefaultInstance(
+        IssuerAgent(
             DefaultCryptoService(),
-            dataProvider = DummyCredentialDataProvider(),
+            DummyCredentialDataProvider(),
         ).issueCredential(
             subjectPublicKey = holderCryptoService.publicKey,
             attributeTypes = attributeTypes,
@@ -489,9 +489,9 @@ private suspend fun Holder.storeIsoCredential(
     holderCryptoService: CryptoService,
     attributeTypes: List<String>
 ) = storeCredentials(
-    IssuerAgent.newDefaultInstance(
+    IssuerAgent(
         DefaultCryptoService(),
-        dataProvider = DummyCredentialDataProvider(),
+        DummyCredentialDataProvider(),
     ).issueCredential(
         subjectPublicKey = holderCryptoService.publicKey,
         attributeTypes = attributeTypes,

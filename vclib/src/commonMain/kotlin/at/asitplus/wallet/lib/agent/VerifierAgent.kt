@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.iso.Document
@@ -15,35 +17,18 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
  */
 class VerifierAgent private constructor(
     private val validator: Validator,
-    override val identifier: String
+    override val publicKey: CryptoPublicKey,
 ) : Verifier {
 
-    companion object {
-        fun newDefaultInstance(
-            identifier: String,
-            cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
-            validator: Validator = Validator.newDefaultInstance(cryptoService),
-        ): VerifierAgent = VerifierAgent(
-            validator = validator,
-            identifier = identifier
-        )
+    constructor(publicKey: CryptoPublicKey) : this(
+        validator = Validator.newDefaultInstance(),
+        publicKey = publicKey,
+    )
 
-        /**
-         * Explicitly short argument list to use it from Swift
-         */
-        fun newDefaultInstance(identifier: String): VerifierAgent = VerifierAgent(
-            validator = Validator.newDefaultInstance(),
-            identifier = identifier
-        )
-
-        /**
-         * Creates a new verifier for a random `identifier`
-         */
-        fun newRandomInstance(): VerifierAgent = VerifierAgent(
-            validator = Validator.newDefaultInstance(),
-            identifier = DefaultCryptoService().publicKey.didEncoded,
-        )
-    }
+    constructor(): this(
+        validator = Validator.newDefaultInstance(),
+        publicKey = DefaultCryptoService().publicKey,
+    )
 
     override fun setRevocationList(it: String): Boolean {
         return validator.setRevocationList(it)
@@ -55,11 +40,11 @@ class VerifierAgent private constructor(
     override fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
         val sdJwtSigned = runCatching { SdJwtSigned.parse(it) }.getOrNull()
         if (sdJwtSigned != null) {
-            return validator.verifyVpSdJwt(it, challenge, identifier)
+            return validator.verifyVpSdJwt(it, challenge, publicKey)
         }
         val jwsSigned = JwsSigned.parse(it).getOrNull()
         if (jwsSigned != null) {
-            return validator.verifyVpJws(it, challenge, identifier)
+            return validator.verifyVpJws(it, challenge, publicKey)
         }
         val document = it.decodeToByteArrayOrNull(Base16(strict = true))
             ?.let { bytes -> Document.deserialize(bytes).getOrNull() }
@@ -85,7 +70,7 @@ class VerifierAgent private constructor(
     }
 
     override fun verifyVcJws(it: String): Verifier.VerifyCredentialResult {
-        return validator.verifyVcJws(it, identifier)
+        return validator.verifyVcJws(it, publicKey)
     }
 
 }

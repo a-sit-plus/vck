@@ -5,6 +5,7 @@ import io.kotest.core.names.DuplicateTestNameMode
 
 class KotestConfig : AbstractProjectConfig() {
     init {
+        Napier.takeLogarithm()
         Napier.base(DebugAntilog())
     }
 

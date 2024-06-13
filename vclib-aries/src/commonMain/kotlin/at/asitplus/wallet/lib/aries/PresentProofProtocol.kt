@@ -159,7 +159,7 @@ class PresentProofProtocol(
     }
 
     private fun createOobInvitation(): InternalNextMessage {
-        val recipientKey = holder?.identifier
+        val recipientKey = holder?.publicKey?.didEncoded
             ?: return InternalNextMessage.IncorrectState("holder")
         val message = OutOfBandInvitation(
             body = OutOfBandInvitationBody(
@@ -208,8 +208,7 @@ class PresentProofProtocol(
         credentialScheme: ConstantIndex.CredentialScheme,
         parentThreadId: String? = null,
     ): RequestPresentation? {
-        val verifierIdentifier = verifier?.identifier
-            ?: return null
+        val verifierIdentifier = verifier?.publicKey?.didEncoded ?: return null
         val claimsConstraints = requestedClaims?.map(this::buildConstraintFieldForClaim) ?: listOf()
         val typeConstraints = buildConstraintFieldForType(credentialScheme.vcType!!)
         val presentationDefinition = PresentationDefinition(

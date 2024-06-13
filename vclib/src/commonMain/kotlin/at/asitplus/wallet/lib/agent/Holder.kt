@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.jsonpath.core.NodeList
+import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -29,10 +30,9 @@ data class InputDescriptorCredentialSubmission(
 interface Holder {
 
     /**
-     * The identifier for this agent, typically the `keyId` from the cryptographic key,
-     * e.g. `did:key:mAB...` or `urn:ietf:params:oauth:jwk-thumbprint:sha256:...`
+     * The public key for this agent, i.e. the "holder key" that the credentials get bound to.
      */
-    val identifier: String
+    val publicKey: CryptoPublicKey
 
     /**
      * Sets the revocation list ot use for further processing of Verifiable Credentials

@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.crypto.datatypes.jws.JwsHeader
+import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.wallet.lib.cbor.CoseService
@@ -12,8 +14,10 @@ import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.IssuerSignedList
+import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlinx.serialization.cbor.ByteStringWrapper
@@ -124,19 +128,8 @@ class VerifiablePresentationFactory(
         validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
         requestedClaims: Collection<NormalizedJsonPath>
     ): Holder.CreatePresentationResult.SdJwt? {
-        val keyBindingJws = KeyBindingJws(
-            issuedAt = Clock.System.now(),
-            audience = audienceId,
-            challenge = challenge
-        )
-        val jwsPayload = keyBindingJws.serialize().encodeToByteArray()
-        val keyBinding =
-            jwsService.createSignedJwt(JwsContentTypeConstants.KB_JWT, jwsPayload).getOrElse {
-                Napier.w("Could not create JWS for presentation", it)
-                return null
-            }
         val filteredDisclosures = validSdJwtCredential.disclosures.filter {
-            it.discloseItem(requestedClaims.mapNotNull { claimPath ->
+            it.discloseItem(requestedClaims?.mapNotNull { claimPath ->
                 // TODO: unsure how to deal with attributes with a depth of more than 1 (if they even should be supported)
                 //  revealing the whole attribute for now, which is as fine grained as SdJwt can do anyway
                 claimPath.segments.firstOrNull()?.let {
@@ -147,12 +140,42 @@ class VerifiablePresentationFactory(
                 }
             })
         }.keys
-        val sdJwt =
-            (listOf(validSdJwtCredential.vcSerialized.substringBefore("~")) + filteredDisclosures + keyBinding.serialize())
-                .joinToString("~")
+        val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
+        val keyBinding = createKeyBindingJws(audienceId, challenge, issuerJwtPlusDisclosures) ?: return null
+        val jwsFromIssuer = JwsSigned.parse(validSdJwtCredential.vcSerialized.substringBefore("~")).getOrElse {
+            Napier.w("Could not re-create JWS from stored SD-JWT", it)
+            return null
+        }
+        val sdJwt = SdJwtSigned.serializePresentation(jwsFromIssuer, filteredDisclosures, keyBinding)
         return Holder.CreatePresentationResult.SdJwt(sdJwt)
     }
 
+    private suspend fun createKeyBindingJws(
+        audienceId: String,
+        challenge: String,
+        issuerJwtPlusDisclosures: String,
+    ): JwsSigned? {
+        val keyBindingJws = KeyBindingJws(
+            issuedAt = Clock.System.now(),
+            audience = audienceId,
+            challenge = challenge,
+            sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256()
+        )
+        val jwsPayload = keyBindingJws.serialize().encodeToByteArray()
+        return jwsService.createSignedJwsAddingParams(
+            header = JwsHeader(
+                type = JwsContentTypeConstants.KB_JWT,
+                algorithm = jwsService.algorithm,
+            ),
+            payload = jwsPayload,
+            addKeyId = false,
+            addJsonWebKey = true,
+            addX5c = false
+        ).getOrElse {
+            Napier.w("Could not create JWS for presentation", it)
+            return null
+        }
+    }
 
     private fun Map.Entry<String, SelectiveDisclosureItem?>.discloseItem(requestedClaims: Collection<String>?): Boolean {
         return if (requestedClaims == null) {

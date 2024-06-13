@@ -35,12 +35,12 @@ class OidcSiopInteropTest : FreeSpec({
 
     beforeEach {
         holderCryptoService = DefaultCryptoService()
-        holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
+        holderAgent = HolderAgent(holderCryptoService)
         runBlocking {
             holderAgent.storeCredentials(
-                IssuerAgent.newDefaultInstance(
+                IssuerAgent(
                     DefaultCryptoService(),
-                    dataProvider = DummyCredentialDataProvider(),
+                    DummyCredentialDataProvider(),
                 ).issueCredential(
                     subjectPublicKey = holderCryptoService.publicKey,
                     attributeTypes = listOf(EuPidScheme.vcType),

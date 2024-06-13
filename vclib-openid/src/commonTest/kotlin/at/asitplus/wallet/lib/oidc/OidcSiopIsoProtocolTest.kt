@@ -41,12 +41,12 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         verifierCryptoService = DefaultCryptoService()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
-        holderAgent = HolderAgent.newDefaultInstance(holderCryptoService)
-        verifierAgent = VerifierAgent.newDefaultInstance(verifierCryptoService.publicKey.didEncoded)
+        holderAgent = HolderAgent(holderCryptoService)
+        verifierAgent = VerifierAgent(verifierCryptoService.publicKey)
         runBlocking {
-            val issuerAgent = IssuerAgent.newDefaultInstance(
+            val issuerAgent = IssuerAgent(
                 DefaultCryptoService(),
-                dataProvider = DummyCredentialDataProvider(),
+                DummyCredentialDataProvider(),
             )
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(
