@@ -3,11 +3,11 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.CryptoSignature
 import at.asitplus.crypto.datatypes.Digest
 import at.asitplus.crypto.datatypes.ECCurve
+import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncryption
@@ -64,12 +64,12 @@ interface VerifierCryptoService {
     /**
      * List of algorithms, for which signatures can be verified in [verify].
      */
-    val supportedAlgorithms: List<CryptoAlgorithm>
+    val supportedAlgorithms: List<X509SignatureAlgorithm>
 
     fun verify(
         input: ByteArray,
         signature: CryptoSignature,
-        algorithm: CryptoAlgorithm,
+        algorithm: X509SignatureAlgorithm,
         publicKey: CryptoPublicKey,
     ): KmmResult<Boolean>
 
@@ -141,11 +141,11 @@ expect class DefaultCryptoService : CryptoService {
 }
 
 expect class DefaultVerifierCryptoService() : VerifierCryptoService {
-    override val supportedAlgorithms: List<CryptoAlgorithm>
+    override val supportedAlgorithms: List<X509SignatureAlgorithm>
     override fun verify(
         input: ByteArray,
         signature: CryptoSignature,
-        algorithm: CryptoAlgorithm,
+        algorithm: X509SignatureAlgorithm,
         publicKey: CryptoPublicKey
     ): KmmResult<Boolean>
 }

@@ -3,10 +3,10 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.CryptoSignature
 import at.asitplus.crypto.datatypes.ECCurve
+import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
@@ -133,7 +133,7 @@ actual fun RandomKeyPairAdapter(extensions: List<X509CertificateExtension>): Key
     val publicKeyData = SecKeyCopyExternalRepresentation(secPublicKey, null)
     val data = CFBridgingRelease(publicKeyData) as NSData
     val publicKey = CryptoPublicKey.EC.fromAnsiX963Bytes(ECCurve.SECP_256_R_1, data.toByteArray())
-    val signingAlgorithm = CryptoAlgorithm.ES256
+    val signingAlgorithm = X509SignatureAlgorithm.ES256
     val certificate = X509Certificate.generateSelfSignedCertificate(publicKey, signingAlgorithm, extensions) {
         val intSign = signInt(it, secPrivateKey)
         KmmResult.success(CryptoSignature.decodeFromDer(intSign))
@@ -144,7 +144,7 @@ actual fun RandomKeyPairAdapter(extensions: List<X509CertificateExtension>): Key
 class IosKeyPairAdapter(
     val secPrivateKey: SecKeyRef,
     val secPublicKey: SecKeyRef,
-    override val signingAlgorithm: CryptoAlgorithm,
+    override val signingAlgorithm: X509SignatureAlgorithm,
     override val certificate: X509Certificate?
 ) : KeyPairAdapter {
     private val publicKeyData = SecKeyCopyExternalRepresentation(secPublicKey, null)
@@ -162,12 +162,13 @@ class IosKeyPairAdapter(
 @Suppress("UNCHECKED_CAST")
 actual class DefaultVerifierCryptoService : VerifierCryptoService {
 
-    actual override val supportedAlgorithms: List<CryptoAlgorithm> = CryptoAlgorithm.entries.filter { it.isEc }
+    actual override val supportedAlgorithms: List<X509SignatureAlgorithm> =
+        X509SignatureAlgorithm.entries.filter { it.isEc }
 
     actual override fun verify(
         input: ByteArray,
         signature: CryptoSignature,
-        algorithm: CryptoAlgorithm,
+        algorithm: X509SignatureAlgorithm,
         publicKey: CryptoPublicKey
     ): KmmResult<Boolean> {
         // TODO RSA
