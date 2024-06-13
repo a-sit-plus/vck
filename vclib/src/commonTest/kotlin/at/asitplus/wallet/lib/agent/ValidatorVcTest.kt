@@ -215,7 +215,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let {
                         VerifiableCredentialJws(
                             vc = it,
-                            subject = verifier.publicKey.identifier,
+                            subject = verifier.keyPair.identifier,
                             notBefore = it.issuanceDate,
                             issuer = it.issuer,
                             expiration = Clock.System.now() + 1.hours,
@@ -377,7 +377,7 @@ class ValidatorVcTest : FreeSpec() {
         val credentialStatus = CredentialStatus(revocationListUrl, statusListIndex)
         return VerifiableCredential(
             id = vcId,
-            issuer = issuer.publicKey.identifier,
+            issuer = issuer.keyPair.identifier,
             credentialStatus = credentialStatus,
             credentialSubject = sub,
             credentialType = type,
@@ -388,7 +388,7 @@ class ValidatorVcTest : FreeSpec() {
 
     private fun wrapVcInJws(
         it: VerifiableCredential,
-        subject: String = verifier.publicKey.identifier,
+        subject: String = verifier.keyPair.identifier,
         issuer: String = it.issuer,
         jwtId: String = it.id,
         issuanceDate: Instant = it.issuanceDate,
@@ -411,7 +411,7 @@ class ValidatorVcTest : FreeSpec() {
     private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String? {
         val jwsHeader = JwsHeader(
             algorithm = JwsAlgorithm.ES256,
-            keyId = verifier.publicKey.identifier,
+            keyId = verifier.keyPair.identifier,
             type = JwsContentTypeConstants.JWT
         )
         val jwsPayload = vcJws.serialize().encodeToByteArray()

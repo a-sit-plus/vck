@@ -5,7 +5,6 @@ import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.jwkId
 import at.asitplus.crypto.datatypes.jws.toJsonWebKey
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
-import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -23,7 +22,7 @@ interface Verifier {
     /**
      * The public key for this agent, i.e. the one used to validate the audience of a VP against
      */
-    val publicKey: KeyPairAdapter
+    val keyPair: KeyPairAdapter
 
     /**
      * Set the revocation list to use for validating VCs (from [Issuer.issueRevocationListCredential])

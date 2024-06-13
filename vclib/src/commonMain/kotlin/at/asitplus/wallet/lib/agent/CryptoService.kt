@@ -19,7 +19,7 @@ interface CryptoService {
             when (it) {
                 is CryptoSignature.RawByteEncodable -> it
                 is CryptoSignature.NotRawByteEncodable -> when (it) {
-                    is CryptoSignature.EC.IndefiniteLength -> it.withCurve((publicKey as CryptoPublicKey.EC).curve)
+                    is CryptoSignature.EC.IndefiniteLength -> it.withCurve((keyPairAdapter.publicKey as CryptoPublicKey.EC).curve)
                 }
             }
     }

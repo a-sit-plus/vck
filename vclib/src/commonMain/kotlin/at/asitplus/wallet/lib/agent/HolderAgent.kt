@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.pki.X509Certificate
@@ -36,11 +35,11 @@ class HolderAgent(
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val jwsService: JwsService,
     private val coseService: CoseService,
-    override val publicKey: KeyPairAdapter,
+    override val keyPair: KeyPairAdapter,
     private val verifiablePresentationFactory: VerifiablePresentationFactory = VerifiablePresentationFactory(
         jwsService = jwsService,
         coseService = coseService,
-        identifier = publicKey.identifier,
+        identifier = keyPair.identifier,
     ),
     private val difInputEvaluator: InputEvaluator = InputEvaluator(),
     override val defaultPathAuthorizationValidator: (SubjectCredentialStore.StoreEntry, NormalizedJsonPath) -> Boolean = { _, _ -> true }
@@ -54,7 +53,7 @@ class HolderAgent(
         subjectCredentialStore = subjectCredentialStore,
         jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
         coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
-        publicKey = keyPairAdapter
+        keyPair = keyPairAdapter
     )
 
     /**
@@ -79,7 +78,7 @@ class HolderAgent(
         val rejected = mutableListOf<String>()
         val attachments = mutableListOf<Holder.StoredAttachmentResult>()
         credentialList.filterIsInstance<Holder.StoreCredentialInput.Vc>().forEach { cred ->
-            when (val vc = validator.verifyVcJws(cred.vcJws, publicKey.publicKey)) {
+            when (val vc = validator.verifyVcJws(cred.vcJws, keyPair.publicKey)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.SuccessJwt -> acceptedVcJwt += vc.jws
@@ -104,7 +103,7 @@ class HolderAgent(
             }
         }
         credentialList.filterIsInstance<Holder.StoreCredentialInput.SdJwt>().forEach { cred ->
-            when (val vc = validator.verifySdJwt(cred.vcSdJwt, publicKey.publicKey)) {
+            when (val vc = validator.verifySdJwt(cred.vcSdJwt, keyPair.publicKey)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.SuccessSdJwt -> acceptedSdJwt += vc.sdJwt
