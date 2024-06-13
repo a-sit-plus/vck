@@ -15,17 +15,17 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
  */
 class VerifierAgent private constructor(
     private val validator: Validator,
-    override val publicKey: KeyPairAdapter,
+    override val keyPair: KeyPairAdapter,
 ) : Verifier {
 
     constructor(keyPairAdapter: KeyPairAdapter) : this(
         validator = Validator.newDefaultInstance(),
-        publicKey = keyPairAdapter,
+        keyPair = keyPairAdapter,
     )
 
     constructor(): this(
         validator = Validator.newDefaultInstance(),
-        publicKey = RandomKeyPairAdapter(),
+        keyPair = RandomKeyPairAdapter(),
     )
 
     override fun setRevocationList(it: String): Boolean {
@@ -38,11 +38,11 @@ class VerifierAgent private constructor(
     override fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
         val sdJwtSigned = runCatching { SdJwtSigned.parse(it) }.getOrNull()
         if (sdJwtSigned != null) {
-            return validator.verifyVpSdJwt(it, challenge, publicKey.publicKey)
+            return validator.verifyVpSdJwt(it, challenge, keyPair.publicKey)
         }
         val jwsSigned = JwsSigned.parse(it).getOrNull()
         if (jwsSigned != null) {
-            return validator.verifyVpJws(it, challenge, publicKey.publicKey)
+            return validator.verifyVpJws(it, challenge, keyPair.publicKey)
         }
         val document = it.decodeToByteArrayOrNull(Base16(strict = true))
             ?.let { bytes -> Document.deserialize(bytes).getOrNull() }
@@ -68,7 +68,7 @@ class VerifierAgent private constructor(
     }
 
     override fun verifyVcJws(it: String): Verifier.VerifyCredentialResult {
-        return validator.verifyVcJws(it, publicKey.publicKey)
+        return validator.verifyVcJws(it, keyPair.publicKey)
     }
 
 }

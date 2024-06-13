@@ -53,7 +53,7 @@ class AgentTest : FreeSpec({
 
         val presentationParameters = holder.createPresentation(
             challenge,
-            verifier.publicKey.identifier,
+            verifier.keyPair.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -77,7 +77,7 @@ class AgentTest : FreeSpec({
 
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.publicKey.identifier,
+            audienceId = verifier.keyPair.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -99,7 +99,7 @@ class AgentTest : FreeSpec({
 
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = issuer.publicKey.identifier,
+            audienceId = issuer.keyPair.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -157,7 +157,7 @@ class AgentTest : FreeSpec({
             storedCredentials.notVerified.shouldBeEmpty()
             holder.createPresentation(
                 challenge = challenge,
-                audienceId = verifier.publicKey.identifier,
+                audienceId = verifier.keyPair.identifier,
                 presentationDefinition = singularPresentationDefinition,
             ).getOrNull() shouldBe null
         }
@@ -184,7 +184,7 @@ class AgentTest : FreeSpec({
 
             holder.createPresentation(
                 challenge = challenge,
-                audienceId = verifier.publicKey.identifier,
+                audienceId = verifier.keyPair.identifier,
                 presentationDefinition = singularPresentationDefinition,
             ).getOrNull() shouldBe null
         }
@@ -264,7 +264,7 @@ class AgentTest : FreeSpec({
     "building presentation without necessary credentials" {
         holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.publicKey.identifier,
+            audienceId = verifier.keyPair.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull() shouldBe null
     }
@@ -279,7 +279,7 @@ class AgentTest : FreeSpec({
         holder.storeCredentials(credentials.toStoreCredentialInput())
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.publicKey.identifier,
+            audienceId = verifier.keyPair.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -303,7 +303,7 @@ class AgentTest : FreeSpec({
         holder.storeCredentials(credentials.toStoreCredentialInput())
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.publicKey.identifier,
+            audienceId = verifier.keyPair.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
