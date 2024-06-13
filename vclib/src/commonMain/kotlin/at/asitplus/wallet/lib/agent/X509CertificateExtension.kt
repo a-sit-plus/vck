@@ -3,9 +3,9 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.CryptoSignature
+import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
 import at.asitplus.crypto.datatypes.asn1.Asn1String
 import at.asitplus.crypto.datatypes.asn1.Asn1Time
 import at.asitplus.crypto.datatypes.pki.AttributeTypeAndValue
@@ -21,7 +21,7 @@ import kotlin.random.Random
 
 fun X509Certificate.Companion.generateSelfSignedCertificate(
     publicKey: CryptoPublicKey,
-    algorithm: CryptoAlgorithm,
+    algorithm: X509SignatureAlgorithm,
     extensions: List<X509CertificateExtension> = listOf(),
     signer: suspend (ByteArray) -> KmmResult<CryptoSignature>,
 ): X509Certificate {

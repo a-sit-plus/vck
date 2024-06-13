@@ -80,13 +80,16 @@ private fun randomCertificate() = X509Certificate(
         serialNumber = Random.nextBytes(16),
         issuerName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.Printable("Test")))),
         publicKey = ECCurve.SECP_256_R_1.getNOTCRYPTORandomPublicKey(),
-        signatureAlgorithm = CryptoAlgorithm.ES256,
+        signatureAlgorithm = X509SignatureAlgorithm.ES256,
         subjectName = listOf(RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.Printable("Test")))),
         validFrom = Asn1Time(Clock.System.now()),
         validUntil = Asn1Time(Clock.System.now()),
     ),
-    CryptoAlgorithm.ES256,
-    CryptoSignature.EC.fromRawBytes(ECCurve.SECP_256_R_1, Random.nextBytes(ECCurve.SECP_256_R_1.scalarLength.bytes.toInt()*2)),
+    X509SignatureAlgorithm.ES256,
+    CryptoSignature.EC.fromRawBytes(
+        ECCurve.SECP_256_R_1,
+        Random.nextBytes(ECCurve.SECP_256_R_1.scalarLength.bytes.toInt() * 2)
+    ),
 )
 fun ECCurve.getNOTCRYPTORandomNonzeroScalar() = generateSequence {
     ModularBigInteger.creatorForModulo(this.order).fromBigInteger(BigInteger.fromByteArray(Random.nextBytes(scalarLength.bytes.toInt()), Sign.POSITIVE))

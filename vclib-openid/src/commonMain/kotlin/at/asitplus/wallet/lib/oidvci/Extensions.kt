@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.crypto.datatypes.CryptoAlgorithm
+import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.Issuer
@@ -13,7 +13,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
-fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<CryptoAlgorithm>): Map<String, SupportedCredentialFormat> {
+fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<X509SignatureAlgorithm>): Map<String, SupportedCredentialFormat> {
     val iso = if (supportsIso) {
         isoNamespace!! to SupportedCredentialFormat.forIsoMdoc(
             format = CredentialFormatEnum.MSO_MDOC,

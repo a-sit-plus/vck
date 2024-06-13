@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.pki.X509Certificate
@@ -13,7 +13,7 @@ import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 interface KeyPairAdapter {
     val publicKey: CryptoPublicKey
     val identifier: String
-    val signingAlgorithm: CryptoAlgorithm
+    val signingAlgorithm: X509SignatureAlgorithm
 
     /**
      * May be used in [at.asitplus.wallet.lib.cbor.CoseService] to transport the signing key for a COSE structure.

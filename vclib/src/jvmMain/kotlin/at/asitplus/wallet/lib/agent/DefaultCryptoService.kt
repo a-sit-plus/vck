@@ -4,12 +4,12 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.CryptoSignature
 import at.asitplus.crypto.datatypes.Digest
 import at.asitplus.crypto.datatypes.ECCurve
 import at.asitplus.crypto.datatypes.ECCurve.SECP_256_R_1
+import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
@@ -63,7 +63,7 @@ actual open class DefaultCryptoService : CryptoService {
      */
     constructor(
         keyPair: KeyPair,
-        algorithm: CryptoAlgorithm,
+        algorithm: X509SignatureAlgorithm,
     ) {
         this.jvmKeyPairAdapter = JvmKeyPairAdapter(keyPair, algorithm, null)
         this.keyPairAdapter = jvmKeyPairAdapter
@@ -178,7 +178,7 @@ actual open class DefaultCryptoService : CryptoService {
 
 class JvmKeyPairAdapter(
     val keyPair: KeyPair,
-    override val signingAlgorithm: CryptoAlgorithm,
+    override val signingAlgorithm: X509SignatureAlgorithm,
     override val certificate: X509Certificate?
 ) : KeyPairAdapter {
     override val publicKey: CryptoPublicKey
@@ -193,7 +193,7 @@ class JvmKeyPairAdapter(
 
 actual fun RandomKeyPairAdapter(extensions: List<X509CertificateExtension>): KeyPairAdapter {
     val keyPair = genEc256KeyPair()
-    val signingAlgorithm = CryptoAlgorithm.ES256
+    val signingAlgorithm = X509SignatureAlgorithm.ES256
     val publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
     val certificate = X509Certificate.generateSelfSignedCertificate(publicKey, signingAlgorithm, extensions) {
         runCatching {
@@ -214,12 +214,13 @@ private fun genEc256KeyPair(): KeyPair =
 
 actual open class DefaultVerifierCryptoService : VerifierCryptoService {
 
-    actual override val supportedAlgorithms: List<CryptoAlgorithm> = CryptoAlgorithm.entries.filter { it.isEc }
+    actual override val supportedAlgorithms: List<X509SignatureAlgorithm> =
+        X509SignatureAlgorithm.entries.filter { it.isEc }
 
     actual override fun verify(
         input: ByteArray,
         signature: CryptoSignature,
-        algorithm: CryptoAlgorithm,
+        algorithm: X509SignatureAlgorithm,
         publicKey: CryptoPublicKey,
     ): KmmResult<Boolean> = runCatching {
         Signature.getInstance(algorithm.jcaName).apply {

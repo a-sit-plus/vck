@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.crypto.datatypes.CryptoAlgorithm
 import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import kotlinx.datetime.Instant
@@ -68,7 +68,7 @@ interface Issuer {
      * The cryptographic algorithms supported by this issuer, i.e. the ones from its cryptographic service,
      * used to sign credentials.
      */
-    val cryptoAlgorithms: Set<CryptoAlgorithm>
+    val cryptoAlgorithms: Set<X509SignatureAlgorithm>
 
     // TODO Extract to pass credential scheme only!
     /**
