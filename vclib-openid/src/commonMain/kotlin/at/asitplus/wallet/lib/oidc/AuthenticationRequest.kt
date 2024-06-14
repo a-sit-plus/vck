@@ -1,22 +1,19 @@
 package at.asitplus.wallet.lib.oidc
 
-import io.ktor.http.*
+import at.asitplus.KmmResult.Companion.wrap
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 
-sealed class AuthenticationRequestParametersFrom<T>(val source: T, val parameters: AuthenticationRequestParameters) {
-    class JwsSigned(
-        jwsSigned: at.asitplus.crypto.datatypes.jws.JwsSigned,
-        parameters: AuthenticationRequestParameters
-    ) : AuthenticationRequestParametersFrom<at.asitplus.crypto.datatypes.jws.JwsSigned>(jwsSigned, parameters)
+@Serializable
+data class AuthenticationRequest(
+    val source: AuthenticationRequestSource,
+    val parameters: AuthenticationRequestParameters,
+) {
+    fun serialize() = jsonSerializer.encodeToString(this)
 
-    class Uri(url: Url, parameters: AuthenticationRequestParameters) :
-        AuthenticationRequestParametersFrom<Url>(url, parameters)
-
-    class Json(jsonString: String, parameters: AuthenticationRequestParameters) :
-        AuthenticationRequestParametersFrom<String>(jsonString, parameters)
-
-    override fun toString(): String {
-        return "AuthenticationRequestParametersFrom(source=$source, parameters=$parameters)"
+    companion object {
+        fun deserialize(it: String) = kotlin.runCatching {
+            jsonSerializer.decodeFromString<AuthenticationRequest>(it)
+        }.wrap()
     }
-
-
 }

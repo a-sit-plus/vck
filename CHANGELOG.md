@@ -1,6 +1,6 @@
 # Changelog
 
-Release 4.0.0:
+UNRELEASED Release 4.0.0:
  - Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.
  - Add `PresentationSubmissionValidator`: 
    - Add `isValidSubmission`: Evaluates, whether all submission requirements is satisfied, and fails on redundantly submitted credentials.
@@ -15,6 +15,7 @@ Release 4.0.0:
  - Get rid of class `Issuer.IssuedCredentialResult`, replacing it with `KmmResult<Issuer.IssuedCredential>`
  - Add return types to function calls to `SubjectCredentialStore`
  - Change from list to single credential in parameter for `Holder.storeCredentials()`, changing name to `storeCredential()`
+ - Refactor `AuthenticationRequestParametersFrom` → `AuthenticationRequest` to add serializability
 
 Release 3.8.0:
  - Kotlin 2.0.0
