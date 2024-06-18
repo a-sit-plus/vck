@@ -104,10 +104,7 @@ class IssuerAgent(
         val failed = mutableListOf<Issuer.FailedAttribute>()
         val successful = mutableListOf<Issuer.IssuedCredential>()
         for (attributeType in attributeTypes) {
-            val scheme = AttributeIndex.resolveAttributeType(attributeType)
-                ?: AttributeIndex.resolveSdJwtAttributeType(attributeType)
-                ?: AttributeIndex.resolveIsoNamespace(attributeType)
-                ?: AttributeIndex.resolveSchemaUri(attributeType)
+            val scheme = AttributeIndex.resolveCredentialScheme(attributeType)
             if (scheme == null) {
                 failed += Issuer.FailedAttribute(attributeType, IllegalArgumentException("type not resolved to scheme"))
                 continue

@@ -51,4 +51,12 @@ object AttributeIndex {
             .firstOrNull { it.isoDocType!!.startsWith(docType) || docType.startsWith(it.isoDocType!!) }
     }
 
+    // TODO Probably shouldn't be that permissive
+    fun resolveCredentialScheme(attributeType: String): ConstantIndex.CredentialScheme? {
+        return resolveAttributeType(attributeType)
+            ?: resolveSdJwtAttributeType(attributeType)
+            ?: resolveIsoNamespace(attributeType)
+            ?: resolveSchemaUri(attributeType)
+    }
+
 }
