@@ -2,6 +2,7 @@
 
 Release 4.0.0:
  - Do not use or assume DID as key identifiers and subjects in credentials
+ - Replace list of attribute types in `Issuer.issueCredentials` with one concrete `CredentialScheme` to be passed
 
 Release 3.8.0:
  - Kotlin 2.0.0

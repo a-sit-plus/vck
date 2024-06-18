@@ -11,7 +11,6 @@ import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
-import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
 import at.asitplus.wallet.lib.data.RevocationListSubject
@@ -84,6 +83,14 @@ class IssuerAgent(
         cryptoAlgorithms = setOf(keyPairAdapter.signingAlgorithm),
     )
 
+    /**
+     * Issues credentials for some [credentialScheme] to the subject specified with its public
+     * key in [subjectPublicKey] in the format specified by [representation].
+     * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
+     * [claimNames] to request only some claims (if supported by the representation).
+     *
+     * @param dataProviderOverride Set this parameter to override the default [dataProvider] for this issuing process
+     */
     override suspend fun issueCredential(
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
@@ -91,57 +98,20 @@ class IssuerAgent(
         claimNames: Collection<String>?,
         dataProviderOverride: IssuerCredentialDataProvider?
     ): Issuer.IssuedCredentialResult {
-        val credentialType = credentialScheme.vcType
-            ?: credentialScheme.sdJwtType
-            ?: credentialScheme.isoNamespace
-            ?: credentialScheme.schemaUri
-        return issueCredential(
-            subjectPublicKey,
-            listOf(credentialType),
-            representation,
-            claimNames,
-            dataProviderOverride
-        )
-    }
-
-    /**
-     * Issues credentials for some [attributeTypes] (i.e. some of
-     * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with its public
-     * key in [subjectPublicKey] in the format specified by [representation].
-     * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
-     * [claimNames] to request only some claims (if supported by the representation).
-     *
-     * @param dataProviderOverride Set this parameter to override the default [dataProvider] for this
-     *                             issuing process
-     */
-    override suspend fun issueCredential(
-        subjectPublicKey: CryptoPublicKey,
-        attributeTypes: Collection<String>,
-        representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>?,
-        dataProviderOverride: IssuerCredentialDataProvider?,
-    ): Issuer.IssuedCredentialResult {
         val failed = mutableListOf<Issuer.FailedAttribute>()
         val successful = mutableListOf<Issuer.IssuedCredential>()
-        for (attributeType in attributeTypes) {
-            val scheme = AttributeIndex.resolveCredentialScheme(attributeType)
-            if (scheme == null) {
-                failed += Issuer.FailedAttribute(attributeType, IllegalArgumentException("type not resolved to scheme"))
-                continue
-            }
-            (dataProviderOverride ?: dataProvider).getCredential(subjectPublicKey, scheme, representation, claimNames)
-                .fold(
-                    onSuccess = { toBeIssued ->
-                        toBeIssued.forEach { credentialToBeIssued ->
-                            issueCredential(credentialToBeIssued, subjectPublicKey, scheme).also { result ->
-                                failed += result.failed
-                                successful += result.successful
-                            }
-                        }
-                    },
-                    onFailure = { failed += Issuer.FailedAttribute(attributeType, it) }
-                )
-        }
+        val provider = dataProviderOverride ?: dataProvider
+        provider.getCredential(subjectPublicKey, credentialScheme, representation, claimNames).fold(
+            onSuccess = { toBeIssued ->
+                toBeIssued.forEach { credentialToBeIssued ->
+                    issueCredential(credentialToBeIssued, subjectPublicKey, credentialScheme).also { result ->
+                        failed += result.failed
+                        successful += result.successful
+                    }
+                }
+            },
+            onFailure = { failed += Issuer.FailedAttribute(credentialScheme.schemaUri, it) }
+        )
         return Issuer.IssuedCredentialResult(successful = successful, failed = failed)
     }
 

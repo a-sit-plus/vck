@@ -70,25 +70,6 @@ interface Issuer {
      */
     val cryptoAlgorithms: Set<X509SignatureAlgorithm>
 
-    // TODO Extract to pass credential scheme only!
-    /**
-     * Issues credentials for some [attributeTypes] (i.e. some of
-     * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with its public
-     * key in [subjectPublicKey] in the format specified by [representation].
-     * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
-     * [claimNames] to request only some claims (if supported by the representation).
-     *
-     * @param dataProviderOverride Set this parameter to override the default [IssuerCredentialDataProvider] for this
-     *                             issuing process
-     */
-    suspend fun issueCredential(
-        subjectPublicKey: CryptoPublicKey,
-        attributeTypes: Collection<String>,
-        representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>? = null,
-        dataProviderOverride: IssuerCredentialDataProvider? = null,
-    ): IssuedCredentialResult
-
     /**
      * Issues credentials for some [credentialScheme] to the subject specified with its public
      * key in [subjectPublicKey] in the format specified by [representation].
