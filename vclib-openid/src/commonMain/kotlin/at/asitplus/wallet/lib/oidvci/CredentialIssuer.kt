@@ -9,6 +9,7 @@ import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
+import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
@@ -175,11 +176,12 @@ class CredentialIssuer(
 
         val issuedCredentialResult = when {
             params.format != null -> {
-                val vcType: String? = params.credentialDefinition?.types?.firstOrNull { it != VERIFIABLE_CREDENTIAL }
-                val attributeTypes = listOfNotNull(params.sdJwtVcType, params.docType, vcType)
+                val credentialScheme = params.extractCredentialScheme(params.format)
+                    ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+                        .also { Napier.w("credential: client did not provide correct credential scheme: ${params}") }
                 issuer.issueCredential(
                     subjectPublicKey = subjectPublicKey,
-                    attributeTypes = attributeTypes,
+                    credentialScheme = credentialScheme,
                     representation = params.format.toRepresentation(),
                     claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
                     dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
@@ -215,4 +217,15 @@ class CredentialIssuer(
     }
 
 
+}
+
+private fun CredentialRequestParameters.extractCredentialScheme(format: CredentialFormatEnum) = when (format) {
+    CredentialFormatEnum.JWT_VC -> credentialDefinition?.types?.firstOrNull { it != VERIFIABLE_CREDENTIAL }
+        ?.let { AttributeIndex.resolveAttributeType(it) }
+
+    CredentialFormatEnum.VC_SD_JWT,
+    CredentialFormatEnum.JWT_VC_SD_UNOFFICIAL -> sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
+
+    CredentialFormatEnum.MSO_MDOC -> docType?.let { AttributeIndex.resolveIsoDoctype(it) }
+    else -> null
 }
