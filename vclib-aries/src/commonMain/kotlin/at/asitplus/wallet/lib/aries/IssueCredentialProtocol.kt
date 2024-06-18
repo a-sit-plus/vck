@@ -230,9 +230,9 @@ class IssueCredentialProtocol(
 
         // TODO Is there a way to transport the format, i.e. JWT-VC or SD-JWT?
         val cryptoPublicKey = requestCredentialAttachment.credentialManifest.subject
-                ?.let { kotlin.runCatching { CryptoPublicKey.fromDid(it) }.getOrNull()}
-                ?: senderKey.toCryptoPublicKey().getOrNull()
-                ?: return problemReporter.problemInternal(lastMessage.threadId, "no-sender-key")
+            ?.let { kotlin.runCatching { CryptoPublicKey.fromDid(it) }.getOrNull() }
+            ?: senderKey.toCryptoPublicKey().getOrNull()
+            ?: return problemReporter.problemInternal(lastMessage.threadId, "no-sender-key")
         val issuedCredentials = issuer?.issueCredential(
             subjectPublicKey = cryptoPublicKey,
             credentialScheme = requestedCredentialScheme,
@@ -253,30 +253,11 @@ class IssueCredentialProtocol(
             return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
 
         val fulfillmentAttachments = mutableListOf<JwmAttachment>()
-        val binaryAttachments = mutableListOf<JwmAttachment>()
         issuedCredentials.successful.forEach { cred ->
             when (cred) {
-                is Issuer.IssuedCredential.Iso -> {
-                    fulfillmentAttachments.add(JwmAttachment.encodeBase64(cred.issuerSigned.serialize()))
-                }
-
-                is Issuer.IssuedCredential.VcJwt -> {
-                    val fulfillment = JwmAttachment.encodeJws(cred.vcJws)
-                    val binary = cred.attachments?.map {
-                        JwmAttachment.encode(
-                            data = it.data,
-                            filename = it.name,
-                            mediaType = it.mediaType,
-                            parent = fulfillment.id
-                        )
-                    } ?: listOf()
-                    fulfillmentAttachments.add(fulfillment)
-                    binaryAttachments.addAll(binary)
-                }
-
-                is Issuer.IssuedCredential.VcSdJwt -> {
-                    fulfillmentAttachments.add(JwmAttachment.encodeJws(cred.vcSdJwt))
-                }
+                is Issuer.IssuedCredential.Iso -> fulfillmentAttachments.add(JwmAttachment.encodeBase64(cred.issuerSigned.serialize()))
+                is Issuer.IssuedCredential.VcJwt -> fulfillmentAttachments.add(JwmAttachment.encodeJws(cred.vcJws))
+                is Issuer.IssuedCredential.VcSdJwt -> fulfillmentAttachments.add(JwmAttachment.encodeJws(cred.vcSdJwt))
             }
         }
         val message = IssueCredential(
@@ -290,7 +271,7 @@ class IssueCredentialProtocol(
                 }.toTypedArray()
             ),
             threadId = lastMessage.threadId!!, //is allowed to fail horribly
-            attachments = (fulfillmentAttachments + binaryAttachments).toTypedArray()
+            attachments = fulfillmentAttachments.toTypedArray()
         )
         return InternalNextMessage.SendAndWrap(message, senderKey)
             .also { this.threadId = message.threadId }
@@ -323,22 +304,12 @@ class IssueCredentialProtocol(
         binaryAttachments: List<JwmAttachment>
     ): Holder.StoreCredentialInput? {
         runCatching { fulfillment.decodeString() }.getOrNull()?.let { decoded ->
-            val attachmentList = binaryAttachments
-                .filter { it.parent == fulfillment.id }
-                .mapNotNull { extractBinaryAttachment(it) }
-            return Holder.StoreCredentialInput.Vc(decoded, credentialScheme, attachmentList)
+            return Holder.StoreCredentialInput.Vc(decoded, credentialScheme)
         } ?: runCatching { fulfillment.decodeBinary() }.getOrNull()?.let { decoded ->
             IssuerSigned.deserialize(decoded).getOrNull()?.let { issuerSigned ->
                 return Holder.StoreCredentialInput.Iso(issuerSigned, credentialScheme)
             }
         } ?: return null
-    }
-
-    private fun extractBinaryAttachment(attachment: JwmAttachment): Issuer.Attachment? {
-        val filename = attachment.filename ?: return null
-        val mediaType = attachment.mediaType ?: return null
-        val decoded = attachment.decodeBinary() ?: return null
-        return Issuer.Attachment(filename, mediaType, decoded)
     }
 
     override fun getResult(): IssueCredentialProtocolResult? {

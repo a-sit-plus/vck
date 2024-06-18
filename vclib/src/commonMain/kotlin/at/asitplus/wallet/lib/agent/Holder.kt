@@ -37,7 +37,6 @@ interface Holder {
         data class Vc(
             val vcJws: String,
             val scheme: ConstantIndex.CredentialScheme,
-            val attachments: List<Issuer.Attachment>? = null
         ) : StoreCredentialInput()
 
         data class SdJwt(
@@ -65,28 +64,7 @@ interface Holder {
         val acceptedIso: List<IssuerSigned> = listOf(),
         val rejected: List<String> = listOf(),
         val notVerified: List<String> = listOf(),
-        val attachments: List<StoredAttachmentResult> = listOf(),
     )
-
-    data class StoredAttachmentResult(val name: String, val data: ByteArray) {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || this::class != other::class) return false
-
-            other as StoredAttachmentResult
-
-            if (name != other.name) return false
-            if (!data.contentEquals(other.data)) return false
-
-            return true
-        }
-
-        override fun hashCode(): Int {
-            var result = name.hashCode()
-            result = 31 * result + data.contentHashCode()
-            return result
-        }
-    }
 
     /**
      * Gets a list of all stored credentials, with a revocation status.

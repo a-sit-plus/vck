@@ -43,11 +43,7 @@ class DummyCredentialDataProvider(
                     subject = AtomicAttribute2023(subjectId, claim.name, claim.value.toString()),
                     expiration = expiration,
                 )
-            } + CredentialToBeIssued.VcJwt(
-                subject = AtomicAttribute2023(subjectId, "picture", "foo"),
-                expiration = expiration,
-                attachments = listOf(Issuer.Attachment("picture", "image/webp", byteArrayOf(32)))
-            )
+            }
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> listOf(
                 CredentialToBeIssued.Iso(

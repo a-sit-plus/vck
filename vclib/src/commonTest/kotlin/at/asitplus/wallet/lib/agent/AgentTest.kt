@@ -64,30 +64,6 @@ class AgentTest : FreeSpec({
         verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
     }
 
-    "simple walk-through success with attachments" {
-        // DummyCredentialProvider issues an attachment for "picture"
-        val credentials = issuer.issueCredential(
-            holderKeyPair.publicKey,
-            ConstantIndex.AtomicAttribute2023,
-            ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-        )
-        credentials.successful.shouldNotBeEmpty()
-        holder.storeCredentials(credentials.toStoreCredentialInput())
-        holderCredentialStore.getAttachment("picture").getOrThrow().shouldNotBeNull()
-
-        val presentationParameters = holder.createPresentation(
-            challenge = challenge,
-            audienceId = verifier.keyPair.identifier,
-            presentationDefinition = singularPresentationDefinition,
-        ).getOrNull()
-        presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.presentationResults.firstOrNull()
-        vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
-        val verified = verifier.verifyPresentation(vp.jws, challenge)
-        verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-    }
-
     "wrong keyId in presentation leads to InvalidStructure" {
         val credentials = issuer.issueCredential(
             holderKeyPair.publicKey,

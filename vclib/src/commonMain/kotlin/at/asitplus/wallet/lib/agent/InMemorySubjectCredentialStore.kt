@@ -10,7 +10,6 @@ import at.asitplus.wallet.lib.iso.IssuerSigned
 class InMemorySubjectCredentialStore : SubjectCredentialStore {
 
     private val credentials = mutableListOf<SubjectCredentialStore.StoreEntry>()
-    private val attachments = mutableListOf<SubjectCredentialStore.AttachmentEntry>()
 
     override suspend fun storeCredential(
         vc: VerifiableCredentialJws,
@@ -33,10 +32,6 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
         credentials += SubjectCredentialStore.StoreEntry.Iso(issuerSigned, scheme)
     }
 
-    override suspend fun storeAttachment(name: String, data: ByteArray, vcId: String) {
-        attachments += SubjectCredentialStore.AttachmentEntry(name, data, vcId)
-    }
-
     override suspend fun getCredentials(
         credentialSchemes: Collection<ConstantIndex.CredentialScheme>?,
     ): KmmResult<List<SubjectCredentialStore.StoreEntry>> {
@@ -50,13 +45,4 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
             }.toList())
         } ?: KmmResult.success(credentials)
     }
-
-    override suspend fun getAttachment(name: String) =
-        attachments.firstOrNull { it.name == name }?.data?.let { KmmResult.success(it) }
-            ?: KmmResult.failure(NullPointerException("Attachment not found"))
-
-    override suspend fun getAttachment(name: String, vcId: String) =
-        attachments.firstOrNull { it.name == name && it.vcId == vcId }?.data?.let { KmmResult.success(it) }
-            ?: KmmResult.failure(NullPointerException("Attachment not found"))
-
 }

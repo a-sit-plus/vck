@@ -6,19 +6,18 @@ import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
-import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.wallet.mdl.DrivingPrivilege
+import at.asitplus.wallet.mdl.DrivingPrivilegeCode
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUE_DATE
-import at.asitplus.wallet.mdl.DrivingPrivilege
-import at.asitplus.wallet.mdl.DrivingPrivilegeCode
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -61,11 +60,7 @@ class DummyCredentialDataProvider(
                         subject = AtomicAttribute2023(subjectId, claim.name, claim.value.toString()),
                         expiration = expiration,
                     )
-                } + CredentialToBeIssued.VcJwt(
-                    subject = AtomicAttribute2023(subjectId, "picture", "foo"),
-                    expiration = expiration,
-                    attachments = listOf(Issuer.Attachment("picture", "image/webp", byteArrayOf(32)))
-                )
+                }
 
                 ConstantIndex.CredentialRepresentation.ISO_MDOC -> listOf(
                     CredentialToBeIssued.Iso(

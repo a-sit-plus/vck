@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
-import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -48,11 +47,7 @@ class DummyCredentialDataProvider(
                     subject = AtomicAttribute2023(subjectId, claim.name, claim.value.toString()),
                     expiration = expiration,
                 )
-            } + CredentialToBeIssued.VcJwt(
-                subject = AtomicAttribute2023(subjectId, "picture", "foo"),
-                expiration = expiration,
-                attachments = listOf(Issuer.Attachment("picture", "image/webp", byteArrayOf(32)))
-            )
+            }
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> listOf(
                 CredentialToBeIssued.Iso(

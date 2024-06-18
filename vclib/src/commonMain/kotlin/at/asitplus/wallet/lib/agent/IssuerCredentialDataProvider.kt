@@ -30,7 +30,6 @@ sealed class CredentialToBeIssued {
     data class VcJwt(
         val subject: CredentialSubject,
         val expiration: Instant,
-        val attachments: List<Issuer.Attachment>? = null
     ) : CredentialToBeIssued()
 
     data class VcSd(

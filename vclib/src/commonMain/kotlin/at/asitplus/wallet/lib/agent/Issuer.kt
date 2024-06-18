@@ -26,7 +26,6 @@ interface Issuer {
         data class VcJwt(
             val vcJws: String,
             val scheme: ConstantIndex.CredentialScheme,
-            val attachments: List<Attachment>? = null,
         ) : IssuedCredential()
 
         /**
@@ -54,7 +53,7 @@ interface Issuer {
             when (it) {
                 is IssuedCredential.Iso -> Holder.StoreCredentialInput.Iso(it.issuerSigned, it.scheme)
                 is IssuedCredential.VcSdJwt -> Holder.StoreCredentialInput.SdJwt(it.vcSdJwt, it.scheme)
-                is IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(it.vcJws, it.scheme, it.attachments)
+                is IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(it.vcJws, it.scheme)
             }
         }
     }
@@ -113,31 +112,5 @@ interface Issuer {
     fun revokeCredentialsWithId(credentialIdsToRevoke: Map<String, Instant>): Boolean
 
     fun compileCurrentRevocationLists(): List<String>
-
-    data class Attachment(
-        val name: String,
-        val mediaType: String,
-        val data: ByteArray,
-    ) {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || this::class != other::class) return false
-
-            other as Attachment
-
-            if (name != other.name) return false
-            if (mediaType != other.mediaType) return false
-            if (!data.contentEquals(other.data)) return false
-
-            return true
-        }
-
-        override fun hashCode(): Int {
-            var result = name.hashCode()
-            result = 31 * result + mediaType.hashCode()
-            result = 31 * result + data.contentHashCode()
-            return result
-        }
-    }
 
 }

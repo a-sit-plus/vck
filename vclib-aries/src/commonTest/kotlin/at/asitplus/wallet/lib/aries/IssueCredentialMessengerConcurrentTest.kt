@@ -38,7 +38,6 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
                         val holderMessenger = initHolderMessenger()
                         val issuedCredential = runProtocolFlow(holderMessenger)
                         assertAtomicVc(issuedCredential)
-                        assertAttachment(issuedCredential, "picture")
                     }
                 }
             }
@@ -90,15 +89,6 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
             it.shouldBeInstanceOf<AtomicAttribute2023>()
         }
         issuedCredentials.rejected.shouldBeEmpty()
-    }
-
-    private fun assertAttachment(issuedCredentials: IssueCredentialProtocolResult, attributeName: String) {
-        issuedCredentials.acceptedVcJwt.shouldNotBeEmpty()
-        issuedCredentials.acceptedVcJwt.map { it.vc.credentialSubject }
-            .filterIsInstance<AtomicAttribute2023>()
-            .filter { it.name == attributeName }
-            .shouldNotBeEmpty()
-        issuedCredentials.attachments.shouldNotBeEmpty()
     }
 
 }

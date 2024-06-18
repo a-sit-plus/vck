@@ -41,7 +41,6 @@ class IssueCredentialMessengerTest : FreeSpec() {
             val issuedCredential = runProtocolFlow()
 
             assertAtomicVc(issuedCredential)
-            assertAttachment(issuedCredential, "picture")
         }
 
         // can't be created with a wrong keyId anymore, so that test was removed
@@ -90,20 +89,6 @@ class IssueCredentialMessengerTest : FreeSpec() {
             it.shouldBeInstanceOf<AtomicAttribute2023>()
         }
         issuedCredentials.rejected.shouldBeEmpty()
-    }
-
-    private fun assertAttachment(issuedCredentials: IssueCredentialProtocolResult, attributeName: String) {
-        issuedCredentials.acceptedVcJwt.shouldNotBeEmpty()
-        issuedCredentials.acceptedVcJwt.map { it.vc.credentialSubject }
-            .filterIsInstance<AtomicAttribute2023>()
-            .filter { it.name == attributeName }
-            .shouldNotBeEmpty()
-        issuedCredentials.attachments.shouldNotBeEmpty()
-    }
-
-    private fun assertEmptyVc(issuedCredentials: IssueCredentialProtocolResult) {
-        issuedCredentials.acceptedVcJwt.shouldBeEmpty()
-        issuedCredentials.rejected.shouldNotBeEmpty()
     }
 
 }

@@ -219,13 +219,7 @@ class IssuerAgent(
                 failed = listOf(Issuer.FailedAttribute(scheme.schemaUri, RuntimeException("signing failed")))
             ).also { Napier.w("Could not wrap credential in JWS") }
         return Issuer.IssuedCredentialResult(
-            successful = listOf(
-                Issuer.IssuedCredential.VcJwt(
-                    vcJws = vcInJws,
-                    scheme = scheme,
-                    attachments = credential.attachments
-                )
-            )
+            successful = listOf(Issuer.IssuedCredential.VcJwt(vcJws = vcInJws, scheme = scheme))
         )
     }
 

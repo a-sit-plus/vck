@@ -76,28 +76,12 @@ class HolderAgent(
         val acceptedSdJwt = mutableListOf<VerifiableCredentialSdJwt>()
         val acceptedIso = mutableListOf<IssuerSigned>()
         val rejected = mutableListOf<String>()
-        val attachments = mutableListOf<Holder.StoredAttachmentResult>()
         credentialList.filterIsInstance<Holder.StoreCredentialInput.Vc>().forEach { cred ->
             when (val vc = validator.verifyVcJws(cred.vcJws, keyPair.publicKey)) {
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.SuccessJwt -> acceptedVcJwt += vc.jws
                     .also { subjectCredentialStore.storeCredential(it, cred.vcJws, cred.scheme) }
-                    .also {
-                        cred.attachments?.forEach { attachment ->
-                            subjectCredentialStore.storeAttachment(
-                                attachment.name,
-                                attachment.data,
-                                it.vc.id
-                            )
-                                .also {
-                                    attachments += Holder.StoredAttachmentResult(
-                                        attachment.name,
-                                        attachment.data
-                                    )
-                                }
-                        }
-                    }
 
                 else -> {}
             }
@@ -107,14 +91,7 @@ class HolderAgent(
                 is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
                 is Verifier.VerifyCredentialResult.SuccessSdJwt -> acceptedSdJwt += vc.sdJwt
-                    .also {
-                        subjectCredentialStore.storeCredential(
-                            it,
-                            cred.vcSdJwt,
-                            vc.disclosures,
-                            cred.scheme
-                        )
-                    }
+                    .also { subjectCredentialStore.storeCredential(it, cred.vcSdJwt, vc.disclosures, cred.scheme) }
 
                 else -> {}
             }
@@ -149,7 +126,6 @@ class HolderAgent(
             acceptedSdJwt = acceptedSdJwt,
             acceptedIso = acceptedIso,
             rejected = rejected,
-            attachments = attachments
         )
     }
 
