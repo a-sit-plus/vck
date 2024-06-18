@@ -4,6 +4,7 @@ import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsIso
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
@@ -60,10 +61,14 @@ private fun encodeToCredentialIdentifier(type: String, format: CredentialFormatE
 /**
  * Reverse functionality of [encodeToCredentialIdentifier]
  */
-fun decodeFromCredentialIdentifier(input: String): Pair<String, CredentialFormatEnum> {
-    val typeOrSdJwtType = input.substringBeforeLast("#")
-    val format = CredentialFormatEnum.parse(input.substringAfterLast("#")) ?: CredentialFormatEnum.MSO_MDOC
-    return Pair(typeOrSdJwtType, format)
+fun decodeFromCredentialIdentifier(input: String): Pair<ConstantIndex.CredentialScheme, CredentialFormatEnum>? {
+    val vcTypeOrSdJwtType = input.substringBeforeLast("#")
+    val credentialScheme = AttributeIndex.resolveSdJwtAttributeType(vcTypeOrSdJwtType)
+        ?: AttributeIndex.resolveAttributeType(vcTypeOrSdJwtType)
+        ?: return null
+    val format = CredentialFormatEnum.parse(input.substringAfterLast("#"))
+        ?: return null
+    return Pair(credentialScheme, format)
 }
 
 fun CredentialFormatEnum.toRepresentation() = when (this) {

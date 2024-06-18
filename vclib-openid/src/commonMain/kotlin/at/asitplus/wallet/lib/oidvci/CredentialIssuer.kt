@@ -10,6 +10,7 @@ import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ProofType
 import com.benasher44.uuid.uuid4
@@ -174,10 +175,11 @@ class CredentialIssuer(
 
         val issuedCredentialResult = when {
             params.format != null -> {
+                val vcType: String? = params.credentialDefinition?.types?.firstOrNull { it != VERIFIABLE_CREDENTIAL }
+                val attributeTypes = listOfNotNull(params.sdJwtVcType, params.docType, vcType)
                 issuer.issueCredential(
                     subjectPublicKey = subjectPublicKey,
-                    attributeTypes = listOfNotNull(params.sdJwtVcType, params.docType)
-                            + (params.credentialDefinition?.types?.toList() ?: listOf()),
+                    attributeTypes = attributeTypes,
                     representation = params.format.toRepresentation(),
                     claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
                     dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
@@ -185,14 +187,12 @@ class CredentialIssuer(
             }
 
             params.credentialIdentifier != null -> {
-                val (type, representation) = decodeFromCredentialIdentifier(params.credentialIdentifier)
-                if (type.isEmpty()) {
-                    return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+                val (credentialScheme, representation) = decodeFromCredentialIdentifier(params.credentialIdentifier)
+                    ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                         .also { Napier.w("credential: client did not provide correct credential identifier: ${params.credentialIdentifier}") }
-                }
                 issuer.issueCredential(
                     subjectPublicKey = subjectPublicKey,
-                    attributeTypes = listOf(type),
+                    credentialScheme = credentialScheme,
                     representation = representation.toRepresentation(),
                     claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
                     dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
