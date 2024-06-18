@@ -43,10 +43,10 @@ class OidcSiopInteropTest : FreeSpec({
                     RandomKeyPairAdapter(),
                     DummyCredentialDataProvider(),
                 ).issueCredential(
-                    subjectPublicKey = holderKeyPair.publicKey,
-                    attributeTypes = listOf(EuPidScheme.vcType),
-                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                    claimNames = EuPidScheme.claimNames
+                    holderKeyPair.publicKey,
+                    EuPidScheme,
+                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    EuPidScheme.claimNames
                 ).toStoreCredentialInput()
             )
         }

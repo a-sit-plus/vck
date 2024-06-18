@@ -48,9 +48,9 @@ class ValidatorVcTest : FreeSpec() {
 
         "credentials are valid for" {
             issuer.issueCredential(
-                subjectPublicKey = verifierKeyPair.publicKey,
-                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }
                 .forEach {
                     verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
@@ -59,9 +59,9 @@ class ValidatorVcTest : FreeSpec() {
 
         "revoked credentials are not valid" {
             issuer.issueCredential(
-                subjectPublicKey = verifierKeyPair.publicKey,
-                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).successful
                 .filterIsInstance<Issuer.IssuedCredential.VcJwt>()
                 .map { it.vcJws }
@@ -84,9 +84,9 @@ class ValidatorVcTest : FreeSpec() {
 
         "wrong subject keyId is not be valid" {
             issuer.issueCredential(
-                subjectPublicKey = RandomKeyPairAdapter().publicKey,
-                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                RandomKeyPairAdapter().publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).successful
                 .filterIsInstance<Issuer.IssuedCredential.VcJwt>()
                 .map { it.vcJws }.forEach {
@@ -97,9 +97,9 @@ class ValidatorVcTest : FreeSpec() {
 
         "credential with invalid JWS format is not valid" {
             issuer.issueCredential(
-                subjectPublicKey = verifierKeyPair.publicKey,
-                attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).successful
                 .filterIsInstance<Issuer.IssuedCredential.VcJwt>()
                 .map { it.vcJws }

@@ -226,17 +226,16 @@ class IssueCredentialProtocol(
 
         val uri = requestCredentialAttachment.credentialManifest.credential.schema.uri
         val requestedCredentialScheme = AttributeIndex.resolveSchemaUri(uri)
-        val requestedAttributeType = requestedCredentialScheme?.vcType
             ?: return problemReporter.problemLastMessage(lastMessage.threadId, "requested-attributes-empty")
 
         // TODO Is there a way to transport the format, i.e. JWT-VC or SD-JWT?
-        val cryptoPublicKey =
-            requestCredentialAttachment.credentialManifest.subject?.let { kotlin.runCatching { CryptoPublicKey.fromDid(it) }.getOrNull()}
+        val cryptoPublicKey = requestCredentialAttachment.credentialManifest.subject
+                ?.let { kotlin.runCatching { CryptoPublicKey.fromDid(it) }.getOrNull()}
                 ?: senderKey.toCryptoPublicKey().getOrNull()
                 ?: return problemReporter.problemInternal(lastMessage.threadId, "no-sender-key")
         val issuedCredentials = issuer?.issueCredential(
             subjectPublicKey = cryptoPublicKey,
-            attributeTypes = listOf(requestedAttributeType),
+            credentialScheme = requestedCredentialScheme,
             representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         ) ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
 

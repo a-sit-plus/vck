@@ -90,6 +90,23 @@ interface Issuer {
     ): IssuedCredentialResult
 
     /**
+     * Issues credentials for some [credentialScheme] to the subject specified with its public
+     * key in [subjectPublicKey] in the format specified by [representation].
+     * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
+     * [claimNames] to request only some claims (if supported by the representation).
+     *
+     * @param dataProviderOverride Set this parameter to override the default [IssuerCredentialDataProvider] for this
+     *                             issuing process
+     */
+    suspend fun issueCredential(
+        subjectPublicKey: CryptoPublicKey,
+        credentialScheme: ConstantIndex.CredentialScheme,
+        representation: ConstantIndex.CredentialRepresentation,
+        claimNames: Collection<String>? = null,
+        dataProviderOverride: IssuerCredentialDataProvider? = null,
+    ): IssuedCredentialResult
+
+    /**
      * Wraps the revocation information into a VC,
      * returns a JWS representation of that.
      * @param timePeriod time Period to issue a revocation list for

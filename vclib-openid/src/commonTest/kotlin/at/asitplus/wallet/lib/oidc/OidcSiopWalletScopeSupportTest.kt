@@ -107,9 +107,9 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
                 )
                 holderAgent.storeCredentials(
                     issuerAgent.issueCredential(
-                        subjectPublicKey = holderKeyPair.publicKey,
-                        attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                        representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
+                        holderKeyPair.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
                     ).toStoreCredentialInput()
                 )
             }
@@ -152,9 +152,9 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
                 )
                 holderAgent.storeCredentials(
                     issuerAgent.issueCredential(
-                        subjectPublicKey = holderKeyPair.publicKey,
-                        attributeTypes = listOf(MobileDrivingLicenceScheme.isoNamespace),
-                        representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
+                        holderKeyPair.publicKey,
+                        MobileDrivingLicenceScheme,
+                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
                     ).toStoreCredentialInput()
                 )
             }

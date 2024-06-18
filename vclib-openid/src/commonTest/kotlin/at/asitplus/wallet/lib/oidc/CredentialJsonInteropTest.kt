@@ -38,9 +38,9 @@ class CredentialJsonInteropTest : FreeSpec({
         runBlocking {
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(
-                    subjectPublicKey = holderKeyPair.publicKey,
-                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                    representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                    holderKeyPair.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).toStoreCredentialInput()
             )
         }
@@ -60,10 +60,10 @@ class CredentialJsonInteropTest : FreeSpec({
         runBlocking {
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(
-                    subjectPublicKey = holderKeyPair.publicKey,
-                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                    representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                    claimNames = listOf("given-name", "family-name", "date-of-birth", "is-active"),
+                    holderKeyPair.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                    listOf("given-name", "family-name", "date-of-birth", "is-active"),
                 ).toStoreCredentialInput()
             )
         }
@@ -80,10 +80,10 @@ class CredentialJsonInteropTest : FreeSpec({
         runBlocking {
             holderAgent.storeCredentials(
                 issuerAgent.issueCredential(
-                    subjectPublicKey = holderKeyPair.publicKey,
-                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                    claimNames = listOf("given-name", "family-name", "date-of-birth", "is-active"),
+                    holderKeyPair.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    listOf("given-name", "family-name", "date-of-birth", "is-active"),
                 ).toStoreCredentialInput()
             )
         }

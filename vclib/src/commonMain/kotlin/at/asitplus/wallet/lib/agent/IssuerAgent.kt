@@ -84,6 +84,26 @@ class IssuerAgent(
         cryptoAlgorithms = setOf(keyPairAdapter.signingAlgorithm),
     )
 
+    override suspend fun issueCredential(
+        subjectPublicKey: CryptoPublicKey,
+        credentialScheme: ConstantIndex.CredentialScheme,
+        representation: ConstantIndex.CredentialRepresentation,
+        claimNames: Collection<String>?,
+        dataProviderOverride: IssuerCredentialDataProvider?
+    ): Issuer.IssuedCredentialResult {
+        val credentialType = credentialScheme.vcType
+            ?: credentialScheme.sdJwtType
+            ?: credentialScheme.isoNamespace
+            ?: credentialScheme.schemaUri
+        return issueCredential(
+            subjectPublicKey,
+            listOf(credentialType),
+            representation,
+            claimNames,
+            dataProviderOverride
+        )
+    }
+
     /**
      * Issues credentials for some [attributeTypes] (i.e. some of
      * [at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme.vcType]) to the subject specified with its public

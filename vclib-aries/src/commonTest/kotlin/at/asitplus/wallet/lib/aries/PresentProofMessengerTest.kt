@@ -45,7 +45,7 @@ class PresentProofMessengerTest : FreeSpec() {
             holder.storeCredentials(
                 issuer.issueCredential(
                     holderKeyPair.publicKey,
-                    listOf(ConstantIndex.AtomicAttribute2023.vcType),
+                    ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).toStoreCredentialInput()
             )
@@ -85,7 +85,7 @@ class PresentProofMessengerTest : FreeSpec() {
         "selectiveDisclosure" {
             val issuedCredential = issuer.issueCredential(
                 holderKeyPair.publicKey,
-                listOf(ConstantIndex.AtomicAttribute2023.vcType),
+                ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             )
             holder.storeCredentials(issuedCredential.toStoreCredentialInput())

@@ -46,9 +46,9 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
                     RandomKeyPairAdapter(),
                     DummyCredentialDataProvider(),
                 ).issueCredential(
-                    subjectPublicKey = holderKeyPair.publicKey,
-                    attributeTypes = listOf(ConstantIndex.AtomicAttribute2023.vcType),
-                    representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                    holderKeyPair.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
                 ).toStoreCredentialInput()
             )
         }
