@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseHeader
 import at.asitplus.crypto.datatypes.cose.CoseKey
@@ -61,14 +62,15 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         payload: ByteArray?,
         addKeyId: Boolean,
         addCertificate: Boolean,
-    ): KmmResult<CoseSigned> {
+    ): KmmResult<CoseSigned> = catching {
         var copyProtectedHeader = protectedHeader?.copy(algorithm = algorithm)
             ?: CoseHeader(algorithm = algorithm)
         if (addKeyId) copyProtectedHeader =
             copyProtectedHeader.copy(kid = cryptoService.keyPairAdapter.publicKey.didEncoded.encodeToByteArray())
 
         val copyUnprotectedHeader = if (addCertificate && cryptoService.keyPairAdapter.certificate != null) {
-            (unprotectedHeader ?: CoseHeader()).copy(certificateChain = cryptoService.keyPairAdapter.certificate!!.encodeToDer())
+            (unprotectedHeader
+                ?: CoseHeader()).copy(certificateChain = cryptoService.keyPairAdapter.certificate!!.encodeToDer())
         } else {
             unprotectedHeader
         }
@@ -82,16 +84,14 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
 
         val signature = cryptoService.sign(signatureInput).getOrElse {
             Napier.w("No signature from native code", it)
-            return KmmResult.failure(it)
+            throw it
         }
 
-        return KmmResult.success(
-            CoseSigned(
-                ByteStringWrapper(copyProtectedHeader),
-                copyUnprotectedHeader,
-                payload,
-                signature
-            )
+        CoseSigned(
+            ByteStringWrapper(copyProtectedHeader),
+            copyUnprotectedHeader,
+            payload,
+            signature
         )
     }
 }
@@ -103,7 +103,7 @@ class DefaultVerifierCoseService(
     /**
      * Verifiers the signature of [coseSigned] by using [signer].
      */
-    override fun verifyCose(coseSigned: CoseSigned, signer: CoseKey): KmmResult<Boolean> {
+    override fun verifyCose(coseSigned: CoseSigned, signer: CoseKey) = catching {
         val signatureInput = CoseSignatureInput(
             contextString = SIGNATURE1_STRING,
             protectedHeader = ByteStringWrapper(coseSigned.protectedHeader.value),
@@ -111,26 +111,18 @@ class DefaultVerifierCoseService(
             payload = coseSigned.payload,
         ).serialize()
 
-        val algorithm = coseSigned.protectedHeader.value.algorithm ?: return KmmResult.failure(
-            IllegalArgumentException(
-                "Algorithm not specified"
-            )
-        )
+        val algorithm = coseSigned.protectedHeader.value.algorithm
+            ?: throw IllegalArgumentException("Algorithm not specified")
         val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
-            return KmmResult.failure<Boolean>(IllegalArgumentException("Signer not convertible"))
+            throw IllegalArgumentException("Signer not convertible")
                 .also { Napier.w("Could not convert signer to public key: $signer", ex) }
         }
-        val verified = cryptoService.verify(
+        cryptoService.verify(
             input = signatureInput,
             signature = coseSigned.signature,
             algorithm = algorithm.toX509SignatureAlgorithm(),
             publicKey = publicKey
-        )
-        val result = verified.getOrElse {
-            Napier.w("No verification from native code", it)
-            return KmmResult.failure(it)
-        }
-        return KmmResult.success(result)
+        ).getOrThrow()
     }
 }
 

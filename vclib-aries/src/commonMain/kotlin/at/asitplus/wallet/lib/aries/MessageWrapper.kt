@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.aries
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import at.asitplus.crypto.datatypes.jws.JweEncrypted
@@ -79,22 +80,19 @@ class MessageWrapper(
             .also { Napier.w("ContentType not matching") }
     }
 
-    suspend fun createSignedAndEncryptedJwe(jwm: JsonWebMessage, recipientKey: JsonWebKey): KmmResult<JweEncrypted> {
+    suspend fun createSignedAndEncryptedJwe(jwm: JsonWebMessage, recipientKey: JsonWebKey) = catching {
         val jwt = createSignedJwt(jwm).getOrElse {
             Napier.w("Can not create signed JWT for encryption", it)
-            return KmmResult.failure(it)
+            throw it
         }
-        val jwe = jwsService.encryptJweObject(
+        jwsService.encryptJweObject(
             JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
             jwt.serialize().encodeToByteArray(),
             recipientKey,
             JwsContentTypeConstants.DIDCOMM_SIGNED_JSON,
             JweAlgorithm.ECDH_ES,
             JweEncryption.A256GCM,
-        ).getOrElse {
-            return KmmResult.failure(it)
-        }
-        return KmmResult.success(jwe)
+        ).getOrThrow()
     }
 
     suspend fun createSignedJwt(jwm: JsonWebMessage): KmmResult<JwsSigned> = jwsService.createSignedJwt(

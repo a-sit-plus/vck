@@ -119,12 +119,8 @@ class OidcSiopWallet(
      * to create [AuthenticationResponseResult] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun createAuthnResponse(input: String): KmmResult<AuthenticationResponseResult> {
-        val parameters = parseAuthenticationRequestParameters(input).getOrElse {
-            Napier.w("Could not parse authentication request: $input")
-            return KmmResult.failure(it)
-        }
-        return createAuthnResponse(parameters)
+    suspend fun createAuthnResponse(input: String): KmmResult<AuthenticationResponseResult> = catching {
+        createAuthnResponse(parseAuthenticationRequestParameters(input).getOrThrow()).getOrThrow()
     }
 
     /**

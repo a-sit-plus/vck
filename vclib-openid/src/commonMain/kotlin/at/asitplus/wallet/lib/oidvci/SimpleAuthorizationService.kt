@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.sha256
@@ -87,16 +88,15 @@ class SimpleAuthorizationService(
      * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
      * code from [codeService].
      */
-    suspend fun authorize(request: AuthenticationRequestParameters): KmmResult<AuthenticationResponseResult> {
+    suspend fun authorize(request: AuthenticationRequestParameters) = catching {
         // TODO Need to store the `scope` or `authorization_details`, i.e. may respond with `invalid_scope` here!
         if (request.redirectUrl == null)
-            return KmmResult.failure<AuthenticationResponseResult>(
-                OAuth2Exception(Errors.INVALID_REQUEST, "redirect_uri not set")
-            ).also { Napier.w("authorize: client did not set redirect_uri in $request") }
+            throw OAuth2Exception(Errors.INVALID_REQUEST, "redirect_uri not set")
+                .also { Napier.w("authorize: client did not set redirect_uri in $request") }
 
         val code = codeService.provideCode().also {
             val userInfo = dataProvider.loadUserInfo(request)
-                ?: return KmmResult.failure<AuthenticationResponseResult>(OAuth2Exception(Errors.INVALID_REQUEST))
+                ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                     .also { Napier.w("authorize: could not load user info from $request") }
             codeToUserInfoMutex.withLock { codeToUserInfoMap[it] = userInfo }
         }
@@ -111,9 +111,9 @@ class SimpleAuthorizationService(
         val url = URLBuilder(request.redirectUrl)
             .apply { responseParams.encodeToParameters().forEach { this.parameters.append(it.key, it.value) } }
             .buildString()
-        val result = AuthenticationResponseResult.Redirect(url, responseParams)
-        Napier.i("authorize returns $result")
-        return KmmResult.success(result)
+
+        AuthenticationResponseResult.Redirect(url, responseParams)
+            .also { Napier.i("authorize returns $it") }
     }
 
     /**
@@ -122,28 +122,27 @@ class SimpleAuthorizationService(
      *
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
-    suspend fun token(params: TokenRequestParameters): KmmResult<TokenResponseParameters> {
+    suspend fun token(params: TokenRequestParameters) = catching {
         val userInfo: OidcUserInfoExtended = when (params.grantType) {
             OpenIdConstants.GRANT_TYPE_CODE -> {
                 if (params.code == null || !codeService.verifyCode(params.code))
-                    return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_CODE))
+                    throw OAuth2Exception(Errors.INVALID_CODE)
                         .also { Napier.w("token: client did not provide correct code") }
                 codeToUserInfoMutex.withLock { codeToUserInfoMap[params.code] }
             }
 
             OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
                 if (params.preAuthorizedCode == null || !codeService.verifyCode(params.preAuthorizedCode))
-                    return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_GRANT))
+                    throw OAuth2Exception(Errors.INVALID_GRANT)
                         .also { Napier.w("token: client did not provide pre authorized code") }
                 codeToUserInfoMutex.withLock { codeToUserInfoMap[params.preAuthorizedCode] }
             }
 
             else -> {
-                return KmmResult.failure<TokenResponseParameters>(
-                    OAuth2Exception(Errors.INVALID_REQUEST, "No valid grant_type")
-                ).also { Napier.w("token: client did not provide valid grant_type: ${params.grantType}") }
+                throw OAuth2Exception(Errors.INVALID_REQUEST, "No valid grant_type")
+                    .also { Napier.w("token: client did not provide valid grant_type: ${params.grantType}") }
             }
-        } ?: return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
+        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
             .also { Napier.w("token: could not load user info for $params}") }
 
         if (params.authorizationDetails != null) {
@@ -151,7 +150,7 @@ class SimpleAuthorizationService(
             params.authorizationDetails.credentialIdentifiers?.forEach { credentialIdentifier ->
                 // TODO work out mapping of credential identifiers in authorization details to schemes
                 if (!credentialSchemes.map { it.vcType }.contains(credentialIdentifier)) {
-                    return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_GRANT))
+                    throw OAuth2Exception(Errors.INVALID_GRANT)
                         .also { Napier.w("token: client requested invalid credential identifier: $credentialIdentifier") }
                 }
             }
@@ -160,13 +159,13 @@ class SimpleAuthorizationService(
             codeToCodeChallengeMutex.withLock { codeToCodeChallengeMap.remove(params.code) }?.let { codeChallenge ->
                 val codeChallengeCalculated = codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
                 if (codeChallenge != codeChallengeCalculated) {
-                    return KmmResult.failure<TokenResponseParameters>(OAuth2Exception(Errors.INVALID_GRANT))
+                    throw OAuth2Exception(Errors.INVALID_GRANT)
                         .also { Napier.w("token: client did not provide correct code verifier: $codeVerifier") }
                 }
             }
         }
 
-        val result = TokenResponseParameters(
+        TokenResponseParameters(
             accessToken = tokenService.provideToken().also {
                 accessTokenToUserInfoMutex.withLock { accessTokenToUserInfoMap[it] = userInfo }
             },
@@ -177,9 +176,7 @@ class SimpleAuthorizationService(
                 // TODO supported credential identifiers!
                 setOf(it)
             }
-        )
-        return KmmResult.success(result)
-            .also { Napier.i("token returns $result") }
+        ).also { Napier.i("token returns $it") }
     }
 
     override suspend fun providePreAuthorizedCode(): String? {
@@ -194,17 +191,17 @@ class SimpleAuthorizationService(
         return clientNonceService.verifyAndRemoveNonce(nonce)
     }
 
-    override suspend fun getUserInfo(accessToken: String): KmmResult<OidcUserInfoExtended> {
+    override suspend fun getUserInfo(accessToken: String): KmmResult<OidcUserInfoExtended> = catching {
         if (!tokenService.verifyToken(accessToken)) {
-            return KmmResult.failure<OidcUserInfoExtended>(OAuth2Exception(Errors.INVALID_TOKEN))
+            throw OAuth2Exception(Errors.INVALID_TOKEN)
                 .also { Napier.w("getUserInfo: client did not provide correct token: $accessToken") }
         }
         val result = accessTokenToUserInfoMutex.withLock { accessTokenToUserInfoMap[accessToken] }
-            ?: return KmmResult.failure<OidcUserInfoExtended>(OAuth2Exception(Errors.INVALID_TOKEN))
+            ?: throw OAuth2Exception(Errors.INVALID_TOKEN)
                 .also { Napier.w("getUserInfo: could not load user info for $accessToken") }
 
-        return KmmResult.success(result)
-            .also { Napier.v("getUserInfo returns $result") }
+        result
+            .also { Napier.v("getUserInfo returns $it") }
     }
 
     override suspend fun provideMetadata() = KmmResult.success(metadata)

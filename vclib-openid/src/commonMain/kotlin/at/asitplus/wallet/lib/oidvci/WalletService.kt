@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.crypto.datatypes.cose.CborWebToken
 import at.asitplus.crypto.datatypes.cose.CoseHeader
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
@@ -15,9 +16,7 @@ import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsIso
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
@@ -221,7 +220,7 @@ class WalletService(
         requestOptions: RequestOptions,
         clientNonce: String?,
         credentialIssuer: String?,
-    ): KmmResult<CredentialRequestParameters> {
+    ): KmmResult<CredentialRequestParameters> = catching {
         val proofPayload = jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm(),
@@ -236,22 +235,13 @@ class WalletService(
             addKeyId = false,
             addJsonWebKey = true
             // NOTE: use `x5c` to transport key attestation
-        ).getOrElse {
-            Napier.w("createCredentialRequestJwt: Error from jwsService", it)
-            return KmmResult.failure(it)
-        }
+        ).getOrThrow()
         val proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofType.JWT,
             jwt = proofPayload.serialize()
         )
-        val result = runCatching {
-            requestOptions.toCredentialRequestJwt(proof)
-        }.getOrElse {
-            Napier.w("createCredentialRequestJwt failed", it)
-            return KmmResult.failure(it)
-        }
-        Napier.i("createCredentialRequestJwt returns $result")
-        return KmmResult.success(result)
+        requestOptions.toCredentialRequestJwt(proof)
+            .also { Napier.i("createCredentialRequestJwt returns $it") }
     }
 
     /**
@@ -268,7 +258,7 @@ class WalletService(
         requestOptions: RequestOptions,
         clientNonce: String?,
         credentialIssuer: String?,
-    ): KmmResult<CredentialRequestParameters> {
+    ): KmmResult<CredentialRequestParameters> = catching {
         val proofPayload = coseService.createSignedCose(
             protectedHeader = CoseHeader(
                 algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toCoseAlgorithm(),
@@ -281,22 +271,13 @@ class WalletService(
                 issuedAt = requestOptions.clock.now(),
                 nonce = clientNonce?.encodeToByteArray(),
             ).serialize()
-        ).getOrElse {
-            Napier.w("createCredentialRequestCwt: Error from coseService", it)
-            return KmmResult.failure(it)
-        }
+        ).getOrThrow()
         val proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofType.CWT,
             cwt = proofPayload.serialize().encodeToString(Base64UrlStrict),
         )
-        val result = runCatching {
-            requestOptions.toCredentialRequestJwt(proof)
-        }.getOrElse {
-            Napier.w("createCredentialRequestCwt failed", it)
-            return KmmResult.failure(it)
-        }
-        Napier.i("createCredentialRequestCwt returns $result")
-        return KmmResult.success(result)
+        requestOptions.toCredentialRequestJwt(proof)
+            .also { Napier.i("createCredentialRequestCwt returns $it") }
     }
 
     private fun RequestOptions.toCredentialRequestJwt(proof: CredentialRequestProof) =

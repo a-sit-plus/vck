@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JweEncrypted
@@ -273,17 +274,15 @@ class OidcSiopVerifier private constructor(
     suspend fun createAuthnRequestUrlWithRequestObject(
         walletUrl: String,
         requestOptions: RequestOptions = RequestOptions()
-    ): KmmResult<String> {
-        val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrElse {
-            return KmmResult.failure(it)
-        }
+    ): KmmResult<String> = catching {
+        val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow()
         val urlBuilder = URLBuilder(walletUrl)
         AuthenticationRequestParameters(
             clientId = relyingPartyUrl,
             request = jar.serialize(),
         ).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
-        return KmmResult.success(urlBuilder.buildString())
+        urlBuilder.buildString()
     }
 
     /**
@@ -301,12 +300,12 @@ class OidcSiopVerifier private constructor(
      */
     suspend fun createAuthnRequestAsSignedRequestObject(
         requestOptions: RequestOptions = RequestOptions(),
-    ): KmmResult<JwsSigned> {
+    ): KmmResult<JwsSigned> = catching {
         val requestObject = createAuthnRequest(requestOptions)
         val requestObjectSerialized = jsonSerializer.encodeToString(
             requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
         )
-        val signedJws = jwsService.createSignedJwsAddingParams(
+        jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 algorithm = jwsService.algorithm,
                 attestationJwt = attestationJwt?.serialize(),
@@ -314,11 +313,7 @@ class OidcSiopVerifier private constructor(
             ),
             payload = requestObjectSerialized.encodeToByteArray(),
             addJsonWebKey = x5c == null
-        ).getOrElse {
-            Napier.w("Could not sign JWS form authnRequest", it)
-            return KmmResult.failure(it)
-        }
-        return KmmResult.success(signedJws)
+        ).getOrThrow()
     }
 
     /**
