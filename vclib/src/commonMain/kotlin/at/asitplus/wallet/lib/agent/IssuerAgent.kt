@@ -103,11 +103,9 @@ class IssuerAgent(
         val provider = dataProviderOverride ?: dataProvider
         provider.getCredential(subjectPublicKey, credentialScheme, representation, claimNames).fold(
             onSuccess = { toBeIssued ->
-                toBeIssued.forEach { credentialToBeIssued ->
-                    issueCredential(credentialToBeIssued, subjectPublicKey, credentialScheme).also { result ->
-                        failed += result.failed
-                        successful += result.successful
-                    }
+                issueCredential(toBeIssued, subjectPublicKey, credentialScheme).also { result ->
+                    failed += result.failed
+                    successful += result.successful
                 }
             },
             onFailure = { failed += Issuer.FailedAttribute(credentialScheme.schemaUri, it) }

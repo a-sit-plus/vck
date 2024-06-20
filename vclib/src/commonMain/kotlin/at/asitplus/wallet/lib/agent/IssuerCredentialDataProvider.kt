@@ -23,7 +23,7 @@ interface IssuerCredentialDataProvider {
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>? = null,
-    ): KmmResult<List<CredentialToBeIssued>>
+    ): KmmResult<CredentialToBeIssued>
 }
 
 sealed class CredentialToBeIssued {

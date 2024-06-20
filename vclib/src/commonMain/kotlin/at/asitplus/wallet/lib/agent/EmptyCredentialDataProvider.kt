@@ -11,6 +11,6 @@ object EmptyCredentialDataProvider : IssuerCredentialDataProvider {
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>?
-    ): KmmResult<List<CredentialToBeIssued>> = KmmResult.failure(NotImplementedError())
+    ): KmmResult<CredentialToBeIssued> = KmmResult.failure(NotImplementedError())
 
 }

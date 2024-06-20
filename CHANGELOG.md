@@ -4,6 +4,7 @@ Release 4.0.0:
  - Do not use or assume DID as key identifiers and subjects in credentials
  - Replace list of attribute types in `Issuer.issueCredentials` with one concrete `CredentialScheme` to be passed
  - Remove functionality related to "attachments" to verifable credentials in JWT format
+ - Replace list of credentials to be issued with a single credential that will be issued per call to implementations of `IssuerCredentialDataProvider`
 
 Release 3.8.0:
  - Kotlin 2.0.0

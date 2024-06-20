@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
@@ -28,40 +29,36 @@ class OAuth2IssuerCredentialDataProvider(
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>?
-    ): KmmResult<List<CredentialToBeIssued>> {
+    ): KmmResult<CredentialToBeIssued> = catching {
         val expiration = clock.now() + defaultLifetime
-        val credentials = mutableListOf<CredentialToBeIssued>()
-        if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
-            val subjectId = subjectPublicKey.didEncoded
-            val claims = listOfNotNull(
-                // TODO Extend list of default OIDC claims
-                userInfo.userInfo.givenName?.let { optionalClaim(claimNames, "given_name", it) },
-                userInfo.userInfo.familyName?.let { optionalClaim(claimNames, "family_name", it) },
-                optionalClaim(claimNames, "subject", userInfo.userInfo.subject),
+        // TODO Extend list of default OIDC claims
+        if (credentialScheme != ConstantIndex.AtomicAttribute2023)
+            throw NotImplementedError()
+        val subjectId = subjectPublicKey.didEncoded
+        val claims = listOfNotNull(
+            // TODO Extend list of default OIDC claims
+            userInfo.userInfo.givenName?.let { optionalClaim(claimNames, "given_name", it) },
+            userInfo.userInfo.familyName?.let { optionalClaim(claimNames, "family_name", it) },
+            optionalClaim(claimNames, "subject", userInfo.userInfo.subject),
+        )
+        when (representation) {
+            ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
+                claims = claims,
+                expiration = expiration
             )
-            credentials += when (representation) {
-                ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
-                    CredentialToBeIssued.VcSd(claims = claims, expiration = expiration)
-                )
 
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> claims.map { claim ->
-                    CredentialToBeIssued.VcJwt(
-                        subject = AtomicAttribute2023(subjectId, claim.name, claim.value.toString()),
-                        expiration = expiration,
-                    )
-                }
+            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
+                subject = AtomicAttribute2023(subjectId, "given_name", userInfo.userInfo.givenName ?: "no value"),
+                expiration = expiration,
+            )
 
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> listOf(
-                    CredentialToBeIssued.Iso(
-                        issuerSignedItems = claims.mapIndexed { index, claim ->
-                            issuerSignedItem(claim.name, claim.value, index.toUInt())
-                        },
-                        expiration = expiration,
-                    )
-                )
-            }
+            ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
+                issuerSignedItems = claims.mapIndexed { index, claim ->
+                    issuerSignedItem(claim.name, claim.value, index.toUInt())
+                },
+                expiration = expiration,
+            )
         }
-        return KmmResult.success(credentials)
     }
 
     private fun Collection<String>?.isNullOrContains(s: String) =

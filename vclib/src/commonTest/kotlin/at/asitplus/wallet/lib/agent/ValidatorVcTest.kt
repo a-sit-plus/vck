@@ -14,7 +14,6 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.datatest.withData
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -110,14 +109,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Manually created and valid credential is valid" - {
-            withData(
-                nameFn = ::credentialNameFn,
-                dataProvider.getCredential(
-                    verifierKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).getOrThrow()
-            ) {
+            dataProvider.getCredential(
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+            ).getOrThrow().let {
                 issueCredential(it)
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
@@ -128,14 +124,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Wrong key ends in wrong signature is not valid" - {
-            withData(
-                nameFn = ::credentialNameFn,
-                dataProvider.getCredential(
-                    verifierKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).getOrThrow()
-            ) {
+            dataProvider.getCredential(
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+            ).getOrThrow().let {
                 issueCredential(it)
                     .let { wrapVcInJws(it) }
                     .let { wrapVcInJwsWrongKey(it) }
@@ -147,14 +140,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid sub in credential is not valid" - {
-            withData(
-                nameFn = ::credentialNameFn,
-                dataProvider.getCredential(
-                    verifierKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).getOrThrow()
-            ) {
+            dataProvider.getCredential(
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+            ).getOrThrow().let {
                 issueCredential(it)
                     .let { wrapVcInJws(it, subject = "vc.id") }
                     .let { signJws(it) }
@@ -166,14 +156,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid issuer in credential is not valid" - {
-            withData(
-                nameFn = ::credentialNameFn,
-                dataProvider.getCredential(
-                    verifierKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).getOrThrow()
-            ) {
+            dataProvider.getCredential(
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+            ).getOrThrow().let {
                 issueCredential(it)
                     .let { wrapVcInJws(it, issuer = "vc.issuer") }
                     .let { signJws(it) }.let {
@@ -184,14 +171,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid jwtId in credential is not valid" - {
-            withData(
-                nameFn = ::credentialNameFn,
-                dataProvider.getCredential(
-                    verifierKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).getOrThrow()
-            ) {
+            dataProvider.getCredential(
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+            ).getOrThrow().let {
                 issueCredential(it)
                     .let { wrapVcInJws(it, jwtId = "vc.jwtId") }
                     .let { signJws(it) }
@@ -203,14 +187,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid expiration in credential is not valid" - {
-            withData(
-                nameFn = ::credentialNameFn,
-                dataProvider.getCredential(
-                    verifierKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).getOrThrow()
-            ) {
+            dataProvider.getCredential(
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+            ).getOrThrow().let {
                 issueCredential(it, expirationDate = Clock.System.now() - 1.hours)
                     .let {
                         VerifiableCredentialJws(
@@ -231,14 +212,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "No expiration date is valid" - {
-            withData(
-                nameFn = ::credentialNameFn,
-                dataProvider.getCredential(
-                    verifierKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).getOrThrow()
-            ) {
+            dataProvider.getCredential(
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+            ).getOrThrow().let {
                 issueCredential(it, expirationDate = null)
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
@@ -249,14 +227,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid jws-expiration in credential is not valid" - {
-            withData(
-                nameFn = ::credentialNameFn,
-                dataProvider.getCredential(
-                    verifierKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).getOrThrow()
-            ) {
+            dataProvider.getCredential(
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+            ).getOrThrow().let {
                 issueCredential(it, expirationDate = Clock.System.now() + 1.hours)
                     .let { wrapVcInJws(it, expirationDate = Clock.System.now() - 1.hours) }
                     .let { signJws(it) }
@@ -268,14 +243,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Expiration not matching in credential is not valid" - {
-            withData(
-                nameFn = ::credentialNameFn,
-                dataProvider.getCredential(
-                    verifierKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).getOrThrow()
-            ) {
+            dataProvider.getCredential(
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+            ).getOrThrow().let {
                 it.let { issueCredential(it, expirationDate = Clock.System.now() + 1.hours) }
                     .let { wrapVcInJws(it, expirationDate = Clock.System.now() + 2.hours) }
                     .let { signJws(it) }
@@ -287,14 +259,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid NotBefore in credential is not valid" - {
-            withData(
-                nameFn = ::credentialNameFn,
-                dataProvider.getCredential(
-                    verifierKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).getOrThrow()
-            ) {
+            dataProvider.getCredential(
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+            ).getOrThrow().let {
                 it.let { issueCredential(it) }
                     .let { wrapVcInJws(it, issuanceDate = Clock.System.now() + 2.hours) }
                     .let { signJws(it) }
@@ -306,14 +275,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid issuance date in credential is not valid" - {
-            withData(
-                nameFn = ::credentialNameFn,
-                dataProvider.getCredential(
-                    verifierKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).getOrThrow()
-            ) {
+            dataProvider.getCredential(
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+            ).getOrThrow().let {
                 issueCredential(it, issuanceDate = Clock.System.now() + 1.hours)
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
@@ -325,14 +291,11 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Issuance date and not before not matching is not valid" - {
-            withData(
-                nameFn = ::credentialNameFn,
-                dataProvider.getCredential(
-                    verifierKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).getOrThrow()
-            ) {
+            dataProvider.getCredential(
+                verifierKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+            ).getOrThrow().let {
                 issueCredential(it, issuanceDate = Clock.System.now() - 1.hours)
                     .let { wrapVcInJws(it, issuanceDate = Clock.System.now()) }
                     .let { signJws(it) }

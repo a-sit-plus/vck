@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -35,10 +36,9 @@ class DummyCredentialDataProvider(
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>?
-    ): KmmResult<List<CredentialToBeIssued>> {
+    ): KmmResult<CredentialToBeIssued> = catching {
         val issuance = clock.now()
         val expiration = issuance + defaultLifetime
-        val credentials = mutableListOf<CredentialToBeIssued>()
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
             val subjectId = subjectPublicKey.didEncoded
             val claims = listOfNotNull(
@@ -47,33 +47,25 @@ class DummyCredentialDataProvider(
                 optionalClaim(claimNames, "date-of-birth", "1990-01-01"),
                 optionalClaim(claimNames, "is-active", true)
             )
-            credentials += when (representation) {
-                ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
-                    CredentialToBeIssued.VcSd(
-                        claims = claims,
-                        expiration = expiration,
-                    )
+            when (representation) {
+                ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
+                    claims = claims,
+                    expiration = expiration,
                 )
 
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> claims.map { claim ->
-                    CredentialToBeIssued.VcJwt(
-                        subject = AtomicAttribute2023(subjectId, claim.name, claim.value.toString()),
-                        expiration = expiration,
-                    )
-                }
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
+                    subject = AtomicAttribute2023(subjectId, "given_name", "Susanne"),
+                    expiration = expiration,
+                )
 
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> listOf(
-                    CredentialToBeIssued.Iso(
-                        issuerSignedItems = claims.mapIndexed { index, claim ->
-                            issuerSignedItem(claim.name, claim.value, index.toUInt())
-                        },
-                        expiration = expiration,
-                    )
+                ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
+                    issuerSignedItems = claims.mapIndexed { index, claim ->
+                        issuerSignedItem(claim.name, claim.value, index.toUInt())
+                    },
+                    expiration = expiration,
                 )
             }
-        }
-
-        if (credentialScheme == MobileDrivingLicenceScheme) {
+        } else if (credentialScheme == MobileDrivingLicenceScheme) {
             val drivingPrivilege = DrivingPrivilege(
                 vehicleCategoryCode = "B",
                 issueDate = LocalDate.parse("2023-01-01"),
@@ -96,15 +88,11 @@ class DummyCredentialDataProvider(
                     issuerSignedItem(DRIVING_PRIVILEGES, arrayOf(drivingPrivilege), digestId++) else null,
             )
 
-            credentials.add(
-                CredentialToBeIssued.Iso(
-                    issuerSignedItems = issuerSignedItems,
-                    expiration = expiration,
-                )
+            CredentialToBeIssued.Iso(
+                issuerSignedItems = issuerSignedItems,
+                expiration = expiration,
             )
-        }
-
-        if (credentialScheme == EuPidScheme) {
+        } else if (credentialScheme == EuPidScheme) {
             val subjectId = subjectPublicKey.didEncoded
             val familyName = "Musterfrau"
             val givenName = "Maria"
@@ -119,38 +107,37 @@ class DummyCredentialDataProvider(
                 optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_COUNTRY, issuingCountry),
                 optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_AUTHORITY, issuingCountry),
             )
-            credentials += when (representation) {
-                ConstantIndex.CredentialRepresentation.SD_JWT -> listOf(
-                    CredentialToBeIssued.VcSd(claims = claims, expiration = expiration)
+            when (representation) {
+                ConstantIndex.CredentialRepresentation.SD_JWT ->
+                    CredentialToBeIssued.VcSd(
+                        claims = claims,
+                        expiration = expiration
+                    )
+
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
+                    EuPidCredential(
+                        id = subjectId,
+                        familyName = familyName,
+                        givenName = givenName,
+                        birthDate = birthDate,
+                        issuanceDate = issuance,
+                        expiryDate = expiration,
+                        issuingCountry = issuingCountry,
+                        issuingAuthority = issuingCountry,
+                    ),
+                    expiration,
                 )
 
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> listOf(
-                    CredentialToBeIssued.VcJwt(
-                        EuPidCredential(
-                            id = subjectId,
-                            familyName = familyName,
-                            givenName = givenName,
-                            birthDate = birthDate,
-                            issuanceDate = issuance,
-                            expiryDate = expiration,
-                            issuingCountry = issuingCountry,
-                            issuingAuthority = issuingCountry,
-                        ),
-                        expiration,
-                    )
-                )
-
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> listOf(
-                    CredentialToBeIssued.Iso(
-                        issuerSignedItems = claims.mapIndexed { index, claim ->
-                            issuerSignedItem(claim.name, claim.value, index.toUInt())
-                        },
-                        expiration = expiration,
-                    )
+                ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
+                    issuerSignedItems = claims.mapIndexed { index, claim ->
+                        issuerSignedItem(claim.name, claim.value, index.toUInt())
+                    },
+                    expiration = expiration,
                 )
             }
+        } else {
+            throw NotImplementedError()
         }
-        return KmmResult.success(credentials)
     }
 
     private fun Collection<String>?.isNullOrContains(s: String) =
