@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.FormatHolder
@@ -372,7 +373,7 @@ private suspend fun Holder.storeJwtCredentials(
             holderKeyPair.publicKey,
             credentialScheme,
             ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-        ).toStoreCredentialInput()
+        ).getOrThrow().toStoreCredentialInput()
     )
 }
 
@@ -388,7 +389,7 @@ private suspend fun Holder.storeSdJwtCredential(
             holderKeyPair.publicKey,
             credentialScheme,
             ConstantIndex.CredentialRepresentation.SD_JWT,
-        ).toStoreCredentialInput()
+        ).getOrThrow().toStoreCredentialInput()
     )
 }
 
@@ -403,5 +404,5 @@ private suspend fun Holder.storeIsoCredential(
         holderKeyPair.publicKey,
         credentialScheme,
         ConstantIndex.CredentialRepresentation.ISO_MDOC,
-    ).toStoreCredentialInput()
+    ).getOrThrow().toStoreCredentialInput()
 )

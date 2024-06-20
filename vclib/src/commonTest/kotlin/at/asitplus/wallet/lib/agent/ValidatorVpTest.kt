@@ -17,7 +17,6 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.coroutines.runBlocking
 
 class ValidatorVpTest : FreeSpec({
     val singularPresentationDefinition = PresentationDefinition(
@@ -35,8 +34,6 @@ class ValidatorVpTest : FreeSpec({
     lateinit var verifier: Verifier
     lateinit var challenge: String
 
-    lateinit var issuedCredential: Issuer.IssuedCredentialResult
-
     beforeEach {
         validator = Validator.newDefaultInstance(DefaultVerifierCryptoService())
         issuerCredentialStore = InMemoryIssuerCredentialStore()
@@ -52,16 +49,13 @@ class ValidatorVpTest : FreeSpec({
         verifier = VerifierAgent()
         challenge = uuid4().toString()
 
-        runBlocking {
-            issuedCredential = issuer.issueCredential(
+        holder.storeCredentials(
+            issuer.issueCredential(
                 holderKeyPair.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-            )
-            holder.storeCredentials(
-                issuedCredential.toStoreCredentialInput()
-            )
-        }
+            ).getOrThrow().toStoreCredentialInput()
+        )
     }
 
     "correct challenge in VP leads to Success" {
@@ -151,7 +145,7 @@ class ValidatorVpTest : FreeSpec({
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         result.vp.verifiableCredentials.shouldBeEmpty()
         holderCredentialStore.getCredentials().getOrThrow()
-            .shouldHaveSize(issuedCredential.successful.size)
+            .shouldHaveSize(1)
     }
 
     "Manually created and valid presentation is valid" {

@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
@@ -19,7 +20,6 @@ import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.coroutines.runBlocking
 
 @Suppress("unused")
 class OidcSiopIsoProtocolTest : FreeSpec({
@@ -43,26 +43,26 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierKeyPair)
-        runBlocking {
-            val issuerAgent = IssuerAgent(
-                RandomKeyPairAdapter(),
-                DummyCredentialDataProvider(),
-            )
-            holderAgent.storeCredentials(
-                issuerAgent.issueCredential(
-                    holderKeyPair.publicKey,
-                    MobileDrivingLicenceScheme,
-                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                ).toStoreCredentialInput()
-            )
-            holderAgent.storeCredentials(
-                issuerAgent.issueCredential(
-                    holderKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                ).toStoreCredentialInput()
-            )
-        }
+
+        val issuerAgent = IssuerAgent(
+            RandomKeyPairAdapter(),
+            DummyCredentialDataProvider(),
+        )
+        holderAgent.storeCredentials(
+            issuerAgent.issueCredential(
+                holderKeyPair.publicKey,
+                MobileDrivingLicenceScheme,
+                ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            ).getOrThrow().toStoreCredentialInput()
+        )
+        holderAgent.storeCredentials(
+            issuerAgent.issueCredential(
+                holderKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            ).getOrThrow().toStoreCredentialInput()
+        )
+
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
             keyPairAdapter = holderKeyPair,

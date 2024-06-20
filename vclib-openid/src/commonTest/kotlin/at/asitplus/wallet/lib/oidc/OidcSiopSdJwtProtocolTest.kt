@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import com.benasher44.uuid.uuid4
@@ -17,7 +18,6 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.coroutines.runBlocking
 
 class OidcSiopSdJwtProtocolTest : FreeSpec({
 
@@ -40,18 +40,17 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierKeyPair)
-        runBlocking {
-            holderAgent.storeCredentials(
-                IssuerAgent(
-                    RandomKeyPairAdapter(),
-                    DummyCredentialDataProvider(),
-                ).issueCredential(
-                    holderKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.SD_JWT,
-                ).toStoreCredentialInput()
-            )
-        }
+
+        holderAgent.storeCredentials(
+            IssuerAgent(
+                RandomKeyPairAdapter(),
+                DummyCredentialDataProvider(),
+            ).issueCredential(
+                holderKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.SD_JWT,
+            ).getOrThrow().toStoreCredentialInput()
+        )
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
             keyPairAdapter = holderKeyPair,

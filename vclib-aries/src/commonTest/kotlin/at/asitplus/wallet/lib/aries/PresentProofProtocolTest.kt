@@ -42,7 +42,7 @@ class PresentProofProtocolTest : FreeSpec({
                 holderKeyPair.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
-            ).toStoreCredentialInput()
+            ).getOrThrow().toStoreCredentialInput()
         )
 
         val oobInvitation = holderProtocol.startCreatingInvitation()
@@ -76,7 +76,7 @@ class PresentProofProtocolTest : FreeSpec({
                 holderKeyPair.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
-            ).toStoreCredentialInput()
+            ).getOrThrow().toStoreCredentialInput()
         )
 
         val requestPresentation = verifierProtocol.startDirect()

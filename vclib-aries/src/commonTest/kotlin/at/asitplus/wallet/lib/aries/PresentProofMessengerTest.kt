@@ -47,7 +47,7 @@ class PresentProofMessengerTest : FreeSpec() {
                     holderKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
-                ).toStoreCredentialInput()
+                ).getOrThrow().toStoreCredentialInput()
             )
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
@@ -87,7 +87,7 @@ class PresentProofMessengerTest : FreeSpec() {
                 holderKeyPair.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
-            )
+            ).getOrThrow()
             holder.storeCredentials(issuedCredential.toStoreCredentialInput())
             val expectedSubject = holderCredentialStore.getCredentials().getOrThrow().first()
                     as SubjectCredentialStore.StoreEntry.Vc

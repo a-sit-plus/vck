@@ -65,6 +65,11 @@ class HolderAgent(
         return validator.setRevocationList(it)
     }
 
+    // TODO replace other function
+    override suspend fun storeCredentials(credential: Holder.StoreCredentialInput): Holder.StoredCredentialsResult {
+        return storeCredentials(listOf(credential))
+    }
+
     /**
      * Stores all verifiable credentials from [credentialList] that parse and validate,
      * and returns them for future reference.

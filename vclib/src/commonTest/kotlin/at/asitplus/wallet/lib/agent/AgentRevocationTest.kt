@@ -58,16 +58,16 @@ class AgentRevocationTest : FreeSpec({
             verifierKeyPair.publicKey,
             ConstantIndex.AtomicAttribute2023,
             ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-        )
-        if (result.failed.isNotEmpty()) fail("no issued credentials")
-
-        result.successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }.forEach {
-            val vcJws = verifier.verifyVcJws(it)
-            vcJws.shouldBeInstanceOf<SuccessJwt>()
-            val credentialStatus = vcJws.jws.vc.credentialStatus
-            credentialStatus.shouldNotBeNull()
-            credentialStatus.index.shouldNotBeNull()
+        ).getOrElse {
+            fail("no issued credentials")
         }
+        result.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+
+        val vcJws = verifier.verifyVcJws(result.vcJws)
+        vcJws.shouldBeInstanceOf<SuccessJwt>()
+        val credentialStatus = vcJws.jws.vc.credentialStatus
+        credentialStatus.shouldNotBeNull()
+        credentialStatus.index.shouldNotBeNull()
     }
 
     "encoding to a known value works" {

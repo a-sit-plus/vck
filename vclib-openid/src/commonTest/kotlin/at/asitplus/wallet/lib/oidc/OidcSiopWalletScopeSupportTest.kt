@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.Constraint
 import at.asitplus.wallet.lib.data.dif.ConstraintField
@@ -25,7 +26,6 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.coroutines.runBlocking
 
 @Suppress("unused")
 class OidcSiopWalletScopeSupportTest : FreeSpec({
@@ -100,19 +100,17 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         }
 
         "get empty scope works even without available credentials" {
-            runBlocking {
-                val issuerAgent = IssuerAgent(
-                    RandomKeyPairAdapter(),
-                    DummyCredentialDataProvider(),
-                )
-                holderAgent.storeCredentials(
-                    issuerAgent.issueCredential(
-                        holderKeyPair.publicKey,
-                        ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                    ).toStoreCredentialInput()
-                )
-            }
+            val issuerAgent = IssuerAgent(
+                RandomKeyPairAdapter(),
+                DummyCredentialDataProvider(),
+            )
+            holderAgent.storeCredentials(
+                issuerAgent.issueCredential(
+                    holderKeyPair.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                ).getOrThrow().toStoreCredentialInput()
+            )
 
             val authnRequest = verifierSiop.createAuthnRequest().let { request ->
                 request.copy(
@@ -145,19 +143,18 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         }
 
         "get MdocMdlWithGivenName scope with available credentials succeeds" {
-            runBlocking {
-                val issuerAgent = IssuerAgent(
-                    RandomKeyPairAdapter(),
-                    DummyCredentialDataProvider(),
-                )
-                holderAgent.storeCredentials(
-                    issuerAgent.issueCredential(
-                        holderKeyPair.publicKey,
-                        MobileDrivingLicenceScheme,
-                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                    ).toStoreCredentialInput()
-                )
-            }
+            val issuerAgent = IssuerAgent(
+                RandomKeyPairAdapter(),
+                DummyCredentialDataProvider(),
+            )
+            holderAgent.storeCredentials(
+                issuerAgent.issueCredential(
+                    holderKeyPair.publicKey,
+                    MobileDrivingLicenceScheme,
+                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                ).getOrThrow().toStoreCredentialInput()
+            )
+
 
             val authnRequest = verifierSiop.createAuthnRequest().let { request ->
                 request.copy(

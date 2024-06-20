@@ -110,6 +110,7 @@ class CredentialIssuer(
         accessToken: String,
         params: CredentialRequestParameters
     ): KmmResult<CredentialResponseParameters> {
+        // TODO runCatching
         val proof = params.proof
             ?: return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("credential: client did not provide proof of possession") }
@@ -206,12 +207,12 @@ class CredentialIssuer(
                     .also { Napier.w("credential: client did not provide format or credential identifier in params: $params") }
             }
         }
-        if (issuedCredentialResult.successful.isEmpty()) {
+        val issuedCredential = issuedCredentialResult.getOrElse {
             return KmmResult.failure<CredentialResponseParameters>(OAuth2Exception(Errors.INVALID_REQUEST))
                 .also { Napier.w("credential: issuer did not issue credential: $issuedCredentialResult") }
         }
         // TODO Implement Batch Credential Endpoint for more than one credential response
-        val result = issuedCredentialResult.successful.first().toCredentialResponseParameters()
+        val result = issuedCredential.toCredentialResponseParameters()
         Napier.i("credential returns $result")
         return KmmResult.success(result)
     }

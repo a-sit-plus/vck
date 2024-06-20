@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -45,18 +46,6 @@ interface Issuer {
         ) : IssuedCredential()
     }
 
-    data class IssuedCredentialResult(
-        val successful: List<IssuedCredential> = listOf(),
-        val failed: List<FailedAttribute> = listOf()
-    ) {
-        fun toStoreCredentialInput() = successful.map {
-            when (it) {
-                is IssuedCredential.Iso -> Holder.StoreCredentialInput.Iso(it.issuerSigned, it.scheme)
-                is IssuedCredential.VcSdJwt -> Holder.StoreCredentialInput.SdJwt(it.vcSdJwt, it.scheme)
-                is IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(it.vcJws, it.scheme)
-            }
-        }
-    }
 
     /**
      * The public key for this agent, i.e. the public part of the key that signs issued credentials.
@@ -84,7 +73,7 @@ interface Issuer {
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>? = null,
         dataProviderOverride: IssuerCredentialDataProvider? = null,
-    ): IssuedCredentialResult
+    ): KmmResult<IssuedCredential>
 
     /**
      * Wraps the revocation information into a VC,
@@ -113,4 +102,10 @@ interface Issuer {
 
     fun compileCurrentRevocationLists(): List<String>
 
+}
+
+fun Issuer.IssuedCredential.toStoreCredentialInput() = when (this) {
+    is Issuer.IssuedCredential.Iso -> Holder.StoreCredentialInput.Iso(issuerSigned, scheme)
+    is Issuer.IssuedCredential.VcSdJwt -> Holder.StoreCredentialInput.SdJwt(vcSdJwt, scheme)
+    is Issuer.IssuedCredential.VcJwt -> Holder.StoreCredentialInput.Vc(vcJws, scheme)
 }

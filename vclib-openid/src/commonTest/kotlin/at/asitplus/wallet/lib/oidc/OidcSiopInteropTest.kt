@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -37,19 +38,17 @@ class OidcSiopInteropTest : FreeSpec({
     beforeEach {
         holderKeyPair = RandomKeyPairAdapter()
         holderAgent = HolderAgent(holderKeyPair)
-        runBlocking {
-            holderAgent.storeCredentials(
-                IssuerAgent(
-                    RandomKeyPairAdapter(),
-                    DummyCredentialDataProvider(),
-                ).issueCredential(
-                    holderKeyPair.publicKey,
-                    EuPidScheme,
-                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                    EuPidScheme.claimNames
-                ).toStoreCredentialInput()
-            )
-        }
+        holderAgent.storeCredentials(
+            IssuerAgent(
+                RandomKeyPairAdapter(),
+                DummyCredentialDataProvider(),
+            ).issueCredential(
+                holderKeyPair.publicKey,
+                EuPidScheme,
+                ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                EuPidScheme.claimNames
+            ).getOrThrow().toStoreCredentialInput()
+        )
     }
 
     "EUDI from URL 2024-05-17" {

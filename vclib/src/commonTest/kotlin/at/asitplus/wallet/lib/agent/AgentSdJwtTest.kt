@@ -11,7 +11,6 @@ import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.inspectors.forAll
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -160,11 +159,11 @@ suspend fun issueDummyCredentials(
     issuer: Issuer,
     holderKeyPair: KeyPairAdapter
 ) {
-    val result = issuer.issueCredential(
-        holderKeyPair.publicKey,
-        ConstantIndex.AtomicAttribute2023,
-        ConstantIndex.CredentialRepresentation.SD_JWT,
+    holder.storeCredentials(
+        issuer.issueCredential(
+            holderKeyPair.publicKey,
+            ConstantIndex.AtomicAttribute2023,
+            ConstantIndex.CredentialRepresentation.SD_JWT,
+        ).getOrThrow().toStoreCredentialInput()
     )
-    result.successful.shouldNotBeEmpty()
-    holder.storeCredentials(result.toStoreCredentialInput())
 }

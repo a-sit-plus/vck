@@ -240,26 +240,29 @@ class IssueCredentialProtocol(
         ) ?: return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
 
         //TODO: Pack this info into `args` or `comment`
-        if (issuedCredentials.failed.isNotEmpty()) {
+        val issuedCredential = issuedCredentials.getOrElse {
             //TODO prioritise which descriptors to handle when
             //TODO communicate auth problems too? we have an exception for that now…
-            return issuedCredentials.failed.firstOrNull { it.reason is DataSourceProblem }
-                ?.let {
-                    val comment = it.reason.message + (it.reason as DataSourceProblem).details?.let { ": $it" }
-                    problemReporter.problemRequirement(threadId, "data-source", comment)
-                } ?: problemReporter.problemInternal(lastMessage.threadId, "data-source")
-        }
-        if (issuedCredentials.successful.isEmpty())
-            return problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
-
-        val fulfillmentAttachments = mutableListOf<JwmAttachment>()
-        issuedCredentials.successful.forEach { cred ->
-            when (cred) {
-                is Issuer.IssuedCredential.Iso -> fulfillmentAttachments.add(JwmAttachment.encodeBase64(cred.issuerSigned.serialize()))
-                is Issuer.IssuedCredential.VcJwt -> fulfillmentAttachments.add(JwmAttachment.encodeJws(cred.vcJws))
-                is Issuer.IssuedCredential.VcSdJwt -> fulfillmentAttachments.add(JwmAttachment.encodeJws(cred.vcSdJwt))
+            return if (it is DataSourceProblem) {
+                problemReporter.problemRequirement(threadId, "data-source", it.formatComment())
+            } else if (it.cause != null && it.cause is DataSourceProblem) {
+                problemReporter.problemRequirement(
+                    threadId,
+                    "data-source",
+                    (it.cause as DataSourceProblem).formatComment()
+                )
+            } else {
+                problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
             }
         }
+        val fulfillmentAttachments = mutableListOf<JwmAttachment>()
+
+        when (issuedCredential) {
+            is Issuer.IssuedCredential.Iso -> fulfillmentAttachments.add(JwmAttachment.encodeBase64(issuedCredential.issuerSigned.serialize()))
+            is Issuer.IssuedCredential.VcJwt -> fulfillmentAttachments.add(JwmAttachment.encodeJws(issuedCredential.vcJws))
+            is Issuer.IssuedCredential.VcSdJwt -> fulfillmentAttachments.add(JwmAttachment.encodeJws(issuedCredential.vcSdJwt))
+        }
+
         val message = IssueCredential(
             body = IssueCredentialBody(
                 comment = "Here are your credentials",
@@ -278,6 +281,8 @@ class IssueCredentialProtocol(
             .also { this.state = State.FINISHED }
     }
 
+    private fun DataSourceProblem.formatComment(): String = message + details?.let { ": $it" }
+
     private suspend fun storeCredentials(lastMessage: IssueCredential): InternalNextMessage {
         val attachmentIdsForFulfillment = lastMessage.body.formats
             .filter { it.format == "dif/credential-manifest/fulfillment@v1.0" }
@@ -286,12 +291,11 @@ class IssueCredentialProtocol(
             ?: return problemReporter.problemLastMessage(lastMessage.threadId, "attachments-missing")
         val issueCredentialAttachments = lastAttachments
             .filter { attachmentIdsForFulfillment.contains(it.id) }
-        val binaryAttachments = lastAttachments
-            .filter { !attachmentIdsForFulfillment.contains(it.id) }
         if (issueCredentialAttachments.isEmpty())
             return problemReporter.problemLastMessage(lastMessage.threadId, "attachments-format")
         val credentialList = issueCredentialAttachments
-            .mapNotNull { extractFulfillmentAttachment(it, binaryAttachments) }
+            .mapNotNull { extractFulfillmentAttachment(it) }
+            .firstOrNull() ?: return problemReporter.problemLastMessage(lastMessage.threadId, "attachments-format")
         this.result = holder?.storeCredentials(credentialList)
             ?: IssueCredentialProtocolResult(notVerified = issueCredentialAttachments.mapNotNull { it.decodeString() })
 
@@ -299,10 +303,7 @@ class IssueCredentialProtocol(
             .also { this.state = State.FINISHED }
     }
 
-    private fun extractFulfillmentAttachment(
-        fulfillment: JwmAttachment,
-        binaryAttachments: List<JwmAttachment>
-    ): Holder.StoreCredentialInput? {
+    private fun extractFulfillmentAttachment(fulfillment: JwmAttachment): Holder.StoreCredentialInput? {
         runCatching { fulfillment.decodeString() }.getOrNull()?.let { decoded ->
             return Holder.StoreCredentialInput.Vc(decoded, credentialScheme)
         } ?: runCatching { fulfillment.decodeBinary() }.getOrNull()?.let { decoded ->

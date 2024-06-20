@@ -39,73 +39,68 @@ class ValidatorVcTest : FreeSpec() {
         beforeEach {
             issuerCredentialStore = InMemoryIssuerCredentialStore()
             issuerKeyPair = RandomKeyPairAdapter()
-            issuer = IssuerAgent(issuerKeyPair, issuerCredentialStore)
+            issuer = IssuerAgent(issuerKeyPair, issuerCredentialStore, dataProvider)
             issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyPair))
             verifierKeyPair = RandomKeyPairAdapter()
             verifier = VerifierAgent(verifierKeyPair)
         }
 
         "credentials are valid for" {
-            issuer.issueCredential(
+            val credential = issuer.issueCredential(
                 verifierKeyPair.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-            ).successful.filterIsInstance<Issuer.IssuedCredential.VcJwt>().map { it.vcJws }
-                .forEach {
-                    verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
-                }
+            ).getOrThrow()
+            credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+
+            verifier.verifyVcJws(credential.vcJws).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
         }
 
         "revoked credentials are not valid" {
-            issuer.issueCredential(
+            val credential = issuer.issueCredential(
                 verifierKeyPair.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-            ).successful
-                .filterIsInstance<Issuer.IssuedCredential.VcJwt>()
-                .map { it.vcJws }
-                .map { it to verifier.verifyVcJws(it) }.forEach {
-                    val value = it.second
-                    value.shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
-                    issuerCredentialStore.revoke(value.jws.vc.id, FixedTimePeriodProvider.timePeriod) shouldBe true
-                    val revocationListCredential =
-                        issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
-                    revocationListCredential.shouldNotBeNull()
-                    verifier.setRevocationList(revocationListCredential)
-                    verifier.verifyVcJws(it.first)
-                        .shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
+            ).getOrThrow()
+            credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-                    val defaultValidator = Validator.newDefaultInstance(DefaultVerifierCryptoService())
-                    defaultValidator.setRevocationList(revocationListCredential) shouldBe true
-                    defaultValidator.checkRevocationStatus(value.jws.vc.credentialStatus!!.index) shouldBe Validator.RevocationStatus.REVOKED
-                }
+            val value = verifier.verifyVcJws(credential.vcJws)
+            value.shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
+            issuerCredentialStore.revoke(value.jws.vc.id, FixedTimePeriodProvider.timePeriod) shouldBe true
+            val revocationListCredential =
+                issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+            revocationListCredential.shouldNotBeNull()
+            verifier.setRevocationList(revocationListCredential)
+            verifier.verifyVcJws(credential.vcJws)
+                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
+
+            val defaultValidator = Validator.newDefaultInstance(DefaultVerifierCryptoService())
+            defaultValidator.setRevocationList(revocationListCredential) shouldBe true
+            defaultValidator.checkRevocationStatus(value.jws.vc.credentialStatus!!.index) shouldBe Validator.RevocationStatus.REVOKED
         }
 
         "wrong subject keyId is not be valid" {
-            issuer.issueCredential(
+            val credential = issuer.issueCredential(
                 RandomKeyPairAdapter().publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-            ).successful
-                .filterIsInstance<Issuer.IssuedCredential.VcJwt>()
-                .map { it.vcJws }.forEach {
-                    verifier.verifyVcJws(it)
-                        .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
-                }
+            ).getOrThrow()
+            credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+
+            verifier.verifyVcJws(credential.vcJws)
+                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
         }
 
         "credential with invalid JWS format is not valid" {
-            issuer.issueCredential(
+            val credential = issuer.issueCredential(
                 verifierKeyPair.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-            ).successful
-                .filterIsInstance<Issuer.IssuedCredential.VcJwt>()
-                .map { it.vcJws }
-                .map { it.replaceFirstChar { "f" } }.forEach {
-                    verifier.verifyVcJws(it)
-                        .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
-                }
+            ).getOrThrow()
+            credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
+
+            verifier.verifyVcJws(credential.vcJws.replaceFirstChar { "f" })
+                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
         }
 
         "Manually created and valid credential is valid" - {
@@ -306,18 +301,6 @@ class ValidatorVcTest : FreeSpec() {
             }
         }
     }
-
-    private fun credentialNameFn(it: CredentialToBeIssued): String =
-        when (it) {
-            is CredentialToBeIssued.Iso -> (it::class.simpleName ?: "Iso") + "-" +
-                    it.issuerSignedItems.hashCode()
-
-            is CredentialToBeIssued.VcJwt -> (it::class.simpleName ?: "VcJwt") + "-" +
-                    it.subject.hashCode()
-
-            is CredentialToBeIssued.VcSd -> (it::class.simpleName ?: "VcSd") + "-" +
-                    it.claims.hashCode()
-        }
 
     private fun issueCredential(
         credential: CredentialToBeIssued,

@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -68,18 +69,17 @@ class OidcSiopProtocolTest : FreeSpec({
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierKeyPair)
-        runBlocking {
-            holderAgent.storeCredentials(
-                IssuerAgent(
-                    RandomKeyPairAdapter(),
-                    DummyCredentialDataProvider(),
-                ).issueCredential(
-                    holderKeyPair.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                ).toStoreCredentialInput()
-            )
-        }
+
+        holderAgent.storeCredentials(
+            IssuerAgent(
+                RandomKeyPairAdapter(),
+                DummyCredentialDataProvider(),
+            ).issueCredential(
+                holderKeyPair.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+            ).getOrThrow().toStoreCredentialInput()
+        )
 
         holderSiop = OidcSiopWallet.newDefaultInstance(
             keyPairAdapter = holderKeyPair,

@@ -49,6 +49,13 @@ interface Holder {
             val scheme: ConstantIndex.CredentialScheme,
         ) : StoreCredentialInput()
     }
+    /**
+     * Stores all verifiable credentials from [credentialList] that parse and validate,
+     * and returns them for future reference.
+     *
+     * Note: Revocation credentials should not be stored, but set with [setRevocationList].
+     */
+    suspend fun storeCredentials(credential: StoreCredentialInput): StoredCredentialsResult
 
     /**
      * Stores all verifiable credentials from [credentialList] that parse and validate,
