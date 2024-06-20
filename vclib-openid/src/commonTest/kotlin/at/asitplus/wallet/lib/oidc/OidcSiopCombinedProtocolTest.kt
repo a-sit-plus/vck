@@ -365,7 +365,7 @@ private suspend fun Holder.storeJwtCredentials(
     holderKeyPair: KeyPairAdapter,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
-    storeCredentials(
+    storeCredential(
         IssuerAgent(
             RandomKeyPairAdapter(),
             DummyCredentialDataProvider(),
@@ -381,7 +381,7 @@ private suspend fun Holder.storeSdJwtCredential(
     holderKeyPair: KeyPairAdapter,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
-    storeCredentials(
+    storeCredential(
         IssuerAgent(
             RandomKeyPairAdapter(),
             DummyCredentialDataProvider(),
@@ -396,7 +396,7 @@ private suspend fun Holder.storeSdJwtCredential(
 private suspend fun Holder.storeIsoCredential(
     holderKeyPair: KeyPairAdapter,
     credentialScheme: ConstantIndex.CredentialScheme,
-) = storeCredentials(
+) = storeCredential(
     IssuerAgent(
         RandomKeyPairAdapter(),
         DummyCredentialDataProvider(),

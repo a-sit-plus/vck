@@ -42,7 +42,7 @@ class PresentProofMessengerTest : FreeSpec() {
         }
 
         "presentProof" {
-            holder.storeCredentials(
+            holder.storeCredential(
                 issuer.issueCredential(
                     holderKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
@@ -88,7 +88,7 @@ class PresentProofMessengerTest : FreeSpec() {
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow()
-            holder.storeCredentials(issuedCredential.toStoreCredentialInput())
+            holder.storeCredential(issuedCredential.toStoreCredentialInput())
             val expectedSubject = holderCredentialStore.getCredentials().getOrThrow().first()
                     as SubjectCredentialStore.StoreEntry.Vc
             val subject = expectedSubject.vc.vc.credentialSubject as AtomicAttribute2023

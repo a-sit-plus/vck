@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.aries
 
+import at.asitplus.KmmResult
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.wallet.lib.DataSourceProblem
@@ -27,7 +28,7 @@ import at.asitplus.wallet.lib.msg.RequestCredentialBody
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.encodeToString
 
-typealias IssueCredentialProtocolResult = Holder.StoredCredentialsResult
+typealias IssueCredentialProtocolResult = KmmResult<Holder.StoredCredential>
 
 /**
  * Use this class for exactly one instance of a protocol run.
@@ -296,8 +297,8 @@ class IssueCredentialProtocol(
         val credentialList = issueCredentialAttachments
             .mapNotNull { extractFulfillmentAttachment(it) }
             .firstOrNull() ?: return problemReporter.problemLastMessage(lastMessage.threadId, "attachments-format")
-        this.result = holder?.storeCredentials(credentialList)
-            ?: IssueCredentialProtocolResult(notVerified = issueCredentialAttachments.mapNotNull { it.decodeString() })
+        this.result = holder?.storeCredential(credentialList)
+            ?: return problemReporter.problemLastMessage(lastMessage.threadId, "no-holder")
 
         return InternalNextMessage.Finished(lastMessage)
             .also { this.state = State.FINISHED }

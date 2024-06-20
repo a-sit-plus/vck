@@ -15,8 +15,6 @@ import kotlinx.datetime.Instant
  */
 interface Issuer {
 
-    data class FailedAttribute(val attributeType: String, val reason: Throwable)
-
     /**
      * A credential issued by an [Issuer], in a specific format
      */

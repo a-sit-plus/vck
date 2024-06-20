@@ -49,7 +49,7 @@ class ValidatorVpTest : FreeSpec({
         verifier = VerifierAgent()
         challenge = uuid4().toString()
 
-        holder.storeCredentials(
+        holder.storeCredential(
             issuer.issueCredential(
                 holderKeyPair.publicKey,
                 ConstantIndex.AtomicAttribute2023,

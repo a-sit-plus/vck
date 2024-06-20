@@ -48,14 +48,14 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             RandomKeyPairAdapter(),
             DummyCredentialDataProvider(),
         )
-        holderAgent.storeCredentials(
+        holderAgent.storeCredential(
             issuerAgent.issueCredential(
                 holderKeyPair.publicKey,
                 MobileDrivingLicenceScheme,
                 ConstantIndex.CredentialRepresentation.ISO_MDOC,
             ).getOrThrow().toStoreCredentialInput()
         )
-        holderAgent.storeCredentials(
+        holderAgent.storeCredential(
             issuerAgent.issueCredential(
                 holderKeyPair.publicKey,
                 ConstantIndex.AtomicAttribute2023,

@@ -6,6 +6,8 @@ Release 4.0.0:
  - Remove functionality related to "attachments" to verifable credentials in JWT format
  - Replace list of credentials to be issued with a single credential that will be issued per call to implementations of `IssuerCredentialDataProvider`
  - Get rid of class `Issuer.IssuedCredentialResult`, replacing it with `KmmResult<Issuer.IssuedCredential>`
+ - Add return types to function calls to `SubjectCredentialStore`
+ - Change from list to single credential in parameter for `Holder.storeCredentials()`, changing name to `storeCredential()`
 
 Release 3.8.0:
  - Kotlin 2.0.0

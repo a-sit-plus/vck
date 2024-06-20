@@ -159,7 +159,7 @@ suspend fun issueDummyCredentials(
     issuer: Issuer,
     holderKeyPair: KeyPairAdapter
 ) {
-    holder.storeCredentials(
+    holder.storeCredential(
         issuer.issueCredential(
             holderKeyPair.publicKey,
             ConstantIndex.AtomicAttribute2023,

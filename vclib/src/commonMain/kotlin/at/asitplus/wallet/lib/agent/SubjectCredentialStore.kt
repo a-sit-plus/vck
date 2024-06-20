@@ -26,7 +26,7 @@ interface SubjectCredentialStore {
         vc: VerifiableCredentialJws,
         vcSerialized: String,
         scheme: ConstantIndex.CredentialScheme,
-    )
+    ) : StoreEntry
 
     /**
      * Implementations should store the passed credential in a secure way.
@@ -40,7 +40,7 @@ interface SubjectCredentialStore {
         vcSerialized: String,
         disclosures: Map<String, SelectiveDisclosureItem?>,
         scheme: ConstantIndex.CredentialScheme,
-    )
+    ) : StoreEntry
 
     /**
      * Implementations should store the passed credential in a secure way.
@@ -51,7 +51,7 @@ interface SubjectCredentialStore {
     suspend fun storeCredential(
         issuerSigned: IssuerSigned,
         scheme: ConstantIndex.CredentialScheme,
-    )
+    ) : StoreEntry
 
     /**
      * Return all stored credentials.
@@ -60,6 +60,7 @@ interface SubjectCredentialStore {
     suspend fun getCredentials(credentialSchemes: Collection<ConstantIndex.CredentialScheme>? = null)
             : KmmResult<List<StoreEntry>>
 
+    @Serializable
     sealed class StoreEntry {
         @Serializable
         data class Vc(

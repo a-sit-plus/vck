@@ -104,7 +104,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
                 RandomKeyPairAdapter(),
                 DummyCredentialDataProvider(),
             )
-            holderAgent.storeCredentials(
+            holderAgent.storeCredential(
                 issuerAgent.issueCredential(
                     holderKeyPair.publicKey,
                     ConstantIndex.AtomicAttribute2023,
@@ -147,7 +147,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
                 RandomKeyPairAdapter(),
                 DummyCredentialDataProvider(),
             )
-            holderAgent.storeCredentials(
+            holderAgent.storeCredential(
                 issuerAgent.issueCredential(
                     holderKeyPair.publicKey,
                     MobileDrivingLicenceScheme,

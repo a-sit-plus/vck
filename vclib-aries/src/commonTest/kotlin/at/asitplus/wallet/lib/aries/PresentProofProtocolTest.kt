@@ -34,7 +34,7 @@ class PresentProofProtocolTest : FreeSpec({
     }
 
     "presentProofGenericWithInvitation" {
-        holder.storeCredentials(
+        holder.storeCredential(
             IssuerAgent(
                 RandomKeyPairAdapter(),
                 DummyCredentialDataProvider(),
@@ -68,7 +68,7 @@ class PresentProofProtocolTest : FreeSpec({
     }
 
     "presentProofGenericDirect" {
-        holder.storeCredentials(
+        holder.storeCredential(
             IssuerAgent(
                 RandomKeyPairAdapter(),
                 DummyCredentialDataProvider(),

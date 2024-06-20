@@ -55,7 +55,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierKeyPair)
-        holderAgent.storeCredentials(
+        holderAgent.storeCredential(
             IssuerAgent(
                 RandomKeyPairAdapter(),
                 DummyCredentialDataProvider(),

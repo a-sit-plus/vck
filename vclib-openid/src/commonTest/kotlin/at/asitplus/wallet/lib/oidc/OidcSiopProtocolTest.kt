@@ -39,7 +39,6 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
@@ -70,7 +69,7 @@ class OidcSiopProtocolTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierKeyPair)
 
-        holderAgent.storeCredentials(
+        holderAgent.storeCredential(
             IssuerAgent(
                 RandomKeyPairAdapter(),
                 DummyCredentialDataProvider(),

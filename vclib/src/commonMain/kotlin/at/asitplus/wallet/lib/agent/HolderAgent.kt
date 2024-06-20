@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.pki.X509Certificate
@@ -9,8 +10,6 @@ import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
 import at.asitplus.wallet.lib.data.dif.FieldQueryResults
 import at.asitplus.wallet.lib.data.dif.FormatHolder
@@ -19,7 +18,6 @@ import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
-import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
@@ -65,73 +63,51 @@ class HolderAgent(
         return validator.setRevocationList(it)
     }
 
-    // TODO replace other function
-    override suspend fun storeCredentials(credential: Holder.StoreCredentialInput): Holder.StoredCredentialsResult {
-        return storeCredentials(listOf(credential))
-    }
-
     /**
-     * Stores all verifiable credentials from [credentialList] that parse and validate,
-     * and returns them for future reference.
+     * Stores the verifiable credential in [credential] if it parses and validates,
+     * and returns it for future reference.
      *
      * Note: Revocation credentials should not be stored, but set with [setRevocationList].
      */
-    override suspend fun storeCredentials(credentialList: List<Holder.StoreCredentialInput>): Holder.StoredCredentialsResult {
-        val acceptedVcJwt = mutableListOf<VerifiableCredentialJws>()
-        val acceptedSdJwt = mutableListOf<VerifiableCredentialSdJwt>()
-        val acceptedIso = mutableListOf<IssuerSigned>()
-        val rejected = mutableListOf<String>()
-        credentialList.filterIsInstance<Holder.StoreCredentialInput.Vc>().forEach { cred ->
-            when (val vc = validator.verifyVcJws(cred.vcJws, keyPair.publicKey)) {
-                is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
-                is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
-                is Verifier.VerifyCredentialResult.SuccessJwt -> acceptedVcJwt += vc.jws
-                    .also { subjectCredentialStore.storeCredential(it, cred.vcJws, cred.scheme) }
-
-                else -> {}
+    override suspend fun storeCredential(credential: Holder.StoreCredentialInput)
+            : KmmResult<Holder.StoredCredential> = catching {
+        when (credential) {
+            is Holder.StoreCredentialInput.Vc -> {
+                val vc = validator.verifyVcJws(credential.vcJws, keyPair.publicKey)
+                if (vc !is Verifier.VerifyCredentialResult.SuccessJwt) {
+                    throw VerificationError(vc.toString())
+                }
+                subjectCredentialStore.storeCredential(vc.jws, credential.vcJws, credential.scheme)
+                    .toStoredCredential()
             }
-        }
-        credentialList.filterIsInstance<Holder.StoreCredentialInput.SdJwt>().forEach { cred ->
-            when (val vc = validator.verifySdJwt(cred.vcSdJwt, keyPair.publicKey)) {
-                is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += vc.input
-                is Verifier.VerifyCredentialResult.Revoked -> rejected += vc.input
-                is Verifier.VerifyCredentialResult.SuccessSdJwt -> acceptedSdJwt += vc.sdJwt
-                    .also { subjectCredentialStore.storeCredential(it, cred.vcSdJwt, vc.disclosures, cred.scheme) }
 
-                else -> {}
+            is Holder.StoreCredentialInput.SdJwt -> {
+                val sdJwt = validator.verifySdJwt(credential.vcSdJwt, keyPair.publicKey)
+                if (sdJwt !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
+                    throw VerificationError(sdJwt.toString())
+                }
+                subjectCredentialStore.storeCredential(
+                    sdJwt.sdJwt,
+                    credential.vcSdJwt,
+                    sdJwt.disclosures,
+                    credential.scheme
+                ).toStoredCredential()
             }
-        }
-        credentialList.filterIsInstance<Holder.StoreCredentialInput.Iso>().forEach { cred ->
-            val issuerKey: CoseKey? =
-                cred.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain
+
+            is Holder.StoreCredentialInput.Iso -> {
+                val issuerKey: CoseKey? = credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain
                     ?.let {
-                        runCatching { X509Certificate.decodeFromDer(it) }
-                            .getOrNull()
-                            ?.publicKey
-                            ?.toCoseKey()
-                            ?.getOrNull()
+                        runCatching { X509Certificate.decodeFromDer(it) }.getOrNull()
+                            ?.publicKey?.toCoseKey()?.getOrNull()
                     }
-
-            when (val result = validator.verifyIsoCred(cred.issuerSigned, issuerKey)) {
-                is Verifier.VerifyCredentialResult.InvalidStructure -> rejected += result.input
-                is Verifier.VerifyCredentialResult.Revoked -> rejected += result.input
-                is Verifier.VerifyCredentialResult.SuccessIso -> acceptedIso += result.issuerSigned
-                    .also {
-                        subjectCredentialStore.storeCredential(
-                            result.issuerSigned,
-                            cred.scheme
-                        )
-                    }
-
-                else -> {}
+                val iso = validator.verifyIsoCred(credential.issuerSigned, issuerKey)
+                if (iso !is Verifier.VerifyCredentialResult.SuccessIso) {
+                    throw VerificationError(iso.toString())
+                }
+                subjectCredentialStore.storeCredential(iso.issuerSigned, credential.scheme)
+                    .toStoredCredential()
             }
         }
-        return Holder.StoredCredentialsResult(
-            acceptedVcJwt = acceptedVcJwt,
-            acceptedSdJwt = acceptedSdJwt,
-            acceptedIso = acceptedIso,
-            rejected = rejected,
-        )
     }
 
 
@@ -145,24 +121,18 @@ class HolderAgent(
         val credentials = subjectCredentialStore.getCredentials().getOrNull()
             ?: return null
                 .also { Napier.w("Got no credentials from subjectCredentialStore") }
-        return credentials.map {
-            when (it) {
-                is SubjectCredentialStore.StoreEntry.Iso -> Holder.StoredCredential.Iso(
-                    storeEntry = it,
-                    status = Validator.RevocationStatus.UNKNOWN
-                )
+        return credentials.map { it.toStoredCredential() }
+    }
 
-                is SubjectCredentialStore.StoreEntry.Vc -> Holder.StoredCredential.Vc(
-                    storeEntry = it,
-                    status = validator.checkRevocationStatus(it.vc)
-                )
+    private fun SubjectCredentialStore.StoreEntry.toStoredCredential() = when (this) {
+        is SubjectCredentialStore.StoreEntry.Iso ->
+            Holder.StoredCredential.Iso(this, Validator.RevocationStatus.UNKNOWN)
 
-                is SubjectCredentialStore.StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
-                    storeEntry = it,
-                    status = validator.checkRevocationStatus(it.sdJwt)
-                )
-            }
-        }
+        is SubjectCredentialStore.StoreEntry.Vc ->
+            Holder.StoredCredential.Vc(this, validator.checkRevocationStatus(vc))
+
+        is SubjectCredentialStore.StoreEntry.SdJwt ->
+            Holder.StoredCredential.SdJwt(this, validator.checkRevocationStatus(sdJwt))
     }
 
     /**

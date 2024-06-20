@@ -97,3 +97,5 @@ fun CryptoPublicKey.matchesIdentifier(input: String): Boolean {
         return true
     return false
 }
+
+class VerificationError(message: String?): Throwable(message)

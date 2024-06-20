@@ -15,34 +15,32 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
         vc: VerifiableCredentialJws,
         vcSerialized: String,
         scheme: ConstantIndex.CredentialScheme
-    ) {
-        credentials += SubjectCredentialStore.StoreEntry.Vc(vcSerialized, vc, scheme)
-    }
+    ) = SubjectCredentialStore.StoreEntry.Vc(vcSerialized, vc, scheme)
+        .also { credentials += it }
 
     override suspend fun storeCredential(
         vc: VerifiableCredentialSdJwt,
         vcSerialized: String,
         disclosures: Map<String, SelectiveDisclosureItem?>,
         scheme: ConstantIndex.CredentialScheme
-    ) {
-        credentials += SubjectCredentialStore.StoreEntry.SdJwt(vcSerialized, vc, disclosures, scheme)
-    }
+    ) = SubjectCredentialStore.StoreEntry.SdJwt(vcSerialized, vc, disclosures, scheme)
+        .also { credentials += it }
 
-    override suspend fun storeCredential(issuerSigned: IssuerSigned, scheme: ConstantIndex.CredentialScheme) {
-        credentials += SubjectCredentialStore.StoreEntry.Iso(issuerSigned, scheme)
-    }
+    override suspend fun storeCredential(
+        issuerSigned: IssuerSigned,
+        scheme: ConstantIndex.CredentialScheme
+    ) = SubjectCredentialStore.StoreEntry.Iso(issuerSigned, scheme)
+        .also { credentials += it }
 
     override suspend fun getCredentials(
         credentialSchemes: Collection<ConstantIndex.CredentialScheme>?,
-    ): KmmResult<List<SubjectCredentialStore.StoreEntry>> {
-        return credentialSchemes?.let { schemes ->
-            KmmResult.success(credentials.filter {
-                when (it) {
-                    is SubjectCredentialStore.StoreEntry.Iso -> it.scheme in schemes
-                    is SubjectCredentialStore.StoreEntry.SdJwt -> it.scheme in schemes
-                    is SubjectCredentialStore.StoreEntry.Vc -> it.scheme in schemes
-                }
-            }.toList())
-        } ?: KmmResult.success(credentials)
-    }
+    ): KmmResult<List<SubjectCredentialStore.StoreEntry>> = credentialSchemes?.let { schemes ->
+        KmmResult.success(credentials.filter {
+            when (it) {
+                is SubjectCredentialStore.StoreEntry.Iso -> it.scheme in schemes
+                is SubjectCredentialStore.StoreEntry.SdJwt -> it.scheme in schemes
+                is SubjectCredentialStore.StoreEntry.Vc -> it.scheme in schemes
+            }
+        }.toList())
+    } ?: KmmResult.success(credentials)
 }

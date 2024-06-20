@@ -41,7 +41,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierKeyPair)
 
-        holderAgent.storeCredentials(
+        holderAgent.storeCredential(
             IssuerAgent(
                 RandomKeyPairAdapter(),
                 DummyCredentialDataProvider(),

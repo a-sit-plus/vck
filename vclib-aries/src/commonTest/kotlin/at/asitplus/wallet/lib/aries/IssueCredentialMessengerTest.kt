@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
+import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
@@ -83,12 +84,12 @@ class IssueCredentialMessengerTest : FreeSpec() {
         return issuedCredential
     }
 
-    private fun assertAtomicVc(issuedCredentials: IssueCredentialProtocolResult) {
-        issuedCredentials.acceptedVcJwt.shouldNotBeEmpty()
-        issuedCredentials.acceptedVcJwt.map { it.vc.credentialSubject }.forEach {
-            it.shouldBeInstanceOf<AtomicAttribute2023>()
-        }
-        issuedCredentials.rejected.shouldBeEmpty()
+    private fun assertAtomicVc(issuedCredential: IssueCredentialProtocolResult) {
+        val credential = issuedCredential.getOrThrow()
+        credential.shouldBeInstanceOf<Holder.StoredCredential.Vc>()
+        val storeEntry = credential.storeEntry
+        storeEntry.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.Vc>()
+        storeEntry.vc.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
     }
 
 }

@@ -22,7 +22,6 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.ktor.http.*
 import io.ktor.util.*
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 
 /**
@@ -38,7 +37,7 @@ class OidcSiopInteropTest : FreeSpec({
     beforeEach {
         holderKeyPair = RandomKeyPairAdapter()
         holderAgent = HolderAgent(holderKeyPair)
-        holderAgent.storeCredentials(
+        holderAgent.storeCredential(
             IssuerAgent(
                 RandomKeyPairAdapter(),
                 DummyCredentialDataProvider(),

@@ -42,7 +42,7 @@ class AgentTest : FreeSpec({
     }
 
     "simple walk-through success" {
-        holder.storeCredentials(
+        holder.storeCredential(
             issuer.issueCredential(
                 holderKeyPair.publicKey,
                 ConstantIndex.AtomicAttribute2023,
@@ -64,7 +64,7 @@ class AgentTest : FreeSpec({
     }
 
     "wrong keyId in presentation leads to InvalidStructure" {
-        holder.storeCredentials(
+        holder.storeCredential(
             issuer.issueCredential(
                 holderKeyPair.publicKey,
                 ConstantIndex.AtomicAttribute2023,
@@ -118,15 +118,8 @@ class AgentTest : FreeSpec({
             revocationListCredential.shouldNotBeNull()
             holder.setRevocationList(revocationListCredential) shouldBe true
 
-            val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
-            storedCredentials.acceptedVcJwt.shouldBeEmpty()
-            storedCredentials.rejected shouldHaveSize 1
-            storedCredentials.notVerified.shouldBeEmpty()
-            holder.createPresentation(
-                challenge = challenge,
-                audienceId = verifier.keyPair.identifier,
-                presentationDefinition = singularPresentationDefinition,
-            ).getOrNull() shouldBe null
+            val storedCredentials = holder.storeCredential(credentials.toStoreCredentialInput())
+            storedCredentials.isFailure shouldBe true
         }
 
         "and when setting a revocation list after storing credentials" {
@@ -136,10 +129,9 @@ class AgentTest : FreeSpec({
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()
             credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-            val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
-            storedCredentials.acceptedVcJwt shouldHaveSize 1
-            storedCredentials.rejected.shouldBeEmpty()
-            storedCredentials.notVerified.shouldBeEmpty()
+
+            val storedCredentials = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+            storedCredentials.shouldBeInstanceOf<Holder.StoredCredential.Vc>()
 
             issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
             val revocationListCredential =
@@ -170,10 +162,9 @@ class AgentTest : FreeSpec({
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()
             credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-            val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
-            storedCredentials.acceptedVcJwt shouldHaveSize 1
-            storedCredentials.rejected.shouldBeEmpty()
-            storedCredentials.notVerified.shouldBeEmpty()
+
+            val storedCredentials = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+            storedCredentials.shouldBeInstanceOf<Holder.StoredCredential.Vc>()
 
             "without a revocation list set" {
                 val holderCredentials = holder.getCredentials()
@@ -204,10 +195,9 @@ class AgentTest : FreeSpec({
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()
             credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
-            val storedCredentials = holder.storeCredentials(credentials.toStoreCredentialInput())
-            storedCredentials.acceptedVcJwt shouldHaveSize 1
-            storedCredentials.rejected.shouldBeEmpty()
-            storedCredentials.notVerified.shouldBeEmpty()
+
+            val storedCredentials = holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
+            storedCredentials.shouldBeInstanceOf<Holder.StoredCredential.Vc>()
 
             issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
             val revocationListCredential =
@@ -237,7 +227,7 @@ class AgentTest : FreeSpec({
             ConstantIndex.AtomicAttribute2023,
             ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         ).getOrThrow()
-        holder.storeCredentials(credentials.toStoreCredentialInput())
+        holder.storeCredential(credentials.toStoreCredentialInput())
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.keyPair.identifier,
@@ -260,7 +250,7 @@ class AgentTest : FreeSpec({
             ConstantIndex.AtomicAttribute2023,
             ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         ).getOrThrow()
-        holder.storeCredentials(credentials.toStoreCredentialInput())
+        holder.storeCredential(credentials.toStoreCredentialInput())
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.keyPair.identifier,

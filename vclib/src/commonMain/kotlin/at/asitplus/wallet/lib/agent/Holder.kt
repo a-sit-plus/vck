@@ -3,8 +3,6 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.dif.FormatHolder
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
@@ -49,29 +47,14 @@ interface Holder {
             val scheme: ConstantIndex.CredentialScheme,
         ) : StoreCredentialInput()
     }
+
     /**
-     * Stores all verifiable credentials from [credentialList] that parse and validate,
-     * and returns them for future reference.
+     * Stores the verifiable credential in [credential] if it parses and validates,
+     * and returns it for future reference.
      *
      * Note: Revocation credentials should not be stored, but set with [setRevocationList].
      */
-    suspend fun storeCredentials(credential: StoreCredentialInput): StoredCredentialsResult
-
-    /**
-     * Stores all verifiable credentials from [credentialList] that parse and validate,
-     * and returns them for future reference.
-     *
-     * Note: Revocation credentials should not be stored, but set with [setRevocationList].
-     */
-    suspend fun storeCredentials(credentialList: List<StoreCredentialInput>): StoredCredentialsResult
-
-    data class StoredCredentialsResult(
-        val acceptedVcJwt: List<VerifiableCredentialJws> = listOf(),
-        val acceptedSdJwt: List<VerifiableCredentialSdJwt> = listOf(),
-        val acceptedIso: List<IssuerSigned> = listOf(),
-        val rejected: List<String> = listOf(),
-        val notVerified: List<String> = listOf(),
-    )
+    suspend fun storeCredential(credential: StoreCredentialInput): KmmResult<StoredCredential>
 
     /**
      * Gets a list of all stored credentials, with a revocation status.
