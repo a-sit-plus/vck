@@ -244,16 +244,10 @@ class IssueCredentialProtocol(
         val issuedCredential = issuedCredentials.getOrElse {
             //TODO prioritise which descriptors to handle when
             //TODO communicate auth problems too? we have an exception for that now…
-            return if (it is DataSourceProblem) {
-                problemReporter.problemRequirement(threadId, "data-source", it.formatComment())
-            } else if (it.cause != null && it.cause is DataSourceProblem) {
-                problemReporter.problemRequirement(
-                    threadId,
-                    "data-source",
-                    (it.cause as DataSourceProblem).formatComment()
-                )
-            } else {
-                problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
+            return when {
+                it is DataSourceProblem -> it.toProblemRequirement()
+                it.cause != null && it.cause is DataSourceProblem -> (it.cause as DataSourceProblem).toProblemRequirement()
+                else -> problemReporter.problemInternal(lastMessage.threadId, "credentials-empty")
             }
         }
         val fulfillmentAttachments = mutableListOf<JwmAttachment>()
@@ -281,6 +275,9 @@ class IssueCredentialProtocol(
             .also { this.threadId = message.threadId }
             .also { this.state = State.FINISHED }
     }
+
+    private fun DataSourceProblem.toProblemRequirement() =
+        problemReporter.problemRequirement(threadId, "data-source", formatComment())
 
     private fun DataSourceProblem.formatComment(): String = message + details?.let { ": $it" }
 
