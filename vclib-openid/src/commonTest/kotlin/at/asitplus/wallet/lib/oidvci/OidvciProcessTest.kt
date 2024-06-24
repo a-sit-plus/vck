@@ -213,7 +213,6 @@ private suspend fun runProcessGetToken(
     val tokenRequest = client.createTokenRequestParameters(
         requestOptions = requestOptions,
         code = code,
-        state = authnResponse.params.state!!,
     )
     val token = authorizationService.token(tokenRequest).getOrThrow()
     return token

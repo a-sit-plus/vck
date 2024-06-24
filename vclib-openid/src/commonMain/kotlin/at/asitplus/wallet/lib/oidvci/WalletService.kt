@@ -169,7 +169,6 @@ class WalletService(
     suspend fun createTokenRequestParameters(
         requestOptions: RequestOptions,
         code: String,
-        state: String,
     ) = TokenRequestParameters(
         grantType = GRANT_TYPE_CODE,
         code = code,
@@ -177,7 +176,7 @@ class WalletService(
         clientId = clientId,
         // TODO in authnrequest, and again in tokenrequest?
         authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
-        codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(state) }
+        codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(requestOptions.state) }
     )
 
     /**
@@ -190,7 +189,6 @@ class WalletService(
     suspend fun createTokenRequestParameters(
         requestOptions: RequestOptions,
         preAuthCode: CredentialOfferGrantsPreAuthCode?,
-        state: String,
     ) = TokenRequestParameters(
         grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
         // TODO Verify if `redirect_uri` and `client_id` are even needed
@@ -200,7 +198,7 @@ class WalletService(
         authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
         transactionCode = preAuthCode?.transactionCode,
         preAuthorizedCode = preAuthCode?.preAuthorizedCode,
-        codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(state) }
+        codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(requestOptions.state) }
     )
 
     private fun RequestOptions.toAuthnDetails() =

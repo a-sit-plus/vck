@@ -1,8 +1,12 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.KmmResult
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.data.DurationSecondsIntSerializer
+import at.asitplus.wallet.lib.oidc.jsonSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlin.time.Duration
 
 @Serializable
@@ -46,4 +50,13 @@ data class CredentialResponseParameters(
     @SerialName("c_nonce_expires_in")
     @Serializable(with = DurationSecondsIntSerializer::class)
     val clientNonceExpiresIn: Duration? = null,
-)
+) {
+
+    fun serialize() = jsonSerializer.encodeToString(this)
+
+    companion object {
+        fun deserialize(input: String): KmmResult<CredentialResponseParameters> =
+            runCatching { jsonSerializer.decodeFromString<CredentialResponseParameters>(input) }.wrap()
+    }
+
+}

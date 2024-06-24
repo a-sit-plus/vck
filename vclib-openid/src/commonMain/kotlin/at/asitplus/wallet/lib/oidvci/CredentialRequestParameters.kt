@@ -1,8 +1,12 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.KmmResult
+import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.wallet.lib.oidc.jsonSerializer
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 
 @Serializable
 data class CredentialRequestParameters(
@@ -73,4 +77,13 @@ data class CredentialRequestParameters(
      */
     @SerialName("proof")
     val proof: CredentialRequestProof? = null,
-)
+) {
+
+    fun serialize() = jsonSerializer.encodeToString(this)
+
+    companion object {
+        fun deserialize(input: String): KmmResult<CredentialRequestParameters> =
+            runCatching { jsonSerializer.decodeFromString<CredentialRequestParameters>(input) }.wrap()
+    }
+
+}
