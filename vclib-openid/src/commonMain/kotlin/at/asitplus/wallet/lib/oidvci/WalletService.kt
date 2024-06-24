@@ -11,6 +11,7 @@ import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
@@ -70,6 +71,23 @@ class WalletService(
     private val coseService: CoseService = DefaultCoseService(cryptoService),
 ) {
 
+    constructor(
+        /**
+         * Used to create [AuthenticationRequestParameters], [TokenRequestParameters] and [CredentialRequestProof],
+         * typically a URI.
+         */
+        clientId: String = "https://wallet.a-sit.at/app",
+        /**
+         * Used to create [AuthenticationRequestParameters] and [TokenRequestParameters].
+         */
+        redirectUrl: String = "$clientId/callback",
+        keyPairAdapter: KeyPairAdapter,
+    ) : this(
+        clientId = clientId,
+        redirectUrl = redirectUrl,
+        cryptoService = DefaultCryptoService(keyPairAdapter),
+    )
+
     private val stateToCodeChallengeMap = mutableMapOf<String, String>()
     private val codeChallengeMutex = Mutex()
 
@@ -113,9 +131,66 @@ class WalletService(
 
     /**
      * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
-     * [IssuerMetadata.authorizationEndpointUrl])
+     * [IssuerMetadata.authorizationEndpointUrl]).
+     *
+     * Sample ktor code:
+     * ```
+     * val credentialConfig = issuerMetadata.supportedCredentialConfigurations!!
+     *     .entries.first { it.key == credentialOffer.configurationIds.first() }.toPair()
+     * val authnRequest = client.createAuthRequest(
+     *     state = state,
+     *     credential = credentialConfig,
+     *     credentialIssuer = issuerMetadata.credentialIssuer,
+     *     authorizationServers = issuerMetadata.authorizationServers
+     * )
+     * val authnResponse = httpClient.get(issuerMetadata.authorizationEndpointUrl!!) {
+     *     url {
+     *         authnRequest.encodeToParameters().forEach { parameters.append(it.key, it.value) }
+     *     }
+     * }
+     * val authn = AuthenticationResponseParameters.deserialize(authnResponse.bodyAsText()).getOrThrow()
+     * ```
+     *
+     * @param credential which credential from [IssuerMetadata.supportedCredentialConfigurations] to request
+     * @param credentialIssuer from [IssuerMetadata.credentialIssuer]
+     * @param authorizationServers from [IssuerMetadata.authorizationServers]
+     */
+    suspend fun createAuthRequest(
+        state: String,
+        credential: Pair<String, SupportedCredentialFormat>,
+        credentialIssuer: String? = null,
+        authorizationServers: Set<String>? = null,
+    ) = AuthenticationRequestParameters(
+        responseType = GRANT_TYPE_CODE,
+        state = state,
+        clientId = clientId,
+        authorizationDetails = setOf(credential.toAuthnDetails(authorizationServers)),
+        resource = credentialIssuer,
+        redirectUrl = redirectUrl,
+        codeChallenge = generateCodeVerifier(state),
+        codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
+    )
+
+    /**
+     * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
+     * [IssuerMetadata.authorizationEndpointUrl]).
+     *
+     * Sample ktor code:
+     * ```
+     * val authnRequest = client.createAuthRequest(
+     *     requestOptions = requestOptions,
+     *     credentialIssuer = issuerMetadata.credentialIssuer,
+     * )
+     * val authnResponse = httpClient.get(issuerMetadata.authorizationEndpointUrl!!) {
+     *     url {
+     *         authnRequest.encodeToParameters().forEach { parameters.append(it.key, it.value) }
+     *     }
+     * }
+     * val authn = AuthenticationResponseParameters.deserialize(authnResponse.bodyAsText()).getOrThrow()
+     * ```
      *
      * @param requestOptions which credential in which representation to request
+     * @param credentialIssuer from [IssuerMetadata.credentialIssuer]
      */
     suspend fun createAuthRequest(
         requestOptions: RequestOptions,
@@ -124,32 +199,10 @@ class WalletService(
         responseType = GRANT_TYPE_CODE,
         state = requestOptions.state,
         clientId = clientId,
-        // TODO in authnrequest, and again in tokenrequest?
         authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
         resource = credentialIssuer,
         redirectUrl = redirectUrl,
         codeChallenge = generateCodeVerifier(requestOptions.state),
-        codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
-    )
-
-    /**
-     * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
-     * [IssuerMetadata.authorizationEndpointUrl]).
-     *
-     * @param scope Credential to request from the issuer, may be obtained from [IssuerMetadata.supportedCredentialConfigurations], or [SupportedCredentialFormat.scope].
-     */
-    suspend fun createAuthRequest(
-        scope: String, // TODO pass in SupportedCredentialFormat
-        credentialIssuer: String? = null,
-        state: String = uuid4().toString()
-    ) = AuthenticationRequestParameters(
-        responseType = GRANT_TYPE_CODE,
-        state = state,
-        clientId = clientId,
-        scope = scope,
-        resource = credentialIssuer,
-        redirectUrl = redirectUrl,
-        codeChallenge = generateCodeVerifier(state),
         codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
     )
 
@@ -161,8 +214,25 @@ class WalletService(
     }
 
     /**
+     * Request token with an authorization code, e.g. from [createAuthRequest].
+     *
      * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
-     * [IssuerMetadata.tokenEndpointUrl])
+     * [IssuerMetadata.tokenEndpointUrl]).
+     *
+     * Sample ktor code:
+     * ```
+     * val authnRequest = client.createAuthRequest(requestOptions)
+     * val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+     * val code = authnResponse.params.code
+     * val tokenRequest = client.createTokenRequestParameters(requestOptions, code = code)
+     * val tokenResponse = httpClient.submitForm(
+     *     url = issuerMetadata.tokenEndpointUrl!!,
+     *     formParameters = parameters {
+     *         tokenRequest.encodeToParameters().forEach { append(it.key, it.value) }
+     *     }
+     * )
+     * val token = TokenResponseParameters.deserialize(tokenResponse.bodyAsText()).getOrThrow()
+     * ```
      *
      * @param requestOptions which credential in which representation to request
      */
@@ -174,14 +244,28 @@ class WalletService(
         code = code,
         redirectUrl = redirectUrl,
         clientId = clientId,
-        // TODO in authnrequest, and again in tokenrequest?
         authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
         codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(requestOptions.state) }
     )
 
     /**
+     * Request token with pre-auth-code, e.g. from [CredentialOffer].
+     *
      * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
-     * [IssuerMetadata.tokenEndpointUrl])
+     * [IssuerMetadata.tokenEndpointUrl]).
+     *
+     * Sample ktor code:
+     * ```
+     * val tokenRequest =
+     *     client.createTokenRequestParameters(requestOptions, credentialOffer.grants!!.preAuthorizedCode)
+     * val tokenResponse = httpClient.submitForm(
+     *     url = issuerMetadata.tokenEndpointUrl!!,
+     *     formParameters = parameters {
+     *         tokenRequest.encodeToParameters().forEach { append(it.key, it.value) }
+     *     }
+     * )
+     * val token = TokenResponseParameters.deserialize(tokenResponse.bodyAsText()).getOrThrow()
+     * ```
      *
      * @param requestOptions which credential in which representation to request
      * @param preAuthCode from [CredentialOfferGrants.preAuthorizedCode] in [CredentialOffer.grants]
@@ -191,10 +275,8 @@ class WalletService(
         preAuthCode: CredentialOfferGrantsPreAuthCode?,
     ) = TokenRequestParameters(
         grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
-        // TODO Verify if `redirect_uri` and `client_id` are even needed
         redirectUrl = redirectUrl,
         clientId = clientId,
-        // TODO in authnrequest, and again in tokenrequest?
         authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
         transactionCode = preAuthCode?.transactionCode,
         preAuthorizedCode = preAuthCode?.preAuthorizedCode,
@@ -207,8 +289,26 @@ class WalletService(
     /**
      * Send the result as JSON-serialized content to the server at `/credential` (or more specific
      * [IssuerMetadata.credentialEndpointUrl]).
+     *
      * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
      * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
+     * See [createTokenRequestParameters].
+     *
+     * Sample ktor code:
+     * ```
+     * val credentialRequest = client.createCredentialRequestJwt(
+     *     requestOptions = requestOptions,
+     *     clientNonce = token.clientNonce,
+     *     credentialIssuer = issuerMetadata.credentialIssuer
+     * ).getOrThrow()
+     *
+     * val credentialResponse = httpClient.post(issuerMetadata.credentialEndpointUrl) {
+     *     setBody(credentialRequest)
+     *     headers {
+     *         append(HttpHeaders.Authorization, "Bearer ${token.accessToken}")
+     *     }
+     * }
+     * ```
      *
      * @param requestOptions which credential in which representation to request
      * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
@@ -225,14 +325,14 @@ class WalletService(
                 type = OpenIdConstants.ProofType.JWT_HEADER_TYPE.stringRepresentation,
             ),
             payload = JsonWebToken(
-                issuer = clientId,
+                issuer = clientId, // TODO omit if token was pre-authn
                 audience = credentialIssuer,
                 issuedAt = requestOptions.clock.now(),
                 nonce = clientNonce,
             ).serialize().encodeToByteArray(),
             addKeyId = false,
-            addJsonWebKey = true
-            // NOTE: use `x5c` to transport key attestation
+            addJsonWebKey = true,
+            addX5c = true,
         ).getOrThrow()
         val proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofType.JWT,
@@ -247,6 +347,26 @@ class WalletService(
      * [IssuerMetadata.credentialEndpointUrl]).
      * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
      * as value `Bearer <accessTokenValue>` (depending on the [TokenResponseParameters.tokenType]).
+     *
+     * Sample ktor code:
+     * ```
+     * val credentialRequest = client.createCredentialRequestCwt(
+     *     requestOptions = WalletService.RequestOptions(
+     *         credentialScheme = MobileDrivingLicenceScheme,
+     *         representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+     *         state = state
+     *     ),
+     *     clientNonce = token.clientNonce,
+     *     credentialIssuer = issuerMetadata.credentialIssuer
+     * ).getOrThrow()
+     *
+     * val credentialResponse = httpClient.post(issuerMetadata.credentialEndpointUrl) {
+     *     setBody(credentialRequest)
+     *     headers {
+     *         append(HttpHeaders.Authorization, "Bearer ${token.accessToken}")
+     *     }
+     * }
+     * ```
      *
      * @param requestOptions which credential in which representation to request
      * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
@@ -264,7 +384,7 @@ class WalletService(
                 certificateChain = cryptoService.keyPairAdapter.certificate?.encodeToDerOrNull()
             ),
             payload = CborWebToken(
-                issuer = clientId,
+                issuer = clientId, // TODO omit when pre-authn
                 audience = credentialIssuer,
                 issuedAt = requestOptions.clock.now(),
                 nonce = clientNonce?.encodeToByteArray(),
@@ -357,6 +477,17 @@ class WalletService(
         else -> throw IllegalArgumentException("format $this not applicable to $credentialScheme")
     }
 }
+
+private fun Pair<String, SupportedCredentialFormat>.toAuthnDetails(authorizationServers: Set<String>?)
+        : AuthorizationDetails = AuthorizationDetails(
+    type = "openid_credential",
+    credentialConfigurationId = first,
+    format = second.format,
+    docType = second.docType,
+    sdJwtVcType = second.sdJwtVcType,
+    credentialDefinition = second.credentialDefinition,
+    locations = authorizationServers
+)
 
 private fun Collection<String>.toRequestedClaimsSdJwt(credentialScheme: ConstantIndex.CredentialScheme) =
     mapOf(credentialScheme.sdJwtType!! to this.associateWith { RequestedCredentialClaimSpecification() })
