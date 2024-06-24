@@ -39,7 +39,7 @@ data class TokenRequestParameters(
      * RFC9396
      */
     @SerialName("authorization_details")
-    val authorizationDetails: AuthorizationDetails? = null,
+    val authorizationDetails: Set<AuthorizationDetails>? = null,
 
     /**
      * OID4VCI: The code representing the authorization to obtain Credentials of a certain type.

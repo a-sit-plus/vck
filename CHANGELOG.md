@@ -26,6 +26,7 @@ Release 4.0.0:
  - Add `AuthorizationRequestValidator`: Extracted presentation request validation logic from `OidcSiopWallet` and put it here
  - Add `PresentationFactory`: Extracted presentation response building logic from `OidcSiopWallet` and put it here
    - Also added some code for presentation submission validation
+ - Update implementation of OpenID 4 Verifiable Credential Issuance, draft 13
 
 Release 3.8.0:
  - Kotlin 2.0.0

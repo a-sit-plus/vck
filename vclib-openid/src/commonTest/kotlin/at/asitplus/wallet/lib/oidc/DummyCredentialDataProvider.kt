@@ -13,12 +13,18 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.mdl.DrivingPrivilege
 import at.asitplus.wallet.mdl.DrivingPrivilegeCode
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.AGE_OVER_18
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.BIRTH_DATE
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUE_DATE
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUING_AUTHORITY
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUING_COUNTRY
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.PORTRAIT
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.UN_DISTINGUISHING_SIGN
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -78,14 +84,26 @@ class DummyCredentialDataProvider(
                     issuerSignedItem(FAMILY_NAME, "Mustermann", digestId++) else null,
                 if (claimNames.isNullOrContains(GIVEN_NAME))
                     issuerSignedItem(GIVEN_NAME, "Max", digestId++) else null,
+                if (claimNames.isNullOrContains(BIRTH_DATE))
+                    issuerSignedItem(BIRTH_DATE, LocalDate.parse("1970-01-01"), digestId++) else null,
                 if (claimNames.isNullOrContains(DOCUMENT_NUMBER))
                     issuerSignedItem(DOCUMENT_NUMBER, "123456789", digestId++) else null,
                 if (claimNames.isNullOrContains(ISSUE_DATE))
-                    issuerSignedItem(ISSUE_DATE, "2023-01-01", digestId++) else null,
+                    issuerSignedItem(ISSUE_DATE, LocalDate.parse("2023-01-01"), digestId++) else null,
                 if (claimNames.isNullOrContains(EXPIRY_DATE))
-                    issuerSignedItem(EXPIRY_DATE, "2033-01-01", digestId++) else null,
+                    issuerSignedItem(EXPIRY_DATE, LocalDate.parse("2033-01-01"), digestId++) else null,
+                if (claimNames.isNullOrContains(ISSUING_COUNTRY))
+                    issuerSignedItem(ISSUING_COUNTRY, "AT", digestId++) else null,
+                if (claimNames.isNullOrContains(ISSUING_AUTHORITY))
+                    issuerSignedItem(ISSUING_AUTHORITY, "AT", digestId++) else null,
+                if (claimNames.isNullOrContains(PORTRAIT))
+                    issuerSignedItem(PORTRAIT, Random.nextBytes(32), digestId++) else null,
+                if (claimNames.isNullOrContains(UN_DISTINGUISHING_SIGN))
+                    issuerSignedItem(UN_DISTINGUISHING_SIGN, "AT", digestId++) else null,
                 if (claimNames.isNullOrContains(DRIVING_PRIVILEGES))
                     issuerSignedItem(DRIVING_PRIVILEGES, arrayOf(drivingPrivilege), digestId++) else null,
+                if (claimNames.isNullOrContains(AGE_OVER_18))
+                    issuerSignedItem(AGE_OVER_18, true, digestId++) else null,
             )
 
             CredentialToBeIssued.Iso(
@@ -98,10 +116,12 @@ class DummyCredentialDataProvider(
             val givenName = "Maria"
             val birthDate = LocalDate.parse("1970-01-01")
             val issuingCountry = "AT"
+            val nationality = "FR"
             val claims = listOfNotNull(
                 optionalClaim(claimNames, EuPidScheme.Attributes.FAMILY_NAME, familyName),
                 optionalClaim(claimNames, EuPidScheme.Attributes.GIVEN_NAME, givenName),
                 optionalClaim(claimNames, EuPidScheme.Attributes.BIRTH_DATE, birthDate),
+                optionalClaim(claimNames, EuPidScheme.Attributes.NATIONALITY, nationality),
                 optionalClaim(claimNames, EuPidScheme.Attributes.ISSUANCE_DATE, issuance),
                 optionalClaim(claimNames, EuPidScheme.Attributes.EXPIRY_DATE, expiration),
                 optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_COUNTRY, issuingCountry),

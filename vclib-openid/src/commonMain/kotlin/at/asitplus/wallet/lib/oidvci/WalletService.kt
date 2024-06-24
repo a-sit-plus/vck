@@ -125,7 +125,7 @@ class WalletService(
         state = requestOptions.state,
         clientId = clientId,
         // TODO in authnrequest, and again in tokenrequest?
-        authorizationDetails = requestOptions.toAuthnDetails(),
+        authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
         resource = credentialIssuer,
         redirectUrl = redirectUrl,
         codeChallenge = generateCodeVerifier(requestOptions.state),
@@ -139,7 +139,7 @@ class WalletService(
      * @param scope Credential to request from the issuer, may be obtained from [IssuerMetadata.supportedCredentialConfigurations], or [SupportedCredentialFormat.scope].
      */
     suspend fun createAuthRequest(
-        scope: String,
+        scope: String, // TODO pass in SupportedCredentialFormat
         credentialIssuer: String? = null,
         state: String = uuid4().toString()
     ) = AuthenticationRequestParameters(
@@ -176,7 +176,7 @@ class WalletService(
         redirectUrl = redirectUrl,
         clientId = clientId,
         // TODO in authnrequest, and again in tokenrequest?
-        authorizationDetails = requestOptions.toAuthnDetails(),
+        authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
         codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(state) }
     )
 
@@ -197,7 +197,7 @@ class WalletService(
         redirectUrl = redirectUrl,
         clientId = clientId,
         // TODO in authnrequest, and again in tokenrequest?
-        authorizationDetails = requestOptions.toAuthnDetails(),
+        authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
         transactionCode = preAuthCode?.transactionCode,
         preAuthorizedCode = preAuthCode?.preAuthorizedCode,
         codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(state) }
@@ -290,15 +290,15 @@ class WalletService(
     private fun CredentialRepresentation.toAuthorizationDetails(
         scheme: ConstantIndex.CredentialScheme,
         requestedAttributes: Set<String>?
-    ): AuthorizationDetails? {
-        return when (this) {
-            PLAIN_JWT -> scheme.toJwtAuthn(toFormat())
-            SD_JWT -> scheme.toSdJwtAuthn(toFormat(), requestedAttributes)
-            ISO_MDOC -> scheme.toIsoAuthn(toFormat(), requestedAttributes)
-        }
+    ): AuthorizationDetails? = when (this) {
+        PLAIN_JWT -> scheme.toJwtAuthn(toFormat())
+        SD_JWT -> scheme.toSdJwtAuthn(toFormat(), requestedAttributes)
+        ISO_MDOC -> scheme.toIsoAuthn(toFormat(), requestedAttributes)
     }
 
-    private fun ConstantIndex.CredentialScheme.toJwtAuthn(format: CredentialFormatEnum) = if (supportsVcJwt)
+    private fun ConstantIndex.CredentialScheme.toJwtAuthn(
+        format: CredentialFormatEnum
+    ) = if (supportsVcJwt)
         AuthorizationDetails(
             type = CREDENTIAL_TYPE_OPENID,
             format = format,
@@ -333,24 +333,31 @@ class WalletService(
         credentialScheme: ConstantIndex.CredentialScheme,
         requestedAttributes: Set<String>?,
         proof: CredentialRequestProof
-    ) = if (this == PLAIN_JWT && credentialScheme.supportsVcJwt) CredentialRequestParameters(
-        format = toFormat(),
-        credentialDefinition = SupportedCredentialFormatDefinition(
-            types = listOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType!!,
-        ),
-        proof = proof
-    ) else if (this == SD_JWT && credentialScheme.supportsSdJwt) CredentialRequestParameters(
-        format = toFormat(),
-        claims = requestedAttributes?.toRequestedClaimsSdJwt(credentialScheme),
-        sdJwtVcType = credentialScheme.sdJwtType!!,
-        proof = proof
-    ) else if (this == ISO_MDOC && credentialScheme.supportsIso) CredentialRequestParameters(
-        format = toFormat(),
-        docType = credentialScheme.isoDocType,
-        claims = requestedAttributes?.toRequestedClaimsIso(credentialScheme),
-        proof = proof
-    )
-    else throw IllegalArgumentException("format $this not applicable to $credentialScheme")
+    ) = when {
+        this == PLAIN_JWT && credentialScheme.supportsVcJwt -> CredentialRequestParameters(
+            format = toFormat(),
+            credentialDefinition = SupportedCredentialFormatDefinition(
+                types = listOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType!!,
+            ),
+            proof = proof
+        )
+
+        this == SD_JWT && credentialScheme.supportsSdJwt -> CredentialRequestParameters(
+            format = toFormat(),
+            claims = requestedAttributes?.toRequestedClaimsSdJwt(credentialScheme),
+            sdJwtVcType = credentialScheme.sdJwtType!!,
+            proof = proof
+        )
+
+        this == ISO_MDOC && credentialScheme.supportsIso -> CredentialRequestParameters(
+            format = toFormat(),
+            docType = credentialScheme.isoDocType,
+            claims = requestedAttributes?.toRequestedClaimsIso(credentialScheme),
+            proof = proof
+        )
+
+        else -> throw IllegalArgumentException("format $this not applicable to $credentialScheme")
+    }
 }
 
 private fun Collection<String>.toRequestedClaimsSdJwt(credentialScheme: ConstantIndex.CredentialScheme) =

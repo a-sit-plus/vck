@@ -145,16 +145,13 @@ class SimpleAuthorizationService(
         } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
             .also { Napier.w("token: could not load user info for $params}") }
 
-        if (params.authorizationDetails != null) {
-            // TODO verify params.authorizationDetails.claims and so on
-            params.authorizationDetails.credentialIdentifiers?.forEach { credentialIdentifier ->
-                // TODO work out mapping of credential identifiers in authorization details to schemes
-                if (!credentialSchemes.map { it.vcType }.contains(credentialIdentifier)) {
-                    throw OAuth2Exception(Errors.INVALID_GRANT)
-                        .also { Napier.w("token: client requested invalid credential identifier: $credentialIdentifier") }
-                }
-            }
-        }
+        // TODO work out mapping of credential identifiers in authorization details to schemes
+        val filteredAuthorizationDetails = params.authorizationDetails?.filter {
+            credentialSchemes.map { it.vcType }.contains(it.credentialConfigurationId) ||
+            credentialSchemes.map { it.sdJwtType }.contains(it.credentialConfigurationId)
+            credentialSchemes.map { it.isoDocType }.contains(it.credentialConfigurationId)
+        }?.toSet()
+
         params.codeVerifier?.let { codeVerifier ->
             codeToCodeChallengeMutex.withLock { codeToCodeChallengeMap.remove(params.code) }?.let { codeChallenge ->
                 val codeChallengeCalculated = codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
@@ -172,10 +169,7 @@ class SimpleAuthorizationService(
             tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
             expires = 3600.seconds,
             clientNonce = clientNonceService.provideNonce(),
-            authorizationDetails = params.authorizationDetails?.let {
-                // TODO supported credential identifiers!
-                setOf(it)
-            }
+            authorizationDetails = filteredAuthorizationDetails
         ).also { Napier.i("token returns $it") }
     }
 

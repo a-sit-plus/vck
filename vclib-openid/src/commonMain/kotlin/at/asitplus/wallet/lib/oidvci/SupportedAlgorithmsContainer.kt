@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.crypto.datatypes.jws.JsonWebAlgorithm
+import at.asitplus.crypto.datatypes.jws.JweAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -11,7 +13,7 @@ data class SupportedAlgorithmsContainer(
      * context-specific, e.g. `EdDSA` and `ES256`.
      */
     @SerialName("alg_values_supported")
-    val supportedAlgorithms: Set<String>,
+    val supportedAlgorithms: Set<JsonWebAlgorithm>,
 
     /**
      * OID4VCI: REQUIRED. Array containing a list of the JWE (RFC7516) encryption algorithms (enc values) (RFC7518)
@@ -19,7 +21,7 @@ data class SupportedAlgorithmsContainer(
      * in a JWT (RFC7519).
      */
     @SerialName("enc_values_supported")
-    val supportedEncryptionAlgorithms: Set<String>? = null,
+    val supportedEncryptionAlgorithms: Set<JweAlgorithm>? = null,
 
     /**
      * OID4VCI: REQUIRED. Boolean value specifying whether the Credential Issuer requires the additional encryption

@@ -19,11 +19,13 @@ class SerializationTest : FunSpec({
     fun createAuthorizationRequest() = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         clientId = randomString(),
-        authorizationDetails = AuthorizationDetails(
-            type = randomString(),
-            format = CredentialFormatEnum.JWT_VC,
-            credentialDefinition = SupportedCredentialFormatDefinition(
-                types = listOf(VERIFIABLE_CREDENTIAL, randomString()),
+        authorizationDetails = setOf(
+            AuthorizationDetails(
+                type = randomString(),
+                format = CredentialFormatEnum.JWT_VC,
+                credentialDefinition = SupportedCredentialFormatDefinition(
+                    types = listOf(VERIFIABLE_CREDENTIAL, randomString()),
+                )
             )
         ),
         redirectUrl = randomString(),
@@ -95,7 +97,7 @@ class SerializationTest : FunSpec({
         println(formEncoded)
         formEncoded shouldContain "response_type=${params.responseType}"
         formEncoded shouldContain "client_id=${params.clientId}"
-        formEncoded shouldContain "authorization_details=" + "{\"type\":".encodeURLParameter()
+        formEncoded shouldContain "authorization_details=" + "[{\"type\":".encodeURLParameter()
         val parsed: AuthenticationRequestParameters = intermediateMap.decode()
         parsed shouldBe params
         val parsedToo: AuthenticationRequestParameters = formEncoded.decodeFromPostBody()

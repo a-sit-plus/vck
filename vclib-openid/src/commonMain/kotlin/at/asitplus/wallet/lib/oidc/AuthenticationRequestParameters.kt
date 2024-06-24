@@ -156,7 +156,7 @@ data class AuthenticationRequestParameters(
      * This specification introduces a new authorization details type `openid_credential`.
      */
     @SerialName("authorization_details")
-    val authorizationDetails: AuthorizationDetails? = null,
+    val authorizationDetails: Set<AuthorizationDetails>? = null,
 
     /**
      * OID4VP: OPTIONAL. A string identifying the scheme of the value in the `client_id` Authorization Request parameter

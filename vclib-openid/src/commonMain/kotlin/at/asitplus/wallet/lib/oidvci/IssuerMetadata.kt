@@ -2,6 +2,8 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.crypto.datatypes.jws.JsonWebAlgorithm
+import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
 import at.asitplus.wallet.lib.oidc.IdTokenType
 import at.asitplus.wallet.lib.oidc.jsonSerializer
 import kotlinx.serialization.SerialName
@@ -72,6 +74,12 @@ data class IssuerMetadata(
     val authorizationEndpointUrl: String? = null,
 
     /**
+     * TODO
+     */
+    @SerialName("pushed_authorization_request_endpoint")
+    val pushedAuthorizationRequestEndpointUrl: String? = null,
+
+    /**
      * OID4VCI: OPTIONAL. URL of the Credential Issuer's Batch Credential Endpoint, as defined in Section 8.
      * This URL MUST use the `https` scheme and MAY contain port, path, and query parameter components.
      * If omitted, the Credential Issuer does not support the Batch Credential Endpoint.
@@ -135,6 +143,18 @@ data class IssuerMetadata(
     val responseTypesSupported: Set<String>? = null,
 
     /**
+     * TODO
+     */
+    @SerialName("response_modes_supported")
+    val responseModesSupported: Set<String>? = null,
+
+    /**
+     * TODO
+     */
+    @SerialName("grant_types_supported")
+    val grantTypesSupported: Set<String>? = null,
+
+    /**
      * OIDC SIOPv2: REQUIRED. A JSON array of strings representing supported scopes.
      * MUST support the `openid` scope value.
      */
@@ -154,7 +174,7 @@ data class IssuerMetadata(
      * Valid values include `RS256`, `ES256`, `ES256K`, and `EdDSA`.
      */
     @SerialName("id_token_signing_alg_values_supported")
-    val idTokenSigningAlgorithmsSupported: Set<String>? = null,
+    val idTokenSigningAlgorithmsSupported: Set<JwsAlgorithm>? = null,
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array containing a list of the JWS signing algorithms (alg values) supported by the
@@ -162,7 +182,7 @@ data class IssuerMetadata(
      * Valid values include `none`, `RS256`, `ES256`, `ES256K`, and `EdDSA`.
      */
     @SerialName("request_object_signing_alg_values_supported")
-    val requestObjectSigningAlgorithmsSupported: Set<String>? = null,
+    val requestObjectSigningAlgorithmsSupported: Set<JwsAlgorithm>? = null,
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array of strings representing URI scheme identifiers and optionally method names of
