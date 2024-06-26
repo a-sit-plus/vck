@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.KmmResult
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.jsonpath.core.NormalizedJsonPath
@@ -8,12 +10,10 @@ import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.data.dif.FieldQueryResults
 import at.asitplus.wallet.lib.iso.DeviceAuth
 import at.asitplus.wallet.lib.iso.DeviceSigned
 import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.iso.IssuerSignedList
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -21,7 +21,6 @@ import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
-import kotlinx.serialization.cbor.ByteStringWrapper
 
 class VerifiablePresentationFactory(
     private val jwsService: JwsService,
@@ -32,47 +31,44 @@ class VerifiablePresentationFactory(
         challenge: String,
         audienceId: String,
         credential: SubjectCredentialStore.StoreEntry,
-        fieldQueryResults: FieldQueryResults?,
-    ): Holder.CreatePresentationResult? {
-        val requestedClaims = fieldQueryResults?.mapNotNull { fieldQueryResult ->
-            fieldQueryResult.value?.normalizedJsonPath
-        }
-
-        return when (credential) {
+        disclosedAttributes: Collection<NormalizedJsonPath>,
+    ): KmmResult<Holder.CreatePresentationResult> = runCatching {
+        when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> createVcPresentation(
                 challenge = challenge,
                 audienceId = audienceId,
-                validCredentials = listOf(credential.vcSerialized)
+                validCredentials = listOf(credential.vcSerialized),
             )
 
             is SubjectCredentialStore.StoreEntry.SdJwt -> createSdJwtPresentation(
                 challenge = challenge,
                 audienceId = audienceId,
                 validSdJwtCredential = credential,
-                requestedClaims = requestedClaims
+                requestedClaims = disclosedAttributes,
             )
 
             is SubjectCredentialStore.StoreEntry.Iso -> createIsoPresentation(
                 challenge = challenge,
                 credential = credential,
-                requestedClaims = requestedClaims
+                requestedClaims = disclosedAttributes,
             )
         }
-    }
+    }.wrap()
 
     private suspend fun createIsoPresentation(
         challenge: String,
         credential: SubjectCredentialStore.StoreEntry.Iso,
-        requestedClaims: List<NormalizedJsonPath>?
-    ): Holder.CreatePresentationResult.Document? {
+        requestedClaims: Collection<NormalizedJsonPath>
+    ): Holder.CreatePresentationResult.Document {
         val deviceSignature = coseService.createSignedCose(
-            payload = challenge.encodeToByteArray(),
-            addKeyId = false
-        ).getOrNull() ?: return null
-            .also { Napier.w("Could not create DeviceAuth for presentation") }
+            payload = challenge.encodeToByteArray(), addKeyId = false
+        ).getOrElse {
+            Napier.w("Could not create DeviceAuth for presentation", it)
+            throw PresentationException(it)
+        }
 
         // allows disclosure of attributes from different namespaces
-        val namespaceToAttributesMap = requestedClaims?.mapNotNull { normalizedJsonPath ->
+        val namespaceToAttributesMap = requestedClaims.mapNotNull { normalizedJsonPath ->
             // namespace + attribute
             val firstTwoNameSegments = normalizedJsonPath.segments.filterIndexed { index, _ ->
                 // TODO: unsure how to deal with attributes with a depth of more than 2
@@ -89,16 +85,16 @@ class VerifiablePresentationFactory(
                 //  -> no need for selective disclosure
                 null
             }
-        }?.groupBy {
+        }.groupBy {
             // grouping by namespace
             it.first
-        }?.mapValues {
+        }.mapValues {
             // unrolling values to just the list of attribute names for that namespace
             it.value.map {
                 it.second
             }
         }
-        val disclosedItems = namespaceToAttributesMap?.mapValues { namespaceToAttributeNamesEntry ->
+        val disclosedItems = namespaceToAttributesMap.mapValues { namespaceToAttributeNamesEntry ->
             val namespace = namespaceToAttributeNamesEntry.key
             val attributeNames = namespaceToAttributeNamesEntry.value
             IssuerSignedList(attributeNames.map { attributeName ->
@@ -106,20 +102,16 @@ class VerifiablePresentationFactory(
                     namespace
                 )?.entries?.find {
                     it.value.elementIdentifier == attributeName
-                } ?: throw AttributeNotAvailableException(credential, namespace, attributeName)
+                } ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
             })
         }
 
         return Holder.CreatePresentationResult.Document(
             Document(
-                docType = credential.scheme.isoDocType!!,
-                issuerSigned = IssuerSigned(
-                    namespaces = disclosedItems,
-                    issuerAuth = credential.issuerSigned.issuerAuth
-                ),
-                deviceSigned = DeviceSigned(
-                    namespaces = byteArrayOf(),
-                    deviceAuth = DeviceAuth(
+                docType = credential.scheme.isoDocType!!, issuerSigned = IssuerSigned(
+                    namespaces = disclosedItems, issuerAuth = credential.issuerSigned.issuerAuth
+                ), deviceSigned = DeviceSigned(
+                    namespaces = byteArrayOf(), deviceAuth = DeviceAuth(
                         deviceSignature = deviceSignature
                     )
                 )
@@ -131,27 +123,32 @@ class VerifiablePresentationFactory(
         audienceId: String,
         challenge: String,
         validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
-        requestedClaims: List<NormalizedJsonPath>?
-    ): Holder.CreatePresentationResult.SdJwt? {
-        val filteredDisclosures = validSdJwtCredential.disclosures.filter {
-            it.discloseItem(requestedClaims?.mapNotNull { claimPath ->
-                // TODO: unsure how to deal with attributes with a depth of more than 1 (if they even should be supported)
-                //  revealing the whole attribute for now, which is as fine grained as SdJwt can do anyway
-                claimPath.segments.firstOrNull()?.let {
-                    when (it) {
-                        is NormalizedJsonPathSegment.NameSegment -> it.memberName
-                        is NormalizedJsonPathSegment.IndexSegment -> null // can't disclose index
-                    }
+        requestedClaims: Collection<NormalizedJsonPath>,
+    ): Holder.CreatePresentationResult.SdJwt {
+        val filteredDisclosures = requestedClaims.mapNotNull { claimPath ->
+            // TODO: unsure how to deal with attributes with a depth of more than 1 (if they even should be supported)
+            //  revealing the whole attribute for now, which is as fine grained as SdJwt can do anyway
+            claimPath.segments.firstOrNull()?.let {
+                when (it) {
+                    is NormalizedJsonPathSegment.NameSegment -> it.memberName
+                    is NormalizedJsonPathSegment.IndexSegment -> null // can't disclose index
                 }
-            })
-        }.keys
-        val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
-        val keyBinding = createKeyBindingJws(audienceId, challenge, issuerJwtPlusDisclosures) ?: return null
-        val jwsFromIssuer = JwsSigned.parse(validSdJwtCredential.vcSerialized.substringBefore("~")).getOrElse {
-            Napier.w("Could not re-create JWS from stored SD-JWT", it)
-            return null
+            }
+        }.let { requestedRootAttributes ->
+            validSdJwtCredential.disclosures.filter {
+                it.discloseItem(requestedRootAttributes)
+            }.keys
         }
-        val sdJwt = SdJwtSigned.serializePresentation(jwsFromIssuer, filteredDisclosures, keyBinding)
+        val issuerJwtPlusDisclosures =
+            SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
+        val keyBinding = createKeyBindingJws(audienceId, challenge, issuerJwtPlusDisclosures)
+        val jwsFromIssuer =
+            JwsSigned.parse(validSdJwtCredential.vcSerialized.substringBefore("~")).getOrElse {
+                Napier.w("Could not re-create JWS from stored SD-JWT", it)
+                throw PresentationException(it)
+            }
+        val sdJwt =
+            SdJwtSigned.serializePresentation(jwsFromIssuer, filteredDisclosures, keyBinding)
         return Holder.CreatePresentationResult.SdJwt(sdJwt)
     }
 
@@ -159,12 +156,12 @@ class VerifiablePresentationFactory(
         audienceId: String,
         challenge: String,
         issuerJwtPlusDisclosures: String,
-    ): JwsSigned? {
+    ): JwsSigned {
         val keyBindingJws = KeyBindingJws(
             issuedAt = Clock.System.now(),
             audience = audienceId,
             challenge = challenge,
-            sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256()
+            sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
         )
         val jwsPayload = keyBindingJws.serialize().encodeToByteArray()
         return jwsService.createSignedJwsAddingParams(
@@ -175,28 +172,21 @@ class VerifiablePresentationFactory(
             payload = jwsPayload,
             addKeyId = false,
             addJsonWebKey = true,
-            addX5c = false
+            addX5c = false,
         ).getOrElse {
             Napier.w("Could not create JWS for presentation", it)
-            return null
+            throw PresentationException(it)
         }
     }
 
     private fun Map.Entry<String, SelectiveDisclosureItem?>.discloseItem(requestedClaims: Collection<String>?): Boolean {
-        // do not disclose by default
         return if (requestedClaims == null) {
+            // do not disclose by default
             false
         } else {
             value?.let { it.claimName in requestedClaims } ?: false
         }
     }
-
-    private fun ByteStringWrapper<IssuerSignedItem>.discloseItem(requestedClaims: Collection<String>?) =
-        if (requestedClaims?.isNotEmpty() == true) {
-            value.elementIdentifier in requestedClaims
-        } else {
-            true
-        }
 
     /**
      * Creates a [VerifiablePresentation] with the given [validCredentials].
@@ -207,13 +197,13 @@ class VerifiablePresentationFactory(
         validCredentials: List<String>,
         challenge: String,
         audienceId: String,
-    ): Holder.CreatePresentationResult? {
+    ): Holder.CreatePresentationResult {
         val vp = VerifiablePresentation(validCredentials)
         val vpSerialized = vp.toJws(challenge, identifier, audienceId).serialize()
         val jwsPayload = vpSerialized.encodeToByteArray()
         val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrElse {
             Napier.w("Could not create JWS for presentation", it)
-            return null
+            throw PresentationException(it)
         }
         return Holder.CreatePresentationResult.Signed(jws.serialize())
     }
