@@ -64,11 +64,11 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                     walletUrl = walletUrl,
                     requestOptions = reqOptions
                 ).getOrThrow()
-            val authnRequest123: AuthenticationRequestParameters =
+            val interim1: AuthenticationRequestParameters =
                 Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
-            authnRequest123.clientId shouldBe relyingPartyUrl
-            val authnRequest10 = authnRequest123.request ?: throw Exception("Authn request is null")
-            val basis = oidcSiopWallet.parseAuthenticationRequestParameters(authnRequest10).getOrThrow()
+            interim1.clientId shouldBe relyingPartyUrl
+            val interim2 = interim1.request ?: throw Exception("Authn request is null")
+            val basis = oidcSiopWallet.parseAuthenticationRequestParameters(interim2).getOrThrow()
             basis.shouldBeInstanceOf<AuthenticationRequestParametersFrom.JwsSigned>()
             AuthenticationRequestParametersFrom.deserialize(basis.serialize()).getOrThrow() shouldBe basis
         }
