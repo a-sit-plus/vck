@@ -80,6 +80,6 @@ sealed class AuthenticationRequestParametersFrom<T>(val source: T, val parameter
 }
 
 private fun isValidUrl(url: String): Boolean {
-    val urlRegex = """^(https?|ftp)://[^\s/$.?#].[^\s]*$""".toRegex()
+    val urlRegex = """^\S+://[^\s/$.?#].\S*$""".toRegex()
     return urlRegex.matches(url)
 }
