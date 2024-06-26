@@ -30,6 +30,7 @@ import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.CREDENTIAL_TYPE_OPENID
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
@@ -240,7 +241,7 @@ class WalletService(
         requestOptions: RequestOptions,
         code: String,
     ) = TokenRequestParameters(
-        grantType = GRANT_TYPE_CODE,
+        grantType = GRANT_TYPE_AUTHORIZATION_CODE,
         code = code,
         redirectUrl = redirectUrl,
         clientId = clientId,

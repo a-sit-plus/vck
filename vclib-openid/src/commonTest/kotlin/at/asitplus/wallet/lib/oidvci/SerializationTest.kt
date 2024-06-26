@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.wallet.lib.oidc.jsonSerializer
@@ -36,7 +37,7 @@ class SerializationTest : FunSpec({
     )
 
     fun createTokenRequest() = TokenRequestParameters(
-        grantType = GRANT_TYPE_CODE,
+        grantType = GRANT_TYPE_AUTHORIZATION_CODE,
         code = randomString(),
         redirectUrl = "https://wallet.a-sit.at/app/${randomString()}",
         clientId = randomString(),

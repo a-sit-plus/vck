@@ -124,7 +124,7 @@ class SimpleAuthorizationService(
      */
     suspend fun token(params: TokenRequestParameters) = catching {
         val userInfo: OidcUserInfoExtended = when (params.grantType) {
-            OpenIdConstants.GRANT_TYPE_CODE -> {
+            OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
                 if (params.code == null || !codeService.verifyCode(params.code))
                     throw OAuth2Exception(Errors.INVALID_CODE)
                         .also { Napier.w("token: client did not provide correct code") }
