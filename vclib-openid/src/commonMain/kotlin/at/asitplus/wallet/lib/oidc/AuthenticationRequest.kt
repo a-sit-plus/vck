@@ -16,7 +16,7 @@ sealed class AuthenticationRequestParametersFrom<T>(val source: T, val parameter
     ) : AuthenticationRequestParametersFrom<at.asitplus.crypto.datatypes.jws.JwsSigned>(jwsSigned, parameters)
 
     class Uri(url: Url, parameters: AuthenticationRequestParameters) :
-        AuthenticationRequestParametersFrom<Url>(url, parameters) {}
+        AuthenticationRequestParametersFrom<Url>(url, parameters)
 
     class Json(jsonString: String, parameters: AuthenticationRequestParameters) :
         AuthenticationRequestParametersFrom<String>(jsonString, parameters)
@@ -49,10 +49,7 @@ sealed class AuthenticationRequestParametersFrom<T>(val source: T, val parameter
         fun deserialize(it: String): KmmResult<AuthenticationRequestParametersFrom<*>> {
             return kotlin.runCatching {
                 val inputMap = jsonSerializer.decodeFromString<Map<String, String>>(it)
-                val second =
-                    inputMap["parameter"]?.let { jsonSerializer.decodeFromString<AuthenticationRequestParameters>(it) }
-                        ?: throw Exception("Cannot deserialize AuthenticationRequestParametersFrom<*> from $it")
-                val test = kotlin.run {
+                val source = kotlin.run {
                     inputMap["source"]?.let {
                         when {
                             at.asitplus.crypto.datatypes.jws.JwsSigned.parse(it).isSuccess -> at.asitplus.crypto.datatypes.jws.JwsSigned.parse(
@@ -67,11 +64,14 @@ sealed class AuthenticationRequestParametersFrom<T>(val source: T, val parameter
                         }
                     } ?: throw Exception("Cannot deserialize AuthenticationRequestParametersFrom<*> from $it")
                 }
+                val param =
+                    inputMap["parameter"]?.let { jsonSerializer.decodeFromString<AuthenticationRequestParameters>(it) }
+                        ?: throw Exception("Cannot deserialize AuthenticationRequestParametersFrom<*> from $it")
 
-                when (test) {
-                    is Url -> Uri(test, second)
-                    is at.asitplus.crypto.datatypes.jws.JwsSigned -> JwsSigned(test, second)
-                    is String -> Json(test, second)
+                when (source) {
+                    is Url -> Uri(source, param)
+                    is at.asitplus.crypto.datatypes.jws.JwsSigned -> JwsSigned(source, param)
+                    is String -> Json(source, param)
                     else -> throw Exception("Unknown AuthenticationRequestParametersFrom<*> from $it")
                 }.also { Napier.d { it.toString() } }
             }.wrap()
@@ -80,6 +80,6 @@ sealed class AuthenticationRequestParametersFrom<T>(val source: T, val parameter
 }
 
 private fun isValidUrl(url: String): Boolean {
-    val urlRegex = """\S://[^\s/$.?#].\S*$""".toRegex()
+    val urlRegex = """^(https?|ftp)://[^\s/$.?#].[^\s]*$""".toRegex()
     return urlRegex.matches(url)
 }
