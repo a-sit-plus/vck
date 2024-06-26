@@ -166,6 +166,7 @@ class WalletService(
         state = state,
         clientId = clientId,
         authorizationDetails = setOf(credential.toAuthnDetails(authorizationServers)),
+        scope = credential.first,
         resource = credentialIssuer,
         redirectUrl = redirectUrl,
         codeChallenge = generateCodeVerifier(state),
@@ -333,7 +334,7 @@ class WalletService(
             ).serialize().encodeToByteArray(),
             addKeyId = false,
             addJsonWebKey = true,
-            addX5c = true,
+            addX5c = false,
         ).getOrThrow()
         val proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofType.JWT,

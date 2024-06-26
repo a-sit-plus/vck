@@ -57,6 +57,7 @@ data class SdJwtSigned(
             val stringListWithoutJws = stringList.drop(1)
             val rawDisclosures = stringListWithoutJws
                 .filterNot { it.contains(".") }
+                .filterNot { it.isEmpty() }
             val disclosures = stringListWithoutJws.take(rawDisclosures.count())
                 .associateWith {
                     val decoded = it.decodeToByteArray(Base64UrlStrict).decodeToString()

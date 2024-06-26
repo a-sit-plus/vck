@@ -4,6 +4,7 @@ import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.SelectiveDisclosureItemSerializer
+import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
@@ -47,6 +48,15 @@ data class SelectiveDisclosureItem(
         result = 31 * result + claimValue.hashCode()
         return result
     }
+
+    override fun toString(): String {
+        return "SelectiveDisclosureItem(" +
+                "salt=${salt.encodeToString(Base64())}, " +
+                "claimName='$claimName', " +
+                "claimValue=$claimValue" +
+                ")"
+    }
+
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {

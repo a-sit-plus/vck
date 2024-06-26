@@ -13,10 +13,10 @@ import kotlin.time.Duration
 data class CredentialResponseParameters(
     /**
      * OID4VCI:
-     * REQUIRED. JSON string denoting the format of the issued Credential.
+     * OPTIONAL. JSON string denoting the format of the issued Credential.
      */
     @SerialName("format")
-    val format: CredentialFormatEnum,
+    val format: CredentialFormatEnum? = null,
 
     /**
      * OID4VCI:
