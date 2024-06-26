@@ -388,7 +388,8 @@ class WalletService(
                 audience = credentialIssuer,
                 issuedAt = requestOptions.clock.now(),
                 nonce = clientNonce?.encodeToByteArray(),
-            ).serialize()
+            ).serialize(),
+            addKeyId = false,
         ).getOrThrow()
         val proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofType.CWT,

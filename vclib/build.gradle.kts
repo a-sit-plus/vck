@@ -42,6 +42,7 @@ kotlin {
             dependencies {
                 implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
+                implementation("com.authlete:cbor:${VcLibVersions.Jvm.`authlete-cbor`}")
             }
         }
     }

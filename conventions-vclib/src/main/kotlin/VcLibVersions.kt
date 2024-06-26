@@ -9,5 +9,6 @@ object VcLibVersions {
     object Jvm {
         const val `jose-jwt` = "9.31"
         const val json = "20230618"
+        const val `authlete-cbor` = "1.18"
     }
 }
