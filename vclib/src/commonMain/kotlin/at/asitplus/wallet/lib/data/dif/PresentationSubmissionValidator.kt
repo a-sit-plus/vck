@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -10,7 +11,7 @@ sealed class PresentationSubmissionValidator {
         fun createInstance(
             submissionRequirements: Collection<SubmissionRequirement>?,
             inputDescriptors: Collection<InputDescriptor>,
-        ): KmmResult<PresentationSubmissionValidator> = runCatching {
+        ): KmmResult<PresentationSubmissionValidator> = catching {
             val verifier = submissionRequirements?.let { _ ->
                 SubmissionRequirementsValidator(
                     submissionRequirements = submissionRequirements,
@@ -22,7 +23,14 @@ sealed class PresentationSubmissionValidator {
                 inputDescriptorIds = inputDescriptors.map { it.id }.toSet()
             )
             return KmmResult.success(verifier)
-        }.wrap()
+        }
+
+        fun createInstance(
+            presentationDefinition: PresentationDefinition,
+        ): KmmResult<PresentationSubmissionValidator> = createInstance(
+            submissionRequirements = presentationDefinition.submissionRequirements,
+            inputDescriptors = presentationDefinition.inputDescriptors,
+        )
     }
 
     /**

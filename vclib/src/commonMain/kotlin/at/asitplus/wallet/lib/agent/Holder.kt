@@ -14,7 +14,7 @@ import at.asitplus.wallet.lib.iso.IssuerSigned
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class InputDescriptorCredentialSubmission(
+data class CredentialSubmission(
     val credential: SubjectCredentialStore.StoreEntry,
     val disclosedAttributes: Collection<NormalizedJsonPath>,
 )
@@ -139,7 +139,7 @@ interface Holder {
         challenge: String,
         audienceId: String,
         presentationDefinitionId: String?,
-        presentationSubmissionSelection: Map<String, InputDescriptorCredentialSubmission>,
+        presentationSubmissionSelection: Map<String, CredentialSubmission>,
     ): KmmResult<PresentationResponseParameters>
 
     /**
@@ -156,7 +156,23 @@ interface Holder {
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
-    ): KmmResult<Map<InputDescriptor, Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>>>
+    ): KmmResult<Map<String, Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>>>
+
+    /**
+     * Evaluates a given input descriptor against a store enctry.
+     *
+     * @param fallbackFormatHolder: format holder to be used in case there is no format holder in the input descriptor.
+     *  This will mostly be some presentationDefinition.formats ?: clientMetadata.vpFormats
+     * @param pathAuthorizationValidator: Provides the user of this library with a way to enforce
+     *  authorization rules on attribute credentials that are to be disclosed.
+     * @return for each constraint field a set of matching nodes or null,
+     */
+    fun evaluateInputDescriptorAgainstCredential(
+        inputDescriptor: InputDescriptor,
+        credential: SubjectCredentialStore.StoreEntry,
+        fallbackFormatHolder: FormatHolder?,
+        pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
+    ): KmmResult<Map<ConstraintField, NodeList>>
 
     sealed class CreatePresentationResult {
         /**
@@ -179,17 +195,17 @@ interface Holder {
 
 }
 
-fun Map<InputDescriptor, Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>>.toDefaultSubmission() =
+fun Map<String, Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>>.toDefaultSubmission() =
     mapNotNull { descriptorCredentialMatches ->
         descriptorCredentialMatches.value.entries.firstNotNullOfOrNull { credentialConstraintFieldMatches ->
-            InputDescriptorCredentialSubmission(
+            CredentialSubmission(
                 credential = credentialConstraintFieldMatches.key,
                 disclosedAttributes = credentialConstraintFieldMatches.value.values.mapNotNull {
                     it.firstOrNull()?.normalizedJsonPath
                 },
             )
         }?.let {
-            descriptorCredentialMatches.key.id to it
+            descriptorCredentialMatches.key to it
         }
     }.toMap()
 
