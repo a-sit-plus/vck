@@ -129,7 +129,7 @@ class OidcSiopWallet(
      * [AuthenticationResponseResult].
      */
     suspend fun parseAuthenticationRequestParameters(input: String)
-            : KmmResult<AuthenticationRequestParametersFrom<*>> = catching {
+            : KmmResult<AuthenticationRequestParametersFrom> = catching {
         // maybe it is a request JWS
         val parsedParams = kotlin.run { parseRequestObjectJws(input) }
             ?: kotlin.runCatching { // maybe it's in the URL parameters
@@ -151,7 +151,7 @@ class OidcSiopWallet(
         extractedParams
     }
 
-    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParametersFrom<*>? =
+    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParametersFrom? =
         params.request?.let { requestObject ->
             parseRequestObjectJws(requestObject)
         } ?: params.requestUri?.let { uri ->
@@ -177,12 +177,12 @@ class OidcSiopWallet(
      * or JSON serialized as a JWT Request Object.
      */
     suspend fun createAuthnResponse(
-        request: AuthenticationRequestParametersFrom<*>
+        request: AuthenticationRequestParametersFrom
     ): KmmResult<AuthenticationResponseResult> = catching {
         val response = createAuthnResponseParams(request).getOrThrow()
         if (request.parameters.responseType == null
-            || (!request.parameters.responseType.contains(ID_TOKEN)
-                    && !request.parameters.responseType.contains(VP_TOKEN))
+            || (!request.parameters.responseType!!.contains(ID_TOKEN)
+                    && !request.parameters.responseType!!.contains(VP_TOKEN))
         ) {
             Napier.w("createAuthnResponse: Unknown response_type ${request.parameters.responseType}")
             throw OAuth2Exception(Errors.INVALID_REQUEST)
@@ -197,7 +197,7 @@ class OidcSiopWallet(
     }
 
     private fun authnResponseDirectPost(
-        request: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
@@ -210,7 +210,7 @@ class OidcSiopWallet(
      * Per OID4VP, the response may either be signed, or encrypted (never signed and encrypted!)
      */
     private suspend fun authnResponseDirectPostJwt(
-        request: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
@@ -221,7 +221,7 @@ class OidcSiopWallet(
         return AuthenticationResponseResult.Post(url, jarm.encodeToParameters())
     }
 
-    private suspend fun buildJarm(request: AuthenticationRequestParametersFrom<*>, response: AuthenticationResponse) =
+    private suspend fun buildJarm(request: AuthenticationRequestParametersFrom, response: AuthenticationResponse) =
         if (response.clientMetadata != null && response.jsonWebKeys != null && response.clientMetadata.requestsEncryption()) {
             val alg = response.clientMetadata.authorizationEncryptedResponseAlg!!
             val enc = response.clientMetadata.authorizationEncryptedResponseEncoding!!
@@ -260,12 +260,12 @@ class OidcSiopWallet(
         authorizationEncryptedResponseAlg != null && authorizationEncryptedResponseEncoding != null
 
     private fun authnResponseQuery(
-        request: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse
     ): AuthenticationResponseResult.Redirect {
         if (request.parameters.redirectUrl == null)
             throw OAuth2Exception(Errors.INVALID_REQUEST)
-        val url = URLBuilder(request.parameters.redirectUrl).apply {
+        val url = URLBuilder(request.parameters.redirectUrl!!).apply {
             response.params.encodeToParameters().forEach {
                 this.parameters.append(it.key, it.value)
             }
@@ -277,12 +277,12 @@ class OidcSiopWallet(
      * That's the default for `id_token` and `vp_token`
      */
     private fun authnResponseFragment(
-        request: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse
     ): AuthenticationResponseResult.Redirect {
         if (request.parameters.redirectUrl == null)
             throw OAuth2Exception(Errors.INVALID_REQUEST)
-        val url = URLBuilder(request.parameters.redirectUrl)
+        val url = URLBuilder(request.parameters.redirectUrl!!)
             .apply { encodedFragment = response.params.encodeToParameters().formUrlEncode() }
             .buildString()
         return AuthenticationResponseResult.Redirect(url, response.params)
@@ -292,7 +292,7 @@ class OidcSiopWallet(
      * Creates the authentication response from the RP's [params]
      */
     suspend fun createAuthnResponseParams(
-        params: AuthenticationRequestParametersFrom<*>
+        params: AuthenticationRequestParametersFrom
     ): KmmResult<AuthenticationResponse> = catching {
         val clientIdScheme = params.parameters.clientIdScheme
         if (clientIdScheme == OpenIdConstants.ClientIdScheme.REDIRECT_URI) {
@@ -307,7 +307,7 @@ class OidcSiopWallet(
 
         val clientMetadata = runCatching { params.parameters.loadClientMetadata() }.getOrNull()
         val certKey = (params as? AuthenticationRequestParametersFrom.JwsSigned)
-            ?.source?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
+            ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val jsonWebKeySet = clientMetadata?.loadJsonWebKeySet()?.keys?.combine(certKey)
         val audience = params.extractAudience(clientMetadata)
         if (!clientIdScheme.isAnyX509()) {
@@ -345,7 +345,7 @@ class OidcSiopWallet(
         }
 
     private suspend fun buildPresentation(
-        params: AuthenticationRequestParametersFrom<*>,
+        params: AuthenticationRequestParametersFrom,
         audience: String,
         presentationDefinition: PresentationDefinition,
         clientMetadata: RelyingPartyMetadata?
@@ -355,7 +355,7 @@ class OidcSiopWallet(
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
         return holder.createPresentation(
-            challenge = params.parameters.nonce,
+            challenge = params.parameters.nonce!!,
             audienceId = audience,
             presentationDefinition = presentationDefinition,
             fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata?.vpFormats,
@@ -365,7 +365,7 @@ class OidcSiopWallet(
         }
     }
 
-    private suspend fun buildSignedIdToken(params: AuthenticationRequestParametersFrom<*>): JwsSigned? {
+    private suspend fun buildSignedIdToken(params: AuthenticationRequestParametersFrom): JwsSigned? {
         if (params.parameters.responseType?.contains(ID_TOKEN) != true) {
             return null
         }
@@ -383,7 +383,7 @@ class OidcSiopWallet(
             audience = params.parameters.redirectUrl ?: params.parameters.clientId ?: agentJsonWebKey.jwkThumbprint,
             issuedAt = now,
             expiration = now + 60.seconds,
-            nonce = params.parameters.nonce,
+            nonce = params.parameters.nonce!!,
         )
         val jwsPayload = idToken.serialize().encodeToByteArray()
         val signedIdToken = jwsService.createSignedJwsAddingParams(payload = jwsPayload, addX5c = false).getOrElse {
@@ -421,7 +421,7 @@ class OidcSiopWallet(
         }
     }
 
-    private suspend fun AuthenticationRequestParametersFrom<*>.extractAudience(
+    private suspend fun AuthenticationRequestParametersFrom.extractAudience(
         clientMetadata: RelyingPartyMetadata?
     ) = clientMetadata?.loadJsonWebKeySet()?.keys?.firstOrNull()?.identifier
         ?: parameters.clientId
@@ -448,16 +448,16 @@ class OidcSiopWallet(
                 .also { Napier.w("client_id_scheme is redirect_uri, but metadata is not set") }
     }
 
-    private fun AuthenticationRequestParametersFrom<*>.verifyClientIdSchemeX509() {
+    private fun AuthenticationRequestParametersFrom.verifyClientIdSchemeX509() {
         val clientIdScheme = parameters.clientIdScheme
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
         if (this !is AuthenticationRequestParametersFrom.JwsSigned
-            || source.header.certificateChain == null
-            || source.header.certificateChain!!.isEmpty()
+            || jwsSigned.header.certificateChain == null
+            || jwsSigned.header.certificateChain!!.isEmpty()
         ) throw OAuth2Exception(Errors.INVALID_REQUEST)
             .also { Napier.w("client_id_scheme is $clientIdScheme, but metadata is not set and no x5c certificate chain is present in the original authn request") }
         //basic checks done
-        val leaf = source.header.certificateChain!!.leaf
+        val leaf = jwsSigned.header.certificateChain!!.leaf
         if (leaf.tbsCertificate.extensions == null || leaf.tbsCertificate.extensions!!.isEmpty()) {
             throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("client_id_scheme is $clientIdScheme, but no extensions were found in the leaf certificate") }

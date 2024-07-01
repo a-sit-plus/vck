@@ -8,6 +8,7 @@ Release 4.0.0:
  - Get rid of class `Issuer.IssuedCredentialResult`, replacing it with `KmmResult<Issuer.IssuedCredential>`
  - Add return types to function calls to `SubjectCredentialStore`
  - Change from list to single credential in parameter for `Holder.storeCredentials()`, changing name to `storeCredential()`
+ - Refactor `AuthenticationRequestParametersFrom` used in `OidcSiopWallet` to be serializable
 
 Release 3.8.0:
  - Kotlin 2.0.0

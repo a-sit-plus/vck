@@ -10,6 +10,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import kotlinx.serialization.encodeToString
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
@@ -35,6 +36,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         ConstantIndex.CredentialRepresentation.ISO_MDOC
     )
 
+
     representations.forEach { representation ->
         val reqOptions = OidcSiopVerifier.RequestOptions(
             credentialScheme = ConstantIndex.AtomicAttribute2023,
@@ -46,31 +48,38 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 walletUrl = walletUrl,
                 requestOptions = reqOptions
             )
-            val basis = oidcSiopWallet.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
-            basis.shouldBeInstanceOf<AuthenticationRequestParametersFrom.Uri>()
-            AuthenticationRequestParametersFrom.deserialize(basis.serialize()).getOrThrow() shouldBe basis
+            val params = oidcSiopWallet.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationRequestParametersFrom.Uri>()
+
+            val serialized = params.serialize()
+
+            AuthenticationRequestParametersFrom.deserialize(serialized).getOrThrow() shouldBe params
         }
 
         "Json test $representation" {
             val authnRequest = verifierSiop.createAuthnRequest(requestOptions = reqOptions).serialize()
-            val basis = oidcSiopWallet.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
-            basis.shouldBeInstanceOf<AuthenticationRequestParametersFrom.Json>()
-            AuthenticationRequestParametersFrom.deserialize(basis.serialize()).getOrThrow() shouldBe basis
+            val params = oidcSiopWallet.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
+
+            val serialized = params.serialize()
+
+            AuthenticationRequestParametersFrom.deserialize(serialized).getOrThrow() shouldBe params
         }
 
         "JwsSigned test $representation" {
-            val authnRequestUrl =
-                verifierSiop.createAuthnRequestUrlWithRequestObject(
-                    walletUrl = walletUrl,
-                    requestOptions = reqOptions
-                ).getOrThrow()
+            val authnRequestUrl = verifierSiop.createAuthnRequestUrlWithRequestObject(
+                walletUrl = walletUrl,
+                requestOptions = reqOptions
+            ).getOrThrow()
             val interim1: AuthenticationRequestParameters =
                 Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
             interim1.clientId shouldBe relyingPartyUrl
+
             val interim2 = interim1.request ?: throw Exception("Authn request is null")
-            val basis = oidcSiopWallet.parseAuthenticationRequestParameters(interim2).getOrThrow()
-            basis.shouldBeInstanceOf<AuthenticationRequestParametersFrom.JwsSigned>()
-            AuthenticationRequestParametersFrom.deserialize(basis.serialize()).getOrThrow() shouldBe basis
+            val params = oidcSiopWallet.parseAuthenticationRequestParameters(interim2).getOrThrow()
+
+            val serialized = params.serialize()
+
+            AuthenticationRequestParametersFrom.deserialize(serialized).getOrThrow() shouldBe params
         }
     }
 })
