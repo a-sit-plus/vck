@@ -180,13 +180,13 @@ class OidcSiopWallet(
         request: AuthenticationRequestParametersFrom
     ): KmmResult<AuthenticationResponseResult> = catching {
         val response = createAuthnResponseParams(request).getOrThrow()
-        if (request.parameters.responseType == null
-            || (!request.parameters.responseType!!.contains(ID_TOKEN)
-                    && !request.parameters.responseType!!.contains(VP_TOKEN))
-        ) {
-            Napier.w("createAuthnResponse: Unknown response_type ${request.parameters.responseType}")
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
-        }
+        request.parameters.responseType?.let {
+            if (!it.contains(ID_TOKEN) && !it.contains(VP_TOKEN))
+                throw OAuth2Exception(Errors.INVALID_REQUEST)
+                    .also { Napier.w("createAuthnResponse: Unknown response_type $it") }
+        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            .also { Napier.w("createAuthnResponse: response_type null in ${request.parameters}") }
+
         when (request.parameters.responseMode) {
             DIRECT_POST -> authnResponseDirectPost(request, response)
             DIRECT_POST_JWT -> authnResponseDirectPostJwt(request, response)
@@ -263,13 +263,13 @@ class OidcSiopWallet(
         request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse
     ): AuthenticationResponseResult.Redirect {
-        if (request.parameters.redirectUrl == null)
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
-        val url = URLBuilder(request.parameters.redirectUrl!!).apply {
-            response.params.encodeToParameters().forEach {
-                this.parameters.append(it.key, it.value)
-            }
-        }.buildString()
+        val url = request.parameters.redirectUrl?.let { redirectUrl ->
+            URLBuilder(redirectUrl).apply {
+                response.params.encodeToParameters().forEach {
+                    this.parameters.append(it.key, it.value)
+                }
+            }.buildString()
+        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
         return AuthenticationResponseResult.Redirect(url, response.params)
     }
 
@@ -280,11 +280,11 @@ class OidcSiopWallet(
         request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse
     ): AuthenticationResponseResult.Redirect {
-        if (request.parameters.redirectUrl == null)
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
-        val url = URLBuilder(request.parameters.redirectUrl!!)
-            .apply { encodedFragment = response.params.encodeToParameters().formUrlEncode() }
-            .buildString()
+        val url = request.parameters.redirectUrl?.let { redirectUrl ->
+            URLBuilder(redirectUrl)
+                .apply { encodedFragment = response.params.encodeToParameters().formUrlEncode() }
+                .buildString()
+        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
         return AuthenticationResponseResult.Redirect(url, response.params)
     }
 
@@ -350,12 +350,10 @@ class OidcSiopWallet(
         presentationDefinition: PresentationDefinition,
         clientMetadata: RelyingPartyMetadata?
     ): Holder.PresentationResponseParameters {
-        if (params.parameters.nonce == null) {
-            Napier.w("nonce is null in ${params.parameters}")
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
-        }
+        val nonce = params.parameters.nonce ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            .also { Napier.w("nonce is null in ${params.parameters}") }
         return holder.createPresentation(
-            challenge = params.parameters.nonce!!,
+            challenge = nonce,
             audienceId = audience,
             presentationDefinition = presentationDefinition,
             fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata?.vpFormats,
@@ -369,10 +367,8 @@ class OidcSiopWallet(
         if (params.parameters.responseType?.contains(ID_TOKEN) != true) {
             return null
         }
-        if (params.parameters.nonce == null) {
-            Napier.w("nonce is null in ${params.parameters}")
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
-        }
+        val nonce = params.parameters.nonce ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            .also { Napier.w("nonce is null in ${params.parameters}") }
         val now = clock.now()
         // we'll assume jwk-thumbprint
         val agentJsonWebKey = agentPublicKey.toJsonWebKey()
@@ -383,7 +379,7 @@ class OidcSiopWallet(
             audience = params.parameters.redirectUrl ?: params.parameters.clientId ?: agentJsonWebKey.jwkThumbprint,
             issuedAt = now,
             expiration = now + 60.seconds,
-            nonce = params.parameters.nonce!!,
+            nonce = nonce,
         )
         val jwsPayload = idToken.serialize().encodeToByteArray()
         val signedIdToken = jwsService.createSignedJwsAddingParams(payload = jwsPayload, addX5c = false).getOrElse {
