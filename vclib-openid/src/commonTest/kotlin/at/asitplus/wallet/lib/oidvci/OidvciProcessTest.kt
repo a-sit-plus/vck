@@ -36,7 +36,7 @@ class OidvciProcessTest : FunSpec({
 
     test("process with W3C VC JWT") {
         val client = WalletService()
-        val credential = runProcessWithJwtProof(
+        val credential = runProcess(
             authorizationService,
             issuer,
             client,
@@ -55,7 +55,7 @@ class OidvciProcessTest : FunSpec({
 
     test("process with W3C VC SD-JWT") {
         val client = WalletService()
-        val credential = runProcessWithJwtProof(
+        val credential = runProcess(
             authorizationService,
             issuer,
             client,
@@ -76,7 +76,7 @@ class OidvciProcessTest : FunSpec({
 
     test("process with W3C VC SD-JWT one requested claim") {
         val client = WalletService()
-        val credential = runProcessWithJwtProof(
+        val credential = runProcess(
             authorizationService,
             issuer,
             client,
@@ -98,7 +98,7 @@ class OidvciProcessTest : FunSpec({
 
     test("process with ISO mobile driving licence") {
         val client = WalletService()
-        val credential = runProcessWithCwtProof(
+        val credential = runProcess(
             authorizationService,
             issuer,
             client,
@@ -118,7 +118,7 @@ class OidvciProcessTest : FunSpec({
 
     test("process with ISO mobile driving licence one requested claim") {
         val client = WalletService()
-        val credential = runProcessWithCwtProof(
+        val credential = runProcess(
             authorizationService,
             issuer,
             client,
@@ -139,7 +139,7 @@ class OidvciProcessTest : FunSpec({
 
     test("process with ISO atomic attributes") {
         val client = WalletService()
-        val credential = runProcessWithCwtProof(
+        val credential = runProcess(
             authorizationService,
             issuer,
             client,
@@ -158,32 +158,17 @@ class OidvciProcessTest : FunSpec({
 
 })
 
-private suspend fun runProcessWithJwtProof(
+private suspend fun runProcess(
     authorizationService: SimpleAuthorizationService,
     issuer: CredentialIssuer,
     client: WalletService,
     requestOptions: WalletService.RequestOptions,
 ): CredentialResponseParameters {
     val token = runProcessGetToken(authorizationService, client, requestOptions)
-    val credentialRequest = client.createCredentialRequestJwt(
+    val credentialRequest = client.createCredentialRequest(
         requestOptions,
         token.clientNonce,
         issuer.metadata.credentialIssuer
-    ).getOrThrow()
-    return issuer.credential(token.accessToken, credentialRequest).getOrThrow()
-}
-
-private suspend fun runProcessWithCwtProof(
-    authorizationService: SimpleAuthorizationService,
-    issuer: CredentialIssuer,
-    client: WalletService,
-    requestOptions: WalletService.RequestOptions,
-): CredentialResponseParameters {
-    val token = runProcessGetToken(authorizationService, client, requestOptions)
-    val credentialRequest = client.createCredentialRequestCwt(
-        requestOptions = requestOptions,
-        clientNonce = token.clientNonce,
-        credentialIssuer = issuer.metadata.credentialIssuer
     ).getOrThrow()
     return issuer.credential(token.accessToken, credentialRequest).getOrThrow()
 }
@@ -201,6 +186,5 @@ private suspend fun runProcessGetToken(
         requestOptions = requestOptions,
         code = code,
     )
-    val token = authorizationService.token(tokenRequest).getOrThrow()
-    return token
+    return authorizationService.token(tokenRequest).getOrThrow()
 }

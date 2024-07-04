@@ -312,52 +312,33 @@ class WalletService(
      * }
      * ```
      *
-     * @param requestOptions which credential in which representation to request
+     * @param credential which credential from [IssuerMetadata.supportedCredentialConfigurations] to request
      * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
      * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
      */
-    suspend fun createCredentialRequestJwt(
-        requestOptions: RequestOptions,
+    suspend fun createCredentialRequest(
+        credential: SupportedCredentialFormat,
         clientNonce: String?,
         credentialIssuer: String?,
-    ): KmmResult<CredentialRequestParameters> = catching {
-        val proofPayload = jwsService.createSignedJwsAddingParams(
-            header = JwsHeader(
-                algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm(),
-                type = OpenIdConstants.ProofType.JWT_HEADER_TYPE.stringRepresentation,
-            ),
-            payload = JsonWebToken(
-                issuer = clientId, // TODO omit if token was pre-authn
-                audience = credentialIssuer,
-                issuedAt = requestOptions.clock.now(),
-                nonce = clientNonce,
-            ).serialize().encodeToByteArray(),
-            addKeyId = false,
-            addJsonWebKey = true,
-            addX5c = false,
-        ).getOrThrow()
-        val proof = CredentialRequestProof(
-            proofType = OpenIdConstants.ProofType.JWT,
-            jwt = proofPayload.serialize()
-        )
-        requestOptions.toCredentialRequestJwt(proof)
-            .also { Napier.i("createCredentialRequestJwt returns $it") }
-    }
+    ): KmmResult<CredentialRequestParameters> =
+        if (credential.supportedProofTypes?.containsKey(OpenIdConstants.ProofType.CWT.stringRepresentation) == true) {
+            createCredentialRequestCwt(null, credential, clientNonce, credentialIssuer)
+        } else {
+            createCredentialRequestJwt(null, credential, clientNonce, credentialIssuer)
+        }
 
     /**
      * Send the result as JSON-serialized content to the server at `/credential` (or more specific
      * [IssuerMetadata.credentialEndpointUrl]).
+     *
      * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
-     * as value `Bearer <accessTokenValue>` (depending on the [TokenResponseParameters.tokenType]).
+     * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
+     * See [createTokenRequestParameters].
      *
      * Sample ktor code:
      * ```
-     * val credentialRequest = client.createCredentialRequestCwt(
-     *     requestOptions = WalletService.RequestOptions(
-     *         credentialScheme = MobileDrivingLicenceScheme,
-     *         representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-     *         state = state
-     *     ),
+     * val credentialRequest = client.createCredentialRequestJwt(
+     *     requestOptions = requestOptions,
      *     clientNonce = token.clientNonce,
      *     credentialIssuer = issuerMetadata.credentialIssuer
      * ).getOrThrow()
@@ -374,8 +355,56 @@ class WalletService(
      * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
      * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
      */
-    suspend fun createCredentialRequestCwt(
+    suspend fun createCredentialRequest(
         requestOptions: RequestOptions,
+        clientNonce: String?,
+        credentialIssuer: String?,
+    ): KmmResult<CredentialRequestParameters> =
+        if (requestOptions.representation == ISO_MDOC) {
+            createCredentialRequestCwt(requestOptions, null, clientNonce, credentialIssuer)
+                .also { Napier.i("createCredentialRequest returns $it") }
+        } else {
+            createCredentialRequestJwt(requestOptions, null, clientNonce, credentialIssuer)
+                .also { Napier.i("createCredentialRequest returns $it") }
+        }
+
+    private suspend fun createCredentialRequestJwt(
+        requestOptions: RequestOptions?,
+        credential: SupportedCredentialFormat?,
+        clientNonce: String?,
+        credentialIssuer: String?,
+    ): KmmResult<CredentialRequestParameters> = catching {
+        val proofPayload = jwsService.createSignedJwsAddingParams(
+            header = JwsHeader(
+                algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm(),
+                type = OpenIdConstants.ProofType.JWT_HEADER_TYPE.stringRepresentation,
+            ),
+            payload = JsonWebToken(
+                issuer = clientId, // TODO omit if token was pre-authn
+                audience = credentialIssuer,
+                issuedAt = requestOptions?.clock?.now() ?: Clock.System.now(),
+                nonce = clientNonce,
+            ).serialize().encodeToByteArray(),
+            addKeyId = false,
+            addJsonWebKey = true,
+            addX5c = false,
+        ).getOrThrow()
+        val proof = CredentialRequestProof(
+            proofType = OpenIdConstants.ProofType.JWT,
+            jwt = proofPayload.serialize()
+        )
+        if (requestOptions != null) {
+            requestOptions.toCredentialRequestParameters(proof)
+        } else if (credential != null) {
+            credential.toCredentialRequestParameters(null, proof) // todo requestedattributes
+        } else {
+            throw IllegalArgumentException("requestOptions and credential null")
+        }
+    }
+
+    private suspend fun createCredentialRequestCwt(
+        requestOptions: RequestOptions?,
+        credential: SupportedCredentialFormat?,
         clientNonce: String?,
         credentialIssuer: String?,
     ): KmmResult<CredentialRequestParameters> = catching {
@@ -388,7 +417,7 @@ class WalletService(
             payload = CborWebToken(
                 issuer = clientId, // TODO omit when pre-authn
                 audience = credentialIssuer,
-                issuedAt = requestOptions.clock.now(),
+                issuedAt = requestOptions?.clock?.now() ?: Clock.System.now(),
                 nonce = clientNonce?.encodeToByteArray(),
             ).serialize(),
             addKeyId = false,
@@ -397,16 +426,22 @@ class WalletService(
             proofType = OpenIdConstants.ProofType.CWT,
             cwt = proofPayload.serialize().encodeToString(Base64UrlStrict),
         )
-        requestOptions.toCredentialRequestJwt(proof)
-            .also { Napier.i("createCredentialRequestCwt returns $it") }
+        if (requestOptions != null) {
+            requestOptions.toCredentialRequestParameters(proof)
+        } else if (credential != null) {
+            credential.toCredentialRequestParameters(null, proof) // todo requestedattributes
+        } else {
+            throw IllegalArgumentException("requestOptions and credential null")
+        }
     }
 
-    private fun RequestOptions.toCredentialRequestJwt(proof: CredentialRequestProof) =
-        representation.toCredentialRequestParameters(
-            credentialScheme,
-            requestedAttributes,
-            proof
-        )
+    private fun RequestOptions.toCredentialRequestParameters(
+        proof: CredentialRequestProof
+    ) = representation.toCredentialRequestParameters(
+        credentialScheme,
+        requestedAttributes,
+        proof
+    )
 
     private fun CredentialRepresentation.toAuthorizationDetails(
         scheme: ConstantIndex.CredentialScheme,
@@ -437,18 +472,19 @@ class WalletService(
             type = CREDENTIAL_TYPE_OPENID,
             format = format,
             sdJwtVcType = sdJwtType!!,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(this),
+            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtType!!),
         ) else null
 
     private fun ConstantIndex.CredentialScheme.toIsoAuthn(
         format: CredentialFormatEnum,
         requestedAttributes: Set<String>?
-    ) = if (supportsIso) AuthorizationDetails(
-        type = CREDENTIAL_TYPE_OPENID,
-        format = format,
-        docType = isoDocType,
-        claims = requestedAttributes?.toRequestedClaimsIso(this)
-    ) else null
+    ) = if (supportsIso)
+        AuthorizationDetails(
+            type = CREDENTIAL_TYPE_OPENID,
+            format = format,
+            docType = isoDocType,
+            claims = requestedAttributes?.toRequestedClaimsIso(isoNamespace!!)
+        ) else null
 
     private fun CredentialRepresentation.toCredentialRequestParameters(
         credentialScheme: ConstantIndex.CredentialScheme,
@@ -465,7 +501,7 @@ class WalletService(
 
         this == SD_JWT && credentialScheme.supportsSdJwt -> CredentialRequestParameters(
             format = toFormat(),
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(credentialScheme),
+            claims = requestedAttributes?.toRequestedClaimsSdJwt(credentialScheme.sdJwtType!!),
             sdJwtVcType = credentialScheme.sdJwtType!!,
             proof = proof
         )
@@ -473,11 +509,38 @@ class WalletService(
         this == ISO_MDOC && credentialScheme.supportsIso -> CredentialRequestParameters(
             format = toFormat(),
             docType = credentialScheme.isoDocType,
-            claims = requestedAttributes?.toRequestedClaimsIso(credentialScheme),
+            claims = requestedAttributes?.toRequestedClaimsIso(credentialScheme.isoNamespace!!),
             proof = proof
         )
 
         else -> throw IllegalArgumentException("format $this not applicable to $credentialScheme")
+    }
+
+    private fun SupportedCredentialFormat.toCredentialRequestParameters(
+        requestedAttributes: Set<String>?,
+        proof: CredentialRequestProof
+    ) = when (format) {
+        CredentialFormatEnum.JWT_VC -> CredentialRequestParameters(
+            format = format,
+            credentialDefinition = credentialDefinition,
+            proof = proof
+        )
+
+        CredentialFormatEnum.VC_SD_JWT -> CredentialRequestParameters(
+            format = format,
+            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
+            sdJwtVcType = sdJwtVcType,
+            proof = proof
+        )
+
+        CredentialFormatEnum.MSO_MDOC -> CredentialRequestParameters(
+            format = format,
+            docType = docType,
+            claims = requestedAttributes?.toRequestedClaimsIso(docType!!),
+            proof = proof
+        )
+
+        else -> throw IllegalArgumentException("format $format not applicable to create credential request")
     }
 }
 
@@ -492,11 +555,11 @@ private fun Pair<String, SupportedCredentialFormat>.toAuthnDetails(authorization
     locations = authorizationServers
 )
 
-private fun Collection<String>.toRequestedClaimsSdJwt(credentialScheme: ConstantIndex.CredentialScheme) =
-    mapOf(credentialScheme.sdJwtType!! to this.associateWith { RequestedCredentialClaimSpecification() })
+private fun Collection<String>.toRequestedClaimsSdJwt(sdJwtType: String) =
+    mapOf(sdJwtType to this.associateWith { RequestedCredentialClaimSpecification() })
 
-private fun Collection<String>.toRequestedClaimsIso(credentialScheme: ConstantIndex.CredentialScheme) =
-    mapOf(credentialScheme.isoNamespace!! to this.associateWith { RequestedCredentialClaimSpecification() })
+private fun Collection<String>.toRequestedClaimsIso(isoNamespace: String) =
+    mapOf(isoNamespace to this.associateWith { RequestedCredentialClaimSpecification() })
 
 
 private fun CredentialRepresentation.toFormat() = when (this) {
