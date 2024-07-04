@@ -1,18 +1,19 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
+import at.asitplus.wallet.lib.oidc.jsonSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 
 /**
- * This implements RFC8414 `https://www.rfc-editor.org/rfc/rfc8414.html`
+ * This implements [RFC8414](https://datatracker.ietf.org/doc/html/rfc8414)
  * All descriptions taken from section 2.
  *
  * To be serialized into `/.well-known/oauth-authorization-server`
- * which is the registered default-path
- * (see `https://www.iana.org/assignments/well-known-uris/well-known-uris.xhtml`)
+ * which is the registered default-path, see
+ * [IANA](https://www.iana.org/assignments/well-known-uris/well-known-uris.xhtml)
  */
 
 @Serializable
@@ -39,6 +40,24 @@ data class OAuth2AuthorizationServerMetadata(
      */
     @SerialName("authorization_endpoint")
     val authorizationEndpoint: String,
+
+    /**
+     * RFC 9126: The URL of the pushed authorization request endpoint at which a client can post an authorization
+     * request to exchange for a request_uri value usable at the authorization server.
+     *
+     * See [RFC9126](https://datatracker.ietf.org/doc/html/rfc9126)
+     */
+    @SerialName("pushed_authorization_request_endpoint")
+    val pushedAuthorizationRequestEndpoint: String? = null,
+
+    /**
+     * RFC 9126: Boolean parameter indicating whether the authorization server accepts authorization request data
+     * only via PAR. If omitted, the default value is false.
+     *
+     * See [RFC9126](https://datatracker.ietf.org/doc/html/rfc9126)
+     */
+    @SerialName("require_pushed_authorization_requests")
+    val requirePushedAuthorizationRequests: Boolean? = null,
 
     /**
      * URL of the authorization server's token endpoint `RFC6749`.  This
@@ -77,7 +96,7 @@ data class OAuth2AuthorizationServerMetadata(
      * even when this parameter is used.
      */
     @SerialName("scope_supported")
-    val scopesSupported: List<String>? = null,
+    val scopesSupported: Set<String>? = null,
 
     /**
      * REQUIRED.  JSON array containing a list of the OAuth 2.0
@@ -87,7 +106,7 @@ data class OAuth2AuthorizationServerMetadata(
      * Registration Protocol" `RFC7591`.
      */
     @SerialName("response_types_supported")
-    val responseTypesSupported: List<String>? = null,
+    val responseTypesSupported: Set<String>? = null,
 
     /**
      * OPTIONAL.  JSON array containing a list of the OAuth 2.0
@@ -98,7 +117,7 @@ data class OAuth2AuthorizationServerMetadata(
      * in "OAuth 2.0 Form Post Response Mode" `OAuth.Post`.
      */
     @SerialName("response_modes_supported")
-    val responseModesSupported: List<String>? = null,
+    val responseModesSupported: Set<String>? = null,
 
     /**
      * OPTIONAL.  JSON array containing a list of the OAuth 2.0 grant
@@ -109,7 +128,7 @@ data class OAuth2AuthorizationServerMetadata(
      * "["authorization_code", "implicit"]".
      */
     @SerialName("grant_types_supported")
-    val grantTypesSupported: List<String>? = null,
+    val grantTypesSupported: Set<String>? = null,
 
     /**
      * OPTIONAL.  JSON array containing a list of client authentication
@@ -120,7 +139,7 @@ data class OAuth2AuthorizationServerMetadata(
      * Scheme specified in Section 2.3.1 of OAuth 2.0 `RFC6749`.
      */
     @SerialName("token_endpoint_auth_methods_supported")
-    val tokenEndPointAuthMethodsSupported: List<String>? = null,
+    val tokenEndPointAuthMethodsSupported: Set<String>? = null,
 
     /**
      * OPTIONAL.  JSON array containing a list of the JWS signing
@@ -134,7 +153,7 @@ data class OAuth2AuthorizationServerMetadata(
      * support "RS256".  The value "none" MUST NOT be used.
      */
     @SerialName("token_endpoint_auth_signing_alg_methods_supported")
-    val tokenEndPointAuthSigningAlgValuesSupported: List<String>? = null,
+    val tokenEndPointAuthSigningAlgValuesSupported: Set<String>? = null,
 
     /**
      * OPTIONAL.  URL of a page containing human-readable information
@@ -154,7 +173,7 @@ data class OAuth2AuthorizationServerMetadata(
      * is unspecified.
      */
     @SerialName("ui_locales_supported")
-    val uiLocalesSupported: List<String>? = null,
+    val uiLocalesSupported: Set<String>? = null,
 
     /**
      * OPTIONAL.  URL that the authorization server provides to the
@@ -200,7 +219,7 @@ data class OAuth2AuthorizationServerMetadata(
      * specified in Section 2.3.1 of OAuth 2.0 `RFC6749`.
      */
     @SerialName("revocation_endpoint_auth_methods_supported")
-    val revocationEndpointAuthMethodsSupported: List<String>? = null,
+    val revocationEndpointAuthMethodsSupported: Set<String>? = null,
 
     /**
      * OPTIONAL.  JSON array containing a list of the JWS signing
@@ -214,7 +233,7 @@ data class OAuth2AuthorizationServerMetadata(
      * omitted.  The value "none" MUST NOT be used.
      */
     @SerialName("revocation_endpoint_auth_signing_alg_values_supported")
-    val revocationEndpointAuthSigningAlgValuesSupported: List<String>? = null,
+    val revocationEndpointAuthSigningAlgValuesSupported: Set<String>? = null,
 
     /**
      * OPTIONAL.  URL of the authorization server's OAuth 2.0
@@ -235,7 +254,7 @@ data class OAuth2AuthorizationServerMetadata(
      * determined by other means.
      */
     @SerialName("introspection_endpoint_auth_methods_supported")
-    val introspectionEndpointAuthMethodsSupported: List<String>? = null,
+    val introspectionEndpointAuthMethodsSupported: Set<String>? = null,
 
     /**
      * OPTIONAL.  JSON array containing a list of the JWS signing
@@ -249,7 +268,7 @@ data class OAuth2AuthorizationServerMetadata(
      * omitted.  The value "none" MUST NOT be used.
      */
     @SerialName("introspection_endpoint_auth_signing_alg_values_supported")
-    val introspectionEndpointAuthSigningAlgValuesSupported: List<String>? = null,
+    val introspectionEndpointAuthSigningAlgValuesSupported: Set<String>? = null,
 
     /**
      * OPTIONAL.  JSON array containing a list of Proof Key for Code
@@ -262,12 +281,12 @@ data class OAuth2AuthorizationServerMetadata(
      * does not support PKCE.
      */
     @SerialName("code_challenge_methods_supported")
-    val codeChallengeMethodsSupported: List<String>? = null,
+    val codeChallengeMethodsSupported: Set<String>? = null,
 ) {
-    fun serialize() = at.asitplus.wallet.lib.oidc.jsonSerializer.encodeToString(this)
+    fun serialize() = jsonSerializer.encodeToString(this)
 
     companion object {
-        fun deserialize(input: String): KmmResult<IssuerMetadata> =
-            runCatching { at.asitplus.wallet.lib.oidc.jsonSerializer.decodeFromString<IssuerMetadata>(input) }.wrap()
+        fun deserialize(input: String): KmmResult<OAuth2AuthorizationServerMetadata> =
+            catching { jsonSerializer.decodeFromString<OAuth2AuthorizationServerMetadata>(input) }
     }
 }
