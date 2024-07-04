@@ -28,6 +28,7 @@ Release 4.0.0:
    - Also added some code for presentation submission validation
  - Update implementation of OpenID 4 Verifiable Credential Issuance, draft 13
  - Replace `createCredentialRequestJwt()` and `createCredentialRequestCwt()` with `createCredentialRequest()` in `WalletService` for OID4VCI
+ - Refactor `createTokenRequestParameters()` in `WalletService` for OID4VCI to account for authorization code or pre-auth code
 
 Release 3.8.0:
  - Kotlin 2.0.0

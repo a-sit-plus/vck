@@ -7,10 +7,10 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.ints.shouldBeGreaterThan
@@ -164,7 +164,15 @@ private suspend fun runProcess(
     client: WalletService,
     requestOptions: WalletService.RequestOptions,
 ): CredentialResponseParameters {
-    val token = runProcessGetToken(authorizationService, client, requestOptions)
+    val authnRequest = client.createAuthRequest(requestOptions)
+    val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+    authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+    val code = authnResponse.params.code.shouldNotBeNull()
+    val tokenRequest = client.createTokenRequestParameters(
+        requestOptions = requestOptions,
+        authorization = WalletService.AuthorizationForToken.Code(code)
+    )
+    val token = authorizationService.token(tokenRequest).getOrThrow()
     val credentialRequest = client.createCredentialRequest(
         requestOptions,
         token.clientNonce,
@@ -173,18 +181,3 @@ private suspend fun runProcess(
     return issuer.credential(token.accessToken, credentialRequest).getOrThrow()
 }
 
-private suspend fun runProcessGetToken(
-    authorizationService: SimpleAuthorizationService,
-    client: WalletService,
-    requestOptions: WalletService.RequestOptions,
-): TokenResponseParameters {
-    val authnRequest = client.createAuthRequest(requestOptions)
-    val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
-    authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-    val code = authnResponse.params.code.shouldNotBeNull()
-    val tokenRequest = client.createTokenRequestParameters(
-        requestOptions = requestOptions,
-        code = code,
-    )
-    return authorizationService.token(tokenRequest).getOrThrow()
-}

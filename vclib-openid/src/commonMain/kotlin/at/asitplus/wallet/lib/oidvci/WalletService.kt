@@ -215,13 +215,25 @@ class WalletService(
         return codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
     }
 
+    sealed class AuthorizationForToken {
+        /**
+         * Authorization code from an actual OAuth2 Authorization Server, or [SimpleAuthorizationService.authorize]
+         */
+        data class Code(val code: String) : AuthorizationForToken()
+
+        /**
+         * Pre-auth code from [CredentialOfferGrants.preAuthorizedCode] in [CredentialOffer.grants]
+         */
+        data class PreAuthCode(val preAuth: CredentialOfferGrantsPreAuthCode) : AuthorizationForToken()
+    }
+
     /**
-     * Request token with an authorization code, e.g. from [createAuthRequest].
+     * Request token with an authorization code, e.g. from [createAuthRequest], or pre-auth code.
      *
      * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
      * [IssuerMetadata.tokenEndpointUrl]).
      *
-     * Sample ktor code:
+     * Sample ktor code for authorization code:
      * ```
      * val authnRequest = client.createAuthRequest(requestOptions)
      * val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
@@ -236,27 +248,7 @@ class WalletService(
      * val token = TokenResponseParameters.deserialize(tokenResponse.bodyAsText()).getOrThrow()
      * ```
      *
-     * @param requestOptions which credential in which representation to request
-     */
-    suspend fun createTokenRequestParameters(
-        requestOptions: RequestOptions,
-        code: String,
-    ) = TokenRequestParameters(
-        grantType = GRANT_TYPE_AUTHORIZATION_CODE,
-        code = code,
-        redirectUrl = redirectUrl,
-        clientId = clientId,
-        authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
-        codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(requestOptions.state) }
-    )
-
-    /**
-     * Request token with pre-auth-code, e.g. from [CredentialOffer].
-     *
-     * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
-     * [IssuerMetadata.tokenEndpointUrl]).
-     *
-     * Sample ktor code:
+     * Sample ktor code for pre-authn code:
      * ```
      * val tokenRequest =
      *     client.createTokenRequestParameters(requestOptions, credentialOffer.grants!!.preAuthorizedCode)
@@ -270,23 +262,94 @@ class WalletService(
      * ```
      *
      * @param requestOptions which credential in which representation to request
-     * @param preAuthCode from [CredentialOfferGrants.preAuthorizedCode] in [CredentialOffer.grants]
+     * @param authorization for the token endpoint
      */
     suspend fun createTokenRequestParameters(
         requestOptions: RequestOptions,
-        preAuthCode: CredentialOfferGrantsPreAuthCode?,
-    ) = TokenRequestParameters(
-        grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
-        redirectUrl = redirectUrl,
-        clientId = clientId,
-        authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
-        transactionCode = preAuthCode?.transactionCode,
-        preAuthorizedCode = preAuthCode?.preAuthorizedCode,
-        codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(requestOptions.state) }
-    )
+        authorization: AuthorizationForToken,
+    ) = when (authorization) {
+        is AuthorizationForToken.Code -> TokenRequestParameters(
+            grantType = GRANT_TYPE_AUTHORIZATION_CODE,
+            code = authorization.code,
+            redirectUrl = redirectUrl,
+            clientId = clientId,
+            authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
+            codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(requestOptions.state) }
+        )
 
-    private fun RequestOptions.toAuthnDetails() =
-        representation.toAuthorizationDetails(credentialScheme, requestedAttributes)
+        is AuthorizationForToken.PreAuthCode -> TokenRequestParameters(
+            grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
+            redirectUrl = redirectUrl,
+            clientId = clientId,
+            authorizationDetails = (requestOptions.toAuthnDetails())?.let { setOf(it) },
+            transactionCode = authorization.preAuth.transactionCode,
+            preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
+            codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(requestOptions.state) }
+        )
+    }
+
+    /**
+     * Request token with an authorization code, e.g. from [createAuthRequest], or pre-auth code.
+     *
+     * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
+     * [IssuerMetadata.tokenEndpointUrl]).
+     *
+     * Sample ktor code for authorization code:
+     * ```
+     * val authnRequest = client.createAuthRequest(requestOptions)
+     * val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+     * val code = authnResponse.params.code
+     * val tokenRequest = client.createTokenRequestParameters(requestOptions, code = code)
+     * val tokenResponse = httpClient.submitForm(
+     *     url = issuerMetadata.tokenEndpointUrl!!,
+     *     formParameters = parameters {
+     *         tokenRequest.encodeToParameters().forEach { append(it.key, it.value) }
+     *     }
+     * )
+     * val token = TokenResponseParameters.deserialize(tokenResponse.bodyAsText()).getOrThrow()
+     * ```
+     *
+     * Sample ktor code for pre-authn code:
+     * ```
+     * val tokenRequest =
+     *     client.createTokenRequestParameters(requestOptions, credentialOffer.grants!!.preAuthorizedCode)
+     * val tokenResponse = httpClient.submitForm(
+     *     url = issuerMetadata.tokenEndpointUrl!!,
+     *     formParameters = parameters {
+     *         tokenRequest.encodeToParameters().forEach { append(it.key, it.value) }
+     *     }
+     * )
+     * val token = TokenResponseParameters.deserialize(tokenResponse.bodyAsText()).getOrThrow()
+     * ```
+     *
+     * @param credential which credential from [IssuerMetadata.supportedCredentialConfigurations] to request
+     * @param state used in [createAuthRequest], e.g. when using authorization codes
+     * @param authorization for the token endpoint
+     */
+    suspend fun createTokenRequestParameters(
+        credential: SupportedCredentialFormat,
+        state: String? = null,
+        authorization: AuthorizationForToken,
+    ) = when (authorization) {
+        is AuthorizationForToken.Code -> TokenRequestParameters(
+            grantType = GRANT_TYPE_AUTHORIZATION_CODE,
+            code = authorization.code,
+            redirectUrl = redirectUrl,
+            clientId = clientId,
+            authorizationDetails = setOf(credential.toAuthnDetails()),
+            codeVerifier = state?.let { codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(it) } }
+        )
+
+        is AuthorizationForToken.PreAuthCode -> TokenRequestParameters(
+            grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
+            redirectUrl = redirectUrl,
+            clientId = clientId,
+            authorizationDetails = setOf(credential.toAuthnDetails()),
+            transactionCode = authorization.preAuth.transactionCode,
+            preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
+            codeVerifier = state?.let { codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(it) } }
+        )
+    }
 
     /**
      * Send the result as JSON-serialized content to the server at `/credential` (or more specific
@@ -435,18 +498,40 @@ class WalletService(
         }
     }
 
-    private fun RequestOptions.toCredentialRequestParameters(
-        proof: CredentialRequestProof
-    ) = representation.toCredentialRequestParameters(
-        credentialScheme,
-        requestedAttributes,
-        proof
-    )
+    private fun RequestOptions.toCredentialRequestParameters(proof: CredentialRequestProof) =
+        representation.toCredentialRequestParameters(credentialScheme, requestedAttributes, proof)
+
+    private fun SupportedCredentialFormat.toAuthnDetails() = when (this.format) {
+        CredentialFormatEnum.JWT_VC -> AuthorizationDetails(
+            type = CREDENTIAL_TYPE_OPENID,
+            format = format,
+            credentialDefinition = credentialDefinition
+        )
+
+        CredentialFormatEnum.VC_SD_JWT -> AuthorizationDetails(
+            type = CREDENTIAL_TYPE_OPENID,
+            format = format,
+            sdJwtVcType = sdJwtVcType,
+            // TODO requestedAttributes claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtType!!),
+        )
+
+        CredentialFormatEnum.MSO_MDOC -> AuthorizationDetails(
+            type = CREDENTIAL_TYPE_OPENID,
+            format = format,
+            docType = docType,
+            // TODO requestedAttributes claims = requestedAttributes?.toRequestedClaimsIso(isoNamespace!!)
+        )
+
+        else -> throw IllegalArgumentException("Credential format $format not supported for AuthorizationDetails")
+    }
+
+    private fun RequestOptions.toAuthnDetails() =
+        representation.toAuthorizationDetails(credentialScheme, requestedAttributes)
 
     private fun CredentialRepresentation.toAuthorizationDetails(
         scheme: ConstantIndex.CredentialScheme,
         requestedAttributes: Set<String>?
-    ): AuthorizationDetails? = when (this) {
+    ) = when (this) {
         PLAIN_JWT -> scheme.toJwtAuthn(toFormat())
         SD_JWT -> scheme.toSdJwtAuthn(toFormat(), requestedAttributes)
         ISO_MDOC -> scheme.toIsoAuthn(toFormat(), requestedAttributes)
@@ -461,8 +546,7 @@ class WalletService(
             credentialDefinition = SupportedCredentialFormatDefinition(
                 types = listOf(VERIFIABLE_CREDENTIAL, vcType!!),
             ),
-        )
-    else null
+        ) else null
 
     private fun ConstantIndex.CredentialScheme.toSdJwtAuthn(
         format: CredentialFormatEnum,
