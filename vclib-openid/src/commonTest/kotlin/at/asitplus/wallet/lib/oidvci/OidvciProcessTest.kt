@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -45,12 +46,11 @@ class OidvciProcessTest : FunSpec({
             )
         )
         credential.format shouldBe CredentialFormatEnum.JWT_VC
-        val serializedCredential = credential.credential
-        serializedCredential.shouldNotBeNull().also { println(it) }
+        val serializedCredential = credential.credential.shouldNotBeNull()
 
         val jws = JwsSigned.parse(serializedCredential).getOrThrow()
-        val vcJws = VerifiableCredentialJws.deserialize(jws.payload.decodeToString())
-        vcJws.shouldNotBeNull().also { println(it) }
+        val vcJws = VerifiableCredentialJws.deserialize(jws.payload.decodeToString()).getOrThrow()
+        vcJws.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
     }
 
     test("process with W3C VC SD-JWT") {
@@ -65,14 +65,11 @@ class OidvciProcessTest : FunSpec({
             )
         )
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
-        val serializedCredential = credential.credential
-        serializedCredential.shouldNotBeNull().also { println(it) }
+        val serializedCredential = credential.credential.shouldNotBeNull()
 
         val jws = JwsSigned.parse(serializedCredential.substringBefore("~")).getOrThrow()
-        val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
-            .getOrThrow().shouldNotBeNull()
+        val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString()).getOrThrow()
 
-        println(sdJwt)
         sdJwt.disclosureDigests.shouldNotBeNull()
         sdJwt.disclosureDigests!!.size shouldBeGreaterThan 1
     }
@@ -90,14 +87,11 @@ class OidvciProcessTest : FunSpec({
             )
         )
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
-        val serializedCredential = credential.credential
-        serializedCredential.shouldNotBeNull().also { println(it) }
+        val serializedCredential = credential.credential.shouldNotBeNull()
 
         val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~")).getOrThrow()
-        val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
-            .getOrThrow().shouldNotBeNull()
+        val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString()).getOrThrow()
 
-        println(sdJwt)
         sdJwt.disclosureDigests.shouldNotBeNull()
         sdJwt.disclosureDigests!!.size shouldBe 1
     }
@@ -114,14 +108,11 @@ class OidvciProcessTest : FunSpec({
             )
         )
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC
-        val serializedCredential = credential.credential
-        serializedCredential.shouldNotBeNull().also { println(it) }
+        val serializedCredential = credential.credential.shouldNotBeNull()
 
-        val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64()))
-            .getOrThrow().shouldNotBeNull()
+        val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64())).getOrThrow()
 
-        val numberOfClaims = issuerSigned.namespaces?.values?.firstOrNull()?.entries?.size
-        numberOfClaims.shouldNotBeNull()
+        val numberOfClaims = issuerSigned.namespaces?.values?.firstOrNull()?.entries?.size.shouldNotBeNull()
         numberOfClaims shouldBeGreaterThan 1
     }
 
@@ -138,14 +129,11 @@ class OidvciProcessTest : FunSpec({
             )
         )
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC
-        val serializedCredential = credential.credential
-        serializedCredential.shouldNotBeNull().also { println(it) }
+        val serializedCredential = credential.credential.shouldNotBeNull()
 
-        val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64()))
-            .getOrThrow().shouldNotBeNull()
+        val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64())).getOrThrow()
 
-        val numberOfClaims = issuerSigned.namespaces?.values?.firstOrNull()?.entries?.size
-        numberOfClaims.shouldNotBeNull()
+        val numberOfClaims = issuerSigned.namespaces?.values?.firstOrNull()?.entries?.size.shouldNotBeNull()
         numberOfClaims shouldBe 1
     }
 
@@ -161,11 +149,11 @@ class OidvciProcessTest : FunSpec({
             )
         )
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC
-        val serializedCredential = credential.credential
-        serializedCredential.shouldNotBeNull().also { println(it) }
+        val serializedCredential = credential.credential.shouldNotBeNull()
 
-        val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64()))
-        issuerSigned.shouldNotBeNull().also { println(it) }
+        val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64())).getOrThrow()
+        val numberOfClaims = issuerSigned.namespaces?.values?.firstOrNull()?.entries?.size.shouldNotBeNull()
+        numberOfClaims shouldBeGreaterThan 1
     }
 
 })
@@ -208,8 +196,7 @@ private suspend fun runProcessGetToken(
     val authnRequest = client.createAuthRequest(requestOptions)
     val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
     authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-    val code = authnResponse.params.code
-    code.shouldNotBeNull()
+    val code = authnResponse.params.code.shouldNotBeNull()
     val tokenRequest = client.createTokenRequestParameters(
         requestOptions = requestOptions,
         code = code,
