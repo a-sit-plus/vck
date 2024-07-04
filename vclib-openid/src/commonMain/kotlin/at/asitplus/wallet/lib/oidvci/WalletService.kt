@@ -383,12 +383,18 @@ class WalletService(
         credential: SupportedCredentialFormat,
         clientNonce: String?,
         credentialIssuer: String?,
-    ): KmmResult<CredentialRequestParameters> =
-        if (credential.supportedProofTypes?.containsKey(OpenIdConstants.ProofType.CWT.stringRepresentation) == true) {
-            createCredentialRequestCwt(null, credential, clientNonce, credentialIssuer)
+    ): KmmResult<CredentialRequestParameters> = catching {
+        val cwtProofType = OpenIdConstants.ProofType.CWT.stringRepresentation
+        val isCwt = credential.supportedProofTypes?.containsKey(cwtProofType) == true
+                || credential.format == CredentialFormatEnum.MSO_MDOC
+        val proof = if (isCwt) {
+            createCredentialRequestCwt(null, clientNonce, credentialIssuer)
         } else {
-            createCredentialRequestJwt(null, credential, clientNonce, credentialIssuer)
+            createCredentialRequestJwt(null, clientNonce, credentialIssuer)
         }
+        credential.toCredentialRequestParameters(null, proof) // TODO requestedAttributes
+            .also { Napier.i("createCredentialRequest returns $it") }
+    }
 
     /**
      * Send the result as JSON-serialized content to the server at `/credential` (or more specific
@@ -422,22 +428,23 @@ class WalletService(
         requestOptions: RequestOptions,
         clientNonce: String?,
         credentialIssuer: String?,
-    ): KmmResult<CredentialRequestParameters> =
-        if (requestOptions.representation == ISO_MDOC) {
-            createCredentialRequestCwt(requestOptions, null, clientNonce, credentialIssuer)
-                .also { Napier.i("createCredentialRequest returns $it") }
+    ): KmmResult<CredentialRequestParameters> = catching {
+        val proof = if (requestOptions.representation == ISO_MDOC) {
+            createCredentialRequestCwt(requestOptions, clientNonce, credentialIssuer)
         } else {
-            createCredentialRequestJwt(requestOptions, null, clientNonce, credentialIssuer)
-                .also { Napier.i("createCredentialRequest returns $it") }
+            createCredentialRequestJwt(requestOptions, clientNonce, credentialIssuer)
         }
+        requestOptions.toCredentialRequestParameters(proof)
+            .also { Napier.i("createCredentialRequest returns $it") }
+    }
 
     private suspend fun createCredentialRequestJwt(
         requestOptions: RequestOptions?,
-        credential: SupportedCredentialFormat?,
         clientNonce: String?,
         credentialIssuer: String?,
-    ): KmmResult<CredentialRequestParameters> = catching {
-        val proofPayload = jwsService.createSignedJwsAddingParams(
+    ): CredentialRequestProof = CredentialRequestProof(
+        proofType = OpenIdConstants.ProofType.JWT,
+        jwt = jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm(),
                 type = OpenIdConstants.ProofType.JWT_HEADER_TYPE.stringRepresentation,
@@ -451,27 +458,16 @@ class WalletService(
             addKeyId = false,
             addJsonWebKey = true,
             addX5c = false,
-        ).getOrThrow()
-        val proof = CredentialRequestProof(
-            proofType = OpenIdConstants.ProofType.JWT,
-            jwt = proofPayload.serialize()
-        )
-        if (requestOptions != null) {
-            requestOptions.toCredentialRequestParameters(proof)
-        } else if (credential != null) {
-            credential.toCredentialRequestParameters(null, proof) // todo requestedattributes
-        } else {
-            throw IllegalArgumentException("requestOptions and credential null")
-        }
-    }
+        ).getOrThrow().serialize()
+    )
 
     private suspend fun createCredentialRequestCwt(
         requestOptions: RequestOptions?,
-        credential: SupportedCredentialFormat?,
         clientNonce: String?,
         credentialIssuer: String?,
-    ): KmmResult<CredentialRequestParameters> = catching {
-        val proofPayload = coseService.createSignedCose(
+    ) = CredentialRequestProof(
+        proofType = OpenIdConstants.ProofType.CWT,
+        cwt = coseService.createSignedCose(
             protectedHeader = CoseHeader(
                 algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toCoseAlgorithm(),
                 contentType = OpenIdConstants.ProofType.CWT_HEADER_TYPE.stringRepresentation,
@@ -484,19 +480,8 @@ class WalletService(
                 nonce = clientNonce?.encodeToByteArray(),
             ).serialize(),
             addKeyId = false,
-        ).getOrThrow()
-        val proof = CredentialRequestProof(
-            proofType = OpenIdConstants.ProofType.CWT,
-            cwt = proofPayload.serialize().encodeToString(Base64UrlStrict),
-        )
-        if (requestOptions != null) {
-            requestOptions.toCredentialRequestParameters(proof)
-        } else if (credential != null) {
-            credential.toCredentialRequestParameters(null, proof) // todo requestedattributes
-        } else {
-            throw IllegalArgumentException("requestOptions and credential null")
-        }
-    }
+        ).getOrThrow().serialize().encodeToString(Base64UrlStrict),
+    )
 
     private fun RequestOptions.toCredentialRequestParameters(proof: CredentialRequestProof) =
         representation.toCredentialRequestParameters(credentialScheme, requestedAttributes, proof)
