@@ -323,11 +323,13 @@ class WalletService(
      * ```
      *
      * @param credential which credential from [IssuerMetadata.supportedCredentialConfigurations] to request
+     * @param requestedAttributes attributes that shall be requested explicitly (selective disclosure)
      * @param state used in [createAuthRequest], e.g. when using authorization codes
      * @param authorization for the token endpoint
      */
     suspend fun createTokenRequestParameters(
         credential: SupportedCredentialFormat,
+        requestedAttributes: Set<String>? = null,
         state: String? = null,
         authorization: AuthorizationForToken,
     ) = when (authorization) {
@@ -336,7 +338,7 @@ class WalletService(
             code = authorization.code,
             redirectUrl = redirectUrl,
             clientId = clientId,
-            authorizationDetails = setOf(credential.toAuthnDetails()),
+            authorizationDetails = setOf(credential.toAuthnDetails(requestedAttributes)),
             codeVerifier = state?.let { codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(it) } }
         )
 
@@ -344,7 +346,7 @@ class WalletService(
             grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
             redirectUrl = redirectUrl,
             clientId = clientId,
-            authorizationDetails = setOf(credential.toAuthnDetails()),
+            authorizationDetails = setOf(credential.toAuthnDetails(requestedAttributes)),
             transactionCode = authorization.preAuth.transactionCode,
             preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
             codeVerifier = state?.let { codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(it) } }
@@ -376,11 +378,13 @@ class WalletService(
      * ```
      *
      * @param credential which credential from [IssuerMetadata.supportedCredentialConfigurations] to request
+     * @param requestedAttributes attributes that shall be requested explicitly (selective disclosure)
      * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
      * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
      */
     suspend fun createCredentialRequest(
         credential: SupportedCredentialFormat,
+        requestedAttributes: Set<String>? = null,
         clientNonce: String?,
         credentialIssuer: String?,
     ): KmmResult<CredentialRequestParameters> = catching {
@@ -392,7 +396,7 @@ class WalletService(
         } else {
             createCredentialRequestJwt(null, clientNonce, credentialIssuer)
         }
-        credential.toCredentialRequestParameters(null, proof) // TODO requestedAttributes
+        credential.toCredentialRequestParameters(requestedAttributes, proof)
             .also { Napier.i("createCredentialRequest returns $it") }
     }
 
@@ -486,7 +490,7 @@ class WalletService(
     private fun RequestOptions.toCredentialRequestParameters(proof: CredentialRequestProof) =
         representation.toCredentialRequestParameters(credentialScheme, requestedAttributes, proof)
 
-    private fun SupportedCredentialFormat.toAuthnDetails() = when (this.format) {
+    private fun SupportedCredentialFormat.toAuthnDetails(requestedAttributes: Set<String>?) = when (this.format) {
         CredentialFormatEnum.JWT_VC -> AuthorizationDetails(
             type = CREDENTIAL_TYPE_OPENID,
             format = format,
@@ -497,14 +501,14 @@ class WalletService(
             type = CREDENTIAL_TYPE_OPENID,
             format = format,
             sdJwtVcType = sdJwtVcType,
-            // TODO requestedAttributes claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtType!!),
+            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
         )
 
         CredentialFormatEnum.MSO_MDOC -> AuthorizationDetails(
             type = CREDENTIAL_TYPE_OPENID,
             format = format,
             docType = docType,
-            // TODO requestedAttributes claims = requestedAttributes?.toRequestedClaimsIso(isoNamespace!!)
+            claims = requestedAttributes?.toRequestedClaimsIso(isoClaims?.keys?.firstOrNull() ?: docType!!)
         )
 
         else -> throw IllegalArgumentException("Credential format $format not supported for AuthorizationDetails")
@@ -570,8 +574,8 @@ class WalletService(
 
         this == SD_JWT && credentialScheme.supportsSdJwt -> CredentialRequestParameters(
             format = toFormat(),
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(credentialScheme.sdJwtType!!),
             sdJwtVcType = credentialScheme.sdJwtType!!,
+            claims = requestedAttributes?.toRequestedClaimsSdJwt(credentialScheme.sdJwtType!!),
             proof = proof
         )
 
@@ -597,15 +601,15 @@ class WalletService(
 
         CredentialFormatEnum.VC_SD_JWT -> CredentialRequestParameters(
             format = format,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
             sdJwtVcType = sdJwtVcType,
+            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
             proof = proof
         )
 
         CredentialFormatEnum.MSO_MDOC -> CredentialRequestParameters(
             format = format,
             docType = docType,
-            claims = requestedAttributes?.toRequestedClaimsIso(docType!!),
+            claims = requestedAttributes?.toRequestedClaimsIso(isoClaims?.keys?.firstOrNull() ?: docType!!),
             proof = proof
         )
 
