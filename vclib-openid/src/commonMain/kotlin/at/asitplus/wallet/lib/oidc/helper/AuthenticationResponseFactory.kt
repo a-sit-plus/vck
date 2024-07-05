@@ -27,7 +27,7 @@ internal class AuthenticationResponseFactory(
     val jwsService: JwsService,
 ) {
     internal suspend fun createAuthenticationResponse(
-        request: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse,
     ) = when (request.parameters.responseMode) {
         DIRECT_POST -> authnResponseDirectPost(request, response)
@@ -41,7 +41,7 @@ internal class AuthenticationResponseFactory(
      * Per OID4VP, the response may either be signed, or encrypted (never signed and encrypted!)
      */
     internal suspend fun authnResponseDirectPostJwt(
-        request: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl ?: request.parameters.redirectUrl
@@ -52,7 +52,7 @@ internal class AuthenticationResponseFactory(
     }
 
     internal fun authnResponseDirectPost(
-        request: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl ?: request.parameters.redirectUrl
@@ -61,15 +61,17 @@ internal class AuthenticationResponseFactory(
     }
 
     internal fun authnResponseQuery(
-        request: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Redirect {
-        if (request.parameters.redirectUrl == null) throw OAuth2Exception(Errors.INVALID_REQUEST)
-        val url = URLBuilder(request.parameters.redirectUrl).apply {
-            response.params.encodeToParameters().forEach {
-                this.parameters.append(it.key, it.value)
-            }
-        }.buildString()
+        val url = request.parameters.redirectUrl?.let { redirectUrl ->
+            URLBuilder(redirectUrl).apply {
+                response.params.encodeToParameters().forEach {
+                    this.parameters.append(it.key, it.value)
+                }
+            }.buildString()
+        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+
         return AuthenticationResponseResult.Redirect(url, response.params)
     }
 
@@ -77,21 +79,20 @@ internal class AuthenticationResponseFactory(
      * That's the default for `id_token` and `vp_token`
      */
     internal fun authnResponseFragment(
-        request: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Redirect {
-        if (request.parameters.redirectUrl == null) {
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
-        }
-        val url = URLBuilder(request.parameters.redirectUrl).apply {
-            encodedFragment = response.params.encodeToParameters().formUrlEncode()
-        }.buildString()
+        val url = request.parameters.redirectUrl?.let { redirectUrl ->
+            URLBuilder(redirectUrl).apply {
+                    encodedFragment = response.params.encodeToParameters().formUrlEncode()
+                }.buildString()
+        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
         return AuthenticationResponseResult.Redirect(url, response.params)
     }
 
 
     private suspend fun buildJarm(
-        request: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse,
     ) =
         if (response.clientMetadata != null && response.jsonWebKeys != null && response.clientMetadata.requestsEncryption()) {

@@ -30,14 +30,14 @@ internal class PresentationFactory(
 ) {
     suspend fun createPresentationExchangePresentation(
         holder: Holder,
-        params: AuthenticationRequestParametersFrom<*>,
+        params: AuthenticationRequestParametersFrom,
         audience: String,
         presentationDefinition: PresentationDefinition,
         clientMetadata: RelyingPartyMetadata?,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<Holder.PresentationResponseParameters> = catching {
         params.parameters.verifyResponseType(presentationDefinition)
-        if (params.parameters.nonce == null) {
+        val nonce = params.parameters.nonce ?: run {
             Napier.w("nonce is null in ${params.parameters}")
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
@@ -54,7 +54,7 @@ internal class PresentationFactory(
         )
 
         holder.createPresentation(
-            challenge = params.parameters.nonce,
+            challenge = nonce,
             audienceId = audience,
             presentationDefinitionId = presentationDefinition.id,
             presentationSubmissionSelection = credentialSubmissions,
@@ -72,13 +72,13 @@ internal class PresentationFactory(
     suspend fun createSignedIdToken(
         clock: Clock,
         agentPublicKey: CryptoPublicKey,
-        parameters: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequestParametersFrom,
     ): KmmResult<JwsSigned?> = catching {
-        if (parameters.parameters.responseType?.contains(ID_TOKEN) != true) {
+        if (request.parameters.responseType?.contains(ID_TOKEN) != true) {
             return@catching null
         }
-        if (parameters.parameters.nonce == null) {
-            Napier.w("nonce is null in ${parameters.parameters}")
+        val nonce = request.parameters.nonce ?: run {
+            Napier.w("nonce is null in ${request.parameters}")
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
         val now = clock.now()
@@ -88,11 +88,11 @@ internal class PresentationFactory(
             issuer = agentJsonWebKey.jwkThumbprint,
             subject = agentJsonWebKey.jwkThumbprint,
             subjectJwk = agentJsonWebKey,
-            audience = parameters.parameters.redirectUrl ?: parameters.parameters.clientId
+            audience = request.parameters.redirectUrl ?: request.parameters.clientId
             ?: agentJsonWebKey.jwkThumbprint,
             issuedAt = now,
             expiration = now + 60.seconds,
-            nonce = parameters.parameters.nonce,
+            nonce = nonce,
         )
         val jwsPayload = idToken.serialize().encodeToByteArray()
         val signedIdToken =
@@ -100,7 +100,7 @@ internal class PresentationFactory(
                 Napier.w("Could not sign id_token", it)
                 throw OAuth2Exception(Errors.USER_CANCELLED)
             }
-        return@catching signedIdToken
+        signedIdToken
     }
 
 

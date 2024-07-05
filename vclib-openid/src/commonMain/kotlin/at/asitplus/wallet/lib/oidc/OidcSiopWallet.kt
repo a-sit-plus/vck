@@ -138,12 +138,11 @@ class OidcSiopWallet(
      * or JSON serialized as a JWT Request Object.
      */
     suspend fun createAuthnResponse(
-        request: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequestParametersFrom,
     ): KmmResult<AuthenticationResponseResult> = catching {
-        val response = createAuthnResponseParams(request).getOrThrow()
         AuthenticationResponseFactory(jwsService).createAuthenticationResponse(
             request,
-            response,
+            response = createAuthnResponseParams(request).getOrThrow(),
         )
     }
 
@@ -153,10 +152,9 @@ class OidcSiopWallet(
     suspend fun createAuthnResponseParams(
         params: AuthenticationRequestParametersFrom
     ): KmmResult<AuthenticationResponse> = catching {
-        val preparationState = startAuthorizationResponsePreparation(params).getOrThrow()
         finalizeAuthorizationResponseParameters(
             params = params,
-            preparationState = preparationState,
+            preparationState = startAuthorizationResponsePreparation(params).getOrThrow(),
         ).getOrThrow()
     }
 
@@ -175,7 +173,7 @@ class OidcSiopWallet(
      * Starts the authorization response building process from the RP's [params]
      */
     suspend fun startAuthorizationResponsePreparation(
-        params: AuthenticationRequestParametersFrom<*>
+        params: AuthenticationRequestParametersFrom
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         val clientMetadata = runCatching { params.parameters.loadClientMetadata() }.getOrNull()
         val presentationDefinition = params.parameters.loadPresentationDefinition()
@@ -196,7 +194,7 @@ class OidcSiopWallet(
      * @param inputDescriptorSubmissions: Map from input descriptor ids to [CredentialSubmission]
      */
     suspend fun finalizeAuthorizationResponse(
-        request: AuthenticationRequestParametersFrom<*>,
+        request: AuthenticationRequestParametersFrom,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponseResult> = catching {
@@ -220,12 +218,12 @@ class OidcSiopWallet(
      * @param inputDescriptorSubmissions: Map from input descriptor ids to [CredentialSubmission]
      */
     suspend fun finalizeAuthorizationResponseParameters(
-        params: AuthenticationRequestParametersFrom<*>,
+        params: AuthenticationRequestParametersFrom,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponse> = preparationState.catching {
         val certKey =
-            (params as? AuthenticationRequestParametersFrom.JwsSigned)?.source?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
+            (params as? AuthenticationRequestParametersFrom.JwsSigned)?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
 
         val audience = params.extractAudience(clientJsonWebKeySet)
@@ -235,7 +233,7 @@ class OidcSiopWallet(
         val idToken = presentationFactory.createSignedIdToken(
             clock = clock,
             agentPublicKey = agentPublicKey,
-            parameters = params,
+            request = params,
         ).getOrNull()?.serialize()
 
         val resultContainer = presentationDefinition?.let {
@@ -263,7 +261,7 @@ class OidcSiopWallet(
         AuthenticationResponse(parameters, clientMetadata, jsonWebKeys)
     }
 
-    private fun AuthenticationRequestParametersFrom<*>.extractAudience(
+    private fun AuthenticationRequestParametersFrom.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
     ) = clientJsonWebKeySet?.keys?.firstOrNull()?.identifier ?: parameters.clientId
     ?: parameters.audience

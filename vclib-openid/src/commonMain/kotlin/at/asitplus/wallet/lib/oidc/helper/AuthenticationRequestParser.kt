@@ -47,7 +47,7 @@ internal class AuthenticationRequestParser(
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParametersFrom<*>> = catching {
+    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParametersFrom> = catching {
         // maybe it is a request JWS
         val parsedParams = kotlin.run { parseRequestObjectJws(input) }
             ?: kotlin.runCatching { // maybe it's in the URL parameters
@@ -69,7 +69,7 @@ internal class AuthenticationRequestParser(
         extractedParams
     }
 
-    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParametersFrom<*>? =
+    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParametersFrom? =
         params.request?.let { requestObject ->
             parseRequestObjectJws(requestObject)
         } ?: params.requestUri?.let { uri ->

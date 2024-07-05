@@ -19,6 +19,8 @@ data class CredentialSubmission(
     val disclosedAttributes: Collection<NormalizedJsonPath>,
 )
 
+typealias InputDescriptorMatches = Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>
+
 /**
  * Summarizes operations for a Holder in the sense of the [W3C VC Data Model](https://w3c.github.io/vc-data-model/).
  *
@@ -156,7 +158,7 @@ interface Holder {
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
-    ): KmmResult<Map<String, Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>>>
+    ): KmmResult<Map<String, InputDescriptorMatches>>
 
     /**
      * Evaluates a given input descriptor against a store enctry.
