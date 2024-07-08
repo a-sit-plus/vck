@@ -148,7 +148,7 @@ class SimpleAuthorizationService(
         // TODO work out mapping of credential identifiers in authorization details to schemes
         val filteredAuthorizationDetails = params.authorizationDetails?.filter {
             credentialSchemes.map { it.vcType }.contains(it.credentialConfigurationId) ||
-            credentialSchemes.map { it.sdJwtType }.contains(it.credentialConfigurationId)
+            credentialSchemes.map { it.sdJwtType }.contains(it.credentialConfigurationId) ||
             credentialSchemes.map { it.isoDocType }.contains(it.credentialConfigurationId)
         }?.toSet()
 
