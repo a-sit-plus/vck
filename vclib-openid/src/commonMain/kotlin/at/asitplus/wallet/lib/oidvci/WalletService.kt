@@ -144,7 +144,7 @@ class WalletService(
      * which may contain a direct [CredentialOffer] or a URI pointing to it.
      */
     suspend fun parseCredentialOffer(input: String): KmmResult<CredentialOffer> = catching {
-        kotlin.runCatching {
+        catching {
             val params = Url(input).parameters.flattenEntries().toMap()
                 .decodeFromUrlQuery<CredentialOfferUrlParameters>()
             params.credentialOffer?.let {
@@ -153,7 +153,7 @@ class WalletService(
                 remoteResourceRetriever.invoke(uri)
                     ?.let { parseCredentialOffer(it).getOrNull() }
             }
-        }.getOrNull() ?: kotlin.runCatching {
+        }.getOrNull() ?: catching {
             CredentialOffer.deserialize(input).getOrThrow()
         }.getOrNull() ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
             .also { Napier.w("Could not parse credential offer from $input") }
