@@ -72,27 +72,19 @@ class WalletService(
     private val coseService: CoseService = DefaultCoseService(cryptoService),
 ) {
 
-    constructor(
-        /**
-         * Used to create [AuthenticationRequestParameters], [TokenRequestParameters] and [CredentialRequestProof],
-         * typically a URI.
-         */
-        clientId: String = "https://wallet.a-sit.at/app",
-        /**
-         * Used to create [AuthenticationRequestParameters] and [TokenRequestParameters].
-         */
-        redirectUrl: String = "$clientId/callback",
-        keyPairAdapter: KeyPairAdapter,
-    ) : this(
-        clientId = clientId,
-        redirectUrl = redirectUrl,
-        cryptoService = DefaultCryptoService(keyPairAdapter),
-    )
-
     private val stateToCodeChallengeMap = mutableMapOf<String, String>()
     private val codeChallengeMutex = Mutex()
 
     companion object {
+        fun newDefaultInstance(
+            clientId: String,
+            redirectUrl: String,
+            keyPairAdapter: KeyPairAdapter,
+        ): WalletService = WalletService(
+            clientId = clientId,
+            redirectUrl = redirectUrl,
+            cryptoService = DefaultCryptoService(keyPairAdapter),
+        )
         fun newDefaultInstance(
             clientId: String,
             redirectUrl: String,
@@ -454,7 +446,7 @@ class WalletService(
                 type = OpenIdConstants.ProofType.JWT_HEADER_TYPE.stringRepresentation,
             ),
             payload = JsonWebToken(
-                issuer = clientId, // TODO omit if token was pre-authn
+                issuer = clientId, // omit when token was pre-authn?
                 audience = credentialIssuer,
                 issuedAt = requestOptions?.clock?.now() ?: Clock.System.now(),
                 nonce = clientNonce,
@@ -478,7 +470,7 @@ class WalletService(
                 certificateChain = cryptoService.keyPairAdapter.certificate?.encodeToDerOrNull()
             ),
             payload = CborWebToken(
-                issuer = clientId, // TODO omit when pre-authn
+                issuer = clientId, // omit when token was pre-authn?
                 audience = credentialIssuer,
                 issuedAt = requestOptions?.clock?.now() ?: Clock.System.now(),
                 nonce = clientNonce?.encodeToByteArray(),
