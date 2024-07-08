@@ -5,21 +5,27 @@ package at.asitplus.gradle
 import VcLibVersions
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.VersionCatalog
+import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.kotlin.dsl.getByType
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
 
+
+val Project.kmpCryptoVersionCatalog:VersionCatalog  get() = extensions.getByType<VersionCatalogsExtension>().named("kmpCrypto")
 
 inline fun Project.commonApiDependencies(): List<String> {
     project.AspVersions.versions["kmpcrypto"] = VcLibVersions.kmpcrypto
     project.AspVersions.versions["jsonpath"] = VcLibVersions.jsonpath
-    project.AspVersions.versions["okio"] = VcLibVersions.okio
-    project.AspVersions.versions["encoding"] = VcLibVersions.encoding
+    project.AspVersions.versions["okio"] = kmpCryptoVersionCatalog.findVersion("okio").get().toString()
+    project.AspVersions.versions["encoding"] = kmpCryptoVersionCatalog.findVersion("encoding").get().toString()
+
+
     return listOf(
         coroutines(),
         serialization("json"),
         serialization("cbor"),
         addDependency("at.asitplus.crypto:datatypes", "kmpcrypto"), //for iOS Export
         addDependency("at.asitplus.crypto:datatypes-cose", "kmpcrypto"),
-        addDependency("at.asitplus.crypto:datatypes-jws", "kmpcrypto"),
         addDependency("at.asitplus.crypto:datatypes-jws", "kmpcrypto"),
         addDependency("at.asitplus:jsonpath", "jsonpath"),
         datetime(),
@@ -42,16 +48,17 @@ inline fun KotlinDependencyHandler.commonImplementationDependencies() {
     implementation(project.addDependency("com.benasher44:uuid", "uuid"))
 }
 
+
 fun Project.commonIosExports() = arrayOf(
     datetime(),
-    "com.ionspin.kotlin:bignum:${VcLibVersions.bignum}",
+    "com.ionspin.kotlin:bignum:${kmpCryptoVersionCatalog.findVersion("bignum").get()}",
     kmmresult(),
     "at.asitplus.crypto:datatypes:${VcLibVersions.kmpcrypto}",
     "at.asitplus.crypto:datatypes-cose:${VcLibVersions.kmpcrypto}",
     "at.asitplus.crypto:datatypes-jws:${VcLibVersions.kmpcrypto}",
     "at.asitplus:jsonpath:${VcLibVersions.jsonpath}",
-    "io.matthewnelson.kotlin-components:encoding-base16:${VcLibVersions.encoding}",
-    "io.matthewnelson.kotlin-components:encoding-base64:${VcLibVersions.encoding}",
+    "io.matthewnelson.kotlin-components:encoding-base16:${kmpCryptoVersionCatalog.findVersion("encoding").get()}",
+    "io.matthewnelson.kotlin-components:encoding-base64:${kmpCryptoVersionCatalog.findVersion("encoding").get()}",
 )
 
 

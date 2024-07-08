@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.*
+
 pluginManagement {
     includeBuild("conventions-vclib")
     repositories {
@@ -23,10 +26,21 @@ include(":vclib")
 include(":vclib-aries")
 include(":vclib-openid")
 
-includeBuild("kmp-crypto") {
-    dependencySubstitution {
-        substitute(module("at.asitplus.crypto:datatypes")).using(project(":datatypes"))
-        substitute(module("at.asitplus.crypto:datatypes-jws")).using(project(":datatypes-jws"))
-        substitute(module("at.asitplus.crypto:datatypes-cose")).using(project(":datatypes-cose"))
+dependencyResolutionManagement {
+    repositories.add(repositories.mavenCentral())
+    versionCatalogs {
+        val versions = Properties().apply {
+            kotlin.runCatching {
+                FileInputStream(rootProject.projectDir.absolutePath + ("/conventions-vclib/src/main/resources/vcLibVersions.properties")).use {
+                    load(it)
+                }
+            }
+        }
+
+        fun versionOf(dependency: String) = versions[dependency] as String
+
+        create("kmpCrypto") {
+            from("at.asitplus.crypto:datatypes-versionCatalog:${versionOf("kmpCrypto")}")
+        }
     }
 }
