@@ -73,7 +73,7 @@ object ConstantIndex {
         override val sdJwtType: String = "AtomicAttribute2023"
         override val isoNamespace: String = "at.a-sit.wallet.atomic-attribute-2023"
         override val isoDocType: String = "at.a-sit.wallet.atomic-attribute-2023.iso"
-        override val claimNames: Collection<String> = listOf()
+        override val claimNames: Collection<String> = listOf("given_name", "first_name", "subject")
     }
 
     val CredentialScheme.supportsSdJwt

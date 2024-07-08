@@ -25,17 +25,17 @@ class OidvciProcessTest : FunSpec({
 
     val authorizationService = SimpleAuthorizationService(
         dataProvider = DummyOAuth2DataProvider,
-        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme)
+        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023)
     )
     val issuer = CredentialIssuer(
         authorizationService = authorizationService,
         issuer = IssuerAgent(),
-        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
+        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
         buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
     )
+    val client = WalletService()
 
     test("process with W3C VC JWT") {
-        val client = WalletService()
         val credential = runProcess(
             authorizationService,
             issuer,
@@ -54,7 +54,6 @@ class OidvciProcessTest : FunSpec({
     }
 
     test("process with W3C VC SD-JWT") {
-        val client = WalletService()
         val credential = runProcess(
             authorizationService,
             issuer,
@@ -74,8 +73,40 @@ class OidvciProcessTest : FunSpec({
         sdJwt.disclosureDigests!!.size shouldBeGreaterThan 1
     }
 
+    test("process with W3C VC SD-JWT, credential offer, pre-authn") {
+        val offer = issuer.credentialOffer()
+            .also { println(it.serialize()) }
+        val metadata = issuer.metadata
+            .also { println(it.serialize()) }
+
+        val selectedCredentialConfigurationId = "AtomicAttribute2023#vc+sd-jwt"
+        val selectedCredential = metadata.supportedCredentialConfigurations!![selectedCredentialConfigurationId]!!
+        val tokenRequest = client.createTokenRequestParameters(
+            authorization = WalletService.AuthorizationForToken.PreAuthCode(offer.grants!!.preAuthorizedCode!!),
+            credential = selectedCredential,
+        ).also { println(it.serialize()) }
+        val token = authorizationService.token(tokenRequest).getOrThrow()
+            .also { println(it.serialize()) }
+        val credentialRequest = client.createCredentialRequest(
+            credential = selectedCredential,
+            clientNonce = token.clientNonce,
+            credentialIssuer = issuer.metadata.credentialIssuer
+        ).getOrThrow()
+            .also { println(it.serialize()) }
+        val credential = issuer.credential(token.accessToken, credentialRequest).getOrThrow()
+            .also { println(it.serialize()) }
+
+        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
+        val serializedCredential = credential.credential.shouldNotBeNull()
+
+        val jws = JwsSigned.parse(serializedCredential.substringBefore("~")).getOrThrow()
+        val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString()).getOrThrow()
+
+        sdJwt.disclosureDigests.shouldNotBeNull()
+        sdJwt.disclosureDigests!!.size shouldBeGreaterThan 1
+    }
+
     test("process with W3C VC SD-JWT one requested claim") {
-        val client = WalletService()
         val credential = runProcess(
             authorizationService,
             issuer,
@@ -97,7 +128,6 @@ class OidvciProcessTest : FunSpec({
     }
 
     test("process with ISO mobile driving licence") {
-        val client = WalletService()
         val credential = runProcess(
             authorizationService,
             issuer,
@@ -112,12 +142,14 @@ class OidvciProcessTest : FunSpec({
 
         val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64())).getOrThrow()
 
-        val numberOfClaims = issuerSigned.namespaces?.values?.firstOrNull()?.entries?.size.shouldNotBeNull()
+        val namespaces = issuerSigned.namespaces
+        namespaces.shouldNotBeNull()
+        namespaces.keys.first() shouldBe MobileDrivingLicenceScheme.isoNamespace
+        val numberOfClaims = namespaces.values.firstOrNull()?.entries?.size.shouldNotBeNull()
         numberOfClaims shouldBeGreaterThan 1
     }
 
     test("process with ISO mobile driving licence one requested claim") {
-        val client = WalletService()
         val credential = runProcess(
             authorizationService,
             issuer,
@@ -133,12 +165,14 @@ class OidvciProcessTest : FunSpec({
 
         val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64())).getOrThrow()
 
-        val numberOfClaims = issuerSigned.namespaces?.values?.firstOrNull()?.entries?.size.shouldNotBeNull()
+        val namespaces = issuerSigned.namespaces
+        namespaces.shouldNotBeNull()
+        namespaces.keys.first() shouldBe MobileDrivingLicenceScheme.isoNamespace
+        val numberOfClaims = namespaces.values.firstOrNull()?.entries?.size.shouldNotBeNull()
         numberOfClaims shouldBe 1
     }
 
     test("process with ISO atomic attributes") {
-        val client = WalletService()
         val credential = runProcess(
             authorizationService,
             issuer,
