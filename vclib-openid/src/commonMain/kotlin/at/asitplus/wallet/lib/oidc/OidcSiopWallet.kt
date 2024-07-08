@@ -70,29 +70,26 @@ class OidcSiopWallet(
 ) {
     companion object {
         fun newDefaultInstance(
-            keyPairAdapter: KeyPairAdapter? = null,
-            holder: Holder? = null,
-            jwsService: JwsService? = null,
-            clock: Clock? = null,
-            clientId: String? = null,
-            remoteResourceRetriever: RemoteResourceRetrieverFunction? = null,
-            requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
-            scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever? = null,
+            keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
+            holder: Holder = HolderAgent(keyPairAdapter),
+            jwsService: JwsService = DefaultJwsService(
+                DefaultCryptoService(keyPairAdapter)
+            ),
+            clock: Clock = Clock.System,
+            clientId: String = "https://wallet.a-sit.at/",
+            remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
+            requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { jws, authnRequest -> true },
+            scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever = { null },
         ): OidcSiopWallet {
-            val actualKeyPairAdapter = keyPairAdapter ?: RandomKeyPairAdapter()
             return OidcSiopWallet(
-                holder = holder ?: HolderAgent(actualKeyPairAdapter),
-                agentPublicKey = actualKeyPairAdapter.publicKey,
-                jwsService = jwsService ?: DefaultJwsService(
-                    DefaultCryptoService(actualKeyPairAdapter)
-                ),
-                clock = clock ?: Clock.System,
-                clientId = clientId ?: "https://wallet.a-sit.at/",
-                remoteResourceRetriever = remoteResourceRetriever ?: { null },
-                requestObjectJwsVerifier = requestObjectJwsVerifier
-                    ?: RequestObjectJwsVerifier { jws, authnRequest -> true },
-                scopePresentationDefinitionRetriever = scopePresentationDefinitionRetriever
-                    ?: { null },
+                holder = holder,
+                agentPublicKey = keyPairAdapter.publicKey,
+                jwsService = jwsService,
+                clock = clock,
+                clientId = clientId,
+                remoteResourceRetriever = remoteResourceRetriever,
+                requestObjectJwsVerifier = requestObjectJwsVerifier,
+                scopePresentationDefinitionRetriever = scopePresentationDefinitionRetriever,
             )
         }
     }
@@ -127,7 +124,7 @@ class OidcSiopWallet(
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun parseAuthenticationRequestParameters(input: String) =
+    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParametersFrom> =
         AuthenticationRequestParser.createWithDefaults(
             remoteResourceRetriever = remoteResourceRetriever,
             requestObjectJwsVerifier = requestObjectJwsVerifier,
@@ -139,10 +136,10 @@ class OidcSiopWallet(
      */
     suspend fun createAuthnResponse(
         request: AuthenticationRequestParametersFrom,
-    ): KmmResult<AuthenticationResponseResult> = catching {
+    ): KmmResult<AuthenticationResponseResult> = createAuthnResponseParams(request).map {
         AuthenticationResponseFactory(jwsService).createAuthenticationResponse(
             request,
-            response = createAuthnResponseParams(request).getOrThrow(),
+            response = it,
         )
     }
 
@@ -151,10 +148,10 @@ class OidcSiopWallet(
      */
     suspend fun createAuthnResponseParams(
         params: AuthenticationRequestParametersFrom
-    ): KmmResult<AuthenticationResponse> = catching {
+    ): KmmResult<AuthenticationResponse> = startAuthorizationResponsePreparation(params).map {
         finalizeAuthorizationResponseParameters(
             params = params,
-            preparationState = startAuthorizationResponsePreparation(params).getOrThrow(),
+            preparationState = it,
         ).getOrThrow()
     }
 
@@ -163,11 +160,10 @@ class OidcSiopWallet(
      */
     suspend fun startAuthorizationResponsePreparation(
         input: String,
-    ): KmmResult<AuthorizationResponsePreparationState> = catching {
-        startAuthorizationResponsePreparation(
-            parseAuthenticationRequestParameters(input).getOrThrow()
-        ).getOrThrow()
-    }
+    ): KmmResult<AuthorizationResponsePreparationState> =
+        parseAuthenticationRequestParameters(input).map {
+            startAuthorizationResponsePreparation(it).getOrThrow()
+        }
 
     /**
      * Starts the authorization response building process from the RP's [params]
@@ -175,7 +171,7 @@ class OidcSiopWallet(
     suspend fun startAuthorizationResponsePreparation(
         params: AuthenticationRequestParametersFrom
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
-        val clientMetadata = runCatching { params.parameters.loadClientMetadata() }.getOrNull()
+        val clientMetadata = catching { params.parameters.loadClientMetadata() }.getOrNull()
         val presentationDefinition = params.parameters.loadPresentationDefinition()
 
         AuthorizationRequestValidator(remoteResourceRetriever).validateAuthorizationRequest(params)
@@ -197,12 +193,11 @@ class OidcSiopWallet(
         request: AuthenticationRequestParametersFrom,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
-    ): KmmResult<AuthenticationResponseResult> = catching {
-        val responseParameters = finalizeAuthorizationResponseParameters(
-            params = request,
-            preparationState = preparationState,
-            inputDescriptorSubmissions = inputDescriptorSubmissions,
-        ).getOrThrow()
+    ): KmmResult<AuthenticationResponseResult> = finalizeAuthorizationResponseParameters(
+        params = request,
+        preparationState = preparationState,
+        inputDescriptorSubmissions = inputDescriptorSubmissions,
+    ).map { responseParameters ->
         AuthenticationResponseFactory(jwsService).createAuthenticationResponse(
             request,
             responseParameters,
