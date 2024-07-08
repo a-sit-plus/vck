@@ -151,23 +151,19 @@ class OidcSiopWallet(
      */
     suspend fun createAuthnResponseParams(
         params: AuthenticationRequestParametersFrom
-    ): KmmResult<AuthenticationResponse> = catching {
-        finalizeAuthorizationResponseParameters(
-            params = params,
-            preparationState = startAuthorizationResponsePreparation(params).getOrThrow(),
-        ).getOrThrow()
-    }
+    ): KmmResult<AuthenticationResponse> = finalizeAuthorizationResponseParameters(
+        params = params,
+        preparationState = startAuthorizationResponsePreparation(params).getOrThrow(),
+    )
 
     /**
      * Starts the authorization response building process from the RP's [params]
      */
     suspend fun startAuthorizationResponsePreparation(
         input: String,
-    ): KmmResult<AuthorizationResponsePreparationState> = catching {
-        startAuthorizationResponsePreparation(
-            parseAuthenticationRequestParameters(input).getOrThrow()
-        ).getOrThrow()
-    }
+    ): KmmResult<AuthorizationResponsePreparationState> = startAuthorizationResponsePreparation(
+        params = parseAuthenticationRequestParameters(input).getOrThrow()
+    )
 
     /**
      * Starts the authorization response building process from the RP's [params]

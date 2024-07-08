@@ -57,7 +57,7 @@ internal class AuthenticationRequestParser(
                     AuthenticationRequestParametersFrom.Uri(it, params)
                 }
             }.onFailure { it.printStackTrace() }.getOrNull()
-            ?: kotlin.runCatching {  // maybe it is already a JSON string
+            ?: catching {  // maybe it is already a JSON string
                 val params = AuthenticationRequestParameters.deserialize(input).getOrThrow()
                 AuthenticationRequestParametersFrom.Json(input, params)
             }.getOrNull()
