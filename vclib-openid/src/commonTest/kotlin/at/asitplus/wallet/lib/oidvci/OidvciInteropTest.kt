@@ -41,11 +41,9 @@ class OidvciInteropTest : FunSpec({
 
         val client = WalletService()
 
-        val credentialOffer =
-            Url(url).parameters["credential_offer"]?.let { CredentialOffer.deserialize(it).getOrThrow() }
-        credentialOffer.shouldNotBeNull()
-        println(credentialOffer)
-        val credentialIssuerMetadataUrl = credentialOffer.credentialIssuer + PATH_WELL_KNOWN_CREDENTIAL_ISSUER
+        val credentialOffer = client.parseCredentialOffer(url).getOrThrow()
+            .also { println(it) }
+        //val credentialIssuerMetadataUrl = credentialOffer.credentialIssuer + PATH_WELL_KNOWN_CREDENTIAL_ISSUER
         val credentialIssuerMetadataString = """
             {
               "credential_issuer": "https://localhost/pid-issuer",

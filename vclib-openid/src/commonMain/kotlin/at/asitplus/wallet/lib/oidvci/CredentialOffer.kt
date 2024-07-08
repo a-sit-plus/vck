@@ -6,6 +6,9 @@ import at.asitplus.wallet.lib.oidc.jsonSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * OID4VCI: The Credential Issuer sends Credential Offer using an HTTP GET request or an HTTP redirect to the Wallet's
@@ -15,19 +18,26 @@ import kotlinx.serialization.encodeToString
 @Serializable
 data class CredentialOfferUrlParameters(
     /**
-     * OID4VCI: Object with the Credential Offer parameters. This MUST NOT be present when the `credential_offer_uri`
+     * OID4VCI: Object with the Credential Offer parameters. This MUST NOT be present when the [credentialOfferUrl]
      * parameter is present.
      */
     @SerialName("credential_offer")
-    val credentialOffer: String,
+    val credentialOffer: JsonObject? = null,
 
     /**
      * OID4VCI: String that is a URL using the `https` scheme referencing a resource containing a JSON object with the
-     * Credential Offer parameters. This MUST NOT be present when the `credential_offer` parameter is present.
+     * Credential Offer parameters. This MUST NOT be present when the [credentialOffer] parameter is present.
      */
     @SerialName("credential_offer_uri")
-    val credentialOfferUrl: String,
-)
+    val credentialOfferUrl: String? = null,
+) {
+    fun serialize() = jsonSerializer.encodeToString(this)
+
+    companion object {
+        fun deserialize(input: String): KmmResult<CredentialOfferUrlParameters> =
+            runCatching { jsonSerializer.decodeFromString<CredentialOfferUrlParameters>(input) }.wrap()
+    }
+}
 
 @Serializable
 data class CredentialOffer(
@@ -62,6 +72,8 @@ data class CredentialOffer(
     companion object {
         fun deserialize(input: String): KmmResult<CredentialOffer> =
             runCatching { jsonSerializer.decodeFromString<CredentialOffer>(input) }.wrap()
+        fun deserialize(input: JsonElement): KmmResult<CredentialOffer> =
+            runCatching { jsonSerializer.decodeFromJsonElement<CredentialOffer>(input) }.wrap()
     }
 }
 

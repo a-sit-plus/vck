@@ -6,6 +6,7 @@ import at.asitplus.crypto.datatypes.cose.CborWebToken
 import at.asitplus.crypto.datatypes.cose.CoseHeader
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.io.Base64UrlStrict
+import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
 import at.asitplus.crypto.datatypes.jws.JsonWebToken
 import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
@@ -30,12 +31,16 @@ import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.CREDENTIAL_TYPE_OPENID
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
+import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.ktor.http.*
+import io.ktor.util.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -70,6 +75,13 @@ class WalletService(
      * Used to prove possession of the key material to create [CredentialRequestProof].
      */
     private val coseService: CoseService = DefaultCoseService(cryptoService),
+    /**
+     * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
+     * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
+     * Implementations need to fetch the url passed in, and return either the body, if there is one,
+     * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
+     */
+    private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
 ) {
 
     private val stateToCodeChallengeMap = mutableMapOf<String, String>()
@@ -80,21 +92,26 @@ class WalletService(
             clientId: String,
             redirectUrl: String,
             keyPairAdapter: KeyPairAdapter,
+            remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
         ): WalletService = WalletService(
             clientId = clientId,
             redirectUrl = redirectUrl,
             cryptoService = DefaultCryptoService(keyPairAdapter),
+            remoteResourceRetriever = remoteResourceRetriever,
         )
+
         fun newDefaultInstance(
             clientId: String,
             redirectUrl: String,
-            cryptoService: CryptoService
+            cryptoService: CryptoService,
+            remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
         ): WalletService = WalletService(
             clientId = clientId,
             redirectUrl = redirectUrl,
             cryptoService = cryptoService,
             jwsService = DefaultJwsService(cryptoService),
             coseService = DefaultCoseService(cryptoService),
+            remoteResourceRetriever = remoteResourceRetriever,
         )
     }
 
@@ -121,6 +138,26 @@ class WalletService(
          */
         val clock: Clock = Clock.System,
     )
+
+    /**
+     * Pass in the URL provided by the Credential Issuer,
+     * which may contain a direct [CredentialOffer] or a URI pointing to it.
+     */
+    suspend fun parseCredentialOffer(input: String): KmmResult<CredentialOffer> = catching {
+        kotlin.runCatching {
+            val params = Url(input).parameters.flattenEntries().toMap()
+                .decodeFromUrlQuery<CredentialOfferUrlParameters>()
+            params.credentialOffer?.let {
+                CredentialOffer.deserialize(it).getOrThrow()
+            } ?: params.credentialOfferUrl?.let { uri ->
+                remoteResourceRetriever.invoke(uri)
+                    ?.let { parseCredentialOffer(it).getOrNull() }
+            }
+        }.getOrNull() ?: kotlin.runCatching {
+            CredentialOffer.deserialize(input).getOrThrow()
+        }.getOrNull() ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            .also { Napier.w("Could not parse credential offer from $input") }
+    }
 
     /**
      * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
