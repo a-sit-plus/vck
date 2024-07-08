@@ -1,4 +1,8 @@
-import at.asitplus.gradle.*
+import at.asitplus.gradle.commonImplementationDependencies
+import at.asitplus.gradle.commonIosExports
+import at.asitplus.gradle.exportIosFramework
+import at.asitplus.gradle.setupDokka
+import org.jetbrains.kotlin.gradle.plugin.mpp.BitcodeEmbeddingMode
 
 plugins {
     kotlin("multiplatform")
@@ -31,8 +35,11 @@ kotlin {
 
         commonTest {
             dependencies {
-                implementation("at.asitplus.wallet:eupidcredential:2.1.0-SNAPSHOT"){
-                    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-serialization-json") //TODO remove me once everything's updated to conventions with new serialization
+                implementation("at.asitplus.wallet:eupidcredential:2.1.0-SNAPSHOT") {
+                    exclude(
+                        group = "org.jetbrains.kotlinx",
+                        module = "kotlinx-serialization-json"
+                    ) //TODO remove me once everything's updated to conventions with new serialization
                 }
                 implementation("at.asitplus.wallet:mobiledrivinglicence:1.0.0-SNAPSHOT")
             }
@@ -40,20 +47,25 @@ kotlin {
 
         jvmMain {
             dependencies {
-                implementation(bouncycastle("bcprov"))
+                implementation(kmpCrypto.bcpkix.jdk18on)
             }
         }
 
         jvmTest {
             dependencies {
-                implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
+                implementation(kmpCrypto.jose)
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
             }
         }
     }
 }
 
-exportIosFramework("VcLibOpenIdKmm", *commonIosExports(), project(":vclib"))
+exportIosFramework(
+    "VcLibOpenIdKmm",
+    static = false,
+    bitcodeEmbeddingMode = BitcodeEmbeddingMode.DISABLE,
+    *commonIosExports(), project(":vclib")
+)
 
 val javadocJar = setupDokka(
     baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/main/",

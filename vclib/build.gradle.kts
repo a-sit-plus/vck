@@ -1,8 +1,8 @@
-import at.asitplus.gradle.bouncycastle
 import at.asitplus.gradle.commonImplementationAndApiDependencies
 import at.asitplus.gradle.commonIosExports
 import at.asitplus.gradle.exportIosFramework
 import at.asitplus.gradle.setupDokka
+import org.jetbrains.kotlin.gradle.plugin.mpp.BitcodeEmbeddingMode
 
 plugins {
     kotlin("multiplatform")
@@ -35,19 +35,24 @@ kotlin {
 
         jvmMain {
             dependencies {
-                implementation(bouncycastle("bcpkix"))
+                implementation(kmpCrypto.bcpkix.jdk18on)
             }
         }
         jvmTest {
             dependencies {
-                implementation("com.nimbusds:nimbus-jose-jwt:${VcLibVersions.Jvm.`jose-jwt`}")
+                implementation(kmpCrypto.jose)
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
             }
         }
     }
 }
 
-exportIosFramework("VcLibKmm", *commonIosExports())
+exportIosFramework(
+    name = "VcLibKmm",
+    static = false,
+    bitcodeEmbeddingMode = BitcodeEmbeddingMode.DISABLE,
+    *commonIosExports()
+)
 
 val javadocJar = setupDokka(
     baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/main/",
