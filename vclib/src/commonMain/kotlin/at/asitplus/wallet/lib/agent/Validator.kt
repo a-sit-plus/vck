@@ -6,26 +6,16 @@ import at.asitplus.crypto.datatypes.cose.toCoseKey
 import at.asitplus.crypto.datatypes.io.Base64Strict
 import at.asitplus.crypto.datatypes.io.BitSet
 import at.asitplus.crypto.datatypes.io.toBitSet
+import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
-import at.asitplus.wallet.lib.data.IsoDocumentParsed
-import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.RevocationListSubject
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.iso.ValueDigestList
-import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.iso.wrapInCborTag
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
@@ -164,8 +154,9 @@ class Validator(
         publicKey: CryptoPublicKey
     ): Verifier.VerifyPresentationResult {
         Napier.d("Verifying VP $input")
-        val jws = JwsSigned.parse(input).getOrNull() ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
-            .also { Napier.w("VP: Could not parse JWS") }
+        val jws = JwsSigned.parse(input).getOrNull()
+            ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
+                .also { Napier.w("VP: Could not parse JWS") }
         if (!verifierJwsService.verifyJwsObject(jws))
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("VP: Signature invalid") }
@@ -228,13 +219,17 @@ class Validator(
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Audience not correct: ${keyBinding.audience}") }
         if (sdJwtResult.sdJwt.confirmationKey != null) {
-            if (jwsKeyBindingParsed.header.jsonWebKey != sdJwtResult.sdJwt.confirmationKey) {
-                return Verifier.VerifyPresentationResult.InvalidStructure(input)
-                    .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject: ${sdJwtResult.sdJwt}") }
-            }
+            jwsKeyBindingParsed.header.jsonWebKey?.let {
+                if (!sdJwtResult.sdJwt.confirmationKey.equalsCryptographically(it)) {
+                    return Verifier.VerifyPresentationResult.InvalidStructure(input)
+                        .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject") }
+                }
+            } ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
+                .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not exist") }
+
         } else if (jwsKeyBindingParsed.header.keyId != sdJwtResult.sdJwt.subject) {
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
-                .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject: ${sdJwtResult.sdJwt}") }
+                .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject") }
         }
         val hashInput = input.substringBeforeLast("~") + "~"
         if (!keyBinding.sdHash.contentEquals(hashInput.encodeToByteArray().sha256()))
@@ -442,3 +437,12 @@ class Validator(
     }
 
 }
+
+private fun JsonWebKey.equalsCryptographically(second: JsonWebKey) =
+    curve == second.curve &&
+            type == second.type &&
+            x.contentEquals(second.x) &&
+            y.contentEquals(second.y) &&
+            n.contentEquals(second.n) &&
+            e.contentEquals(second.e) &&
+            k.contentEquals(second.k)
