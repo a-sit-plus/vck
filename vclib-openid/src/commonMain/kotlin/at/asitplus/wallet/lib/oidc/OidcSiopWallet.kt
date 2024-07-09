@@ -258,9 +258,12 @@ class OidcSiopWallet(
 
     private fun AuthenticationRequestParametersFrom.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
-    ) = clientJsonWebKeySet?.keys?.firstOrNull()?.identifier ?: parameters.clientId
-    ?: parameters.audience
-    ?: throw OAuth2Exception(Errors.INVALID_REQUEST).also { Napier.w("Could not parse audience") }
+    ) = clientJsonWebKeySet?.keys?.firstOrNull()
+        ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }
+        ?: parameters.clientId
+        ?: parameters.audience
+        ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            .also { Napier.w("Could not parse audience") }
 
     private suspend fun RelyingPartyMetadata.loadJsonWebKeySet() =
         this.jsonWebKeySet ?: jsonWebKeySetUrl?.let { remoteResourceRetriever.invoke(it) }

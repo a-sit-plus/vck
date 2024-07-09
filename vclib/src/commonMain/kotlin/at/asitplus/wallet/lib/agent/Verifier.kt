@@ -91,7 +91,7 @@ fun CryptoPublicKey.matchesIdentifier(input: String): Boolean {
         return true
     if (toJsonWebKey().keyId == input)
         return true
-    if (toJsonWebKey().identifier == input)
+    if (toJsonWebKey().jwkThumbprint == input)
         return true
     if (toJsonWebKey().didEncoded == input)
         return true

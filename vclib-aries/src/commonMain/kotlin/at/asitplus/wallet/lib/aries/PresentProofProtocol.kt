@@ -275,7 +275,7 @@ class PresentProofProtocol(
         // TODO Is ISO supported here?
         val presentationResult = holder?.createPresentation(
             challenge = requestPresentationAttachment.options.challenge,
-            audienceId = requestPresentationAttachment.options.verifier ?: senderKey.identifier,
+            audienceId = requestPresentationAttachment.options.verifier ?: senderKey.didEncoded ?: senderKey.jwkThumbprint,
             presentationDefinition = requestPresentationAttachment.presentationDefinition,
         )?.getOrNull() ?: return problemReporter.problemInternal(lastMessage.threadId, "vp-empty")
         val vp = presentationResult.presentationResults.firstOrNull()
