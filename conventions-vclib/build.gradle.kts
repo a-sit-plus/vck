@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.io.FileInputStream
 import java.util.*
 
@@ -21,6 +22,12 @@ gradlePlugin {
     plugins.register("vclib-conventions") {
         id = "at.asitplus.gradle.vclib-conventions"
         implementationClass = "at.asitplus.gradle.VcLibConventions"
+    }
+}
+
+tasks.withType<KotlinCompile>().configureEach {
+    kotlinOptions {
+        freeCompilerArgs = freeCompilerArgs + "-Xcontext-receivers"
     }
 }
 
