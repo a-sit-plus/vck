@@ -173,9 +173,8 @@ class HolderAgent(
         ).getOrThrow()
 
         if (!validator.isValidSubmission(submittedCredentials.keys)) {
-            val missingInputDescriptors = presentationDefinition.inputDescriptors.map {
-                it.id
-            }.toSet() - submittedCredentials.keys
+            val missingInputDescriptors = presentationDefinition.inputDescriptors
+                .map { it.id }.toSet() - submittedCredentials.keys
 
             throw PresentationException(
                 "Submission requirements are unsatisfied: No credentials were submitted for input descriptors: $missingInputDescriptors"

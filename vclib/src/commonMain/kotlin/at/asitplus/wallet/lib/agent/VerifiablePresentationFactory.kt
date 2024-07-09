@@ -86,13 +86,10 @@ class VerifiablePresentationFactory(
                 null
             }
         }.groupBy {
-            // grouping by namespace
-            it.first
+            it.first  // grouping by namespace
         }.mapValues {
             // unrolling values to just the list of attribute names for that namespace
-            it.value.map {
-                it.second
-            }
+            it.value.map { it.second }
         }
         val disclosedItems = namespaceToAttributesMap.mapValues { namespaceToAttributeNamesEntry ->
             val namespace = namespaceToAttributeNamesEntry.key
@@ -102,7 +99,8 @@ class VerifiablePresentationFactory(
                     namespace
                 )?.entries?.find {
                     it.value.elementIdentifier == attributeName
-                } ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
+                }
+                    ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
             })
         }
 
@@ -142,13 +140,11 @@ class VerifiablePresentationFactory(
         val issuerJwtPlusDisclosures =
             SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
         val keyBinding = createKeyBindingJws(audienceId, challenge, issuerJwtPlusDisclosures)
-        val jwsFromIssuer =
-            JwsSigned.parse(validSdJwtCredential.vcSerialized.substringBefore("~")).getOrElse {
-                Napier.w("Could not re-create JWS from stored SD-JWT", it)
-                throw PresentationException(it)
-            }
-        val sdJwt =
-            SdJwtSigned.serializePresentation(jwsFromIssuer, filteredDisclosures, keyBinding)
+        val jwsFromIssuer = JwsSigned.parse(validSdJwtCredential.vcSerialized.substringBefore("~")).getOrElse {
+            Napier.w("Could not re-create JWS from stored SD-JWT", it)
+            throw PresentationException(it)
+        }
+        val sdJwt = SdJwtSigned.serializePresentation(jwsFromIssuer, filteredDisclosures, keyBinding)
         return Holder.CreatePresentationResult.SdJwt(sdJwt)
     }
 
@@ -156,37 +152,31 @@ class VerifiablePresentationFactory(
         audienceId: String,
         challenge: String,
         issuerJwtPlusDisclosures: String,
-    ): JwsSigned {
-        val keyBindingJws = KeyBindingJws(
+    ): JwsSigned = jwsService.createSignedJwsAddingParams(
+        header = JwsHeader(
+            type = JwsContentTypeConstants.KB_JWT,
+            algorithm = jwsService.algorithm,
+        ),
+        payload = KeyBindingJws(
             issuedAt = Clock.System.now(),
             audience = audienceId,
             challenge = challenge,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
-        )
-        val jwsPayload = keyBindingJws.serialize().encodeToByteArray()
-        return jwsService.createSignedJwsAddingParams(
-            header = JwsHeader(
-                type = JwsContentTypeConstants.KB_JWT,
-                algorithm = jwsService.algorithm,
-            ),
-            payload = jwsPayload,
-            addKeyId = false,
-            addJsonWebKey = true,
-            addX5c = false,
-        ).getOrElse {
-            Napier.w("Could not create JWS for presentation", it)
-            throw PresentationException(it)
-        }
+        ).serialize().encodeToByteArray(),
+        addKeyId = false,
+        addJsonWebKey = true,
+        addX5c = false,
+    ).getOrElse {
+        Napier.w("Could not create JWS for presentation", it)
+        throw PresentationException(it)
     }
 
-    private fun Map.Entry<String, SelectiveDisclosureItem?>.discloseItem(requestedClaims: Collection<String>?): Boolean {
-        return if (requestedClaims == null) {
-            // do not disclose by default
-            false
+    private fun Map.Entry<String, SelectiveDisclosureItem?>.discloseItem(requestedClaims: Collection<String>?) =
+        if (requestedClaims == null) {
+            false // do not disclose by default
         } else {
             value?.let { it.claimName in requestedClaims } ?: false
         }
-    }
 
     /**
      * Creates a [VerifiablePresentation] with the given [validCredentials].
@@ -197,14 +187,16 @@ class VerifiablePresentationFactory(
         validCredentials: List<String>,
         challenge: String,
         audienceId: String,
-    ): Holder.CreatePresentationResult {
-        val vp = VerifiablePresentation(validCredentials)
-        val vpSerialized = vp.toJws(challenge, identifier, audienceId).serialize()
-        val jwsPayload = vpSerialized.encodeToByteArray()
-        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrElse {
+    ): Holder.CreatePresentationResult = Holder.CreatePresentationResult.Signed(
+        jwsService.createSignedJwt(
+            type = JwsContentTypeConstants.JWT,
+            payload = VerifiablePresentation(validCredentials)
+                .toJws(challenge, identifier, audienceId)
+                .serialize()
+                .encodeToByteArray()
+        ).getOrElse {
             Napier.w("Could not create JWS for presentation", it)
             throw PresentationException(it)
-        }
-        return Holder.CreatePresentationResult.Signed(jws.serialize())
-    }
+        }.serialize()
+    )
 }
