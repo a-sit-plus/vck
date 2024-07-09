@@ -8,10 +8,14 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalog
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.kotlin.dsl.getByType
+import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+import org.jetbrains.kotlin.gradle.utils.named
 
 
-val Project.kmpCryptoVersionCatalog:VersionCatalog  get() = extensions.getByType<VersionCatalogsExtension>().named("kmpCrypto")
+val Project.kmpCryptoVersionCatalog: VersionCatalog
+    get() = extensions.getByType<VersionCatalogsExtension>().named("kmpCrypto")
 
 inline fun Project.commonApiDependencies(): List<String> {
     project.AspVersions.versions["kmpcrypto"] = VcLibVersions.kmpcrypto
@@ -65,6 +69,15 @@ fun Project.commonIosExports() = arrayOf(
 class VcLibConventions : Plugin<Project> {
     override fun apply(target: Project) {
         target.plugins.apply("at.asitplus.gradle.conventions")
+        target.gradle.taskGraph.whenReady {
+            target.tasks.withType<KotlinCompilationTask<*>>().configureEach {
+                compilerOptions {
+                    freeCompilerArgs.add("-Xexpect-actual-classes")
+                    optIn.add("kotlinx.cinterop.BetaInteropApi")
+                }
+            }
+        }
+
     }
 }
 

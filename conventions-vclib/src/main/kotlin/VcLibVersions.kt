@@ -1,4 +1,6 @@
+import org.gradle.api.Project
 import java.util.*
+
 
 object VcLibVersions {
 
@@ -8,12 +10,13 @@ object VcLibVersions {
 
     private fun versionOf(dependency: String) = versions[dependency] as String
 
-
-    const val uuid = "0.8.1"
+    val uuid get() = versionOf("uuid")
     val kmpcrypto get() = versionOf("kmpCrypto")
-    const val jsonpath = "2.0.0"
+    val jsonpath get() = versionOf("jsonpath")
+    val eupidcredential get() = versionOf("eupid")
+    val mdl get() = versionOf("mdl")
 
     object Jvm {
-        const val json = "20230618"
+        val json get() = versionOf("jvm.json")
     }
 }
