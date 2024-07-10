@@ -2,7 +2,8 @@ package at.asitplus.wallet.lib.data
 
 object AttributeIndex {
 
-    private val schemeSet = mutableSetOf<ConstantIndex.CredentialScheme>()
+    var schemeSet = setOf<ConstantIndex.CredentialScheme>()
+        private set
 
     init {
         schemeSet += ConstantIndex.AtomicAttribute2023
