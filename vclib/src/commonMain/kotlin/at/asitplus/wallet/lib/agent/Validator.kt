@@ -437,12 +437,3 @@ class Validator(
     }
 
 }
-
-private fun JsonWebKey.equalsCryptographically(second: JsonWebKey) =
-    curve == second.curve &&
-            type == second.type &&
-            x.contentEquals(second.x) &&
-            y.contentEquals(second.y) &&
-            n.contentEquals(second.n) &&
-            e.contentEquals(second.e) &&
-            k.contentEquals(second.k)
