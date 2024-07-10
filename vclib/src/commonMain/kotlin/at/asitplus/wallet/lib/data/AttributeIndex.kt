@@ -52,12 +52,14 @@ object AttributeIndex {
             .firstOrNull { it.isoDocType!!.startsWith(docType) || docType.startsWith(it.isoDocType!!) }
     }
 
-    // TODO Probably shouldn't be that permissive
-    fun resolveCredentialScheme(attributeType: String): ConstantIndex.CredentialScheme? {
-        return resolveAttributeType(attributeType)
-            ?: resolveSdJwtAttributeType(attributeType)
-            ?: resolveIsoNamespace(attributeType)
-            ?: resolveSchemaUri(attributeType)
+    /**
+     * Compares the input to all CredentialScheme identifiers and on match returns it plus its associated `ConstantIndex.CredentialRepresentation` if applicable
+     */
+    fun resolveCredential(input: String): Pair<ConstantIndex.CredentialScheme, ConstantIndex.CredentialRepresentation?>? {
+        return resolveAttributeType(input)?.let { it to ConstantIndex.CredentialRepresentation.PLAIN_JWT}
+            ?: resolveSdJwtAttributeType(input)?.let { it to ConstantIndex.CredentialRepresentation.SD_JWT}
+            ?: resolveIsoNamespace(input)?.let { it to ConstantIndex.CredentialRepresentation.ISO_MDOC}
+            ?: resolveIsoDoctype(input)?.let { it to ConstantIndex.CredentialRepresentation.ISO_MDOC}
+            ?: resolveSchemaUri(input)?.let { it to null}
     }
-
 }
