@@ -19,6 +19,7 @@ import at.asitplus.crypto.datatypes.jws.JwsHeader
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.jws.JwsSigned.Companion.prepareJwsSignatureInput
 import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
+import at.asitplus.crypto.datatypes.toX509SignatureAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyHolder
@@ -101,7 +102,7 @@ interface VerifierJwsService {
 
 class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
-    override val algorithm: JwsAlgorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm()
+    override val algorithm: JwsAlgorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow()
 
     // TODO: Get from crypto service
     override val encryptionAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES
@@ -115,7 +116,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         contentType: String?
     ): KmmResult<JwsSigned> = createSignedJws(
         JwsHeader(
-            algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm(),
+            algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow(),
             keyId = cryptoService.keyPairAdapter.publicKey.didEncoded,
             type = type,
             contentType = contentType
@@ -123,7 +124,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     )
 
     override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray) = catching {
-        if (header.algorithm != cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm()
+        if (header.algorithm != cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow()
             || header.jsonWebKey?.let { it != cryptoService.keyPairAdapter.jsonWebKey } == true
         ) {
             throw IllegalArgumentException("Algorithm or JSON Web Key not matching to cryptoService")
@@ -140,16 +141,16 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         addKeyId: Boolean,
         addJsonWebKey: Boolean,
         addX5c: Boolean
-    ): KmmResult<JwsSigned> {
-        var copy = header?.copy(algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm())
-            ?: JwsHeader(algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm())
+    ): KmmResult<JwsSigned> = catching {
+        var copy = header?.copy(algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow())
+            ?: JwsHeader(algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow())
         if (addKeyId)
             copy = copy.copy(keyId = cryptoService.keyPairAdapter.jsonWebKey.keyId)
         if (addJsonWebKey)
             copy = copy.copy(jsonWebKey = cryptoService.keyPairAdapter.jsonWebKey)
         if (addX5c)
-            copy = copy.copy(certificateChain = listOf(cryptoService!!.keyPairAdapter.certificate!!)) //TODO cleanup/nullchecks
-        return createSignedJws(copy, payload)
+            copy = copy.copy(certificateChain = listOf(cryptoService.keyPairAdapter.certificate!!)) //TODO cleanup/nullchecks
+        createSignedJws(copy, payload).getOrThrow()
     }
 
     override suspend fun decryptJweObject(
@@ -265,7 +266,7 @@ class DefaultVerifierJwsService(
     private val jwkSetRetriever: JwkSetRetrieverFunction = { null },
 ) : VerifierJwsService {
 
-    override val supportedAlgorithms: List<JwsAlgorithm> = cryptoService.supportedAlgorithms.map { it.toJwsAlgorithm() }
+    override val supportedAlgorithms: List<JwsAlgorithm> = cryptoService.supportedAlgorithms.map { it.toJwsAlgorithm().getOrThrow() }
 
     /**
      * Verifies the signature of [jwsObject], by extracting the public key from [JwsHeader.publicKey],
@@ -293,18 +294,16 @@ class DefaultVerifierJwsService(
         return verify(jwsObject, publicKey)
     }
 
-    private fun verify(jwsObject: JwsSigned, publicKey: CryptoPublicKey): Boolean {
-        val verified = cryptoService.verify(
+    private fun verify(jwsObject: JwsSigned, publicKey: CryptoPublicKey): Boolean = catching {
+        cryptoService.verify(
             input = jwsObject.plainSignatureInput.encodeToByteArray(),
             signature = jwsObject.signature,
-            algorithm = jwsObject.header.algorithm.toX509SignatureAlgorithm(),
+            algorithm = jwsObject.header.algorithm.toX509SignatureAlgorithm().getOrThrow(),
             publicKey = publicKey,
-        )
-        val falseVar = false // workaround kotlin bug for linking xcframework
-        return verified.getOrElse {
-            Napier.w("No verification from native code", it)
-            return falseVar
-        }
+        ).getOrThrow()
+    }.getOrElse {
+        Napier.w("No verification from native code", it)
+        false
     }
 }
 

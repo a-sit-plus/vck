@@ -4,28 +4,12 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.CryptoSignature
-import at.asitplus.crypto.datatypes.Digest
-import at.asitplus.crypto.datatypes.ECCurve
+import at.asitplus.crypto.datatypes.*
 import at.asitplus.crypto.datatypes.ECCurve.SECP_256_R_1
-import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
 import at.asitplus.crypto.datatypes.cose.toCoseKey
-import at.asitplus.crypto.datatypes.fromJcaPublicKey
-import at.asitplus.crypto.datatypes.getJcaPublicKey
-import at.asitplus.crypto.datatypes.jcaName
-import at.asitplus.crypto.datatypes.jcaParams
-import at.asitplus.crypto.datatypes.jcaSignatureBytes
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
-import at.asitplus.crypto.datatypes.jws.JweAlgorithm
-import at.asitplus.crypto.datatypes.jws.JweEncryption
-import at.asitplus.crypto.datatypes.jws.isAuthenticatedEncryption
-import at.asitplus.crypto.datatypes.jws.jcaKeySpecName
-import at.asitplus.crypto.datatypes.jws.jcaName
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
-import at.asitplus.crypto.datatypes.parseFromJca
+import at.asitplus.crypto.datatypes.jws.*
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 import org.bouncycastle.jce.ECNamedCurveTable
@@ -35,7 +19,6 @@ import java.math.BigInteger
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.MessageDigest
-import java.security.Signature
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
 import javax.crypto.spec.GCMParameterSpec
@@ -70,8 +53,7 @@ actual open class DefaultCryptoService : CryptoService {
     }
 
     actual override suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature> = runCatching {
-        val sig = Signature.getInstance(keyPairAdapter.signingAlgorithm.jcaName).apply {
-            this@DefaultCryptoService.keyPairAdapter.signingAlgorithm.jcaParams?.let { setParameter(it) }
+        val sig = keyPairAdapter.signingAlgorithm.algorithm.getJCASignatureInstance().getOrThrow().apply {
             initSign(jvmKeyPairAdapter.keyPair.private)
             update(input)
         }.sign()
@@ -188,7 +170,7 @@ class JvmKeyPairAdapter(
     override val jsonWebKey: JsonWebKey
         get() = publicKey.toJsonWebKey()
     override val coseKey: CoseKey
-        get() = publicKey.toCoseKey(signingAlgorithm.toCoseAlgorithm()).getOrThrow()
+        get() = publicKey.toCoseKey(signingAlgorithm.toCoseAlgorithm().getOrThrow()).getOrThrow()
 }
 
 actual fun RandomKeyPairAdapter(extensions: List<X509CertificateExtension>): KeyPairAdapter {
@@ -197,8 +179,7 @@ actual fun RandomKeyPairAdapter(extensions: List<X509CertificateExtension>): Key
     val publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
     val certificate = X509Certificate.generateSelfSignedCertificate(publicKey, signingAlgorithm, extensions) {
         runCatching {
-            CryptoSignature.parseFromJca(Signature.getInstance(signingAlgorithm.jcaName).apply {
-                signingAlgorithm.jcaParams?.let { setParameter(it) }
+            CryptoSignature.parseFromJca(signingAlgorithm.getJCASignatureInstance().getOrThrow().apply {
                 initSign(keyPair.private)
                 update(it)
             }.sign(), signingAlgorithm)
@@ -223,8 +204,7 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
         algorithm: X509SignatureAlgorithm,
         publicKey: CryptoPublicKey,
     ): KmmResult<Boolean> = runCatching {
-        Signature.getInstance(algorithm.jcaName).apply {
-            algorithm.jcaParams?.let { setParameter(it) }
+        algorithm.getJCASignatureInstance().getOrThrow().apply {
             initVerify(publicKey.getJcaPublicKey().getOrThrow())
             update(input)
         }.verify(signature.jcaSignatureBytes)

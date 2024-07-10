@@ -155,7 +155,7 @@ class IosKeyPairAdapter(
     override val jsonWebKey: JsonWebKey
         get() = publicKey.toJsonWebKey()
     override val coseKey: CoseKey
-        get() = publicKey.toCoseKey(signingAlgorithm.toCoseAlgorithm()).getOrThrow()
+        get() = publicKey.toCoseKey(signingAlgorithm.toCoseAlgorithm().getOrThrow()).getOrThrow()
 
 }
 

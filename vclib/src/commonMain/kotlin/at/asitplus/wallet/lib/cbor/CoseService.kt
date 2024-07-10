@@ -8,6 +8,7 @@ import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.CoseSignatureInput
 import at.asitplus.crypto.datatypes.cose.CoseSigned
 import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
+import at.asitplus.crypto.datatypes.toX509SignatureAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
@@ -54,7 +55,7 @@ private const val SIGNATURE1_STRING = "Signature1"
 
 class DefaultCoseService(private val cryptoService: CryptoService) : CoseService {
 
-    override val algorithm: CoseAlgorithm = cryptoService.keyPairAdapter.signingAlgorithm.toCoseAlgorithm()
+    override val algorithm: CoseAlgorithm = cryptoService.keyPairAdapter.signingAlgorithm.toCoseAlgorithm().getOrThrow()
 
     override suspend fun createSignedCose(
         protectedHeader: CoseHeader?,
@@ -120,7 +121,7 @@ class DefaultVerifierCoseService(
         cryptoService.verify(
             input = signatureInput,
             signature = coseSigned.signature,
-            algorithm = algorithm.toX509SignatureAlgorithm(),
+            algorithm = algorithm.toX509SignatureAlgorithm().getOrThrow(),
             publicKey = publicKey
         ).getOrThrow()
     }

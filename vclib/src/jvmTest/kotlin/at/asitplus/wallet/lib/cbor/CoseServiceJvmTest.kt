@@ -57,7 +57,7 @@ class CoseServiceJvmTest : FreeSpec({
 
                 else -> throw IllegalArgumentException("Unknown Key Type") // -||-
             }
-            val coseAlgorithm = sigAlgo.toCoseAlgorithm()
+            val coseAlgorithm = sigAlgo.toCoseAlgorithm().getOrThrow()
             val extLibAlgorithm = when (sigAlgo) {
                 X509SignatureAlgorithm.ES256 -> COSEAlgorithms.ES256
                 X509SignatureAlgorithm.ES384 -> COSEAlgorithms.ES384
