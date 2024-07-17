@@ -18,9 +18,11 @@ Release 4.0.0:
  - Refactor `AuthenticationRequestParametersFrom` used in `OidcSiopWallet` to be serializable
  - Add `AuthenticationResponseFactory`: Builds an authentication response from request and response parameters
  - Change `OidcSiopWallet`: 
-   - Add `startAuthorizationResponsePreparation`: Gathers data necessary for presentation building and yields a `AuthorizationResponsePreparationState`
-   - Add `finalizeAuthorizationResponseParameters`: Returns what `createAuthenticationParams` returned before, but also takes in `AuthorizationResponsePreparationState` and an optional non-default submission
-   - Add `finalizeAuthorizationResponse`: Returns what `createAuthenticationResponse` did before 
+   - Add `startAuthorizationResponsePreparation()`: Gathers data necessary for presentation building and yields a `AuthorizationResponsePreparationState`
+   - Add `finalizeAuthorizationResponseParameters()`: Returns what `createAuthenticationParams` returned before, but also takes in `AuthorizationResponsePreparationState` and an optional non-default submission
+   - Add `finalizeAuthorizationResponse()`: Returns what `createAuthenticationResponse()` did before
+ - Change `OidcSiopVerifier`:
+   - Add `createAuthnRequestUrlWithRequestObjectByReference()` to offer authentication requests by reference to the Wallet
  - Add `AuthorizationResponsePreparationState`: Holds data necessary for presentation building
  - Add `AuthenticationRequestParser`: Extracted presentation request parsing logic from `OidcSiopWallet` and put it here
  - Add `AuthorizationRequestValidator`: Extracted presentation request validation logic from `OidcSiopWallet` and put it here

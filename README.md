@@ -66,7 +66,7 @@ Other libraries using this library may call `LibraryInitializer.registerExtensio
 
 ## Dataflow for OID4VCI
 
-We'll present an issuing process according to [OID4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), with all terms taken from there.
+We'll present an issuing process according to [OID4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), along with [OID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), with all terms taken from there.
 
 The credential issuer serves the following metadata: 
 
@@ -96,7 +96,7 @@ The credential issuer serves the following metadata:
         "at.a-sit.wallet.atomic-attribute-2023": {
           "given_name": {},
           "family_name": {},
-          "subject": {}
+          "date_of_birth": {}
         }
       }
     },
@@ -118,7 +118,7 @@ The credential issuer serves the following metadata:
         "credentialSubject": {
           "given_name": {},
           "family_name": {},
-          "subject": {}
+          "date_of_birth": {}
         }
       }
     },
@@ -136,7 +136,7 @@ The credential issuer serves the following metadata:
       "claims": {
         "given_name": {},
         "family_name": {},
-        "subject": {}
+        "date_of_birth": {}
       }
     }
   }
@@ -290,9 +290,205 @@ with the following claims appended:
 ```
 
 ```
-["wkeeXn0z00kkbhuZyPW3gpePi9xRUe5rekCsisgzex8","subject","subject"]
+["wkeeXn0z00kkbhuZyPW3gpePi9xRUe5rekCsisgzex8","date_of_birth","1980-01-13"]
 ```
 
+
+
+## Dataflow for SIOPv2
+
+We'll present a presentation process according to [SIOPv2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), along with [OID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), with all terms taken from there.
+
+The verifier creates a URL to be displayet to the wallet, containing a reference to the authentication request itself:
+
+```
+https://wallet.a-sit.at/mobile
+    ?client_id=https://example.com/rp
+    &request_uri=https://example.com/request/15a4e87c-8e3e-4368-87a3-48083bac7232
+```
+
+The authentication request is signed as a JWS and contains the following header and payload:
+
+```
+{
+  "alg": "ES256",
+  "x5c": [
+    "MIIBNDCB2qADAgECAgjm7Gfdm0IFUDAKBggqhkjOPQQDAjASMRAwDgYDVQQDDAdEZWZhdWx0MB4XDTI0MDcxNzEzNTUzMVoXDTI0MDcxNzEzNTYwMVowEjEQMA4GA1UEAwwHRGVmYXVsdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABCaD9zTN05m6zZSX+QrQzdF4l1Bt3pVSo6VV9VFUSFCkImDkSsyCbgkJoZFkUNObbMiZbccQk6H33HAfxGWpLTyjGjAYMBYGA1UdEQQPMA2CC2V4YW1wbGUuY29tMAoGCCqGSM49BAMCA0kAMEYCIQDSotU4YnsO0Ar5+barXkCn3PQlCaPJEnBwRL60SnHW9wIhAK5mLYgfslZvT5jFmMrS3Ivzm2EpNyjdCPGVT3wpt6/t"
+  ]
+}
+.
+{
+  "response_type": "id_token vp_token",
+  "client_id": "example.com",
+  "scope": "openid profile AtomicAttribute2023 AtomicAttribute2023 at.a-sit.wallet.atomic-attribute-2023",
+  "state": "36efe035-ecf6-4c56-94c8-3dfe167ddaad",
+  "nonce": "148279b8-5222-4db9-bb9b-0614bbe0ef7d",
+  "client_metadata": {
+    "redirect_uris": [
+      "https://example.com/rp"
+    ],
+    "jwks": {
+      "keys": [
+        {
+          "crv": "P-256",
+          "kty": "EC",
+          "x": "JoP3NM3TmbrNlJf5CtDN0XiXUG3elVKjpVX1UVRIUKQ",
+          "y": "ImDkSsyCbgkJoZFkUNObbMiZbccQk6H33HAfxGWpLTw"
+        }
+      ]
+    },
+    "subject_syntax_types_supported": [
+      "urn:ietf:params:oauth:jwk-thumbprint",
+      "did:key"
+    ],
+    "vp_formats": {
+      "jwt_vp": {
+        "alg": [ "ES256", "ES384", "ES512" ]
+      },
+      "vc+sd-jwt": {
+        "alg": [ "ES256", "ES384", "ES512" ]
+      },
+      "mso_mdoc": {
+        "alg": [ "ES256", "ES384", "ES512" ]
+      }
+    }
+  },
+  "id_token_type": "subject_signed_id_token",
+  "presentation_definition": {
+    "id": "b0611eea-89e4-4b78-8f44-40a2cb608d4a",
+    "input_descriptors": [
+      {
+        "id": "9a5511bf-efe4-4ec2-84e5-4cabf1d13000",
+        "schema": [
+          {
+            "uri": "https://wallet.a-sit.at/schemas/1.0.0/AtomicAttribute2023.json"
+          }
+        ],
+        "constraints": {
+          "fields": [
+            {
+              "path": [ "$[\"family_name\"]" ]
+            },
+            {
+              "path": [ "$[\"given_name\"]" ]
+            },
+            {
+              "path": [ "$.vct" ],
+              "filter": {
+                "type": "string",
+                "pattern": "AtomicAttribute2023"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "format": {
+      "vc+sd-jwt": {
+        "alg": [ "ES256", "ES384", "ES512" ]
+      }
+    }
+  },
+  "client_id_scheme": "x509_san_dns",
+  "response_mode": "direct_post",
+  "response_uri": "https://example.com/response",
+  "aud": "https://example.com/rp",
+  "iss": "https://example.com/rp"
+}
+```
+
+The certificate includes the X.509 SAN extension with the value `example.com`.
+
+The wallet posts back the response to `https://example.com/response` with the parameters `presentation_submission`, `vp_token` and `state`.
+
+The value for `presentation_submission` is:
+
+```
+{
+  "id": "be3972bc-18cf-4e24-abf4-fe49eb870bab",
+  "definition_id": "b0611eea-89e4-4b78-8f44-40a2cb608d4a",
+  "descriptor_map": [
+    {
+      "id": "9a5511bf-efe4-4ec2-84e5-4cabf1d13000",
+      "format": "vc+sd-jwt",
+      "path": "$"
+    }
+  ]
+}
+```
+
+The value for `vp_token` is an SD-JWT, with header and payload:
+
+```
+{
+  "kid": "did:key:zDnaezoC5xdfzSdKoCZCZiw52eqnTks3xMKMDRTFKfSiq9obD",
+  "typ": "vc+sd-jwt",
+  "alg": "ES256"
+}
+.
+{
+  "sub": "did:key:zDnaexYu9PCJsDmg7YwyBCJR2qQT8DxqwXhm4BLAJVWUgW1Ms",
+  "nbf": 1721224531,
+  "iss": "did:key:zDnaezoC5xdfzSdKoCZCZiw52eqnTks3xMKMDRTFKfSiq9obD",
+  "exp": 1721224591,
+  "iat": 1721224531,
+  "jti": "urn:uuid:6ed95e4f-83ca-457c-8d8b-bf8bf93ad09e",
+  "_sd": [
+    "0nIEwdknjG7aMeKKiVnJNd7lK-dleq0_RPYc84gDg98",
+    "DZo-dZ4EQTxcekJqJKvhYZySgxodgH1vvT5su__pJlk"
+  ],
+  "vct": "AtomicAttribute2023",
+  "status": {
+    "id": "https://wallet.a-sit.at/backend/credentials/status/1#2",
+    "type": "RevocationList2020Status",
+    "revocationListIndex": 2,
+    "revocationListCredential": "https://wallet.a-sit.at/backend/credentials/status/1"
+  },
+  "_sd_alg": "sha-256",
+  "cnf": {
+    "crv": "P-256",
+    "kty": "EC",
+    "x": "3Tyi-VLN7pmm6kcbRuyD0bYrYllX_cH1fYbf72pNwtI",
+    "y": "6K5c5nYUfRBY3vRo-Q043hr8cFCqYj3iwnxwGFF2Ca8"
+  }
+}
+```
+
+with the following claims appended:
+
+```
+["_bBdCtzFzC1DYL1r6gNq2fZPMvMdR31mo2zp6gq1sZ4","given_name","Susanne"]
+```
+
+```
+["SNDcrxkCBGQrLj0kHiX72Gn4l5dz-sfKo12tbqAoNf8","family_name","Meier"]
+```
+
+```
+["wkeeXn0z00kkbhuZyPW3gpePi9xRUe5rekCsisgzex8","date_of_birth","1990-02-14"]
+```
+
+as well as a key binding (the JWT is decoded):
+
+```
+{
+  "typ": "kb+jwt",
+  "alg": "ES256",
+  "jwk": {
+    "crv": "P-256",
+    "kty": "EC",
+    "x": "3Tyi-VLN7pmm6kcbRuyD0bYrYllX_cH1fYbf72pNwtI",
+    "y": "6K5c5nYUfRBY3vRo-Q043hr8cFCqYj3iwnxwGFF2Ca8"
+  }
+}
+.
+{
+  "iat": 1721224531,
+  "aud": "did:key:zDnaeT2KFSXyCSo3WLjrZeQsNwaCQv2r6bV4bLZNbdhZKhBbh",
+  "nonce": "148279b8-5222-4db9-bb9b-0614bbe0ef7d",
+  "sd_hash": "UkLqyUz3zKR1iMTam7AsP89aEzYvbQqiJ4jfV82A96c"
+}
+```
 
 <br>
 

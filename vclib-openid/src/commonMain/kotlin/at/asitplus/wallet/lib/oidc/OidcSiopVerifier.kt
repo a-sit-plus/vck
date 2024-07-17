@@ -201,9 +201,10 @@ class OidcSiopVerifier private constructor(
         requestUrl: String,
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
+        val clientId = (x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
+            ?: relyingPartyUrl)
         AuthenticationRequestParameters(
-            clientId = x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
-                ?: relyingPartyUrl,
+            clientId = clientId,
             clientMetadataUri = clientMetadataUrl,
             requestUri = requestUrl,
         ).encodeToParameters()
@@ -283,6 +284,29 @@ class OidcSiopVerifier private constructor(
         ).encodeToParameters()
             .forEach { urlBuilder.parameters.append(it.key, it.value) }
         urlBuilder.buildString()
+    }
+
+    /**
+     * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl],
+     * containing a reference (`request_uri`, see [AuthenticationRequestParameters.requestUri]) to the
+     * JWS Authorization Request (JAR, RFC9101), containing the request parameters itself.
+     *
+     * @param requestUrl the URL where the request itself can be loaded by the client
+     * @return The URL to display to the Wallet, and the JWS that shall be made accessible under [requestUrl]
+     */
+    suspend fun createAuthnRequestUrlWithRequestObjectByReference(
+        walletUrl: String,
+        requestUrl: String,
+        requestOptions: RequestOptions = RequestOptions()
+    ): KmmResult<Pair<String, String>> = catching {
+        val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow()
+        val urlBuilder = URLBuilder(walletUrl)
+        AuthenticationRequestParameters(
+            clientId = relyingPartyUrl,
+            requestUri = requestUrl,
+        ).encodeToParameters()
+            .forEach { urlBuilder.parameters.append(it.key, it.value) }
+        urlBuilder.buildString() to jar.serialize()
     }
 
     /**
@@ -536,9 +560,9 @@ class OidcSiopVerifier private constructor(
         if (idToken.issuer != idToken.subject)
             return AuthnResponseResult.ValidationError("iss", params.state)
                 .also { Napier.d("Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}") }
-        val expectedAudience = relyingPartyUrl
-            ?: x5c?.leaf?.tbsCertificate?.subjectAlternativeNames?.dnsNames?.firstOrNull()
-        if (idToken.audience != expectedAudience)
+        val validAudiences = listOfNotNull(relyingPartyUrl,
+            x5c?.leaf?.tbsCertificate?.subjectAlternativeNames?.dnsNames?.firstOrNull())
+        if (idToken.audience !in validAudiences)
             return AuthnResponseResult.ValidationError("aud", params.state)
                 .also { Napier.d("audience not valid: ${idToken.audience}") }
         if (idToken.expiration < (clock.now() - timeLeeway))
