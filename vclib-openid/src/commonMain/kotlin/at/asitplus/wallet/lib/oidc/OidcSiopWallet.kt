@@ -72,13 +72,11 @@ class OidcSiopWallet(
         fun newDefaultInstance(
             keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
             holder: Holder = HolderAgent(keyPairAdapter),
-            jwsService: JwsService = DefaultJwsService(
-                DefaultCryptoService(keyPairAdapter)
-            ),
+            jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
             clock: Clock = Clock.System,
             clientId: String = "https://wallet.a-sit.at/",
             remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-            requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { jws, authnRequest -> true },
+            requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true },
             scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever = { null },
         ): OidcSiopWallet {
             return OidcSiopWallet(
@@ -150,13 +148,13 @@ class OidcSiopWallet(
         params: AuthenticationRequestParametersFrom
     ): KmmResult<AuthenticationResponse> = startAuthorizationResponsePreparation(params).map {
         finalizeAuthorizationResponseParameters(
-            params = params,
+            request = params,
             preparationState = it,
         ).getOrThrow()
     }
 
     /**
-     * Starts the authorization response building process from the RP's [params]
+     * Starts the authorization response building process from the RP's authentication request in [input]
      */
     suspend fun startAuthorizationResponsePreparation(
         input: String,
@@ -166,37 +164,32 @@ class OidcSiopWallet(
         }
 
     /**
-     * Starts the authorization response building process from the RP's [params]
+     * Starts the authorization response building process from the RP's authentication request in [input]
      */
     suspend fun startAuthorizationResponsePreparation(
         params: AuthenticationRequestParametersFrom
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
-        val clientMetadata = catching { params.parameters.loadClientMetadata() }.getOrNull()
+        val clientMetadata = params.parameters.loadClientMetadata()
         val presentationDefinition = params.parameters.loadPresentationDefinition()
-
-        AuthorizationRequestValidator(remoteResourceRetriever).validateAuthorizationRequest(params)
-
-        AuthorizationResponsePreparationState(
-            clientMetadata = clientMetadata,
-            presentationDefinition = presentationDefinition,
-        )
+        AuthorizationRequestValidator().validateAuthorizationRequest(params)
+        AuthorizationResponsePreparationState(presentationDefinition, clientMetadata)
     }
 
     /**
      * Finalize the authorization response
      *
-     * @param request: the RP's [params]
-     * @param preparationState: The preparation state from [startAuthorizationResponsePreparation]
-     * @param inputDescriptorSubmissions: Map from input descriptor ids to [CredentialSubmission]
+     * @param request the parsed authentication request
+     * @param preparationState The preparation state from [startAuthorizationResponsePreparation]
+     * @param inputDescriptorSubmissions Map from input descriptor ids to [CredentialSubmission]
      */
     suspend fun finalizeAuthorizationResponse(
         request: AuthenticationRequestParametersFrom,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponseResult> = finalizeAuthorizationResponseParameters(
-        params = request,
-        preparationState = preparationState,
-        inputDescriptorSubmissions = inputDescriptorSubmissions,
+        request,
+        preparationState,
+        inputDescriptorSubmissions,
     ).map { responseParameters ->
         AuthenticationResponseFactory(jwsService).createAuthenticationResponse(
             request,
@@ -208,54 +201,49 @@ class OidcSiopWallet(
     /**
      * Finalize the authorization response parameters
      *
-     * @param request: the RP's [params]
-     * @param preparationState: The preparation state from [startAuthorizationResponsePreparation]
-     * @param inputDescriptorSubmissions: Map from input descriptor ids to [CredentialSubmission]
+     * @param request the parsed authentication request
+     * @param preparationState The preparation state from [startAuthorizationResponsePreparation]
+     * @param inputDescriptorSubmissions Map from input descriptor ids to [CredentialSubmission]
      */
     suspend fun finalizeAuthorizationResponseParameters(
-        params: AuthenticationRequestParametersFrom,
+        request: AuthenticationRequestParametersFrom,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponse> = preparationState.catching {
-        val certKey =
-            (params as? AuthenticationRequestParametersFrom.JwsSigned)?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
+        val certKey = (request as? AuthenticationRequestParametersFrom.JwsSigned)
+            ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
-
-        val audience = params.extractAudience(clientJsonWebKeySet)
-
+        val audience = request.extractAudience(clientJsonWebKeySet)
         val presentationFactory = PresentationFactory(jwsService)
-
         val idToken = presentationFactory.createSignedIdToken(
             clock = clock,
             agentPublicKey = agentPublicKey,
-            request = params,
+            request = request,
         ).getOrNull()?.serialize()
 
         val resultContainer = presentationDefinition?.let {
             presentationFactory.createPresentationExchangePresentation(
                 holder = holder,
-                params,
-                audience,
-                presentationDefinition,
-                clientMetadata,
-                inputDescriptorSubmissions
+                request = request,
+                audience = audience,
+                presentationDefinition = presentationDefinition,
+                clientMetadata = clientMetadata,
+                inputDescriptorSubmissions = inputDescriptorSubmissions
             ).getOrThrow()
         }
-        val vpToken =
-            resultContainer?.presentationResults?.map { it.toJsonPrimitive() }?.singleOrArray()
+        val vpToken = resultContainer?.presentationResults?.map { it.toJsonPrimitive() }?.singleOrArray()
         val presentationSubmission = resultContainer?.presentationSubmission
-
         val parameters = AuthenticationResponseParameters(
-            state = params.parameters.state,
+            state = request.parameters.state,
             idToken = idToken,
             vpToken = vpToken,
             presentationSubmission = presentationSubmission,
         )
-
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
         AuthenticationResponse(parameters, clientMetadata, jsonWebKeys)
     }
 
+    @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParametersFrom.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
     ) = clientJsonWebKeySet?.keys?.firstOrNull()
@@ -285,28 +273,17 @@ class OidcSiopWallet(
             remoteResourceRetriever.invoke(uri)
                 ?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
         }
-        ?: throw OAuth2Exception(Errors.INVALID_REQUEST).also { Napier.w("client metadata is not specified in $this") }
 
+    /**
+     * Source for logic:  Appendix A. Credential Format Profiles in
+     * [OID4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A)
+     */
     private fun Holder.CreatePresentationResult.toJsonPrimitive() = when (this) {
-        is Holder.CreatePresentationResult.Signed -> {
-            // must be a string
-            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
-            JsonPrimitive(jws)
-        }
-
-        is Holder.CreatePresentationResult.SdJwt -> {
-            // must be a string
-            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.5-1
-            JsonPrimitive(sdJwt)
-        }
-
-        is Holder.CreatePresentationResult.Document -> {
-            // must be a string
-            // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.5-1
-            JsonPrimitive(
-                document.serialize().encodeToString(Base16(strict = true))
-            )
-        }
+        is Holder.CreatePresentationResult.Signed -> JsonPrimitive(jws)
+        is Holder.CreatePresentationResult.SdJwt -> JsonPrimitive(sdJwt)
+        is Holder.CreatePresentationResult.Document -> JsonPrimitive(
+            document.serialize().encodeToString(Base16(strict = true))
+        )
     }
 
     private fun List<JsonPrimitive>.singleOrArray() = if (size == 1) {

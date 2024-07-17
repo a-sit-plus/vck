@@ -59,7 +59,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         "test support for plain jwt credential request" - {
             "if not available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeJwtCredentials(holderKeyPair, MobileDrivingLicenceScheme)
+                    holderAgent.storeJwtCredential(holderKeyPair, MobileDrivingLicenceScheme)
                     holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                 }
@@ -94,8 +94,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
             "if available despite others" {
                 runBlocking {
-                    holderAgent.storeJwtCredentials(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeJwtCredentials(holderKeyPair, MobileDrivingLicenceScheme)
+                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeJwtCredential(holderKeyPair, MobileDrivingLicenceScheme)
                     holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                 }
@@ -137,7 +137,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         "test support for sd jwt credential request" - {
             "if not available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeJwtCredentials(holderKeyPair, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeSdJwtCredential(holderKeyPair, MobileDrivingLicenceScheme)
                     holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                 }
@@ -177,7 +177,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
             "if available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeJwtCredentials(holderKeyPair, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeSdJwtCredential(holderKeyPair, MobileDrivingLicenceScheme)
                     holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
@@ -224,7 +224,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         "test support for mso credential request" - {
             "if not available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeJwtCredentials(holderKeyPair, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeIsoCredential(holderKeyPair, MobileDrivingLicenceScheme)
                 }
@@ -267,7 +267,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
             "if available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeJwtCredentials(holderKeyPair, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeIsoCredential(holderKeyPair, MobileDrivingLicenceScheme)
@@ -315,7 +315,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
     "test presentation of multiple credentials with different formats" {
         runBlocking {
-            holderAgent.storeJwtCredentials(holderKeyPair, ConstantIndex.AtomicAttribute2023)
+            holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
             holderAgent.storeIsoCredential(holderKeyPair, MobileDrivingLicenceScheme)
         }
 
@@ -361,7 +361,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
     }
 })
 
-private suspend fun Holder.storeJwtCredentials(
+private suspend fun Holder.storeJwtCredential(
     holderKeyPair: KeyPairAdapter,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {

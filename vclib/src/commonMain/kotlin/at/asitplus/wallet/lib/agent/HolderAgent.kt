@@ -238,9 +238,8 @@ class HolderAgent(
     ) = runCatching {
         findInputDescriptorMatches(
             inputDescriptors = inputDescriptors,
-            credentials = getValidCredentialsByPriority() ?: throw PresentationException(
-                "Credentials could not be retrieved from the store"
-            ),
+            credentials = getValidCredentialsByPriority()
+                ?: throw PresentationException("Credentials could not be retrieved from the store"),
             fallbackFormatHolder = fallbackFormatHolder,
             pathAuthorizationValidator = pathAuthorizationValidator,
         )

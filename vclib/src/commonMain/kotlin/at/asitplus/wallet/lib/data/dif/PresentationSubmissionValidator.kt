@@ -45,19 +45,14 @@ sealed class PresentationSubmissionValidator {
      */
     fun isValidSubmission(
         submittedInputDescriptorIds: Set<String>,
-    ): Boolean =
-        isSubmissionRequirementsSatisfied(submittedInputDescriptorIds) && findUnnecessaryInputDescriptorSubmissions(
-            submittedInputDescriptorIds
-        ).isEmpty()
+    ): Boolean = isSubmissionRequirementsSatisfied(submittedInputDescriptorIds)
+            && findUnnecessaryInputDescriptorSubmissions(submittedInputDescriptorIds).isEmpty()
 
 
     fun findUnnecessaryInputDescriptorSubmissions(submittedInputDescriptorIds: Set<String>): Set<String> =
         submittedInputDescriptorIds.filter {
-            isSubmissionRequirementsSatisfied(
-                submittedInputDescriptorIds - it
-            )
+            isSubmissionRequirementsSatisfied(submittedInputDescriptorIds - it)
         }.toSet()
-
 
     @Serializable
     data class InputDescriptorSubmissionsValidator(

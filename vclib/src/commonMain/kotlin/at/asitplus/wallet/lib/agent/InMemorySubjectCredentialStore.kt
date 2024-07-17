@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -34,13 +35,15 @@ class InMemorySubjectCredentialStore : SubjectCredentialStore {
 
     override suspend fun getCredentials(
         credentialSchemes: Collection<ConstantIndex.CredentialScheme>?,
-    ): KmmResult<List<SubjectCredentialStore.StoreEntry>> = credentialSchemes?.let { schemes ->
-        KmmResult.success(credentials.filter {
-            when (it) {
-                is SubjectCredentialStore.StoreEntry.Iso -> it.scheme in schemes
-                is SubjectCredentialStore.StoreEntry.SdJwt -> it.scheme in schemes
-                is SubjectCredentialStore.StoreEntry.Vc -> it.scheme in schemes
-            }
-        }.toList())
-    } ?: KmmResult.success(credentials)
+    ): KmmResult<List<SubjectCredentialStore.StoreEntry>> = catching {
+        credentialSchemes?.let { schemes ->
+            credentials.filter {
+                when (it) {
+                    is SubjectCredentialStore.StoreEntry.Iso -> it.scheme in schemes
+                    is SubjectCredentialStore.StoreEntry.SdJwt -> it.scheme in schemes
+                    is SubjectCredentialStore.StoreEntry.Vc -> it.scheme in schemes
+                }
+            }.toList()
+        } ?: credentials
+    }
 }
