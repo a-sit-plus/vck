@@ -59,8 +59,7 @@ class DummyOAuth2IssuerCredentialDataProvider(
         val claims = listOfNotNull(
             givenName?.let { optionalClaim(claimNames, "given_name", it) },
             familyName?.let { optionalClaim(claimNames, "family_name", it) },
-            optionalClaim(claimNames, "subject", userInfo.userInfo.subject),
-            userInfo.userInfo.birthDate?.let { optionalClaim(claimNames, "date-of-birth", it) },
+            userInfo.userInfo.birthDate?.let { optionalClaim(claimNames, "date_of_birth", it) },
         )
         return when (representation) {
             ConstantIndex.CredentialRepresentation.SD_JWT ->

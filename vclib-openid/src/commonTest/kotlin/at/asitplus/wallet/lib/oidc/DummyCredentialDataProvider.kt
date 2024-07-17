@@ -48,10 +48,9 @@ class DummyCredentialDataProvider(
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
             val subjectId = subjectPublicKey.didEncoded
             val claims = listOfNotNull(
-                optionalClaim(claimNames, "given-name", "Susanne"),
-                optionalClaim(claimNames, "family-name", "Meier"),
-                optionalClaim(claimNames, "date-of-birth", "1990-01-01"),
-                optionalClaim(claimNames, "is-active", true)
+                optionalClaim(claimNames, "given_name", "Susanne"),
+                optionalClaim(claimNames, "family_name", "Meier"),
+                optionalClaim(claimNames, "date_of_birth", "1990-01-01"),
             )
             when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(

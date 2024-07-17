@@ -83,7 +83,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
             requestOptions = RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                 responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
-                requestedAttributes = listOf("given-name")
+                requestedAttributes = listOf("given_name")
             )
         ).also { println(it) }.getOrThrow()
 

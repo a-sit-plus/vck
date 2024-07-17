@@ -61,7 +61,7 @@ class AgentSdJwtTest : FreeSpec({
                 constraints = Constraint(
                     fields = listOf(
                         ConstraintField(
-                            path = listOf("$['given-name']")
+                            path = listOf("$['given_name']")
                         )
                     )
                 )
@@ -84,7 +84,7 @@ class AgentSdJwtTest : FreeSpec({
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         verified.disclosures shouldHaveSize 1
-        verified.disclosures.forAll { it.claimName shouldBe "given-name" }
+        verified.disclosures.forAll { it.claimName shouldBe "given_name" }
         verified.isRevoked shouldBe false
     }
 
@@ -95,12 +95,12 @@ class AgentSdJwtTest : FreeSpec({
             challenge,
             holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>().first(),
-            "given-name"
+            "given_name"
         ).sdJwt
         val verified = verifier.verifyPresentation(sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         verified.disclosures shouldHaveSize 1
-        verified.disclosures.forAll { it.claimName shouldBe "given-name" }
+        verified.disclosures.forAll { it.claimName shouldBe "given_name" }
         verified.isRevoked shouldBe false
     }
 

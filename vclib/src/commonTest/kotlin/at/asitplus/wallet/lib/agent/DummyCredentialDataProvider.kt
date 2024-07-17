@@ -26,9 +26,9 @@ class DummyCredentialDataProvider(
         val claims = claimNames?.map {
             ClaimToBeIssued(it, "${it}_DUMMY_VALUE")
         } ?: listOf(
-            ClaimToBeIssued("given-name", "Susanne"),
-            ClaimToBeIssued("family-name", "Meier"),
-            ClaimToBeIssued("date-of-birth", "1990-01-01"),
+            ClaimToBeIssued("given_name", "Susanne"),
+            ClaimToBeIssued("family_name", "Meier"),
+            ClaimToBeIssued("date_of_birth", "1990-01-01"),
         )
         val subjectId = subjectPublicKey.didEncoded
         when (representation) {

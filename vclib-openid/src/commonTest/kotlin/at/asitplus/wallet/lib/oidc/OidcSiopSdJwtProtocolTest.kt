@@ -68,7 +68,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
             requestOptions = RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
-                requestedAttributes = listOf("given-name")
+                requestedAttributes = listOf("given_name")
             ),
         ).also { println(it) }
 
@@ -83,7 +83,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     }
 
     "Selective Disclosure with custom credential" {
-        val requestedClaim = "given-name"
+        val requestedClaim = "given_name"
         verifierSiop = OidcSiopVerifier.newInstance(
             verifier = verifierAgent,
             relyingPartyUrl = relyingPartyUrl,

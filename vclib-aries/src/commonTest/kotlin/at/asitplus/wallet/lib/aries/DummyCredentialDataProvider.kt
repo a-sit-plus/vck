@@ -31,9 +31,9 @@ class DummyCredentialDataProvider(
         val subjectId = subjectPublicKey.didEncoded
         val expiration = clock.now() + defaultLifetime
         val claims = listOf(
-            ClaimToBeIssued("given-name", "Susanne"),
-            ClaimToBeIssued("family-name", "Meier"),
-            ClaimToBeIssued("date-of-birth", "1990-01-01"),
+            ClaimToBeIssued("given_name", "Susanne"),
+            ClaimToBeIssued("family_name", "Meier"),
+            ClaimToBeIssued("date_of_birth", "1990-01-01"),
         )
         when (representation) {
             ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(

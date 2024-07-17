@@ -103,7 +103,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             OidcSiopVerifier.RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
-                requestedAttributes = listOf("given-name"),
+                requestedAttributes = listOf("given_name"),
             ),
             holderSiop
         )

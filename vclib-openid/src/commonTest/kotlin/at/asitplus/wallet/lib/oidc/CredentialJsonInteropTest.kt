@@ -59,16 +59,15 @@ class CredentialJsonInteropTest : FreeSpec({
                 holderKeyPair.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.SD_JWT,
-                listOf("given-name", "family-name", "date-of-birth", "is-active"),
+                ConstantIndex.AtomicAttribute2023.claimNames
             ).getOrThrow().toStoreCredentialInput()
         )
 
         val credential =
             CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
-        credential.getByJsonPath("\$['given-name']").content shouldNotBe null
-        credential.getByJsonPath("\$['family-name']").content shouldNotBe null
-        credential.getByJsonPath("\$['date-of-birth']").content shouldNotBe null
-        credential.getByJsonPath("\$['is-active']").content shouldNotBe null
+        credential.getByJsonPath("\$['given_name']").content shouldNotBe null
+        credential.getByJsonPath("\$['family_name']").content shouldNotBe null
+        credential.getByJsonPath("\$['date_of_birth']").content shouldNotBe null
     }
 
     "ISO credential path resolving" {
@@ -77,16 +76,15 @@ class CredentialJsonInteropTest : FreeSpec({
                 holderKeyPair.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                listOf("given-name", "family-name", "date-of-birth", "is-active"),
+                ConstantIndex.AtomicAttribute2023.claimNames
             ).getOrThrow().toStoreCredentialInput()
         )
 
         val credential =
             CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
-        credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['given-name']").content shouldNotBe null
-        credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['family-name']").content shouldNotBe null
-        credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['date-of-birth']").content shouldNotBe null
-        credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['is-active']").content shouldNotBe null
+        credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['given_name']").content shouldNotBe null
+        credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['family_name']").content shouldNotBe null
+        credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['date_of_birth']").content shouldNotBe null
     }
 })
 
