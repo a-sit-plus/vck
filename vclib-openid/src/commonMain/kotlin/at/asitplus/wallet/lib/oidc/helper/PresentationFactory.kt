@@ -36,7 +36,7 @@ internal class PresentationFactory(
         clientMetadata: RelyingPartyMetadata?,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<Holder.PresentationResponseParameters> = catching {
-        request.parameters.verifyResponseType(presentationDefinition)
+        request.parameters.verifyResponseType()
         val nonce = request.parameters.nonce ?: run {
             Napier.w("nonce is null in ${request.parameters}")
             throw OAuth2Exception(Errors.INVALID_REQUEST)
@@ -62,8 +62,8 @@ internal class PresentationFactory(
             Napier.w("Could not create presentation", it)
             throw OAuth2Exception(Errors.USER_CANCELLED)
         }.also { container ->
-            clientMetadata?.vpFormats?.let { supportedFormats ->
-                container.verifyFormatSupport(supportedFormats)
+            clientMetadata?.vpFormats?.let {
+                container.verifyFormatSupport(it)
             }
         }
     }
@@ -84,33 +84,27 @@ internal class PresentationFactory(
         val now = clock.now()
         // we'll assume jwk-thumbprint
         val agentJsonWebKey = agentPublicKey.toJsonWebKey()
+        val audience = request.parameters.redirectUrl ?: request.parameters.clientId ?: agentJsonWebKey.jwkThumbprint
         val idToken = IdToken(
             issuer = agentJsonWebKey.jwkThumbprint,
             subject = agentJsonWebKey.jwkThumbprint,
             subjectJwk = agentJsonWebKey,
-            audience = request.parameters.redirectUrl ?: request.parameters.clientId
-            ?: agentJsonWebKey.jwkThumbprint,
+            audience = audience,
             issuedAt = now,
             expiration = now + 60.seconds,
             nonce = nonce,
         )
         val jwsPayload = idToken.serialize().encodeToByteArray()
-        val signedIdToken = jwsService.createSignedJwsAddingParams(payload = jwsPayload, addX5c = false).getOrElse {
+        jwsService.createSignedJwsAddingParams(payload = jwsPayload, addX5c = false).getOrElse {
             Napier.w("Could not sign id_token", it)
             throw OAuth2Exception(Errors.USER_CANCELLED)
         }
-        signedIdToken
     }
 
-
     @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParameters.verifyResponseType(presentationDefinition: PresentationDefinition?) {
-        if (responseType == null) {
-            Napier.w("response_type is not specified")
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
-        }
-        if (!responseType.contains(VP_TOKEN) && presentationDefinition == null) {
-            Napier.w("vp_token not requested")
+    private fun AuthenticationRequestParameters.verifyResponseType() {
+        if (responseType == null || !responseType.contains(VP_TOKEN)) {
+            Napier.w("vp_token not requested in response_type='$responseType'")
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
     }
@@ -129,9 +123,7 @@ internal class PresentationFactory(
 
         // making sure, that all the submissions actually match the corresponding input descriptor requirements
         credentialSubmissions.forEach { submission ->
-            val inputDescriptor = this.inputDescriptors.firstOrNull {
-                it.id == submission.key
-            } ?: run {
+            val inputDescriptor = this.inputDescriptors.firstOrNull { it.id == submission.key } ?: run {
                 Napier.w("Invalid input descriptor id")
                 throw OAuth2Exception(Errors.USER_CANCELLED)
             }
@@ -153,10 +145,9 @@ internal class PresentationFactory(
                 val allowedPaths = constraintField.value.map {
                     it.normalizedJsonPath.toString()
                 }
-                disclosedAttributes.firstOrNull {
-                    allowedPaths.contains(it)
-                } ?: run {
-                    Napier.w("Input descriptor constraints not satisfied: ${inputDescriptor.id}.${constraintField.key.id?.let { " Missing field: $it" }}")
+                disclosedAttributes.firstOrNull { allowedPaths.contains(it) } ?: run {
+                    val keyId = constraintField.key.id?.let { " Missing field: $it" }
+                    Napier.w("Input descriptor constraints not satisfied: ${inputDescriptor.id}.$keyId")
                     throw OAuth2Exception(Errors.USER_CANCELLED)
                 }
             }
