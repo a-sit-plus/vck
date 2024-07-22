@@ -58,7 +58,6 @@ kotlin {
 exportIosFramework(
     "VcLibOpenIdKmm",
     static = false,
-    bitcodeEmbeddingMode = BitcodeEmbeddingMode.DISABLE,
     *commonIosExports(), project(":vclib")
 )
 

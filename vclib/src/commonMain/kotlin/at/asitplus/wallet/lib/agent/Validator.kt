@@ -3,10 +3,10 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.crypto.datatypes.CryptoPublicKey
 import at.asitplus.crypto.datatypes.cose.CoseKey
 import at.asitplus.crypto.datatypes.cose.toCoseKey
+import at.asitplus.crypto.datatypes.equalsCryptographically
 import at.asitplus.crypto.datatypes.io.Base64Strict
 import at.asitplus.crypto.datatypes.io.BitSet
 import at.asitplus.crypto.datatypes.io.toBitSet
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
 import at.asitplus.crypto.datatypes.jws.JwsSigned
 import at.asitplus.crypto.datatypes.pki.X509Certificate
 import at.asitplus.wallet.lib.DefaultZlibService

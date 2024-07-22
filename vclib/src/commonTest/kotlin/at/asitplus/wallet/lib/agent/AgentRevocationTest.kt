@@ -13,6 +13,7 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.ktor.util.*
 import io.matthewnelson.component.base64.decodeBase64ToArray
 import kotlinx.datetime.Clock
 import kotlin.random.Random
@@ -103,7 +104,7 @@ class AgentRevocationTest : FreeSpec({
 })
 
 private fun decodeRevocationList(revocationList: String): BitSet {
-    val decodedBase64 = revocationList.decodeBase64ToArray()
+    val decodedBase64 = revocationList.decodeBase64Bytes()
     decodedBase64.shouldNotBeNull()
     val decompress = DefaultZlibService().decompress(decodedBase64)
     decompress.shouldNotBeNull()

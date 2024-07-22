@@ -21,7 +21,7 @@ inline fun Project.commonApiDependencies(): List<String> {
     project.AspVersions.versions["kmpcrypto"] = VcLibVersions.kmpcrypto
     project.AspVersions.versions["jsonpath"] = VcLibVersions.jsonpath
     project.AspVersions.versions["okio"] = kmpCryptoVersionCatalog.findVersion("okio").get().toString()
-    project.AspVersions.versions["encoding"] = kmpCryptoVersionCatalog.findVersion("encoding").get().toString()
+    project.AspVersions.versions["encoding"] = "2.2.1"
 
 
     return listOf(
@@ -34,8 +34,9 @@ inline fun Project.commonApiDependencies(): List<String> {
         addDependency("at.asitplus:jsonpath", "jsonpath"),
         datetime(),
         addDependency("com.squareup.okio:okio", "okio"),
-        addDependency("io.matthewnelson.kotlin-components:encoding-base16", "encoding"),
-        addDependency("io.matthewnelson.kotlin-components:encoding-base64", "encoding"),
+        addDependency("io.matthewnelson.encoding:base16", "encoding"),
+        addDependency("io.matthewnelson.encoding:base64", "encoding"),
+        addDependency("io.matthewnelson.encoding:core", "encoding"),
     )
 }
 
@@ -61,8 +62,9 @@ fun Project.commonIosExports() = arrayOf(
     "at.asitplus.crypto:datatypes-cose:${VcLibVersions.kmpcrypto}",
     "at.asitplus.crypto:datatypes-jws:${VcLibVersions.kmpcrypto}",
     "at.asitplus:jsonpath:${VcLibVersions.jsonpath}",
-    "io.matthewnelson.kotlin-components:encoding-base16:${kmpCryptoVersionCatalog.findVersion("encoding").get()}",
-    "io.matthewnelson.kotlin-components:encoding-base64:${kmpCryptoVersionCatalog.findVersion("encoding").get()}",
+    "io.matthewnelson.encoding:core:${AspVersions.versions["encoding"]}",
+    "io.matthewnelson.encoding:base16:${AspVersions.versions["encoding"]}",
+    "io.matthewnelson.encoding:base64:${AspVersions.versions["encoding"]}",
 )
 
 
