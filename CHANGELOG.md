@@ -1,5 +1,8 @@
 # Changelog
 
+Release NEXT:
+
+
 Release 4.0.0:
  - Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.
  - Add `PresentationSubmissionValidator`: 
