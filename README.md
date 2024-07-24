@@ -64,7 +64,7 @@ The `DefaultCryptoService` for iOS should not be used in production as it does n
 
 A single credential itself is an instance of `CredentialSubject` (when using the plain JWT representation with ECDSA signatures) and has no special meaning attached to it. This library implements `AtomicAttribute2023` as a trivial sample of a custom credential. For [Selective Disclosure JWT](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/) and ISO representations, only the claims (holding names and values) exist, without any data class holding the values.
 
-Other libraries using this library may call `LibraryInitializer.registerExtensionLibrary()` to register that extension with this library. See our implementation of the [EU PID credential](https://github.com/a-sit-plus/eu-pid-credential) or our implementation of the [Mobile Driving Licence](https://github.com/a-sit-plus/mobile-driving-licence-credential/) for examples.
+Other libraries using this library may call `LibraryInitializer.registerExtensionLibrary()` to register that extension with this library. See our implementation of the [EU PID credential](https://github.com/a-sit-plus/eu-pid-credential) or our implementation of the [Mobile Driving Licence](https://github.com/a-sit-plus/mobile-driving-licence-credential/) for examples. We also maintain a comprehensive list of all credentials powered by this library [over here](https://github.com/a-sit-plus/credentials-collection).
 
 ## Dataflow for OID4VCI
 
