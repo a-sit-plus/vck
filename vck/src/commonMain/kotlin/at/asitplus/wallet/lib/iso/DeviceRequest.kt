@@ -43,7 +43,7 @@ data class DeviceRequest(
     val docRequests: Array<DocRequest>,
 ) {
 
-    fun serialize() = cborSerializer.encodeToByteArray(this)
+    fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -63,7 +63,7 @@ data class DeviceRequest(
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray<DeviceRequest>(it)
+            vckCborSerializer.decodeFromByteArray<DeviceRequest>(it)
         }.wrap()
     }
 }
@@ -176,7 +176,7 @@ data class DeviceResponse(
     @SerialName("status")
     val status: UInt,
 ) {
-    fun serialize() = cborSerializer.encodeToByteArray(this)
+    fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -206,7 +206,7 @@ data class DeviceResponse(
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray<DeviceResponse>(it)
+            vckCborSerializer.decodeFromByteArray<DeviceResponse>(it)
         }.wrap()
     }
 }
@@ -226,11 +226,11 @@ data class Document(
     val errors: Map<String, Map<String, Int>>? = null,
 ) {
 
-    fun serialize() = cborSerializer.encodeToByteArray(this)
+    fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray<Document>(it)
+            vckCborSerializer.decodeFromByteArray<Document>(it)
         }.wrap()
     }
 }
@@ -247,13 +247,13 @@ data class IssuerSigned(
 ) {
 
     fun getIssuerAuthPayloadAsMso() = issuerAuth.payload?.stripCborTag(24)
-        ?.let { cborSerializer.decodeFromByteArray(ByteStringWrapperMobileSecurityObjectSerializer, it).value }
+        ?.let { vckCborSerializer.decodeFromByteArray(ByteStringWrapperMobileSecurityObjectSerializer, it).value }
 
-    fun serialize() = cborSerializer.encodeToByteArray(this)
+    fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray<IssuerSigned>(it)
+            vckCborSerializer.decodeFromByteArray<IssuerSigned>(it)
         }.wrap()
     }
 }
@@ -274,7 +274,7 @@ data class IssuerSignedList(
     companion object {
         fun withItems(list: List<IssuerSignedItem>) = IssuerSignedList(
             // TODO verify serialization of this
-            list.map { ByteStringWrapper(it, cborSerializer.encodeToByteArray(it).wrapInCborTag(24)) }
+            list.map { ByteStringWrapper(it, vckCborSerializer.encodeToByteArray(it).wrapInCborTag(24)) }
         )
     }
 }
@@ -367,7 +367,7 @@ data class IssuerSignedItem(
     val elementValue: Any,
 ) {
 
-    fun serialize() = cborSerializer.encodeToByteArray(this)
+    fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -398,7 +398,7 @@ data class IssuerSignedItem(
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray<IssuerSignedItem>(it)
+            vckCborSerializer.decodeFromByteArray<IssuerSignedItem>(it)
         }.wrap()
     }
 }
@@ -453,13 +453,13 @@ object ByteStringWrapperItemsRequestSerializer : KSerializer<ByteStringWrapper<I
         PrimitiveSerialDescriptor("ByteStringWrapperItemsRequestSerializer", PrimitiveKind.STRING)
 
     override fun serialize(encoder: Encoder, value: ByteStringWrapper<ItemsRequest>) {
-        val bytes = cborSerializer.encodeToByteArray(value.value)
+        val bytes = vckCborSerializer.encodeToByteArray(value.value)
         encoder.encodeSerializableValue(ByteArraySerializer(), bytes)
     }
 
     override fun deserialize(decoder: Decoder): ByteStringWrapper<ItemsRequest> {
         val bytes = decoder.decodeSerializableValue(ByteArraySerializer())
-        return ByteStringWrapper(cborSerializer.decodeFromByteArray(bytes), bytes)
+        return ByteStringWrapper(vckCborSerializer.decodeFromByteArray(bytes), bytes)
     }
 
 }

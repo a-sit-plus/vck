@@ -27,11 +27,7 @@ internal object JsonCredentialSerializer {
 }
 
 val jsonSerializer by lazy {
-    Json {
-        prettyPrint = false
-        encodeDefaults = false
-        classDiscriminator = "type"
-        ignoreUnknownKeys = true
+    Json(from = at.asitplus.crypto.datatypes.jws.io.jsonSerializer) {
         serializersModule = SerializersModule {
             polymorphic(CredentialSubject::class) {
                 subclass(AtomicAttribute2023::class)

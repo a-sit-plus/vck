@@ -4,7 +4,6 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.crypto.datatypes.cose.CoseKey
-import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Instant
@@ -46,22 +45,22 @@ data class MobileSecurityObject(
     val validityInfo: ValidityInfo,
 ) {
 
-    fun serialize() = cborSerializer.encodeToByteArray(this)
+    fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     fun serializeForIssuerAuth() =
-        cborSerializer.encodeToByteArray(ByteStringWrapperMobileSecurityObjectSerializer, ByteStringWrapper(this))
+        vckCborSerializer.encodeToByteArray(ByteStringWrapperMobileSecurityObjectSerializer, ByteStringWrapper(this))
             .wrapInCborTag(24)
 
     companion object {
         fun deserializeFromIssuerAuth(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray(
+            vckCborSerializer.decodeFromByteArray(
                 ByteStringWrapperMobileSecurityObjectSerializer,
                 it.stripCborTag(24)
             ).value
         }.wrap()
 
         fun deserialize(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray<MobileSecurityObject>(it)
+            vckCborSerializer.decodeFromByteArray<MobileSecurityObject>(it)
         }.wrap()
     }
 }
@@ -168,11 +167,11 @@ data class DeviceKeyInfo(
     val keyInfo: Map<Int, String>? = null,
 ) {
 
-    fun serialize() = cborSerializer.encodeToByteArray(this)
+    fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray<DeviceKeyInfo>(it)
+            vckCborSerializer.decodeFromByteArray<DeviceKeyInfo>(it)
         }.wrap()
     }
 }
@@ -188,7 +187,7 @@ data class KeyAuthorization(
     val dataElements: Map<String, Array<String>>? = null,
 ) {
 
-    fun serialize() = cborSerializer.encodeToByteArray(this)
+    fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -211,7 +210,7 @@ data class KeyAuthorization(
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray<KeyAuthorization>(it)
+            vckCborSerializer.decodeFromByteArray<KeyAuthorization>(it)
         }.wrap()
     }
 }
@@ -231,11 +230,11 @@ data class ValidityInfo(
     val expectedUpdate: Instant? = null,
 ) {
 
-    fun serialize() = cborSerializer.encodeToByteArray(this)
+    fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
-            cborSerializer.decodeFromByteArray<ValidityInfo>(it)
+            vckCborSerializer.decodeFromByteArray<ValidityInfo>(it)
         }.wrap()
     }
 }
@@ -247,13 +246,13 @@ object ByteStringWrapperMobileSecurityObjectSerializer : KSerializer<ByteStringW
         PrimitiveSerialDescriptor("ByteStringWrapperMobileSecurityObjectSerializer", PrimitiveKind.STRING)
 
     override fun serialize(encoder: Encoder, value: ByteStringWrapper<MobileSecurityObject>) {
-        val bytes = cborSerializer.encodeToByteArray(value.value)
+        val bytes = vckCborSerializer.encodeToByteArray(value.value)
         encoder.encodeSerializableValue(ByteArraySerializer(), bytes)
     }
 
     override fun deserialize(decoder: Decoder): ByteStringWrapper<MobileSecurityObject> {
         val bytes = decoder.decodeSerializableValue(ByteArraySerializer())
-        return ByteStringWrapper(cborSerializer.decodeFromByteArray(bytes), bytes)
+        return ByteStringWrapper(vckCborSerializer.decodeFromByteArray(bytes), bytes)
     }
 
 }

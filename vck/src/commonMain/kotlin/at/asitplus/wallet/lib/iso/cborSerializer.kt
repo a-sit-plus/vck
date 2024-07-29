@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.wallet.lib.SerializerLookup
 import at.asitplus.wallet.lib.ItemValueDecoder
 import at.asitplus.wallet.lib.ItemValueEncoder
+import at.asitplus.wallet.lib.SerializerLookup
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.cbor.Cbor
@@ -43,11 +43,10 @@ internal object CborCredentialSerializer {
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-val cborSerializer by lazy {
-    Cbor {
+val vckCborSerializer by lazy {
+    Cbor(from = at.asitplus.crypto.datatypes.cose.io.cborSerializer) {
         ignoreUnknownKeys = true
         alwaysUseByteString = true
         encodeDefaults = false
-        writeDefiniteLengths = true
     }
 }
