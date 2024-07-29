@@ -21,10 +21,10 @@ if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
     }
 } else logger.lifecycle("Excluding KMP Crypto from this build")
 
-rootProject.name = "vclibrary"
-include(":vclib")
-include(":vclib-aries")
-include(":vclib-openid")
+rootProject.name = "vc-k"
+include(":vck")
+include(":vck-aries")
+include(":vck-openid")
 
 dependencyResolutionManagement {
     repositories.add(repositories.mavenCentral())

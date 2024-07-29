@@ -1,5 +1,13 @@
 # Changelog
 
+Release 4.1.0:
+ * Rebrand
+   * Project name: _KMM VC Library_ -> VC-K
+   * Artifact names:
+     * `vclib` -> `vck`
+     * `vclib-aries` -> `vck-aries`
+     * `vclib-openid` -> `vck-openid`
+
 Release 4.0.0:
  - Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.
  - Add `PresentationSubmissionValidator`: 

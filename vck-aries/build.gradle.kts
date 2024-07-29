@@ -27,15 +27,8 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(project(":vclib"))
+                api(project(":vck"))
                 commonImplementationDependencies()
-            }
-        }
-
-        commonTest {
-            dependencies {
-                implementation("at.asitplus.wallet:eupidcredential:${VcLibVersions.eupidcredential}")
-                implementation("at.asitplus.wallet:mobiledrivinglicence:${VcLibVersions.mdl}")
             }
         }
 
@@ -44,7 +37,6 @@ kotlin {
                 implementation(kmpCrypto.bcpkix.jdk18on)
             }
         }
-
         jvmTest {
             dependencies {
                 implementation(kmpCrypto.jose)
@@ -55,13 +47,13 @@ kotlin {
 }
 
 exportIosFramework(
-    "VcLibOpenIdKmm",
+    "VckAriesKmm",
     static = false,
-    *commonIosExports(), project(":vclib")
+    *commonIosExports(), project(":vck")
 )
 
 val javadocJar = setupDokka(
-    baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/main/",
+    baseUrl = "https://github.com/a-sit-plus/vck/tree/main/",
     multiModuleDoc = true
 )
 
@@ -70,9 +62,9 @@ publishing {
         withType<MavenPublication> {
             artifact(javadocJar)
             pom {
-                name.set("KmmVcLibOpenId")
-                description.set("Kotlin Multiplatform library implementing the W3C VC Data Model, with OpenId protocol implementations")
-                url.set("https://github.com/a-sit-plus/kmm-vc-library")
+                name.set("VC-K ARIES")
+                description.set("Kotlin Multiplatform library implementing the W3C VC Data Model, with ARIES protocol implementations")
+                url.set("https://github.com/a-sit-plus/vck")
                 licenses {
                     license {
                         name.set("The Apache License, Version 2.0")
@@ -92,9 +84,9 @@ publishing {
                     }
                 }
                 scm {
-                    connection.set("scm:git:git@github.com:a-sit-plus/kmm-vc-library.git")
-                    developerConnection.set("scm:git:git@github.com:a-sit-plus/kmm-vc-library.git")
-                    url.set("https://github.com/a-sit-plus/kmm-vc-library")
+                    connection.set("scm:git:git@github.com:a-sit-plus/vck.git")
+                    developerConnection.set("scm:git:git@github.com:a-sit-plus/vck.git")
+                    url.set("https://github.com/a-sit-plus/vck")
                 }
             }
         }
@@ -121,4 +113,3 @@ signing {
     useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
     sign(publishing.publications)
 }
-

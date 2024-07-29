@@ -18,6 +18,6 @@ jobs:
         uses: dorny/test-reporter@v1
         if: success() || failure()
         with:
-          name: vclib Tests
-          path: vclib/build/test-results/**/TEST*.xml,vclib-aries/build/test-results/**/TEST*.xml,vclib-openid/build/test-results/**/TEST*.xml
+          name: vck Tests
+          path: vck/build/test-results/**/TEST*.xml,vck-aries/build/test-results/**/TEST*.xml,vck-openid/build/test-results/**/TEST*.xml
           reporter: java-junit
