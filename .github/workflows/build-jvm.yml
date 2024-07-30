@@ -14,21 +14,21 @@ jobs:
           java-version: '17'
       - name: Build jar
         run: ./gradlew assemble
-      - name: Upload jar ckib
+      - name: Upload jar vck
         uses: actions/upload-artifact@v3
         with:
-          name: ckib
+          name: vck
           path: |
-            ckib/build/libs/*jar
-      - name: Upload jar ckib-aries
+            vck/build/libs/*jar
+      - name: Upload jar vck-aries
         uses: actions/upload-artifact@v3
         with:
-          name: ckib-aries
+          name: vck-aries
           path: |
-            ckib-aries/build/libs/*jar
-      - name: Upload jar ckib-openid
+            vck-aries/build/libs/*jar
+      - name: Upload jar vck-openid
         uses: actions/upload-artifact@v3
         with:
-          name: ckib-openid
+          name: vck-openid
           path: |
-            ckib-openid/build/libs/*jar
+            vck-openid/build/libs/*jar
