@@ -19,7 +19,7 @@ jobs:
           cd ../kmp-crypto
           ./gradlew publishAllPublicationsToMavenLocal
           cd ..
-          ./gradlew publishAllPublicationsToMavenLocal
+          ./gradlew -Dpublishing.excludeIncludedBuilds=true publishAllPublicationsToMavenLocal
           cd eu-pid-credential
           ./gradlew publishAllPublicationsToMavenLocal
           cd mobile-driving-license-credential
