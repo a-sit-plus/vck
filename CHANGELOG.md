@@ -8,7 +8,6 @@ Release 4.1.0:
      * `vclib-aries` -> `vck-aries`
      * `vclib-openid` -> `vck-openid`
  * Rename serializers to avoid ambiguities and kotlin bugs
-   * `jsonSerializer` -> `vckJsonSerializer`
    * `cborSerializer` -> `vckCborSerializer`
  * Update Dependencies
    * Signum (formerly KMP Crypto): 3.6.0
