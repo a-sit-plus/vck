@@ -1,7 +1,19 @@
 # Changelog
 
-Release NEXT:
-
+Release 4.1.0:
+ * Rebrand
+   * Project name: _KMM VC Library_ -> VC-K
+   * Artifact names:
+     * `vclib` -> `vck`
+     * `vclib-aries` -> `vck-aries`
+     * `vclib-openid` -> `vck-openid`
+ * Rename serializers to avoid ambiguities and kotlin bugs
+   * `jsonSerializer` -> `vckJsonSerializer`
+   * `cborSerializer` -> `vckCborSerializer`
+ * Update Dependencies
+   * Signum (formerly KMP Crypto): 3.6.0
+   * Jsonpath4K (formerly Jsonpath): 2.2.0
+   * Kotlinx-Serialization 1.8.0-SNAPSHOT from upstream
 
 Release 4.0.0:
  - Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.

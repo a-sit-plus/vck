@@ -20,7 +20,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       - name: Build Dokka HTML
-        run: ./gradlew dokkaHtmlMultiModule
+        run: ./gradlew -Dpublishing.excludeIncludedBuilds=true dokkaHtmlMultiModule
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Upload artifact

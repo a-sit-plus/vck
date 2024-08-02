@@ -14,20 +14,21 @@ pluginManagement {
 if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
     includeBuild("kmp-crypto") {
         dependencySubstitution {
-            substitute(module("at.asitplus.crypto:datatypes")).using(project(":datatypes"))
-            substitute(module("at.asitplus.crypto:datatypes-jws")).using(project(":datatypes-jws"))
-            substitute(module("at.asitplus.crypto:datatypes-cose")).using(project(":datatypes-cose"))
+            substitute(module("at.asitplus.signum:indispensable")).using(project(":indispensable"))
+            substitute(module("at.asitplus.signum:indispensable-josef")).using(project(":indispensable-josef"))
+            substitute(module("at.asitplus.signum:indispensable-cosef")).using(project(":indispensable-cosef"))
         }
     }
 } else logger.lifecycle("Excluding KMP Crypto from this build")
 
-rootProject.name = "vclibrary"
-include(":vclib")
-include(":vclib-aries")
-include(":vclib-openid")
+rootProject.name = "vc-k"
+include(":vck")
+include(":vck-aries")
+include(":vck-openid")
 
 dependencyResolutionManagement {
     repositories.add(repositories.mavenCentral())
+    repositories.add(repositories.mavenLocal())
     versionCatalogs {
         val versions = Properties().apply {
             kotlin.runCatching {
@@ -40,7 +41,7 @@ dependencyResolutionManagement {
         fun versionOf(dependency: String) = versions[dependency] as String
 
         create("kmpCrypto") {
-            from("at.asitplus.crypto:datatypes-versionCatalog:${versionOf("kmpCrypto")}")
+            from("at.asitplus.signum:indispensable-versionCatalog:${versionOf("kmpCrypto")}")
         }
     }
 }
