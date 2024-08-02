@@ -1,5 +1,7 @@
 # Changelog
 
+Release NEXT:
+
 Release 4.1.0:
  * Rebrand
    * Project name: _KMM VC Library_ -> VC-K
