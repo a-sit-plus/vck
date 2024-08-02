@@ -12,8 +12,6 @@ tasks.getByName("dokkaHtmlMultiModule") {
     includes.from("README.md")
 }
 
-allprojects { repositories { mavenLocal() } }
-
 val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion

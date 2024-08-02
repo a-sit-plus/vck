@@ -117,7 +117,9 @@ publishing {
         }
     }
     repositories {
-        mavenLocal()
+        mavenLocal {
+            signing.isRequired = false
+        }
         maven {
             url = uri(layout.projectDirectory.dir("..").dir("repo"))
             name = "local"
@@ -127,6 +129,7 @@ publishing {
 }
 
 repositories {
+    mavenLocal()
     maven(url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
     mavenCentral()
 }
