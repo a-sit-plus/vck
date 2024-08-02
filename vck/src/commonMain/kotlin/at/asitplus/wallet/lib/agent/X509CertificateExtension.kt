@@ -3,16 +3,16 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.CryptoSignature
-import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
-import at.asitplus.crypto.datatypes.asn1.Asn1String
-import at.asitplus.crypto.datatypes.asn1.Asn1Time
-import at.asitplus.crypto.datatypes.pki.AttributeTypeAndValue
-import at.asitplus.crypto.datatypes.pki.RelativeDistinguishedName
-import at.asitplus.crypto.datatypes.pki.TbsCertificate
-import at.asitplus.crypto.datatypes.pki.X509Certificate
-import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
+import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.CryptoSignature
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.asn1.Asn1String
+import at.asitplus.signum.indispensable.asn1.Asn1Time
+import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
+import at.asitplus.signum.indispensable.pki.RelativeDistinguishedName
+import at.asitplus.signum.indispensable.pki.TbsCertificate
+import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit

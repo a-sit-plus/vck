@@ -3,17 +3,17 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.CryptoSignature
-import at.asitplus.crypto.datatypes.ECCurve
-import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
-import at.asitplus.crypto.datatypes.cose.CoseKey
-import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
-import at.asitplus.crypto.datatypes.cose.toCoseKey
-import at.asitplus.crypto.datatypes.io.Base64Strict
-import at.asitplus.crypto.datatypes.jws.*
-import at.asitplus.crypto.datatypes.pki.X509Certificate
-import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
+import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.CryptoSignature
+import at.asitplus.signum.indispensable.ECCurve
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.io.Base64Strict
+import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.lib.agent.DefaultCryptoService.Companion.signInt
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.cinterop.*
@@ -104,7 +104,7 @@ actual class DefaultCryptoService : CryptoService {
 
     actual override fun messageDigest(
         input: ByteArray,
-        digest: at.asitplus.crypto.datatypes.Digest
+        digest: at.asitplus.signum.indispensable.Digest
     ): KmmResult<ByteArray> {
         return KmmResult.success(input)
     }

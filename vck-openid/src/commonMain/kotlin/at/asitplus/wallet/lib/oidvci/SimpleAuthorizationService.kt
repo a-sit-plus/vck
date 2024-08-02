@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.crypto.datatypes.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters

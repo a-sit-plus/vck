@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oidc.helper
 
-import at.asitplus.crypto.datatypes.pki.leaf
+import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.OpenIdConstants

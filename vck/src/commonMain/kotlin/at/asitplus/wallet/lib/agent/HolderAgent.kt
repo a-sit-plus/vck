@@ -3,9 +3,9 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
-import at.asitplus.crypto.datatypes.cose.CoseKey
-import at.asitplus.crypto.datatypes.cose.toCoseKey
-import at.asitplus.crypto.datatypes.pki.X509Certificate
+import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService

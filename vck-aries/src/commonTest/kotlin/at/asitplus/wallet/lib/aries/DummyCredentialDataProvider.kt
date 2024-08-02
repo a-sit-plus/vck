@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.aries
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider

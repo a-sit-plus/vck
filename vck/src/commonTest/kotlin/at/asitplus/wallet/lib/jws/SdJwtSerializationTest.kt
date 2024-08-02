@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.jws
 
-import at.asitplus.crypto.datatypes.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import io.kotest.core.spec.style.FreeSpec

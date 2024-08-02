@@ -2,14 +2,14 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.crypto.datatypes.cose.CborWebToken
-import at.asitplus.crypto.datatypes.cose.CoseHeader
-import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
-import at.asitplus.crypto.datatypes.io.Base64UrlStrict
-import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
-import at.asitplus.crypto.datatypes.jws.JsonWebToken
-import at.asitplus.crypto.datatypes.jws.JwsHeader
-import at.asitplus.crypto.datatypes.jws.toJwsAlgorithm
+import at.asitplus.signum.indispensable.cosef.CborWebToken
+import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.KeyPairAdapter

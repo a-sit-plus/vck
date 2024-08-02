@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.crypto.datatypes.io.Base64UrlStrict
-import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
-import at.asitplus.crypto.datatypes.jws.JwsHeader
-import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus

@@ -2,12 +2,12 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
-import at.asitplus.crypto.datatypes.cose.toCoseKey
-import at.asitplus.crypto.datatypes.io.Base64Strict
-import at.asitplus.crypto.datatypes.io.BitSet
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.io.Base64Strict
+import at.asitplus.signum.indispensable.io.BitSet
+import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService

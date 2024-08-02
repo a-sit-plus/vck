@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.jws
 
-import at.asitplus.crypto.datatypes.io.Base64UrlStrict
-import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem

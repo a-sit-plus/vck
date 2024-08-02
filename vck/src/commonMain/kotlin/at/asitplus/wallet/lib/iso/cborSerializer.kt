@@ -44,7 +44,7 @@ internal object CborCredentialSerializer {
 
 @OptIn(ExperimentalSerializationApi::class)
 val vckCborSerializer by lazy {
-    Cbor(from = at.asitplus.crypto.datatypes.cose.io.cborSerializer) {
+    Cbor(from = at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer) {
         ignoreUnknownKeys = true
         alwaysUseByteString = true
         encodeDefaults = false

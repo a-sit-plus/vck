@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.jws.JwsSigned
-import at.asitplus.crypto.datatypes.jws.jwkId
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.jwkId
+import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws

@@ -3,14 +3,14 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.CryptoSignature
-import at.asitplus.crypto.datatypes.Digest
-import at.asitplus.crypto.datatypes.ECCurve
-import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
-import at.asitplus.crypto.datatypes.jws.JweAlgorithm
-import at.asitplus.crypto.datatypes.jws.JweEncryption
+import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.CryptoSignature
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.ECCurve
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
 
 interface CryptoService {
 

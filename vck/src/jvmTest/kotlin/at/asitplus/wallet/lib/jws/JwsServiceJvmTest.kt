@@ -1,11 +1,11 @@
 package at.asitplus.wallet.lib.jws
 
-import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
-import at.asitplus.crypto.datatypes.io.Base64UrlStrict
-import at.asitplus.crypto.datatypes.jws.JweAlgorithm
-import at.asitplus.crypto.datatypes.jws.JweEncrypted
-import at.asitplus.crypto.datatypes.jws.JweEncryption
-import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncrypted
+import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.data.jsonSerializer
 import com.benasher44.uuid.uuid4

@@ -2,12 +2,12 @@ package at.asitplus.wallet.lib.aries
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
-import at.asitplus.crypto.datatypes.jws.JweAlgorithm
-import at.asitplus.crypto.datatypes.jws.JweEncrypted
-import at.asitplus.crypto.datatypes.jws.JweEncryption
-import at.asitplus.crypto.datatypes.jws.JwsSigned
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncrypted
+import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.jws.DefaultJwsService

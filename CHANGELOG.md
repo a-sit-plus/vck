@@ -7,6 +7,9 @@ Release 4.1.0:
      * `vclib` -> `vck`
      * `vclib-aries` -> `vck-aries`
      * `vclib-openid` -> `vck-openid`
+ * Rename serializers to avoid ambiguities and kotlin bugs
+   * `jsonSerializer` -> `vckJsonSerializer`
+   * `cborSerializer` -> `vckCborSerializer`
 
 Release 4.0.0:
  - Add `SubmissionRequirement.evaluate`: Evaluates, whether a given submission requirement is satisfied.

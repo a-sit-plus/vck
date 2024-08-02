@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.SelectiveDisclosureItemSerializer
 import io.matthewnelson.encoding.base64.Base64

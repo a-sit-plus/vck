@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.oidc.IdTokenType
 import at.asitplus.wallet.lib.oidc.jsonSerializer
 import kotlinx.serialization.SerialName

@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 
 /**
  * Intermediate DTO to hold the parsed [clientMetadata] as well as the created [params].

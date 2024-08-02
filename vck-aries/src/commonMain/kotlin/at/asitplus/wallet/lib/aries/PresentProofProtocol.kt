@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.aries
 
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
-import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.AriesGoalCodeParser

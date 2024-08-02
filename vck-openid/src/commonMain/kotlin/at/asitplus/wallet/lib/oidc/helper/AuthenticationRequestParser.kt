@@ -2,8 +2,8 @@ package at.asitplus.wallet.lib.oidc.helper
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
-import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseParameters

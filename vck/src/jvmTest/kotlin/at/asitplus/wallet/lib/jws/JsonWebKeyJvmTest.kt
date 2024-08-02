@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.jws
 
-import at.asitplus.crypto.datatypes.ECCurve
-import at.asitplus.crypto.datatypes.asn1.ensureSize
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
+import at.asitplus.signum.indispensable.ECCurve
+import at.asitplus.signum.indispensable.asn1.ensureSize
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe

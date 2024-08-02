@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.crypto.datatypes.jws.JsonWebAlgorithm
-import at.asitplus.crypto.datatypes.jws.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

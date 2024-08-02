@@ -68,7 +68,7 @@ val javadocJar = setupDokka(
 publishing {
     publications {
         withType<MavenPublication> {
-            artifact(javadocJar)
+            if (this.name != "relocation") artifact(javadocJar)
             pom {
                 name.set("VC-K OpenID")
                 description.set("Kotlin Multiplatform library implementing the W3C VC Data Model, with OpenId protocol implementations")
@@ -95,6 +95,23 @@ publishing {
                     connection.set("scm:git:git@github.com:a-sit-plus/vck.git")
                     developerConnection.set("scm:git:git@github.com:a-sit-plus/vck.git")
                     url.set("https://github.com/a-sit-plus/vck")
+                }
+            }
+        }
+        //REMOVE ME AFTER REBRANDED ARTIFACT HAS BEEN PUBLISHED
+        create<MavenPublication>("relocation") {
+            pom {
+                // Old artifact coordinates
+                artifactId = "vclib-openid"
+                version = artifactVersion
+
+                distributionManagement {
+                    relocation {
+                        // New artifact coordinates
+                        artifactId = "vck-openid"
+                        version = artifactVersion
+                        message = " artifactId have been changed"
+                    }
                 }
             }
         }

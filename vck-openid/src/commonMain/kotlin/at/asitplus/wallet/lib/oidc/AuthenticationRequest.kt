@@ -4,7 +4,7 @@ package at.asitplus.wallet.lib.oidc
 
 
 import at.asitplus.catching
-import at.asitplus.crypto.datatypes.jws.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import io.ktor.http.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -32,7 +32,7 @@ sealed class AuthenticationRequestParametersFrom {
     @Serializable
     @SerialName("JwsSigned")
     data class JwsSigned(
-        val jwsSigned: at.asitplus.crypto.datatypes.jws.JwsSigned,
+        val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned,
         override val parameters: AuthenticationRequestParameters,
     ) : AuthenticationRequestParametersFrom()
 

@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.data.InstantLongSerializer
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName

@@ -4,14 +4,14 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.*
-import at.asitplus.crypto.datatypes.ECCurve.SECP_256_R_1
-import at.asitplus.crypto.datatypes.cose.CoseKey
-import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
-import at.asitplus.crypto.datatypes.cose.toCoseKey
-import at.asitplus.crypto.datatypes.jws.*
-import at.asitplus.crypto.datatypes.pki.X509Certificate
-import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
+import at.asitplus.signum.indispensable.*
+import at.asitplus.signum.indispensable.ECCurve.SECP_256_R_1
+import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.JCEECPublicKey
 import org.bouncycastle.jce.spec.ECPublicKeySpec

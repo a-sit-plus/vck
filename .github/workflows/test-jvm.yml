@@ -12,6 +12,19 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+      - name: Build Maven packages
+        run: |
+          cd jsonpath
+          ./gradlew publishAllPublicationsToMavenLocal
+          cd ../kmp-crypto
+          ./gradlew publishAllPublicationsToMavenLocal
+          cd ..
+          ./gradlew publishAllPublicationsToMavenLocal
+          cd eu-pid-credential
+          ./gradlew publishAllPublicationsToMavenLocal
+          cd mobile-driving-license-credential
+          ./gradlew publishAllPublicationsToMavenLocal
+          cd ..
       - name: Run tests
         run: ./gradlew jvmTest
       - name: Test Report

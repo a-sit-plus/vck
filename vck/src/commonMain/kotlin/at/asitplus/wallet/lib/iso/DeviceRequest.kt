@@ -3,7 +3,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.cose.CoseSigned
+import at.asitplus.signum.indispensable.cosef.CoseSigned
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -13,7 +13,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.ByteString
-import kotlinx.serialization.cbor.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import kotlinx.serialization.cbor.ValueTags
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.descriptors.PrimitiveKind

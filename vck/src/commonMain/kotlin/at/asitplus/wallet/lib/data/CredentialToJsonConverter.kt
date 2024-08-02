@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.crypto.datatypes.io.Base64Strict
+import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate

@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.msg
 
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.io.Base64Strict
+import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.wallet.lib.aries.jsonSerializer
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier

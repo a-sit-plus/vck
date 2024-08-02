@@ -2,18 +2,18 @@ package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
-import at.asitplus.crypto.datatypes.cose.CoseHeader
-import at.asitplus.crypto.datatypes.cose.CoseKey
-import at.asitplus.crypto.datatypes.cose.CoseSignatureInput
-import at.asitplus.crypto.datatypes.cose.CoseSigned
-import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
-import at.asitplus.crypto.datatypes.toX509SignatureAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.CoseSignatureInput
+import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
+import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
-import kotlinx.serialization.cbor.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 
 /**
  * Creates and parses COSE objects.

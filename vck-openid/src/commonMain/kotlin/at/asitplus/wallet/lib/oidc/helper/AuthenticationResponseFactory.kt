@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oidc.helper
 
-import at.asitplus.crypto.datatypes.jws.JweHeader
+import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.AuthenticationResponse

@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.crypto.datatypes.CryptoPublicKey
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.sha256
 import io.matthewnelson.encoding.base16.Base16

@@ -1,4 +1,5 @@
 import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
+
 plugins {
     id("at.asitplus.gradle.vclib-conventions")
 }
@@ -10,6 +11,8 @@ tasks.getByName("dokkaHtmlMultiModule") {
     outputDirectory.set(layout.buildDirectory.dir("dokka").get().asFile)
     includes.from("README.md")
 }
+
+allprojects { repositories { mavenLocal() } }
 
 val artifactVersion: String by extra
 group = "at.asitplus.wallet"

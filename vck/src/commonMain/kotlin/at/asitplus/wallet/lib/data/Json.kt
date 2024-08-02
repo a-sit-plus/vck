@@ -27,7 +27,7 @@ internal object JsonCredentialSerializer {
 }
 
 val jsonSerializer by lazy {
-    Json(from = at.asitplus.crypto.datatypes.jws.io.jsonSerializer) {
+    Json(from = at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer) {
         serializersModule = SerializersModule {
             polymorphic(CredentialSubject::class) {
                 subclass(AtomicAttribute2023::class)

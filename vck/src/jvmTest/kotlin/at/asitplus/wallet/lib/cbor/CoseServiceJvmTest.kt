@@ -1,14 +1,14 @@
 package at.asitplus.wallet.lib.cbor
 
-import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.CryptoSignature
-import at.asitplus.crypto.datatypes.X509SignatureAlgorithm
-import at.asitplus.crypto.datatypes.cose.CoseHeader
-import at.asitplus.crypto.datatypes.cose.CoseSignatureInput
-import at.asitplus.crypto.datatypes.cose.CoseSigned
-import at.asitplus.crypto.datatypes.cose.toCoseAlgorithm
-import at.asitplus.crypto.datatypes.cose.toCoseKey
-import at.asitplus.crypto.datatypes.fromJcaPublicKey
+import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.CryptoSignature
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.cosef.CoseSignatureInput
+import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.fromJcaPublicKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import com.authlete.cbor.CBORByteArray
 import com.authlete.cbor.CBORDecoder
@@ -27,7 +27,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.cbor.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import java.security.KeyPairGenerator
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey

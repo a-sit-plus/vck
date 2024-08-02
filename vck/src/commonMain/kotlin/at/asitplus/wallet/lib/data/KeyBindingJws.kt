@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.crypto.datatypes.io.ByteArrayBase64UrlSerializer
+import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

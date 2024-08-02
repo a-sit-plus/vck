@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.crypto.datatypes.jws.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult

@@ -1,11 +1,11 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.crypto.datatypes.asn1.*
-import at.asitplus.crypto.datatypes.jws.JweAlgorithm
-import at.asitplus.crypto.datatypes.jws.JweEncryption
-import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
-import at.asitplus.crypto.datatypes.pki.SubjectAltNameImplicitTags
-import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
+import at.asitplus.signum.indispensable.asn1.*
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
+import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex

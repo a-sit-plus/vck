@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.cbor
 
-import at.asitplus.crypto.datatypes.cose.CoseAlgorithm
-import at.asitplus.crypto.datatypes.cose.CoseHeader
-import at.asitplus.crypto.datatypes.cose.CoseSigned
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter

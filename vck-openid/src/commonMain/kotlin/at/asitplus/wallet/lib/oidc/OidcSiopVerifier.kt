@@ -2,14 +2,14 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.crypto.datatypes.CryptoPublicKey
-import at.asitplus.crypto.datatypes.jws.JsonWebKeySet
-import at.asitplus.crypto.datatypes.jws.JweEncrypted
-import at.asitplus.crypto.datatypes.jws.JwsHeader
-import at.asitplus.crypto.datatypes.jws.JwsSigned
-import at.asitplus.crypto.datatypes.jws.toJsonWebKey
-import at.asitplus.crypto.datatypes.pki.CertificateChain
-import at.asitplus.crypto.datatypes.pki.leaf
+import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JweEncrypted
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.pki.CertificateChain
+import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment

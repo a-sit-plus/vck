@@ -1,19 +1,19 @@
 package at.asitplus.wallet.lib.jws
 
 
-import at.asitplus.crypto.datatypes.*
-import at.asitplus.crypto.datatypes.CryptoPublicKey.EC.Companion.asPublicKey
-import at.asitplus.crypto.datatypes.CryptoPublicKey.EC.Companion.fromUncompressed
-import at.asitplus.crypto.datatypes.asn1.Asn1String
-import at.asitplus.crypto.datatypes.asn1.Asn1Time
-import at.asitplus.crypto.datatypes.jws.JwsAlgorithm
-import at.asitplus.crypto.datatypes.io.Base64Strict
-import at.asitplus.crypto.datatypes.jws.JwsHeader
-import at.asitplus.crypto.datatypes.pki.AttributeTypeAndValue
-import at.asitplus.crypto.datatypes.pki.RelativeDistinguishedName
-import at.asitplus.crypto.datatypes.pki.TbsCertificate
-import at.asitplus.crypto.datatypes.pki.X509Certificate
-import at.asitplus.crypto.ecmath.times
+import at.asitplus.signum.indispensable.*
+import at.asitplus.signum.indispensable.CryptoPublicKey.EC.Companion.asPublicKey
+import at.asitplus.signum.indispensable.CryptoPublicKey.EC.Companion.fromUncompressed
+import at.asitplus.signum.indispensable.asn1.Asn1String
+import at.asitplus.signum.indispensable.asn1.Asn1Time
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.io.Base64Strict
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.pki.AttributeTypeAndValue
+import at.asitplus.signum.indispensable.pki.RelativeDistinguishedName
+import at.asitplus.signum.indispensable.pki.TbsCertificate
+import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.ecmath.times
 import com.benasher44.uuid.uuid4
 import com.ionspin.kotlin.bignum.integer.BigInteger
 import com.ionspin.kotlin.bignum.integer.Sign

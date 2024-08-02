@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.aries
 
-import at.asitplus.crypto.datatypes.jws.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.wallet.lib.msg.JsonWebMessage
 
 
