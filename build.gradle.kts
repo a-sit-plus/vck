@@ -1,4 +1,5 @@
 import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
+
 plugins {
     id("at.asitplus.gradle.vclib-conventions")
 }
@@ -9,6 +10,12 @@ tasks.getByName("dokkaHtmlMultiModule") {
     (this as DokkaMultiModuleTask)
     outputDirectory.set(layout.buildDirectory.dir("dokka").get().asFile)
     includes.from("README.md")
+    doLast {
+        files(
+            "vck-dark.png",
+            "vck-light.png",
+        ).files.forEach { it.copyTo(File("build/dokka/${it.name}"), overwrite = true) }
+    }
 }
 
 val artifactVersion: String by extra

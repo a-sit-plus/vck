@@ -15,40 +15,40 @@ jobs:
       - name: Build klibs
         run: ./gradlew iosArm64MainKlibrary iosX64MainKlibrary
       - name: Build XCFrameworks
-        run: ./gradlew assembleVcLibKmmXCFramework assembleVcLibAriesKmmXCFramework assembleVcLibOpenIdKmmXCFramework
-      - name: Upload debug XCFramework vclib
+        run: ./gradlew assembleVckKmmXCFramework assembleVckAriesKmmXCFramework assembleVckOpenIdKmmXCFramework
+      - name: Upload debug XCFramework vck
         uses: actions/upload-artifact@v3
         with:
-          name: VcLibKmm-debug.xcframework
+          name: VckKmm-debug.xcframework
           path: |
-            vclib/build/XCFrameworks/debug/
-      - name: Upload debug XCFramework vclib-aries
+            vck/build/XCFrameworks/debug/
+      - name: Upload debug XCFramework vck-aries
         uses: actions/upload-artifact@v3
         with:
-          name: VcLibAriesKmm-debug.xcframework
+          name: VckAriesKmm-debug.xcframework
           path: |
-            vclib-aries/build/XCFrameworks/debug/
-      - name: Upload debug XCFramework vclib-openid
+            vck-aries/build/XCFrameworks/debug/
+      - name: Upload debug XCFramework vck-openid
         uses: actions/upload-artifact@v3
         with:
-          name: VcLibOpenIdKmm-debug.xcframework
+          name: VckOpenIdKmm-debug.xcframework
           path: |
-            vclib-openid/build/XCFrameworks/debug/
-      - name: Upload release XCFramework vclib
+            vck-openid/build/XCFrameworks/debug/
+      - name: Upload release XCFramework vck
         uses: actions/upload-artifact@v3
         with:
-          name: VcLibKmm-release.xcframework
+          name: VckKmm-release.xcframework
           path: |
-            vclib/build/XCFrameworks/release/
-      - name: Upload release XCFramework vclib-aries
+            vck/build/XCFrameworks/release/
+      - name: Upload release XCFramework vck-aries
         uses: actions/upload-artifact@v3
         with:
-          name: VcLibAriesKmm-release.xcframework
+          name: VckAriesKmm-release.xcframework
           path: |
-            vclib-aries/build/XCFrameworks/release/
-      - name: Upload release XCFramework vclib-openid
+            vck-aries/build/XCFrameworks/release/
+      - name: Upload release XCFramework vck-openid
         uses: actions/upload-artifact@v3
         with:
-          name: VcLibOpenIdKmm-release.xcframework
+          name: VckOpenIdKmm-release.xcframework
           path: |
-            vclib-openid/build/XCFrameworks/release/
+            vck-openid/build/XCFrameworks/release/

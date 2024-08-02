@@ -33,4 +33,4 @@ jobs:
         with:
           submodules: recursive
       - name: Build Dokka HTML
-        run: ./gradlew dokkaHtmlMultiModule
+        run: ./gradlew -Dpublishing.excludeIncludedBuilds=true  dokkaHtmlMultiModule
