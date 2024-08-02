@@ -2,7 +2,7 @@ name: Test JVM implementation
 on: [push]
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -22,7 +22,7 @@ jobs:
           ./gradlew -Dpublishing.excludeIncludedBuilds=true publishAllPublicationsToMavenLocal
           cd eu-pid-credential
           ./gradlew publishAllPublicationsToMavenLocal
-          cd mobile-driving-license-credential
+          cd ../mobile-driving-license-credential
           ./gradlew publishAllPublicationsToMavenLocal
           cd ..
       - name: Run tests
