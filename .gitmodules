@@ -4,12 +4,3 @@
 [submodule "kmp-crypto"]
 	path = kmp-crypto
 	url = https://github.com/a-sit-plus/kmp-crypto.git
-[submodule "mobile-driving-licence-credential"]
-	path = mobile-driving-licence-credential
-	url = ../mobile-driving-licence-credential
-[submodule "eu-pid-credential"]
-	path = eu-pid-credential
-	url = ../eu-pid-credential
-[submodule "jsonpath"]
-	path = jsonpath
-	url = ../jsonpath

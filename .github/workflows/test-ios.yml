@@ -12,23 +12,10 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Build Maven packages
-        run: |
-          cd jsonpath
-          ./gradlew publishAllPublicationsToMavenLocal
-          cd ../kmp-crypto
-          ./gradlew publishAllPublicationsToMavenLocal
-          cd ..
-          ./gradlew -Dpublishing.excludeIncludedBuilds=true publishAllPublicationsToMavenLocal
-          cd eu-pid-credential
-          ./gradlew publishAllPublicationsToMavenLocal
-          cd ../mobile-driving-licence-credential
-          ./gradlew publishAllPublicationsToMavenLocal
-          cd ..
       - name: Build klibs
-        run: ./gradlew  -Dpublishing.excludeIncludedBuilds=true iosArm64MainKlibrary iosSimulatorArm64MainKlibrary
+        run: ./gradlew iosArm64MainKlibrary iosSimulatorArm64MainKlibrary
       - name: Run tests
-        run: ./gradlew  -Dpublishing.excludeIncludedBuilds=true iosSimulatorArm64Test
+        run: ./gradlew iosSimulatorArm64Test
       - name: Test Report
         uses: dorny/test-reporter@v1
         if: success() || failure()
