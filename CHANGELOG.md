@@ -12,6 +12,14 @@ Release 4.1.1 (Bugfix Release):
 * rename kmp-crypto submodule to signum an update all references
   * this changes the identifier in the version catalog!
 
+Release 4.1.1 (Bugfix Release):
+* correctly configure and name JSON serializer:
+  * `jsonSerializer` -> `vckJsonSerializer`
+  * revert to explicit serializer configuration
+  * Introduce `jsonSerializer` and `cborSerilaizer` with deprecation annotation for easier migration in projects consuming VC-K
+* rename kmp-crypto submodule to signum an update all references
+  * this changes the identifier in the version catalog!
+
 Release 4.1.0:
  * Rebrand
    * Project name: _KMM VC Library_ -> VC-K
