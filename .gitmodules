@@ -2,5 +2,5 @@
 	path = conventions-vclib/gradle-conventions-plugin
 	url = https://github.com/a-sit-plus/gradle-conventions-plugin.git	
 [submodule "kmp-crypto"]
-	path = kmp-crypto
-	url = https://github.com/a-sit-plus/kmp-crypto.git
+	path = signum
+	url = https://github.com/a-sit-plus/signum.git

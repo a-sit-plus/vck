@@ -11,16 +11,15 @@ import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
-import org.jetbrains.kotlin.gradle.utils.named
 
 
-val Project.kmpCryptoVersionCatalog: VersionCatalog
-    get() = extensions.getByType<VersionCatalogsExtension>().named("kmpCrypto")
+val Project.signumVersionCatalog: VersionCatalog
+    get() = extensions.getByType<VersionCatalogsExtension>().named("signum")
 
 inline fun Project.commonApiDependencies(): List<String> {
-    project.AspVersions.versions["kmpcrypto"] = VcLibVersions.kmpcrypto
+    project.AspVersions.versions["signum"] = VcLibVersions.signum
     project.AspVersions.versions["jsonpath"] = VcLibVersions.jsonpath
-    project.AspVersions.versions["okio"] = kmpCryptoVersionCatalog.findVersion("okio").get().toString()
+    project.AspVersions.versions["okio"] = signumVersionCatalog.findVersion("okio").get().toString()
     project.AspVersions.versions["encoding"] = "2.2.1"
 
 
@@ -28,9 +27,9 @@ inline fun Project.commonApiDependencies(): List<String> {
         coroutines(),
         serialization("json"),
         serialization("cbor"),
-        addDependency("at.asitplus.signum:indispensable", "kmpcrypto"), //for iOS Export
-        addDependency("at.asitplus.signum:indispensable-cosef", "kmpcrypto"),
-        addDependency("at.asitplus.signum:indispensable-josef", "kmpcrypto"),
+        addDependency("at.asitplus.signum:indispensable", "signum"), //for iOS Export
+        addDependency("at.asitplus.signum:indispensable-cosef", "signum"),
+        addDependency("at.asitplus.signum:indispensable-josef", "signum"),
         addDependency("at.asitplus:jsonpath4k", "jsonpath"),
         datetime(),
         addDependency("com.squareup.okio:okio", "okio"),
@@ -56,11 +55,11 @@ inline fun KotlinDependencyHandler.commonImplementationDependencies() {
 
 fun Project.commonIosExports() = arrayOf(
     datetime(),
-    "com.ionspin.kotlin:bignum:${kmpCryptoVersionCatalog.findVersion("bignum").get()}",
+    "com.ionspin.kotlin:bignum:${signumVersionCatalog.findVersion("bignum").get()}",
     kmmresult(),
-    "at.asitplus.signum:indispensable:${VcLibVersions.kmpcrypto}",
-    "at.asitplus.signum:indispensable-cosef:${VcLibVersions.kmpcrypto}",
-    "at.asitplus.signum:indispensable-josef:${VcLibVersions.kmpcrypto}",
+    "at.asitplus.signum:indispensable:${VcLibVersions.signum}",
+    "at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}",
+    "at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}",
     "at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}",
     "io.matthewnelson.encoding:core:${AspVersions.versions["encoding"]}",
     "io.matthewnelson.encoding:base16:${AspVersions.versions["encoding"]}",

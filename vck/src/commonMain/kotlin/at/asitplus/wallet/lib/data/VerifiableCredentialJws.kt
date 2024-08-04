@@ -27,11 +27,11 @@ data class VerifiableCredentialJws(
     val jwtId: String
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = vckJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<VerifiableCredentialJws>(it)
+            vckJsonSerializer.decodeFromString<VerifiableCredentialJws>(it)
         }.wrap()
     }
 

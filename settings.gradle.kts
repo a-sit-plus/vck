@@ -12,14 +12,14 @@ pluginManagement {
 }
 
 if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
-    includeBuild("kmp-crypto") {
+    includeBuild("signum") {
         dependencySubstitution {
             substitute(module("at.asitplus.signum:indispensable")).using(project(":indispensable"))
             substitute(module("at.asitplus.signum:indispensable-josef")).using(project(":indispensable-josef"))
             substitute(module("at.asitplus.signum:indispensable-cosef")).using(project(":indispensable-cosef"))
         }
     }
-} else logger.lifecycle("Excluding KMP Crypto from this build")
+} else logger.lifecycle("Excluding Signum from this build")
 
 rootProject.name = "vc-k"
 include(":vck")
@@ -40,8 +40,8 @@ dependencyResolutionManagement {
 
         fun versionOf(dependency: String) = versions[dependency] as String
 
-        create("kmpCrypto") {
-            from("at.asitplus.signum:indispensable-versionCatalog:${versionOf("kmpCrypto")}")
+        create("signum") {
+            from("at.asitplus.signum:indispensable-versionCatalog:${versionOf("signum")}")
         }
     }
 }

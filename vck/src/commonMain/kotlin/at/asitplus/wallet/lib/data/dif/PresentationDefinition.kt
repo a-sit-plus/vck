@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.wallet.lib.data.jsonSerializer
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -31,11 +31,11 @@ data class PresentationDefinition(
         formats: FormatHolder
     ) : this(id = uuid4().toString(), inputDescriptors = inputDescriptors, formats = formats)
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = vckJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<PresentationDefinition>(it)
+            vckJsonSerializer.decodeFromString<PresentationDefinition>(it)
         }.wrap()
     }
 }
