@@ -4,6 +4,8 @@ Release 4.1.1 (Bugfix Release):
 * correctly configure and name JSON serializer:
   * `jsonSerializer` -> `vckJsonSerializer`
   * revert to explicit serializer configuration
+* rename kmp-crypto submodule to signum an update all references
+  * this changes the identifier in the version catalog!
 
 Release 4.1.0:
  * Rebrand

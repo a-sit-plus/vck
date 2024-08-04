@@ -41,13 +41,13 @@ kotlin {
 
         jvmMain {
             dependencies {
-                implementation(kmpCrypto.bcpkix.jdk18on)
+                implementation(signum.bcpkix.jdk18on)
             }
         }
 
         jvmTest {
             dependencies {
-                implementation(kmpCrypto.jose)
+                implementation(signum.jose)
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
             }
         }
