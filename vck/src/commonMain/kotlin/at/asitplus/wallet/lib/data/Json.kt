@@ -26,8 +26,15 @@ internal object JsonCredentialSerializer {
 
 }
 
-val jsonSerializer by lazy {
-    Json(from = at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer) {
+@Deprecated("use vckJsonSerializer", replaceWith = ReplaceWith("vckJsonSerializer"))
+val jsonSerializer get() = vckJsonSerializer
+
+val vckJsonSerializer by lazy {
+    Json {
+        prettyPrint = false
+        encodeDefaults = false
+        classDiscriminator = "type"
+        ignoreUnknownKeys = true
         serializersModule = SerializersModule {
             polymorphic(CredentialSubject::class) {
                 subclass(AtomicAttribute2023::class)

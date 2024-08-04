@@ -19,13 +19,13 @@ object CredentialToJsonConverter {
             is SubjectCredentialStore.StoreEntry.Vc -> {
                 buildJsonObject {
                     put("type", JsonPrimitive(credential.scheme.vcType))
-                    jsonSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject).jsonObject.entries.forEach {
+                    vckJsonSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject).jsonObject.entries.forEach {
                         put(it.key, it.value)
                     }
                     // TODO: Remove the rest here when there is a clear specification on how to encode vc credentials
                     //  This may actually depend on the presentation context, so more information may be required
                     put("vc", buildJsonArray {
-                        add(jsonSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject))
+                        add(vckJsonSerializer.encodeToJsonElement(credential.vc.vc.credentialSubject))
                     })
                 }
             }

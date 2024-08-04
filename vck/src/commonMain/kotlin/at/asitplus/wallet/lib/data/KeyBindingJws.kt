@@ -24,7 +24,7 @@ data class KeyBindingJws(
     val sdHash: ByteArray,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = vckJsonSerializer.encodeToString(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -50,7 +50,7 @@ data class KeyBindingJws(
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<KeyBindingJws>(it)
+            vckJsonSerializer.decodeFromString<KeyBindingJws>(it)
         }.wrap()
     }
 

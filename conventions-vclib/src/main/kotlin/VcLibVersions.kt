@@ -9,7 +9,7 @@ object VcLibVersions {
     private fun versionOf(dependency: String) = versions[dependency] as String
 
     val uuid get() = versionOf("uuid")
-    val kmpcrypto get() = versionOf("kmpCrypto")
+    val signum get() = versionOf("signum")
     val jsonpath get() = versionOf("jsonpath")
     val eupidcredential get() = versionOf("eupid")
     val mdl get() = versionOf("mdl")

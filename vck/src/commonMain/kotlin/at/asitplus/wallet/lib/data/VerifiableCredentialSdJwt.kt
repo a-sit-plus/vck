@@ -91,11 +91,11 @@ data class VerifiableCredentialSdJwt(
     val confirmationKey: JsonWebKey? = null,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = vckJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<VerifiableCredentialSdJwt>(it)
+            vckJsonSerializer.decodeFromString<VerifiableCredentialSdJwt>(it)
         }.wrap()
     }
 
