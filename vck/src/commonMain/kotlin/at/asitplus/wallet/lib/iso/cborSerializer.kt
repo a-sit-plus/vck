@@ -42,6 +42,9 @@ internal object CborCredentialSerializer {
         }
 }
 
+@Deprecated("use vckCborSerializer instead", replaceWith = ReplaceWith("vckCborSerializer"))
+val cborSerializer get() = vckCborSerializer
+
 @OptIn(ExperimentalSerializationApi::class)
 val vckCborSerializer by lazy {
     Cbor(from = at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer) {
