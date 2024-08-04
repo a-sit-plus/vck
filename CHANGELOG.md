@@ -1,5 +1,10 @@
 # Changelog
 
+Release 4.1.1 (Bugfix Release):
+* correctly configure and name JSON serializer:
+  * `jsonSerializer` -> `vckJsonSerializer`
+  * revert to explicit serializer configuration
+
 Release 4.1.0:
  * Rebrand
    * Project name: _KMM VC Library_ -> VC-K

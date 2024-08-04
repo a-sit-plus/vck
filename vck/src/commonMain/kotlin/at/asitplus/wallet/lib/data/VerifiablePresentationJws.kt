@@ -22,11 +22,11 @@ data class VerifiablePresentationJws(
     val jwtId: String
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = vckJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<VerifiablePresentationJws>(it)
+            vckJsonSerializer.decodeFromString<VerifiablePresentationJws>(it)
         }.wrap()
     }
 

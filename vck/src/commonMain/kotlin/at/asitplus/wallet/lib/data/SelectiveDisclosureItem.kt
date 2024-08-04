@@ -21,7 +21,7 @@ data class SelectiveDisclosureItem(
     val claimValue: Any,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = vckJsonSerializer.encodeToString(this)
 
     /**
      * Creates a disclosure, as described in section 5.2 of
@@ -60,7 +60,7 @@ data class SelectiveDisclosureItem(
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<SelectiveDisclosureItem>(it)
+            vckJsonSerializer.decodeFromString<SelectiveDisclosureItem>(it)
         }.wrap()
 
         /**

@@ -7,7 +7,7 @@ import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.data.jsonSerializer
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import com.nimbusds.jose.EncryptionMethod
 import com.nimbusds.jose.JOSEObjectType
@@ -116,7 +116,7 @@ class JwsServiceJvmTest : FreeSpec({
             "$testIdentifier:" - {
 
                 "Signed object from int. library can be verified with int. library" {
-                    val stringPayload = jsonSerializer.encodeToString(randomPayload)
+                    val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
                     val signed =
                         jwsService.createSignedJwt(JwsContentTypeConstants.JWT, stringPayload.encodeToByteArray())
                             .getOrThrow()
@@ -128,7 +128,7 @@ class JwsServiceJvmTest : FreeSpec({
                 }
 
                 "Signed object from ext. library can be verified with int. library" {
-                    val stringPayload = jsonSerializer.encodeToString(randomPayload)
+                    val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
                     val libHeader = JWSHeader.Builder(JWSAlgorithm(algo.name))
                         .type(JOSEObjectType("JWT"))
                         .jwk(JWK.parse(cryptoService.keyPairAdapter.jsonWebKey.serialize()))
@@ -161,7 +161,7 @@ class JwsServiceJvmTest : FreeSpec({
                 }
 
                 "Signed object from int. library can be verified with ext. library" {
-                    val stringPayload = jsonSerializer.encodeToString(randomPayload)
+                    val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
                     val signed =
                         jwsService.createSignedJwt(JwsContentTypeConstants.JWT, stringPayload.encodeToByteArray())
                             .getOrThrow()
@@ -180,7 +180,7 @@ class JwsServiceJvmTest : FreeSpec({
                  */
                 if (thisConfiguration.first == "EC") {
                     "Encrypted object from ext. library can be decrypted with int. library" {
-                        val stringPayload = jsonSerializer.encodeToString(randomPayload)
+                        val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
                         val libJweHeader =
                             JWEHeader.Builder(JWEAlgorithm(jweAlgorithm.identifier), EncryptionMethod.A256GCM)
                                 .type(JOSEObjectType(JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON))
@@ -200,7 +200,7 @@ class JwsServiceJvmTest : FreeSpec({
                     }
 
                     "Encrypted object from int. library can be decrypted with ext. library" {
-                        val stringPayload = jsonSerializer.encodeToString(randomPayload)
+                        val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
                         val encrypted = jwsService.encryptJweObject(
                             JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
                             stringPayload.encodeToByteArray(),

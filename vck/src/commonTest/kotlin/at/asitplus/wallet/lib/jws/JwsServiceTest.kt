@@ -11,7 +11,7 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
-import at.asitplus.wallet.lib.data.jsonSerializer
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -57,7 +57,7 @@ class JwsServiceTest : FreeSpec({
     }
 
     "signed object can be verified" {
-        val stringPayload = jsonSerializer.encodeToString(randomPayload)
+        val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
         val signed =
             jwsService.createSignedJwt(JwsContentTypeConstants.JWT, stringPayload.encodeToByteArray()).getOrThrow()
         signed.shouldNotBeNull()
@@ -107,7 +107,7 @@ class JwsServiceTest : FreeSpec({
     }
 
     "encrypted object can be decrypted" {
-        val stringPayload = jsonSerializer.encodeToString(randomPayload)
+        val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
         val encrypted = jwsService.encryptJweObject(
             JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
             stringPayload.encodeToByteArray(),

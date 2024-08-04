@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.wallet.lib.data.jsonSerializer
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -19,7 +19,7 @@ data class ServerRequest(
     val docRequests: Array<ServerItemsRequest>,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = vckJsonSerializer.encodeToString(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -39,7 +39,7 @@ data class ServerRequest(
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<ServerRequest>(it)
+            vckJsonSerializer.decodeFromString<ServerRequest>(it)
         }.wrap()
     }
 }
@@ -72,7 +72,7 @@ data class ServerResponse(
     @SerialName("documentErrors")
     val documentErrors: Map<String, Int>? = null,
 ) {
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = vckJsonSerializer.encodeToString(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -94,7 +94,7 @@ data class ServerResponse(
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<ServerResponse>(it)
+            vckJsonSerializer.decodeFromString<ServerResponse>(it)
         }.wrap()
     }
 }
