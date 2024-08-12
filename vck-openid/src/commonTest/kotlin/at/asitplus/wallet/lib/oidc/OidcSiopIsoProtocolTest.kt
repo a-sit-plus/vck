@@ -78,7 +78,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         val document = runProcess(
             verifierSiop,
             walletUrl,
-            OidcSiopVerifier.RequestOptions(
+            RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = MobileDrivingLicenceScheme,
                 requestedAttributes = listOf(
@@ -100,7 +100,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         val document = runProcess(
             verifierSiop,
             walletUrl,
-            OidcSiopVerifier.RequestOptions(
+            RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
                 requestedAttributes = listOf("given_name"),
@@ -121,7 +121,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         val document = runProcess(
             verifierSiop,
             walletUrl,
-            OidcSiopVerifier.RequestOptions(
+            RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = MobileDrivingLicenceScheme,
                 requestedAttributes = listOf(requestedClaim),
@@ -142,7 +142,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             relyingPartyUrl = relyingPartyUrl,
             responseUrl = relyingPartyUrl + "/${uuid4()}"
         )
-        val requestOptions = OidcSiopVerifier.RequestOptions(
+        val requestOptions = RequestOptions(
             representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
             credentialScheme = MobileDrivingLicenceScheme,
             requestedAttributes = listOf(requestedClaim),
@@ -176,7 +176,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         val document = runProcess(
             verifierSiop,
             walletUrl,
-            OidcSiopVerifier.RequestOptions(
+            RequestOptions(
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 credentialScheme = MobileDrivingLicenceScheme,
                 requestedAttributes = listOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
@@ -195,7 +195,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
 private suspend fun runProcess(
     verifierSiop: OidcSiopVerifier,
     walletUrl: String,
-    requestOptions: OidcSiopVerifier.RequestOptions,
+    requestOptions: RequestOptions,
     holderSiop: OidcSiopWallet,
 ): IsoDocumentParsed {
     val authnRequest = verifierSiop.createAuthnRequestUrl(

@@ -38,7 +38,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
 
     representations.forEach { representation ->
-        val reqOptions = OidcSiopVerifier.RequestOptions(
+        val reqOptions = RequestOptions(
             credentialScheme = ConstantIndex.AtomicAttribute2023,
             representation = representation,
         )

@@ -9,7 +9,6 @@ import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -116,7 +115,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
 private suspend fun assertSecondRun(
     verifierSiop: OidcSiopVerifier,
     holderSiop: OidcSiopWallet,
-    walletUrl: String
+    walletUrl: String,
 ) {
     val authnRequestUrl = verifierSiop.createAuthnRequestUrl(
         walletUrl = walletUrl,

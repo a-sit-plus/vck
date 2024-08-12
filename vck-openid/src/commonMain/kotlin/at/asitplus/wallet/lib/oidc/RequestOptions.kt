@@ -16,6 +16,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_PROFILE
 import com.benasher44.uuid.uuid4
 import io.ktor.http.*
 
+
 data class RequestOptions(
     /**
      * Response mode to request, see [OpenIdConstants.ResponseMode]

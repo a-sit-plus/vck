@@ -19,7 +19,6 @@ import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -408,7 +407,7 @@ class OidcSiopProtocolTest : FreeSpec({
 private suspend fun buildAttestationJwt(
     sprsCryptoService: DefaultCryptoService,
     relyingPartyUrl: String,
-    verifierKeyPair: KeyPairAdapter
+    verifierKeyPair: KeyPairAdapter,
 ): JwsSigned = DefaultJwsService(sprsCryptoService).createSignedJws(
     header = JwsHeader(
         algorithm = sprsCryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow(),
@@ -440,7 +439,7 @@ private fun verifierAttestationVerifier(trustedKey: JsonWebKey) =
 private suspend fun verifySecondProtocolRun(
     verifierSiop: OidcSiopVerifier,
     walletUrl: String,
-    holderSiop: OidcSiopWallet
+    holderSiop: OidcSiopWallet,
 ) {
     val authnRequestUrl = verifierSiop.createAuthnRequestUrl(walletUrl = walletUrl)
     val authnResponse = holderSiop.createAuthnResponse(authnRequestUrl)

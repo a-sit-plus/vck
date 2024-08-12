@@ -1,19 +1,30 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.signum.indispensable.asn1.*
+import at.asitplus.signum.indispensable.asn1.Asn1
+import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
+import at.asitplus.signum.indispensable.asn1.Asn1Primitive
+import at.asitplus.signum.indispensable.asn1.Asn1String
+import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyPairAdapter
+import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidvci.decode
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
@@ -334,7 +345,7 @@ class OidcSiopInteropTest : FreeSpec({
         val requestUrlForWallet = verifierSiop.createAuthnRequestUrlWithRequestObjectByReference(
             walletUrl = "https://wallet.a-sit.at/mobile",
             requestUrl = requestUrl,
-            requestOptions = OidcSiopVerifier.RequestOptions(
+            requestOptions = RequestOptions(
                 responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
                 representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                 credentialScheme = ConstantIndex.AtomicAttribute2023,

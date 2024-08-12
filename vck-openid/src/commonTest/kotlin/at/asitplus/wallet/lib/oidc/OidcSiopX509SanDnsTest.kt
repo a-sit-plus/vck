@@ -16,7 +16,6 @@ import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec

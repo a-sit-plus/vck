@@ -70,7 +70,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 )
 
                 val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                    requestOptions = RequestOptions(
                         credentialScheme = ConstantIndex.AtomicAttribute2023,
                         representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
                     )
@@ -105,7 +105,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 )
 
                 val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                    requestOptions = RequestOptions(
                         credentialScheme = ConstantIndex.AtomicAttribute2023,
                     )
                 ).let { request ->
@@ -148,7 +148,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 )
 
                 val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                    requestOptions = RequestOptions(
                         credentialScheme = ConstantIndex.AtomicAttribute2023,
                         representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                     )
@@ -189,7 +189,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 )
 
                 val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                    requestOptions = RequestOptions(
                         credentialScheme = ConstantIndex.AtomicAttribute2023,
                         representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                     )
@@ -235,7 +235,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 )
 
                 val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                    requestOptions = RequestOptions(
                         credentialScheme = ConstantIndex.AtomicAttribute2023,
                         representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                     ),
@@ -279,7 +279,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 )
 
                 val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                    requestOptions = RequestOptions(
                         credentialScheme = ConstantIndex.AtomicAttribute2023,
                         representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                     ),
@@ -325,13 +325,13 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         )
 
         val authnRequest1 = verifierSiop.createAuthnRequest(
-            requestOptions = OidcSiopVerifier.RequestOptions(
+            requestOptions = RequestOptions(
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ),
         )
         val authnRequest2 = verifierSiop.createAuthnRequest(
-            requestOptions = OidcSiopVerifier.RequestOptions(
+            requestOptions = RequestOptions(
                 credentialScheme = MobileDrivingLicenceScheme,
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
             ),
