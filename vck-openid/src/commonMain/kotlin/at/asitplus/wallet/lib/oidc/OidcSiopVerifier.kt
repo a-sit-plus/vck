@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.jsonpath.JsonPath
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncrypted
@@ -10,29 +11,19 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.leaf
-import at.asitplus.jsonpath.JsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
-import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
-import at.asitplus.wallet.lib.data.dif.Constraint
-import at.asitplus.wallet.lib.data.dif.ConstraintField
-import at.asitplus.wallet.lib.data.dif.ConstraintFilter
 import at.asitplus.wallet.lib.data.dif.FormatContainerJwt
 import at.asitplus.wallet.lib.data.dif.FormatHolder
-import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
-import at.asitplus.wallet.lib.data.dif.SchemaReference
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -42,8 +33,6 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.VERIFIER_ATTES
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.X509_SAN_DNS
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
@@ -84,7 +73,7 @@ class OidcSiopVerifier private constructor(
      */
     private val attestationJwt: JwsSigned?,
     private val x5c: CertificateChain?,
-    private val clientIdScheme: OpenIdConstants.ClientIdScheme
+    private val clientIdScheme: OpenIdConstants.ClientIdScheme,
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
@@ -222,39 +211,6 @@ class OidcSiopVerifier private constructor(
         addX5c = false
     )
 
-    data class RequestOptions(
-        /**
-         * Response mode to request, see [OpenIdConstants.ResponseMode]
-         */
-        val responseMode: OpenIdConstants.ResponseMode? = null,
-        /**
-         * Required representation, see [ConstantIndex.CredentialRepresentation]
-         */
-        val representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-        /**
-         * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
-         */
-        val state: String? = uuid4().toString(),
-        /**
-         * Credential type to request, or `null` to make no restrictions
-         */
-        val credentialScheme: ConstantIndex.CredentialScheme? = null,
-        /**
-         * List of attributes that shall be requested explicitly (selective disclosure),
-         * or `null` to make no restrictions
-         */
-        val requestedAttributes: List<String>? = null,
-        /**
-         * Optional URL to include [metadata] by reference instead of by value (directly embedding in authn request)
-         */
-        val clientMetadataUrl: String? = null,
-        /**
-         * Set this value to include metadata with encryption parameters set. Beware if setting this value and also
-         * [clientMetadataUrl], that the URL shall point to [getCreateMetadataWithEncryption].
-         */
-        val encryption: Boolean = false,
-    )
-
     /**
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl].
      */
@@ -274,7 +230,7 @@ class OidcSiopVerifier private constructor(
      */
     suspend fun createAuthnRequestUrlWithRequestObject(
         walletUrl: String,
-        requestOptions: RequestOptions = RequestOptions()
+        requestOptions: RequestOptions = RequestOptions(),
     ): KmmResult<String> = catching {
         val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow()
         val urlBuilder = URLBuilder(walletUrl)
@@ -297,7 +253,7 @@ class OidcSiopVerifier private constructor(
     suspend fun createAuthnRequestUrlWithRequestObjectByReference(
         walletUrl: String,
         requestUrl: String,
-        requestOptions: RequestOptions = RequestOptions()
+        requestOptions: RequestOptions = RequestOptions(),
     ): KmmResult<Pair<String, String>> = catching {
         val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow()
         val urlBuilder = URLBuilder(walletUrl)
@@ -351,7 +307,7 @@ class OidcSiopVerifier private constructor(
     ) = AuthenticationRequestParameters(
         responseType = "$ID_TOKEN $VP_TOKEN",
         clientId = buildClientId(),
-        redirectUrl = requestOptions.buildRedirectUrl(),
+        redirectUrl = if (requestOptions.setRedirectUrl()) relyingPartyUrl else null,
         responseUrl = responseUrl,
         clientIdScheme = clientIdScheme,
         scope = requestOptions.buildScope(),
@@ -371,90 +327,14 @@ class OidcSiopVerifier private constructor(
         ),
     )
 
-    private fun RequestOptions.buildScope() = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.sdJwtType, credentialScheme?.vcType, credentialScheme?.isoNamespace)
-        .joinToString(" ")
-
     private fun buildClientId() = (x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
         ?: relyingPartyUrl)
-
-    private fun RequestOptions.buildRedirectUrl() = if ((responseMode == OpenIdConstants.ResponseMode.DIRECT_POST)
-        || (responseMode == OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
-    ) null else relyingPartyUrl
-
-    private fun RequestOptions.toInputDescriptor() = InputDescriptor(
-        id = buildId(),
-        schema = listOfNotNull(credentialScheme?.schemaUri?.let { SchemaReference(it) }),
-        constraints = toConstraint(),
-    )
-
-    /**
-     * doctype is not really an attribute that can be presented,
-     * encoding it into the descriptor id as in the following non-normative example fow now:
-     * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
-     */
-    private fun RequestOptions.buildId() =
-        if (credentialScheme?.isoDocType != null && representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-            credentialScheme.isoDocType!! else uuid4().toString()
-
-    private fun RequestOptions.toConstraint() =
-        Constraint(fields = (toAttributeConstraints() + toTypeConstraint()).filterNotNull())
-
-    private fun RequestOptions.toAttributeConstraints() =
-        requestedAttributes?.createConstraints(representation, credentialScheme)
-            ?: listOf()
-
-    private fun RequestOptions.toTypeConstraint() = credentialScheme?.let {
-        when (representation) {
-            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.toVcConstraint()
-            ConstantIndex.CredentialRepresentation.SD_JWT -> it.toSdJwtConstraint()
-            ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
-        }
-    }
 
     private fun ConstantIndex.CredentialRepresentation.toFormatHolder() = when (this) {
         ConstantIndex.CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
         ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerJwt)
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
     }
-
-    private fun ConstantIndex.CredentialScheme.toVcConstraint() = if (supportsVcJwt)
-        ConstraintField(
-            path = listOf("$.type"),
-            filter = ConstraintFilter(
-                type = "string",
-                pattern = vcType,
-            )
-        ) else null
-
-    private fun ConstantIndex.CredentialScheme.toSdJwtConstraint() = if (supportsSdJwt)
-        ConstraintField(
-            path = listOf("$.vct"),
-            filter = ConstraintFilter(
-                type = "string",
-                pattern = sdJwtType!!
-            )
-        ) else null
-
-    private fun List<String>.createConstraints(
-        credentialRepresentation: ConstantIndex.CredentialRepresentation,
-        credentialScheme: ConstantIndex.CredentialScheme?,
-    ): Collection<ConstraintField> = map {
-        if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-            credentialScheme.toConstraintField(it)
-        else
-            ConstraintField(path = listOf("\$[${it.quote()}]"))
-    }
-
-    private fun ConstantIndex.CredentialScheme?.toConstraintField(attributeType: String) = ConstraintField(
-        path = listOf(
-            NormalizedJsonPath(
-                NormalizedJsonPathSegment.NameSegment(this?.isoNamespace ?: "mdoc"),
-                NormalizedJsonPathSegment.NameSegment(attributeType),
-            ).toString()
-        ),
-        intentToRetain = false
-    )
-
 
     sealed class AuthnResponseResult {
         /**
@@ -560,8 +440,10 @@ class OidcSiopVerifier private constructor(
         if (idToken.issuer != idToken.subject)
             return AuthnResponseResult.ValidationError("iss", params.state)
                 .also { Napier.d("Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}") }
-        val validAudiences = listOfNotNull(relyingPartyUrl,
-            x5c?.leaf?.tbsCertificate?.subjectAlternativeNames?.dnsNames?.firstOrNull())
+        val validAudiences = listOfNotNull(
+            relyingPartyUrl,
+            x5c?.leaf?.tbsCertificate?.subjectAlternativeNames?.dnsNames?.firstOrNull()
+        )
         if (idToken.audience !in validAudiences)
             return AuthnResponseResult.ValidationError("aud", params.state)
                 .also { Napier.d("audience not valid: ${idToken.audience}") }
@@ -616,7 +498,7 @@ class OidcSiopVerifier private constructor(
     }
 
     private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(
-        state: String?
+        state: String?,
     ) = when (this) {
         is Verifier.VerifyPresentationResult.InvalidStructure ->
             AuthnResponseResult.Error("parse vp failed", state)
@@ -641,7 +523,7 @@ class OidcSiopVerifier private constructor(
 
     private fun verifyMsoMdocResult(
         relatedPresentation: JsonElement,
-        idToken: IdToken
+        idToken: IdToken,
     ) = when (relatedPresentation) {
         // must be a string
         // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.5-1
@@ -651,7 +533,7 @@ class OidcSiopVerifier private constructor(
 
     private fun verifyJwtSdResult(
         relatedPresentation: JsonElement,
-        idToken: IdToken
+        idToken: IdToken,
     ) = when (relatedPresentation) {
         // must be a string
         // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.5-1
@@ -661,7 +543,7 @@ class OidcSiopVerifier private constructor(
 
     private fun verifyJwtVpResult(
         relatedPresentation: JsonElement,
-        idToken: IdToken
+        idToken: IdToken,
     ) = when (relatedPresentation) {
         // must be a string
         // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
