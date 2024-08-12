@@ -5,6 +5,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.wallet.lib.data.dif.SchemaReference
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -16,7 +17,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 class AgentTest : FreeSpec({
     val singularPresentationDefinition = PresentationDefinition(
         id = uuid4().toString(),
-        inputDescriptors = listOf(InputDescriptor(id = uuid4().toString()))
+        inputDescriptors = listOf(InputDescriptor(id = uuid4().toString(), schema = listOf(SchemaReference(ConstantIndex.AtomicAttribute2023.schemaUri))))
     )
 
     lateinit var issuer: Issuer

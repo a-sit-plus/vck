@@ -1,6 +1,8 @@
 # Changelog
 
 Release NEXT:
+* Refactor `OidcSiopVerifier.RequestOptions` and `WalletService.RequestOptions` into one separate class `RequestOptions`
+  * Adds `InputParameter.toRequestOptions()` functionality
 
 Release 4.1.1 (Bugfix Release):
 * correctly configure and name JSON serializer:
@@ -18,7 +20,6 @@ Release 4.1.0:
      * `vclib-aries` -> `vck-aries`
      * `vclib-openid` -> `vck-openid`
  * Rename serializers to avoid ambiguities and kotlin bugs
-   * `jsonSerializer` -> `vckJsonSerializer`
    * `cborSerializer` -> `vckCborSerializer`
  * Update Dependencies
    * Signum (formerly KMP Crypto): 3.6.0

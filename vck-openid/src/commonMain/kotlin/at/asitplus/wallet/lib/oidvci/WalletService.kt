@@ -16,18 +16,11 @@ import at.asitplus.wallet.lib.agent.KeyPairAdapter
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
-import at.asitplus.wallet.lib.data.ConstantIndex.supportsIso
-import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
-import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
-import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.CREDENTIAL_TYPE_OPENID
@@ -37,7 +30,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.openid.RequestOptions
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
@@ -114,30 +107,6 @@ class WalletService(
             remoteResourceRetriever = remoteResourceRetriever,
         )
     }
-
-    data class RequestOptions(
-        /**
-         * Credential type to request
-         */
-        val credentialScheme: ConstantIndex.CredentialScheme,
-        /**
-         * Required representation, see [ConstantIndex.CredentialRepresentation]
-         */
-        val representation: CredentialRepresentation = PLAIN_JWT,
-        /**
-         * List of attributes that shall be requested explicitly (selective disclosure),
-         * or `null` to make no restrictions
-         */
-        val requestedAttributes: Set<String>? = null,
-        /**
-         * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
-         */
-        val state: String = uuid4().toString(),
-        /**
-         * Modify clock for testing specific scenarios
-         */
-        val clock: Clock = Clock.System,
-    )
 
     /**
      * Pass in the URL provided by the Credential Issuer,
@@ -468,7 +437,7 @@ class WalletService(
             createCredentialRequestJwt(requestOptions, clientNonce, credentialIssuer)
         }
         requestOptions.toCredentialRequestParameters(proof)
-            .also { Napier.i("createCredentialRequest returns $it") }
+            .also { Napier.i("createCredentialRequest returns $it") } ?: throw Exception("Cannot create CredentialRequestParameters")
     }
 
     private suspend fun createCredentialRequestJwt(
@@ -515,11 +484,54 @@ class WalletService(
             addKeyId = false,
         ).getOrThrow().serialize().encodeToString(Base64UrlStrict),
     )
+}
 
-    private fun RequestOptions.toCredentialRequestParameters(proof: CredentialRequestProof) =
-        representation.toCredentialRequestParameters(credentialScheme, requestedAttributes, proof)
+internal fun Collection<String>.toRequestedClaimsSdJwt(sdJwtType: String) =
+    mapOf(sdJwtType to this.associateWith { RequestedCredentialClaimSpecification() })
 
-    private fun SupportedCredentialFormat.toAuthnDetails(requestedAttributes: Set<String>?) = when (this.format) {
+internal fun Collection<String>.toRequestedClaimsIso(isoNamespace: String) =
+    mapOf(isoNamespace to this.associateWith { RequestedCredentialClaimSpecification() })
+
+private fun Pair<String, SupportedCredentialFormat>.toAuthnDetails(authorizationServers: Set<String>?)
+        : AuthorizationDetails = AuthorizationDetails(
+    type = "openid_credential",
+    credentialConfigurationId = first,
+    format = second.format,
+    docType = second.docType,
+    sdJwtVcType = second.sdJwtVcType,
+    credentialDefinition = second.credentialDefinition,
+    locations = authorizationServers
+)
+
+private fun SupportedCredentialFormat.toCredentialRequestParameters(
+    requestedAttributes: Set<String>?,
+    proof: CredentialRequestProof,
+) = when (format) {
+    CredentialFormatEnum.JWT_VC -> CredentialRequestParameters(
+        format = format,
+        credentialDefinition = credentialDefinition,
+        proof = proof
+    )
+
+    CredentialFormatEnum.VC_SD_JWT -> CredentialRequestParameters(
+        format = format,
+        sdJwtVcType = sdJwtVcType,
+        claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
+        proof = proof
+    )
+
+    CredentialFormatEnum.MSO_MDOC -> CredentialRequestParameters(
+        format = format,
+        docType = docType,
+        claims = requestedAttributes?.toRequestedClaimsIso(isoClaims?.keys?.firstOrNull() ?: docType!!),
+        proof = proof
+    )
+
+    else -> throw IllegalArgumentException("format $format not applicable to create credential request")
+}
+
+private fun SupportedCredentialFormat.toAuthnDetails(requestedAttributes: Set<String>?) =
+    when (this.format) {
         CredentialFormatEnum.JWT_VC -> AuthorizationDetails(
             type = CREDENTIAL_TYPE_OPENID,
             format = format,
@@ -542,130 +554,3 @@ class WalletService(
 
         else -> throw IllegalArgumentException("Credential format $format not supported for AuthorizationDetails")
     }
-
-    private fun RequestOptions.toAuthnDetails() =
-        representation.toAuthorizationDetails(credentialScheme, requestedAttributes)
-
-    private fun CredentialRepresentation.toAuthorizationDetails(
-        scheme: ConstantIndex.CredentialScheme,
-        requestedAttributes: Set<String>?
-    ) = when (this) {
-        PLAIN_JWT -> scheme.toJwtAuthn(toFormat())
-        SD_JWT -> scheme.toSdJwtAuthn(toFormat(), requestedAttributes)
-        ISO_MDOC -> scheme.toIsoAuthn(toFormat(), requestedAttributes)
-    }
-
-    private fun ConstantIndex.CredentialScheme.toJwtAuthn(
-        format: CredentialFormatEnum
-    ) = if (supportsVcJwt)
-        AuthorizationDetails(
-            type = CREDENTIAL_TYPE_OPENID,
-            format = format,
-            credentialDefinition = SupportedCredentialFormatDefinition(
-                types = listOf(VERIFIABLE_CREDENTIAL, vcType!!),
-            ),
-        ) else null
-
-    private fun ConstantIndex.CredentialScheme.toSdJwtAuthn(
-        format: CredentialFormatEnum,
-        requestedAttributes: Set<String>?
-    ) = if (supportsSdJwt)
-        AuthorizationDetails(
-            type = CREDENTIAL_TYPE_OPENID,
-            format = format,
-            sdJwtVcType = sdJwtType!!,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtType!!),
-        ) else null
-
-    private fun ConstantIndex.CredentialScheme.toIsoAuthn(
-        format: CredentialFormatEnum,
-        requestedAttributes: Set<String>?
-    ) = if (supportsIso)
-        AuthorizationDetails(
-            type = CREDENTIAL_TYPE_OPENID,
-            format = format,
-            docType = isoDocType,
-            claims = requestedAttributes?.toRequestedClaimsIso(isoNamespace!!)
-        ) else null
-
-    private fun CredentialRepresentation.toCredentialRequestParameters(
-        credentialScheme: ConstantIndex.CredentialScheme,
-        requestedAttributes: Set<String>?,
-        proof: CredentialRequestProof
-    ) = when {
-        this == PLAIN_JWT && credentialScheme.supportsVcJwt -> CredentialRequestParameters(
-            format = toFormat(),
-            credentialDefinition = SupportedCredentialFormatDefinition(
-                types = listOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType!!,
-            ),
-            proof = proof
-        )
-
-        this == SD_JWT && credentialScheme.supportsSdJwt -> CredentialRequestParameters(
-            format = toFormat(),
-            sdJwtVcType = credentialScheme.sdJwtType!!,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(credentialScheme.sdJwtType!!),
-            proof = proof
-        )
-
-        this == ISO_MDOC && credentialScheme.supportsIso -> CredentialRequestParameters(
-            format = toFormat(),
-            docType = credentialScheme.isoDocType,
-            claims = requestedAttributes?.toRequestedClaimsIso(credentialScheme.isoNamespace!!),
-            proof = proof
-        )
-
-        else -> throw IllegalArgumentException("format $this not applicable to $credentialScheme")
-    }
-
-    private fun SupportedCredentialFormat.toCredentialRequestParameters(
-        requestedAttributes: Set<String>?,
-        proof: CredentialRequestProof
-    ) = when (format) {
-        CredentialFormatEnum.JWT_VC -> CredentialRequestParameters(
-            format = format,
-            credentialDefinition = credentialDefinition,
-            proof = proof
-        )
-
-        CredentialFormatEnum.VC_SD_JWT -> CredentialRequestParameters(
-            format = format,
-            sdJwtVcType = sdJwtVcType,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
-            proof = proof
-        )
-
-        CredentialFormatEnum.MSO_MDOC -> CredentialRequestParameters(
-            format = format,
-            docType = docType,
-            claims = requestedAttributes?.toRequestedClaimsIso(isoClaims?.keys?.firstOrNull() ?: docType!!),
-            proof = proof
-        )
-
-        else -> throw IllegalArgumentException("format $format not applicable to create credential request")
-    }
-}
-
-private fun Pair<String, SupportedCredentialFormat>.toAuthnDetails(authorizationServers: Set<String>?)
-        : AuthorizationDetails = AuthorizationDetails(
-    type = "openid_credential",
-    credentialConfigurationId = first,
-    format = second.format,
-    docType = second.docType,
-    sdJwtVcType = second.sdJwtVcType,
-    credentialDefinition = second.credentialDefinition,
-    locations = authorizationServers
-)
-
-private fun Collection<String>.toRequestedClaimsSdJwt(sdJwtType: String) =
-    mapOf(sdJwtType to this.associateWith { RequestedCredentialClaimSpecification() })
-
-private fun Collection<String>.toRequestedClaimsIso(isoNamespace: String) =
-    mapOf(isoNamespace to this.associateWith { RequestedCredentialClaimSpecification() })
-
-
-private fun CredentialRepresentation.toFormat() = when (this) {
-    PLAIN_JWT -> CredentialFormatEnum.JWT_VC
-    SD_JWT -> CredentialFormatEnum.VC_SD_JWT
-    ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
-}

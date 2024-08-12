@@ -40,5 +40,5 @@ data class FormatHolder(
             if (jwt != null) add(ConstantIndex.CredentialRepresentation.PLAIN_JWT)
             if (jwtSd != null) add(ConstantIndex.CredentialRepresentation.SD_JWT)
             if (msoMdoc != null) add(ConstantIndex.CredentialRepresentation.ISO_MDOC)
-        }
+        }.toSet()
 }

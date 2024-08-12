@@ -11,6 +11,7 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent

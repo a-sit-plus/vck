@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.wallet.lib.data.dif.SchemaReference
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -21,7 +22,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 class ValidatorVpTest : FreeSpec({
     val singularPresentationDefinition = PresentationDefinition(
         id = uuid4().toString(),
-        inputDescriptors = listOf(InputDescriptor(id = uuid4().toString()))
+        inputDescriptors = listOf(InputDescriptor(id = uuid4().toString(), schema = listOf(SchemaReference(ConstantIndex.AtomicAttribute2023.schemaUri))))
     )
 
     lateinit var validator: Validator

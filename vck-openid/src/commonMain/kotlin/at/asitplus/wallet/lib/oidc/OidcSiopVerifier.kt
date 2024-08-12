@@ -28,6 +28,7 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.REDIRECT_URI
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.VERIFIER_ATTESTATION
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.X509_SAN_DNS
@@ -38,6 +39,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.wallet.lib.openid.RequestOptions
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -307,7 +309,7 @@ class OidcSiopVerifier private constructor(
     ) = AuthenticationRequestParameters(
         responseType = "$ID_TOKEN $VP_TOKEN",
         clientId = buildClientId(),
-        redirectUrl = if (requestOptions.setRedirectUrl()) relyingPartyUrl else null,
+        redirectUrl = if (requestOptions.includeRedirectUrl()) relyingPartyUrl else null,
         responseUrl = responseUrl,
         clientIdScheme = clientIdScheme,
         scope = requestOptions.buildScope(),
@@ -497,30 +499,6 @@ class OidcSiopVerifier private constructor(
         } else validationResults[0]
     }
 
-    private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(
-        state: String?,
-    ) = when (this) {
-        is Verifier.VerifyPresentationResult.InvalidStructure ->
-            AuthnResponseResult.Error("parse vp failed", state)
-                .also { Napier.w("VP error: $this") }
-
-        is Verifier.VerifyPresentationResult.NotVerified ->
-            AuthnResponseResult.ValidationError("vpToken", state)
-                .also { Napier.w("VP error: $this") }
-
-        is Verifier.VerifyPresentationResult.Success ->
-            AuthnResponseResult.Success(vp, state)
-                .also { Napier.i("VP success: $this") }
-
-        is Verifier.VerifyPresentationResult.SuccessIso ->
-            AuthnResponseResult.SuccessIso(document, state)
-                .also { Napier.i("VP success: $this") }
-
-        is Verifier.VerifyPresentationResult.SuccessSdJwt ->
-            AuthnResponseResult.SuccessSdJwt(jwsSigned, sdJwt, disclosures, state)
-                .also { Napier.i("VP success: $this") }
-    }
-
     private fun verifyMsoMdocResult(
         relatedPresentation: JsonElement,
         idToken: IdToken,
@@ -552,14 +530,37 @@ class OidcSiopVerifier private constructor(
     }
 }
 
+private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(
+    state: String?,
+) = when (this) {
+    is Verifier.VerifyPresentationResult.InvalidStructure ->
+        AuthnResponseResult.Error("parse vp failed", state)
+            .also { Napier.w("VP error: $this") }
+
+    is Verifier.VerifyPresentationResult.NotVerified ->
+        AuthnResponseResult.ValidationError("vpToken", state)
+            .also { Napier.w("VP error: $this") }
+
+    is Verifier.VerifyPresentationResult.Success ->
+        AuthnResponseResult.Success(vp, state)
+            .also { Napier.i("VP success: $this") }
+
+    is Verifier.VerifyPresentationResult.SuccessIso ->
+        AuthnResponseResult.SuccessIso(document, state)
+            .also { Napier.i("VP success: $this") }
+
+    is Verifier.VerifyPresentationResult.SuccessSdJwt ->
+        AuthnResponseResult.SuccessSdJwt(jwsSigned, sdJwt, disclosures, state)
+            .also { Napier.i("VP success: $this") }
+}
 
 private val PresentationSubmissionDescriptor.cumulativeJsonPath: String
     get() {
-        var cummulativeJsonPath = this.path
+        var cumulativeJsonPath = this.path
         var descriptorIterator = this.nestedPath
         while (descriptorIterator != null) {
-            cummulativeJsonPath += descriptorIterator.path.substring(1)
+            cumulativeJsonPath += descriptorIterator.path.substring(1)
             descriptorIterator = descriptorIterator.nestedPath
         }
-        return cummulativeJsonPath
+        return cumulativeJsonPath
     }

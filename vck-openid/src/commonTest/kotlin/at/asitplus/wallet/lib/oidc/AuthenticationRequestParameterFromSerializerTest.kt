@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -10,7 +11,6 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-import kotlinx.serialization.encodeToString
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 

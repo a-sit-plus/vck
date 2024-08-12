@@ -21,7 +21,7 @@ data class InputDescriptor(
     @SerialName("format")
     val format: FormatHolder? = null,
     @SerialName("schema")
-    val schema: Collection<SchemaReference>? = null,
+    val schema: Collection<SchemaReference>,
     @SerialName("constraints")
     val constraints: Constraint? = null,
 ) {

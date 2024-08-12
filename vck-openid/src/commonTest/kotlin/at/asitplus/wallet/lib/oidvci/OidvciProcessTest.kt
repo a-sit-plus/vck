@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
+import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import io.kotest.core.spec.style.FunSpec
@@ -40,8 +41,8 @@ class OidvciProcessTest : FunSpec({
             authorizationService,
             issuer,
             client,
-            WalletService.RequestOptions(
-                ConstantIndex.AtomicAttribute2023,
+            RequestOptions(
+                credentialScheme = ConstantIndex.AtomicAttribute2023,
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
             )
         )
@@ -58,8 +59,8 @@ class OidvciProcessTest : FunSpec({
             authorizationService,
             issuer,
             client,
-            WalletService.RequestOptions(
-                ConstantIndex.AtomicAttribute2023,
+            RequestOptions(
+                credentialScheme = ConstantIndex.AtomicAttribute2023,
                 representation = ConstantIndex.CredentialRepresentation.SD_JWT,
             )
         )
@@ -111,8 +112,8 @@ class OidvciProcessTest : FunSpec({
             authorizationService,
             issuer,
             client,
-            WalletService.RequestOptions(
-                ConstantIndex.AtomicAttribute2023,
+            RequestOptions(
+                credentialScheme = ConstantIndex.AtomicAttribute2023,
                 representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                 requestedAttributes = setOf("family_name")
             )
@@ -132,8 +133,8 @@ class OidvciProcessTest : FunSpec({
             authorizationService,
             issuer,
             client,
-            WalletService.RequestOptions(
-                MobileDrivingLicenceScheme,
+            RequestOptions(
+                credentialScheme = MobileDrivingLicenceScheme,
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
             )
         )
@@ -154,7 +155,7 @@ class OidvciProcessTest : FunSpec({
             authorizationService,
             issuer,
             client,
-            WalletService.RequestOptions(
+            RequestOptions(
                 credentialScheme = MobileDrivingLicenceScheme,
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 requestedAttributes = setOf(MobileDrivingLicenceDataElements.DOCUMENT_NUMBER)
@@ -177,8 +178,8 @@ class OidvciProcessTest : FunSpec({
             authorizationService,
             issuer,
             client,
-            WalletService.RequestOptions(
-                ConstantIndex.AtomicAttribute2023,
+            RequestOptions(
+                credentialScheme = ConstantIndex.AtomicAttribute2023,
                 representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
             )
         )
@@ -196,7 +197,7 @@ private suspend fun runProcess(
     authorizationService: SimpleAuthorizationService,
     issuer: CredentialIssuer,
     client: WalletService,
-    requestOptions: WalletService.RequestOptions,
+    requestOptions: RequestOptions,
 ): CredentialResponseParameters {
     val authnRequest = client.createAuthRequest(requestOptions)
     val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()

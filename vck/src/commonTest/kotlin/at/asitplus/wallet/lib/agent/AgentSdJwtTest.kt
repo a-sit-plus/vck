@@ -2,12 +2,14 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.dif.Constraint
 import at.asitplus.wallet.lib.data.dif.ConstraintField
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.wallet.lib.data.dif.SchemaReference
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -64,7 +66,8 @@ class AgentSdJwtTest : FreeSpec({
                             path = listOf("$['given_name']")
                         )
                     )
-                )
+                ),
+                schema = listOf(SchemaReference(ConstantIndex.AtomicAttribute2023.schemaUri))
             )
         )
     )
@@ -176,7 +179,7 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
         audienceId = verifierId,
         presentationDefinition = PresentationDefinition(
             id = uuid4().toString(),
-            inputDescriptors = listOf(InputDescriptor(id = uuid4().toString()))
+            inputDescriptors = listOf(InputDescriptor(id = uuid4().toString(), schema = listOf(SchemaReference(ConstantIndex.AtomicAttribute2023.schemaUri))))
         ),
     ).getOrThrow()
     return (presentationResult.presentationResults.first() as Holder.CreatePresentationResult.SdJwt).sdJwt
