@@ -504,6 +504,12 @@ as well as a key binding (the JWT is decoded):
 }
 ```
 
+## Contributing
+External contributions are greatly appreciated! Be sure to observe the contribution guidelines (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+In particular, external contributions to this project are subject to the A-SIT Plus Contributor License Agreement (see also [CONTRIBUTING.md](CONTRIBUTING.md)).
+
+
+
 <br>
 
 ---
