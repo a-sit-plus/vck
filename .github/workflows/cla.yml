@@ -1,7 +1,3 @@
 name: Verify CLA Acknowledgement
 on: [pull_request_target]
 
-jobs:
-  verify-cla:
-    uses: a-sit-plus/internal-workflows/.github/workflows/cla.yml@main
-    
