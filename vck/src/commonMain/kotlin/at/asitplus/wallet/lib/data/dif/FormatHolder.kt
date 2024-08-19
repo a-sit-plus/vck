@@ -31,4 +31,14 @@ data class FormatHolder(
     val ldpVc: FormatContainerLdp? = null,
     @SerialName("mso_mdoc")
     val msoMdoc: FormatContainerJwt? = null,
-)
+) {
+    /**
+     * Inverse operation to `ConstantIndex.CredentialRepresentation.toFormatHolder()`
+     */
+    fun toSetOfRepresentation(): Set<ConstantIndex.CredentialRepresentation> =
+        mutableSetOf<ConstantIndex.CredentialRepresentation>().apply {
+            if (jwt != null) add(ConstantIndex.CredentialRepresentation.PLAIN_JWT)
+            if (jwtSd != null) add(ConstantIndex.CredentialRepresentation.SD_JWT)
+            if (msoMdoc != null) add(ConstantIndex.CredentialRepresentation.ISO_MDOC)
+        }.toSet()
+}
