@@ -121,12 +121,6 @@ data class RequestOptions(
 /**
  * Miscellaneous helper functions regarding [ConstraintField]
  */
-private fun Collection<ConstraintField>.toRequestedAttributes(): List<String> {
-    val regex = "[a-zA-Z0-9_-]+".toRegex()
-    val rawAttributes = this.map { constraint -> constraint.path.last().split("[").last() }
-    return rawAttributes.map { regex.find(it)?.value ?: "" }
-}
-
 private fun Collection<String>.createConstraints(
     credentialRepresentation: CredentialRepresentation,
     credentialScheme: ConstantIndex.CredentialScheme?,
@@ -239,35 +233,4 @@ private fun CredentialRepresentation.toFormat() = when (this) {
     PLAIN_JWT -> CredentialFormatEnum.JWT_VC
     SD_JWT -> CredentialFormatEnum.VC_SD_JWT
     ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
-}
-
-/**
- * Inverse operation of [RequestOptions.toInputDescriptor]
- */
-
-fun InputDescriptor.toRequestOptions(): RequestOptions? {
-    val representationConstraints = mapOf(
-        "type" to PLAIN_JWT, "vct" to SD_JWT
-    )
-
-    val credentialScheme = AttributeIndex.resolveSchemaUri(this.schema.first().uri)
-    val requestedAttributes =
-        (this.constraints?.fields?.toRequestedAttributes() ?: emptyList()).toMutableSet()
-
-    val requestedScheme = representationConstraints.filterKeys { it in requestedAttributes }.values.toSet().apply {
-        if (this.size > 1) throw Exception("Invalid requirement in InputDescriptor: Cannot be two schemes at the same time")
-    }.firstOrNull() ?: ISO_MDOC // this assumes that ISO-MDOC is the only scheme which does not add a specific constraint
-
-    requestedAttributes.removeAll(representationConstraints.keys)
-
-    val isViableTypeConstraint = this.format?.toSetOfRepresentation()?.contains(requestedScheme)
-        ?: true //assume that if not specified everything is supported
-
-    return if (isViableTypeConstraint) {
-        RequestOptions(
-            credentialScheme = credentialScheme,
-            representation = requestedScheme,
-            requestedAttributes = requestedAttributes.toList()
-        )
-    } else null
 }
