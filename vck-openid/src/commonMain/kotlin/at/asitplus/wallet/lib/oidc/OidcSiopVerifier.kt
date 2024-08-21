@@ -383,7 +383,6 @@ class OidcSiopVerifier private constructor(
 
     private fun RequestOptions.toInputDescriptor() = InputDescriptor(
         id = buildId(),
-        schema = listOfNotNull(credentialScheme?.schemaUri?.let { SchemaReference(it) }),
         constraints = toConstraint(),
     )
 

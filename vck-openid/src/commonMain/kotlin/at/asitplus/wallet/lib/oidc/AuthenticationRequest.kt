@@ -5,6 +5,7 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.data.dif.UrlSerializer
 import io.ktor.http.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -61,19 +62,6 @@ internal object JwsSignedSerializer : KSerializer<JwsSigned> {
 
     override fun serialize(encoder: Encoder, value: JwsSigned) {
         encoder.encodeString(value.serialize())
-    }
-
-}
-
-internal object UrlSerializer : KSerializer<Url> {
-
-    override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("UrlSerializer", PrimitiveKind.STRING)
-
-    override fun deserialize(decoder: Decoder): Url = Url(decoder.decodeString())
-
-    override fun serialize(encoder: Encoder, value: Url) {
-        encoder.encodeString(value.toString())
     }
 
 }

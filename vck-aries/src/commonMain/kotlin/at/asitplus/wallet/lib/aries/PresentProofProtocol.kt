@@ -215,7 +215,6 @@ class PresentProofProtocol(
             inputDescriptors = listOf(
                 InputDescriptor(
                     name = credentialScheme.vcType!!,
-                    schema = SchemaReference(uri = credentialScheme.schemaUri),
                     constraints = Constraint(
                         fields = claimsConstraints + typeConstraints
                     )

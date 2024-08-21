@@ -62,9 +62,6 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
                                 )
                             )
                         ),
-                        schema = listOf(
-                            SchemaReference(MobileDrivingLicenceScheme.schemaUri)
-                        )
                     )
                 )
             ),
