@@ -123,14 +123,20 @@ sealed class TransactionDataEntry {
              * present.
              */
             init {
-                require(oneTimePassword == null || method.type != "OTP")
+                require(oneTimePassword == null || method.type != "otp")
             }
 
             @Serializable
-            data class Method(
+            enum class Method(
                 @SerialName("type")
                 val type: String
-            )
+            ) {
+                Public("public"),
+                OTP("otp"),
+                BASIC("basic_auth"),
+                DIGEST("digest_auth"),
+                OAUTH("oauth_20"),
+            }
 
             companion object {
                 fun create(method: Method, oneTimePassword: String?): KmmResult<DocumentLocationMethod> =
