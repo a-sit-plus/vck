@@ -1,9 +1,8 @@
-@file:UseSerializers(UrlSerializer::class)
+@file:UseSerializers(TransactionDataEntrySerializer::class,UrlSerializer::class)
 
 package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.vckCborSerializer
 import io.ktor.http.*
 import io.ktor.util.*
 import kotlinx.serialization.KSerializer

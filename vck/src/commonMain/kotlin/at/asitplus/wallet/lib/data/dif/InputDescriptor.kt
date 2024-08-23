@@ -21,7 +21,7 @@ data class InputDescriptor(
     @SerialName("format")
     val format: FormatHolder? = null,
     /**
-     * Transaction Data is not REQUIRED in LSP UC5
+     * Transaction Data is REQUIRED in LSP UC5
      */
     @SerialName("transaction_data")
     val transactionDatumEntries: List<TransactionDataEntry>? = null,
