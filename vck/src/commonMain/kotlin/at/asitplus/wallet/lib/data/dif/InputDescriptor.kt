@@ -24,7 +24,7 @@ data class InputDescriptor(
      * Transaction Data is not REQUIRED in LSP UC5
      */
     @SerialName("transaction_data")
-    val transactionData: TransactionData? = null,
+    val transactionDatumEntries: List<TransactionDataEntry>? = null,
     @SerialName("constraints")
     val constraints: Constraint? = null,
 ) {
