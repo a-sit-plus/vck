@@ -30,9 +30,9 @@ class PresentProofMessengerTest : FreeSpec() {
     init {
 
         beforeEach {
-            holderKeyPair = RandomKeyPairAdapter()
-            verifierKeyPair = RandomKeyPairAdapter()
-            issuerKeyPair = RandomKeyPairAdapter()
+            holderKeyPair = EphemeralKeyPariAdapter()
+            verifierKeyPair = EphemeralKeyPariAdapter()
+            issuerKeyPair = EphemeralKeyPariAdapter()
             holderCredentialStore = InMemorySubjectCredentialStore()
             holder = HolderAgent(holderKeyPair, holderCredentialStore)
             verifier = VerifierAgent(verifierKeyPair)

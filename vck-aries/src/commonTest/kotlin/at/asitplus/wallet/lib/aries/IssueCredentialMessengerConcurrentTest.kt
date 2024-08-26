@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
+import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -25,7 +25,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
 
     init {
         beforeEach {
-            issuerKeyPair = RandomKeyPairAdapter()
+            issuerKeyPair = EphemeralKeyPariAdapter()
             issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
             issuerMessenger = initIssuerMessenger(ConstantIndex.AtomicAttribute2023)
@@ -45,7 +45,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
     }
 
     private fun initHolderMessenger(): IssueCredentialMessenger {
-        val keyPair = RandomKeyPairAdapter()
+        val keyPair = EphemeralKeyPariAdapter()
         return IssueCredentialMessenger.newHolderInstance(
             holder = HolderAgent(keyPair),
             messageWrapper = MessageWrapper(keyPair),

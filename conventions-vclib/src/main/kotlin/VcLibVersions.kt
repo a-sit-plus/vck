@@ -10,6 +10,7 @@ object VcLibVersions {
 
     val uuid get() = versionOf("uuid")
     val signum get() = versionOf("signum")
+    val supreme get() = versionOf("supreme")
     val jsonpath get() = versionOf("jsonpath")
     val eupidcredential get() = versionOf("eupid")
     val mdl get() = versionOf("mdl")

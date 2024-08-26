@@ -37,11 +37,11 @@ class AgentSdJwtTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
-            RandomKeyPairAdapter(),
+            EphemeralKeyPariAdapter(),
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
-        holderKeyPair = RandomKeyPairAdapter()
+        holderKeyPair = EphemeralKeyPariAdapter()
         holder = HolderAgent(holderKeyPair, holderCredentialStore)
         verifier = VerifierAgent()
         challenge = uuid4().toString()
@@ -91,7 +91,7 @@ class AgentSdJwtTest : FreeSpec({
 
     "keyBindingJws contains more JWK attributes, still verifies" {
         val sdJwt = createSdJwtPresentation(
-            DefaultJwsService(DefaultCryptoService(holderKeyPair)),
+            DefaultJwsService(DefaultCryptoService(holderKeyPair, PlatformCryptoShim(holderKeyPair))),
             verifier.keyPair.identifier,
             challenge,
             holderCredentialStore.getCredentials().getOrThrow()
@@ -162,8 +162,8 @@ class AgentSdJwtTest : FreeSpec({
 })
 
 suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {
-    val issuer = IssuerAgent(RandomKeyPairAdapter(), DummyCredentialDataProvider())
-    val holderKeyPair = RandomKeyPairAdapter()
+    val issuer = IssuerAgent(EphemeralKeyPariAdapter(), DummyCredentialDataProvider())
+    val holderKeyPair = EphemeralKeyPariAdapter()
     val holder = HolderAgent(holderKeyPair)
     holder.storeCredential(
         issuer.issueCredential(
