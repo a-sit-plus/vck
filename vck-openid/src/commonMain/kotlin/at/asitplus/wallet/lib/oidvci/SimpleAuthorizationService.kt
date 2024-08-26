@@ -41,7 +41,7 @@ class SimpleAuthorizationService(
     /**
      * Used to create and verify bearer tokens during issuing.
      */
-    private val tokenService: TokenService = DefaultTokenService(),
+    private val tokenService: NonceService = DefaultNonceService(),
     /**
      * Used to provide challenge to clients to include in proof of possession of key material.
      */
@@ -163,7 +163,7 @@ class SimpleAuthorizationService(
         }
 
         TokenResponseParameters(
-            accessToken = tokenService.provideToken().also {
+            accessToken = tokenService.provideNonce().also {
                 accessTokenToUserInfoMutex.withLock { accessTokenToUserInfoMap[it] = userInfo }
             },
             tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
@@ -186,7 +186,7 @@ class SimpleAuthorizationService(
     }
 
     override suspend fun getUserInfo(accessToken: String): KmmResult<OidcUserInfoExtended> = catching {
-        if (!tokenService.verifyToken(accessToken)) {
+        if (!tokenService.verifyNonce(accessToken)) {
             throw OAuth2Exception(Errors.INVALID_TOKEN)
                 .also { Napier.w("getUserInfo: client did not provide correct token: $accessToken") }
         }

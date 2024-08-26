@@ -99,6 +99,10 @@ class OidcSiopProtocolTest : FreeSpec({
                     return uuid4().toString()
                 }
 
+                override suspend fun verifyNonce(it: String): Boolean {
+                    return false
+                }
+
                 override suspend fun verifyAndRemoveNonce(it: String): Boolean {
                     return false
                 }
