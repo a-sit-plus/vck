@@ -71,8 +71,8 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     }
 
     "test with Fragment for mDL" {
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(
@@ -93,8 +93,8 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     }
 
     "test with Fragment for custom attributes" {
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(
@@ -114,8 +114,8 @@ class OidcSiopIsoProtocolTest : FreeSpec({
 
     "Selective Disclosure with mDL" {
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(
@@ -137,8 +137,8 @@ class OidcSiopIsoProtocolTest : FreeSpec({
 
     "Selective Disclosure with mDL and encryption" {
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
             responseUrl = relyingPartyUrl + "/${uuid4()}"
         )
@@ -169,8 +169,8 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     }
 
     "Selective Disclosure with mDL JSON Path syntax" {
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(

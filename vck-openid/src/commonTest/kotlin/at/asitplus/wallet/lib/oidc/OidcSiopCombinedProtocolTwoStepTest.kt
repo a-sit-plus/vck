@@ -45,8 +45,8 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
     }
@@ -59,8 +59,8 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                 holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
             }
 
-            verifierSiop = OidcSiopVerifier.newInstance(
-                verifier = verifierAgent,
+            verifierSiop = OidcSiopVerifier(
+                keyPairAdapter = verifierKeyPair,
                 relyingPartyUrl = relyingPartyUrl,
             )
 
@@ -110,8 +110,8 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                     holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                 }
 
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
+                verifierSiop = OidcSiopVerifier(
+                    keyPairAdapter = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -178,8 +178,8 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                     holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                 }
 
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
+                verifierSiop = OidcSiopVerifier(
+                    keyPairAdapter = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
