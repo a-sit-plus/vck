@@ -64,7 +64,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         )
 
 
-        holderSiop = OidcSiopWallet.newDefaultInstance(
+        holderSiop = OidcSiopWallet(
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )

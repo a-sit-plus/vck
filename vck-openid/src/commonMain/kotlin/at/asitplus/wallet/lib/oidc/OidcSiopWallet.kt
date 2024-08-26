@@ -68,29 +68,39 @@ class OidcSiopWallet(
      */
     private val scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever,
 ) {
-    companion object {
-        fun newDefaultInstance(
-            keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
-            holder: Holder = HolderAgent(keyPairAdapter),
-            jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-            clock: Clock = Clock.System,
-            clientId: String = "https://wallet.a-sit.at/",
-            remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-            requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true },
-            scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever = { null },
-        ): OidcSiopWallet {
-            return OidcSiopWallet(
-                holder = holder,
-                agentPublicKey = keyPairAdapter.publicKey,
-                jwsService = jwsService,
-                clock = clock,
-                clientId = clientId,
-                remoteResourceRetriever = remoteResourceRetriever,
-                requestObjectJwsVerifier = requestObjectJwsVerifier,
-                scopePresentationDefinitionRetriever = scopePresentationDefinitionRetriever,
-            )
-        }
-    }
+    constructor(
+        keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
+        holder: Holder = HolderAgent(keyPairAdapter),
+        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
+        clock: Clock = Clock.System,
+        clientId: String = "https://wallet.a-sit.at/",
+        /**
+         * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
+         * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
+         * Implementations need to fetch the url passed in, and return either the body, if there is one,
+         * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
+         */
+        remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
+        /**
+         * Need to verify the request object serialized as a JWS,
+         * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PRE_REGISTERED]).
+         */
+        requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true },
+        /**
+         * Need to implement if the presentation definition needs to be derived from a scope value.
+         * See [ScopePresentationDefinitionRetriever] for implementation instructions.
+         */
+        scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever = { null },
+    ) : this(
+        holder = holder,
+        agentPublicKey = keyPairAdapter.publicKey,
+        jwsService = jwsService,
+        clock = clock,
+        clientId = clientId,
+        remoteResourceRetriever = remoteResourceRetriever,
+        requestObjectJwsVerifier = requestObjectJwsVerifier,
+        scopePresentationDefinitionRetriever = scopePresentationDefinitionRetriever,
+    )
 
     val metadata: IssuerMetadata by lazy {
         IssuerMetadata(

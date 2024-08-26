@@ -19,7 +19,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
     val responseUrl = "https://example.com/rp/${uuid4()}"
 
     val holderKeyPair = RandomKeyPairAdapter()
-    val oidcSiopWallet = OidcSiopWallet.newDefaultInstance(
+    val oidcSiopWallet = OidcSiopWallet(
         keyPairAdapter = holderKeyPair,
         holder = HolderAgent(holderKeyPair),
     )

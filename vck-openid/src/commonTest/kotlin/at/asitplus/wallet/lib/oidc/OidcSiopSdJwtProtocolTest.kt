@@ -52,7 +52,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
             ).getOrThrow().toStoreCredentialInput()
         )
 
-        holderSiop = OidcSiopWallet.newDefaultInstance(
+        holderSiop = OidcSiopWallet(
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )
