@@ -24,7 +24,7 @@ data class InputDescriptor(
      * Transaction Data is REQUIRED in LSP UC5
      */
     @SerialName("transaction_data")
-    val transactionData: List<TransactionDataEntry>? = null,
+    val transactionData: List<@Serializable(Base64URLTransactionDataSerializer::class) TransactionDataEntry>? = null,
     @SerialName("constraints")
     val constraints: Constraint? = null,
 ) {

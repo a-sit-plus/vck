@@ -5,6 +5,7 @@ package at.asitplus.wallet.lib.data.dif
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import io.ktor.http.*
+import io.ktor.util.reflect.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -48,7 +49,7 @@ data class DocumentDigestEntry private constructor(
     @Serializable
     @SerialName("documentLocation_method")
     data class DocumentLocationMethod private constructor(
-        val method: Method,  //this is potentially a mistake in the draft spec vs test vector
+        val method: Method,
         val oneTimePassword: String? = null,
     ) {
         /**
@@ -56,13 +57,37 @@ data class DocumentDigestEntry private constructor(
          * present.
          */
         init {
-            require(oneTimePassword == null || method.type != "otp")
+            require((oneTimePassword == null && method != Method.OTP)
+                    || (oneTimePassword != null && method == Method.OTP))
         }
 
+        /**
+         * this is potentially a mistake in the draft spec vs test vector,
+         * currently we need it to be a sealed class with polymorphic serialization to get the structure
+         * method: {type: NAME}
+         * sealed class would instead serialize to
+         * method: NAME
+         * which might be the corrected implementation in the next draft
+         */
         @Serializable
-        data class Method(
-            val type: String,
-        )
+        @SerialName("method")
+        sealed class Method {
+            @Serializable
+            @SerialName("public")
+            data object Public : Method()
+            @Serializable
+            @SerialName("otp")
+            data object OTP : Method()
+            @Serializable
+            @SerialName("basic_auth")
+            data object Basic : Method()
+            @Serializable
+            @SerialName("digest_auth")
+            data object Digest : Method()
+            @Serializable
+            @SerialName("oauth_20")
+            data object Oauth2 : Method()
+        }
 
         companion object {
             fun create(method: Method, oneTimePassword: String?): KmmResult<DocumentLocationMethod> =
