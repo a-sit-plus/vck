@@ -9,6 +9,8 @@ interface MapStore<T, U> {
 
     suspend fun get(key: T): U?
 
+    suspend fun remove(key: T): U?
+
 }
 
 
@@ -26,4 +28,5 @@ class DefaultMapStore<T, U> : MapStore<T, U> {
 
     override suspend fun get(key: T) = mutex.withLock { map[key] }
 
+    override suspend fun remove(key: T): U? = mutex.withLock { map.remove(key) }
 }

@@ -63,6 +63,7 @@ class OidvciProcessTest : FunSpec({
             codeToUserInfoStore = object : MapStore<String, OidcUserInfoExtended> {
                 override suspend fun put(key: String, value: OidcUserInfoExtended) = Unit
                 override suspend fun get(key: String): OidcUserInfoExtended? = null
+                override suspend fun remove(key: String): OidcUserInfoExtended? = null
             }
         )
         issuer = CredentialIssuer(
