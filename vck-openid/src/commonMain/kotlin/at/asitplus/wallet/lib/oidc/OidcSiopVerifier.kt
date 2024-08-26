@@ -34,8 +34,7 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.REDIRECT_URI
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.VERIFIER_ATTESTATION
+import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.*
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
@@ -69,83 +68,30 @@ class OidcSiopVerifier private constructor(
     private val verifierJwsService: VerifierJwsService,
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
-    /**
-     * Verifier Attestation JWT to include (in header `jwt`) when creating request objects as JWS,
-     * to allow the Wallet to verify the authenticity of this Verifier.
-     * OID4VP client id scheme "verifier attestation",
-     * see [at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.VERIFIER_ATTESTATION].
-     */
-    private val attestationJwt: JwsSigned?,
-    /**
-     * Certificate chain to include in JWS headers and to extract `client_id` from (in SAN extension), from OID4VP
-     * client id scheme "x509_san_dns", see [at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.X509_SAN_DNS].
-     */
-    private val x5c: CertificateChain?,
-    private val clientIdScheme: OpenIdConstants.ClientIdScheme,
     private val nonceService: NonceService = DefaultNonceService(),
+    private val clientIdScheme: ClientIdScheme = ClientIdScheme.RedirectUri,
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
 
-    /**
-     * Constructor to use for client id scheme "verifier attestation"
-     */
-    constructor(
-        keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
-        verifier: Verifier = VerifierAgent(keyPairAdapter),
-        relyingPartyUrl: String? = null,
-        responseUrl: String? = null,
-        verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-        timeLeewaySeconds: Long = 300L,
-        clock: Clock = Clock.System,
-        nonceService: NonceService = DefaultNonceService(),
-        attestationJwt: JwsSigned,
-    ): this(
-        verifier = verifier,
-        relyingPartyUrl = relyingPartyUrl,
-        responseUrl = responseUrl,
-        jwsService = jwsService,
-        verifierJwsService = verifierJwsService,
-        timeLeewaySeconds = timeLeewaySeconds,
-        clock = clock,
-        attestationJwt = attestationJwt,
-        x5c = null,
-        clientIdScheme = VERIFIER_ATTESTATION,
-        nonceService = nonceService,
-    )
+    sealed class ClientIdScheme(val clientIdScheme: OpenIdConstants.ClientIdScheme) {
+        /**
+         * Verifier Attestation JWT to include (in header `jwt`) when creating request objects as JWS,
+         * to allow the Wallet to verify the authenticity of this Verifier.
+         * OID4VP client id scheme "verifier attestation",
+         * see [at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.VERIFIER_ATTESTATION].
+         */
+        data class VerifierAttestation(val attestationJwt: JwsSigned) : ClientIdScheme(VERIFIER_ATTESTATION)
 
-    /**
-     * Constructor to use for client id scheme "X.509 SAN DNS"
-     */
-    constructor(
-        keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
-        verifier: Verifier = VerifierAgent(keyPairAdapter),
-        relyingPartyUrl: String? = null,
-        responseUrl: String? = null,
-        verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-        timeLeewaySeconds: Long = 300L,
-        clock: Clock = Clock.System,
-        nonceService: NonceService = DefaultNonceService(),
-        x5c: CertificateChain,
-    ): this(
-        verifier = verifier,
-        relyingPartyUrl = relyingPartyUrl,
-        responseUrl = responseUrl,
-        jwsService = jwsService,
-        verifierJwsService = verifierJwsService,
-        timeLeewaySeconds = timeLeewaySeconds,
-        clock = clock,
-        attestationJwt = null,
-        x5c = x5c,
-        clientIdScheme = VERIFIER_ATTESTATION,
-        nonceService = nonceService,
-    )
+        /**
+         * Certificate chain to include in JWS headers and to extract `client_id` from (in SAN extension), from OID4VP
+         * client id scheme "x509_san_dns",
+         * see [at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.X509_SAN_DNS].
+         */
+        data class CertificateSanDns(val chain: CertificateChain) : ClientIdScheme(X509_SAN_DNS)
+        data object RedirectUri : ClientIdScheme(REDIRECT_URI)
+    }
 
-    /**
-     * Constructor to use for client id scheme "redirect URL"
-     */
     constructor(
         keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
         verifier: Verifier = VerifierAgent(keyPairAdapter),
@@ -156,7 +102,8 @@ class OidcSiopVerifier private constructor(
         timeLeewaySeconds: Long = 300L,
         clock: Clock = Clock.System,
         nonceService: NonceService = DefaultNonceService(),
-    ): this(
+        clientIdScheme: ClientIdScheme = ClientIdScheme.RedirectUri
+    ) : this(
         verifier = verifier,
         relyingPartyUrl = relyingPartyUrl,
         responseUrl = responseUrl,
@@ -164,10 +111,8 @@ class OidcSiopVerifier private constructor(
         verifierJwsService = verifierJwsService,
         timeLeewaySeconds = timeLeewaySeconds,
         clock = clock,
-        attestationJwt = null,
-        x5c = null,
-        clientIdScheme = REDIRECT_URI,
         nonceService = nonceService,
+        clientIdScheme = clientIdScheme,
     )
 
     private val containerJwt =
@@ -208,9 +153,8 @@ class OidcSiopVerifier private constructor(
         requestUrl: String,
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
-        val clientId = buildClientId()
         AuthenticationRequestParameters(
-            clientId = clientId,
+            clientId = this.clientId,
             clientMetadataUri = clientMetadataUrl,
             requestUri = requestUrl,
         ).encodeToParameters()
@@ -335,14 +279,16 @@ class OidcSiopVerifier private constructor(
         val requestObjectSerialized = jsonSerializer.encodeToString(
             requestObject.copy(audience = relyingPartyUrl, issuer = relyingPartyUrl)
         )
+        val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
+        val certificateChain = (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain
         jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 algorithm = jwsService.algorithm,
-                attestationJwt = attestationJwt?.serialize(),
-                certificateChain = x5c
+                attestationJwt = attestationJwt,
+                certificateChain = certificateChain,
             ),
             payload = requestObjectSerialized.encodeToByteArray(),
-            addJsonWebKey = x5c == null
+            addJsonWebKey = certificateChain == null,
         ).getOrThrow()
     }
 
@@ -356,10 +302,10 @@ class OidcSiopVerifier private constructor(
         requestOptions: RequestOptions = RequestOptions(),
     ) = AuthenticationRequestParameters(
         responseType = "$ID_TOKEN $VP_TOKEN",
-        clientId = buildClientId(),
+        clientId = clientId,
         redirectUrl = requestOptions.buildRedirectUrl(),
         responseUrl = responseUrl,
-        clientIdScheme = clientIdScheme,
+        clientIdScheme = clientIdScheme.clientIdScheme,
         scope = requestOptions.buildScope(),
         nonce = nonceService.provideNonce(),
         clientMetadata = requestOptions.clientMetadataUrl?.let { null }
@@ -386,8 +332,14 @@ class OidcSiopVerifier private constructor(
     )
         .joinToString(" ")
 
-    private fun buildClientId() = (x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
-        ?: relyingPartyUrl)
+    private val clientId: String? by lazy {
+        clientIdFromCertificateChain ?: relyingPartyUrl
+    }
+
+    private val clientIdFromCertificateChain: String? by lazy {
+        (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain
+            ?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
+    }
 
     private fun RequestOptions.buildRedirectUrl() = if ((responseMode == OpenIdConstants.ResponseMode.DIRECT_POST)
         || (responseMode == OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
@@ -572,10 +524,7 @@ class OidcSiopVerifier private constructor(
         if (idToken.issuer != idToken.subject)
             return AuthnResponseResult.ValidationError("iss", params.state)
                 .also { Napier.d("Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}") }
-        val validAudiences = listOfNotNull(
-            relyingPartyUrl,
-            x5c?.leaf?.tbsCertificate?.subjectAlternativeNames?.dnsNames?.firstOrNull()
-        )
+        val validAudiences = listOfNotNull(relyingPartyUrl, clientIdFromCertificateChain)
         if (idToken.audience !in validAudiences)
             return AuthnResponseResult.ValidationError("aud", params.state)
                 .also { Napier.d("audience not valid: ${idToken.audience}") }
