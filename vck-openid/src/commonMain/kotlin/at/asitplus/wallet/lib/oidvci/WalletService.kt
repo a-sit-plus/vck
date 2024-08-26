@@ -82,10 +82,8 @@ class WalletService(
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
+    private val stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
 ) {
-
-    private val stateToCodeChallengeMap = mutableMapOf<String, String>()
-    private val codeChallengeMutex = Mutex()
 
     companion object {
         fun newDefaultInstance(
@@ -240,7 +238,7 @@ class WalletService(
     @OptIn(ExperimentalStdlibApi::class)
     private suspend fun generateCodeVerifier(state: String): String {
         val codeVerifier = Random.nextBytes(32).toHexString(HexFormat.Default)
-        codeChallengeMutex.withLock { stateToCodeChallengeMap.put(state, codeVerifier) }
+        stateToCodeStore.put(state, codeVerifier)
         return codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
     }
 
@@ -303,7 +301,7 @@ class WalletService(
             redirectUrl = redirectUrl,
             clientId = clientId,
             authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
-            codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(requestOptions.state) }
+            codeVerifier = stateToCodeStore.remove(requestOptions.state)
         )
 
         is AuthorizationForToken.PreAuthCode -> TokenRequestParameters(
@@ -313,7 +311,7 @@ class WalletService(
             authorizationDetails = (requestOptions.toAuthnDetails())?.let { setOf(it) },
             transactionCode = authorization.preAuth.transactionCode,
             preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
-            codeVerifier = codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(requestOptions.state) }
+            codeVerifier = stateToCodeStore.remove(requestOptions.state)
         )
     }
 
@@ -368,7 +366,7 @@ class WalletService(
             redirectUrl = redirectUrl,
             clientId = clientId,
             authorizationDetails = setOf(credential.toAuthnDetails(requestedAttributes)),
-            codeVerifier = state?.let { codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(it) } }
+            codeVerifier = state?.let { stateToCodeStore.remove(it) }
         )
 
         is AuthorizationForToken.PreAuthCode -> TokenRequestParameters(
@@ -378,7 +376,7 @@ class WalletService(
             authorizationDetails = setOf(credential.toAuthnDetails(requestedAttributes)),
             transactionCode = authorization.preAuth.transactionCode,
             preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
-            codeVerifier = state?.let { codeChallengeMutex.withLock { stateToCodeChallengeMap.remove(it) } }
+            codeVerifier = state?.let { stateToCodeStore.remove(it) }
         )
     }
 
