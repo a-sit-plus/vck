@@ -2,6 +2,7 @@
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments
+ * In `SimpleAuthorizationService` change type of `tokenService` to `NonceService`
 
 Release 4.1.1 (Bugfix Release):
 * correctly configure and name JSON serializer:

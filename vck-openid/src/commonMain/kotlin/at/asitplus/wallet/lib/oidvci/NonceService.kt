@@ -8,6 +8,8 @@ interface NonceService {
 
     suspend fun provideNonce(): String
 
+    suspend fun verifyNonce(it: String): Boolean
+
     suspend fun verifyAndRemoveNonce(it: String): Boolean
 
 }
@@ -20,11 +22,9 @@ class DefaultNonceService : NonceService {
     private val mutex = Mutex()
     private val validNonces = mutableListOf<String>()
 
-    override suspend fun provideNonce(): String {
-        return uuid4().toString().also { mutex.withLock { validNonces += it } }
-    }
+    override suspend fun provideNonce() = uuid4().toString().also { mutex.withLock { validNonces += it } }
 
-    override suspend fun verifyAndRemoveNonce(it: String): Boolean {
-        return mutex.withLock { validNonces.remove(it) }
-    }
+    override suspend fun verifyNonce(it: String) = mutex.withLock { validNonces.contains(it) }
+
+    override suspend fun verifyAndRemoveNonce(it: String) = mutex.withLock { validNonces.remove(it) }
 }
