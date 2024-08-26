@@ -61,7 +61,7 @@ class OidcSiopProtocolTest : FreeSpec({
             ).getOrThrow().toStoreCredentialInput()
         )
 
-        holderSiop = OidcSiopWallet.newDefaultInstance(
+        holderSiop = OidcSiopWallet(
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )
@@ -272,7 +272,7 @@ class OidcSiopProtocolTest : FreeSpec({
             requestOptions = RequestOptions(credentialScheme = ConstantIndex.AtomicAttribute2023)
         ).getOrThrow()
 
-        holderSiop = OidcSiopWallet.newDefaultInstance(
+        holderSiop = OidcSiopWallet(
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
             requestObjectJwsVerifier = verifierAttestationVerifier(sprsCryptoService.keyPairAdapter.jsonWebKey)
@@ -301,7 +301,7 @@ class OidcSiopProtocolTest : FreeSpec({
             requestOptions = RequestOptions(credentialScheme = ConstantIndex.AtomicAttribute2023)
         ).getOrThrow()
 
-        holderSiop = OidcSiopWallet.newDefaultInstance(
+        holderSiop = OidcSiopWallet(
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
             requestObjectJwsVerifier = verifierAttestationVerifier(RandomKeyPairAdapter().jsonWebKey)
@@ -325,7 +325,7 @@ class OidcSiopProtocolTest : FreeSpec({
             parameters.append("request_uri", requestUrl)
         }.buildString()
 
-        holderSiop = OidcSiopWallet.newDefaultInstance(
+        holderSiop = OidcSiopWallet(
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
             remoteResourceRetriever = {
@@ -355,7 +355,7 @@ class OidcSiopProtocolTest : FreeSpec({
             parameters.append("request_uri", requestUrl)
         }.buildString()
 
-        holderSiop = OidcSiopWallet.newDefaultInstance(
+        holderSiop = OidcSiopWallet(
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
             remoteResourceRetriever = {
@@ -385,7 +385,7 @@ class OidcSiopProtocolTest : FreeSpec({
             parameters.append("request_uri", requestUrl)
         }.buildString()
 
-        holderSiop = OidcSiopWallet.newDefaultInstance(
+        holderSiop = OidcSiopWallet(
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
             remoteResourceRetriever = {

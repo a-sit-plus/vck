@@ -60,7 +60,7 @@ class OidcSiopInteropTest : FreeSpec({
                 listOf("family_name", "given_name")
             ).getOrThrow().toStoreCredentialInput()
         )
-        holderSiop = OidcSiopWallet.newDefaultInstance(holderKeyPair, holderAgent)
+        holderSiop = OidcSiopWallet(holderKeyPair, holderAgent)
     }
 
     "EUDI from URL 2024-05-17" {
@@ -162,7 +162,7 @@ class OidcSiopInteropTest : FreeSpec({
             "https://verifier-backend.eudiw.dev/wallet/jarm/Vu3g2FXDeqday-wS0Xmty0bYzzq3MeVGrPSGTdk3Y60tWNLHkr_bg9WJMK3xktNsqWpEXPsDgBw5g3r80MQyTw/jwks.json"
         val requestUrl =
             "https://verifier-backend.eudiw.dev/wallet/request.jwt/Vu3g2FXDeqday-wS0Xmty0bYzzq3MeVGrPSGTdk3Y60tWNLHkr_bg9WJMK3xktNsqWpEXPsDgBw5g3r80MQyTw"
-        holderSiop = OidcSiopWallet.newDefaultInstance(
+        holderSiop = OidcSiopWallet(
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
             remoteResourceRetriever = {
@@ -289,7 +289,7 @@ class OidcSiopInteropTest : FreeSpec({
             addX5c = false
         ).getOrThrow().serialize()
 
-        val wallet = OidcSiopWallet.newDefaultInstance(
+        val wallet = OidcSiopWallet(
             remoteResourceRetriever = { url ->
                 if (url == "https://example.com/d15b5b6f-7821-4031-9a18-ebe491b720a6") jws else null
             }
@@ -343,7 +343,7 @@ class OidcSiopInteropTest : FreeSpec({
         ).getOrThrow().also { println(it) }
 
 
-        holderSiop = OidcSiopWallet.newDefaultInstance(
+        holderSiop = OidcSiopWallet(
             holderKeyPair,
             holderAgent,
             remoteResourceRetriever = { if (it == requestUrl) requestUrlForWallet.second else null })

@@ -44,7 +44,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierKeyPair)
 
-        holderSiop = OidcSiopWallet.newDefaultInstance(
+        holderSiop = OidcSiopWallet(
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )
