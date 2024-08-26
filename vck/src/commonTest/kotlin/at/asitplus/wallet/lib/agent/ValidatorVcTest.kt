@@ -74,7 +74,7 @@ class ValidatorVcTest : FreeSpec() {
             verifier.verifyVcJws(credential.vcJws)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
 
-            val defaultValidator = Validator.newDefaultInstance(DefaultVerifierCryptoService())
+            val defaultValidator = Validator()
             defaultValidator.setRevocationList(revocationListCredential) shouldBe true
             defaultValidator.checkRevocationStatus(value.jws.vc.credentialStatus!!.index) shouldBe Validator.RevocationStatus.REVOKED
         }

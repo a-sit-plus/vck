@@ -35,7 +35,7 @@ class ValidatorVpTest : FreeSpec({
     lateinit var challenge: String
 
     beforeEach {
-        validator = Validator.newDefaultInstance(DefaultVerifierCryptoService())
+        validator = Validator()
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
             RandomKeyPairAdapter(),

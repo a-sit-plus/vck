@@ -38,21 +38,16 @@ class Validator(
     private val zlibService: ZlibService = DefaultZlibService(),
 ) {
 
-    companion object {
-        fun newDefaultInstance(
-            cryptoService: VerifierCryptoService,
-            parser: Parser = Parser()
-        ) = Validator(
-            verifierJwsService = DefaultVerifierJwsService(cryptoService = cryptoService),
-            verifierCoseService = DefaultVerifierCoseService(cryptoService = cryptoService),
-            parser = parser
-        )
-
-        /**
-         * Explicitly empty argument list to use it in Swift
-         */
-        fun newDefaultInstance() = Validator()
-    }
+    constructor(
+        cryptoService: VerifierCryptoService,
+        parser: Parser = Parser(),
+        zlibService: ZlibService = DefaultZlibService(),
+    ) : this(
+        verifierJwsService = DefaultVerifierJwsService(cryptoService = cryptoService),
+        verifierCoseService = DefaultVerifierCoseService(cryptoService = cryptoService),
+        parser = parser,
+        zlibService = zlibService
+    )
 
     private var revocationList: BitSet? = null
 

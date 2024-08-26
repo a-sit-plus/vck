@@ -19,12 +19,12 @@ class VerifierAgent private constructor(
 ) : Verifier {
 
     constructor(keyPairAdapter: KeyPairAdapter) : this(
-        validator = Validator.newDefaultInstance(),
+        validator = Validator(),
         keyPair = keyPairAdapter,
     )
 
     constructor(): this(
-        validator = Validator.newDefaultInstance(),
+        validator = Validator(),
         keyPair = RandomKeyPairAdapter(),
     )
 
