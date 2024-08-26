@@ -42,8 +42,6 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlin.random.Random
 
@@ -85,33 +83,19 @@ class WalletService(
     private val stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
 ) {
 
-    companion object {
-        fun newDefaultInstance(
-            clientId: String,
-            redirectUrl: String,
-            keyPairAdapter: KeyPairAdapter,
-            remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-        ): WalletService = WalletService(
-            clientId = clientId,
-            redirectUrl = redirectUrl,
-            cryptoService = DefaultCryptoService(keyPairAdapter),
-            remoteResourceRetriever = remoteResourceRetriever,
-        )
-
-        fun newDefaultInstance(
-            clientId: String,
-            redirectUrl: String,
-            cryptoService: CryptoService,
-            remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-        ): WalletService = WalletService(
-            clientId = clientId,
-            redirectUrl = redirectUrl,
-            cryptoService = cryptoService,
-            jwsService = DefaultJwsService(cryptoService),
-            coseService = DefaultCoseService(cryptoService),
-            remoteResourceRetriever = remoteResourceRetriever,
-        )
-    }
+    constructor(
+        clientId: String,
+        redirectUrl: String,
+        keyPairAdapter: KeyPairAdapter,
+        remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
+        stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
+    ) : this(
+        clientId = clientId,
+        redirectUrl = redirectUrl,
+        cryptoService = DefaultCryptoService(keyPairAdapter),
+        remoteResourceRetriever = remoteResourceRetriever,
+        stateToCodeStore = stateToCodeStore
+    )
 
     data class RequestOptions(
         /**
