@@ -1,6 +1,9 @@
 # Changelog
 
 Release NEXT:
+* Add `transactionData` class
+* Add `DocumentDigestEntry` class
+* Class `InputParameters` now has member `transaction_data`
 
 Release 4.1.1 (Bugfix Release):
 * correctly configure and name JSON serializer:
