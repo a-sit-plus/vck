@@ -73,7 +73,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         verifierSiop = OidcSiopVerifier(
             keyPairAdapter = verifierKeyPair,
             responseUrl = responseUrl,
-            x5c = listOf(verifierKeyPair.certificate!!)
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyPair.certificate!!)),
         )
     }
 

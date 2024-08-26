@@ -265,7 +265,7 @@ class OidcSiopProtocolTest : FreeSpec({
         verifierSiop = OidcSiopVerifier(
             keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
-            attestationJwt = attestationJwt
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.VerifierAttestation(attestationJwt),
         )
         val authnRequestWithRequestObject = verifierSiop.createAuthnRequestUrlWithRequestObject(
             walletUrl = walletUrl,
@@ -294,7 +294,7 @@ class OidcSiopProtocolTest : FreeSpec({
         verifierSiop = OidcSiopVerifier(
             keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
-            attestationJwt = attestationJwt
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.VerifierAttestation(attestationJwt)
         )
         val authnRequestWithRequestObject = verifierSiop.createAuthnRequestUrlWithRequestObject(
             walletUrl = walletUrl,

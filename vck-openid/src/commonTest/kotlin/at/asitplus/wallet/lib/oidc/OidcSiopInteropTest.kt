@@ -13,7 +13,6 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidvci.decode
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
@@ -327,7 +326,7 @@ class OidcSiopInteropTest : FreeSpec({
             keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = "https://example.com/rp",
             responseUrl = "https://example.com/response",
-            x5c = listOf(verifierKeyPair.certificate!!)
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyPair.certificate!!)),
         )
         val nonce = uuid4().toString()
         val requestUrl = "https://example.com/request/$nonce"
