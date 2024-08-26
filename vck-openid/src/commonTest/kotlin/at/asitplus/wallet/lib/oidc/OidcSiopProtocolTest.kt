@@ -89,6 +89,31 @@ class OidcSiopProtocolTest : FreeSpec({
         verifySecondProtocolRun(verifierSiop, walletUrl, holderSiop)
     }
 
+    "wrong client nonce should lead to error" {
+        verifierSiop = OidcSiopVerifier.newInstance(
+            verifier = verifierAgent,
+            relyingPartyUrl = relyingPartyUrl,
+            responseUrl = responseUrl,
+            nonceService = object : NonceService {
+                override suspend fun provideNonce(): String {
+                    return uuid4().toString()
+                }
+
+                override suspend fun verifyAndRemoveNonce(it: String): Boolean {
+                    return false
+                }
+            }
+        )
+        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl = walletUrl)
+
+        val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
+        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+        val result = verifierSiop.validateAuthnResponse(authnResponse.url)
+        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.ValidationError>()
+        result.field shouldBe "nonce"
+    }
+
     "test with QR Code" {
         val metadataUrlNonce = uuid4().toString()
         val metadataUrl = "https://example.com/$metadataUrlNonce"
