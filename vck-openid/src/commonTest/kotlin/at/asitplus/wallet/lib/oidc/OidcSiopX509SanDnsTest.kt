@@ -70,9 +70,8 @@ class OidcSiopX509SanDnsTest : FreeSpec({
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
-            relyingPartyUrl = null,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             responseUrl = responseUrl,
             x5c = listOf(verifierKeyPair.certificate!!)
         )

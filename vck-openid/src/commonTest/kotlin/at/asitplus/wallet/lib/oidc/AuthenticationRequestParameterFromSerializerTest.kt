@@ -24,8 +24,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         holder = HolderAgent(holderKeyPair),
     )
 
-    val verifierSiop = OidcSiopVerifier.newInstance(
-        verifier = VerifierAgent(RandomKeyPairAdapter()),
+    val verifierSiop = OidcSiopVerifier(
         relyingPartyUrl = relyingPartyUrl,
         responseUrl = responseUrl,
     )

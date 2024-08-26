@@ -48,8 +48,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
     }
@@ -64,8 +64,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                 }
 
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
+                verifierSiop = OidcSiopVerifier(
+                    keyPairAdapter = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -99,8 +99,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                     holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                 }
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
+                verifierSiop = OidcSiopVerifier(
+                    keyPairAdapter = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -142,8 +142,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                 }
 
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
+                verifierSiop = OidcSiopVerifier(
+                    keyPairAdapter = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -183,8 +183,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                 }
 
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
+                verifierSiop = OidcSiopVerifier(
+                    keyPairAdapter = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -229,8 +229,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     holderAgent.storeIsoCredential(holderKeyPair, MobileDrivingLicenceScheme)
                 }
 
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
+                verifierSiop = OidcSiopVerifier(
+                    keyPairAdapter = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -273,8 +273,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     holderAgent.storeIsoCredential(holderKeyPair, MobileDrivingLicenceScheme)
                 }
 
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
+                verifierSiop = OidcSiopVerifier(
+                    keyPairAdapter = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -319,8 +319,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
             holderAgent.storeIsoCredential(holderKeyPair, MobileDrivingLicenceScheme)
         }
 
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
 

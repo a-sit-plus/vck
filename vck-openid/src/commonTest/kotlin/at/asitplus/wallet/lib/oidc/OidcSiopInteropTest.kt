@@ -323,8 +323,8 @@ class OidcSiopInteropTest : FreeSpec({
             ))))
         verifierKeyPair = RandomKeyPairAdapter(extensions)
         verifierAgent = VerifierAgent(verifierKeyPair)
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = "https://example.com/rp",
             responseUrl = "https://example.com/response",
             x5c = listOf(verifierKeyPair.certificate!!)

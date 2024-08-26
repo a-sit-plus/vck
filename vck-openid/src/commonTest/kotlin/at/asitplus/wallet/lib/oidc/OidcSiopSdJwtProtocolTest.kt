@@ -56,8 +56,8 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
     }
@@ -84,8 +84,8 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
 
     "Selective Disclosure with custom credential" {
         val requestedClaim = "given_name"
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(

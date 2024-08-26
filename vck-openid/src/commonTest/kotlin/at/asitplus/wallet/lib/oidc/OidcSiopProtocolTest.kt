@@ -65,8 +65,8 @@ class OidcSiopProtocolTest : FreeSpec({
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
             responseUrl = responseUrl,
         )
@@ -90,8 +90,8 @@ class OidcSiopProtocolTest : FreeSpec({
     }
 
     "wrong client nonce should lead to error" {
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
             responseUrl = responseUrl,
             nonceService = object : NonceService {
@@ -262,8 +262,8 @@ class OidcSiopProtocolTest : FreeSpec({
     "test with request object and Attestation JWT" {
         val sprsCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
         val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyPair)
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
             attestationJwt = attestationJwt
         )
@@ -291,8 +291,8 @@ class OidcSiopProtocolTest : FreeSpec({
         val sprsCryptoService = DefaultCryptoService(RandomKeyPairAdapter())
         val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyPair)
 
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
             attestationJwt = attestationJwt
         )

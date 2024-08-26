@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsHeader
@@ -13,9 +12,7 @@ import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
-import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
@@ -39,7 +36,6 @@ import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.REDIRECT_URI
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.VERIFIER_ATTESTATION
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.X509_SAN_DNS
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
@@ -50,8 +46,6 @@ import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
@@ -71,16 +65,21 @@ class OidcSiopVerifier private constructor(
     private val verifier: Verifier,
     private val relyingPartyUrl: String?,
     private val responseUrl: String?,
-    private val agentPublicKey: CryptoPublicKey,
     private val jwsService: JwsService,
     private val verifierJwsService: VerifierJwsService,
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     /**
-     * Verifier Attestation JWT (from OID4VP) to include (in header `jwt`) when creating request objects as JWS,
+     * Verifier Attestation JWT to include (in header `jwt`) when creating request objects as JWS,
      * to allow the Wallet to verify the authenticity of this Verifier.
+     * OID4VP client id scheme "verifier attestation",
+     * see [at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.VERIFIER_ATTESTATION].
      */
     private val attestationJwt: JwsSigned?,
+    /**
+     * Certificate chain to include in JWS headers and to extract `client_id` from (in SAN extension), from OID4VP
+     * client id scheme "x509_san_dns", see [at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.X509_SAN_DNS].
+     */
     private val x5c: CertificateChain?,
     private val clientIdScheme: OpenIdConstants.ClientIdScheme,
     private val nonceService: NonceService = DefaultNonceService(),
@@ -88,83 +87,88 @@ class OidcSiopVerifier private constructor(
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
 
-    companion object {
-        fun newInstance(
-            verifier: Verifier,
-            relyingPartyUrl: String,
-            responseUrl: String? = null,
-            verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-            jwsService: JwsService = DefaultJwsService(DefaultCryptoService(verifier.keyPair)),
-            timeLeewaySeconds: Long = 300L,
-            clock: Clock = Clock.System,
-            nonceService: NonceService = DefaultNonceService(),
-            attestationJwt: JwsSigned,
-        ) = OidcSiopVerifier(
-            verifier = verifier,
-            relyingPartyUrl = relyingPartyUrl,
-            responseUrl = responseUrl,
-            agentPublicKey = verifier.keyPair.publicKey,
-            jwsService = jwsService,
-            verifierJwsService = verifierJwsService,
-            timeLeewaySeconds = timeLeewaySeconds,
-            clock = clock,
-            attestationJwt = attestationJwt,
-            x5c = null,
-            clientIdScheme = VERIFIER_ATTESTATION,
-            nonceService = nonceService,
-        )
+    /**
+     * Constructor to use for client id scheme "verifier attestation"
+     */
+    constructor(
+        keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
+        verifier: Verifier = VerifierAgent(keyPairAdapter),
+        relyingPartyUrl: String? = null,
+        responseUrl: String? = null,
+        verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
+        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
+        timeLeewaySeconds: Long = 300L,
+        clock: Clock = Clock.System,
+        nonceService: NonceService = DefaultNonceService(),
+        attestationJwt: JwsSigned,
+    ): this(
+        verifier = verifier,
+        relyingPartyUrl = relyingPartyUrl,
+        responseUrl = responseUrl,
+        jwsService = jwsService,
+        verifierJwsService = verifierJwsService,
+        timeLeewaySeconds = timeLeewaySeconds,
+        clock = clock,
+        attestationJwt = attestationJwt,
+        x5c = null,
+        clientIdScheme = VERIFIER_ATTESTATION,
+        nonceService = nonceService,
+    )
 
-        fun newInstance(
-            verifier: Verifier,
-            relyingPartyUrl: String?,
-            responseUrl: String? = null,
-            verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-            jwsService: JwsService = DefaultJwsService(DefaultCryptoService(verifier.keyPair)),
-            timeLeewaySeconds: Long = 300L,
-            clock: Clock = Clock.System,
-            x5c: CertificateChain,
-            nonceService: NonceService = DefaultNonceService(),
-        ) = OidcSiopVerifier(
-            verifier = verifier,
-            relyingPartyUrl = relyingPartyUrl,
-            responseUrl = responseUrl,
-            agentPublicKey = verifier.keyPair.publicKey,
-            jwsService = jwsService,
-            verifierJwsService = verifierJwsService,
-            timeLeewaySeconds = timeLeewaySeconds,
-            clock = clock,
-            attestationJwt = null,
-            clientIdScheme = X509_SAN_DNS,
-            x5c = x5c,
-            nonceService = nonceService,
-        )
+    /**
+     * Constructor to use for client id scheme "X.509 SAN DNS"
+     */
+    constructor(
+        keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
+        verifier: Verifier = VerifierAgent(keyPairAdapter),
+        relyingPartyUrl: String? = null,
+        responseUrl: String? = null,
+        verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
+        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
+        timeLeewaySeconds: Long = 300L,
+        clock: Clock = Clock.System,
+        nonceService: NonceService = DefaultNonceService(),
+        x5c: CertificateChain,
+    ): this(
+        verifier = verifier,
+        relyingPartyUrl = relyingPartyUrl,
+        responseUrl = responseUrl,
+        jwsService = jwsService,
+        verifierJwsService = verifierJwsService,
+        timeLeewaySeconds = timeLeewaySeconds,
+        clock = clock,
+        attestationJwt = null,
+        x5c = x5c,
+        clientIdScheme = VERIFIER_ATTESTATION,
+        nonceService = nonceService,
+    )
 
-
-        fun newInstance(
-            verifier: Verifier,
-            relyingPartyUrl: String,
-            responseUrl: String? = null,
-            verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-            jwsService: JwsService = DefaultJwsService(DefaultCryptoService(verifier.keyPair)),
-            timeLeewaySeconds: Long = 300L,
-            clock: Clock = Clock.System,
-            clientIdScheme: OpenIdConstants.ClientIdScheme = REDIRECT_URI,
-            nonceService: NonceService = DefaultNonceService(),
-        ) = OidcSiopVerifier(
-            verifier = verifier,
-            relyingPartyUrl = relyingPartyUrl,
-            responseUrl = responseUrl,
-            agentPublicKey = verifier.keyPair.publicKey,
-            jwsService = jwsService,
-            verifierJwsService = verifierJwsService,
-            timeLeewaySeconds = timeLeewaySeconds,
-            clock = clock,
-            attestationJwt = null,
-            clientIdScheme = clientIdScheme,
-            x5c = null,
-            nonceService = nonceService,
-        )
-    }
+    /**
+     * Constructor to use for client id scheme "redirect URL"
+     */
+    constructor(
+        keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
+        verifier: Verifier = VerifierAgent(keyPairAdapter),
+        relyingPartyUrl: String? = null,
+        responseUrl: String? = null,
+        verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
+        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
+        timeLeewaySeconds: Long = 300L,
+        clock: Clock = Clock.System,
+        nonceService: NonceService = DefaultNonceService(),
+    ): this(
+        verifier = verifier,
+        relyingPartyUrl = relyingPartyUrl,
+        responseUrl = responseUrl,
+        jwsService = jwsService,
+        verifierJwsService = verifierJwsService,
+        timeLeewaySeconds = timeLeewaySeconds,
+        clock = clock,
+        attestationJwt = null,
+        x5c = null,
+        clientIdScheme = REDIRECT_URI,
+        nonceService = nonceService,
+    )
 
     private val containerJwt =
         FormatContainerJwt(algorithms = verifierJwsService.supportedAlgorithms.map { it.identifier })
@@ -172,7 +176,7 @@ class OidcSiopVerifier private constructor(
     val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = relyingPartyUrl?.let { listOf(it) },
-            jsonWebKeySet = JsonWebKeySet(listOf(agentPublicKey.toJsonWebKey())),
+            jsonWebKeySet = JsonWebKeySet(listOf(verifier.keyPair.publicKey.toJsonWebKey())),
             subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
             vpFormats = FormatHolder(
                 msoMdoc = containerJwt,
@@ -204,8 +208,7 @@ class OidcSiopVerifier private constructor(
         requestUrl: String,
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
-        val clientId = (x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
-            ?: relyingPartyUrl)
+        val clientId = buildClientId()
         AuthenticationRequestParameters(
             clientId = clientId,
             clientMetadataUri = clientMetadataUrl,
