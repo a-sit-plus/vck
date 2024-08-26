@@ -1,30 +1,13 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
@@ -38,9 +21,7 @@ import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
-import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 @Suppress("unused")
@@ -308,7 +289,7 @@ class OidcSiopProtocolTest : FreeSpec({
         )
 
         val clientId = Url(authnRequest).parameters["client_id"]!!
-        val requestUrl = "https://www.example.com/request/${Random.nextBytes(32).encodeToString(Base64UrlStrict)}"
+        val requestUrl = "https://www.example.com/request/${uuid4()}"
 
         val authRequestUrlWithRequestUri = URLBuilder(walletUrl).apply {
             parameters.append("client_id", clientId)
@@ -339,7 +320,7 @@ class OidcSiopProtocolTest : FreeSpec({
             requestOptions = RequestOptions(credentialScheme = ConstantIndex.AtomicAttribute2023)
         ).getOrThrow()
 
-        val requestUrl = "https://www.example.com/request/${Random.nextBytes(32).encodeToString(Base64UrlStrict)}"
+        val requestUrl = "https://www.example.com/request/${uuid4()}"
         val authRequestUrlWithRequestUri = URLBuilder(walletUrl).apply {
             parameters.append("client_id", relyingPartyUrl)
             parameters.append("request_uri", requestUrl)
@@ -363,12 +344,13 @@ class OidcSiopProtocolTest : FreeSpec({
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
         }
     }
+
     "test with request object not verified" {
         val jar = verifierSiop.createAuthnRequestAsSignedRequestObject(
             requestOptions = RequestOptions(credentialScheme = ConstantIndex.AtomicAttribute2023)
         ).getOrThrow()
 
-        val requestUrl = "https://www.example.com/request/${Random.nextBytes(32).encodeToString(Base64UrlStrict)}"
+        val requestUrl = "https://www.example.com/request/${uuid4()}"
         val authRequestUrlWithRequestUri = URLBuilder(walletUrl).apply {
             parameters.append("client_id", relyingPartyUrl)
             parameters.append("request_uri", requestUrl)
