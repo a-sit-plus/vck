@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -23,34 +24,59 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
 class OidvciProcessTest : FunSpec({
 
-    val authorizationService = SimpleAuthorizationService(
-        dataProvider = DummyOAuth2DataProvider,
-        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023)
-    )
-    val issuer = CredentialIssuer(
-        authorizationService = authorizationService,
-        issuer = IssuerAgent(),
-        credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
-        buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
-    )
-    val client = WalletService()
+    lateinit var authorizationService: SimpleAuthorizationService
+    lateinit var issuer: CredentialIssuer
+    lateinit var client: WalletService
+
+    beforeEach {
+        authorizationService = SimpleAuthorizationService(
+            dataProvider = DummyOAuth2DataProvider,
+            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023)
+        )
+        issuer = CredentialIssuer(
+            authorizationService = authorizationService,
+            issuer = IssuerAgent(),
+            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
+            buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
+        )
+        client = WalletService()
+    }
 
     test("process with W3C VC JWT") {
-        val credential = runProcess(
-            authorizationService,
-            issuer,
-            client,
-            WalletService.RequestOptions(
-                ConstantIndex.AtomicAttribute2023,
-                representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
-            )
+        val requestOptions = WalletService.RequestOptions(
+            ConstantIndex.AtomicAttribute2023,
+            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )
+        val credential = runProcess(authorizationService, issuer, client, requestOptions)
         credential.format shouldBe CredentialFormatEnum.JWT_VC
         val serializedCredential = credential.credential.shouldNotBeNull()
 
         val jws = JwsSigned.parse(serializedCredential).getOrThrow()
         val vcJws = VerifiableCredentialJws.deserialize(jws.payload.decodeToString()).getOrThrow()
         vcJws.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+    }
+
+    test("process with W3C VC JWT, authorizationService with defect mapstore") {
+        authorizationService = SimpleAuthorizationService(
+            dataProvider = DummyOAuth2DataProvider,
+            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
+            codeToUserInfoStore = object : MapStore<String, OidcUserInfoExtended> {
+                override suspend fun put(key: String, value: OidcUserInfoExtended) = Unit
+                override suspend fun get(key: String): OidcUserInfoExtended? = null
+            }
+        )
+        issuer = CredentialIssuer(
+            authorizationService = authorizationService,
+            issuer = IssuerAgent(),
+            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
+            buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
+        )
+        val requestOptions = WalletService.RequestOptions(
+            ConstantIndex.AtomicAttribute2023,
+            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
+        )
+
+        shouldThrow<OAuth2Exception> { runProcess(authorizationService, issuer, client, requestOptions) }
     }
 
     test("process with W3C VC SD-JWT") {

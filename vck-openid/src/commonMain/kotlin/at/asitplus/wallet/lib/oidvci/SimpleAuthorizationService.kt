@@ -60,16 +60,10 @@ class SimpleAuthorizationService(
      * to that URI (which starts with [publicContext]) to [token].
      */
     val tokenEndpointPath: String = "/token",
+    val codeToCodeChallengeStore: MapStore<String, String> = DefaultMapStore(),
+    val codeToUserInfoStore: MapStore<String, OidcUserInfoExtended> = DefaultMapStore(),
+    val accessTokenToUserInfoStore: MapStore<String, OidcUserInfoExtended> = DefaultMapStore()
 ) : OAuth2AuthorizationServer {
-
-    private val codeToCodeChallengeMap = mutableMapOf<String, String>()
-    private val codeToCodeChallengeMutex = Mutex()
-
-    private val codeToUserInfoMap = mutableMapOf<String, OidcUserInfoExtended>()
-    private val codeToUserInfoMutex = Mutex()
-
-    private val accessTokenToUserInfoMap = mutableMapOf<String, OidcUserInfoExtended>()
-    private val accessTokenToUserInfoMutex = Mutex()
 
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`
@@ -98,14 +92,14 @@ class SimpleAuthorizationService(
             val userInfo = dataProvider.loadUserInfo(request)
                 ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                     .also { Napier.w("authorize: could not load user info from $request") }
-            codeToUserInfoMutex.withLock { codeToUserInfoMap[it] = userInfo }
+            codeToUserInfoStore.put(it, userInfo)
         }
         val responseParams = AuthenticationResponseParameters(
             code = code,
             state = request.state,
         )
         if (request.codeChallenge != null) {
-            codeToCodeChallengeMutex.withLock { codeToCodeChallengeMap[code] = request.codeChallenge }
+            codeToCodeChallengeStore.put(code, request.codeChallenge)
         }
         // TODO Also implement POST?
         val url = URLBuilder(request.redirectUrl)
@@ -128,14 +122,14 @@ class SimpleAuthorizationService(
                 if (params.code == null || !codeService.verifyCode(params.code))
                     throw OAuth2Exception(Errors.INVALID_CODE)
                         .also { Napier.w("token: client did not provide correct code") }
-                codeToUserInfoMutex.withLock { codeToUserInfoMap[params.code] }
+                codeToUserInfoStore.get(params.code)
             }
 
             OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
                 if (params.preAuthorizedCode == null || !codeService.verifyCode(params.preAuthorizedCode))
                     throw OAuth2Exception(Errors.INVALID_GRANT)
                         .also { Napier.w("token: client did not provide pre authorized code") }
-                codeToUserInfoMutex.withLock { codeToUserInfoMap[params.preAuthorizedCode] }
+                codeToUserInfoStore.get(params.preAuthorizedCode)
             }
 
             else -> {
@@ -148,23 +142,26 @@ class SimpleAuthorizationService(
         // TODO work out mapping of credential identifiers in authorization details to schemes
         val filteredAuthorizationDetails = params.authorizationDetails?.filter {
             credentialSchemes.map { it.vcType }.contains(it.credentialConfigurationId) ||
-            credentialSchemes.map { it.sdJwtType }.contains(it.credentialConfigurationId) ||
-            credentialSchemes.map { it.isoDocType }.contains(it.credentialConfigurationId)
+                    credentialSchemes.map { it.sdJwtType }.contains(it.credentialConfigurationId) ||
+                    credentialSchemes.map { it.isoDocType }.contains(it.credentialConfigurationId)
         }?.toSet()
 
         params.codeVerifier?.let { codeVerifier ->
-            codeToCodeChallengeMutex.withLock { codeToCodeChallengeMap.remove(params.code) }?.let { codeChallenge ->
-                val codeChallengeCalculated = codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
-                if (codeChallenge != codeChallengeCalculated) {
-                    throw OAuth2Exception(Errors.INVALID_GRANT)
-                        .also { Napier.w("token: client did not provide correct code verifier: $codeVerifier") }
+            params.code?.let { code ->
+                codeToCodeChallengeStore.get(code)?.let { codeChallenge ->
+                    val codeChallengeCalculated =
+                        codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
+                    if (codeChallenge != codeChallengeCalculated) {
+                        throw OAuth2Exception(Errors.INVALID_GRANT)
+                            .also { Napier.w("token: client did not provide correct code verifier: $codeVerifier") }
+                    }
                 }
             }
         }
 
         TokenResponseParameters(
             accessToken = tokenService.provideNonce().also {
-                accessTokenToUserInfoMutex.withLock { accessTokenToUserInfoMap[it] = userInfo }
+                accessTokenToUserInfoStore.put(it, userInfo)
             },
             tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
             expires = 3600.seconds,
@@ -177,7 +174,7 @@ class SimpleAuthorizationService(
         return codeService.provideCode().also {
             val userInfo = dataProvider.loadUserInfo()
                 ?: return null.also { Napier.w("authorize: could not load user info from data provider") }
-            codeToUserInfoMutex.withLock { codeToUserInfoMap[it] = userInfo }
+            codeToUserInfoStore.put(it, userInfo)
         }
     }
 
@@ -190,7 +187,7 @@ class SimpleAuthorizationService(
             throw OAuth2Exception(Errors.INVALID_TOKEN)
                 .also { Napier.w("getUserInfo: client did not provide correct token: $accessToken") }
         }
-        val result = accessTokenToUserInfoMutex.withLock { accessTokenToUserInfoMap[accessToken] }
+        val result = accessTokenToUserInfoStore.get(accessToken)
             ?: throw OAuth2Exception(Errors.INVALID_TOKEN)
                 .also { Napier.w("getUserInfo: could not load user info for $accessToken") }
 
