@@ -29,7 +29,7 @@ import io.github.aakira.napier.Napier
  * and present credentials to other agents.
  */
 class HolderAgent(
-    private val validator: Validator = Validator.newDefaultInstance(),
+    private val validator: Validator = Validator(),
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val jwsService: JwsService,
     private val coseService: CoseService,
@@ -46,7 +46,7 @@ class HolderAgent(
         keyPairAdapter: KeyPairAdapter,
         subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore()
     ) : this(
-        validator = Validator.newDefaultInstance(DefaultVerifierCryptoService(), Parser()),
+        validator = Validator(),
         subjectCredentialStore = subjectCredentialStore,
         jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
         coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),

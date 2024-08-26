@@ -63,7 +63,7 @@ class IssuerAgent(
         keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
-        validator = Validator.newDefaultInstance(),
+        validator = Validator(),
         jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
         coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
         dataProvider = dataProvider,
@@ -76,7 +76,7 @@ class IssuerAgent(
         issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
-        validator = Validator.newDefaultInstance(),
+        validator = Validator(),
         issuerCredentialStore = issuerCredentialStore,
         jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
         coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
