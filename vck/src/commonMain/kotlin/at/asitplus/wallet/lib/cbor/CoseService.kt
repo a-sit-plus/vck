@@ -44,7 +44,7 @@ interface CoseService {
 
 interface VerifierCoseService {
 
-    fun verifyCose(coseSigned: CoseSigned, signer: CoseKey): KmmResult<Boolean>
+    fun verifyCose(coseSigned: CoseSigned, signer: CoseKey): KmmResult<Unit>
 
 }
 

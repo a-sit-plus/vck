@@ -159,47 +159,6 @@ class IosKeyPairAdapter(
 
 }
 
-@Suppress("UNCHECKED_CAST")
-actual class DefaultVerifierCryptoService : VerifierCryptoService {
-
-    actual override val supportedAlgorithms: List<X509SignatureAlgorithm> =
-        X509SignatureAlgorithm.entries.filter { it.isEc }
-
-    actual override fun verify(
-        input: ByteArray,
-        signature: CryptoSignature,
-        algorithm: X509SignatureAlgorithm,
-        publicKey: CryptoPublicKey
-    ): KmmResult<Boolean> {
-        // TODO RSA
-        if (publicKey !is CryptoPublicKey.EC) {
-            return KmmResult.failure(IllegalArgumentException("Public key is not an EC key"))
-        }
-        memScoped {
-            val ansix962 = publicKey.iosEncoded
-            val keyData = CFBridgingRetain(toData(ansix962)) as CFDataRef
-            val attributes = CFDictionaryCreateMutable(null, 3, null, null).apply {
-                CFDictionaryAddValue1(this, kSecAttrKeyClass, kSecAttrKeyClassPublic)
-                CFDictionaryAddValue1(this, kSecAttrKeyType, kSecAttrKeyTypeEC)
-                CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
-            }
-            val secKey = SecKeyCreateWithData(keyData, attributes, null)
-                ?: return KmmResult.failure(IllegalArgumentException())
-            val inputData = CFBridgingRetain(toData(input)) as CFDataRef
-            val signatureData = CFBridgingRetain(toData(signature.encodeToDer())) as CFDataRef
-            val verified = SecKeyVerifySignature(
-                key = secKey,
-                algorithm = kSecKeyAlgorithmECDSASignatureMessageX962SHA256,
-                signedData = inputData,
-                signature = signatureData,
-                error = null
-            )
-            return KmmResult.success(verified)
-        }
-    }
-
-}
-
 data class DefaultEphemeralKeyHolder(val crv: ECCurve, val publicKey: SecKeyRef, val privateKey: SecKeyRef? = null) :
     EphemeralKeyHolder {
 

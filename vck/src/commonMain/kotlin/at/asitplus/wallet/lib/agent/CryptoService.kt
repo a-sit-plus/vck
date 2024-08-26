@@ -11,6 +11,8 @@ import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.supreme.sign.SignatureInput
+import at.asitplus.signum.supreme.sign.verifierFor
 
 interface CryptoService {
 
@@ -22,7 +24,7 @@ interface CryptoService {
                     is CryptoSignature.EC.IndefiniteLength -> it.withCurve((keyPairAdapter.publicKey as CryptoPublicKey.EC).curve)
                 }
             }
-    }
+        }
 
     suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature>
 
@@ -71,7 +73,7 @@ interface VerifierCryptoService {
         signature: CryptoSignature,
         algorithm: X509SignatureAlgorithm,
         publicKey: CryptoPublicKey,
-    ): KmmResult<Boolean>
+    ): KmmResult<Unit>
 
 }
 
@@ -137,15 +139,20 @@ expect class DefaultCryptoService : CryptoService {
     ): KmmResult<ByteArray>
 
     override val keyPairAdapter: KeyPairAdapter
+
     constructor(keyPairAdapter: KeyPairAdapter)
 }
 
-expect class DefaultVerifierCryptoService() : VerifierCryptoService {
-    override val supportedAlgorithms: List<X509SignatureAlgorithm>
+open class DefaultVerifierCryptoService() : VerifierCryptoService {
+    override val supportedAlgorithms: List<X509SignatureAlgorithm> =
+        listOf(X509SignatureAlgorithm.ES256)
+
     override fun verify(
         input: ByteArray,
         signature: CryptoSignature,
         algorithm: X509SignatureAlgorithm,
         publicKey: CryptoPublicKey
-    ): KmmResult<Boolean>
+    ): KmmResult<Unit> = algorithm.algorithm.verifierFor(publicKey).map {
+        it.verify(SignatureInput(input), signature)
+    }
 }

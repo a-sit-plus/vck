@@ -86,7 +86,7 @@ class CoseServiceJvmTest : FreeSpec({
 
                     withClue("$sigAlgo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
                         verifierCoseService.verifyCose(signed, cryptoService.keyPairAdapter.coseKey)
-                            .getOrThrow() shouldBe true
+                            .isSuccess shouldBe true
                     }
                 }
 
@@ -128,7 +128,7 @@ class CoseServiceJvmTest : FreeSpec({
                     signedSerialized.length shouldBe extLibSerialized.length
 
                     withClue("$sigAlgo: Signature: ${parsedSig}") {
-                        verifierCoseService.verifyCose(coseSigned, coseKey).getOrThrow() shouldBe true
+                        verifierCoseService.verifyCose(coseSigned, coseKey).isSuccess shouldBe true
                     }
                 }
 

@@ -257,7 +257,7 @@ class Validator(
         } ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
             .also { Napier.w("Got no issuer key in $issuerAuth") }
 
-        if (verifierCoseService.verifyCose(issuerAuth, issuerKey).getOrNull() != true) {
+        if (verifierCoseService.verifyCose(issuerAuth, issuerKey).isFailure) {
             return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("IssuerAuth not verified: $issuerAuth") }
         }
@@ -274,7 +274,7 @@ class Validator(
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("DeviceSignature is null: ${doc.deviceSigned.deviceAuth}") }
 
-        if (verifierCoseService.verifyCose(deviceSignature, walletKey).getOrNull() != true) {
+        if (verifierCoseService.verifyCose(deviceSignature, walletKey).isFailure) {
             return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("DeviceSignature not verified") }
         }
@@ -422,7 +422,7 @@ class Validator(
             )
         }
         val result = verifierCoseService.verifyCose(it.issuerAuth, issuerKey)
-        if (result.getOrNull() != true) {
+        if (result.isFailure) {
             Napier.w("ISO: Could not verify credential", result.exceptionOrNull())
             return Verifier.VerifyCredentialResult.InvalidStructure(
                 it.serialize().encodeToString(Base16(strict = true))

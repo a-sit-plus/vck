@@ -2,6 +2,7 @@ import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
 
 plugins {
     id("at.asitplus.gradle.vclib-conventions")
+    id("com.android.library") version "8.2.0" apply (false)
 }
 
 //access dokka plugin from conventions plugin's classpath in root project → no need to specify version

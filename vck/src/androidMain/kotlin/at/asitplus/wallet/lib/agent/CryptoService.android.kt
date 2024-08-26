@@ -1,15 +1,28 @@
-@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.signum.indispensable.*
+import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.CryptoSignature
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.ECCurve.SECP_256_R_1
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
-import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.fromJcaPublicKey
+import at.asitplus.signum.indispensable.getJCASignatureInstance
+import at.asitplus.signum.indispensable.getJcaPublicKey
+import at.asitplus.signum.indispensable.jcaName
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.isAuthenticatedEncryption
+import at.asitplus.signum.indispensable.josef.jcaKeySpecName
+import at.asitplus.signum.indispensable.josef.jcaName
+import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.parseFromJca
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import org.bouncycastle.jce.ECNamedCurveTable
@@ -23,7 +36,6 @@ import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
-
 
 actual open class DefaultCryptoService : CryptoService {
 
@@ -157,6 +169,7 @@ actual open class DefaultCryptoService : CryptoService {
     }.wrap()
 
 }
+
 
 class JvmKeyPairAdapter(
     val keyPair: KeyPair,
