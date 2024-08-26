@@ -46,9 +46,7 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
-import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -84,12 +82,11 @@ class OidcSiopVerifier private constructor(
      */
     private val attestationJwt: JwsSigned?,
     private val x5c: CertificateChain?,
-    private val clientIdScheme: OpenIdConstants.ClientIdScheme
+    private val clientIdScheme: OpenIdConstants.ClientIdScheme,
+    private val nonceService: NonceService = DefaultNonceService(),
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
-    private val challengeMutex = Mutex()
-    private val challengeSet = mutableSetOf<String>()
 
     companion object {
         fun newInstance(
@@ -100,6 +97,7 @@ class OidcSiopVerifier private constructor(
             jwsService: JwsService = DefaultJwsService(DefaultCryptoService(verifier.keyPair)),
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
+            nonceService: NonceService = DefaultNonceService(),
             attestationJwt: JwsSigned,
         ) = OidcSiopVerifier(
             verifier = verifier,
@@ -112,7 +110,8 @@ class OidcSiopVerifier private constructor(
             clock = clock,
             attestationJwt = attestationJwt,
             x5c = null,
-            clientIdScheme = VERIFIER_ATTESTATION
+            clientIdScheme = VERIFIER_ATTESTATION,
+            nonceService = nonceService,
         )
 
         fun newInstance(
@@ -124,6 +123,7 @@ class OidcSiopVerifier private constructor(
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
             x5c: CertificateChain,
+            nonceService: NonceService = DefaultNonceService(),
         ) = OidcSiopVerifier(
             verifier = verifier,
             relyingPartyUrl = relyingPartyUrl,
@@ -135,7 +135,8 @@ class OidcSiopVerifier private constructor(
             clock = clock,
             attestationJwt = null,
             clientIdScheme = X509_SAN_DNS,
-            x5c = x5c
+            x5c = x5c,
+            nonceService = nonceService,
         )
 
 
@@ -148,6 +149,7 @@ class OidcSiopVerifier private constructor(
             timeLeewaySeconds: Long = 300L,
             clock: Clock = Clock.System,
             clientIdScheme: OpenIdConstants.ClientIdScheme = REDIRECT_URI,
+            nonceService: NonceService = DefaultNonceService(),
         ) = OidcSiopVerifier(
             verifier = verifier,
             relyingPartyUrl = relyingPartyUrl,
@@ -159,7 +161,8 @@ class OidcSiopVerifier private constructor(
             clock = clock,
             attestationJwt = null,
             clientIdScheme = clientIdScheme,
-            x5c = null
+            x5c = null,
+            nonceService = nonceService,
         )
     }
 
@@ -355,7 +358,7 @@ class OidcSiopVerifier private constructor(
         responseUrl = responseUrl,
         clientIdScheme = clientIdScheme,
         scope = requestOptions.buildScope(),
-        nonce = uuid4().toString().also { challengeMutex.withLock { challengeSet += it } },
+        nonce = nonceService.provideNonce(),
         clientMetadata = requestOptions.clientMetadataUrl?.let { null }
             ?: if (requestOptions.encryption) metadataWithEncryption else metadata,
         clientMetadataUri = requestOptions.clientMetadataUrl,
@@ -371,7 +374,13 @@ class OidcSiopVerifier private constructor(
         ),
     )
 
-    private fun RequestOptions.buildScope() = listOfNotNull(SCOPE_OPENID, SCOPE_PROFILE, credentialScheme?.sdJwtType, credentialScheme?.vcType, credentialScheme?.isoNamespace)
+    private fun RequestOptions.buildScope() = listOfNotNull(
+        SCOPE_OPENID,
+        SCOPE_PROFILE,
+        credentialScheme?.sdJwtType,
+        credentialScheme?.vcType,
+        credentialScheme?.isoNamespace
+    )
         .joinToString(" ")
 
     private fun buildClientId() = (x5c?.let { it.leaf.tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull() }
@@ -560,8 +569,10 @@ class OidcSiopVerifier private constructor(
         if (idToken.issuer != idToken.subject)
             return AuthnResponseResult.ValidationError("iss", params.state)
                 .also { Napier.d("Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}") }
-        val validAudiences = listOfNotNull(relyingPartyUrl,
-            x5c?.leaf?.tbsCertificate?.subjectAlternativeNames?.dnsNames?.firstOrNull())
+        val validAudiences = listOfNotNull(
+            relyingPartyUrl,
+            x5c?.leaf?.tbsCertificate?.subjectAlternativeNames?.dnsNames?.firstOrNull()
+        )
         if (idToken.audience !in validAudiences)
             return AuthnResponseResult.ValidationError("aud", params.state)
                 .also { Napier.d("audience not valid: ${idToken.audience}") }
@@ -571,10 +582,9 @@ class OidcSiopVerifier private constructor(
         if (idToken.issuedAt > (clock.now() + timeLeeway))
             return AuthnResponseResult.ValidationError("iat", params.state)
                 .also { Napier.d("issuedAt after now: ${idToken.issuedAt}") }
-        challengeMutex.withLock {
-            if (!challengeSet.remove(idToken.nonce))
-                return AuthnResponseResult.ValidationError("nonce", params.state)
-                    .also { Napier.d("nonce not valid: ${idToken.nonce}, not known to us") }
+        if (!nonceService.verifyAndRemoveNonce(idToken.nonce)) {
+            return AuthnResponseResult.ValidationError("nonce", params.state)
+                .also { Napier.d("nonce not valid: ${idToken.nonce}, not known to us") }
         }
         if (idToken.subjectJwk == null)
             return AuthnResponseResult.ValidationError("nonce", params.state)
