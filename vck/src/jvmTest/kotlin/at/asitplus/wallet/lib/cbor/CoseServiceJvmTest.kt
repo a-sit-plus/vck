@@ -1,24 +1,19 @@
 package at.asitplus.wallet.lib.cbor
 
-import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
-import at.asitplus.signum.indispensable.cosef.CoseHeader
-import at.asitplus.signum.indispensable.cosef.CoseSignatureInput
-import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
-import at.asitplus.signum.indispensable.cosef.toCoseKey
-import at.asitplus.signum.indispensable.fromJcaPublicKey
+import at.asitplus.signum.indispensable.*
+import at.asitplus.signum.indispensable.cosef.*
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.supreme.HazardousMaterials
+import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
+import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.DefaultKeyPairAdapter
+import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
+import at.asitplus.wallet.lib.agent.PlatformCryptoShim
 import com.authlete.cbor.CBORByteArray
 import com.authlete.cbor.CBORDecoder
 import com.authlete.cbor.CBORTaggedItem
-import com.authlete.cose.COSEProtectedHeaderBuilder
-import com.authlete.cose.COSESign1
-import com.authlete.cose.COSESign1Builder
-import com.authlete.cose.COSESigner
-import com.authlete.cose.COSEVerifier
-import com.authlete.cose.SigStructureBuilder
+import com.authlete.cose.*
 import com.authlete.cose.constants.COSEAlgorithms
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.withClue
@@ -27,8 +22,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import java.security.KeyPairGenerator
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 
@@ -43,10 +36,6 @@ class CoseServiceJvmTest : FreeSpec({
 
     configurations.forEach { thisConfiguration ->
         repeat(2) { number ->
-            val keyPair = KeyPairGenerator.getInstance(thisConfiguration.first).apply {
-                initialize(thisConfiguration.second)
-            }.genKeyPair()
-
             val sigAlgo = when (thisConfiguration.first) {
                 "EC" -> when (thisConfiguration.second) {
                     256 -> X509SignatureAlgorithm.ES256
@@ -57,6 +46,19 @@ class CoseServiceJvmTest : FreeSpec({
 
                 else -> throw IllegalArgumentException("Unknown Key Type") // -||-
             }
+            val ephemeralKey = EphemeralKey {
+                ec {
+                    curve = when (thisConfiguration.second) {
+                        256 -> ECCurve.SECP_256_R_1
+                        384 -> ECCurve.SECP_384_R_1
+                        521 -> ECCurve.SECP_521_R_1
+                        else -> throw IllegalArgumentException("Unknown EC Curve size") // necessary(compiler), but otherwise redundant else-branch
+                    }
+                    digests = setOf(curve.nativeDigest)
+                }
+            }
+
+
             val coseAlgorithm = sigAlgo.toCoseAlgorithm().getOrThrow()
             val extLibAlgorithm = when (sigAlgo) {
                 X509SignatureAlgorithm.ES256 -> COSEAlgorithms.ES256
@@ -65,13 +67,17 @@ class CoseServiceJvmTest : FreeSpec({
                 else -> throw IllegalArgumentException("Unknown JweAlgorithm")
             }
 
-            val extLibVerifier = COSEVerifier(keyPair.public as ECPublicKey)
-            val extLibSigner = COSESigner(keyPair.private as ECPrivateKey)
+            val extLibVerifier = COSEVerifier(ephemeralKey.publicKey.getJcaPublicKey().getOrThrow() as ECPublicKey)
 
-            val cryptoService = DefaultCryptoService(keyPair, sigAlgo)
+            @OptIn(HazardousMaterials::class)
+            val extLibSigner = COSESigner(ephemeralKey.jcaPrivateKey as ECPrivateKey)
+
+
+            val keyPairAdapter = EphemeralKeyPariAdapter(ephemeralKey)
+            val cryptoService = DefaultCryptoService(keyPairAdapter, PlatformCryptoShim(keyPairAdapter))
             val coseService = DefaultCoseService(cryptoService)
             val verifierCoseService = DefaultVerifierCoseService()
-            val coseKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow().toCoseKey().getOrThrow()
+            val coseKey = ephemeralKey.publicKey.toCoseKey().getOrThrow()
 
             val randomPayload = uuid4().toString()
 
@@ -86,7 +92,7 @@ class CoseServiceJvmTest : FreeSpec({
 
                     withClue("$sigAlgo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
                         verifierCoseService.verifyCose(signed, cryptoService.keyPairAdapter.coseKey)
-                            .getOrThrow() shouldBe true
+                            .isSuccess shouldBe true
                     }
                 }
 
@@ -128,7 +134,7 @@ class CoseServiceJvmTest : FreeSpec({
                     signedSerialized.length shouldBe extLibSerialized.length
 
                     withClue("$sigAlgo: Signature: ${parsedSig}") {
-                        verifierCoseService.verifyCose(coseSigned, coseKey).getOrThrow() shouldBe true
+                        verifierCoseService.verifyCose(coseSigned, coseKey).isSuccess shouldBe true
                     }
                 }
 
@@ -153,7 +159,8 @@ class CoseServiceJvmTest : FreeSpec({
                     val signature = parsedDefLengthSignature.rawByteArray.encodeToString(Base16())
                     parsedSignature shouldBe signature
 
-                    val extLibSigInput = SigStructureBuilder().sign1(parsedCoseSign1).build().encode().encodeToString(Base16())
+                    val extLibSigInput =
+                        SigStructureBuilder().sign1(parsedCoseSign1).build().encode().encodeToString(Base16())
                     val signatureInput = CoseSignatureInput(
                         contextString = "Signature1",
                         protectedHeader = ByteStringWrapper(CoseHeader(algorithm = coseAlgorithm)),

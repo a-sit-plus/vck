@@ -20,7 +20,7 @@ import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
+import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -62,7 +62,7 @@ class WalletService(
      * Used to prove possession of the key material to create [CredentialRequestProof],
      * i.e. the holder key.
      */
-    private val cryptoService: CryptoService = DefaultCryptoService(RandomKeyPairAdapter()),
+    private val cryptoService: CryptoService = DefaultCryptoService(EphemeralKeyPariAdapter()),
     /**
      * Used to prove possession of the key material to create [CredentialRequestProof].
      */

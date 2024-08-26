@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsHeader
@@ -107,7 +108,7 @@ class OidcSiopVerifier private constructor(
         relyingPartyUrl: String? = null,
         responseUrl: String? = null,
         verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
+        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter, PlatformCryptoShim())),
         timeLeewaySeconds: Long = 300L,
         clock: Clock = Clock.System,
         nonceService: NonceService = DefaultNonceService(),

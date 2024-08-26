@@ -38,10 +38,11 @@ class ValidatorVcTest : FreeSpec() {
     init {
         beforeEach {
             issuerCredentialStore = InMemoryIssuerCredentialStore()
-            issuerKeyPair = RandomKeyPairAdapter()
+            val randomKeyPairAdapter = EphemeralKeyPariAdapter()
+            issuerKeyPair = randomKeyPairAdapter
             issuer = IssuerAgent(issuerKeyPair, issuerCredentialStore, dataProvider)
-            issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyPair))
-            verifierKeyPair = RandomKeyPairAdapter()
+            issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyPair, PlatformCryptoShim(randomKeyPairAdapter)))
+            verifierKeyPair = EphemeralKeyPariAdapter()
             verifier = VerifierAgent(verifierKeyPair)
         }
 
@@ -81,7 +82,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "wrong subject keyId is not be valid" {
             val credential = issuer.issueCredential(
-                RandomKeyPairAdapter().publicKey,
+                EphemeralKeyPariAdapter().publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()
@@ -365,7 +366,7 @@ class ValidatorVcTest : FreeSpec() {
             jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
                     "." + jwsPayload.encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
-        val signature = DefaultCryptoService(issuerKeyPair).sign(signatureInputBytes)
+        val signature = DefaultCryptoService(issuerKeyPair, PlatformCryptoShim(issuerKeyPair)).sign(signatureInputBytes)
             .getOrElse { return null }
         return JwsSigned(jwsHeader, jwsPayload, signature, signatureInput).serialize()
     }

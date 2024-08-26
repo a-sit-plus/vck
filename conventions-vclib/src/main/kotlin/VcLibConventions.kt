@@ -18,6 +18,7 @@ val Project.signumVersionCatalog: VersionCatalog
 
 inline fun Project.commonApiDependencies(): List<String> {
     project.AspVersions.versions["signum"] = VcLibVersions.signum
+    project.AspVersions.versions["supreme"] = VcLibVersions.supreme
     project.AspVersions.versions["jsonpath"] = VcLibVersions.jsonpath
     project.AspVersions.versions["okio"] = signumVersionCatalog.findVersion("okio").get().toString()
     project.AspVersions.versions["encoding"] = "2.2.1"
@@ -27,10 +28,10 @@ inline fun Project.commonApiDependencies(): List<String> {
         coroutines(),
         serialization("json"),
         serialization("cbor"),
-        addDependency("at.asitplus.signum:indispensable", "signum"), //for iOS Export
+        addDependency("at.asitplus.signum:supreme", "supreme"), //for iOS Export
         addDependency("at.asitplus.signum:indispensable-cosef", "signum"),
         addDependency("at.asitplus.signum:indispensable-josef", "signum"),
-        addDependency("at.asitplus:jsonpath4k", "jsonpath"),
+      //  addDependency("at.asitplus:jsonpath4k", "jsonpath"),
         datetime(),
         addDependency("com.squareup.okio:okio", "okio"),
         addDependency("io.matthewnelson.encoding:base16", "encoding"),
@@ -57,6 +58,7 @@ fun Project.commonIosExports() = arrayOf(
     datetime(),
     "com.ionspin.kotlin:bignum:${signumVersionCatalog.findVersion("bignum").get()}",
     kmmresult(),
+    "at.asitplus.signum:supreme:${VcLibVersions.supreme}",
     "at.asitplus.signum:indispensable:${VcLibVersions.signum}",
     "at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}",
     "at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}",

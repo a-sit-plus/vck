@@ -39,14 +39,14 @@ class ValidatorVpTest : FreeSpec({
         validator = Validator()
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
-            RandomKeyPairAdapter(),
+            EphemeralKeyPariAdapter(),
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
         holderCredentialStore = InMemorySubjectCredentialStore()
-        holderKeyPair = RandomKeyPairAdapter()
+        holderKeyPair = EphemeralKeyPariAdapter()
         holder = HolderAgent(holderKeyPair, holderCredentialStore)
-        holderJwsService = DefaultJwsService(DefaultCryptoService(holderKeyPair))
+        holderJwsService = DefaultJwsService(DefaultCryptoService(holderKeyPair, PlatformCryptoShim(holderKeyPair)))
         verifier = VerifierAgent()
         challenge = uuid4().toString()
 

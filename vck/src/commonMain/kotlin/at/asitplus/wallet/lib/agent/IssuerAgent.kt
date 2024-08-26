@@ -60,29 +60,29 @@ class IssuerAgent(
 ) : Issuer {
 
     constructor(
-        keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
+        keyPairAdapter: KeyPairAdapter = EphemeralKeyPariAdapter(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
         validator = Validator(),
-        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
+        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter, PlatformCryptoShim(keyPairAdapter))),
+        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter, PlatformCryptoShim(keyPairAdapter))),
         dataProvider = dataProvider,
         keyPair = keyPairAdapter,
-        cryptoAlgorithms = setOf(keyPairAdapter.signingAlgorithm),
+        cryptoAlgorithms = setOf(keyPairAdapter.signatureAlgorithm),
     )
 
     constructor(
-        keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
+        keyPairAdapter: KeyPairAdapter = EphemeralKeyPariAdapter(),
         issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
         validator = Validator(),
         issuerCredentialStore = issuerCredentialStore,
-        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
+        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter, PlatformCryptoShim(keyPairAdapter))),
+        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter, PlatformCryptoShim(keyPairAdapter))),
         dataProvider = dataProvider,
         keyPair = keyPairAdapter,
-        cryptoAlgorithms = setOf(keyPairAdapter.signingAlgorithm),
+        cryptoAlgorithms = setOf(keyPairAdapter.signatureAlgorithm),
     )
 
     /**

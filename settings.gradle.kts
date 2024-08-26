@@ -10,7 +10,7 @@ pluginManagement {
         mavenCentral()
     }
 }
-
+/*
 if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
     includeBuild("signum") {
         dependencySubstitution {
@@ -19,7 +19,7 @@ if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
             substitute(module("at.asitplus.signum:indispensable-cosef")).using(project(":indispensable-cosef"))
         }
     }
-} else logger.lifecycle("Excluding Signum from this build")
+} else logger.lifecycle("Excluding Signum from this build")*/
 
 rootProject.name = "vc-k"
 include(":dif-data-classes")

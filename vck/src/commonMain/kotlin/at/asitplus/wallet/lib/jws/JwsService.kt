@@ -86,7 +86,10 @@ interface JwsService {
         jweEncryption: JweEncryption
     ): KmmResult<JweEncrypted>
 
-    suspend fun decryptJweObject(jweObject: JweEncrypted, serialized: String): KmmResult<JweDecrypted>
+    suspend fun decryptJweObject(
+        jweObject: JweEncrypted,
+        serialized: String
+    ): KmmResult<JweDecrypted>
 
 }
 
@@ -102,7 +105,8 @@ interface VerifierJwsService {
 
 class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
-    override val algorithm: JwsAlgorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow()
+    override val algorithm: JwsAlgorithm =
+        cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
 
     // TODO: Get from crypto service
     override val encryptionAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES
@@ -116,7 +120,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         contentType: String?
     ): KmmResult<JwsSigned> = createSignedJws(
         JwsHeader(
-            algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow(),
+            algorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             keyId = cryptoService.keyPairAdapter.publicKey.didEncoded,
             type = type,
             contentType = contentType
@@ -124,7 +128,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     )
 
     override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray) = catching {
-        if (header.algorithm != cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow()
+        if (header.algorithm != cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm()
+                .getOrThrow()
             || header.jsonWebKey?.let { it != cryptoService.keyPairAdapter.jsonWebKey } == true
         ) {
             throw IllegalArgumentException("Algorithm or JSON Web Key not matching to cryptoService")
@@ -142,14 +147,20 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         addJsonWebKey: Boolean,
         addX5c: Boolean
     ): KmmResult<JwsSigned> = catching {
-        var copy = header?.copy(algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow())
-            ?: JwsHeader(algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow())
+        var copy = header?.copy(
+            algorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
+        )
+            ?: JwsHeader(
+                algorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm()
+                    .getOrThrow()
+            )
         if (addKeyId)
             copy = copy.copy(keyId = cryptoService.keyPairAdapter.jsonWebKey.keyId)
         if (addJsonWebKey)
             copy = copy.copy(jsonWebKey = cryptoService.keyPairAdapter.jsonWebKey)
         if (addX5c)
-            copy = copy.copy(certificateChain = listOf(cryptoService.keyPairAdapter.certificate!!)) //TODO cleanup/nullchecks
+            copy =
+                copy.copy(certificateChain = listOf(cryptoService.keyPairAdapter.certificate!!)) //TODO cleanup/nullchecks
         createSignedJws(copy, payload).getOrThrow()
     }
 
@@ -165,8 +176,13 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val epk = header.ephemeralKeyPair
             ?: throw IllegalArgumentException("No epk in JWE header")
         val z = cryptoService.performKeyAgreement(epk, alg).getOrThrow()
-        val kdfInput = prependWithAdditionalInfo(z, enc, header.agreementPartyUInfo, header.agreementPartyVInfo)
-        val key = cryptoService.messageDigest(kdfInput, Digest.SHA256).getOrThrow()
+        val kdfInput = prependWithAdditionalInfo(
+            z,
+            enc,
+            header.agreementPartyUInfo,
+            header.agreementPartyVInfo
+        )
+        val key = cryptoService.messageDigest(kdfInput, Digest.SHA256)
         val iv = jweObject.iv
         val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
         val ciphertext = jweObject.ciphertext
@@ -184,7 +200,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): KmmResult<JweEncrypted> = catching {
         val crv = recipientKey.curve
             ?: throw IllegalArgumentException("No curve in recipient key")
-        val ephemeralKeyPair = cryptoService.generateEphemeralKeyPair(crv).getOrThrow()
+        val ephemeralKeyPair = cryptoService.generateEphemeralKeyPair(crv)
         val jweHeader = (header ?: JweHeader(jweAlgorithm, jweEncryption, type = null)).copy(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
@@ -204,7 +220,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): KmmResult<JweEncrypted> = catching {
         val crv = recipientKey.curve
             ?: throw IllegalArgumentException("No curve in recipient key")
-        val ephemeralKeyPair = cryptoService.generateEphemeralKeyPair(crv).getOrThrow()
+        val ephemeralKeyPair = cryptoService.generateEphemeralKeyPair(crv)
         val jweHeader = JweHeader(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
@@ -224,15 +240,22 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         jweHeader: JweHeader,
         payload: ByteArray
     ): JweEncrypted {
-        val z = cryptoService.performKeyAgreement(ephemeralKeyPair, recipientKey, jweAlgorithm).getOrThrow()
+        val z = cryptoService.performKeyAgreement(ephemeralKeyPair, recipientKey, jweAlgorithm)
+            .getOrThrow()
         val kdf =
-            prependWithAdditionalInfo(z, jweEncryption, jweHeader.agreementPartyUInfo, jweHeader.agreementPartyVInfo)
-        val key = cryptoService.messageDigest(kdf, Digest.SHA256).getOrThrow()
+            prependWithAdditionalInfo(
+                z,
+                jweEncryption,
+                jweHeader.agreementPartyUInfo,
+                jweHeader.agreementPartyVInfo
+            )
+        val key = cryptoService.messageDigest(kdf, Digest.SHA256)
         val iv = Random.nextBytes(jweEncryption.ivLengthBits / 8)
         val headerSerialized = jweHeader.serialize()
         val aad = headerSerialized.encodeToByteArray()
         val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
-        val ciphertext = cryptoService.encrypt(key, iv, aadForCipher, payload, jweEncryption).getOrThrow()
+        val ciphertext =
+            cryptoService.encrypt(key, iv, aadForCipher, payload, jweEncryption).getOrThrow()
         return JweEncrypted(jweHeader, aad, null, iv, ciphertext.ciphertext, ciphertext.authtag)
     }
 
@@ -266,7 +289,8 @@ class DefaultVerifierJwsService(
     private val jwkSetRetriever: JwkSetRetrieverFunction = { null },
 ) : VerifierJwsService {
 
-    override val supportedAlgorithms: List<JwsAlgorithm> = cryptoService.supportedAlgorithms.map { it.toJwsAlgorithm().getOrThrow() }
+    override val supportedAlgorithms: List<JwsAlgorithm> =
+        cryptoService.supportedAlgorithms.map { it.toJwsAlgorithm().getOrThrow() }
 
     /**
      * Verifies the signature of [jwsObject], by extracting the public key from [JwsHeader.publicKey],
@@ -282,7 +306,8 @@ class DefaultVerifierJwsService(
     }
 
     private fun retrieveJwkFromKeySetUrl(jku: String, header: JwsHeader) =
-        jwkSetRetriever(jku)?.keys?.firstOrNull { it.keyId == header.keyId }?.toCryptoPublicKey()?.getOrNull()
+        jwkSetRetriever(jku)?.keys?.firstOrNull { it.keyId == header.keyId }?.toCryptoPublicKey()
+            ?.getOrNull()
 
     /**
      * Verifiers the signature of [jwsObject] by using [signer].
@@ -301,10 +326,10 @@ class DefaultVerifierJwsService(
             algorithm = jwsObject.header.algorithm.toX509SignatureAlgorithm().getOrThrow(),
             publicKey = publicKey,
         ).getOrThrow()
-    }.getOrElse {
+    }.fold(onSuccess = { true }, onFailure = {
         Napier.w("No verification from native code", it)
         false
-    }
+    })
 }
 
 

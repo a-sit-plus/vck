@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
+import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
@@ -38,15 +38,15 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderKeyPair = RandomKeyPairAdapter()
-        verifierKeyPair = RandomKeyPairAdapter()
+        holderKeyPair = EphemeralKeyPariAdapter()
+        verifierKeyPair = EphemeralKeyPariAdapter()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierKeyPair)
 
         val issuerAgent = IssuerAgent(
-            RandomKeyPairAdapter(),
+            EphemeralKeyPariAdapter(),
             DummyCredentialDataProvider(),
         )
         holderAgent.storeCredential(

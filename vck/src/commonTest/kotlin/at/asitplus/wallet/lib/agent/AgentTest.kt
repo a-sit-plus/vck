@@ -32,11 +32,11 @@ class AgentTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
-            RandomKeyPairAdapter(),
+            EphemeralKeyPariAdapter(),
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
-        holderKeyPair = RandomKeyPairAdapter()
+        holderKeyPair = EphemeralKeyPariAdapter()
         holder = HolderAgent(holderKeyPair, holderCredentialStore)
         verifier = VerifierAgent(holderKeyPair)
         challenge = uuid4().toString()

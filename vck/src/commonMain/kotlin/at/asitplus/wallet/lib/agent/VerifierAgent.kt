@@ -25,7 +25,7 @@ class VerifierAgent private constructor(
 
     constructor(): this(
         validator = Validator(),
-        keyPair = RandomKeyPairAdapter(),
+        keyPair = EphemeralKeyPariAdapter(),
     )
 
     override fun setRevocationList(it: String): Boolean {
