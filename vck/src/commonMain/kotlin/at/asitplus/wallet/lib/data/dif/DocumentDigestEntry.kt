@@ -5,7 +5,6 @@ package at.asitplus.wallet.lib.data.dif
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import io.ktor.http.*
-import io.ktor.util.reflect.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -19,12 +18,18 @@ import kotlinx.serialization.encoding.Encoder
 @Serializable
 data class DocumentDigestEntry private constructor(
     val label: String,
-    val hash: String? = null, // base64 encoded octet representation using "hashAlgorithmOID"
+    /**
+     * base64 encoded octet representation generated using hashAlgorithmOID
+     */
+    val hash: String? = null,
     val hashAlgorithmOID: String? = null,
-    @SerialName("documentLocations_uri") //errorous in test vector - changed for test case
+    @SerialName("documentLocation_uri") //errorous in test vector - changed for test case
     val documentLocationUri: Url? = null,
     @SerialName("documentLocation_method")
     val documentLocationMethod: DocumentLocationMethod? = null,
+    /**
+     * base64 encoded octet representation generated using dtbsrAlgorithmOID
+     */
     val dtbsr: String? = null,
     val dtbsrHashAlgorithmOID: String? = null,
 ) {
@@ -57,8 +62,10 @@ data class DocumentDigestEntry private constructor(
          * present.
          */
         init {
-            require((oneTimePassword == null && method != Method.OTP)
-                    || (oneTimePassword != null && method == Method.OTP))
+            require(
+                (oneTimePassword == null && method != Method.OTP)
+                        || (oneTimePassword != null && method == Method.OTP)
+            )
         }
 
         /**
@@ -75,15 +82,19 @@ data class DocumentDigestEntry private constructor(
             @Serializable
             @SerialName("public")
             data object Public : Method()
+
             @Serializable
             @SerialName("otp")
             data object OTP : Method()
+
             @Serializable
             @SerialName("basic_auth")
             data object Basic : Method()
+
             @Serializable
             @SerialName("digest_auth")
             data object Digest : Method()
+
             @Serializable
             @SerialName("oauth_20")
             data object Oauth2 : Method()
