@@ -8,15 +8,9 @@ import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import io.ktor.http.*
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 
 @Serializable
 data class DocumentDigestEntry private constructor(
@@ -186,15 +180,3 @@ data class DocumentDigestEntry private constructor(
  */
 private infix fun String?.iff(other: String?): Boolean =
     (this != null && other != null) or (this == null && other == null)
-
-
-object UrlSerializer : KSerializer<Url> {
-
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("UrlSerializer", PrimitiveKind.STRING)
-
-    override fun deserialize(decoder: Decoder): Url = Url(decoder.decodeString())
-
-    override fun serialize(encoder: Encoder, value: Url) {
-        encoder.encodeString(value.toString())
-    }
-}
