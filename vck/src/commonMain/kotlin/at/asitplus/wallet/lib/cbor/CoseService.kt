@@ -55,7 +55,7 @@ private const val SIGNATURE1_STRING = "Signature1"
 
 class DefaultCoseService(private val cryptoService: CryptoService) : CoseService {
 
-    override val algorithm: CoseAlgorithm = cryptoService.keyPairAdapter.signingAlgorithm.toCoseAlgorithm().getOrThrow()
+    override val algorithm: CoseAlgorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
 
     override suspend fun createSignedCose(
         protectedHeader: CoseHeader?,

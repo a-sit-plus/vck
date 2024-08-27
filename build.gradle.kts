@@ -19,6 +19,15 @@ tasks.getByName("dokkaHtmlMultiModule") {
     }
 }
 
+allprojects {
+    repositories {
+        maven {
+            url = uri(rootProject.layout.projectDirectory.dir("signum").dir("repo"))
+            name = "signum"
+        }
+    }
+}
+
 val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion

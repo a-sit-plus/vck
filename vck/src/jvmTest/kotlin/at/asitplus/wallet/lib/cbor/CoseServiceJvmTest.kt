@@ -1,14 +1,11 @@
 package at.asitplus.wallet.lib.cbor
 
-import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.*
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSignatureInput
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
-import at.asitplus.signum.indispensable.fromJcaPublicKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import com.authlete.cbor.CBORByteArray
 import com.authlete.cbor.CBORDecoder
@@ -28,6 +25,10 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.supreme.sign.EphemeralKey
+import at.asitplus.signum.supreme.sign.platformSpecifics
+import at.asitplus.wallet.lib.agent.PlatformCryptoShim
+import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import java.security.KeyPairGenerator
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
@@ -43,10 +44,6 @@ class CoseServiceJvmTest : FreeSpec({
 
     configurations.forEach { thisConfiguration ->
         repeat(2) { number ->
-            val keyPair = KeyPairGenerator.getInstance(thisConfiguration.first).apply {
-                initialize(thisConfiguration.second)
-            }.genKeyPair()
-
             val sigAlgo = when (thisConfiguration.first) {
                 "EC" -> when (thisConfiguration.second) {
                     256 -> X509SignatureAlgorithm.ES256
@@ -57,6 +54,17 @@ class CoseServiceJvmTest : FreeSpec({
 
                 else -> throw IllegalArgumentException("Unknown Key Type") // -||-
             }
+            val ephemeralKey = EphemeralKey {
+                ec {
+                    curve = when(thisConfiguration.second) { 256 -> ECCurve.SECP_256_R_1
+                        384 ->  ECCurve.SECP_384_R_1
+                        521 ->  ECCurve.SECP_521_R_1
+                        else -> throw IllegalArgumentException("Unknown EC Curve size") // necessary(compiler), but otherwise redundant else-branch
+                    }
+                }
+            }
+
+
             val coseAlgorithm = sigAlgo.toCoseAlgorithm().getOrThrow()
             val extLibAlgorithm = when (sigAlgo) {
                 X509SignatureAlgorithm.ES256 -> COSEAlgorithms.ES256
@@ -65,13 +73,14 @@ class CoseServiceJvmTest : FreeSpec({
                 else -> throw IllegalArgumentException("Unknown JweAlgorithm")
             }
 
-            val extLibVerifier = COSEVerifier(keyPair.public as ECPublicKey)
-            val extLibSigner = COSESigner(keyPair.private as ECPrivateKey)
+            val extLibVerifier = COSEVerifier(ephemeralKey.publicKey.getJcaPublicKey().getOrThrow() as ECPublicKey)
+            val extLibSigner = COSESigner(ephemeralKey.platformSpecifics.jcaPrivateKey as ECPrivateKey)
 
-            val cryptoService = DefaultCryptoService(keyPair, sigAlgo)
+
+            val cryptoService = DefaultCryptoService(RandomKeyPairAdapter(ephemeralKey), PlatformCryptoShim())
             val coseService = DefaultCoseService(cryptoService)
             val verifierCoseService = DefaultVerifierCoseService()
-            val coseKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow().toCoseKey().getOrThrow()
+            val coseKey = ephemeralKey.publicKey.toCoseKey().getOrThrow()
 
             val randomPayload = uuid4().toString()
 

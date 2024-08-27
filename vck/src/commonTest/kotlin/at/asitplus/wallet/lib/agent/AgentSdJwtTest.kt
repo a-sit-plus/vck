@@ -91,7 +91,7 @@ class AgentSdJwtTest : FreeSpec({
 
     "keyBindingJws contains more JWK attributes, still verifies" {
         val sdJwt = createSdJwtPresentation(
-            DefaultJwsService(DefaultCryptoService(holderKeyPair)),
+            DefaultJwsService(DefaultCryptoService(holderKeyPair, PlatformCryptoShim())),
             verifier.keyPair.identifier,
             challenge,
             holderCredentialStore.getCredentials().getOrThrow()

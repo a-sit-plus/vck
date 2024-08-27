@@ -106,7 +106,7 @@ interface VerifierJwsService {
 class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
     override val algorithm: JwsAlgorithm =
-        cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow()
+        cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
 
     // TODO: Get from crypto service
     override val encryptionAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES
@@ -120,7 +120,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         contentType: String?
     ): KmmResult<JwsSigned> = createSignedJws(
         JwsHeader(
-            algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow(),
+            algorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             keyId = cryptoService.keyPairAdapter.publicKey.didEncoded,
             type = type,
             contentType = contentType
@@ -128,7 +128,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     )
 
     override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray) = catching {
-        if (header.algorithm != cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm()
+        if (header.algorithm != cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm()
                 .getOrThrow()
             || header.jsonWebKey?.let { it != cryptoService.keyPairAdapter.jsonWebKey } == true
         ) {
@@ -148,10 +148,10 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         addX5c: Boolean
     ): KmmResult<JwsSigned> = catching {
         var copy = header?.copy(
-            algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow()
+            algorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
         )
             ?: JwsHeader(
-                algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm()
+                algorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm()
                     .getOrThrow()
             )
         if (addKeyId)
@@ -182,7 +182,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             header.agreementPartyUInfo,
             header.agreementPartyVInfo
         )
-        val key = cryptoService.messageDigest(kdfInput, Digest.SHA256).getOrThrow()
+        val key = cryptoService.messageDigest(kdfInput, Digest.SHA256)
         val iv = jweObject.iv
         val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
         val ciphertext = jweObject.ciphertext
@@ -200,7 +200,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): KmmResult<JweEncrypted> = catching {
         val crv = recipientKey.curve
             ?: throw IllegalArgumentException("No curve in recipient key")
-        val ephemeralKeyPair = cryptoService.generateEphemeralKeyPair(crv).getOrThrow()
+        val ephemeralKeyPair = cryptoService.generateEphemeralKeyPair(crv)
         val jweHeader = (header ?: JweHeader(jweAlgorithm, jweEncryption, type = null)).copy(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
@@ -220,7 +220,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): KmmResult<JweEncrypted> = catching {
         val crv = recipientKey.curve
             ?: throw IllegalArgumentException("No curve in recipient key")
-        val ephemeralKeyPair = cryptoService.generateEphemeralKeyPair(crv).getOrThrow()
+        val ephemeralKeyPair = cryptoService.generateEphemeralKeyPair(crv)
         val jweHeader = JweHeader(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
@@ -249,7 +249,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
                 jweHeader.agreementPartyUInfo,
                 jweHeader.agreementPartyVInfo
             )
-        val key = cryptoService.messageDigest(kdf, Digest.SHA256).getOrThrow()
+        val key = cryptoService.messageDigest(kdf, Digest.SHA256)
         val iv = Random.nextBytes(jweEncryption.ivLengthBits / 8)
         val headerSerialized = jweHeader.serialize()
         val aad = headerSerialized.encodeToByteArray()

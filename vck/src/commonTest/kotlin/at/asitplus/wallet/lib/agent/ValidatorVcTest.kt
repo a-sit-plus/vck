@@ -40,7 +40,7 @@ class ValidatorVcTest : FreeSpec() {
             issuerCredentialStore = InMemoryIssuerCredentialStore()
             issuerKeyPair = RandomKeyPairAdapter()
             issuer = IssuerAgent(issuerKeyPair, issuerCredentialStore, dataProvider)
-            issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyPair))
+            issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyPair, PlatformCryptoShim()))
             verifierKeyPair = RandomKeyPairAdapter()
             verifier = VerifierAgent(verifierKeyPair)
         }
@@ -365,7 +365,7 @@ class ValidatorVcTest : FreeSpec() {
             jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
                     "." + jwsPayload.encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
-        val signature = DefaultCryptoService(issuerKeyPair).sign(signatureInputBytes)
+        val signature = DefaultCryptoService(issuerKeyPair, PlatformCryptoShim()).sign(signatureInputBytes)
             .getOrElse { return null }
         return JwsSigned(jwsHeader, jwsPayload, signature, signatureInput).serialize()
     }

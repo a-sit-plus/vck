@@ -64,11 +64,11 @@ class IssuerAgent(
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
         validator = Validator(),
-        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
+        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter, PlatformCryptoShim())),
+        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter, PlatformCryptoShim())),
         dataProvider = dataProvider,
         keyPair = keyPairAdapter,
-        cryptoAlgorithms = setOf(keyPairAdapter.signingAlgorithm),
+        cryptoAlgorithms = setOf(keyPairAdapter.signatureAlgorithm),
     )
 
     constructor(
@@ -78,11 +78,11 @@ class IssuerAgent(
     ) : this(
         validator = Validator(),
         issuerCredentialStore = issuerCredentialStore,
-        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
+        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter, PlatformCryptoShim())),
+        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter, PlatformCryptoShim())),
         dataProvider = dataProvider,
         keyPair = keyPairAdapter,
-        cryptoAlgorithms = setOf(keyPairAdapter.signingAlgorithm),
+        cryptoAlgorithms = setOf(keyPairAdapter.signatureAlgorithm),
     )
 
     /**

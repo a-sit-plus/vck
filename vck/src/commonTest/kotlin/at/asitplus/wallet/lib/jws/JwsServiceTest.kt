@@ -10,6 +10,7 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.PlatformCryptoShim
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
@@ -29,7 +30,7 @@ class JwsServiceTest : FreeSpec({
     lateinit var randomPayload: String
 
     beforeEach {
-        cryptoService = DefaultCryptoService(RandomKeyPairAdapter())
+        cryptoService = DefaultCryptoService(RandomKeyPairAdapter(), PlatformCryptoShim())
         jwsService = DefaultJwsService(cryptoService)
         verifierJwsService = DefaultVerifierJwsService()
         randomPayload = uuid4().toString()
