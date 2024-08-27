@@ -12,7 +12,6 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.ktor.util.*
-import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
@@ -20,7 +19,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 
 /**
@@ -113,10 +111,30 @@ class TransactionDataInterop : FreeSpec({
         actualDocumentDigest["documentLocation_uri"] shouldBe expectedDocumentDigest["documentLocation_uri"]
 
         //In order to deal with padding we deserialize and compare the bytearrays
-        actualDocumentDigest["dtbsr"]?.let { vckJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it) } shouldBe expectedDocumentDigest["dtbsr"]?.let { vckJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it) }
+        actualDocumentDigest["dtbsr"]?.let {
+            vckJsonSerializer.decodeFromJsonElement(
+                ByteArrayBase64Serializer,
+                it
+            )
+        } shouldBe expectedDocumentDigest["dtbsr"]?.let {
+            vckJsonSerializer.decodeFromJsonElement(
+                ByteArrayBase64Serializer,
+                it
+            )
+        }
         actualDocumentDigest["dtbsrHashAlgorithmOID"] shouldBe expectedDocumentDigest["dtbsrHashAlgorithmOID"]
         //In order to deal with padding we deserialize and compare the bytearrays
-        actualDocumentDigest["hash"]?.let { vckJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it) } shouldBe expectedDocumentDigest["hash"]?.let { vckJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it) }
+        actualDocumentDigest["hash"]?.let {
+            vckJsonSerializer.decodeFromJsonElement(
+                ByteArrayBase64Serializer,
+                it
+            )
+        } shouldBe expectedDocumentDigest["hash"]?.let {
+            vckJsonSerializer.decodeFromJsonElement(
+                ByteArrayBase64Serializer,
+                it
+            )
+        }
         actualDocumentDigest["hashHashAlgorithmOID"] shouldBe expectedDocumentDigest["hashHashAlgorithmOID"]
 
     }

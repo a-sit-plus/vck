@@ -25,7 +25,7 @@ import kotlinx.serialization.encoding.Encoder
 
 /**
  * Implements "Transaction Data entries as defined in D3.1: UC Specification WP3"
- * leveraging upcoming changes to OpenID4VP `https://github.com/openid/OpenID4VP/pull/197`
+ * leveraging upcoming changes to [OpenID4VP](https://github.com/openid/OpenID4VP/pull/197)
  */
 @Serializable
 sealed class TransactionDataEntry {
@@ -78,7 +78,7 @@ sealed class TransactionDataEntry {
         @SerialName("QC_terms_conditions_uri")
         val qcTermsConditionsUri: String,
         @SerialName("QC_hash")
-        val qcHash:@Serializable(ByteArrayBase64Serializer::class) ByteArray,
+        val qcHash: @Serializable(ByteArrayBase64Serializer::class) ByteArray,
         @SerialName("QC_hashAlgorithmOID")
         val qcHashAlgorithmOID: @Serializable(ObjectIdSerializer::class) ObjectIdentifier,
     ) : TransactionDataEntry() {
