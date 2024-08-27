@@ -5,21 +5,12 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.serializers.LocalDateIso8601Serializer
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.cbor.CborEncoder
-import kotlinx.serialization.cbor.ObjectTags
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.cbor.ValueTags
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
-import kotlinx.serialization.encoding.CompositeDecoder
-import kotlinx.serialization.encoding.CompositeEncoder
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.encoding.decodeStructure
-import kotlinx.serialization.encoding.encodeStructure
+import kotlinx.serialization.encoding.*
 
 object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
 
@@ -44,15 +35,18 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
             element("digestID", Long.serializer().descriptor)
             element("random", ByteArraySerializer().descriptor)
             element("elementIdentifier", String.serializer().descriptor)
-            element("elementValue", buildElementValueSerializer(value.elementValue).descriptor)
+            element(
+                elementName = "elementValue",
+                descriptor = buildElementValueSerializer(value.elementValue).descriptor,
+                annotations = if (value.elementValue is LocalDate || value.elementValue is Instant)
+                    listOf(ValueTags(1004uL)) else emptyList()
+            )
         }
 
         when (val it = value.elementValue) {
             is String -> encodeStringElement(descriptor, index, it)
             is Int -> encodeIntElement(descriptor, index, it)
-            // TODO write tag 1004
-            is LocalDate -> encodeSerializableElement(descriptor, index, LocalDateAdapter.serializer(), LocalDateAdapter(it))
-            // TODO write tag 1004
+            is LocalDate -> encodeSerializableElement(descriptor, index, LocalDate.serializer(), it)
             is Instant -> encodeSerializableElement(descriptor, index, InstantStringSerializer(), it)
             is Boolean -> encodeBooleanElement(descriptor, index, it)
             is ByteArray -> encodeSerializableElement(descriptor, index, ByteArraySerializer(), it)
@@ -110,23 +104,4 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
         }
         throw IllegalArgumentException("Could not decode value at $index")
     }
-}
-
-@OptIn(ExperimentalUnsignedTypes::class)
-@Serializable(with = LocalDateAdapterIso8601Serializer::class)
-@ObjectTags(1004uL)
-data class LocalDateAdapter(val date: LocalDate)
-
-object LocalDateAdapterIso8601Serializer : KSerializer<LocalDateAdapter> {
-    override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("LocalDateAdapterIso8601Serializer", PrimitiveKind.STRING)
-
-    override fun deserialize(decoder: Decoder): LocalDateAdapter {
-        return LocalDateAdapter(LocalDate.parse(decoder.decodeString()))
-    }
-
-    override fun serialize(encoder: Encoder, value: LocalDateAdapter) {
-        encoder.encodeString(value.date.toString())
-    }
-
 }
