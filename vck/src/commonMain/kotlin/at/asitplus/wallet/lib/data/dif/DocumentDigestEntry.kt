@@ -31,7 +31,7 @@ data class DocumentDigestEntry private constructor(
      * base64 encoded octet representation generated using dtbsrAlgorithmOID
      */
     @SerialName("dtbsr")
-    val dtbsr: @Serializable(ByteArrayBase64Serializer::class) ByteArray? = null,
+    val dataToBeSignedRepresentation: @Serializable(ByteArrayBase64Serializer::class) ByteArray? = null,
     @SerialName("dtbsrHashAlgorithmOID")
     val dtbsrHashAlgorithmOID: @Serializable(ObjectIdSerializer::class) ObjectIdentifier? = null,
 ) {
@@ -46,9 +46,9 @@ data class DocumentDigestEntry private constructor(
      * - [hash] or [dtbsr]
      */
     init {
-        require(hash != null || dtbsr != null)
+        require(hash != null || dataToBeSignedRepresentation != null)
         require(hashAlgorithmOID?.toString() iff hash?.toString())
-        require(dtbsrHashAlgorithmOID?.toString() iff dtbsr?.toString())
+        require(dtbsrHashAlgorithmOID?.toString() iff dataToBeSignedRepresentation?.toString())
         require(documentLocationUri?.toString() iff hash?.toString())
         require(documentLocationMethod?.toString() iff documentLocationUri?.toString())
     }
@@ -67,10 +67,10 @@ data class DocumentDigestEntry private constructor(
         if (hashAlgorithmOID != other.hashAlgorithmOID) return false
         if (documentLocationUri != other.documentLocationUri) return false
         if (documentLocationMethod != other.documentLocationMethod) return false
-        if (dtbsr != null) {
-            if (other.dtbsr == null) return false
-            if (!dtbsr.contentEquals(other.dtbsr)) return false
-        } else if (other.dtbsr != null) return false
+        if (dataToBeSignedRepresentation != null) {
+            if (other.dataToBeSignedRepresentation == null) return false
+            if (!dataToBeSignedRepresentation.contentEquals(other.dataToBeSignedRepresentation)) return false
+        } else if (other.dataToBeSignedRepresentation != null) return false
         if (dtbsrHashAlgorithmOID != other.dtbsrHashAlgorithmOID) return false
 
         return true
@@ -82,7 +82,7 @@ data class DocumentDigestEntry private constructor(
         result = 31 * result + (hashAlgorithmOID?.hashCode() ?: 0)
         result = 31 * result + (documentLocationUri?.hashCode() ?: 0)
         result = 31 * result + (documentLocationMethod?.hashCode() ?: 0)
-        result = 31 * result + (dtbsr?.contentHashCode() ?: 0)
+        result = 31 * result + (dataToBeSignedRepresentation?.contentHashCode() ?: 0)
         result = 31 * result + (dtbsrHashAlgorithmOID?.hashCode() ?: 0)
         return result
     }
@@ -94,7 +94,7 @@ data class DocumentDigestEntry private constructor(
         val oneTimePassword: String? = null,
     ) {
         /**
-         * If [document_access_mode] is [OTP], [oneTimePassword] must be
+         * If [method] is `OTP`, [oneTimePassword] must be
          * present.
          */
         init {
@@ -107,9 +107,9 @@ data class DocumentDigestEntry private constructor(
         /**
          * this is potentially a mistake in the draft spec vs test vector,
          * currently we need it to be a sealed class with polymorphic serialization to get the structure
-         * method: {type: NAME}
+         * `method: {type: NAME}`
          * sealed class would instead serialize to
-         * method: NAME
+         * `method: NAME`
          * which might be the corrected implementation in the next draft
          */
         @Serializable
@@ -167,7 +167,7 @@ data class DocumentDigestEntry private constructor(
                     hashAlgorithmOID = hashAlgorithmOID,
                     documentLocationUri = documentLocationUri,
                     documentLocationMethod = documentLocationMethod,
-                    dtbsr = dtbsr,
+                    dataToBeSignedRepresentation = dtbsr,
                     dtbsrHashAlgorithmOID = dtbsrHashAlgorithmOID,
                 )
             }.wrap()
