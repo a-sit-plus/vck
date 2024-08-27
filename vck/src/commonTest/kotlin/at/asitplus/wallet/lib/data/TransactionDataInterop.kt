@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.jsonpath.JsonPath
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import at.asitplus.wallet.lib.data.dif.Base64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
@@ -17,6 +17,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 
 /**
@@ -82,25 +83,61 @@ class TransactionDataInterop : FreeSpec({
     }
 
     "TransactionDataEntry.QesAuthorization can be parsed" {
-        val testVector = "ewogICJ0eXBlIjogInFlc19hdXRob3JpemF0aW9uIiwKICAic2lnbmF0dXJlUXVhbGlmaWVyIjogImV1X2VpZGFzX3FlcyIsCiAgImNyZWRlbnRpYWxJRCI6ICJvRW92QzJFSEZpRUZyRHBVeDhtUjBvN3llR0hrMmg3NGIzWHl3a05nQkdvPSIsCiAgImRvY3VtZW50RGlnZXN0cyI6IFsKICAgIHsKICAgICAgImxhYmVsIjogIkV4YW1wbGUgQ29udHJhY3QiLAogICAgICAiaGFzaCI6ICJzVE9nd09tKzQ3NGdGajBxMHgxaVNOc3BLcWJjc2U0SWVpcWxEZy9IV3VJPSIsCiAgICAgICJoYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiLAogICAgICAiZG9jdW1lbnRMb2NhdGlvbl91cmkiOiAiaHR0cHM6Ly9wcm90ZWN0ZWQucnAuZXhhbXBsZS9jb250cmFjdC0wMS5wZGY_dG9rZW49SFM5bmFKS1d3cDkwMWhCY0szNDhJVUhpdUg4Mzc0IiwKICAgICAgImRvY3VtZW50TG9jYXRpb25fbWV0aG9kIjogewogICAgICAgICJtZXRob2QiOiB7CiAgICAgICAgICAidHlwZSI6ICJwdWJsaWMiCiAgICAgICAgfQogICAgICB9LAogICAgICAiZHRic3IiOiAiVllEbDRvVGVKNVRtSVBDWEtkVFgxTVNXUkxJOUNLWWN5TVJ6NnhsYUdnIiwKICAgICAgImR0YnNySGFzaEFsZ29yaXRobU9JRCI6ICIyLjE2Ljg0MC4xLjEwMS4zLjQuMi4xIgogICAgfQogIF0sCiAgInByb2Nlc3NJRCI6ICJlT1o2VXdYeWVGTEs5OERvNTF4MzNmbXV2NE9xQXo1WmM0bHNoS050RWdRPSIKfQ"
-        val transactionData = runCatching { vckJsonSerializer.decodeFromString(Base64URLTransactionDataSerializer, vckJsonSerializer.encodeToString(testVector)) }.getOrNull()
+        val testVector =
+            "ewogICJ0eXBlIjogInFlc19hdXRob3JpemF0aW9uIiwKICAic2lnbmF0dXJlUXVhbGlmaWVyIjogImV1X2VpZGFzX3FlcyIsCiAgImNyZWRlbnRpYWxJRCI6ICJvRW92QzJFSEZpRUZyRHBVeDhtUjBvN3llR0hrMmg3NGIzWHl3a05nQkdvPSIsCiAgImRvY3VtZW50RGlnZXN0cyI6IFsKICAgIHsKICAgICAgImxhYmVsIjogIkV4YW1wbGUgQ29udHJhY3QiLAogICAgICAiaGFzaCI6ICJzVE9nd09tKzQ3NGdGajBxMHgxaVNOc3BLcWJjc2U0SWVpcWxEZy9IV3VJPSIsCiAgICAgICJoYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiLAogICAgICAiZG9jdW1lbnRMb2NhdGlvbl91cmkiOiAiaHR0cHM6Ly9wcm90ZWN0ZWQucnAuZXhhbXBsZS9jb250cmFjdC0wMS5wZGY_dG9rZW49SFM5bmFKS1d3cDkwMWhCY0szNDhJVUhpdUg4Mzc0IiwKICAgICAgImRvY3VtZW50TG9jYXRpb25fbWV0aG9kIjogewogICAgICAgICJtZXRob2QiOiB7CiAgICAgICAgICAidHlwZSI6ICJwdWJsaWMiCiAgICAgICAgfQogICAgICB9LAogICAgICAiZHRic3IiOiAiVllEbDRvVGVKNVRtSVBDWEtkVFgxTVNXUkxJOUNLWWN5TVJ6NnhsYUdnIiwKICAgICAgImR0YnNySGFzaEFsZ29yaXRobU9JRCI6ICIyLjE2Ljg0MC4xLjEwMS4zLjQuMi4xIgogICAgfQogIF0sCiAgInByb2Nlc3NJRCI6ICJlT1o2VXdYeWVGTEs5OERvNTF4MzNmbXV2NE9xQXo1WmM0bHNoS050RWdRPSIKfQ"
+        val transactionData = runCatching {
+            vckJsonSerializer.decodeFromString(
+                Base64URLTransactionDataSerializer,
+                vckJsonSerializer.encodeToString(testVector)
+            )
+        }.getOrNull()
         transactionData shouldNotBe null
-        val expected = vckJsonSerializer.decodeFromString<JsonElement>(testVector.decodeToByteArray(Base64UrlStrict).decodeToString()).canonicalize()
-        val actual = vckJsonSerializer.encodeToJsonElement(transactionData).canonicalize()
-        actual shouldBe expected
+        val expected = vckJsonSerializer.decodeFromString<JsonElement>(
+            testVector.decodeToByteArray(Base64UrlStrict).decodeToString()
+        ).canonicalize() as JsonObject
+        val actual = vckJsonSerializer.encodeToJsonElement(transactionData).canonicalize() as JsonObject
+
+        //Manual comparison of every member to deal with Base64 encoding below
+        actual["credentialID"] shouldBe expected["credentialID"]
+        actual["processID"] shouldBe expected["processID"]
+        actual["signatureQualifier"] shouldBe expected["signatureQualifier"]
+        actual["type"] shouldBe expected["type"]
+
+        val expectedDocumentDigest = (expected["documentDigests"] as JsonArray).first() as JsonObject
+        val actualDocumentDigest = (actual["documentDigests"] as JsonArray).first() as JsonObject
+
+        actualDocumentDigest["documentLocation_method"] shouldBe expectedDocumentDigest["documentLocation_method"]
+        actualDocumentDigest["documentLocation_uri"] shouldBe expectedDocumentDigest["documentLocation_uri"]
+
+        //In order to deal with padding we deserialize and compare the bytearrays
+        actualDocumentDigest["dtbsr"]?.let { vckJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it) } shouldBe expectedDocumentDigest["dtbsr"]?.let { vckJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it) }
+        actualDocumentDigest["dtbsrHashAlgorithmOID"] shouldBe expectedDocumentDigest["dtbsrHashAlgorithmOID"]
+        //In order to deal with padding we deserialize and compare the bytearrays
+        actualDocumentDigest["hash"]?.let { vckJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it) } shouldBe expectedDocumentDigest["hash"]?.let { vckJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it) }
+        actualDocumentDigest["hashHashAlgorithmOID"] shouldBe expectedDocumentDigest["hashHashAlgorithmOID"]
+
     }
 
     "TransactionDataEntry.QCertCreationAcceptance can be parsed" {
-        val testVector = "ew0KICAidHlwZSI6ICJxY2VydF9jcmVhdGlvbl9hY2NlcHRhbmNlIiwNCiAgIlFDX3Rlcm1zX2NvbmRpdGlvbnNfdXJpIjogImh0dHBzOi8vZXhhbXBsZS5jb20vdG9zIiwNCiAgIlFDX2hhc2giOiAia1hBZ3dEY2RBZTNvYnhwbzhVb0RrQy1ELWI3T0NyRG84SU9HWmpTWDhfTT0iLA0KICAiUUNfaGFzaEFsZ29yaXRobU9JRCI6ICIyLjE2Ljg0MC4xLjEwMS4zLjQuMi4xIg0KfQ=="
-        val transactionData = runCatching { vckJsonSerializer.decodeFromString(Base64URLTransactionDataSerializer, vckJsonSerializer.encodeToString(testVector)) }.getOrNull()
+        val testVector =
+            "ew0KICAidHlwZSI6ICJxY2VydF9jcmVhdGlvbl9hY2NlcHRhbmNlIiwNCiAgIlFDX3Rlcm1zX2NvbmRpdGlvbnNfdXJpIjogImh0dHBzOi8vZXhhbXBsZS5jb20vdG9zIiwNCiAgIlFDX2hhc2giOiAia1hBZ3dEY2RBZTNvYnhwbzhVb0RrQy1ELWI3T0NyRG84SU9HWmpTWDhfTT0iLA0KICAiUUNfaGFzaEFsZ29yaXRobU9JRCI6ICIyLjE2Ljg0MC4xLjEwMS4zLjQuMi4xIg0KfQ=="
+        val transactionData = runCatching {
+            vckJsonSerializer.decodeFromString(
+                Base64URLTransactionDataSerializer,
+                vckJsonSerializer.encodeToString(testVector)
+            )
+        }.getOrNull()
         transactionData shouldNotBe null
-        val expected = vckJsonSerializer.decodeFromString<JsonElement>(testVector.decodeToByteArray(Base64UrlStrict).decodeToString()).canonicalize()
+        val expected = vckJsonSerializer.decodeFromString<JsonElement>(
+            testVector.decodeToByteArray(Base64UrlStrict).decodeToString()
+        ).canonicalize()
         val actual = vckJsonSerializer.encodeToJsonElement(transactionData).canonicalize()
         actual shouldBe expected
     }
 
     "The presentation Definition can be parsed" {
-        val presentationDefinition = runCatching { vckJsonSerializer.decodeFromString<PresentationDefinition>(presentationDefinitionAsJsonString) }.getOrNull()
+        val presentationDefinition =
+            runCatching { vckJsonSerializer.decodeFromString<PresentationDefinition>(presentationDefinitionAsJsonString) }.getOrNull()
         Napier.d(presentationDefinition.toString())
         presentationDefinition shouldNotBe null
         presentationDefinition?.inputDescriptors?.first()?.transactionData shouldNotBe null

@@ -38,7 +38,7 @@ sealed class TransactionDataEntry {
 
         /**
          * At least one of the mentioned parameters must be present:
-         *  “signatureQualifier” or “credentialID”
+         * - “signatureQualifier” or “credentialID”
          */
         init {
             require(signatureQualifier != null || credentialID != null)
