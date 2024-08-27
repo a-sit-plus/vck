@@ -56,6 +56,23 @@ class OidvciProcessTest : FunSpec({
         vcJws.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
     }
 
+    test("can't cash in token twice") {
+        val requestOptions = WalletService.RequestOptions(
+            ConstantIndex.AtomicAttribute2023,
+            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
+        )
+        val authnRequest = client.createAuthRequest(requestOptions)
+        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+        val code = authnResponse.params.code.shouldNotBeNull()
+        val tokenRequest = client.createTokenRequestParameters(
+            requestOptions = requestOptions,
+            authorization = WalletService.AuthorizationForToken.Code(code)
+        )
+        authorizationService.token(tokenRequest).isSuccess shouldBe true
+        authorizationService.token(tokenRequest).isFailure shouldBe true
+    }
+
     test("process with W3C VC JWT, authorizationService with defect mapstore") {
         authorizationService = SimpleAuthorizationService(
             dataProvider = DummyOAuth2DataProvider,
