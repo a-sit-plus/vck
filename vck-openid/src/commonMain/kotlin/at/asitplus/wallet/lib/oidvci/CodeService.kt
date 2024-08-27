@@ -6,7 +6,7 @@ interface CodeService {
 
     fun provideCode(): String
 
-    fun verifyCode(it: String): Boolean
+    fun verifyAndRemove(it: String): Boolean
 
 }
 
@@ -18,7 +18,7 @@ class DefaultCodeService : CodeService {
         return uuid4().toString().also { validCodes += it }
     }
 
-    override fun verifyCode(it: String): Boolean {
+    override fun verifyAndRemove(it: String): Boolean {
         return validCodes.remove(it)
     }
 }

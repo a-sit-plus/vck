@@ -13,8 +13,6 @@ import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -119,17 +117,17 @@ class SimpleAuthorizationService(
     suspend fun token(params: TokenRequestParameters) = catching {
         val userInfo: OidcUserInfoExtended = when (params.grantType) {
             OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
-                if (params.code == null || !codeService.verifyCode(params.code))
+                if (params.code == null || !codeService.verifyAndRemove(params.code))
                     throw OAuth2Exception(Errors.INVALID_CODE)
                         .also { Napier.w("token: client did not provide correct code") }
-                codeToUserInfoStore.get(params.code)
+                codeToUserInfoStore.remove(params.code)
             }
 
             OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
-                if (params.preAuthorizedCode == null || !codeService.verifyCode(params.preAuthorizedCode))
+                if (params.preAuthorizedCode == null || !codeService.verifyAndRemove(params.preAuthorizedCode))
                     throw OAuth2Exception(Errors.INVALID_GRANT)
                         .also { Napier.w("token: client did not provide pre authorized code") }
-                codeToUserInfoStore.get(params.preAuthorizedCode)
+                codeToUserInfoStore.remove(params.preAuthorizedCode)
             }
 
             else -> {
@@ -148,7 +146,7 @@ class SimpleAuthorizationService(
 
         params.codeVerifier?.let { codeVerifier ->
             params.code?.let { code ->
-                codeToCodeChallengeStore.get(code)?.let { codeChallenge ->
+                codeToCodeChallengeStore.remove(code)?.let { codeChallenge ->
                     val codeChallengeCalculated =
                         codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
                     if (codeChallenge != codeChallengeCalculated) {
