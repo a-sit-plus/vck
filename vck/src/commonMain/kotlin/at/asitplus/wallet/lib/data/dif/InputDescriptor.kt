@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Data class for
- * [DIF Presentation Exchange v2.1.1](https://identity.foundation/presentation-exchange/spec/v1.0.0/#presentation-definition)
+ * [DIF Presentation Exchange v2.1.1](https://identity.foundation/presentation-exchange/spec/v2.1.1/#term:presentation-definition)
  */
 @Serializable
 data class InputDescriptor(
