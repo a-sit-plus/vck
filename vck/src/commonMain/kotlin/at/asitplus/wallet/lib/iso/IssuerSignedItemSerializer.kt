@@ -3,10 +3,10 @@ package at.asitplus.wallet.lib.iso
 import at.asitplus.wallet.lib.data.InstantStringSerializer
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.serializers.LocalDateIso8601Serializer
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.cbor.CborDecoder
 import kotlinx.serialization.cbor.ValueTags
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
@@ -74,7 +74,7 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
         decoder.decodeStructure(descriptor) {
             while (true) {
                 val name = decodeStringElement(descriptor, 0)
-                val index = descriptor.getElementIndex(name)
+                val index = descriptor.getElementIndex(name) //todo: decodeElementIndex does not work here, but is the only function that parses tags
                 when (name) {
                     "digestID" -> digestId = decodeLongElement(descriptor, index).toUInt()
                     "random" -> random = decodeSerializableElement(descriptor, index, ByteArraySerializer())
@@ -93,11 +93,17 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
     }
 
     private fun CompositeDecoder.decodeAnything(index: Int): Any {
-        runCatching { return decodeStringElement(descriptor, index) }
-        runCatching { return decodeSerializableElement(descriptor, index, ByteArraySerializer()) }
-        runCatching { return decodeBooleanElement(descriptor, index) }
-        runCatching { return decodeSerializableElement(descriptor, index, LocalDate.serializer()) }
-        runCatching { return decodeSerializableElement(descriptor, index, InstantStringSerializer()) }
+
+        //TODO: tags are not read out here because `decodeElementIndex` is never called, so we cannot discriminate
+
+        //TODO: this fails, because the date is a valid string, but date parsing does not work, so the data was already consumed from the source and parsing it again will fail
+
+
+        runCatching { return decodeSerializableElement(descriptor, index, LocalDate.serializer()) }.exceptionOrNull()?.printStackTrace()
+        runCatching { return decodeSerializableElement(descriptor, index, InstantStringSerializer()) }.exceptionOrNull()?.printStackTrace()
+        runCatching { return decodeStringElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
+        runCatching { return decodeSerializableElement(descriptor, index, ByteArraySerializer()) }.exceptionOrNull()?.printStackTrace()
+        runCatching { return decodeBooleanElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
         runCatching {
             return CborCredentialSerializer.decode(descriptor, index, this)
                 ?: throw IllegalArgumentException("Could not decode value at $index")

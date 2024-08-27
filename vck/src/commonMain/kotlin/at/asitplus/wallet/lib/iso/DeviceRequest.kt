@@ -364,6 +364,7 @@ data class IssuerSignedItem(
     @SerialName("elementIdentifier")
     val elementIdentifier: String,
     @SerialName("elementValue")
+    @ValueTags(1004uL)
     val elementValue: Any,
 ) {
 

@@ -38,7 +38,7 @@ internal object CborCredentialSerializer {
 
     fun decode(descriptor: SerialDescriptor, index: Int, compositeDecoder: CompositeDecoder): Any? =
         decoderFunctions.firstNotNullOfOrNull {
-            runCatching { it.invoke(descriptor, index, compositeDecoder) }.getOrNull()
+            runCatching { it.invoke(descriptor, index, compositeDecoder) }.getOrElse { it.printStackTrace(); null }
         }
 }
 
