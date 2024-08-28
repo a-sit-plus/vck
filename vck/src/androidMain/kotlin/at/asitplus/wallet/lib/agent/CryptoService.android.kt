@@ -70,12 +70,13 @@ actual open class PlatformCryptoShim actual constructor(actual val keyPairAdapte
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
-    ): KmmResult<ByteArray> = TODO()
+    ): KmmResult<ByteArray> {
+        return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
+    }
 
-    actual fun performKeyAgreement(
-        ephemeralKey: JsonWebKey,
-        algorithm: JweAlgorithm
-    ): KmmResult<ByteArray> = TODO()
+    actual fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
+        return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
+    }
 
 }
 
