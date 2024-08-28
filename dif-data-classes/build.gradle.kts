@@ -25,6 +25,7 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(project.napier())
+                api("com.benasher44:uuid:${VcLibVersions.uuid}")
                 api(serialization("json"))
                 api(serialization("cbor"))
                 api(datetime())

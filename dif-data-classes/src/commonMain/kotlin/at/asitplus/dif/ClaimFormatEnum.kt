@@ -19,6 +19,6 @@ enum class ClaimFormatEnum(val text: String) {
     MSO_MDOC("mso_mdoc");
 
     companion object {
-        fun parse(text: String) = values().firstOrNull { it.text == text }
+        fun parse(text: String) = entries.firstOrNull { it.text == text }
     }
 }
