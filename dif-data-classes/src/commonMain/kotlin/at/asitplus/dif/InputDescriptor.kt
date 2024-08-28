@@ -1,9 +1,7 @@
-package at.asitplus.wallet.lib.data.dif
+package at.asitplus.dif
 
-import at.asitplus.dif.Constraint
-import at.asitplus.dif.FormatHolder
-import at.asitplus.wallet.lib.data.rqes.Base64URLTransactionDataSerializer
-import at.asitplus.wallet.lib.data.rqes.TransactionDataEntry
+import at.asitplus.dif.rqes.Base64URLTransactionDataSerializer
+import at.asitplus.dif.rqes.TransactionDataEntry
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

@@ -1,13 +1,12 @@
 @file:UseSerializers(UrlSerializer::class)
 
-package at.asitplus.wallet.lib.data.rqes
+package at.asitplus.dif.rqes
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
-import at.asitplus.wallet.lib.data.dif.UrlSerializer
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -26,7 +25,7 @@ data class DocumentDigestEntry private constructor(
      */
     @SerialName("label")
     val label: String,
-    
+
     /**
      * D3.1: UC Specification WP3: OPTIONAL.
      * String containing the base64-encoded
@@ -39,7 +38,7 @@ data class DocumentDigestEntry private constructor(
     @SerialName("hash")
     @Serializable(ByteArrayBase64Serializer::class)
     val hash: ByteArray? = null,
-    
+
     /**
      * D3.1: UC Specification WP3: OPTIONAL.
      * String containing the OID of the
@@ -49,7 +48,7 @@ data class DocumentDigestEntry private constructor(
     @SerialName("hashAlgorithmOID")
     @Serializable(ObjectIdSerializer::class)
     val hashAlgorithmOID: ObjectIdentifier? = null,
-    
+
     /**
      * D3.1: UC Specification WP3: OPTIONAL.
      * URL to the document
@@ -59,7 +58,7 @@ data class DocumentDigestEntry private constructor(
      */
     @SerialName("documentLocation_uri")
     val documentLocationUri: Url? = null,
-    
+
     /**
      * D3.1: UC Specification WP3: OPTIONAL.
      * An object with
@@ -68,7 +67,7 @@ data class DocumentDigestEntry private constructor(
      */
     @SerialName("documentLocation_method")
     val documentLocationMethod: DocumentLocationMethod? = null,
-    
+
     /**
      * D3.1: UC Specification WP3: OPTIONAL.
      * String containing data to be signed
@@ -79,7 +78,7 @@ data class DocumentDigestEntry private constructor(
     @SerialName("dtbsr")
     @Serializable(ByteArrayBase64Serializer::class)
     val dataToBeSignedRepresentation: ByteArray? = null,
-    
+
     /**
      * D3.1: UC Specification WP3: OPTIONAL.
      * String containing the

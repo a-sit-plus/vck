@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.data.dif
+package at.asitplus.dif.rqes
 
 import io.ktor.http.*
 import kotlinx.serialization.KSerializer

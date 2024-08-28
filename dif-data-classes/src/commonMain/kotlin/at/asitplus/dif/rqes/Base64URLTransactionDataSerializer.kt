@@ -1,7 +1,7 @@
-package at.asitplus.wallet.lib.data.rqes
+package at.asitplus.dif.rqes
 
+import at.asitplus.dif.jsonSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.KSerializer
@@ -24,11 +24,11 @@ object Base64URLTransactionDataSerializer : KSerializer<TransactionDataEntry> {
     override fun deserialize(decoder: Decoder): TransactionDataEntry {
         val jsonString = decoder.decodeString()
         val base64URLString = jsonString.decodeToByteArray(Base64UrlStrict).decodeToString()
-        return vckJsonSerializer.decodeFromString<TransactionDataEntry>(base64URLString)
+        return jsonSerializer.decodeFromString<TransactionDataEntry>(base64URLString)
     }
 
     override fun serialize(encoder: Encoder, value: TransactionDataEntry) {
-        val jsonString = vckJsonSerializer.encodeToString<TransactionDataEntry>(value)
+        val jsonString = jsonSerializer.encodeToString<TransactionDataEntry>(value)
         val base64URLString = jsonString.encodeToByteArray().encodeToString(Base64UrlStrict)
         encoder.encodeString(base64URLString)
     }

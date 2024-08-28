@@ -1,13 +1,12 @@
 @file:UseSerializers(UrlSerializer::class)
 
-package at.asitplus.wallet.lib.data.rqes
+package at.asitplus.dif.rqes
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
-import at.asitplus.wallet.lib.data.dif.UrlSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
