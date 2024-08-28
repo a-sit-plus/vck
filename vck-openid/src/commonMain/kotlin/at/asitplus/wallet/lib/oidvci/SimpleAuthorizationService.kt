@@ -94,11 +94,11 @@ class SimpleAuthorizationService(
             code = code,
             state = request.state,
         )
-        if (request.codeChallenge != null) {
-            codeToCodeChallengeStore.put(code, request.codeChallenge)
+        request.codeChallenge?.let {
+            codeToCodeChallengeStore.put(code, it)
         }
         // TODO Also implement POST?
-        val url = URLBuilder(request.redirectUrl)
+        val url = URLBuilder(request.redirectUrl!!)
             .apply { responseParams.encodeToParameters().forEach { this.parameters.append(it.key, it.value) } }
             .buildString()
 
@@ -115,17 +115,17 @@ class SimpleAuthorizationService(
     suspend fun token(params: TokenRequestParameters) = catching {
         val userInfo: OidcUserInfoExtended = when (params.grantType) {
             OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
-                if (params.code == null || !codeService.verifyAndRemove(params.code))
+                if (params.code == null || !codeService.verifyAndRemove(params.code!!))
                     throw OAuth2Exception(Errors.INVALID_CODE)
                         .also { Napier.w("token: client did not provide correct code") }
-                codeToUserInfoStore.remove(params.code)
+                params.code?.let { codeToUserInfoStore.remove(it) }
             }
 
             OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
-                if (params.preAuthorizedCode == null || !codeService.verifyAndRemove(params.preAuthorizedCode))
+                if (params.preAuthorizedCode == null || !codeService.verifyAndRemove(params.preAuthorizedCode!!))
                     throw OAuth2Exception(Errors.INVALID_GRANT)
                         .also { Napier.w("token: client did not provide pre authorized code") }
-                codeToUserInfoStore.remove(params.preAuthorizedCode)
+                params.preAuthorizedCode?.let { codeToUserInfoStore.remove(it) }
             }
 
             else -> {

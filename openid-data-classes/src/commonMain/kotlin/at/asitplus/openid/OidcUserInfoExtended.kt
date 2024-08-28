@@ -17,14 +17,14 @@ data class OidcUserInfoExtended(
     companion object {
         fun deserialize(it: String): KmmResult<OidcUserInfoExtended> =
             runCatching {
-                val jsonObject = at.asitplus.wallet.lib.oidvci.jsonSerializer.decodeFromString<JsonObject>(it)
-                val userInfo = at.asitplus.wallet.lib.oidvci.jsonSerializer.decodeFromJsonElement<OidcUserInfo>(jsonObject)
+                val jsonObject = jsonSerializer.decodeFromString<JsonObject>(it)
+                val userInfo = jsonSerializer.decodeFromJsonElement<OidcUserInfo>(jsonObject)
                 OidcUserInfoExtended(userInfo, jsonObject)
             }.wrap()
 
         fun fromOidcUserInfo(userInfo: OidcUserInfo): KmmResult<OidcUserInfoExtended> =
             runCatching {
-                OidcUserInfoExtended(userInfo, at.asitplus.wallet.lib.oidvci.jsonSerializer.encodeToJsonElement(userInfo) as JsonObject)
+                OidcUserInfoExtended(userInfo, jsonSerializer.encodeToJsonElement(userInfo) as JsonObject)
             }.wrap()
     }
 }

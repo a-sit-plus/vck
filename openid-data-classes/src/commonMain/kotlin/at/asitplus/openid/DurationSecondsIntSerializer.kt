@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.data
+package at.asitplus.openid
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -8,6 +8,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+
 
 object DurationSecondsIntSerializer : KSerializer<Duration> {
 

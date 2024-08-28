@@ -1,7 +1,7 @@
 package at.asitplus.openid
 
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.wallet.lib.data.InstantLongSerializer
+import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import at.asitplus.dif.PresentationSubmission
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName

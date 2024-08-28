@@ -41,6 +41,8 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlin.random.Random
 
