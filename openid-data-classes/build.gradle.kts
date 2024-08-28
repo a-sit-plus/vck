@@ -1,7 +1,4 @@
-import at.asitplus.gradle.commonImplementationDependencies
-import at.asitplus.gradle.commonIosExports
-import at.asitplus.gradle.exportIosFramework
-import at.asitplus.gradle.setupDokka
+import at.asitplus.gradle.*
 
 plugins {
     kotlin("multiplatform")
@@ -27,38 +24,43 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(project(":vck"))
-                api(project(":openid-data-classes"))
-                commonImplementationDependencies()
+                implementation(project.napier())
+                api(serialization("json"))
+                api(serialization("cbor"))
+                api(datetime())
+                api("com.ionspin.kotlin:bignum:${signumVersionCatalog.findVersion("bignum").get()}")
+                api(kmmresult())
+                api("at.asitplus.signum:indispensable:${VcLibVersions.signum}")
+                api("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}")
+                api("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
+                api("at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}")
+                api("io.matthewnelson.encoding:core:${AspVersions.versions["encoding"]}")
+                api("io.matthewnelson.encoding:base16:${AspVersions.versions["encoding"]}")
+                api("io.matthewnelson.encoding:base64:${AspVersions.versions["encoding"]}")
             }
         }
 
         commonTest {
             dependencies {
-                implementation("at.asitplus.wallet:eupidcredential:${VcLibVersions.eupidcredential}")
-                implementation("at.asitplus.wallet:mobiledrivinglicence:${VcLibVersions.mdl}")
             }
         }
 
         jvmMain {
             dependencies {
-                implementation(signum.bcpkix.jdk18on)
             }
         }
 
         jvmTest {
             dependencies {
-                implementation(signum.jose)
-                implementation("org.json:json:${VcLibVersions.Jvm.json}")
             }
         }
     }
 }
 
 exportIosFramework(
-    "VckOpenIdKmm",
+    "OpenIdDataClasses",
     static = false,
-    *commonIosExports(), project(":vck")
+    *commonIosExports(),
 )
 
 val javadocJar = setupDokka(
@@ -71,8 +73,8 @@ publishing {
         withType<MavenPublication> {
             if (this.name != "relocation") artifact(javadocJar)
             pom {
-                name.set("VC-K OpenID")
-                description.set("Kotlin Multiplatform library implementing the W3C VC Data Model, with OpenId protocol implementations")
+                name.set("OpenID Data Classes")
+                description.set("Kotlin Multiplatform data classes for OpenId")
                 url.set("https://github.com/a-sit-plus/vck")
                 licenses {
                     license {
@@ -96,23 +98,6 @@ publishing {
                     connection.set("scm:git:git@github.com:a-sit-plus/vck.git")
                     developerConnection.set("scm:git:git@github.com:a-sit-plus/vck.git")
                     url.set("https://github.com/a-sit-plus/vck")
-                }
-            }
-        }
-        //REMOVE ME AFTER REBRANDED ARTIFACT HAS BEEN PUBLISHED
-        create<MavenPublication>("relocation") {
-            pom {
-                // Old artifact coordinates
-                artifactId = "vclib-openid"
-                version = artifactVersion
-
-                distributionManagement {
-                    relocation {
-                        // New artifact coordinates
-                        artifactId = "vck-openid"
-                        version = artifactVersion
-                        message = " artifactId have been changed"
-                    }
                 }
             }
         }

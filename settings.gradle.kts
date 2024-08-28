@@ -25,6 +25,7 @@ rootProject.name = "vc-k"
 include(":vck")
 include(":vck-aries")
 include(":vck-openid")
+include(":openid-data-classes")
 
 dependencyResolutionManagement {
     repositories.add(repositories.mavenCentral())
