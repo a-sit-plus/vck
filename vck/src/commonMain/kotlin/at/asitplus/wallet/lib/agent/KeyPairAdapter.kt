@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
@@ -52,7 +53,14 @@ abstract class DefaultKeyPairAdapter(
 /**
  * Generate a new key pair adapter with a random key, e.g. used in tests
  */
-class RandomKeyPairAdapter(val key: EphemeralKey = EphemeralKey { ec {} }) :
+class RandomKeyPairAdapter(
+    val key: EphemeralKey = EphemeralKey {
+        ec {
+            curve = ECCurve.SECP_256_R_1
+            digests = setOf(Digest.SHA256)
+        }
+    }
+) :
     DefaultKeyPairAdapter(key.signer(), listOf())
 
 interface EphemeralKeyHolder {
@@ -62,7 +70,13 @@ interface EphemeralKeyHolder {
 }
 
 open class DefaultEphemeralKeyHolder(val crv: ECCurve) : EphemeralKeyHolder {
-    override val key: EphemeralKey = EphemeralKey { ec { curve = crv } }
+    override val key: EphemeralKey = EphemeralKey {
+        ec {
+            curve = crv
+            digests =
+                setOf(Digest.entries.first { it.name.startsWith(crv.scalarLength.bits.toString().subSequence(0, 1)) })
+        }
+    }
     override val publicJsonWebKey: JsonWebKey?
         get() = key.publicKey.toJsonWebKey()
 

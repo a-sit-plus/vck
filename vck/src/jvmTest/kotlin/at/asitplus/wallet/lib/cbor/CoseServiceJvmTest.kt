@@ -56,7 +56,8 @@ class CoseServiceJvmTest : FreeSpec({
             }
             val ephemeralKey = EphemeralKey {
                 ec {
-                    curve = when(thisConfiguration.second) { 256 -> ECCurve.SECP_256_R_1
+                    curve = when(thisConfiguration.second) {
+                        256 -> ECCurve.SECP_256_R_1
                         384 ->  ECCurve.SECP_384_R_1
                         521 ->  ECCurve.SECP_521_R_1
                         else -> throw IllegalArgumentException("Unknown EC Curve size") // necessary(compiler), but otherwise redundant else-branch
