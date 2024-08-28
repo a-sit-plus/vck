@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023

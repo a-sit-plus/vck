@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -12,8 +13,8 @@ import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
-import at.asitplus.wallet.lib.oidvci.OidcUserInfo
-import at.asitplus.wallet.lib.oidvci.OidcUserInfoExtended
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME

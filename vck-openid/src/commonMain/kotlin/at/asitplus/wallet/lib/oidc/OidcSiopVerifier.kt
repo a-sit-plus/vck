@@ -13,6 +13,7 @@ import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
+import at.asitplus.openid.*
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.Verifier
@@ -23,32 +24,30 @@ import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
-import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
-import at.asitplus.wallet.lib.data.dif.Constraint
-import at.asitplus.wallet.lib.data.dif.ConstraintField
-import at.asitplus.wallet.lib.data.dif.ConstraintFilter
-import at.asitplus.wallet.lib.data.dif.FormatContainerJwt
-import at.asitplus.wallet.lib.data.dif.FormatHolder
-import at.asitplus.wallet.lib.data.dif.InputDescriptor
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
-import at.asitplus.wallet.lib.data.dif.SchemaReference
+import at.asitplus.dif.ClaimFormatEnum
+import at.asitplus.dif.Constraint
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.ConstraintFilter
+import at.asitplus.dif.FormatContainerJwt
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.PresentationSubmissionDescriptor
+import at.asitplus.dif.SchemaReference
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.REDIRECT_URI
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.VERIFIER_ATTESTATION
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.X509_SAN_DNS
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_PROFILE
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
-import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.openid.OpenIdConstants.ClientIdScheme.REDIRECT_URI
+import at.asitplus.openid.OpenIdConstants.ClientIdScheme.VERIFIER_ATTESTATION
+import at.asitplus.openid.OpenIdConstants.ClientIdScheme.X509_SAN_DNS
+import at.asitplus.openid.OpenIdConstants.ID_TOKEN
+import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
+import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
+import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
+import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
+import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -527,8 +526,8 @@ class OidcSiopVerifier private constructor(
      * Validates [AuthenticationResponseParameters] from the Wallet
      */
     suspend fun validateAuthnResponse(params: AuthenticationResponseParameters): AuthnResponseResult {
-        if (params.response != null) {
-            JwsSigned.parse(params.response).getOrNull()?.let { jarmResponse ->
+        params.response?.let { response ->
+            JwsSigned.parse(response).getOrNull()?.let { jarmResponse ->
                 if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
                     return AuthnResponseResult.ValidationError("response", params.state)
                         .also { Napier.w { "JWS of response not verified: ${params.response}" } }
@@ -536,8 +535,8 @@ class OidcSiopVerifier private constructor(
                 AuthenticationResponseParameters.deserialize(jarmResponse.payload.decodeToString())
                     .getOrNull()?.let { return validateAuthnResponse(it) }
             }
-            JweEncrypted.parse(params.response).getOrNull()?.let { jarmResponse ->
-                jwsService.decryptJweObject(jarmResponse, params.response).getOrNull()?.let { decrypted ->
+            JweEncrypted.parse(response).getOrNull()?.let { jarmResponse ->
+                jwsService.decryptJweObject(jarmResponse, response).getOrNull()?.let { decrypted ->
                     AuthenticationResponseParameters.deserialize(decrypted.payload.decodeToString())
                         .getOrNull()?.let { return validateAuthnResponse(it) }
                 }
@@ -578,7 +577,7 @@ class OidcSiopVerifier private constructor(
         if (idToken.subjectJwk == null)
             return AuthnResponseResult.ValidationError("nonce", params.state)
                 .also { Napier.d("sub_jwk is null") }
-        if (idToken.subject != idToken.subjectJwk.jwkThumbprint)
+        if (idToken.subject != idToken.subjectJwk!!.jwkThumbprint)
             return AuthnResponseResult.ValidationError("sub", params.state)
                 .also { Napier.d("subject does not equal thumbprint of sub_jwk: ${idToken.subject}") }
 

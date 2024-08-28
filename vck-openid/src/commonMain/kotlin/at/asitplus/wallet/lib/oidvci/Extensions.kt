@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
@@ -10,8 +11,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsIso
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VcDataModelConstants
-import at.asitplus.wallet.lib.oidc.OpenIdConstants
-import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
 fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<X509SignatureAlgorithm>): Map<String, SupportedCredentialFormat> {

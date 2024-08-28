@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.cosef.CborWebToken
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -13,8 +14,8 @@ import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ProofType
+import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.ProofType
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -119,7 +120,7 @@ class CredentialIssuer(
                 if (proof.jwt == null)
                     throw OAuth2Exception(Errors.INVALID_PROOF)
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
-                val jwsSigned = JwsSigned.parse(proof.jwt).getOrNull()
+                val jwsSigned = JwsSigned.parse(proof.jwt!!).getOrNull()
                     ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
                 val jwt = JsonWebToken.deserialize(jwsSigned.payload.decodeToString()).getOrNull()
@@ -143,7 +144,7 @@ class CredentialIssuer(
                 if (proof.cwt == null)
                     throw OAuth2Exception(Errors.INVALID_PROOF)
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
-                val coseSigned = CoseSigned.deserialize(proof.cwt.decodeToByteArray(Base64UrlStrict)).getOrNull()
+                val coseSigned = CoseSigned.deserialize(proof.cwt!!.decodeToByteArray(Base64UrlStrict)).getOrNull()
                     ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
 
@@ -177,20 +178,20 @@ class CredentialIssuer(
 
         val issuedCredentialResult = when {
             params.format != null -> {
-                val credentialScheme = params.extractCredentialScheme(params.format)
+                val credentialScheme = params.extractCredentialScheme(params.format!!)
                     ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                         .also { Napier.w("credential: client did not provide correct credential scheme: ${params}") }
                 issuer.issueCredential(
                     subjectPublicKey = subjectPublicKey,
                     credentialScheme = credentialScheme,
-                    representation = params.format.toRepresentation(),
+                    representation = params.format!!.toRepresentation(),
                     claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
                     dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
                 )
             }
 
             params.credentialIdentifier != null -> {
-                val (credentialScheme, representation) = decodeFromCredentialIdentifier(params.credentialIdentifier)
+                val (credentialScheme, representation) = decodeFromCredentialIdentifier(params.credentialIdentifier!!)
                     ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                         .also { Napier.w("credential: client did not provide correct credential identifier: ${params.credentialIdentifier}") }
                 issuer.issueCredential(

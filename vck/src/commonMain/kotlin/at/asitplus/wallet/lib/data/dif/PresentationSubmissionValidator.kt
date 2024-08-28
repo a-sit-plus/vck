@@ -1,8 +1,10 @@
 package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.SubmissionRequirement
 import kotlinx.serialization.Serializable
 
 @Serializable

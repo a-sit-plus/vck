@@ -1,12 +1,13 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.IssuerMetadata
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FunSpec

@@ -8,18 +8,18 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CredentialSubmission
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.toDefaultSubmission
-import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
-import at.asitplus.wallet.lib.data.dif.FormatHolder
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.dif.ClaimFormatEnum
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
-import at.asitplus.wallet.lib.oidc.IdToken
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
-import at.asitplus.wallet.lib.oidc.RelyingPartyMetadata
+import at.asitplus.openid.IdToken
+import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.ID_TOKEN
+import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
@@ -103,7 +103,7 @@ internal class PresentationFactory(
 
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyResponseType() {
-        if (responseType == null || !responseType.contains(VP_TOKEN)) {
+        if (responseType == null || !responseType!!.contains(VP_TOKEN)) {
             Napier.w("vp_token not requested in response_type='$responseType'")
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }

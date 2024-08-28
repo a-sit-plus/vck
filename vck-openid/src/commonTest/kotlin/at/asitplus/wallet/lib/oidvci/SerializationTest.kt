@@ -1,11 +1,10 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.openid.*
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
-import at.asitplus.wallet.lib.oidc.OpenIdConstants
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.TOKEN_TYPE_BEARER
+import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
+import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
+import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.wallet.lib.oidc.jsonSerializer
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe

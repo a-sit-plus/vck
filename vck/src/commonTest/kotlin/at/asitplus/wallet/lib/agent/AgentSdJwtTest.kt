@@ -4,10 +4,10 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.dif.Constraint
-import at.asitplus.wallet.lib.data.dif.ConstraintField
-import at.asitplus.wallet.lib.data.dif.InputDescriptor
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.dif.Constraint
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants

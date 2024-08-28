@@ -28,6 +28,7 @@ kotlin {
         commonMain {
             dependencies {
                 api(project(":vck"))
+                api(project(":openid-data-classes"))
                 commonImplementationDependencies()
             }
         }

@@ -10,7 +10,7 @@ import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.dif.FormatHolder
+import at.asitplus.dif.FormatHolder
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
