@@ -15,32 +15,88 @@ import kotlinx.serialization.UseSerializers
 
 @Serializable
 data class DocumentDigestEntry private constructor(
+    /**
+     * D3.1: UC Specification WP3: REQUIRED.
+     * String containing a human-readable
+     * description of the document to
+     * be signed (SD). The Wallet MUST
+     * show the label element in the
+     * user interaction. It MUST be UTF-
+     * 8 encoded.
+     */
     @SerialName("label")
     val label: String,
+    
     /**
-     * base64 encoded octet representation generated using hashAlgorithmOID
+     * D3.1: UC Specification WP3: OPTIONAL.
+     * String containing the base64-encoded
+     * octet-representation of applying
+     * the algorithm from
+     * [hashAlgorithmOID] to the octet-
+     * representation of the document
+     * to be signed (SD).
      */
     @SerialName("hash")
-    val hash: @Serializable(ByteArrayBase64Serializer::class) ByteArray? = null,
+    @Serializable(ByteArrayBase64Serializer::class)
+    val hash: ByteArray? = null,
+    
+    /**
+     * D3.1: UC Specification WP3: OPTIONAL.
+     * String containing the OID of the
+     * hash algorithm used to generate
+     * the hash listed in the [hash].
+     */
     @SerialName("hashAlgorithmOID")
-    val hashAlgorithmOID: @Serializable(ObjectIdSerializer::class) ObjectIdentifier? = null,
+    @Serializable(ObjectIdSerializer::class)
+    val hashAlgorithmOID: ObjectIdentifier? = null,
+    
+    /**
+     * D3.1: UC Specification WP3: OPTIONAL.
+     * URL to the document
+     * to be signed (SD); the parameter
+     * [hash] MUST be the hash value
+     * of the designated document.
+     */
     @SerialName("documentLocation_uri")
     val documentLocationUri: Url? = null,
+    
+    /**
+     * D3.1: UC Specification WP3: OPTIONAL.
+     * An object with
+     * information how to access
+     * [documentLocationUri].
+     */
     @SerialName("documentLocation_method")
     val documentLocationMethod: DocumentLocationMethod? = null,
+    
     /**
-     * base64 encoded octet representation generated using dtbsrAlgorithmOID
+     * D3.1: UC Specification WP3: OPTIONAL.
+     * String containing data to be signed
+     * representation as defined in CEN
+     * EN 419241-1 and ETSI/TR 119
+     * 001:2016 (as base64-encoded octet).
      */
     @SerialName("dtbsr")
-    val dataToBeSignedRepresentation: @Serializable(ByteArrayBase64Serializer::class) ByteArray? = null,
+    @Serializable(ByteArrayBase64Serializer::class)
+    val dataToBeSignedRepresentation: ByteArray? = null,
+    
+    /**
+     * D3.1: UC Specification WP3: OPTIONAL.
+     * String containing the
+     * OID of the hash algorithm used
+     * to generate the hash listed in
+     * [dataToBeSignedRepresentation]
+     */
     @SerialName("dtbsrHashAlgorithmOID")
-    val dtbsrHashAlgorithmOID: @Serializable(ObjectIdSerializer::class) ObjectIdentifier? = null,
+    @Serializable(ObjectIdSerializer::class)
+    val dtbsrHashAlgorithmOID: ObjectIdentifier? = null,
 ) {
     /**
+     * D3.1: UC Specification WP3:
      * If in each of the following bullet points one of the mentioned parameters is
      * present, the other must be present:
      * - [hash] and [hashAlgorithmOID]
-     * - [documentLocation_uri] and [documentLocation_method]
+     * - [documentLocationUri] and [documentLocationMethod]
      * - [dtbsr] and [dtbsrHashAlgorithmOID]
      * In each of the following bullet points at least one of the mentioned
      * parameters must be present:
@@ -88,6 +144,12 @@ data class DocumentDigestEntry private constructor(
         return result
     }
 
+    /**
+     * D3.1: UC Specification WP3: OPTIONAL.
+     * An object with
+     * information how to access
+     * [documentLocationUri].
+     */
     @Serializable
     @SerialName("documentLocation_method")
     data class DocumentLocationMethod private constructor(
@@ -95,6 +157,7 @@ data class DocumentDigestEntry private constructor(
         val oneTimePassword: String? = null,
     ) {
         /**
+         * D3.1: UC Specification WP3:
          * If [method] is `OTP`, [oneTimePassword] must be
          * present.
          */
@@ -106,32 +169,67 @@ data class DocumentDigestEntry private constructor(
         }
 
         /**
-         * this is potentially a mistake in the draft spec vs test vector,
+         * After D3.1: UC Specification WP3.
+         * However, this class is potentially a mistake in the draft spec vs test vector,
          * currently we need it to be a sealed class with polymorphic serialization to get the structure
          * `method: {type: NAME}`
          * sealed class would instead serialize to
          * `method: NAME`
-         * which might be the corrected implementation in the next draft
+         * which might be the corrected implementation in the next draft.
+         *
+         * The method describes the restrictions/way of accessing a document
          */
         @Serializable
         @SerialName("method")
         sealed class Method {
+            /**
+             * D3.1: UC Specification WP3:
+             * The document corresponding to the parameter [hash] can be
+             * fetched from [documentLocationUri] with a https-request
+             * without further restrictions.
+             */
             @Serializable
             @SerialName("public")
             data object Public : Method()
 
+            /**
+             * D3.1: UC Specification WP3:
+             * The wallet displays the parameter [oneTimePassword] to the
+             * user. A webclient accessing the uri offers a way for the user to
+             * input the shown value and only then allows to fetch the
+             * document corresponding to [hash].
+             */
             @Serializable
             @SerialName("otp")
             data object OTP : Method()
 
+            /**
+             * D3.1: UC Specification WP3:
+             * The wallet fetches the document from
+             * [documentLocationUri]. The document should be fetched
+             * using the ‘Basic’ HTTP Authentication Scheme (RFC 7617).
+             */
             @Serializable
             @SerialName("basic_auth")
             data object Basic : Method()
 
+            /**
+             * D3.1: UC Specification WP3:
+             * The wallet fetches the document from
+             * [documentLocationUri]. The document should be fetched
+             * using the ‘Digest’ HTTP Authentication Scheme (RFC 7616).
+             */
             @Serializable
             @SerialName("digest_auth")
             data object Digest : Method()
 
+            /**
+             * D3.1: UC Specification WP3:
+             * The wallet fetches the document from
+             * [documentLocationUri]. The document should be fetched
+             * using the ‘OAuth 2.0’ Authentication Framework (RFC6749
+             * and RFC8252).
+             */
             @Serializable
             @SerialName("oauth_20")
             data object Oauth2 : Method()
