@@ -77,6 +77,8 @@ object LibraryInitializer {
      * @param itemValueDecoder used to actually deserialize `Any` object in [at.asitplus.wallet.lib.iso.IssuerSignedItemSerializer]
      * @param jsonValueEncoder used to describe the credential in input descriptors used in verifiable presentations,
      *                         e.g. when used in SIOPv2
+     * @param itemValueDecoderMap used to actually deserialize `Any` object in [at.asitplus.wallet.lib.iso.IssuerSignedItemSerializer],
+     * with `elementIdentifier` as the key
      */
     fun registerExtensionLibrary(
         credentialScheme: ConstantIndex.CredentialScheme,
@@ -85,12 +87,15 @@ object LibraryInitializer {
         itemValueEncoder: ItemValueEncoder,
         itemValueDecoder: ItemValueDecoder,
         jsonValueEncoder: JsonValueEncoder,
+        itemValueDecoderMap: ElementIdentifierToItemValueDecoderMap = emptyMap(),
     ) {
+        credentialScheme.isoDocType
         registerExtensionLibrary(credentialScheme, serializersModule)
         CborCredentialSerializer.register(serializerLookup)
         CborCredentialSerializer.register(itemValueEncoder)
         CborCredentialSerializer.register(itemValueDecoder)
         JsonCredentialSerializer.register(jsonValueEncoder)
+        credentialScheme.isoDocType?.let { CborCredentialSerializer.register(itemValueDecoderMap, it) }
     }
 
 }
@@ -145,3 +150,9 @@ typealias SerializerLookup
  */
 typealias JsonValueEncoder
         = (value: Any) -> JsonElement?
+
+/**
+ * Maps from [IssuerSignedItem.elementIdentifier] to [ItemValueDecoder]
+ */
+typealias ElementIdentifierToItemValueDecoderMap
+        = Map<String, ItemValueDecoder>

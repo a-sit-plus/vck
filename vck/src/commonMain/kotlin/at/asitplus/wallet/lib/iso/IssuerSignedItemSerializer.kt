@@ -6,7 +6,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.cbor.CborDecoder
 import kotlinx.serialization.cbor.ValueTags
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
@@ -79,7 +78,7 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
                     "digestID" -> digestId = decodeLongElement(descriptor, index).toUInt()
                     "random" -> random = decodeSerializableElement(descriptor, index, ByteArraySerializer())
                     "elementIdentifier" -> elementIdentifier = decodeStringElement(descriptor, index)
-                    "elementValue" -> elementValue = decodeAnything(index)
+                    "elementValue" -> elementValue = decodeAnything(index, elementIdentifier)
                 }
                 if (index == 3) break
             }
@@ -92,7 +91,7 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
         )
     }
 
-    private fun CompositeDecoder.decodeAnything(index: Int): Any {
+    private fun CompositeDecoder.decodeAnything(index: Int, elementIdentifier: String): Any {
 
         //TODO: tags are not read out here because `decodeElementIndex` is never called, so we cannot discriminate
 
@@ -105,7 +104,7 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
         runCatching { return decodeSerializableElement(descriptor, index, ByteArraySerializer()) }.exceptionOrNull()?.printStackTrace()
         runCatching { return decodeBooleanElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
         runCatching {
-            return CborCredentialSerializer.decode(descriptor, index, this)
+            return CborCredentialSerializer.decode(descriptor, index, this, elementIdentifier, "TODOisoDocType")
                 ?: throw IllegalArgumentException("Could not decode value at $index")
         }
         throw IllegalArgumentException("Could not decode value at $index")
