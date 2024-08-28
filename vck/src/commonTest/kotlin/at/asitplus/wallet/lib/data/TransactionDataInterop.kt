@@ -3,10 +3,10 @@ package at.asitplus.wallet.lib.data
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
-import at.asitplus.wallet.lib.data.dif.Base64URLTransactionDataSerializer
+import at.asitplus.wallet.lib.data.rqes.Base64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.data.dif.TransactionDataEntry
+import at.asitplus.wallet.lib.data.rqes.TransactionDataEntry
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
