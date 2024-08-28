@@ -103,7 +103,7 @@ internal class PresentationFactory(
 
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyResponseType() {
-        if (responseType == null || !responseType.contains(VP_TOKEN)) {
+        if (responseType == null || !responseType!!.contains(VP_TOKEN)) {
             Napier.w("vp_token not requested in response_type='$responseType'")
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }

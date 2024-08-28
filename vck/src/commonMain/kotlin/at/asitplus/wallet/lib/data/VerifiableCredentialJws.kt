@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.datetime.Instant
+import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString

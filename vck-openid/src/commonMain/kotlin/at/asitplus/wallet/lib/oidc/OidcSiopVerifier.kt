@@ -51,6 +51,8 @@ import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
@@ -525,8 +527,8 @@ class OidcSiopVerifier private constructor(
      * Validates [AuthenticationResponseParameters] from the Wallet
      */
     suspend fun validateAuthnResponse(params: AuthenticationResponseParameters): AuthnResponseResult {
-        if (params.response != null) {
-            JwsSigned.parse(params.response).getOrNull()?.let { jarmResponse ->
+        params.response?.let { response ->
+            JwsSigned.parse(response).getOrNull()?.let { jarmResponse ->
                 if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
                     return AuthnResponseResult.ValidationError("response", params.state)
                         .also { Napier.w { "JWS of response not verified: ${params.response}" } }
@@ -534,8 +536,8 @@ class OidcSiopVerifier private constructor(
                 AuthenticationResponseParameters.deserialize(jarmResponse.payload.decodeToString())
                     .getOrNull()?.let { return validateAuthnResponse(it) }
             }
-            JweEncrypted.parse(params.response).getOrNull()?.let { jarmResponse ->
-                jwsService.decryptJweObject(jarmResponse, params.response).getOrNull()?.let { decrypted ->
+            JweEncrypted.parse(response).getOrNull()?.let { jarmResponse ->
+                jwsService.decryptJweObject(jarmResponse, response).getOrNull()?.let { decrypted ->
                     AuthenticationResponseParameters.deserialize(decrypted.payload.decodeToString())
                         .getOrNull()?.let { return validateAuthnResponse(it) }
                 }
@@ -576,7 +578,7 @@ class OidcSiopVerifier private constructor(
         if (idToken.subjectJwk == null)
             return AuthnResponseResult.ValidationError("nonce", params.state)
                 .also { Napier.d("sub_jwk is null") }
-        if (idToken.subject != idToken.subjectJwk.jwkThumbprint)
+        if (idToken.subject != idToken.subjectJwk!!.jwkThumbprint)
             return AuthnResponseResult.ValidationError("sub", params.state)
                 .also { Napier.d("subject does not equal thumbprint of sub_jwk: ${idToken.subject}") }
 

@@ -109,14 +109,14 @@ data class SupportedCredentialFormat private constructor(
     val isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>?
         get() = claims?.let {
             runCatching {
-                at.asitplus.wallet.lib.oidvci.jsonSerializer.decodeFromJsonElement<Map<String, Map<String, RequestedCredentialClaimSpecification>>>(it)
+                jsonSerializer.decodeFromJsonElement<Map<String, Map<String, RequestedCredentialClaimSpecification>>>(it)
             }.getOrNull()
         }
 
     val sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>?
         get() = claims?.let {
             runCatching {
-                at.asitplus.wallet.lib.oidvci.jsonSerializer.decodeFromJsonElement<Map<String, RequestedCredentialClaimSpecification>>(it)
+                jsonSerializer.decodeFromJsonElement<Map<String, RequestedCredentialClaimSpecification>>(it)
             }.getOrNull()
         }
 
@@ -141,7 +141,7 @@ data class SupportedCredentialFormat private constructor(
             supportedProofTypes = supportedProofTypes,
             credentialDefinition = credentialDefinition,
             docType = docType,
-            claims = at.asitplus.wallet.lib.oidvci.jsonSerializer.encodeToJsonElement(isoClaims),
+            claims = jsonSerializer.encodeToJsonElement(isoClaims),
             order = order,
             display = display
         )
@@ -165,7 +165,7 @@ data class SupportedCredentialFormat private constructor(
             supportedProofTypes = supportedProofTypes,
             credentialDefinition = credentialDefinition,
             sdJwtVcType = sdJwtVcType,
-            claims = at.asitplus.wallet.lib.oidvci.jsonSerializer.encodeToJsonElement(sdJwtClaims),
+            claims = jsonSerializer.encodeToJsonElement(sdJwtClaims),
             order = order,
             display = display
         )

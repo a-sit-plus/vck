@@ -120,7 +120,7 @@ class CredentialIssuer(
                 if (proof.jwt == null)
                     throw OAuth2Exception(Errors.INVALID_PROOF)
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
-                val jwsSigned = JwsSigned.parse(proof.jwt).getOrNull()
+                val jwsSigned = JwsSigned.parse(proof.jwt!!).getOrNull()
                     ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
                 val jwt = JsonWebToken.deserialize(jwsSigned.payload.decodeToString()).getOrNull()
@@ -144,7 +144,7 @@ class CredentialIssuer(
                 if (proof.cwt == null)
                     throw OAuth2Exception(Errors.INVALID_PROOF)
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
-                val coseSigned = CoseSigned.deserialize(proof.cwt.decodeToByteArray(Base64UrlStrict)).getOrNull()
+                val coseSigned = CoseSigned.deserialize(proof.cwt!!.decodeToByteArray(Base64UrlStrict)).getOrNull()
                     ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
 
@@ -178,20 +178,20 @@ class CredentialIssuer(
 
         val issuedCredentialResult = when {
             params.format != null -> {
-                val credentialScheme = params.extractCredentialScheme(params.format)
+                val credentialScheme = params.extractCredentialScheme(params.format!!)
                     ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                         .also { Napier.w("credential: client did not provide correct credential scheme: ${params}") }
                 issuer.issueCredential(
                     subjectPublicKey = subjectPublicKey,
                     credentialScheme = credentialScheme,
-                    representation = params.format.toRepresentation(),
+                    representation = params.format!!.toRepresentation(),
                     claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
                     dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
                 )
             }
 
             params.credentialIdentifier != null -> {
-                val (credentialScheme, representation) = decodeFromCredentialIdentifier(params.credentialIdentifier)
+                val (credentialScheme, representation) = decodeFromCredentialIdentifier(params.credentialIdentifier!!)
                     ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                         .also { Napier.w("credential: client did not provide correct credential identifier: ${params.credentialIdentifier}") }
                 issuer.issueCredential(

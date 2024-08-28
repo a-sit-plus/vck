@@ -103,10 +103,10 @@ class SimpleAuthorizationService(
             state = request.state,
         )
         if (request.codeChallenge != null) {
-            codeToCodeChallengeMutex.withLock { codeToCodeChallengeMap[code] = request.codeChallenge }
+            codeToCodeChallengeMutex.withLock { codeToCodeChallengeMap[code] = request.codeChallenge!! }
         }
         // TODO Also implement POST?
-        val url = URLBuilder(request.redirectUrl)
+        val url = URLBuilder(request.redirectUrl!!)
             .apply { responseParams.encodeToParameters().forEach { this.parameters.append(it.key, it.value) } }
             .buildString()
 
@@ -123,14 +123,14 @@ class SimpleAuthorizationService(
     suspend fun token(params: TokenRequestParameters) = catching {
         val userInfo: OidcUserInfoExtended = when (params.grantType) {
             OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
-                if (params.code == null || !codeService.verifyCode(params.code))
+                if (params.code == null || !codeService.verifyCode(params.code!!))
                     throw OAuth2Exception(Errors.INVALID_CODE)
                         .also { Napier.w("token: client did not provide correct code") }
                 codeToUserInfoMutex.withLock { codeToUserInfoMap[params.code] }
             }
 
             OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
-                if (params.preAuthorizedCode == null || !codeService.verifyCode(params.preAuthorizedCode))
+                if (params.preAuthorizedCode == null || !codeService.verifyCode(params.preAuthorizedCode!!))
                     throw OAuth2Exception(Errors.INVALID_GRANT)
                         .also { Napier.w("token: client did not provide pre authorized code") }
                 codeToUserInfoMutex.withLock { codeToUserInfoMap[params.preAuthorizedCode] }
