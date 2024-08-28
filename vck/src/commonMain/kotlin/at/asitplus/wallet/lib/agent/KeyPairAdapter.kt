@@ -1,15 +1,12 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.ECCurve
+import at.asitplus.signum.indispensable.*
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
-import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.signum.supreme.sign.SignatureInput
 import at.asitplus.signum.supreme.sign.Signer
@@ -53,7 +50,7 @@ abstract class DefaultKeyPairAdapter(
 /**
  * Generate a new key pair adapter with a random key, e.g. used in tests
  */
-class RandomKeyPairAdapter(
+class EphemeralKeyPariAdapter(
     val key: EphemeralKey = EphemeralKey {
         ec {
             curve = ECCurve.SECP_256_R_1
@@ -73,8 +70,7 @@ open class DefaultEphemeralKeyHolder(val crv: ECCurve) : EphemeralKeyHolder {
     override val key: EphemeralKey = EphemeralKey {
         ec {
             curve = crv
-            digests =
-                setOf(Digest.entries.first { it.name.startsWith(crv.scalarLength.bits.toString().subSequence(0, 1)) })
+            digests = setOf(crv.nativeDigest)
         }
     }
     override val publicJsonWebKey: JsonWebKey?

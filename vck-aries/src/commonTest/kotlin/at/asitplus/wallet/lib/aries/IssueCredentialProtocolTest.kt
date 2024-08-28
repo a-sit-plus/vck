@@ -19,8 +19,8 @@ class IssueCredentialProtocolTest : FreeSpec({
     lateinit var holderProtocol: IssueCredentialProtocol
 
     beforeEach {
-        issuerKeyPair = RandomKeyPairAdapter()
-        holderKeyPair = RandomKeyPairAdapter()
+        issuerKeyPair = EphemeralKeyPariAdapter()
+        holderKeyPair = EphemeralKeyPariAdapter()
         issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
         holder = HolderAgent(holderKeyPair)
         issuerProtocol = IssueCredentialProtocol.newIssuerInstance(

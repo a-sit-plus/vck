@@ -94,8 +94,10 @@ data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteA
         return result
     }
 }
+expect class PlatformCryptoShim constructor(keyPairAdapter: KeyPairAdapter){
 
-expect class PlatformCryptoShim constructor(){
+    val keyPairAdapter:KeyPairAdapter
+
     fun encrypt(
         key: ByteArray,
         iv: ByteArray,

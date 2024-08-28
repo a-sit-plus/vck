@@ -18,8 +18,8 @@ class PresentProofProtocolTest : FreeSpec({
     lateinit var verifierProtocol: PresentProofProtocol
 
     beforeEach {
-        holderKeyPair = RandomKeyPairAdapter()
-        verifierKeyPair = RandomKeyPairAdapter()
+        holderKeyPair = EphemeralKeyPariAdapter()
+        verifierKeyPair = EphemeralKeyPariAdapter()
         holder = HolderAgent(holderKeyPair)
         verifier = VerifierAgent(verifierKeyPair)
         holderProtocol = PresentProofProtocol.newHolderInstance(
@@ -36,7 +36,7 @@ class PresentProofProtocolTest : FreeSpec({
     "presentProofGenericWithInvitation" {
         holder.storeCredential(
             IssuerAgent(
-                RandomKeyPairAdapter(),
+                EphemeralKeyPariAdapter(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
                 holderKeyPair.publicKey,
@@ -70,7 +70,7 @@ class PresentProofProtocolTest : FreeSpec({
     "presentProofGenericDirect" {
         holder.storeCredential(
             IssuerAgent(
-                RandomKeyPairAdapter(),
+                EphemeralKeyPariAdapter(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
                 holderKeyPair.publicKey,

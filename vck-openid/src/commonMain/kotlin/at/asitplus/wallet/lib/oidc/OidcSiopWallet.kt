@@ -10,13 +10,9 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.CredentialSubmission
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
+import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.openid.OpenIdConstants.Errors
@@ -32,6 +28,7 @@ import at.asitplus.wallet.lib.oidc.helper.AuthorizationRequestValidator
 import at.asitplus.wallet.lib.oidc.helper.PresentationFactory
 import at.asitplus.wallet.lib.oidc.helpers.AuthorizationResponsePreparationState
 import at.asitplus.openid.IssuerMetadata
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
@@ -73,7 +70,7 @@ class OidcSiopWallet(
     private val scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever,
 ) {
     constructor(
-        keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
+        keyPairAdapter: KeyPairAdapter = EphemeralKeyPariAdapter(),
         holder: Holder = HolderAgent(keyPairAdapter),
         jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
         clock: Clock = Clock.System,

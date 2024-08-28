@@ -12,7 +12,7 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
+import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
@@ -50,15 +50,15 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                     )
                 }
             ))))
-        holderKeyPair = RandomKeyPairAdapter()
-        verifierKeyPair = RandomKeyPairAdapter(extensions)
+        holderKeyPair = EphemeralKeyPariAdapter()
+        verifierKeyPair = EphemeralKeyPariAdapter(extensions)
         responseUrl = "https://example.com"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierKeyPair)
         holderAgent.storeCredential(
             IssuerAgent(
-                RandomKeyPairAdapter(),
+                EphemeralKeyPariAdapter(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
                 holderKeyPair.publicKey,

@@ -2,15 +2,12 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.signum.indispensable.getJcaPublicKey
 import at.asitplus.signum.indispensable.josef.*
-import at.asitplus.signum.supreme.sign.platformSpecifics
 import javax.crypto.Cipher
-import javax.crypto.KeyAgreement
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-actual open class PlatformCryptoShim {
+actual open class PlatformCryptoShim actual constructor(actual val keyPairAdapter: KeyPairAdapter) {
 
     actual fun encrypt(
         key: ByteArray,
@@ -73,28 +70,12 @@ actual open class PlatformCryptoShim {
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
-    ): KmmResult<ByteArray> = runCatching {
-        val jvmKey = recipientKey.toCryptoPublicKey().transform { it1 -> it1.getJcaPublicKey() }.getOrThrow()
-
-        KeyAgreement.getInstance(algorithm.jcaName).also {
-            it.init(ephemeralKey.key.platformSpecifics.jcaPrivateKey)
-            it.doPhase(
-                jvmKey, true
-            )
-        }.generateSecret()
-    }.wrap()
+    ): KmmResult<ByteArray> = TODO()
 
     actual fun performKeyAgreement(
         ephemeralKey: JsonWebKey,
         algorithm: JweAlgorithm
-    ): KmmResult<ByteArray> = runCatching {
-        val publicKey = ephemeralKey.toCryptoPublicKey().getOrThrow().getJcaPublicKey().getOrThrow()
-        TODO()
-        /* KeyAgreement.getInstance(algorithm.jcaName).also {
-             it.init(jvmKeyPairAdapter.keyPair.private)
-             it.doPhase(publicKey, true)
-         }.generateSecret()*/
-    }.wrap()
+    ): KmmResult<ByteArray> = TODO()
 
 }
 

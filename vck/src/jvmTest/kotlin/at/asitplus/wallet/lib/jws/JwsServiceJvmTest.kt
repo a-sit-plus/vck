@@ -8,11 +8,13 @@ import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.nativeDigest
+import at.asitplus.signum.supreme.HazardousMaterials
+import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
-import at.asitplus.signum.supreme.sign.platformSpecifics
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.PlatformCryptoShim
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
+import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import com.nimbusds.jose.*
@@ -31,6 +33,7 @@ import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
 import kotlin.random.Random
 
+@OptIn(HazardousMaterials::class)
 class JwsServiceJvmTest : FreeSpec({
 
     val configurations: List<Pair<String, Int>> =
@@ -81,6 +84,7 @@ class JwsServiceJvmTest : FreeSpec({
                             521 -> ECCurve.SECP_521_R_1
                             else -> throw IllegalArgumentException("Unknown EC Curve size") // necessary(compiler), but otherwise redundant else-branch
                         }
+                        digests= setOf(curve.nativeDigest)
                     }
                 else
                     rsa {
@@ -100,17 +104,18 @@ class JwsServiceJvmTest : FreeSpec({
                 if (algo.isEc) ECDSAVerifier(ephemeralKey.publicKey.getJcaPublicKey().getOrThrow() as ECPublicKey)
                 else RSASSAVerifier(ephemeralKey.publicKey.getJcaPublicKey().getOrThrow() as RSAPublicKey)
             val jvmSigner =
-                if (algo.isEc) ECDSASigner(ephemeralKey.platformSpecifics.jcaPrivateKey as ECPrivateKey)
-                else RSASSASigner(ephemeralKey.platformSpecifics.jcaPrivateKey as RSAPrivateKey)
+                if (algo.isEc) ECDSASigner(ephemeralKey.jcaPrivateKey as ECPrivateKey)
+                else RSASSASigner(ephemeralKey.jcaPrivateKey as RSAPrivateKey)
             val jvmEncrypter =
                 if (algo.isEc) ECDHEncrypter(ephemeralKey.publicKey.getJcaPublicKey().getOrThrow() as ECPublicKey)
                 else RSAEncrypter(ephemeralKey.publicKey.getJcaPublicKey().getOrThrow() as RSAPublicKey)
             val jvmDecrypter =
-                if (algo.isEc) ECDHDecrypter(ephemeralKey.platformSpecifics.jcaPrivateKey as ECPrivateKey)
-                else RSADecrypter(ephemeralKey.platformSpecifics.jcaPrivateKey as RSAPrivateKey)
+                if (algo.isEc) ECDHDecrypter(ephemeralKey.jcaPrivateKey as ECPrivateKey)
+                else RSADecrypter(ephemeralKey.jcaPrivateKey as RSAPrivateKey)
 
 
-            val cryptoService = DefaultCryptoService(RandomKeyPairAdapter(ephemeralKey), PlatformCryptoShim())
+            val keyPairAdapter = EphemeralKeyPariAdapter(ephemeralKey)
+            val cryptoService = DefaultCryptoService(keyPairAdapter, PlatformCryptoShim(keyPairAdapter))
             val jwsService = DefaultJwsService(cryptoService)
             val verifierJwsService = DefaultVerifierJwsService()
             val randomPayload = uuid4().toString()

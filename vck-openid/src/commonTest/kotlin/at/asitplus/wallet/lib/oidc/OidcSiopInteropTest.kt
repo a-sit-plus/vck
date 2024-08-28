@@ -39,10 +39,10 @@ class OidcSiopInteropTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderKeyPair = RandomKeyPairAdapter()
+        holderKeyPair = EphemeralKeyPariAdapter()
         holderAgent = HolderAgent(holderKeyPair)
         val issuerAgent = IssuerAgent(
-            RandomKeyPairAdapter(),
+            EphemeralKeyPariAdapter(),
             DummyCredentialDataProvider(),
         )
         holderAgent.storeCredential(
@@ -280,7 +280,7 @@ class OidcSiopInteropTest : FreeSpec({
 
     "Request in request URI" {
         val input = "mdoc-openid4vp://?request_uri=https%3A%2F%2Fexample.com%2Fd15b5b6f-7821-4031-9a18-ebe491b720a6"
-        val jws = DefaultJwsService(DefaultCryptoService(RandomKeyPairAdapter())).createSignedJwsAddingParams(
+        val jws = DefaultJwsService(DefaultCryptoService(EphemeralKeyPariAdapter())).createSignedJwsAddingParams(
             payload = AuthenticationRequestParameters(
                 nonce = "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ==",
                 state = "ef391e30-bacc-4441-af5d-7f42fb682e02",
@@ -322,7 +322,7 @@ class OidcSiopInteropTest : FreeSpec({
                     )
                 }
             ))))
-        verifierKeyPair = RandomKeyPairAdapter(extensions)
+        verifierKeyPair = EphemeralKeyPariAdapter(extensions)
         verifierAgent = VerifierAgent(verifierKeyPair)
         verifierSiop = OidcSiopVerifier(
             keyPairAdapter = verifierKeyPair,

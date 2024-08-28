@@ -5,14 +5,12 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
+import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.collections.shouldBeEmpty
-import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
@@ -28,8 +26,8 @@ class IssueCredentialMessengerTest : FreeSpec() {
 
     init {
         beforeEach {
-            issuerKeyPair = RandomKeyPairAdapter()
-            holderKeyPair = RandomKeyPairAdapter()
+            issuerKeyPair = EphemeralKeyPariAdapter()
+            holderKeyPair = EphemeralKeyPariAdapter()
             issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
             holder = HolderAgent(holderKeyPair)
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"

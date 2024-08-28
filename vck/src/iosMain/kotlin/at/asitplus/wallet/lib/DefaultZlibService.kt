@@ -2,16 +2,8 @@
 
 package at.asitplus.wallet.lib
 
-import at.asitplus.wallet.lib.agent.toByteArray
-import at.asitplus.wallet.lib.agent.toData
-import kotlinx.cinterop.ObjCObjectVar
-import kotlinx.cinterop.alloc
-import kotlinx.cinterop.memScoped
-import kotlinx.cinterop.ptr
-import platform.Foundation.NSDataCompressionAlgorithmZlib
-import platform.Foundation.NSError
-import platform.Foundation.compressedDataUsingAlgorithm
-import platform.Foundation.decompressedDataUsingAlgorithm
+import kotlinx.cinterop.*
+import platform.Foundation.*
 
 actual class DefaultZlibService actual constructor() : ZlibService {
 
@@ -69,4 +61,18 @@ actual class DefaultZlibService actual constructor() : ZlibService {
         }
     }
 
+}
+
+inline fun MemScope.toData(array: ByteArray): NSData =
+    NSData.create(
+        bytes = allocArrayOf(array),
+        length = array.size.toULong()
+    )
+
+// from https://github.com/mirego/trikot.foundation/pull/41/files
+public fun NSData.toByteArray(): ByteArray {
+    return this.bytes?.let {
+        val dataPointer: CPointer<ByteVar> = it.reinterpret()
+        ByteArray(this.length.toInt()) { index -> dataPointer[index] }
+    } ?: ByteArray(0)
 }

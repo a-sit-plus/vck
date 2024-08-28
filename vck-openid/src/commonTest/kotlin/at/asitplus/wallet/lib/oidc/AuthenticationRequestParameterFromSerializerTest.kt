@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
+import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -11,6 +11,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import kotlinx.serialization.encodeToString
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
@@ -18,13 +19,14 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
     val walletUrl = "https://example.com/wallet/${uuid4()}"
     val responseUrl = "https://example.com/rp/${uuid4()}"
 
-    val holderKeyPair = RandomKeyPairAdapter()
+    val holderKeyPair = EphemeralKeyPariAdapter()
     val oidcSiopWallet = OidcSiopWallet(
         keyPairAdapter = holderKeyPair,
         holder = HolderAgent(holderKeyPair),
     )
 
     val verifierSiop = OidcSiopVerifier(
+        verifier = VerifierAgent(EphemeralKeyPariAdapter()),
         relyingPartyUrl = relyingPartyUrl,
         responseUrl = responseUrl,
     )
