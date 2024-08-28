@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.wallet.lib.data.dif.SubmissionRequirement
-import at.asitplus.wallet.lib.data.dif.SubmissionRequirementRuleEnum
+import at.asitplus.dif.SubmissionRequirement
+import at.asitplus.dif.SubmissionRequirementRuleEnum
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 

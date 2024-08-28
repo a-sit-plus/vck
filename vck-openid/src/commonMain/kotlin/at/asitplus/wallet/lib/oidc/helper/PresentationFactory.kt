@@ -8,9 +8,9 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CredentialSubmission
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.toDefaultSubmission
-import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
-import at.asitplus.wallet.lib.data.dif.FormatHolder
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.dif.ClaimFormatEnum
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.openid.AuthenticationRequestParameters

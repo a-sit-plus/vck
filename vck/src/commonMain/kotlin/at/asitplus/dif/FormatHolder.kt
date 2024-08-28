@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.data.dif
+package at.asitplus.dif
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -8,7 +8,6 @@ import kotlinx.serialization.Serializable
  * [DIF Presentation Exchange v1.0.0](https://identity.foundation/presentation-exchange/spec/v1.0.0/#presentation-definition)
  */
 @Serializable
-// TODO into data classes
 data class FormatHolder(
     @SerialName("jwt")
     val jwt: FormatContainerJwt? = null,

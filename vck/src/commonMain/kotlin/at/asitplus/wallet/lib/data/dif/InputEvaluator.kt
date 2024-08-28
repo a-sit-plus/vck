@@ -2,6 +2,10 @@ package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.ConstraintFilter
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.RequirementEnum
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath

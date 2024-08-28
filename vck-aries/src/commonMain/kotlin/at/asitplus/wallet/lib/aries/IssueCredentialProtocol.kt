@@ -10,9 +10,9 @@ import at.asitplus.wallet.lib.data.AriesGoalCodeParser
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
-import at.asitplus.wallet.lib.data.dif.CredentialDefinition
-import at.asitplus.wallet.lib.data.dif.CredentialManifest
-import at.asitplus.wallet.lib.data.dif.SchemaReference
+import at.asitplus.dif.CredentialDefinition
+import at.asitplus.dif.CredentialManifest
+import at.asitplus.dif.SchemaReference
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.msg.AttachmentFormatReference
 import at.asitplus.wallet.lib.msg.IssueCredential

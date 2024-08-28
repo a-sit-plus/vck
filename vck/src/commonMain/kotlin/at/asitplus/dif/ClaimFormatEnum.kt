@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.data.dif
+package at.asitplus.dif
 
 import kotlinx.serialization.Serializable
 
@@ -6,12 +6,17 @@ import kotlinx.serialization.Serializable
  * Data class for
  * [DIF Presentation Exchange v1.0.0](https://identity.foundation/presentation-exchange/spec/v1.0.0/#presentation-definition)
  */
-@Serializable(with = StatusDirectiveEnumSerializer::class)
-enum class StatusDirectiveEnum(val text: String) {
+@Serializable(with = ClaimFormatEnumSerializer::class)
+enum class ClaimFormatEnum(val text: String) {
     NONE("none"),
-    REQUIRED("required"),
-    ALLOWED("allowed"),
-    DISALLOWED("disallowed");
+    JWT("jwt"),
+    JWT_VC("jwt_vc"),
+    JWT_VP("jwt_vp"),
+    JWT_SD("vc+sd-jwt"),
+    LDP("ldp"),
+    LDP_VC("ldp_vc"),
+    LDP_VP("ldp_vp"),
+    MSO_MDOC("mso_mdoc");
 
     companion object {
         fun parse(text: String) = values().firstOrNull { it.text == text }
