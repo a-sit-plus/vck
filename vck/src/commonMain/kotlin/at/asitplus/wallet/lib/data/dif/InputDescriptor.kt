@@ -1,5 +1,7 @@
-package at.asitplus.dif
+package at.asitplus.wallet.lib.data.dif
 
+import at.asitplus.dif.Constraint
+import at.asitplus.dif.FormatHolder
 import at.asitplus.wallet.lib.data.rqes.Base64URLTransactionDataSerializer
 import at.asitplus.wallet.lib.data.rqes.TransactionDataEntry
 import com.benasher44.uuid.uuid4
