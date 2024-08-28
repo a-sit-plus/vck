@@ -15,7 +15,6 @@ import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.ValueTags
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
-import kotlinx.serialization.modules.SerializersModule
 import okio.ByteString.Companion.toByteString
 
 /**
@@ -200,7 +199,7 @@ data class DeviceResponse(
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
  */
-@Serializable(with = DocumentSerializer::class)
+@Serializable
 data class Document(
     @SerialName("docType")
     val docType: String, // TODO this is relevant for deserializing the elementValue of IssuerSignedItem
@@ -221,108 +220,27 @@ data class Document(
     }
 }
 
-object DocumentSerializer : KSerializer<Document> {
-    private val errorSerializer =
-        MapSerializer(String.serializer(), MapSerializer(String.serializer(), Int.serializer()))
-    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("Document") {
-        element("docType", String.serializer().descriptor)
-        element("issuerSigned", IssuerSigned.serializer().descriptor)
-        element("deviceSigned", DeviceSigned.serializer().descriptor)
-        element("errors", errorSerializer.descriptor)
-    }
-
-    override fun deserialize(decoder: Decoder): Document = decoder.decodeStructure(descriptor) {
-
-        val docType = decodeStringElement(descriptor, decodeAndCheckPropertyName("docType"))
-        val issuerSigned = DoctypeAwareCompositeDecoder(this, docType, serializersModule).decodeSerializableElement(
-            descriptor,
-            decodeAndCheckPropertyName("issuerSigned"),
-            IssuerSigned.serializer()
-        )
-        val deviceSigned = decodeSerializableElement(
-            descriptor,
-            decodeAndCheckPropertyName("deviceSigned"),
-            DeviceSigned.serializer()
-        )
-        val errors =
-            decodeNullableSerializableElement(descriptor, decodeAndCheckPropertyName("errors"), errorSerializer)
-        Document(docType, issuerSigned, deviceSigned, errors)
-    }
-
-
-    override fun serialize(encoder: Encoder, value: Document) {
-        encoder.encodeStructure(descriptor) {
-            encodeStringElement(descriptor, 0, value.docType)
-            encodeSerializableElement(descriptor, 1, IssuerSigned.serializer(), value.issuerSigned)
-            encodeSerializableElement(descriptor, 2, DeviceSigned.serializer(), value.deviceSigned)
-            encodeNullableSerializableElement(descriptor, 3, errorSerializer, value.errors)
-        }
-    }
-
-    private fun CompositeDecoder.decodeAndCheckPropertyName(expected: String): Int {
-        val name = decodeStringElement(descriptor, 0)
-        if (expected != expected) throw SerializationException("expected \"$expected\" but was \"$name\"")
-        return descriptor.getElementIndex(name)
-    }
-}
-
-
-class DocTypeAwareDecoder(val decoder: Decoder, var docType: String) : Decoder by decoder {
-    override fun beginStructure(descriptor: SerialDescriptor): CompositeDecoder {
-        return DoctypeAwareCompositeDecoder(decoder.beginStructure(descriptor), docType, serializersModule)
-    }
-}
-
-class DoctypeAwareCompositeDecoder(
-    private val compositeDecoder: CompositeDecoder, val docType: String,
-    override val serializersModule: SerializersModule
-) : CompositeDecoder by compositeDecoder {
-    override fun <T> decodeSerializableElement(
-        descriptor: SerialDescriptor,
-        index: Int,
-        deserializer: DeserializationStrategy<T>,
-        previousValue: T?
-    ): T {
-        return compositeDecoder.decodeSerializableElement(
-            descriptor,
-            index,
-            DocTypeAwareSerializationStrategy(docType, deserializer),
-            previousValue
-        )
-    }
-
-    override fun <T : Any> decodeNullableSerializableElement(
-        descriptor: SerialDescriptor,
-        index: Int,
-        deserializer: DeserializationStrategy<T?>,
-        previousValue: T?
-    ): T? {
-        return compositeDecoder.decodeNullableSerializableElement(
-            descriptor,
-            index,
-            DocTypeAwareSerializationStrategy(docType, deserializer),
-            previousValue
-        )
-    }
-
-    class DocTypeAwareSerializationStrategy<T>(val docType: String, val strategy: DeserializationStrategy<T>) :
-        DeserializationStrategy<T> by strategy {
-        override fun deserialize(decoder: Decoder): T {
-            return strategy.deserialize(DocTypeAwareDecoder(decoder, docType))
-        }
-    }
-}
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
  */
 @Serializable
-data class IssuerSigned(
-    @SerialName("nameSpaces")
-    val namespaces: Map<String, IssuerSignedList>? = null,
+data class IssuerSigned private constructor(
     @SerialName("issuerAuth")
     val issuerAuth: CoseSigned,
+    @SerialName("nameSpaces")
+    @Serializable(with = NamespacedIssuerSignedListSerializer::class)
+    val namespaces: Map<String, @Contextual IssuerSignedList>? = null,
 ) {
+
+    constructor(
+        namespacedItems: Map<String, List<IssuerSignedItem>>,
+        issuerAuth: CoseSigned,
+        tag:Byte?=null
+    ) : this(issuerAuth = issuerAuth, namespaces = namespacedItems.map { (ns, value) ->
+        ns to IssuerSignedList(ns, value.map { item -> ByteStringWrapper(item, item.serialize(ns).let { tag?.let {tg-> it.wrapInCborTag(tg) }?:it }) })
+    }.toMap())
+
 
     fun getIssuerAuthPayloadAsMso() = issuerAuth.payload?.stripCborTag(24)
         ?.let { vckCborSerializer.decodeFromByteArray(ByteStringWrapperMobileSecurityObjectSerializer, it).value }
@@ -336,24 +254,65 @@ data class IssuerSigned(
     }
 }
 
+object NamespacedIssuerSignedListSerializer : KSerializer<Map<String, IssuerSignedList>> {
+    val mapSerializer = MapSerializer(String.serializer(), object : IssuerSignedListSerializer("") {})
+    override val descriptor = mapSerializer.descriptor
+    override fun deserialize(decoder: Decoder): Map<String, IssuerSignedList> = NamespacedMapEntryDeserializer().let {
+        MapSerializer(
+            it.namespaceSerializer,
+            it.itemSerializer
+        ).deserialize(decoder)
+    }
+
+    class NamespacedMapEntryDeserializer {
+        lateinit var key: String
+
+        val namespaceSerializer = NamespaceSerializer()
+        val itemSerializer = IssuerSignedListSerializer()
+
+        inner class NamespaceSerializer internal constructor() : KSerializer<String> {
+            override val descriptor = PrimitiveSerialDescriptor("ISO namespace", PrimitiveKind.STRING)
+
+            override fun deserialize(decoder: Decoder): String = decoder.decodeString().apply { key = this }
+
+            override fun serialize(encoder: Encoder, value: String) {
+                encoder.encodeString(value).also { key = value }
+            }
+
+        }
+
+        inner class IssuerSignedListSerializer internal constructor() : KSerializer<IssuerSignedList> {
+            override val descriptor = mapSerializer.descriptor
+
+            override fun deserialize(decoder: Decoder): IssuerSignedList =
+                decoder.decodeSerializableValue(IssuerSignedListSerializer(key))
+
+
+            override fun serialize(encoder: Encoder, value: IssuerSignedList) {
+                encoder.encodeSerializableValue(IssuerSignedListSerializer(key), value)
+            }
+
+        }
+    }
+
+
+    override fun serialize(encoder: Encoder, value: Map<String, IssuerSignedList>) {
+        mapSerializer.serialize(encoder, value)
+    }
+
+}
+
 
 /**
  * Convenience class with a custom serializer ([IssuerSignedListSerializer]) to prevent
- * usage of the type `Map<String, List<ByteStringWrapper<IssuerSignedItem>>>` in [IssuerSigned.namespaces].
+ * usage of the type `Map<String, List<ByteStringWrapper<IssuerSignedItem>>>` in [namespaces].
  */
-@Serializable(with = IssuerSignedListSerializer::class)
 data class IssuerSignedList(
+    private val namespace: String,
     val entries: List<ByteStringWrapper<IssuerSignedItem>>
 ) {
     override fun toString(): String {
         return "IssuerSignedList(entries=${entries.map { it.value }})"
-    }
-
-    companion object {
-        fun withItems(list: List<IssuerSignedItem>) = IssuerSignedList(
-            // TODO verify serialization of this
-            list.map { ByteStringWrapper(it, vckCborSerializer.encodeToByteArray(it).wrapInCborTag(24)) }
-        )
     }
 }
 
@@ -361,7 +320,7 @@ data class IssuerSignedList(
  * Serializes [IssuerSignedList.entries] as an "inline list",
  * having serialized instances of [IssuerSignedItem] as the values.
  */
-object IssuerSignedListSerializer : KSerializer<IssuerSignedList> {
+open class IssuerSignedListSerializer(val namespace: String) : KSerializer<IssuerSignedList> {
 
     override val descriptor: SerialDescriptor = object : SerialDescriptor {
         @ExperimentalSerializationApi
@@ -404,7 +363,7 @@ object IssuerSignedListSerializer : KSerializer<IssuerSignedList> {
         var index = 0
         encoder.encodeCollection(descriptor, value.entries.size) {
             value.entries.forEach {
-                encodeSerializableElement(descriptor, index++, ByteArraySerializer(), it.value.serialize())
+                encodeSerializableElement(descriptor, index++, ByteArraySerializer(), it.value.serialize(namespace))
             }
         }
     }
@@ -418,16 +377,15 @@ object IssuerSignedListSerializer : KSerializer<IssuerSignedList> {
                     break
                 } else {
                     val readBytes = decoder.decodeSerializableValue(ByteArraySerializer())
-                    //TODO here we are docType-aware!
-                    if (this !is DoctypeAwareCompositeDecoder) throw SerializationException("docType unknown!")
+
                     entries += ByteStringWrapper(
-                        value = IssuerSignedItem.deserialize(readBytes, docType = docType).getOrThrow(),
+                        value = IssuerSignedItem.deserialize(readBytes, namespace = namespace).getOrThrow(),
                         serialized = readBytes
                     )
                 }
             }
         }
-        return IssuerSignedList(entries)
+        return IssuerSignedList(namespace, entries)
     }
 }
 
@@ -435,9 +393,6 @@ object IssuerSignedListSerializer : KSerializer<IssuerSignedList> {
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
  */
 
-private object DontUse : IssuerSignedItemSerializer("") {}
-
-@Serializable(with = DontUse::class)
 data class IssuerSignedItem(
     @SerialName("digestID")
     val digestId: UInt,
@@ -451,7 +406,7 @@ data class IssuerSignedItem(
     val elementValue: Any,
 ) {
 
-    fun serialize() = vckCborSerializer.encodeToByteArray(this)
+    fun serialize(namespace: String) = vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace), this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -481,8 +436,8 @@ data class IssuerSignedItem(
     }
 
     companion object {
-        fun deserialize(it: ByteArray, docType: String) = kotlin.runCatching {
-            vckCborSerializer.decodeFromByteArray(IssuerSignedItemSerializer(docType), it)
+        fun deserialize(it: ByteArray, namespace: String) = kotlin.runCatching {
+            vckCborSerializer.decodeFromByteArray(IssuerSignedItemSerializer(namespace), it)
         }.wrap()
     }
 }

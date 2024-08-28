@@ -29,8 +29,8 @@ internal object CborCredentialSerializer {
         decoderFunctions += function
     }
 
-    fun register(functionMap: Map<String, ItemValueDecoder>, isoDocType: String) {
-        decoderMap[isoDocType] = functionMap
+    fun register(functionMap: Map<String, ItemValueDecoder>, isoNamespace: String) {
+        decoderMap[isoNamespace] = functionMap
     }
 
     fun lookupSerializer(element: Any): KSerializer<*>? {

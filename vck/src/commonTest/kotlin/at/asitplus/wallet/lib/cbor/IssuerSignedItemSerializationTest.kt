@@ -22,7 +22,7 @@ import kotlin.random.nextUInt
 
 class IssuerSignedItemSerializationTest : FreeSpec({
 
-    "!serialization with String" {
+    "serialization with String" {
         val item = IssuerSignedItem(
             digestId = Random.nextUInt(),
             random = Random.nextBytes(16),
@@ -30,7 +30,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementValue = uuid4().toString(),
         )
 
-        val serialized = item.serialize()
+        val serialized = item.serialize("foobar")
         serialized.encodeToString(Base16(true)).shouldNotContain("D903EC")
 
         val parsed = IssuerSignedItem.deserialize(serialized, "").getOrThrow()
@@ -45,7 +45,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementValue = Random.nextBytes(32),
         )
 
-        val serialized = item.serialize()
+        val serialized = item.serialize("foobar")
         serialized.encodeToString(Base16(true)).shouldNotContain("D903EC")
         val parsed = IssuerSignedItem.deserialize(serialized, "").getOrThrow()
         (parsed.elementValue as ByteArray) shouldBe (item.elementValue as ByteArray)
@@ -54,7 +54,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
     "document serialization with ByteArray" {
 
         val elementId = uuid4().toString()
-        val docType = "testByteDoc"
+        val namespace = "testNS"
 
 
         val decodingFun: ItemValueDecoder =
@@ -67,7 +67,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             }
         CborCredentialSerializer.register(
             mapOf(elementId to decodingFun),
-            docType
+            namespace
 
         )
         val item = IssuerSignedItem(
@@ -78,12 +78,10 @@ class IssuerSignedItemSerializationTest : FreeSpec({
         )
 
         val doc = Document(
-            docType,
+            "dummyDoc",
             IssuerSigned(
                 mapOf(
-                    "noname" to IssuerSignedList(
-                        listOf(ByteStringWrapper(item, item.serialize()))
-                    )
+                    namespace to listOf(item)
                 ), CoseSigned(ByteStringWrapper(CoseHeader(), CoseHeader().serialize()), null, null, byteArrayOf())
             ), DeviceSigned(Random.nextBytes(32), DeviceAuth())
         )
@@ -103,7 +101,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementValue = LocalDate(2024, 1, 1)
         )
 
-        val serialized = item.serialize()
+        val serialized = item.serialize("foobar")
         serialized.encodeToString(Base16(true)).shouldContain("D903EC")
 
         val parsed = IssuerSignedItem.deserialize(serialized, "").getOrThrow()
@@ -118,7 +116,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementValue = Instant.parse("2021-01-01T00:00:00Z"),
         )
 
-        val serialized = item.serialize()
+        val serialized = item.serialize("foobar")
         serialized.encodeToString(Base16(true)).shouldContain("D903EC")
 
         val parsed = IssuerSignedItem.deserialize(serialized, "").getOrThrow()

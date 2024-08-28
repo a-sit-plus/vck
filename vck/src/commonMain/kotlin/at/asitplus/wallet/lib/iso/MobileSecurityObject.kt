@@ -103,9 +103,9 @@ data class ValueDigest(
     }
 
     companion object {
-        fun fromIssuerSigned(value: IssuerSignedItem) = ValueDigest(
+        fun fromIssuerSigned(namspace:String, value: IssuerSignedItem) = ValueDigest(
             value.digestId,
-            value.serialize().wrapInCborTag(24).sha256()
+            value.serialize(namspace).wrapInCborTag(24).sha256()
         )
     }
 }

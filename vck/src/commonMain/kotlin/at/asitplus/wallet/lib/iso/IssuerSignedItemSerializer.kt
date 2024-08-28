@@ -12,9 +12,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.*
 
-internal class IssuerSignedItemCosef(val docType: String)
-
-open class IssuerSignedItemSerializer(private val docType: String) : KSerializer<IssuerSignedItem> {
+open class IssuerSignedItemSerializer(private val namespace: String) : KSerializer<IssuerSignedItem> {
 
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("IssuerSignedItem") {
         element("digestID", Long.serializer().descriptor)
@@ -96,17 +94,17 @@ open class IssuerSignedItemSerializer(private val docType: String) : KSerializer
     }
 
     private fun CompositeDecoder.decodeAnything(index: Int, elementIdentifier: String): Any {
-        if (docType.isBlank()) Napier.w { "Danger, Will Robinson! this decoder is not docType-aware! Unspeakable things may happen…" }
+        if (namespace.isBlank()) Napier.w { "This decoder is not namespace-aware! Unspeakable things may happen…" }
 
         //TODO: tags are not read out here because `decodeElementIndex` is never called, so we cannot discriminate
 
         //TODO: this fails, because the date is a valid string, but date parsing does not work, so the data was already consumed from the source and parsing it again will fail
         runCatching {
 
-            CborCredentialSerializer.decode(descriptor, index, this, elementIdentifier, docType)?.let {
+            CborCredentialSerializer.decode(descriptor, index, this, elementIdentifier, namespace)?.let {
                 return it
             }
-                ?: Napier.w { "Could not find a registered decoder for docType $docType and elementIdentifier $elementIdentifier. Falling back to defaults" }
+                ?: Napier.w { "Could not find a registered decoder for namespace $namespace and elementIdentifier $elementIdentifier. Falling back to defaults" }
 
         }
 
