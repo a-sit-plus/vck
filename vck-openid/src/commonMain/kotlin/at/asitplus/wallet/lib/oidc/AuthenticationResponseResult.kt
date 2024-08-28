@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.openid.AuthenticationResponseParameters
+
 /**
  * Possible outcomes of creating the OIDC Authentication Response
  */

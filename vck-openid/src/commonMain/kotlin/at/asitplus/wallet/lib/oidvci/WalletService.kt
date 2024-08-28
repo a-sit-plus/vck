@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.cosef.CborWebToken
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
@@ -26,24 +27,20 @@ import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult
-import at.asitplus.wallet.lib.oidc.OpenIdConstants
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.CREDENTIAL_TYPE_OPENID
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_CODE
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
+import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
+import at.asitplus.openid.OpenIdConstants.CREDENTIAL_TYPE_OPENID
+import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
+import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
+import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
-import at.asitplus.wallet.lib.oidvci.mdl.RequestedCredentialClaimSpecification
+import at.asitplus.openid.RequestedCredentialClaimSpecification
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlin.random.Random
 

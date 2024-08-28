@@ -4,6 +4,7 @@ package at.asitplus.wallet.lib.oidc
 
 
 import at.asitplus.catching
+import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import io.ktor.http.*
 import kotlinx.serialization.KSerializer

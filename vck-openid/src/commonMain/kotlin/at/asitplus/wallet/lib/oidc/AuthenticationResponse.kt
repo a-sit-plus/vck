@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 
 /**

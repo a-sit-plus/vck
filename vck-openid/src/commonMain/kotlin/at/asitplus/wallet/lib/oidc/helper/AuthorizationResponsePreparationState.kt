@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.oidc.helpers
 
 import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.oidc.RelyingPartyMetadata
+import at.asitplus.openid.RelyingPartyMetadata
 import kotlinx.serialization.Serializable
 
 @Serializable

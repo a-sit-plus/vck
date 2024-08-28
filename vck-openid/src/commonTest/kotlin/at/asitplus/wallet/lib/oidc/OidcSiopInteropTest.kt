@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.asn1.*
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
@@ -13,7 +15,6 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidvci.decode
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
