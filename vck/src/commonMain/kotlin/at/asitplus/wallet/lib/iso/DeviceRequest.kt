@@ -212,6 +212,25 @@ data class Document(
 ) {
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Document) return false
+
+        if (docType != other.docType) return false
+        if (issuerSigned != other.issuerSigned) return false
+        if (deviceSigned != other.deviceSigned) return false
+        if (errors != other.errors) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = docType.hashCode()
+        result = 31 * result + issuerSigned.hashCode()
+        result = 31 * result + deviceSigned.hashCode()
+        result = 31 * result + (errors?.hashCode() ?: 0)
+        return result
+    }
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
@@ -236,9 +255,15 @@ data class IssuerSigned private constructor(
     constructor(
         namespacedItems: Map<String, List<IssuerSignedItem>>,
         issuerAuth: CoseSigned,
-        tag:Byte?=null
+        tag: Byte? = null
     ) : this(issuerAuth = issuerAuth, namespaces = namespacedItems.map { (ns, value) ->
-        ns to IssuerSignedList(ns, value.map { item -> ByteStringWrapper(item, item.serialize(ns).let { tag?.let {tg-> it.wrapInCborTag(tg) }?:it }) })
+        ns to IssuerSignedList(
+            ns,
+            value.map { item ->
+                ByteStringWrapper(
+                    item,
+                    item.serialize(ns).let { tag?.let { tg -> it.wrapInCborTag(tg) } ?: it })
+            })
     }.toMap())
 
 
@@ -246,6 +271,21 @@ data class IssuerSigned private constructor(
         ?.let { vckCborSerializer.decodeFromByteArray(ByteStringWrapperMobileSecurityObjectSerializer, it).value }
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is IssuerSigned) return false
+
+        if (issuerAuth != other.issuerAuth) return false
+        if (namespaces != other.namespaces) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = issuerAuth.hashCode()
+        result = 31 * result + (namespaces?.hashCode() ?: 0)
+        return result
+    }
 
     companion object {
         fun deserialize(it: ByteArray) = kotlin.runCatching {
@@ -313,6 +353,22 @@ data class IssuerSignedList(
 ) {
     override fun toString(): String {
         return "IssuerSignedList(entries=${entries.map { it.value }})"
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is IssuerSignedList) return false
+
+        if (namespace != other.namespace) return false
+        if (entries != other.entries) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = namespace.hashCode()
+        result = 31 * result + entries.hashCode()
+        return result
     }
 }
 
@@ -394,17 +450,19 @@ open class IssuerSignedListSerializer(val namespace: String) : KSerializer<Issue
  */
 
 data class IssuerSignedItem(
-    @SerialName("digestID")
+    //TODO CANONICAL ORDER FOR COSE???
+    @SerialName(PROP_DIGEST_ID)
     val digestId: UInt,
-    @SerialName("random")
+    @SerialName(PROP_RANDOM)
     @ByteString
     val random: ByteArray,
-    @SerialName("elementIdentifier")
+    @SerialName(PROP_ELEMENT_ID)
     val elementIdentifier: String,
-    @SerialName("elementValue")
-    @ValueTags(1004uL)
+    @SerialName(PROP_ELEMENT_VALUE)
+    // @ValueTags(1004uL)
     val elementValue: Any,
 ) {
+
 
     fun serialize(namespace: String) = vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace), this)
 
@@ -417,7 +475,17 @@ data class IssuerSignedItem(
         if (digestId != other.digestId) return false
         if (!random.contentEquals(other.random)) return false
         if (elementIdentifier != other.elementIdentifier) return false
-        return elementValue == other.elementValue
+        if(elementValue is ByteArray && other.elementValue is ByteArray) return elementValue.contentEquals(other.elementValue)
+        if(elementValue is IntArray && other.elementValue is IntArray) return elementValue.contentEquals(other.elementValue)
+        if(elementValue is BooleanArray && other.elementValue is BooleanArray) return elementValue.contentEquals(other.elementValue)
+        if(elementValue is CharArray && other.elementValue is CharArray) return elementValue.contentEquals(other.elementValue)
+        if(elementValue is ShortArray && other.elementValue is ShortArray) return elementValue.contentEquals(other.elementValue)
+        if(elementValue is LongArray && other.elementValue is LongArray) return elementValue.contentEquals(other.elementValue)
+        if(elementValue is FloatArray && other.elementValue is FloatArray) return elementValue.contentEquals(other.elementValue)
+        if(elementValue is DoubleArray && other.elementValue is DoubleArray) return elementValue.contentEquals(other.elementValue)
+        return if (elementValue is Array<*> && other.elementValue is Array<*>) elementValue.contentDeepEquals(other.elementValue)
+        //It was time for Thomas to leave. He had seen everything.
+        else elementValue == other.elementValue
     }
 
     override fun hashCode(): Int {
@@ -439,6 +507,11 @@ data class IssuerSignedItem(
         fun deserialize(it: ByteArray, namespace: String) = kotlin.runCatching {
             vckCborSerializer.decodeFromByteArray(IssuerSignedItemSerializer(namespace), it)
         }.wrap()
+
+        internal const val PROP_DIGEST_ID = "digestID"
+        internal const val PROP_RANDOM = "random"
+        internal const val PROP_ELEMENT_ID = "elementIdentifier"
+        internal const val PROP_ELEMENT_VALUE = "elementValue"
     }
 }
 
@@ -482,7 +555,7 @@ data class DeviceAuth(
     @SerialName("deviceSignature")
     val deviceSignature: CoseSigned? = null,
     @SerialName("deviceMac")
-    val deviceMac: CoseSigned? = null, // TODO is COSE_Mac0
+    val deviceMac: CoseSigned? = null, // TODO is COSE_Mac0 //@nodh what does that mean?
 )
 
 

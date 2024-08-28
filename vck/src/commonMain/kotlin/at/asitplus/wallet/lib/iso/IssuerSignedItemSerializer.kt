@@ -15,10 +15,10 @@ import kotlinx.serialization.encoding.*
 open class IssuerSignedItemSerializer(private val namespace: String) : KSerializer<IssuerSignedItem> {
 
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("IssuerSignedItem") {
-        element("digestID", Long.serializer().descriptor)
-        element("random", ByteArraySerializer().descriptor)
-        element("elementIdentifier", String.serializer().descriptor)
-        element("elementValue", String.serializer().descriptor)
+        element(IssuerSignedItem.PROP_DIGEST_ID, Long.serializer().descriptor)
+        element(IssuerSignedItem.PROP_RANDOM, ByteArraySerializer().descriptor)
+        element(IssuerSignedItem.PROP_ELEMENT_ID, String.serializer().descriptor)
+        element(IssuerSignedItem.PROP_ELEMENT_VALUE, String.serializer().descriptor)
     }
 
     override fun serialize(encoder: Encoder, value: IssuerSignedItem) {
@@ -32,11 +32,11 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
 
     private fun CompositeEncoder.encodeAnything(value: IssuerSignedItem, index: Int) {
         val descriptor = buildClassSerialDescriptor("IssuerSignedItem") {
-            element("digestID", Long.serializer().descriptor)
-            element("random", ByteArraySerializer().descriptor)
-            element("elementIdentifier", String.serializer().descriptor)
+            element(IssuerSignedItem.PROP_DIGEST_ID, Long.serializer().descriptor)
+            element(IssuerSignedItem.PROP_RANDOM, ByteArraySerializer().descriptor)
+            element(IssuerSignedItem.PROP_ELEMENT_ID, String.serializer().descriptor)
             element(
-                elementName = "elementValue",
+                elementName = IssuerSignedItem.PROP_ELEMENT_VALUE,
                 descriptor = buildElementValueSerializer(value.elementValue).descriptor,
                 annotations = if (value.elementValue is LocalDate || value.elementValue is Instant)
                     listOf(ValueTags(1004uL)) else emptyList()
@@ -75,12 +75,14 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
             while (true) {
                 val name = decodeStringElement(descriptor, 0)
                 val index =
-                    descriptor.getElementIndex(name) //todo: decodeElementIndex does not work here, but is the only function that parses tags
+                    descriptor.getElementIndex(name) //Don't call decodeElementIndex, as it would check for tags. this would break decodeAnything
                 when (name) {
-                    "digestID" -> digestId = decodeLongElement(descriptor, index).toUInt()
-                    "random" -> random = decodeSerializableElement(descriptor, index, ByteArraySerializer())
-                    "elementIdentifier" -> elementIdentifier = decodeStringElement(descriptor, index)
-                    "elementValue" -> elementValue = decodeAnything(index, elementIdentifier)
+                    IssuerSignedItem.PROP_DIGEST_ID -> digestId = decodeLongElement(descriptor, index).toUInt()
+                    IssuerSignedItem.PROP_RANDOM -> random =
+                        decodeSerializableElement(descriptor, index, ByteArraySerializer())
+
+                    IssuerSignedItem.PROP_ELEMENT_ID -> elementIdentifier = decodeStringElement(descriptor, index)
+                    IssuerSignedItem.PROP_ELEMENT_VALUE -> elementValue = decodeAnything(index, elementIdentifier)
                 }
                 if (index == 3) break
             }
@@ -96,9 +98,8 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
     private fun CompositeDecoder.decodeAnything(index: Int, elementIdentifier: String): Any {
         if (namespace.isBlank()) Napier.w { "This decoder is not namespace-aware! Unspeakable things may happen…" }
 
-        //TODO: tags are not read out here because `decodeElementIndex` is never called, so we cannot discriminate
-
-        //TODO: this fails, because the date is a valid string, but date parsing does not work, so the data was already consumed from the source and parsing it again will fail
+        //Tags are not read out here but skipped because `decodeElementIndex` is never called, so we cannot discriminate
+        //technically, this should be a good thing though, because otherwise we'd consume more from the input
         runCatching {
 
             CborCredentialSerializer.decode(descriptor, index, this, elementIdentifier, namespace)?.let {
@@ -108,8 +109,10 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
 
         }
 
-
+        //These are the ones that map to different CBOR data types, the rest don't, so if it is not registered, we'll lose type information
         runCatching { return decodeStringElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
+        runCatching { return decodeLongElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
+        runCatching { return decodeDoubleElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
         runCatching { return decodeBooleanElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
 
         throw IllegalArgumentException("Could not decode value at $index")
