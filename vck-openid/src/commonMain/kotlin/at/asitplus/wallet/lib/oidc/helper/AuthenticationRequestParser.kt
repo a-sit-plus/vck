@@ -4,12 +4,12 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
-import at.asitplus.wallet.lib.oidc.AuthenticationResponseParameters
+import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
-import at.asitplus.wallet.lib.oidc.OpenIdConstants
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception

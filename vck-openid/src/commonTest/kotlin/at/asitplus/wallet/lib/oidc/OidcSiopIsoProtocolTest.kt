@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent

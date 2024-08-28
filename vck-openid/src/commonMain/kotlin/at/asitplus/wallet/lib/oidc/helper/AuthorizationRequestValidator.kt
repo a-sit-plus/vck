@@ -1,14 +1,14 @@
 package at.asitplus.wallet.lib.oidc.helper
 
 import at.asitplus.signum.indispensable.pki.leaf
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
-import at.asitplus.wallet.lib.oidc.OpenIdConstants
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.DIRECT_POST
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ResponseMode.DIRECT_POST_JWT
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.ID_TOKEN
+import at.asitplus.openid.OpenIdConstants.ResponseMode.DIRECT_POST
+import at.asitplus.openid.OpenIdConstants.ResponseMode.DIRECT_POST_JWT
+import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import io.ktor.http.Url

@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.OidcUserInfoExtended
 
 /**
  * Interface used in [SimpleAuthorizationService] to actually load user data, converting it into [OidcUserInfo].

@@ -1,18 +1,13 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.wallet.lib.data.VcDataModelConstants
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
-import at.asitplus.wallet.lib.oidc.OpenIdConstants
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.IssuerMetadata
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
-import io.ktor.http.*
-import kotlinx.serialization.encodeToString
-import kotlin.random.Random
-import kotlin.time.Duration.Companion.seconds
 
 class DeserializationTest : FunSpec({
 

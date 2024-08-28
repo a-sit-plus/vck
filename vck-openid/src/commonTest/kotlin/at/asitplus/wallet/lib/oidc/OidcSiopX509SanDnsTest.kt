@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.asn1.Asn1
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.asn1.Asn1Primitive

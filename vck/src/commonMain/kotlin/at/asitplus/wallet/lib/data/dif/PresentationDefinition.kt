@@ -11,6 +11,7 @@ import kotlinx.serialization.encodeToString
  * Data class for
  * [DIF Presentation Exchange v1.0.0](https://identity.foundation/presentation-exchange/spec/v1.0.0/#presentation-definition)
  */
+// TODO into data classes
 @Serializable
 data class PresentationDefinition(
     @SerialName("id")

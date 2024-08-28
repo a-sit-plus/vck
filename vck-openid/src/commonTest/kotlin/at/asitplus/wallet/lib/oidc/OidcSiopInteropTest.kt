@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.asn1.*
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
