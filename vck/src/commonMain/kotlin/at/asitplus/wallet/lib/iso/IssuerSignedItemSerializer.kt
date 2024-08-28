@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.wallet.lib.data.InstantStringSerializer
+import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.KSerializer
@@ -11,7 +12,9 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.*
 
-object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
+internal class IssuerSignedItemCosef(val docType: String)
+
+open class IssuerSignedItemSerializer(private val docType: String) : KSerializer<IssuerSignedItem> {
 
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("IssuerSignedItem") {
         element("digestID", Long.serializer().descriptor)
@@ -73,7 +76,8 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
         decoder.decodeStructure(descriptor) {
             while (true) {
                 val name = decodeStringElement(descriptor, 0)
-                val index = descriptor.getElementIndex(name) //todo: decodeElementIndex does not work here, but is the only function that parses tags
+                val index =
+                    descriptor.getElementIndex(name) //todo: decodeElementIndex does not work here, but is the only function that parses tags
                 when (name) {
                     "digestID" -> digestId = decodeLongElement(descriptor, index).toUInt()
                     "random" -> random = decodeSerializableElement(descriptor, index, ByteArraySerializer())
@@ -92,21 +96,24 @@ object IssuerSignedItemSerializer : KSerializer<IssuerSignedItem> {
     }
 
     private fun CompositeDecoder.decodeAnything(index: Int, elementIdentifier: String): Any {
+        if (docType.isBlank()) Napier.w { "Danger, Will Robinson! this decoder is not docType-aware! Unspeakable things may happen…" }
 
         //TODO: tags are not read out here because `decodeElementIndex` is never called, so we cannot discriminate
 
         //TODO: this fails, because the date is a valid string, but date parsing does not work, so the data was already consumed from the source and parsing it again will fail
-
-
-        runCatching { return decodeSerializableElement(descriptor, index, LocalDate.serializer()) }.exceptionOrNull()?.printStackTrace()
-        runCatching { return decodeSerializableElement(descriptor, index, InstantStringSerializer()) }.exceptionOrNull()?.printStackTrace()
-        runCatching { return decodeStringElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
-        runCatching { return decodeSerializableElement(descriptor, index, ByteArraySerializer()) }.exceptionOrNull()?.printStackTrace()
-        runCatching { return decodeBooleanElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
         runCatching {
-            return CborCredentialSerializer.decode(descriptor, index, this, elementIdentifier, "TODOisoDocType")
-                ?: throw IllegalArgumentException("Could not decode value at $index")
+
+            CborCredentialSerializer.decode(descriptor, index, this, elementIdentifier, docType)?.let {
+                return it
+            }
+                ?: Napier.w { "Could not find a registered decoder for docType $docType and elementIdentifier $elementIdentifier. Falling back to defaults" }
+
         }
+
+
+        runCatching { return decodeStringElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
+        runCatching { return decodeBooleanElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
+
         throw IllegalArgumentException("Could not decode value at $index")
     }
 }
