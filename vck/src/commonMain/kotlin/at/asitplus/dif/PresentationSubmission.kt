@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.data.dif
+package at.asitplus.dif
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -7,7 +7,6 @@ import kotlinx.serialization.Serializable
  * Data class for
  * [DIF Presentation Exchange v1.0.0](https://identity.foundation/presentation-exchange/spec/v1.0.0/#presentation-submission)
  */
-// TODO into data classes
 @Serializable
 data class PresentationSubmission(
     @SerialName("id")

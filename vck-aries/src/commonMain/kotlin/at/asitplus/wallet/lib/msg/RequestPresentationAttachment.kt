@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.msg
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.aries.jsonSerializer
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.dif.PresentationDefinition
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString

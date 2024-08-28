@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.data.dif
+package at.asitplus.dif
 
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName

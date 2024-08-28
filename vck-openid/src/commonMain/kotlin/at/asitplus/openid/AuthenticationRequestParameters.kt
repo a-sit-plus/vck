@@ -2,7 +2,7 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.wallet.lib.data.InstantLongSerializer
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.dif.PresentationDefinition
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
