@@ -24,21 +24,21 @@ kotlin {
 
         commonMain {
             dependencies {
-                commonImplementationAndApiDependencies()
-//                implementation(project.napier())
-//                api("com.benasher44:uuid:${VcLibVersions.uuid}")
-//                api(serialization("json"))
-//                api(serialization("cbor"))
-//                api(datetime())
-//                api("com.ionspin.kotlin:bignum:${signumVersionCatalog.findVersion("bignum").get()}")
-//                api(kmmresult())
-//                api("at.asitplus.signum:indispensable:${VcLibVersions.signum}")
-//                api("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}")
-//                api("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
-//                api("at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}")
-//                api("io.matthewnelson.encoding:core:${AspVersions.versions["encoding"]}")
-//                api("io.matthewnelson.encoding:base16:${AspVersions.versions["encoding"]}")
-//                api("io.matthewnelson.encoding:base64:${AspVersions.versions["encoding"]}")
+                implementation(project.napier())
+                implementation(project.ktor("http"))
+                api("com.benasher44:uuid:${VcLibVersions.uuid}")
+                api(serialization("json"))
+                api(serialization("cbor"))
+                api(datetime())
+                api("com.ionspin.kotlin:bignum:${signumVersionCatalog.findVersion("bignum").get()}")
+                api(kmmresult())
+                api("at.asitplus.signum:indispensable:${VcLibVersions.signum}")
+                api("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}")
+                api("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
+                api("at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}")
+                api("io.matthewnelson.encoding:core:${AspVersions.versions["encoding"]}")
+                api("io.matthewnelson.encoding:base16:${AspVersions.versions["encoding"]}")
+                api("io.matthewnelson.encoding:base64:${AspVersions.versions["encoding"]}")
             }
         }
 
