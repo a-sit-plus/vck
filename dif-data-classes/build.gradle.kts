@@ -24,7 +24,6 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(project(":dif-data-classes"))
                 implementation(project.napier())
                 api(serialization("json"))
                 api(serialization("cbor"))
@@ -59,9 +58,9 @@ kotlin {
 }
 
 exportIosFramework(
-    "OpenIdDataClasses",
+    "DifDataClasses",
     static = false,
-    *commonIosExports(), project(":dif-data-classes")
+    *commonIosExports(),
 )
 
 val javadocJar = setupDokka(
@@ -74,8 +73,8 @@ publishing {
         withType<MavenPublication> {
             if (this.name != "relocation") artifact(javadocJar)
             pom {
-                name.set("OpenID Data Classes")
-                description.set("Kotlin Multiplatform data classes for OpenId")
+                name.set("DIF Data Classes")
+                description.set("Kotlin Multiplatform data classes for DIF")
                 url.set("https://github.com/a-sit-plus/vck")
                 licenses {
                     license {

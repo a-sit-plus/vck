@@ -27,6 +27,7 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
+                api(project(":dif-data-classes"))
                 commonImplementationAndApiDependencies()
             }
         }
@@ -50,7 +51,7 @@ kotlin {
 exportIosFramework(
     name = "VckKmm",
     static = false,
-    *commonIosExports()
+    *commonIosExports(), project(":dif-data-classes")
 )
 
 val javadocJar = setupDokka(
