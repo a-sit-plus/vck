@@ -19,4 +19,12 @@ object VcLibVersions {
         val json get() = versionOf("jvm.json")
         val `authlete-cbor` get() = versionOf("jvm.cbor")
     }
+
+    object Android {
+        val compileSDK get() = versionOf("android.compileSDK")
+        val minSDK get() = versionOf("android.minSDK")
+        val testRunner get() = versionOf("android.testRunner")
+        val testCore get() = versionOf("android.testCore")
+        val junit get() = versionOf("android.junit")
+    }
 }

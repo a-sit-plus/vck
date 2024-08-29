@@ -51,7 +51,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                 }
             ))))
         holderKeyPair = EphemeralKeyPariAdapter()
-        verifierKeyPair = EphemeralKeyPariAdapter(extensions)
+        verifierKeyPair = EphemeralKeyPariAdapter(extensions = extensions)
         responseUrl = "https://example.com"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)

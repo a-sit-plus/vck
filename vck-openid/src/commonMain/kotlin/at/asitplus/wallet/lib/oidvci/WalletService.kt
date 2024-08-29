@@ -521,7 +521,7 @@ class WalletService(
         proofType = OpenIdConstants.ProofType.JWT,
         jwt = jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
-                algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow(),
+                algorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
                 type = OpenIdConstants.ProofType.JWT_HEADER_TYPE.stringRepresentation,
             ),
             payload = JsonWebToken(
@@ -544,7 +544,7 @@ class WalletService(
         proofType = OpenIdConstants.ProofType.CWT,
         cwt = coseService.createSignedCose(
             protectedHeader = CoseHeader(
-                algorithm = cryptoService.keyPairAdapter.signingAlgorithm.toCoseAlgorithm().getOrThrow(),
+                algorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toCoseAlgorithm().getOrThrow(),
                 contentType = OpenIdConstants.ProofType.CWT_HEADER_TYPE.stringRepresentation,
                 certificateChain = cryptoService.keyPairAdapter.certificate?.encodeToDerOrNull()
             ),

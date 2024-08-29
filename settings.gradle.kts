@@ -4,22 +4,24 @@ import java.util.*
 pluginManagement {
     includeBuild("conventions-vclib")
     repositories {
-        maven("https://maven.pkg.jetbrains.space/kotlin/p/dokka/dev")
+
+        maven("https://s01.oss.sonatype.org/content/repositories/snapshots")
         google()
         gradlePluginPortal()
         mavenCentral()
     }
 }
-/*
+
 if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
     includeBuild("signum") {
         dependencySubstitution {
             substitute(module("at.asitplus.signum:indispensable")).using(project(":indispensable"))
             substitute(module("at.asitplus.signum:indispensable-josef")).using(project(":indispensable-josef"))
             substitute(module("at.asitplus.signum:indispensable-cosef")).using(project(":indispensable-cosef"))
+            substitute(module("at.asitplus.signum:supreme")).using(project(":supreme"))
         }
     }
-} else logger.lifecycle("Excluding Signum from this build")*/
+} else logger.lifecycle("Excluding Signum from this build")
 
 rootProject.name = "vc-k"
 include(":dif-data-classes")
