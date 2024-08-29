@@ -106,10 +106,14 @@ class VerifiablePresentationFactory(
 
         return Holder.CreatePresentationResult.Document(
             Document(
-                docType = credential.scheme.isoDocType!!, issuerSigned = IssuerSigned(
-                    namespaces = disclosedItems, issuerAuth = credential.issuerSigned.issuerAuth
-                ), deviceSigned = DeviceSigned(
-                    namespaces = byteArrayOf(), deviceAuth = DeviceAuth(
+                docType = credential.scheme.isoDocType!!,
+                issuerSigned = IssuerSigned(
+                    namespaces = disclosedItems,
+                    issuerAuth = credential.issuerSigned.issuerAuth
+                ),
+                deviceSigned = DeviceSigned(
+                    namespaces = byteArrayOf(),
+                    deviceAuth = DeviceAuth(
                         deviceSignature = deviceSignature
                     )
                 )
