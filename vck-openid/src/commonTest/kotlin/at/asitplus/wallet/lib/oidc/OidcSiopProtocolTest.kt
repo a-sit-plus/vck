@@ -413,7 +413,7 @@ private suspend fun buildAttestationJwt(
     verifierKeyPair: KeyPairAdapter
 ): JwsSigned = DefaultJwsService(sprsCryptoService).createSignedJws(
     header = JwsHeader(
-        algorithm = sprsCryptoService.keyPairAdapter.signingAlgorithm.toJwsAlgorithm().getOrThrow(),
+        algorithm = sprsCryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
     ),
     payload = JsonWebToken(
         issuer = "sprs", // allows Wallet to determine the issuer's key

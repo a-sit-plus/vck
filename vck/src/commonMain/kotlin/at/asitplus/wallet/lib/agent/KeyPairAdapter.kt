@@ -56,9 +56,9 @@ class EphemeralKeyPariAdapter(
             curve = ECCurve.SECP_256_R_1
             digests = setOf(Digest.SHA256)
         }
-    }
+    }, extensions: List<X509CertificateExtension> = listOf()
 ) :
-    DefaultKeyPairAdapter(key.signer(), listOf())
+    DefaultKeyPairAdapter(key.signer(), extensions)
 
 interface EphemeralKeyHolder {
     val publicJsonWebKey: JsonWebKey?
