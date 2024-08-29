@@ -74,7 +74,6 @@ object LibraryInitializer {
      *
      * @param serializerLookup used to build the serializer descriptor for [at.asitplus.wallet.lib.iso.IssuerSignedItem]
      * @param itemValueEncoder used to actually serialize the element value in [at.asitplus.wallet.lib.iso.IssuerSignedItemSerializer]
-     * @param itemValueDecoder used to actually deserialize `Any` object in [at.asitplus.wallet.lib.iso.IssuerSignedItemSerializer]
      * @param jsonValueEncoder used to describe the credential in input descriptors used in verifiable presentations,
      *                         e.g. when used in SIOPv2
      * @param itemValueDecoderMap used to actually deserialize `Any` object in [at.asitplus.wallet.lib.iso.IssuerSignedItemSerializer],
@@ -85,17 +84,14 @@ object LibraryInitializer {
         serializersModule: SerializersModule? = null,
         serializerLookup: SerializerLookup,
         itemValueEncoder: ItemValueEncoder,
-        itemValueDecoder: ItemValueDecoder,
         jsonValueEncoder: JsonValueEncoder,
-        itemValueDecoderMap: ElementIdentifierToItemValueDecoderMap = emptyMap(),
+        itemValueDecoderMap: ElementIdentifierToItemValueSerializerMap = emptyMap(),
     ) {
-        credentialScheme.isoDocType
         registerExtensionLibrary(credentialScheme, serializersModule)
         CborCredentialSerializer.register(serializerLookup)
         CborCredentialSerializer.register(itemValueEncoder)
-        CborCredentialSerializer.register(itemValueDecoder)
         JsonCredentialSerializer.register(jsonValueEncoder)
-        credentialScheme.isoDocType?.let { CborCredentialSerializer.register(itemValueDecoderMap, it) }
+        credentialScheme.isoNamespace?.let { CborCredentialSerializer.register(itemValueDecoderMap, it) }
     }
 
 }
@@ -154,5 +150,5 @@ typealias JsonValueEncoder
 /**
  * Maps from [IssuerSignedItem.elementIdentifier] to [ItemValueDecoder]
  */
-typealias ElementIdentifierToItemValueDecoderMap
-        = Map<String, ItemValueDecoder>
+typealias ElementIdentifierToItemValueSerializerMap
+        = Map<String, KSerializer<*>>

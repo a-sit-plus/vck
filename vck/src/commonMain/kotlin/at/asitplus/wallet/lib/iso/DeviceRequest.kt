@@ -245,11 +245,11 @@ data class Document(
  */
 @Serializable
 data class IssuerSigned private constructor(
-    @SerialName("issuerAuth")
-    val issuerAuth: CoseSigned,
     @SerialName("nameSpaces")
     @Serializable(with = NamespacedIssuerSignedListSerializer::class)
     val namespaces: Map<String, @Contextual IssuerSignedList>? = null,
+    @SerialName("issuerAuth")
+    val issuerAuth: CoseSigned,
 ) {
 
     constructor(
@@ -258,7 +258,6 @@ data class IssuerSigned private constructor(
         tag: Byte? = null
     ) : this(issuerAuth = issuerAuth, namespaces = namespacedItems.map { (ns, value) ->
         ns to IssuerSignedList(
-            ns,
             value.map { item ->
                 ByteStringWrapper(
                     item,
@@ -348,7 +347,6 @@ object NamespacedIssuerSignedListSerializer : KSerializer<Map<String, IssuerSign
  * usage of the type `Map<String, List<ByteStringWrapper<IssuerSignedItem>>>` in [namespaces].
  */
 data class IssuerSignedList(
-    private val namespace: String,
     val entries: List<ByteStringWrapper<IssuerSignedItem>>
 ) {
     override fun toString(): String {
@@ -359,16 +357,13 @@ data class IssuerSignedList(
         if (this === other) return true
         if (other !is IssuerSignedList) return false
 
-        if (namespace != other.namespace) return false
         if (entries != other.entries) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = namespace.hashCode()
-        result = 31 * result + entries.hashCode()
-        return result
+        return 31 * entries.hashCode()
     }
 }
 
@@ -441,7 +436,7 @@ open class IssuerSignedListSerializer(val namespace: String) : KSerializer<Issue
                 }
             }
         }
-        return IssuerSignedList(namespace, entries)
+        return IssuerSignedList(entries)
     }
 }
 
@@ -450,7 +445,6 @@ open class IssuerSignedListSerializer(val namespace: String) : KSerializer<Issue
  */
 
 data class IssuerSignedItem(
-    //TODO CANONICAL ORDER FOR COSE???
     @SerialName(PROP_DIGEST_ID)
     val digestId: UInt,
     @SerialName(PROP_RANDOM)
