@@ -13,6 +13,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ByteArraySerializer
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import kotlinx.serialization.cbor.ValueTags
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -99,7 +100,7 @@ data class ValueDigest(
     }
 
     override fun toString(): String {
-        return "MobileSecurityObjectNamespaceEntry(key=$key, value=${value.encodeToString(Base16(strict = true))})"
+        return "ValueDigest(key=$key, value=${value.encodeToString(Base16(strict = true))})"
     }
 
     companion object {
@@ -218,15 +219,20 @@ data class KeyAuthorization(
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for MSO (9.1.2.4)
  */
+@OptIn(ExperimentalUnsignedTypes::class)
 @Serializable
 data class ValidityInfo(
     @SerialName("signed")
+    @ValueTags(0u)
     val signed: Instant,
     @SerialName("validFrom")
+    @ValueTags(0u)
     val validFrom: Instant,
     @SerialName("validUntil")
+    @ValueTags(0u)
     val validUntil: Instant,
     @SerialName("expectedUpdate")
+    @ValueTags(0u)
     val expectedUpdate: Instant? = null,
 ) {
 
