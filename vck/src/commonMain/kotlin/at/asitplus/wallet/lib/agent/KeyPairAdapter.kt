@@ -56,9 +56,9 @@ class EphemeralKeyPariAdapter(
             curve = ECCurve.SECP_256_R_1
             digests = setOf(Digest.SHA256)
         }
-    }, extensions: List<X509CertificateExtension> = listOf()
+    }.getOrThrow(), extensions: List<X509CertificateExtension> = listOf()
 ) :
-    DefaultKeyPairAdapter(key.signer(), extensions)
+    DefaultKeyPairAdapter(key.signer().getOrThrow(), extensions)
 
 interface EphemeralKeyHolder {
     val publicJsonWebKey: JsonWebKey?
@@ -72,7 +72,7 @@ open class DefaultEphemeralKeyHolder(val crv: ECCurve) : EphemeralKeyHolder {
             curve = crv
             digests = setOf(crv.nativeDigest)
         }
-    }
+    }.getOrThrow()
     override val publicJsonWebKey: JsonWebKey?
         get() = key.publicKey.toJsonWebKey()
 
