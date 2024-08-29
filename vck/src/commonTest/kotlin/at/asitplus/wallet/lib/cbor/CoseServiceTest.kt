@@ -24,7 +24,7 @@ class CoseServiceTest : FreeSpec({
 
     beforeEach {
         val keyPairAdapter = EphemeralKeyPariAdapter()
-        cryptoService = DefaultCryptoService(keyPairAdapter, PlatformCryptoShim(keyPairAdapter))
+        cryptoService = DefaultCryptoService(keyPairAdapter)
         coseService = DefaultCoseService(cryptoService)
         verifierCoseService = DefaultVerifierCoseService()
         randomPayload = Random.nextBytes(32)

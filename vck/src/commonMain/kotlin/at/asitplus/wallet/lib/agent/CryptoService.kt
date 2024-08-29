@@ -7,6 +7,7 @@ import at.asitplus.signum.indispensable.*
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.supreme.SignatureResult
 import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.signum.supreme.sign.SignatureInput
 import at.asitplus.signum.supreme.sign.verifierFor
@@ -14,16 +15,23 @@ import at.asitplus.signum.supreme.sign.verifierFor
 interface CryptoService {
 
     suspend fun sign(input: ByteArray): KmmResult<CryptoSignature.RawByteEncodable> =
-        doSign(input).map {
-            when (it) {
-                is CryptoSignature.RawByteEncodable -> it
-                is CryptoSignature.NotRawByteEncodable -> when (it) {
-                    is CryptoSignature.EC.IndefiniteLength -> it.withCurve((keyPairAdapter.publicKey as CryptoPublicKey.EC).curve)
-                }
+        when (val sig = doSign(input)) {
+            //TODO: this needs to be nicer, once sigresult supports generics
+
+            is SignatureResult.Error -> KmmResult.failure(sig.exception)
+            is SignatureResult.Failure -> KmmResult.failure(sig.problem)
+            is SignatureResult.Success -> {
+                when (val sigValue = sig.signature) {
+                    is CryptoSignature.RawByteEncodable -> sigValue
+                    is CryptoSignature.NotRawByteEncodable -> when (sigValue) {
+                        is CryptoSignature.EC.IndefiniteLength -> sigValue.withCurve((keyPairAdapter.publicKey as CryptoPublicKey.EC).curve)
+                    }
+                }.let { KmmResult(it) }
             }
         }
 
-    suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature>
+
+    suspend fun doSign(input: ByteArray): SignatureResult
 
     fun encrypt(
         key: ByteArray,
@@ -94,9 +102,10 @@ data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteA
         return result
     }
 }
-expect class PlatformCryptoShim constructor(keyPairAdapter: KeyPairAdapter){
 
-    val keyPairAdapter:KeyPairAdapter
+expect class PlatformCryptoShim constructor(keyPairAdapter: KeyPairAdapter) {
+
+    val keyPairAdapter: KeyPairAdapter
 
     fun encrypt(
         key: ByteArray,
@@ -127,13 +136,13 @@ expect class PlatformCryptoShim constructor(keyPairAdapter: KeyPairAdapter){
     ): KmmResult<ByteArray>
 }
 
-class DefaultCryptoService(
-    override val keyPairAdapter: KeyPairAdapter,
-    private val platformCryptoShim: PlatformCryptoShim
+open class DefaultCryptoService(
+    override val keyPairAdapter: KeyPairAdapter
 ) : CryptoService {
 
+    private val platformCryptoShim = PlatformCryptoShim(keyPairAdapter)
 
-    override suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature> =
+    override suspend fun doSign(input: ByteArray): SignatureResult =
         keyPairAdapter.signer.sign(SignatureInput(input))
 
     override fun encrypt(
@@ -142,7 +151,8 @@ class DefaultCryptoService(
         aad: ByteArray,
         input: ByteArray,
         algorithm: JweEncryption
-    ): KmmResult<AuthenticatedCiphertext> = platformCryptoShim.encrypt(key, iv, aad, input, algorithm)
+    ): KmmResult<AuthenticatedCiphertext> =
+        platformCryptoShim.encrypt(key, iv, aad, input, algorithm)
 
     override suspend fun decrypt(
         key: ByteArray,

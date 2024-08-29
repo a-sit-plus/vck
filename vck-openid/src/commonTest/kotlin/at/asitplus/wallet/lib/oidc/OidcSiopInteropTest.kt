@@ -322,7 +322,7 @@ class OidcSiopInteropTest : FreeSpec({
                     )
                 }
             ))))
-        verifierKeyPair = EphemeralKeyPariAdapter(extensions)
+        verifierKeyPair = EphemeralKeyPariAdapter(extensions = extensions)
         verifierAgent = VerifierAgent(verifierKeyPair)
         verifierSiop = OidcSiopVerifier(
             keyPairAdapter = verifierKeyPair,
