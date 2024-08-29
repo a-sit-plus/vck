@@ -48,8 +48,8 @@ class HolderAgent(
     ) : this(
         validator = Validator(),
         subjectCredentialStore = subjectCredentialStore,
-        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter, PlatformCryptoShim(keyPairAdapter))),
-        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter, PlatformCryptoShim(keyPairAdapter))),
+        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
+        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
         keyPair = keyPairAdapter
     )
 

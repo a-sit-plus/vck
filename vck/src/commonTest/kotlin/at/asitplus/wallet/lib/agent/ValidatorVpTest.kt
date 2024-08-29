@@ -46,7 +46,7 @@ class ValidatorVpTest : FreeSpec({
         holderCredentialStore = InMemorySubjectCredentialStore()
         holderKeyPair = EphemeralKeyPariAdapter()
         holder = HolderAgent(holderKeyPair, holderCredentialStore)
-        holderJwsService = DefaultJwsService(DefaultCryptoService(holderKeyPair, PlatformCryptoShim(holderKeyPair)))
+        holderJwsService = DefaultJwsService(DefaultCryptoService(holderKeyPair))
         verifier = VerifierAgent()
         challenge = uuid4().toString()
 

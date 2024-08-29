@@ -31,7 +31,7 @@ class JwsServiceTest : FreeSpec({
 
     beforeEach {
         val keyPairAdapter = EphemeralKeyPariAdapter()
-        cryptoService = DefaultCryptoService(keyPairAdapter, PlatformCryptoShim(keyPairAdapter))
+        cryptoService = DefaultCryptoService(keyPairAdapter)
         jwsService = DefaultJwsService(cryptoService)
         verifierJwsService = DefaultVerifierJwsService()
         randomPayload = uuid4().toString()

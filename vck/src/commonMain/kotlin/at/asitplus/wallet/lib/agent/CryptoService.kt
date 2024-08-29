@@ -128,10 +128,10 @@ expect class PlatformCryptoShim constructor(keyPairAdapter: KeyPairAdapter){
 }
 
 class DefaultCryptoService(
-    override val keyPairAdapter: KeyPairAdapter,
-    private val platformCryptoShim: PlatformCryptoShim
+    override val keyPairAdapter: KeyPairAdapter
 ) : CryptoService {
 
+    private val platformCryptoShim = PlatformCryptoShim(keyPairAdapter)
 
     override suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature> =
         keyPairAdapter.signer.sign(SignatureInput(input))

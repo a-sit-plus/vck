@@ -74,7 +74,7 @@ class CoseServiceJvmTest : FreeSpec({
 
 
             val keyPairAdapter = EphemeralKeyPariAdapter(ephemeralKey)
-            val cryptoService = DefaultCryptoService(keyPairAdapter, PlatformCryptoShim(keyPairAdapter))
+            val cryptoService = DefaultCryptoService(keyPairAdapter)
             val coseService = DefaultCoseService(cryptoService)
             val verifierCoseService = DefaultVerifierCoseService()
             val coseKey = ephemeralKey.publicKey.toCoseKey().getOrThrow()

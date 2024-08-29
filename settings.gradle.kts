@@ -4,7 +4,8 @@ import java.util.*
 pluginManagement {
     includeBuild("conventions-vclib")
     repositories {
-        maven("https://maven.pkg.jetbrains.space/kotlin/p/dokka/dev")
+
+        maven("https://s01.oss.sonatype.org/content/repositories/snapshots")
         google()
         gradlePluginPortal()
         mavenCentral()
