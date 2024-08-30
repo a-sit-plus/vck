@@ -14,6 +14,7 @@ import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.ByteString
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import kotlinx.serialization.cbor.ValueTags
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -74,7 +75,6 @@ data class DeviceRequest(
 @Serializable
 data class DocRequest(
     @SerialName("itemsRequest")
-    @Serializable(with = ByteStringWrapperItemsRequestSerializer::class)
     @ValueTags(24U)
     val itemsRequest: ByteStringWrapper<ItemsRequest>,
     @SerialName("readerAuth")
@@ -247,7 +247,12 @@ data class IssuerSigned(
 ) {
 
     fun getIssuerAuthPayloadAsMso() = issuerAuth.payload?.stripCborTag(24)
-        ?.let { vckCborSerializer.decodeFromByteArray(ByteStringWrapperMobileSecurityObjectSerializer, it).value }
+        ?.let {
+            vckCborSerializer.decodeFromByteArray(
+                ByteStringWrapperSerializer(MobileSecurityObject.serializer()),
+                it
+            ).value
+        }
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
@@ -410,7 +415,6 @@ data class IssuerSignedItem(
 @Serializable
 data class DeviceSigned(
     @SerialName("nameSpaces")
-    @ByteString
     @ValueTags(24U)
     val namespaces: ByteStringWrapper<DeviceNameSpaces>,
     @SerialName("deviceAuth")
@@ -447,23 +451,6 @@ data class DeviceAuth(
     val deviceMac: CoseSigned? = null, // TODO is COSE_Mac0
 )
 
-
-object ByteStringWrapperItemsRequestSerializer : KSerializer<ByteStringWrapper<ItemsRequest>> {
-
-    override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("ByteStringWrapperItemsRequestSerializer", PrimitiveKind.STRING)
-
-    override fun serialize(encoder: Encoder, value: ByteStringWrapper<ItemsRequest>) {
-        val bytes = vckCborSerializer.encodeToByteArray(value.value)
-        encoder.encodeSerializableValue(ByteArraySerializer(), bytes)
-    }
-
-    override fun deserialize(decoder: Decoder): ByteStringWrapper<ItemsRequest> {
-        val bytes = decoder.decodeSerializableValue(ByteArraySerializer())
-        return ByteStringWrapper(vckCborSerializer.decodeFromByteArray(bytes), bytes)
-    }
-
-}
 
 fun ByteArray.stripCborTag(tag: Byte) = this.dropWhile { it == 0xd8.toByte() }.dropWhile { it == tag }.toByteArray()
 

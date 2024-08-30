@@ -13,6 +13,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ByteArraySerializer
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import kotlinx.serialization.cbor.ValueTags
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -48,14 +49,15 @@ data class MobileSecurityObject(
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
-    fun serializeForIssuerAuth() =
-        vckCborSerializer.encodeToByteArray(ByteStringWrapperMobileSecurityObjectSerializer, ByteStringWrapper(this))
-            .wrapInCborTag(24)
+    fun serializeForIssuerAuth() = vckCborSerializer.encodeToByteArray(
+        ByteStringWrapperSerializer<MobileSecurityObject>(serializer()), ByteStringWrapper(this)
+    ).wrapInCborTag(24)
 
     companion object {
+
         fun deserializeFromIssuerAuth(it: ByteArray) = kotlin.runCatching {
             vckCborSerializer.decodeFromByteArray(
-                ByteStringWrapperMobileSecurityObjectSerializer,
+                ByteStringWrapperSerializer<MobileSecurityObject>(serializer()),
                 it.stripCborTag(24)
             ).value
         }.wrap()
@@ -243,22 +245,4 @@ data class ValidityInfo(
             vckCborSerializer.decodeFromByteArray<ValidityInfo>(it)
         }.wrap()
     }
-}
-
-
-object ByteStringWrapperMobileSecurityObjectSerializer : KSerializer<ByteStringWrapper<MobileSecurityObject>> {
-
-    override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("ByteStringWrapperMobileSecurityObjectSerializer", PrimitiveKind.STRING)
-
-    override fun serialize(encoder: Encoder, value: ByteStringWrapper<MobileSecurityObject>) {
-        val bytes = vckCborSerializer.encodeToByteArray(value.value)
-        encoder.encodeSerializableValue(ByteArraySerializer(), bytes)
-    }
-
-    override fun deserialize(decoder: Decoder): ByteStringWrapper<MobileSecurityObject> {
-        val bytes = decoder.decodeSerializableValue(ByteArraySerializer())
-        return ByteStringWrapper(vckCborSerializer.decodeFromByteArray(bytes), bytes)
-    }
-
 }

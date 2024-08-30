@@ -5,6 +5,7 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldStartWith
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -76,17 +77,20 @@ class Tag24SerializationTest : FreeSpec({
     }
 
     "IssuerAuth" {
+        val mso = MobileSecurityObject(
+            version = "1.0",
+            digestAlgorithm = "SHA-256",
+            valueDigests = mapOf("foo" to ValueDigestList(listOf(ValueDigest(0U, byteArrayOf())))),
+            deviceKeyInfo = deviceKeyInfo(),
+            docType = "docType",
+            validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
+        )
+        val serializedMso = mso.serializeForIssuerAuth()
+            .also { println(it.encodeToString(Base16(true))) }
         val input = CoseSigned(
             protectedHeader = ByteStringWrapper(CoseHeader()),
             unprotectedHeader = null,
-            payload = MobileSecurityObject(
-                version = "1.0",
-                digestAlgorithm = "SHA-256",
-                valueDigests = mapOf("foo" to ValueDigestList(listOf(ValueDigest(0U, byteArrayOf())))),
-                deviceKeyInfo = deviceKeyInfo(),
-                docType = "docType",
-                validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
-            ).serializeForIssuerAuth(), // todo should not be an explicit function
+            payload = serializedMso, // todo should not be an explicit function
             rawSignature = byteArrayOf()
         )
 
@@ -94,7 +98,9 @@ class Tag24SerializationTest : FreeSpec({
             .also { println(it.encodeToString(Base16(true))) }
 
         serialized.encodeToString(Base16(true)).shouldContain("D818")
+        serializedMso.encodeToString(Base16(true)).shouldStartWith("D818")
         vckCborSerializer.decodeFromByteArray<CoseSigned>(serialized) shouldBe input
+        MobileSecurityObject.deserializeFromIssuerAuth(serializedMso).getOrThrow() shouldBe mso
     }
 
 
