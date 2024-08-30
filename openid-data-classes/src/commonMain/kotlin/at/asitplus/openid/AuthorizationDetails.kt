@@ -119,8 +119,8 @@ sealed class AuthorizationDetails {
         val hashAlgorithmOID: ObjectIdentifier,
 
         /**
-         * CSC: Element as defined in IETF Draft-ietf-oauth-rar designating the locations of
-         * array the API the access token issued in a certain OAuth transaction shall be used.
+         * CSC: An array of strings designating the locations of
+         * array the API (*where?) the access token issued in a certain OAuth transaction shall be used.
          */
         @SerialName("locations")
         val locations: Collection<String>?,
@@ -133,6 +133,7 @@ sealed class AuthorizationDetails {
          * creation of the signature (for example,
          * in the Wallet-centric model)
          */
+        @SerialName("documentLocations")
         val documentLocations: Collection<DocumentLocationEntry>
     ) : AuthorizationDetails()
 }
