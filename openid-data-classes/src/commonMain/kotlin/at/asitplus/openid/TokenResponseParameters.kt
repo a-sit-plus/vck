@@ -88,6 +88,17 @@ data class TokenResponseParameters(
      */
     @SerialName("authorization_details")
     val authorizationDetails: Set<AuthorizationDetails>? = null,
+
+    /**
+     * CSC: OPTIONAL
+     * The identifier associated to the credential authorized in the corresponding authorization
+     * request. This response parameter MAY be present in case the scope credential is used
+     * in the authorization request along with the parameter “signatureQualifier” and the
+     * authorization server determined a credentialID in the authorization process to be used
+     * in subsequent signature operations.
+     */
+    @SerialName("credentialID")
+    val credentialId: String? = null,
 ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)

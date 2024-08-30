@@ -1,11 +1,10 @@
 package at.asitplus.openid
 
+import at.asitplus.dif.rqes.DocumentLocationEntry
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonArray
-
 
 
 @Serializable
@@ -95,7 +94,7 @@ sealed class AuthorizationDetails {
          * CSC: The identifier associated to the credential to authorize
          */
         @SerialName("credentialID")
-        val credentialId: String? = null,
+        val credentialID: String? = null,
 
         /**
          * CSC: This parameter contains the symbolic identifier determining the kind of
@@ -124,6 +123,16 @@ sealed class AuthorizationDetails {
          * array the API the access token issued in a certain OAuth transaction shall be used.
          */
         @SerialName("locations")
-        val locations: Collection<String>?
+        val locations: Collection<String>?,
+
+        /**
+         * QES: This parameter is used to convey the
+         * signer document. This parameter
+         * SHALL not be used when the signer
+         * document is not required for the
+         * creation of the signature (for example,
+         * in the Wallet-centric model)
+         */
+        val documentLocations: Collection<DocumentLocationEntry>
     ) : AuthorizationDetails()
 }

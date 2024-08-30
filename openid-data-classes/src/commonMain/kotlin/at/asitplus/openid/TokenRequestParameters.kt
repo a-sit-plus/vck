@@ -65,6 +65,15 @@ data class TokenRequestParameters(
      */
     @SerialName("code_verifier")
     val codeVerifier: String? = null,
+
+    /**
+     * CSC: OPTIONAL
+     * Arbitrary data from the signature application. It can be used to handle a
+     * transaction identifier or other application-spe cific data that may be useful for
+     * debugging purposes
+     */
+    @SerialName("clientData")
+    val clientData: String? = null,
 ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)
