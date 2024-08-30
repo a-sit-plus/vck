@@ -3,6 +3,11 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
+import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
+import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
+import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
+import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
 import at.asitplus.signum.indispensable.cosef.CborWebToken
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
@@ -28,21 +33,12 @@ import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult
-import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
-import at.asitplus.openid.OpenIdConstants.CREDENTIAL_TYPE_OPENID
-import at.asitplus.openid.OpenIdConstants.Errors
-import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
-import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
-import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
-import at.asitplus.openid.RequestedCredentialClaimSpecification
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlin.random.Random
 
@@ -502,22 +498,19 @@ class WalletService(
     private fun RequestOptions.toCredentialRequestParameters(proof: CredentialRequestProof) =
         representation.toCredentialRequestParameters(credentialScheme, requestedAttributes, proof)
 
-    private fun SupportedCredentialFormat.toAuthnDetails(requestedAttributes: Set<String>?) = when (this.format) {
-        CredentialFormatEnum.JWT_VC -> AuthorizationDetails(
-            type = CREDENTIAL_TYPE_OPENID,
+    private fun SupportedCredentialFormat.toAuthnDetails(requestedAttributes: Set<String>?): AuthorizationDetails = when (this.format) {
+        CredentialFormatEnum.JWT_VC -> AuthorizationDetails.OpenIdCredential(
             format = format,
             credentialDefinition = credentialDefinition
         )
 
-        CredentialFormatEnum.VC_SD_JWT -> AuthorizationDetails(
-            type = CREDENTIAL_TYPE_OPENID,
+        CredentialFormatEnum.VC_SD_JWT -> AuthorizationDetails.OpenIdCredential(
             format = format,
             sdJwtVcType = sdJwtVcType,
             claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
         )
 
-        CredentialFormatEnum.MSO_MDOC -> AuthorizationDetails(
-            type = CREDENTIAL_TYPE_OPENID,
+        CredentialFormatEnum.MSO_MDOC -> AuthorizationDetails.OpenIdCredential(
             format = format,
             docType = docType,
             claims = requestedAttributes?.toRequestedClaimsIso(isoClaims?.keys?.firstOrNull() ?: docType!!)
@@ -531,7 +524,7 @@ class WalletService(
 
     private fun CredentialRepresentation.toAuthorizationDetails(
         scheme: ConstantIndex.CredentialScheme,
-        requestedAttributes: Set<String>?
+        requestedAttributes: Set<String>?,
     ) = when (this) {
         PLAIN_JWT -> scheme.toJwtAuthn(toFormat())
         SD_JWT -> scheme.toSdJwtAuthn(toFormat(), requestedAttributes)
@@ -539,10 +532,9 @@ class WalletService(
     }
 
     private fun ConstantIndex.CredentialScheme.toJwtAuthn(
-        format: CredentialFormatEnum
+        format: CredentialFormatEnum,
     ) = if (supportsVcJwt)
-        AuthorizationDetails(
-            type = CREDENTIAL_TYPE_OPENID,
+        AuthorizationDetails.OpenIdCredential(
             format = format,
             credentialDefinition = SupportedCredentialFormatDefinition(
                 types = listOf(VERIFIABLE_CREDENTIAL, vcType!!),
@@ -551,10 +543,9 @@ class WalletService(
 
     private fun ConstantIndex.CredentialScheme.toSdJwtAuthn(
         format: CredentialFormatEnum,
-        requestedAttributes: Set<String>?
+        requestedAttributes: Set<String>?,
     ) = if (supportsSdJwt)
-        AuthorizationDetails(
-            type = CREDENTIAL_TYPE_OPENID,
+        AuthorizationDetails.OpenIdCredential(
             format = format,
             sdJwtVcType = sdJwtType!!,
             claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtType!!),
@@ -562,10 +553,9 @@ class WalletService(
 
     private fun ConstantIndex.CredentialScheme.toIsoAuthn(
         format: CredentialFormatEnum,
-        requestedAttributes: Set<String>?
+        requestedAttributes: Set<String>?,
     ) = if (supportsIso)
-        AuthorizationDetails(
-            type = CREDENTIAL_TYPE_OPENID,
+        AuthorizationDetails.OpenIdCredential(
             format = format,
             docType = isoDocType,
             claims = requestedAttributes?.toRequestedClaimsIso(isoNamespace!!)
@@ -574,7 +564,7 @@ class WalletService(
     private fun CredentialRepresentation.toCredentialRequestParameters(
         credentialScheme: ConstantIndex.CredentialScheme,
         requestedAttributes: Set<String>?,
-        proof: CredentialRequestProof
+        proof: CredentialRequestProof,
     ) = when {
         this == PLAIN_JWT && credentialScheme.supportsVcJwt -> CredentialRequestParameters(
             format = toFormat(),
@@ -603,7 +593,7 @@ class WalletService(
 
     private fun SupportedCredentialFormat.toCredentialRequestParameters(
         requestedAttributes: Set<String>?,
-        proof: CredentialRequestProof
+        proof: CredentialRequestProof,
     ) = when (format) {
         CredentialFormatEnum.JWT_VC -> CredentialRequestParameters(
             format = format,
@@ -630,8 +620,7 @@ class WalletService(
 }
 
 private fun Pair<String, SupportedCredentialFormat>.toAuthnDetails(authorizationServers: Set<String>?)
-        : AuthorizationDetails = AuthorizationDetails(
-    type = "openid_credential",
+        : AuthorizationDetails = AuthorizationDetails.OpenIdCredential(
     credentialConfigurationId = first,
     format = second.format,
     docType = second.docType,

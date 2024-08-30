@@ -10,6 +10,10 @@ Release NEXT:
  * Update `InputDescriptors`
    * New member `transaction_data`
    * Removed member `schema`
+ * Update `AuthorizationDetails`
+   * Now sealed class with subclasses 
+     * `OpenIdCredential`
+     * `CSCCredential`
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments
