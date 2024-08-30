@@ -412,7 +412,7 @@ data class DeviceSigned(
     @SerialName("nameSpaces")
     @ByteString
     @ValueTags(24U)
-    val namespaces: ByteArray,
+    val namespaces: ByteStringWrapper<DeviceNameSpaces>,
     @SerialName("deviceAuth")
     val deviceAuth: DeviceAuth,
 ) {
@@ -422,16 +422,17 @@ data class DeviceSigned(
 
         other as DeviceSigned
 
-        if (!namespaces.contentEquals(other.namespaces)) return false
-        return deviceAuth == other.deviceAuth
+        if (namespaces != other.namespaces) return false
+        if (deviceAuth != other.deviceAuth) return false
+
+        return true
     }
 
     override fun hashCode(): Int {
-        var result = namespaces.contentHashCode()
+        var result = namespaces.hashCode()
         result = 31 * result + deviceAuth.hashCode()
         return result
     }
-
 }
 
 

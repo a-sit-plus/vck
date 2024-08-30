@@ -6,16 +6,12 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.iso.DeviceAuth
-import at.asitplus.wallet.lib.iso.DeviceSigned
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.IssuerSignedList
-import at.asitplus.wallet.lib.iso.sha256
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -112,7 +108,7 @@ class VerifiablePresentationFactory(
                     issuerAuth = credential.issuerSigned.issuerAuth
                 ),
                 deviceSigned = DeviceSigned(
-                    namespaces = byteArrayOf(),
+                    namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf())),
                     deviceAuth = DeviceAuth(
                         deviceSignature = deviceSignature
                     )
