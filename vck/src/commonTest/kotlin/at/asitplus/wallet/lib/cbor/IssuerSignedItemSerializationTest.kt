@@ -49,13 +49,18 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementValue = Random.nextBytes(32),
         )
 
+        val protectedHeader = ByteStringWrapper(CoseHeader(), CoseHeader().serialize())
+        val issuerAuth = CoseSigned(protectedHeader, null, null, byteArrayOf())
         val doc = Document(
-            uuid4().toString(),
-            IssuerSigned(
-                mapOf(
-                    namespace to listOf(item)
-                ), CoseSigned(ByteStringWrapper(CoseHeader(), CoseHeader().serialize()), null, null, byteArrayOf())
-            ), DeviceSigned(Random.nextBytes(32), DeviceAuth())
+            docType = uuid4().toString(),
+            issuerSigned = IssuerSigned(
+                mapOf(namespace to listOf(item)),
+                issuerAuth
+            ),
+            deviceSigned = DeviceSigned(
+                ByteStringWrapper(DeviceNameSpaces(mapOf())),
+                DeviceAuth()
+            )
         )
 
         val serialized = doc.serialize()

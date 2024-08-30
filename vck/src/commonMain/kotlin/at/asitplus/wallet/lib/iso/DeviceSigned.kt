@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.cbor.ByteString
@@ -14,24 +15,26 @@ data class DeviceSigned(
     @SerialName("nameSpaces")
     @ByteString
     @ValueTags(24U)
-    val namespaces: ByteArray,
+    val namespaces: ByteStringWrapper<DeviceNameSpaces>,
     @SerialName("deviceAuth")
     val deviceAuth: DeviceAuth,
 ) {
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
 
         other as DeviceSigned
 
-        if (!namespaces.contentEquals(other.namespaces)) return false
-        return deviceAuth == other.deviceAuth
+        if (namespaces != other.namespaces) return false
+        if (deviceAuth != other.deviceAuth) return false
+
+        return true
     }
 
     override fun hashCode(): Int {
-        var result = namespaces.contentHashCode()
+        var result = namespaces.hashCode()
         result = 31 * result + deviceAuth.hashCode()
         return result
     }
-
 }
