@@ -13,7 +13,6 @@ import kotlinx.serialization.cbor.ValueTags
 @Serializable
 data class DocRequest(
     @SerialName("itemsRequest")
-    @Serializable(with = ByteStringWrapperItemsRequestSerializer::class)
     @ValueTags(24U)
     val itemsRequest: ByteStringWrapper<ItemsRequest>,
     @SerialName("readerAuth")

@@ -1,8 +1,5 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.signum.indispensable.cosef.CoseHeader
-import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -12,7 +9,6 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
-import kotlin.random.Random
 
 /**
  * Test correct appending tag 0 (in hex `C0`) for certain data elements,

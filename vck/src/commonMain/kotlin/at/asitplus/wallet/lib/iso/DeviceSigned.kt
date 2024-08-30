@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.iso
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.cbor.ByteString
 import kotlinx.serialization.cbor.ValueTags
 
 /**
@@ -13,7 +12,6 @@ import kotlinx.serialization.cbor.ValueTags
 @Serializable
 data class DeviceSigned(
     @SerialName("nameSpaces")
-    @ByteString
     @ValueTags(24U)
     val namespaces: ByteStringWrapper<DeviceNameSpaces>,
     @SerialName("deviceAuth")

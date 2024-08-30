@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.iso
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import kotlinx.serialization.*
 
 /**
@@ -33,8 +34,9 @@ data class IssuerSigned private constructor(
         }.toMap()
     )
 
-    fun getIssuerAuthPayloadAsMso() = issuerAuth.payload?.stripCborTag(24)
-        ?.let { vckCborSerializer.decodeFromByteArray(ByteStringWrapperMobileSecurityObjectSerializer, it).value }
+    fun getIssuerAuthPayloadAsMso() = issuerAuth.payload?.stripCborTag(24)?.let {
+        vckCborSerializer.decodeFromByteArray(ByteStringWrapperSerializer(MobileSecurityObject.serializer()), it).value
+    }
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
     override fun equals(other: Any?): Boolean {
