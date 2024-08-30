@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.cbor.CoseService
@@ -101,10 +102,14 @@ class VerifiablePresentationFactory(
 
         return Holder.CreatePresentationResult.Document(
             Document(
-                docType = credential.scheme.isoDocType!!, issuerSigned = IssuerSigned(
-                    namespacedItems = disclosedItems, issuerAuth = credential.issuerSigned.issuerAuth
-                ), deviceSigned = DeviceSigned(
-                    namespaces = byteArrayOf(), deviceAuth = DeviceAuth(
+                docType = credential.scheme.isoDocType!!,
+                issuerSigned = IssuerSigned(
+                    namespacedItems = disclosedItems,
+                    issuerAuth = credential.issuerSigned.issuerAuth
+                ),
+                deviceSigned = DeviceSigned(
+                    namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf())),
+                    deviceAuth = DeviceAuth(
                         deviceSignature = deviceSignature
                     )
                 )

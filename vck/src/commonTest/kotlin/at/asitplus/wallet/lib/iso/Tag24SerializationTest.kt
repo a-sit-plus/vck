@@ -22,7 +22,18 @@ class Tag24SerializationTest : FreeSpec({
 
     "DeviceSigned" {
         val input = DeviceSigned(
-            namespaces = Random.Default.nextBytes(32), // TODO shall be ByteStringWrapper
+            namespaces = ByteStringWrapper(
+                DeviceNameSpaces(
+                    mapOf(
+                        "iso.namepsace" to DeviceSignedItemList(
+                            listOf(
+                                DeviceSignedItem("name", "foo"),
+                                DeviceSignedItem("date", "bar")
+                            )
+                        )
+                    )
+                )
+            ),
             deviceAuth = DeviceAuth(
                 deviceSignature = issuerAuth()
             )
@@ -49,10 +60,8 @@ class Tag24SerializationTest : FreeSpec({
 
     "IssuerSigned" {
         val input = IssuerSigned(
-            namespaces = mapOf(
-                "org.iso.something" to IssuerSignedList(
-                    entries = listOf(ByteStringWrapper(issuerSignedItem()))
-                )
+            namespacedItems = mapOf(
+                "org.iso.something" to listOf(issuerSignedItem())
             ),
             issuerAuth = issuerAuth()
         )
