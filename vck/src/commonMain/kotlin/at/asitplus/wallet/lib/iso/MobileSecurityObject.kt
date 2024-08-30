@@ -49,13 +49,32 @@ data class MobileSecurityObject(
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
-    fun serializeForIssuerAuth() = vckCborSerializer.encodeToByteArray(
+    /**
+     * ISO/IEC 18013-5:2021 9.1.2.4:
+     *
+     * ```
+     * MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
+     * ```
+     *
+     * will be used as payload in the [at.asitplus.signum.indispensable.cosef.CoseSigned] in [IssuerSigned.issuerAuth].
+     */
+    fun serializedAsMobileSecurityObjectBytes() = vckCborSerializer.encodeToByteArray(
         ByteStringWrapperSerializer<MobileSecurityObject>(serializer()), ByteStringWrapper(this)
     ).wrapInCborTag(24)
 
     companion object {
 
-        fun deserializeFromIssuerAuth(it: ByteArray) = kotlin.runCatching {
+        /**
+         * ISO/IEC 18013-5:2021 9.1.2.4:
+         *
+         * ```
+         * MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
+         * ```
+         *
+         * will be deserialized from the payload in the [at.asitplus.signum.indispensable.cosef.CoseSigned]
+         * in [IssuerSigned.issuerAuth].
+         */
+        fun deserializeFromMobileSecurityObjectBytes(it: ByteArray) = kotlin.runCatching {
             vckCborSerializer.decodeFromByteArray(
                 ByteStringWrapperSerializer<MobileSecurityObject>(serializer()),
                 it.stripCborTag(24)
@@ -108,7 +127,7 @@ data class ValueDigest(
     companion object {
         fun fromIssuerSigned(value: IssuerSignedItem) = ValueDigest(
             value.digestId,
-            value.serialize().wrapInCborTag(24).sha256()
+            value.serializedAsIssuerSignedItemBytes().sha256()
         )
     }
 }

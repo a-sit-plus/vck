@@ -246,13 +246,9 @@ data class IssuerSigned(
     val issuerAuth: CoseSigned,
 ) {
 
-    fun getIssuerAuthPayloadAsMso() = issuerAuth.payload?.stripCborTag(24)
-        ?.let {
-            vckCborSerializer.decodeFromByteArray(
-                ByteStringWrapperSerializer(MobileSecurityObject.serializer()),
-                it
-            ).value
-        }
+    fun getIssuerAuthPayloadAsMso() = issuerAuth.payload?.let {
+        MobileSecurityObject.deserializeFromMobileSecurityObjectBytes(it)
+    }
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
@@ -277,9 +273,21 @@ data class IssuerSignedList(
     }
 
     companion object {
+        /**
+         * ISO/IEC 18013-5:2021 8.3.2.1.2.2:
+         *
+         * ```
+         * IssuerNameSpaces = {
+         *     + NameSpace => [ + IssuerSignedItemBytes ]
+         * }
+         *
+         * IssuerSignedItemBytes = #6.24(bstr .cbor IssuerSignedItem)
+         * ```
+         */
         fun withItems(list: List<IssuerSignedItem>) = IssuerSignedList(
-            // TODO verify serialization of this
-            list.map { ByteStringWrapper(it, vckCborSerializer.encodeToByteArray(it).wrapInCborTag(24)) }
+            list.map {
+                ByteStringWrapper(it, it.serializedAsIssuerSignedItemBytes())
+            }
         )
     }
 }
@@ -373,6 +381,17 @@ data class IssuerSignedItem(
 ) {
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
+
+    /**
+     * ISO/IEC 18013-5:2021 8.3.2.1.2.2:
+     *
+     * ```
+     * IssuerSignedItemBytes = #6.24(bstr .cbor IssuerSignedItem)
+     * ```
+     *
+     * will be used as the input for digest calculation (9.1.2.5)
+     */
+    fun serializedAsIssuerSignedItemBytes() = serialize().wrapInCborTag(24)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

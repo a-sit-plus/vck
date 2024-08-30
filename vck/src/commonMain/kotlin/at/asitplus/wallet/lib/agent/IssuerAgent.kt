@@ -162,7 +162,7 @@ class IssuerAgent(
                 scheme.isoNamespace!! to IssuerSignedList.withItems(credential.issuerSignedItems)
             ),
             issuerAuth = coseService.createSignedCose(
-                payload = mso.serializeForIssuerAuth(),
+                payload = mso.serializedAsMobileSecurityObjectBytes(),
                 addKeyId = false,
                 addCertificate = true,
             ).getOrThrow()

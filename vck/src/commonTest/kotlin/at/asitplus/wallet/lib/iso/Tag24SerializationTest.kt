@@ -85,7 +85,7 @@ class Tag24SerializationTest : FreeSpec({
             docType = "docType",
             validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
         )
-        val serializedMso = mso.serializeForIssuerAuth()
+        val serializedMso = mso.serializedAsMobileSecurityObjectBytes()
             .also { println(it.encodeToString(Base16(true))) }
         val input = CoseSigned(
             protectedHeader = ByteStringWrapper(CoseHeader()),
@@ -100,7 +100,7 @@ class Tag24SerializationTest : FreeSpec({
         serialized.encodeToString(Base16(true)).shouldContain("D818")
         serializedMso.encodeToString(Base16(true)).shouldStartWith("D818")
         vckCborSerializer.decodeFromByteArray<CoseSigned>(serialized) shouldBe input
-        MobileSecurityObject.deserializeFromIssuerAuth(serializedMso).getOrThrow() shouldBe mso
+        MobileSecurityObject.deserializeFromMobileSecurityObjectBytes(serializedMso).getOrThrow() shouldBe mso
     }
 
 
