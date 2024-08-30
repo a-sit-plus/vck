@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.InputDescriptorSerializer
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.QesInputDescriptor
 import at.asitplus.dif.rqes.Base64URLTransactionDataSerializer
 import at.asitplus.dif.rqes.TransactionDataEntry
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
@@ -74,7 +76,7 @@ class TransactionDataInterop : FreeSpec({
     }
 
     "Inputdesriptor serialize" {
-        val test = InputDescriptor(
+        val test = QesInputDescriptor(
             id = "123",
             transactionData = listOf(transactionDataTest)
         )
@@ -161,7 +163,7 @@ class TransactionDataInterop : FreeSpec({
             runCatching { vckJsonSerializer.decodeFromString<PresentationDefinition>(presentationDefinitionAsJsonString) }.getOrNull()
         Napier.d(presentationDefinition.toString())
         presentationDefinition shouldNotBe null
-        presentationDefinition?.inputDescriptors?.first()?.transactionData shouldNotBe null
+        (presentationDefinition?.inputDescriptors?.first() as QesInputDescriptor).transactionData shouldNotBe null
     }
 })
 

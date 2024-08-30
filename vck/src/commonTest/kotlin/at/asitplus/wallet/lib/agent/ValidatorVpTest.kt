@@ -2,6 +2,7 @@
 
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
@@ -21,7 +22,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 class ValidatorVpTest : FreeSpec({
     val singularPresentationDefinition = PresentationDefinition(
         id = uuid4().toString(),
-        inputDescriptors = listOf(InputDescriptor(id = uuid4().toString()))
+        inputDescriptors = listOf(DifInputDescriptor(id = uuid4().toString()))
     )
 
     lateinit var validator: Validator

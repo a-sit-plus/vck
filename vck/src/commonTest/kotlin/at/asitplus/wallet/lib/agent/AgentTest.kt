@@ -2,6 +2,7 @@
 
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
@@ -16,7 +17,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 class AgentTest : FreeSpec({
     val singularPresentationDefinition = PresentationDefinition(
         id = uuid4().toString(),
-        inputDescriptors = listOf(InputDescriptor(id = uuid4().toString()))
+        inputDescriptors = listOf(DifInputDescriptor(id = uuid4().toString()))
     )
 
     lateinit var issuer: Issuer

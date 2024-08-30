@@ -27,6 +27,7 @@ import at.asitplus.dif.ClaimFormatEnum
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.ConstraintFilter
+import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.InputDescriptor
@@ -353,7 +354,8 @@ class OidcSiopVerifier private constructor(
         || (responseMode == OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
     ) null else relyingPartyUrl
 
-    private fun RequestOptions.toInputDescriptor() = InputDescriptor(
+    //TODO extend for InputDescriptor interface in case QES
+    private fun RequestOptions.toInputDescriptor() = DifInputDescriptor(
         id = buildId(),
         constraints = toConstraint(),
     )
