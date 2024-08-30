@@ -5,6 +5,11 @@ Release NEXT:
  - Remove `OidcSiopVerifier.newInstance()` methods and replace them with constructors
  - Remove `Validator.newDefaultInstance()` methods and replace them with constructors
  - Remove `WalletService.newDefaultInstance()` methods and replace them with constructors
+ * Add `transactionDataEntry` class
+ * Add `DocumentDigestEntry` class
+ * Update `InputDescriptors`
+   * New member `transaction_data`
+   * Removed member `schema`
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments

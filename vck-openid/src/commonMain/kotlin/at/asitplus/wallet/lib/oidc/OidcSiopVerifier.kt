@@ -13,6 +13,9 @@ import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
+import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
@@ -352,7 +355,6 @@ class OidcSiopVerifier private constructor(
 
     private fun RequestOptions.toInputDescriptor() = InputDescriptor(
         id = buildId(),
-        schema = listOfNotNull(credentialScheme?.schemaUri?.let { SchemaReference(it) }),
         constraints = toConstraint(),
     )
 
