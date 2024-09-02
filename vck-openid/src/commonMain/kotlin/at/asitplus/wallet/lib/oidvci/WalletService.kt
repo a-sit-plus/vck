@@ -216,6 +216,40 @@ class WalletService(
         codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
     )
 
+    /**
+     * CSC: Adds the possibility for CSC requests. TODO should be list of AuthorizationDetails?
+     */
+    suspend fun createAuthRequest(
+        state: String,
+        authorizationDetails: AuthorizationDetails,
+        credentialIssuer: String? = null,
+        requestUri: String? = null,
+    ): AuthenticationRequestParameters =
+        when (authorizationDetails) {
+            is AuthorizationDetails.OpenIdCredential -> AuthenticationRequestParameters(
+                responseType = GRANT_TYPE_CODE,
+                state = state,
+                clientId = clientId,
+                authorizationDetails = setOf(authorizationDetails),
+                resource = credentialIssuer,
+                redirectUrl = redirectUrl,
+                codeChallenge = generateCodeVerifier(state),
+                codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
+            )
+
+            is AuthorizationDetails.CSCCredential -> AuthenticationRequestParameters(
+                responseType = GRANT_TYPE_CODE,
+                state = state,
+                clientId = clientId,
+                authorizationDetails = setOf(authorizationDetails),
+                scope = "credential",
+                redirectUrl = redirectUrl,
+                codeChallenge = generateCodeVerifier(state),
+                codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
+                requestUri = requestUri
+            )
+        }
+
     @OptIn(ExperimentalStdlibApi::class)
     private suspend fun generateCodeVerifier(state: String): String {
         val codeVerifier = Random.nextBytes(32).toHexString(HexFormat.Default)
@@ -293,6 +327,34 @@ class WalletService(
             transactionCode = authorization.preAuth.transactionCode,
             preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
             codeVerifier = stateToCodeStore.remove(requestOptions.state)
+        )
+    }
+
+    /**
+     * CSC: Adds the possibility for CSC requests. TODO should be list of AuthorizationDetails?
+     */
+    suspend fun createTokenRequestParameters(
+        state: String,
+        authorizationDetails: AuthorizationDetails,
+        authorization: AuthorizationForToken,
+    ) = when (authorization) {
+        is AuthorizationForToken.Code -> TokenRequestParameters(
+            grantType = GRANT_TYPE_AUTHORIZATION_CODE,
+            code = authorization.code,
+            redirectUrl = redirectUrl,
+            clientId = clientId,
+            authorizationDetails = setOf(authorizationDetails),
+            codeVerifier = stateToCodeStore.remove(state)
+        )
+
+        is AuthorizationForToken.PreAuthCode -> TokenRequestParameters(
+            grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
+            redirectUrl = redirectUrl,
+            clientId = clientId,
+            authorizationDetails = setOf(authorizationDetails),
+            transactionCode = authorization.preAuth.transactionCode,
+            preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
+            codeVerifier = stateToCodeStore.remove(state)
         )
     }
 
