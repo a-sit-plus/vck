@@ -8,7 +8,10 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.supreme.SignatureResult
+import at.asitplus.signum.supreme.dsl.DSLConfigureFn
 import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.supreme.os.PlatformSigningProviderSigner
+import at.asitplus.signum.supreme.os.PlatformSigningProviderSignerSigningConfigurationBase
 import at.asitplus.signum.supreme.sign.SignatureInput
 import at.asitplus.signum.supreme.sign.verifierFor
 
@@ -31,7 +34,11 @@ interface CryptoService {
         }
 
 
-    suspend fun doSign(input: ByteArray): SignatureResult
+    suspend fun doSign(
+        input: ByteArray,
+        promptText: String? = null,
+        cancelText: String? = null
+    ): SignatureResult
 
     fun encrypt(
         key: ByteArray,
@@ -142,8 +149,21 @@ open class DefaultCryptoService(
 
     private val platformCryptoShim = PlatformCryptoShim(keyPairAdapter)
 
-    override suspend fun doSign(input: ByteArray): SignatureResult =
-        keyPairAdapter.signer.sign(SignatureInput(input))
+    override suspend fun doSign(
+        input: ByteArray,
+        promptText: String?,
+        cancelText: String?
+    ): SignatureResult =
+        when (val signer = keyPairAdapter.signer) {
+            is PlatformSigningProviderSigner<*> -> signer.sign(input) {
+                unlockPrompt {
+                    promptText?.let { message = it }
+                    cancelText?.let { this.cancelText = cancelText }
+                }
+            }
+            else -> keyPairAdapter.signer.sign(input)
+        }
+
 
     override fun encrypt(
         key: ByteArray,
