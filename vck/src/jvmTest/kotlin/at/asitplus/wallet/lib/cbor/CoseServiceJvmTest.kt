@@ -56,7 +56,7 @@ class CoseServiceJvmTest : FreeSpec({
                     }
                     digests = setOf(curve.nativeDigest)
                 }
-            }
+            }.getOrThrow()
 
 
             val coseAlgorithm = sigAlgo.toCoseAlgorithm().getOrThrow()

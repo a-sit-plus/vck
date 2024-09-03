@@ -90,7 +90,7 @@ class JwsServiceJvmTest : FreeSpec({
                     rsa {
                         this.bits = thisConfiguration.second
                     }
-            }
+            }.getOrThrow()
 
             val jweAlgorithm = when (algo) {
                 X509SignatureAlgorithm.ES256, X509SignatureAlgorithm.ES384, X509SignatureAlgorithm.ES512 -> JweAlgorithm.ECDH_ES
