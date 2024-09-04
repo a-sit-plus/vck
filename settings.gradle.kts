@@ -56,7 +56,7 @@ dependencyResolutionManagement {
 
             commandLine(
                 if (!Os.isFamily(Os.FAMILY_WINDOWS)) "./gradlew" else "./gradlew.bat",
-                "publishAllPublicationsToLocalRepository"
+                "publishVersionsPublicationToLocalRepository"
             )
         }
     }
