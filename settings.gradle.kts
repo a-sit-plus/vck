@@ -36,7 +36,7 @@ dependencyResolutionManagement {
         mavenLocal()
         mavenCentral()
         maven {
-            url = uri("file:./signum/repo")
+            url = uri("file:${rootDir.absolutePath}/signum/repo")
             name = "signum"
         }
     }
@@ -56,7 +56,7 @@ dependencyResolutionManagement {
 
             commandLine(
                 if (!Os.isFamily(Os.FAMILY_WINDOWS)) "./gradlew" else "./gradlew.bat",
-                "publishVersionsPublicationToLocalRepository"
+                "publishAllPublicationsToLocalRepository"
             )
         }
     }
