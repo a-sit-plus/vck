@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.supreme.asKmmResult
 
 /**
  * Creates and parses COSE objects.
@@ -83,7 +84,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
             payload = payload,
         ).serialize()
 
-        val signature = cryptoService.sign(signatureInput).getOrElse {
+        val signature = cryptoService.sign(signatureInput).asKmmResult().getOrElse {
             Napier.w("No signature from native code", it)
             throw it
         }
