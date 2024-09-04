@@ -1,3 +1,4 @@
+import org.apache.tools.ant.taskdefs.condition.Os
 import java.io.FileInputStream
 import java.util.*
 
@@ -31,8 +32,35 @@ include(":vck-aries")
 include(":vck-openid")
 
 dependencyResolutionManagement {
-    repositories.add(repositories.mavenCentral())
-    repositories.add(repositories.mavenLocal())
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven {
+            url = uri("file:${rootDir.absolutePath}/signum/repo")
+            name = "signum"
+        }
+    }
+
+    if (!File("${rootDir.absolutePath}/signum/repo/at/asitplus/signum/indispensable-versionCatalog/3.7.0-SNAPSHOT/maven-metadata.xml").exists()) {
+        logger.lifecycle("building Signum for version catalogs. this will take a long time!")
+        kotlin.runCatching {
+            file("local.properties").also { src ->
+                src.copyTo(
+                    file("./signum/local.properties"),
+                    overwrite = true
+                )
+            }
+        }
+        exec {
+            workingDir = File("${rootDir.absolutePath}/signum")
+
+            commandLine(
+                if (!Os.isFamily(Os.FAMILY_WINDOWS)) "./gradlew" else "./gradlew.bat",
+                "publishAllPublicationsToLocalRepository"
+            )
+        }
+    }
+
     versionCatalogs {
         val versions = Properties().apply {
             kotlin.runCatching {

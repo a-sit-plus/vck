@@ -3,15 +3,29 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.getJcaPublicKey
-import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.isAuthenticatedEncryption
+import at.asitplus.signum.indispensable.josef.jcaKeySpecName
+import at.asitplus.signum.indispensable.josef.jcaName
 import at.asitplus.signum.supreme.HazardousMaterials
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
+import io.github.aakira.napier.Napier
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.security.Security
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 actual open class PlatformCryptoShim actual constructor(actual val keyWithCert: KeyWithCert) {
+companion object{
+    init {
+        Napier.d { "Adding BC" }
+        Security.addProvider(BouncyCastleProvider())
+    }
+}
 
     actual fun encrypt(
         key: ByteArray,
