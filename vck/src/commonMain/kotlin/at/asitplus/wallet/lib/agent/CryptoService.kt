@@ -14,7 +14,7 @@ import at.asitplus.signum.supreme.sign.verifierFor
 
 interface CryptoService {
 
-    suspend fun sign(input: ByteArray): KmmResult<CryptoSignature.RawByteEncodable>
+    suspend fun sign(input: ByteArray): SignatureResult<CryptoSignature.RawByteEncodable>
 
     fun encrypt(
         key: ByteArray,
@@ -123,10 +123,9 @@ open class DefaultCryptoService(
     override val keyWithCert: KeyWithCert
 ) : CryptoService {
 
-    private val platformCryptoShim = PlatformCryptoShim(keyWithCert)
+    private val platformCryptoShim by lazy { PlatformCryptoShim(keyWithCert) }
 
-    override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature.RawByteEncodable> =
-        keyWithCert.sign(input).asKmmResult()
+    override suspend fun sign(input: ByteArray) = keyWithCert.sign(input)
 
 
     override fun encrypt(

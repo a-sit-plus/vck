@@ -20,6 +20,7 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
+import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyHolder
@@ -136,7 +137,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         }
 
         val plainSignatureInput = prepareJwsSignatureInput(header, payload)
-        val signature = cryptoService.sign(plainSignatureInput.encodeToByteArray()).getOrThrow()
+        val signature =
+            cryptoService.sign(plainSignatureInput.encodeToByteArray()).asKmmResult().getOrThrow()
         JwsSigned(header, payload, signature, plainSignatureInput)
     }
 
