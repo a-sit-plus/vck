@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.cbor
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
@@ -43,8 +44,8 @@ class CoseServiceTest : FreeSpec({
 
         val parsed = CoseSigned.deserialize(signed.serialize()).getOrThrow()
 
-        cryptoService.keyWithCert.coseKey shouldNotBe null
-        val result = verifierCoseService.verifyCose(parsed, cryptoService.keyWithCert.coseKey)
+        cryptoService.keyWithCert.publicKey.toCoseKey().isSuccess shouldBe true
+        val result = verifierCoseService.verifyCose(parsed, cryptoService.keyWithCert.publicKey.toCoseKey().getOrThrow())
         result.isSuccess shouldBe true
     }
 
@@ -62,8 +63,8 @@ class CoseServiceTest : FreeSpec({
 
         val parsed = CoseSigned.deserialize(signed.serialize()).getOrThrow()
 
-        cryptoService.keyWithCert.coseKey shouldNotBe null
-        val result = verifierCoseService.verifyCose(parsed, cryptoService.keyWithCert.coseKey)
+        cryptoService.keyWithCert.publicKey.toCoseKey().isSuccess shouldBe true
+        val result = verifierCoseService.verifyCose(parsed, cryptoService.keyWithCert.publicKey.toCoseKey().getOrThrow())
         result.isSuccess shouldBe true
     }
 

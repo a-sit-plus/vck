@@ -254,7 +254,7 @@ class WalletService(
     @OptIn(ExperimentalStdlibApi::class)
     private suspend fun generateCodeVerifier(state: String): String {
         val codeVerifier = Random.nextBytes(32).toHexString(HexFormat.Default)
-        codeChallengeMutex.withLock { stateToCodeChallengeMap.put(state, codeVerifier) }
+        stateToCodeStore.put(state, codeVerifier)
         return codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
     }
 

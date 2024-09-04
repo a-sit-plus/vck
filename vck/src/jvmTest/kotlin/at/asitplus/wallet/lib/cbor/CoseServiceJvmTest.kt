@@ -89,7 +89,7 @@ class CoseServiceJvmTest : FreeSpec({
                     ).getOrThrow()
 
                     withClue("$sigAlgo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
-                        verifierCoseService.verifyCose(signed, cryptoService.keyWithCert.coseKey)
+                        verifierCoseService.verifyCose(signed, cryptoService.keyWithCert.publicKey.toCoseKey().getOrThrow())
                             .isSuccess shouldBe true
                     }
                 }

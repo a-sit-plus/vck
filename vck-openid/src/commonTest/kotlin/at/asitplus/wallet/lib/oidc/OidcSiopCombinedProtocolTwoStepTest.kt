@@ -43,7 +43,6 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
         verifierAgent = VerifierAgent(verifierKeyPair)
 
         holderSiop = OidcSiopWallet(
-            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(

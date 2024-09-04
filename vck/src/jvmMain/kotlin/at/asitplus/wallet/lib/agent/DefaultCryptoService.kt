@@ -96,7 +96,7 @@ actual open class PlatformCryptoShim actual constructor(actual val keyWithCert: 
         KeyAgreement.getInstance(algorithm.jcaName).also {
 
             @OptIn(HazardousMaterials::class)
-            it.init(keyWithCert.signer.jcaPrivateKey)
+            it.init(keyWithCert.getUnderLyingSigner().jcaPrivateKey)
             it.doPhase(publicKey, true)
         }.generateSecret()
     }.wrap()

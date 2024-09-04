@@ -80,7 +80,6 @@ class OidcSiopProtocolTest : FreeSpec({
         )
 
         holderSiop = OidcSiopWallet(
-            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(
@@ -293,7 +292,6 @@ class OidcSiopProtocolTest : FreeSpec({
         ).getOrThrow()
 
         holderSiop = OidcSiopWallet(
-            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
             requestObjectJwsVerifier = verifierAttestationVerifier(sprsCryptoService.keyWithCert.jsonWebKey)
         )
@@ -322,7 +320,6 @@ class OidcSiopProtocolTest : FreeSpec({
         ).getOrThrow()
 
         holderSiop = OidcSiopWallet(
-            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
             requestObjectJwsVerifier = verifierAttestationVerifier(EphemeralKeyWithSelfSignedCert().jsonWebKey)
         )
@@ -346,7 +343,6 @@ class OidcSiopProtocolTest : FreeSpec({
         }.buildString()
 
         holderSiop = OidcSiopWallet(
-            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
             remoteResourceRetriever = {
                 if (it == requestUrl) authnRequest else null
@@ -376,7 +372,6 @@ class OidcSiopProtocolTest : FreeSpec({
         }.buildString()
 
         holderSiop = OidcSiopWallet(
-            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
             remoteResourceRetriever = {
                 if (it == requestUrl) jar.serialize() else null
@@ -407,7 +402,6 @@ class OidcSiopProtocolTest : FreeSpec({
         }.buildString()
 
         holderSiop = OidcSiopWallet(
-            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
             remoteResourceRetriever = {
                 if (it == requestUrl) jar.serialize() else null

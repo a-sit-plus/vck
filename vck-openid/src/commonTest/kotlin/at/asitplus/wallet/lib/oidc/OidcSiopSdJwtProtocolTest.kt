@@ -53,7 +53,6 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         )
 
         holderSiop = OidcSiopWallet(
-            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(

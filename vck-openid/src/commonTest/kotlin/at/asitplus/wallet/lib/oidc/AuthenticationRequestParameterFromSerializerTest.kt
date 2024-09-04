@@ -20,7 +20,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
     val responseUrl = "https://example.com/rp/${uuid4()}"
 
     val holderKeyPair = EphemeralKeyWithSelfSignedCert()
-    val oidcSiopWallet = OidcSiopWallet.newDefaultInstance(
+    val oidcSiopWallet = OidcSiopWallet(
         keyWithCert = holderKeyPair,
         holder = HolderAgent(holderKeyPair),
     )

@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.asn1.*
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
@@ -162,7 +164,6 @@ class OidcSiopInteropTest : FreeSpec({
         val requestUrl =
             "https://verifier-backend.eudiw.dev/wallet/request.jwt/Vu3g2FXDeqday-wS0Xmty0bYzzq3MeVGrPSGTdk3Y60tWNLHkr_bg9WJMK3xktNsqWpEXPsDgBw5g3r80MQyTw"
         holderSiop = OidcSiopWallet(
-            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
             remoteResourceRetriever = {
                 if (it == jwksUrl) jwkset else if (it == requestUrl) requestObject else null
@@ -326,7 +327,6 @@ class OidcSiopInteropTest : FreeSpec({
             keyPairAdapter = verifierKeyPair,
             relyingPartyUrl = "https://example.com/rp",
             responseUrl = "https://example.com/response",
-            x5c = listOf(verifierKeyPair.getCertificate!!)
             clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyPair.getCertificate()!!)),
         )
         val nonce = uuid4().toString()
