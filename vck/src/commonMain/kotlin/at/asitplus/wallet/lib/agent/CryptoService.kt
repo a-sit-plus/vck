@@ -7,24 +7,14 @@ import at.asitplus.signum.indispensable.*
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
-import at.asitplus.signum.supreme.SignatureResult
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.hash.digest
-import at.asitplus.signum.supreme.os.PlatformSigningProviderSigner
 import at.asitplus.signum.supreme.sign.SignatureInput
 import at.asitplus.signum.supreme.sign.verifierFor
 
 interface CryptoService {
 
-    suspend fun sign(input: ByteArray): KmmResult<CryptoSignature.RawByteEncodable> =
-        doSign(input).asKmmResult()
-
-
-    suspend fun doSign(
-        input: ByteArray,
-        promptText: String? = null,
-        cancelText: String? = null
-    ): SignatureResult<CryptoSignature.RawByteEncodable>
+    suspend fun sign(input: ByteArray): KmmResult<CryptoSignature.RawByteEncodable>
 
     fun encrypt(
         key: ByteArray,
@@ -135,20 +125,8 @@ open class DefaultCryptoService(
 
     private val platformCryptoShim = PlatformCryptoShim(keyWithCert)
 
-    override suspend fun doSign(
-        input: ByteArray,
-        promptText: String?,
-        cancelText: String?
-    ): SignatureResult<CryptoSignature.RawByteEncodable> =
-        when (val signer = keyWithCert) {
-            is PlatformSigningProviderSigner<*> -> signer.sign(input) {
-                unlockPrompt {
-                    promptText?.let { message = it }
-                    cancelText?.let { this.cancelText = cancelText }
-                }
-            }
-            else -> keyWithCert.sign(input)
-        }
+    override suspend fun sign(input: ByteArray): KmmResult<CryptoSignature.RawByteEncodable> =
+        keyWithCert.sign(input).asKmmResult()
 
 
     override fun encrypt(

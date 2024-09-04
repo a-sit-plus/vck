@@ -7,7 +7,9 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.sign.EphemeralKey
+import at.asitplus.signum.supreme.sign.SignatureInput
 import at.asitplus.signum.supreme.sign.Signer
+import at.asitplus.signum.supreme.wrap
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -40,7 +42,6 @@ abstract class KeyWithSelfSignedCert(
     override val identifier: String get() = publicKey.didEncoded
     private val crtMut = Mutex()
     private var _certificate: X509Certificate? = null
-
 
     override suspend fun getCertificate(): X509Certificate? {
         crtMut.withLock {
