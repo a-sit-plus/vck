@@ -41,8 +41,8 @@ dependencyResolutionManagement {
         }
     }
 
-    if (!File(".signum/repo/at/asitplus/signum/indispensable-versionCatalog/3.7.0-SNAPSHOT/maven-metadata.xml").exists()) {
-        logger.lifecycle("building contained projects for version catalogs. this will take a long time!")
+    if (!File("${rootDir.absolutePath}/signum/repo/at/asitplus/signum/indispensable-versionCatalog/3.7.0-SNAPSHOT/maven-metadata.xml").exists()) {
+        logger.lifecycle("building Signum for version catalogs. this will take a long time!")
         kotlin.runCatching {
             file("local.properties").also { src ->
                 src.copyTo(
@@ -52,7 +52,7 @@ dependencyResolutionManagement {
             }
         }
         exec {
-            workingDir = File("${rootDir}/signum")
+            workingDir = File("${rootDir.absolutePath}/signum")
 
             commandLine(
                 if (!Os.isFamily(Os.FAMILY_WINDOWS)) "./gradlew" else "./gradlew.bat",
