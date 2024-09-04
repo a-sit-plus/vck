@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.supreme.signature
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialStatus
@@ -366,8 +367,7 @@ class ValidatorVcTest : FreeSpec() {
             jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
                     "." + jwsPayload.encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
-        val signature = DefaultCryptoService(issuerKeyPair).sign(signatureInputBytes)
-            .getOrElse { return null }
+        val signature = DefaultCryptoService(issuerKeyPair).sign(signatureInputBytes).signature
         return JwsSigned(jwsHeader, jwsPayload, signature, signatureInput).serialize()
     }
 

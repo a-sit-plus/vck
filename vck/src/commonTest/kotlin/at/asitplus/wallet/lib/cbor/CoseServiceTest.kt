@@ -44,7 +44,7 @@ class CoseServiceTest : FreeSpec({
 
         val parsed = CoseSigned.deserialize(signed.serialize()).getOrThrow()
 
-        cryptoService.keyWithCert.publicKey.toCoseKey().isSuccess shouldBe true
+        cryptoService.keyWithCert.publicKey.toCoseKey().getOrNull() shouldNotBe null
         val result = verifierCoseService.verifyCose(parsed, cryptoService.keyWithCert.publicKey.toCoseKey().getOrThrow())
         result.isSuccess shouldBe true
     }
@@ -63,7 +63,7 @@ class CoseServiceTest : FreeSpec({
 
         val parsed = CoseSigned.deserialize(signed.serialize()).getOrThrow()
 
-        cryptoService.keyWithCert.publicKey.toCoseKey().isSuccess shouldBe true
+        cryptoService.keyWithCert.publicKey.toCoseKey().getOrNull() shouldNotBe null
         val result = verifierCoseService.verifyCose(parsed, cryptoService.keyWithCert.publicKey.toCoseKey().getOrThrow())
         result.isSuccess shouldBe true
     }
