@@ -9,6 +9,7 @@ pluginManagement {
         google()
         gradlePluginPortal()
         mavenCentral()
+        maven("https://s01.oss.sonatype.org/content/repositories/snapshots") //KOTEST snapshot
     }
 }
 
@@ -22,6 +23,19 @@ if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
         }
     }
 } else logger.lifecycle("Excluding Signum from this build")
+
+
+
+includeBuild("mobile-driving-licence-credential") {
+    dependencySubstitution {
+        substitute(module("at.asitplus.wallet:mobiledrivinglicence")).using(project(":mobiledrivinglicence"))
+    }
+}
+includeBuild("eu-pid-credential") {
+    dependencySubstitution {
+        substitute(module("at.asitplus.wallet:eupidcredential")).using(project(":eupidcredential"))
+    }
+}
 
 rootProject.name = "vc-k"
 include(":dif-data-classes")

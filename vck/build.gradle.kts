@@ -36,9 +36,6 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
-                api("at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}") {
-                    exclude("org.jetbrains.kotlin", "kotlin-reflect")
-                }
                 api(project(":dif-data-classes"))
                 commonImplementationAndApiDependencies()
             }
@@ -128,7 +125,6 @@ publishing {
         }
     }
 }
-
 
 repositories {
     maven(url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
