@@ -45,6 +45,7 @@ inline fun Project.commonApiDependencies(): List<String> {
         addDependency("io.matthewnelson.encoding:base16", "encoding"),
         addDependency("io.matthewnelson.encoding:base64", "encoding"),
         addDependency("io.matthewnelson.encoding:core", "encoding"),
+        addDependency("at.asitplus:jsonpath4k", "jsonpath"),
     )
 }
 
