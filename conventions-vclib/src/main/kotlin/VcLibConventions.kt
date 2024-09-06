@@ -169,7 +169,7 @@ fun Project.setupAndroid() {
         namespace = "$group.${name.replace('-','.')}".also { logger.lifecycle("Setting Android namespace to $it") }
         compileSdk = 34
         defaultConfig {
-            minSdk = 33
+            minSdk = 30
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
 
