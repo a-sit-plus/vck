@@ -35,30 +35,6 @@ dependencyResolutionManagement {
     repositories {
         mavenLocal()
         mavenCentral()
-        maven {
-            url = uri("file:${rootDir.absolutePath}/signum/repo")
-            name = "signum"
-        }
-    }
-
-    if (!File("${rootDir.absolutePath}/signum/repo/at/asitplus/signum/indispensable-versionCatalog/3.7.0-SNAPSHOT/maven-metadata.xml").exists()) {
-        logger.lifecycle("building Signum for version catalogs. this will take a long time!")
-        kotlin.runCatching {
-            file("local.properties").also { src ->
-                src.copyTo(
-                    file("./signum/local.properties"),
-                    overwrite = true
-                )
-            }
-        }
-        exec {
-            workingDir = File("${rootDir.absolutePath}/signum")
-
-            commandLine(
-                if (!Os.isFamily(Os.FAMILY_WINDOWS)) "./gradlew" else "./gradlew.bat",
-                "publishAllPublicationsToLocalRepository"
-            )
-        }
     }
 
     versionCatalogs {
