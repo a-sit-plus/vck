@@ -45,6 +45,7 @@ inline fun Project.commonApiDependencies(): List<String> {
         addDependency("io.matthewnelson.encoding:base16", "encoding"),
         addDependency("io.matthewnelson.encoding:base64", "encoding"),
         addDependency("io.matthewnelson.encoding:core", "encoding"),
+        addDependency("at.asitplus:jsonpath4k", "jsonpath"),
     )
 }
 
@@ -168,7 +169,7 @@ fun Project.setupAndroid() {
         namespace = "$group.${name.replace('-','.')}".also { logger.lifecycle("Setting Android namespace to $it") }
         compileSdk = 34
         defaultConfig {
-            minSdk = 33
+            minSdk = 30
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
 
