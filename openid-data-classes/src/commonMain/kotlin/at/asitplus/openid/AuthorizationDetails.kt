@@ -5,6 +5,7 @@ import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
 
 
 @Serializable
@@ -120,10 +121,10 @@ sealed class AuthorizationDetails {
 
         /**
          * CSC: An array of strings designating the locations of
-         * array the API (*where?) the access token issued in a certain OAuth transaction shall be used.
+         * array the API where the access token issued in a certain OAuth transaction shall be used.
          */
         @SerialName("locations")
-        val locations: Collection<String>?,
+        val locations: Collection<String>? = null,
 
         /**
          * QES: This parameter is used to convey the
@@ -134,6 +135,16 @@ sealed class AuthorizationDetails {
          * in the Wallet-centric model)
          */
         @SerialName("documentLocations")
-        val documentLocations: Collection<DocumentLocationEntry>
+        val documentLocations: Collection<DocumentLocationEntry>,
     ) : AuthorizationDetails()
+
+    companion object {
+        fun deserialize(input: String): List<AuthorizationDetails> =
+            jsonSerializer.decodeFromString<JsonArray>(input).map {
+                jsonSerializer.decodeFromJsonElement(
+                    serializer(),
+                    it
+                )
+            }
+    }
 }

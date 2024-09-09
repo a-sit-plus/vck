@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.dif.rqes.RqesConstants
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.openid.OpenIdConstants.Errors
@@ -217,7 +218,7 @@ class WalletService(
     )
 
     /**
-     * CSC: Adds the possibility for CSC requests. TODO should be list of AuthorizationDetails?
+     * CSC: Minimal implementation for CSC requests
      */
     suspend fun createAuthRequest(
         state: String,
@@ -242,7 +243,7 @@ class WalletService(
                 state = state,
                 clientId = clientId,
                 authorizationDetails = setOf(authorizationDetails),
-                scope = "credential",
+                scope = RqesConstants.SCOPE,
                 redirectUrl = redirectUrl,
                 codeChallenge = generateCodeVerifier(state),
                 codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
@@ -331,7 +332,7 @@ class WalletService(
     }
 
     /**
-     * CSC: Adds the possibility for CSC requests. TODO should be list of AuthorizationDetails?
+     * CSC: Minimal implementation for CSC requests.
      */
     suspend fun createTokenRequestParameters(
         state: String,

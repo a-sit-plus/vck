@@ -3,6 +3,7 @@ package at.asitplus.openid
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
+import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import kotlinx.datetime.Instant
@@ -267,10 +268,6 @@ data class AuthenticationRequestParameters(
     @SerialName("code_challenge_method")
     val codeChallengeMethod: String? = null,
 
-    //CSC additionally defines the following parameters
-    //In the following REQUIRED-"credential" stands for
-    // "It SHALL be used only if
-    // [scope] is 'credential' "
     /**
      * CSC: Optional
      * Request a preferred language according to RFC 5646
@@ -353,21 +350,3 @@ data class AuthenticationRequestParameters(
     }
 }
 
-/**
- * CSC: Multiple hash values can be passed as comma separated values,
- * e.g. oauth2/authorize?hash=dnN3ZX.. .ZmRm,ZjIxM3… Z2Zk,…
- */
-object HashesSerializer : KSerializer<List<ByteArray>> {
-    override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("HashesSerializer", PrimitiveKind.STRING)
-
-    override fun deserialize(decoder: Decoder): List<ByteArray> {
-        val listOfHashes = decoder.decodeString().split(",")
-        return listOfHashes.map { at.asitplus.dif.jsonSerializer.decodeFromString(ByteArrayBase64Serializer, it) }
-    }
-
-    override fun serialize(encoder: Encoder, value: List<ByteArray>) {
-        val listOfHashes = value.map { at.asitplus.dif.jsonSerializer.encodeToString(ByteArrayBase64Serializer, it) }
-        encoder.encodeString(listOfHashes.joinToString(","))
-    }
-}
