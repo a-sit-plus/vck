@@ -1,6 +1,6 @@
 package at.asitplus.openid
 
-import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
+import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -18,11 +18,11 @@ object HashesSerializer : KSerializer<List<ByteArray>> {
 
     override fun deserialize(decoder: Decoder): List<ByteArray> {
         val listOfHashes = decoder.decodeString().split(",")
-        return listOfHashes.map { at.asitplus.dif.jsonSerializer.decodeFromString(ByteArrayBase64UrlSerializer, it) }
+        return listOfHashes.map { at.asitplus.dif.jsonSerializer.decodeFromString(ByteArrayBase64Serializer, it) }
     }
 
     override fun serialize(encoder: Encoder, value: List<ByteArray>) {
-        val listOfHashes = value.map { at.asitplus.dif.jsonSerializer.encodeToString(ByteArrayBase64UrlSerializer, it) }
+        val listOfHashes = value.map { at.asitplus.dif.jsonSerializer.encodeToString(ByteArrayBase64Serializer, it) }
         encoder.encodeString(listOfHashes.joinToString(","))
     }
 }
