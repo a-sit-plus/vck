@@ -1,5 +1,6 @@
 package at.asitplus.openid
 
+import at.asitplus.dif.rqes.DocumentDigestEntries.OAuthDocumentDigestEntry
 import at.asitplus.dif.rqes.DocumentLocationEntry
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
@@ -109,7 +110,7 @@ sealed class AuthorizationDetails {
          * array both cases, where are document is signed or a digest is signed
          */
         @SerialName("documentDigests")
-        val documentDigestsCSC: Collection<DocumentDigestCSCEntry>,
+        val documentDigestsCSC: Collection<OAuthDocumentDigestEntry>,
 
         /**
          * CSC: String containing the OID of the hash algorithm used to generate the hashes
