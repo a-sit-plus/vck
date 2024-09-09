@@ -46,7 +46,7 @@ class OidvciProcessTest : FunSpec({
         client = WalletService(
             clientId = "https://wallet.a-sit.at/app",
             redirectUrl = "https://wallet.a-sit.at/callback",
-            keyPairAdapter = EphemeralKeyWithSelfSignedCert()
+            keyMaterial = EphemeralKeyWithSelfSignedCert()
         )
     }
 

@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.jws
 
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.KSerializer
@@ -32,6 +33,7 @@ object SelectiveDisclosureItemSerializer : KSerializer<SelectiveDisclosureItem> 
         val valueElement = when (val value = value.claimValue) {
             is Boolean -> JsonPrimitive(value)
             is Number -> JsonPrimitive(value)
+            is ByteArray -> JsonPrimitive(value.encodeToString(Base64UrlStrict))
             else -> JsonPrimitive(value.toString())
         }
         encoder.encodeSerializableValue(
@@ -47,15 +49,17 @@ object SelectiveDisclosureItemSerializer : KSerializer<SelectiveDisclosureItem> 
     override fun deserialize(decoder: Decoder): SelectiveDisclosureItem {
         val items = decoder.decodeSerializableValue(listSerializer)
         if (items.count() != 3) throw IllegalArgumentException()
+        val (firstElement, secondElement, thirdElement) = items
         return SelectiveDisclosureItem(
-            salt = items[0].content.decodeToByteArray(Base64UrlStrict),
-            claimName = items[1].content,
-            claimValue = items[2].booleanOrNull
-                ?: items[2].longOrNull
-                ?: items[2].intOrNull
-                ?: items[2].doubleOrNull
-                ?: items[2].floatOrNull
-                ?: items[2].content
+            salt = firstElement.content.decodeToByteArray(Base64UrlStrict),
+            claimName = secondElement.content,
+            claimValue = thirdElement.booleanOrNull
+                ?: thirdElement.longOrNull
+                ?: thirdElement.intOrNull
+                ?: thirdElement.doubleOrNull
+                ?: thirdElement.floatOrNull
+                ?: runCatching { thirdElement.content.decodeToByteArray(Base64UrlStrict) }.getOrNull()
+                ?: thirdElement.content
         )
     }
 
