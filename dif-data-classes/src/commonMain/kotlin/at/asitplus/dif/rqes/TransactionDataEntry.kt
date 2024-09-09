@@ -4,6 +4,7 @@ package at.asitplus.dif.rqes
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.dif.rqes.DocumentDigestEntries.RqesDocumentDigestEntry
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
@@ -48,12 +49,12 @@ sealed class TransactionDataEntry {
          * document to be signed (SD). This
          * applies for both cases, where a
          * document is signed, or a digest is
-         * signed. Every entry is [DocumentDigestEntry]
+         * signed. Every entry is [RqesDocumentDigestEntry]
          *
          * !!! Currently not compatible with the CSC definition of documentDigests
          */
         @SerialName("documentDigests")
-        val documentDigests: List<DocumentDigestEntry>,
+        val documentDigests: List<RqesDocumentDigestEntry>,
 
         /**
          * D3.1: UC Specification WP3: OPTIONAL.
@@ -82,7 +83,7 @@ sealed class TransactionDataEntry {
             fun create(
                 signatureQualifier: String?,
                 credentialId: String?,
-                documentDigest: List<DocumentDigestEntry>,
+                documentDigest: List<RqesDocumentDigestEntry>,
                 processID: String?,
             ): KmmResult<TransactionDataEntry> =
                 runCatching {
