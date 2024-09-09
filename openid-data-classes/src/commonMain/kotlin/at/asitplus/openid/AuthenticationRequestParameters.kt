@@ -2,20 +2,12 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
-import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import kotlinx.datetime.Instant
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 
 /**
  * Contents of an OIDC Authentication Request.
