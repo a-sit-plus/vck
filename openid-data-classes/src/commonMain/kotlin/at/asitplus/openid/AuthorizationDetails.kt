@@ -139,7 +139,7 @@ sealed class AuthorizationDetails {
     ) : AuthorizationDetails()
 
     companion object {
-        fun deserialize(input: String): List<AuthorizationDetails> =
+        fun parse(input: String): List<AuthorizationDetails> =
             jsonSerializer.decodeFromString<JsonArray>(input).map {
                 jsonSerializer.decodeFromJsonElement(
                     serializer(),
