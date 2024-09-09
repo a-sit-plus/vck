@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.iso.sha256
@@ -56,7 +57,7 @@ class AgentSdJwtTest : FreeSpec({
     val givenNamePresentationDefinition = PresentationDefinition(
         id = uuid4().toString(),
         inputDescriptors = listOf(
-            InputDescriptor(
+            DifInputDescriptor(
                 id = uuid4().toString(),
                 constraints = Constraint(
                     fields = listOf(
@@ -176,7 +177,7 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
         audienceId = verifierId,
         presentationDefinition = PresentationDefinition(
             id = uuid4().toString(),
-            inputDescriptors = listOf(InputDescriptor(id = uuid4().toString()))
+            inputDescriptors = listOf(DifInputDescriptor(id = uuid4().toString()))
         ),
     ).getOrThrow()
     return (presentationResult.presentationResults.first() as Holder.CreatePresentationResult.SdJwt).sdJwt

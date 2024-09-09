@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.dif.SchemaReference
@@ -48,7 +49,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             testScopes.MdocMdlWithGivenName to PresentationDefinition(
                 id = uuid4().toString(),
                 inputDescriptors = listOf(
-                    InputDescriptor(
+                    DifInputDescriptor(
                         id = MobileDrivingLicenceScheme.isoDocType,
                         constraints = Constraint(
                             fields = listOf(

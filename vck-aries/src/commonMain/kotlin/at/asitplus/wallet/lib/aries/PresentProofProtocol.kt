@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.data.SchemaIndex
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.ConstraintFilter
+import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.InputDescriptor
@@ -213,7 +214,7 @@ class PresentProofProtocol(
         val typeConstraints = buildConstraintFieldForType(credentialScheme.vcType!!)
         val presentationDefinition = PresentationDefinition(
             inputDescriptors = listOf(
-                InputDescriptor(
+                DifInputDescriptor(
                     name = credentialScheme.vcType!!,
                     constraints = Constraint(
                         fields = claimsConstraints + typeConstraints

@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.wallet.lib.agent.CredentialSubmission
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -78,7 +79,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                                 msoMdoc = presentationDefinition.formats?.msoMdoc
                             ),
                             inputDescriptors = presentationDefinition.inputDescriptors.map { inputDescriptor ->
-                                inputDescriptor.copy(format = null)
+                                (inputDescriptor as DifInputDescriptor).copy(format = null)
                             }
                         )
                     },
@@ -129,7 +130,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                                     msoMdoc = presentationDefinition.formats?.msoMdoc
                                 ),
                                 inputDescriptors = presentationDefinition.inputDescriptors.map { inputDescriptor ->
-                                    inputDescriptor.copy(
+                                    (inputDescriptor as DifInputDescriptor).copy(
                                         format = null
                                     )
                                 }
@@ -195,7 +196,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                                 presentationDefinition.copy(
                                     // only support msoMdoc here
                                     inputDescriptors = presentationDefinition.inputDescriptors.map { inputDescriptor ->
-                                        inputDescriptor.copy(
+                                        (inputDescriptor as DifInputDescriptor).copy(
                                             format = FormatHolder(
                                                 jwtSd = presentationDefinition.formats?.jwtSd
                                             ),
@@ -237,7 +238,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                             presentationDefinition.copy(
                                 // only support msoMdoc here
                                 inputDescriptors = presentationDefinition.inputDescriptors.map { inputDescriptor ->
-                                    inputDescriptor.copy(
+                                    (inputDescriptor as DifInputDescriptor).copy(
                                         format = FormatHolder(
                                             msoMdoc = presentationDefinition.formats?.msoMdoc
                                         ),
