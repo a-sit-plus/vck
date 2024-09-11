@@ -26,8 +26,6 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.encodeToString
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import java.security.Security
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.RSAPrivateKey
@@ -141,7 +139,7 @@ class JwsServiceJvmTest : FreeSpec({
                     val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
                     val libHeader = JWSHeader.Builder(JWSAlgorithm(algo.name))
                         .type(JOSEObjectType("JWT"))
-                        .jwk(JWK.parse(cryptoService.keyWithCert.jsonWebKey.serialize()))
+                        .jwk(JWK.parse(cryptoService.keyMaterial.jsonWebKey.serialize()))
                         .build()
                     val libObject = JWSObject(libHeader, Payload(stringPayload)).also {
                         it.sign(jvmSigner)
@@ -194,7 +192,7 @@ class JwsServiceJvmTest : FreeSpec({
                         val libJweHeader =
                             JWEHeader.Builder(JWEAlgorithm(jweAlgorithm.identifier), EncryptionMethod.A256GCM)
                                 .type(JOSEObjectType(JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON))
-                                .jwk(JWK.parse(cryptoService.keyWithCert.jsonWebKey.serialize()))
+                                .jwk(JWK.parse(cryptoService.keyMaterial.jsonWebKey.serialize()))
                                 .contentType(JwsContentTypeConstants.DIDCOMM_PLAIN_JSON)
                                 .build()
                         val libJweObject = JWEObject(libJweHeader, Payload(stringPayload)).also {
@@ -214,7 +212,7 @@ class JwsServiceJvmTest : FreeSpec({
                         val encrypted = jwsService.encryptJweObject(
                             JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
                             stringPayload.encodeToByteArray(),
-                            cryptoService.keyWithCert.jsonWebKey,
+                            cryptoService.keyMaterial.jsonWebKey,
                             JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
                             jweAlgorithm,
                             JweEncryption.A256GCM,

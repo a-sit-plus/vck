@@ -13,9 +13,7 @@ import at.asitplus.dif.ConstraintFilter
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.SchemaReference
 import at.asitplus.wallet.lib.msg.AttachmentFormatReference
 import at.asitplus.wallet.lib.msg.JsonWebMessage
 import at.asitplus.wallet.lib.msg.JwmAttachment
@@ -209,7 +207,7 @@ class PresentProofProtocol(
         credentialScheme: ConstantIndex.CredentialScheme,
         parentThreadId: String? = null,
     ): RequestPresentation? {
-        val verifierIdentifier = verifier?.keyPair?.identifier ?: return null
+        val verifierIdentifier = verifier?.keyMaterial?.identifier ?: return null
         val claimsConstraints = requestedClaims?.map(this::buildConstraintFieldForClaim) ?: listOf()
         val typeConstraints = buildConstraintFieldForType(credentialScheme.vcType!!)
         val presentationDefinition = PresentationDefinition(

@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsHeader
@@ -31,10 +30,8 @@ import at.asitplus.dif.ConstraintFilter
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.dif.PresentationSubmissionDescriptor
-import at.asitplus.dif.SchemaReference
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -53,8 +50,6 @@ import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
@@ -103,12 +98,12 @@ class OidcSiopVerifier private constructor(
     }
 
     constructor(
-        keyPairAdapter: KeyWithCert = EphemeralKeyWithSelfSignedCert(),
-        verifier: Verifier = VerifierAgent(keyPairAdapter),
+        keyMaterial: KeyMaterial = EphemeralKeyWithSelfSignedCert(),
+        verifier: Verifier = VerifierAgent(keyMaterial),
         relyingPartyUrl: String? = null,
         responseUrl: String? = null,
         verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
+        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
         timeLeewaySeconds: Long = 300L,
         clock: Clock = Clock.System,
         nonceService: NonceService = DefaultNonceService(),
@@ -131,7 +126,7 @@ class OidcSiopVerifier private constructor(
     val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = relyingPartyUrl?.let { listOf(it) },
-            jsonWebKeySet = JsonWebKeySet(listOf(verifier.keyPair.publicKey.toJsonWebKey())),
+            jsonWebKeySet = JsonWebKeySet(listOf(verifier.keyMaterial.publicKey.toJsonWebKey())),
             subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
             vpFormats = FormatHolder(
                 msoMdoc = containerJwt,

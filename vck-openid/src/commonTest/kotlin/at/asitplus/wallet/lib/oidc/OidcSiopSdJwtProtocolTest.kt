@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -24,8 +24,8 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     lateinit var relyingPartyUrl: String
     lateinit var walletUrl: String
 
-    lateinit var holderKeyPair: KeyWithCert
-    lateinit var verifierKeyPair: KeyWithCert
+    lateinit var holderKeyPair: KeyMaterial
+    lateinit var verifierKeyPair: KeyMaterial
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -56,7 +56,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
     }
@@ -84,7 +84,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     "Selective Disclosure with custom credential" {
         val requestedClaim = "given_name"
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(

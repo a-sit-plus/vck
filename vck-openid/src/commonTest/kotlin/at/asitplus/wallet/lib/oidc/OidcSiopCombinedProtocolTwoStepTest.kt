@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.agent.CredentialSubmission
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Verifier
@@ -26,8 +26,8 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
 
     lateinit var relyingPartyUrl: String
 
-    lateinit var holderKeyPair: KeyWithCert
-    lateinit var verifierKeyPair: KeyWithCert
+    lateinit var holderKeyPair: KeyMaterial
+    lateinit var verifierKeyPair: KeyMaterial
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -46,7 +46,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
     }
@@ -60,7 +60,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
             }
 
             verifierSiop = OidcSiopVerifier(
-                keyPairAdapter = verifierKeyPair,
+                keyMaterial = verifierKeyPair,
                 relyingPartyUrl = relyingPartyUrl,
             )
 
@@ -111,7 +111,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyPairAdapter = verifierKeyPair,
+                    keyMaterial = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -179,7 +179,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyPairAdapter = verifierKeyPair,
+                    keyMaterial = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -286,7 +286,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
 })
 
 private suspend fun Holder.storeSdJwtCredential(
-    holderKeyPair: KeyWithCert,
+    holderKeyPair: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
@@ -302,7 +302,7 @@ private suspend fun Holder.storeSdJwtCredential(
 }
 
 private suspend fun Holder.storeIsoCredential(
-    holderKeyPair: KeyWithCert,
+    holderKeyPair: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) = storeCredential(
     IssuerAgent(

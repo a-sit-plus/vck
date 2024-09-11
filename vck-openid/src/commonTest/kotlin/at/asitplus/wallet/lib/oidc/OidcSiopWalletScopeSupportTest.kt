@@ -5,7 +5,7 @@ import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -14,9 +14,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.SchemaReference
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
@@ -70,8 +68,8 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
 
         lateinit var relyingPartyUrl: String
 
-        lateinit var holderKeyPair: KeyWithCert
-        lateinit var verifierKeyPair: KeyWithCert
+        lateinit var holderKeyPair: KeyMaterial
+        lateinit var verifierKeyPair: KeyMaterial
 
         lateinit var holderAgent: Holder
         lateinit var verifierAgent: Verifier
@@ -87,12 +85,12 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             verifierAgent = VerifierAgent(verifierKeyPair)
 
             holderSiop = OidcSiopWallet(
-                keyWithCert = holderKeyPair,
+                keyMaterial = holderKeyPair,
                 holder = holderAgent,
                 scopePresentationDefinitionRetriever = testScopePresentationDefinitionRetriever
             )
             verifierSiop = OidcSiopVerifier(
-                keyPairAdapter = verifierKeyPair,
+                keyMaterial = verifierKeyPair,
                 relyingPartyUrl = relyingPartyUrl,
             )
         }
