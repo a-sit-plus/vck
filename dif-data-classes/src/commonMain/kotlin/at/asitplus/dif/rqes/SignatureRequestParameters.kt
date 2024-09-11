@@ -1,5 +1,8 @@
 package at.asitplus.dif.rqes
 
+import at.asitplus.dif.rqes.CollectionEntries.Document
+import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.CscDocumentDigest
+import at.asitplus.dif.rqes.Serializer.HashesSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -117,9 +120,9 @@ sealed class SignatureRequestParameters {
         val sad: String?,
 
 
-        val documentDigests: List<ByteArray>? = null,
+        val documentDigests: List<CscDocumentDigest>? = null,
 
-        val documents: List<ByteArray>,
+        val documents: List<Document>,
 
         /**
          * The type of operation mode requested to the remote signing server. It SHALL

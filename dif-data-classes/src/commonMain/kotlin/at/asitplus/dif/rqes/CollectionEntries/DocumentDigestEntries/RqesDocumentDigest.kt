@@ -1,9 +1,8 @@
-package at.asitplus.dif.rqes.DocumentDigestEntries
+package at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.rqes.Method
-import at.asitplus.dif.rqes.iff
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
@@ -183,3 +182,9 @@ data class RqesDocumentDigestEntry private constructor(
 
     }
 }
+
+/**
+ * Checks that either both strings are present or null
+ */
+internal infix fun String?.iff(other: String?): Boolean =
+    (this != null && other != null) or (this == null && other == null)

@@ -1,7 +1,7 @@
 package at.asitplus.openid
 
-import at.asitplus.dif.rqes.DocumentDigestEntries.OAuthDocumentDigestEntry
-import at.asitplus.dif.rqes.DocumentLocationEntry
+import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.OAuthDocumentDigest
+import at.asitplus.dif.rqes.CollectionEntries.DocumentLocation
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
@@ -110,7 +110,7 @@ sealed class AuthorizationDetails {
          * array both cases, where are document is signed or a digest is signed
          */
         @SerialName("documentDigests")
-        val documentDigestsCSC: Collection<OAuthDocumentDigestEntry>,
+        val documentDigestsCSC: Collection<OAuthDocumentDigest>,
 
         /**
          * CSC: String containing the OID of the hash algorithm used to generate the hashes
@@ -136,7 +136,7 @@ sealed class AuthorizationDetails {
          * in the Wallet-centric model)
          */
         @SerialName("documentLocations")
-        val documentLocations: Collection<DocumentLocationEntry>,
+        val documentLocations: Collection<DocumentLocation>,
     ) : AuthorizationDetails()
 
     companion object {

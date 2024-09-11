@@ -2,8 +2,8 @@
 
 package at.asitplus.dif
 
-import at.asitplus.dif.rqes.Base64URLTransactionDataSerializer
-import at.asitplus.dif.rqes.TransactionDataEntry
+import at.asitplus.dif.rqes.Serializer.Base64URLTransactionDataSerializer
+import at.asitplus.dif.rqes.CollectionEntries.TransactionData
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -63,7 +63,7 @@ data class QesInputDescriptor(
     @SerialName("constraints")
     override val constraints: Constraint? = null,
     @SerialName("transaction_data")
-    val transactionData: List<@Serializable(Base64URLTransactionDataSerializer::class) TransactionDataEntry>,
+    val transactionData: List<@Serializable(Base64URLTransactionDataSerializer::class) TransactionData>,
 ) : InputDescriptor
 
 

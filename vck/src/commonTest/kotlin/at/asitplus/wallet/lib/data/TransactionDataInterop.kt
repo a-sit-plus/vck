@@ -1,11 +1,10 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.InputDescriptorSerializer
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.dif.QesInputDescriptor
-import at.asitplus.dif.rqes.Base64URLTransactionDataSerializer
-import at.asitplus.dif.rqes.TransactionDataEntry
+import at.asitplus.dif.rqes.Serializer.Base64URLTransactionDataSerializer
+import at.asitplus.dif.rqes.CollectionEntries.TransactionData
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
@@ -63,15 +62,15 @@ class TransactionDataInterop : FreeSpec({
         }
     """.trimIndent().replace("\n", "").replace("\r", "").replace(" ", "")
 
-    val transactionDataTest = TransactionDataEntry.QCertCreationAcceptance(
+    val transactionDataTest = TransactionData.QCertCreationAcceptance(
         qcTermsConditionsUri = "abc",
         qcHash = "cde".decodeBase64Bytes(),
         qcHashAlgorithmOID = ObjectIdentifier("2.16.840.1.101.3.4.2.1")
     )
 
     "Serialization is stable" {
-        val test = vckJsonSerializer.encodeToString<TransactionDataEntry>(transactionDataTest)
-        val test2 = vckJsonSerializer.decodeFromString<TransactionDataEntry>(test)
+        val test = vckJsonSerializer.encodeToString<TransactionData>(transactionDataTest)
+        val test2 = vckJsonSerializer.decodeFromString<TransactionData>(test)
         test2 shouldBe transactionDataTest
     }
 
