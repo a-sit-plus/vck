@@ -77,6 +77,35 @@ class RqesWalletService(
             )
         }
 
+
+    /**
+     * CSC: Minimal implementation for CSC requests.
+     */
+    suspend fun createTokenRequestParameters(
+        state: String,
+        authorizationDetails: AuthorizationDetails,
+        authorization: AuthorizationForToken,
+    ) = when (authorization) {
+        is AuthorizationForToken.Code -> TokenRequestParameters(
+            grantType = GRANT_TYPE_AUTHORIZATION_CODE,
+            code = authorization.code,
+            redirectUrl = redirectUrl,
+            clientId = clientId,
+            authorizationDetails = setOf(authorizationDetails),
+            codeVerifier = stateToCodeStore.remove(state)
+        )
+
+        is AuthorizationForToken.PreAuthCode -> TokenRequestParameters(
+            grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
+            redirectUrl = redirectUrl,
+            clientId = clientId,
+            authorizationDetails = setOf(authorizationDetails),
+            transactionCode = authorization.preAuth.transactionCode,
+            preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
+            codeVerifier = stateToCodeStore.remove(state)
+        )
+    }
+
     suspend fun createSignDocRequestParameters(): SignatureRequestParameters = TODO()
 
     suspend fun createSignHashRequestParameters(): SignatureRequestParameters = TODO()

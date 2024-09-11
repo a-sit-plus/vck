@@ -6,6 +6,9 @@ import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * Class used as part of [AuthorizationDetails]
+ */
 @Serializable
 data class DocumentLocation(
     @SerialName("uri")
