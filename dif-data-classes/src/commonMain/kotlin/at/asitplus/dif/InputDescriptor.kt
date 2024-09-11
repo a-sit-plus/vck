@@ -66,10 +66,3 @@ data class QesInputDescriptor(
     val transactionData: List<@Serializable(Base64URLTransactionDataSerializer::class) TransactionData>,
 ) : InputDescriptor
 
-
-object InputDescriptorSerializer : JsonContentPolymorphicSerializer<InputDescriptor>(InputDescriptor::class) {
-    override fun selectDeserializer(element: JsonElement) = when {
-        "transaction_data" in element.jsonObject -> QesInputDescriptor.serializer()
-        else -> DifInputDescriptor.serializer()
-    }
-}

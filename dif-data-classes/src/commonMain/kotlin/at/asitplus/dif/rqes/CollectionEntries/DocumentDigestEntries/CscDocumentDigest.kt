@@ -8,6 +8,10 @@ import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+
+/**
+ * CSC: Class used as part of [SignatureRequestParameters]
+ */
 @Serializable
 data class CscDocumentDigest(
     /**
