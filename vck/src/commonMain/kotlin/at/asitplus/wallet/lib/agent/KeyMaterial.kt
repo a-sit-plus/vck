@@ -1,10 +1,13 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.*
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.nativeDigest
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.signum.supreme.sign.Signer
@@ -32,11 +35,9 @@ interface KeyMaterial : Signer {
 abstract class KeyWithSelfSignedCert(
     private val extensions: List<X509CertificateExtension>
 ) : KeyMaterial {
-
     override val identifier: String get() = publicKey.didEncoded
     private val crtMut = Mutex()
     private var _certificate: X509Certificate? = null
-
 
     override suspend fun getCertificate(): X509Certificate? {
         crtMut.withLock {
@@ -66,10 +67,25 @@ class EphemeralKeyWithSelfSignedCert(
     override fun getUnderLyingSigner(): Signer = key.signer().getOrThrow()
 }
 
+/**
+ * Generate a new key pair adapter with a random key, e.g. used in tests
+ */
+class EphemeralKeyWithoutCert(
+    val key: EphemeralKey = EphemeralKey {
+        ec {
+            curve = ECCurve.SECP_256_R_1
+            digests = setOf(Digest.SHA256)
+        }
+    }.getOrThrow()
+) : KeyMaterial, Signer by key.signer().getOrThrow() {
+    override val identifier: String = publicKey.didEncoded
+    override fun getUnderLyingSigner(): Signer = key.signer().getOrThrow()
+    override suspend fun getCertificate(): X509Certificate? = null
+}
+
 interface EphemeralKeyHolder {
     val publicJsonWebKey: JsonWebKey?
     val key: EphemeralKey
-
 }
 
 open class DefaultEphemeralKeyHolder(val crv: ECCurve) : EphemeralKeyHolder {
@@ -79,6 +95,7 @@ open class DefaultEphemeralKeyHolder(val crv: ECCurve) : EphemeralKeyHolder {
             digests = setOf(crv.nativeDigest)
         }
     }.getOrThrow()
+
     override val publicJsonWebKey: JsonWebKey?
         get() = key.publicKey.toJsonWebKey()
 

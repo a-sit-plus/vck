@@ -8,6 +8,7 @@ import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import com.authlete.cbor.CBORByteArray
 import com.authlete.cbor.CBORDecoder
 import com.authlete.cbor.CBORTaggedItem
@@ -71,7 +72,7 @@ class CoseServiceJvmTest : FreeSpec({
             val extLibSigner = COSESigner(ephemeralKey.jcaPrivateKey as ECPrivateKey)
 
 
-            val keyMaterial = EphemeralKeyWithSelfSignedCert(ephemeralKey)
+            val keyMaterial = EphemeralKeyWithoutCert(ephemeralKey)
             val cryptoService = DefaultCryptoService(keyMaterial)
             val coseService = DefaultCoseService(cryptoService)
             val verifierCoseService = DefaultVerifierCoseService()

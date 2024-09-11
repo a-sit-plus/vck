@@ -39,10 +39,10 @@ class ValidatorVcTest : FreeSpec() {
     init {
         beforeEach {
             issuerCredentialStore = InMemoryIssuerCredentialStore()
-            issuerKeyMaterial = EphemeralKeyWithSelfSignedCert()
+            issuerKeyMaterial = EphemeralKeyWithoutCert()
             issuer = IssuerAgent(issuerKeyMaterial, issuerCredentialStore, dataProvider)
             issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyMaterial))
-            verifierKeyMaterial = EphemeralKeyWithSelfSignedCert()
+            verifierKeyMaterial = EphemeralKeyWithoutCert()
             verifier = VerifierAgent(verifierKeyMaterial)
         }
 
@@ -82,7 +82,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "wrong subject keyId is not be valid" {
             val credential = issuer.issueCredential(
-                EphemeralKeyWithSelfSignedCert().publicKey,
+                EphemeralKeyWithoutCert().publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()

@@ -17,10 +17,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
-import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -62,7 +59,7 @@ class WalletService(
      * Used to prove possession of the key material to create [CredentialRequestProof],
      * i.e. the holder key.
      */
-    private val cryptoService: CryptoService = DefaultCryptoService(EphemeralKeyWithSelfSignedCert()),
+    private val cryptoService: CryptoService = DefaultCryptoService(EphemeralKeyWithoutCert()),
     /**
      * Used to prove possession of the key material to create [CredentialRequestProof].
      */
