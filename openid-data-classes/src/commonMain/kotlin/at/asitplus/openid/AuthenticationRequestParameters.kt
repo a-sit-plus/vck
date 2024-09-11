@@ -2,7 +2,7 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.rqes.HashesSerializer
+import at.asitplus.dif.rqes.Serializer.HashesSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import kotlinx.datetime.Instant

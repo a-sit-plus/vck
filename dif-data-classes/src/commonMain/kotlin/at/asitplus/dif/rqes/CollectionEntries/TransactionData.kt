@@ -1,10 +1,11 @@
 @file:UseSerializers(UrlSerializer::class)
 
-package at.asitplus.dif.rqes
+package at.asitplus.dif.rqes.CollectionEntries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.dif.rqes.DocumentDigestEntries.RqesDocumentDigestEntry
+import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.RqesDocumentDigestEntry
+import at.asitplus.dif.rqes.Serializer.UrlSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
@@ -18,7 +19,7 @@ import kotlinx.serialization.UseSerializers
  * leveraging upcoming changes to [OpenID4VP](https://github.com/openid/OpenID4VP/pull/197)
  */
 @Serializable
-sealed class TransactionDataEntry {
+sealed class TransactionData {
 
     /**
      * D3.1: UC Specification WP3:
@@ -65,7 +66,7 @@ sealed class TransactionDataEntry {
          */
         @SerialName("processID")
         val processID: String? = null,
-    ) : TransactionDataEntry() {
+    ) : TransactionData() {
 
         /**
          * D3.1: UC Specification WP3:
@@ -85,7 +86,7 @@ sealed class TransactionDataEntry {
                 credentialId: String?,
                 documentDigest: List<RqesDocumentDigestEntry>,
                 processID: String?,
-            ): KmmResult<TransactionDataEntry> =
+            ): KmmResult<TransactionData> =
                 runCatching {
                     QesAuthorization(
                         signatureQualifier = signatureQualifier,
@@ -143,7 +144,7 @@ sealed class TransactionDataEntry {
         @SerialName("QC_hashAlgorithmOID")
         @Serializable(ObjectIdSerializer::class)
         val qcHashAlgorithmOID: ObjectIdentifier,
-    ) : TransactionDataEntry() {
+    ) : TransactionData() {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other == null || this::class != other::class) return false
