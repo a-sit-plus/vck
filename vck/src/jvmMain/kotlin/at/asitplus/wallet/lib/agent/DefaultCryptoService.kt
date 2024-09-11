@@ -19,7 +19,7 @@ import javax.crypto.KeyAgreement
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-actual open class PlatformCryptoShim actual constructor(actual val keyWithCert: KeyWithCert) {
+actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: KeyMaterial) {
 companion object{
     init {
         Napier.d { "Adding BC" }
@@ -110,7 +110,7 @@ companion object{
         KeyAgreement.getInstance(algorithm.jcaName).also {
 
             @OptIn(HazardousMaterials::class)
-            it.init(keyWithCert.getUnderLyingSigner().jcaPrivateKey)
+            it.init(keyMaterial.getUnderLyingSigner().jcaPrivateKey)
             it.doPhase(publicKey, true)
         }.generateSecret()
     }.wrap()

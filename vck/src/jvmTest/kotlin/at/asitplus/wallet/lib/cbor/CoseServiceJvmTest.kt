@@ -71,8 +71,8 @@ class CoseServiceJvmTest : FreeSpec({
             val extLibSigner = COSESigner(ephemeralKey.jcaPrivateKey as ECPrivateKey)
 
 
-            val keyPairAdapter = EphemeralKeyWithSelfSignedCert(ephemeralKey)
-            val cryptoService = DefaultCryptoService(keyPairAdapter)
+            val keyMaterial = EphemeralKeyWithSelfSignedCert(ephemeralKey)
+            val cryptoService = DefaultCryptoService(keyMaterial)
             val coseService = DefaultCoseService(cryptoService)
             val verifierCoseService = DefaultVerifierCoseService()
             val coseKey = ephemeralKey.publicKey.toCoseKey().getOrThrow()
@@ -89,7 +89,7 @@ class CoseServiceJvmTest : FreeSpec({
                     ).getOrThrow()
 
                     withClue("$sigAlgo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
-                        verifierCoseService.verifyCose(signed, cryptoService.keyWithCert.publicKey.toCoseKey().getOrThrow())
+                        verifierCoseService.verifyCose(signed, cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow())
                             .isSuccess shouldBe true
                     }
                 }

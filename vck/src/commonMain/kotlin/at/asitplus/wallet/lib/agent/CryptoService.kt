@@ -7,7 +7,7 @@ import at.asitplus.signum.indispensable.*
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
-import at.asitplus.signum.supreme.asKmmResult
+import at.asitplus.signum.supreme.SignatureResult
 import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.signum.supreme.sign.SignatureInput
 import at.asitplus.signum.supreme.sign.verifierFor
@@ -45,7 +45,7 @@ interface CryptoService {
 
     fun messageDigest(input: ByteArray, digest: Digest): ByteArray
 
-    val keyWithCert: KeyWithCert
+    val keyMaterial: KeyMaterial
 
 }
 
@@ -86,9 +86,9 @@ data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteA
     }
 }
 
-expect class PlatformCryptoShim constructor(keyWithCert: KeyWithCert) {
+expect class PlatformCryptoShim constructor(keyMaterial: KeyMaterial) {
 
-    val keyWithCert: KeyWithCert
+    val keyMaterial: KeyMaterial
 
     fun encrypt(
         key: ByteArray,
@@ -120,12 +120,12 @@ expect class PlatformCryptoShim constructor(keyWithCert: KeyWithCert) {
 }
 
 open class DefaultCryptoService(
-    override val keyWithCert: KeyWithCert
+    override val keyMaterial: KeyMaterial
 ) : CryptoService {
 
-    private val platformCryptoShim by lazy { PlatformCryptoShim(keyWithCert) }
+    private val platformCryptoShim by lazy { PlatformCryptoShim(keyMaterial) }
 
-    override suspend fun sign(input: ByteArray) = keyWithCert.sign(input)
+    override suspend fun sign(input: ByteArray) = keyMaterial.sign(input)
 
 
     override fun encrypt(

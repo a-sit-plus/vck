@@ -16,9 +16,9 @@ import kotlin.time.toDuration
 
 class PresentProofMessengerTest : FreeSpec() {
 
-    private lateinit var holderKeyPair: KeyWithCert
-    private lateinit var verifierKeyPair: KeyWithCert
-    private lateinit var issuerKeyPair: KeyWithCert
+    private lateinit var holderKeyPair: KeyMaterial
+    private lateinit var verifierKeyPair: KeyMaterial
+    private lateinit var issuerKeyPair: KeyMaterial
     private lateinit var holderCredentialStore: SubjectCredentialStore
     private lateinit var holder: Holder
     private lateinit var verifier: Verifier

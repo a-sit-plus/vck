@@ -23,8 +23,8 @@ class CoseServiceTest : FreeSpec({
     lateinit var randomPayload: ByteArray
 
     beforeEach {
-        val keyPairAdapter = EphemeralKeyWithSelfSignedCert()
-        cryptoService = DefaultCryptoService(keyPairAdapter)
+        val keyMaterial = EphemeralKeyWithSelfSignedCert()
+        cryptoService = DefaultCryptoService(keyMaterial)
         coseService = DefaultCoseService(cryptoService)
         verifierCoseService = DefaultVerifierCoseService()
         randomPayload = Random.nextBytes(32)
@@ -44,8 +44,8 @@ class CoseServiceTest : FreeSpec({
 
         val parsed = CoseSigned.deserialize(signed.serialize()).getOrThrow()
 
-        cryptoService.keyWithCert.publicKey.toCoseKey().getOrNull() shouldNotBe null
-        val result = verifierCoseService.verifyCose(parsed, cryptoService.keyWithCert.publicKey.toCoseKey().getOrThrow())
+        cryptoService.keyMaterial.publicKey.toCoseKey().getOrNull() shouldNotBe null
+        val result = verifierCoseService.verifyCose(parsed, cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow())
         result.isSuccess shouldBe true
     }
 
@@ -63,8 +63,8 @@ class CoseServiceTest : FreeSpec({
 
         val parsed = CoseSigned.deserialize(signed.serialize()).getOrThrow()
 
-        cryptoService.keyWithCert.publicKey.toCoseKey().getOrNull() shouldNotBe null
-        val result = verifierCoseService.verifyCose(parsed, cryptoService.keyWithCert.publicKey.toCoseKey().getOrThrow())
+        cryptoService.keyMaterial.publicKey.toCoseKey().getOrNull() shouldNotBe null
+        val result = verifierCoseService.verifyCose(parsed, cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow())
         result.isSuccess shouldBe true
     }
 

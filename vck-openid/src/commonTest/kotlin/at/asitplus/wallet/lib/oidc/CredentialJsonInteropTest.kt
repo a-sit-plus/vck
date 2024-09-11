@@ -6,7 +6,7 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.InMemorySubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
@@ -20,7 +20,7 @@ import kotlinx.serialization.json.JsonPrimitive
 @Suppress("unused")
 class CredentialJsonInteropTest : FreeSpec({
 
-    lateinit var holderKeyPair: KeyWithCert
+    lateinit var holderKeyPair: KeyMaterial
 
     lateinit var issuerAgent: Issuer
     lateinit var subjectCredentialStore: SubjectCredentialStore

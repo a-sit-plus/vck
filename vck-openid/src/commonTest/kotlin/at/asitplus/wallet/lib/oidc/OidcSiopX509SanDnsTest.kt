@@ -18,8 +18,8 @@ class OidcSiopX509SanDnsTest : FreeSpec({
     lateinit var responseUrl: String
     lateinit var walletUrl: String
 
-    lateinit var holderKeyPair: KeyWithCert
-    lateinit var verifierKeyPair: KeyWithCert
+    lateinit var holderKeyPair: KeyMaterial
+    lateinit var verifierKeyPair: KeyMaterial
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -57,11 +57,11 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         )
 
         holderSiop = OidcSiopWallet(
-            keyWithCert = holderKeyPair,
+            keyMaterial = holderKeyPair,
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             responseUrl = responseUrl,
             clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyPair.getCertificate()!!)),
         )
