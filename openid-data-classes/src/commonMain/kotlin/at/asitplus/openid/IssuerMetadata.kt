@@ -2,6 +2,7 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -202,6 +203,13 @@ data class IssuerMetadata(
      */
     @SerialName("client_id_schemes_supported")
     val clientIdSchemesSupported: Set<String>? = null,
+
+    /**
+     * RFC 9449: A JSON array containing a list of the JWS alg values (from the `IANA.JOSE.ALGS` registry) supported
+     * by the authorization server for DPoP proof JWTs.
+     */
+    @SerialName("dpop_signing_alg_values_supported")
+    val dpopSigningAlgValuesSupported: Set<JsonWebAlgorithm>? = null,
 ) {
     fun serialize() = jsonSerializer.encodeToString(this)
 

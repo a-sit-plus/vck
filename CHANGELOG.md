@@ -20,6 +20,8 @@ Release NEXT:
  * Extend `AuthenticationRequestParameters` to be able to handle CSC/QES flows
  * Extend `TokenRequestParameters` to be able to handle CSC/QES flows
  * Extend `TokenResponseParameters` to be able to handle CSC/QES flows
+ - In `TokenRequestParameters`, change `transactionCode` to `String`, as it needs to be entered by the user potentially
+ - Add extension method to build DPoP headers acc. to [RFC 9449](https://datatracker.ietf.org/doc/html/rfc9449), see `WalletService`
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments

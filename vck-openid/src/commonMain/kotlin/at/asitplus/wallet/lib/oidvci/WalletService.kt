@@ -32,6 +32,8 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
+import at.asitplus.openid.RequestedCredentialClaimSpecification
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -262,9 +264,13 @@ class WalletService(
         data class Code(val code: String) : AuthorizationForToken()
 
         /**
-         * Pre-auth code from [CredentialOfferGrants.preAuthorizedCode] in [CredentialOffer.grants]
+         * Pre-auth code from [CredentialOfferGrants.preAuthorizedCode] in [CredentialOffer.grants],
+         * optionally with a [transactionCode] which is transmitted out-of-band, and may be entered by the user.
          */
-        data class PreAuthCode(val preAuth: CredentialOfferGrantsPreAuthCode) : AuthorizationForToken()
+        data class PreAuthCode(
+            val preAuth: CredentialOfferGrantsPreAuthCode,
+            val transactionCode: String? = null
+        ) : AuthorizationForToken()
     }
 
     /**
@@ -301,6 +307,9 @@ class WalletService(
      * val token = TokenResponseParameters.deserialize(tokenResponse.bodyAsText()).getOrThrow()
      * ```
      *
+     * Be sure to include a DPoP header if [IssuerMetadata.dpopSigningAlgValuesSupported] is set,
+     * see [JwsService.buildDPoPHeader].
+     *
      * @param requestOptions which credential in which representation to request
      * @param authorization for the token endpoint
      */
@@ -322,7 +331,7 @@ class WalletService(
             redirectUrl = redirectUrl,
             clientId = clientId,
             authorizationDetails = (requestOptions.toAuthnDetails())?.let { setOf(it) },
-            transactionCode = authorization.preAuth.transactionCode,
+            transactionCode = authorization.transactionCode,
             preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
             codeVerifier = stateToCodeStore.remove(requestOptions.state)
         )
@@ -350,7 +359,7 @@ class WalletService(
             redirectUrl = redirectUrl,
             clientId = clientId,
             authorizationDetails = setOf(authorizationDetails),
-            transactionCode = authorization.preAuth.transactionCode,
+            transactionCode = authorization.transactionCode,
             preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
             codeVerifier = stateToCodeStore.remove(state)
         )
@@ -390,6 +399,9 @@ class WalletService(
      * val token = TokenResponseParameters.deserialize(tokenResponse.bodyAsText()).getOrThrow()
      * ```
      *
+     * Be sure to include a DPoP header if [IssuerMetadata.dpopSigningAlgValuesSupported] is set,
+     * see [JwsService.buildDPoPHeader].
+     *
      * @param credential which credential from [IssuerMetadata.supportedCredentialConfigurations] to request
      * @param requestedAttributes attributes that shall be requested explicitly (selective disclosure)
      * @param state used in [createAuthRequest], e.g. when using authorization codes
@@ -415,7 +427,7 @@ class WalletService(
             redirectUrl = redirectUrl,
             clientId = clientId,
             authorizationDetails = setOf(credential.toAuthnDetails(requestedAttributes)),
-            transactionCode = authorization.preAuth.transactionCode,
+            transactionCode = authorization.transactionCode,
             preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
             codeVerifier = state?.let { stateToCodeStore.remove(it) }
         )
@@ -444,6 +456,9 @@ class WalletService(
      *     }
      * }
      * ```
+     *
+     * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
+     * see [JwsService.buildDPoPHeader].
      *
      * @param credential which credential from [IssuerMetadata.supportedCredentialConfigurations] to request
      * @param requestedAttributes attributes that shall be requested explicitly (selective disclosure)
@@ -701,3 +716,28 @@ private fun CredentialRepresentation.toFormat() = when (this) {
     SD_JWT -> CredentialFormatEnum.VC_SD_JWT
     ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
 }
+
+/**
+ * To be set as header `DPoP` in making request to [url],
+ * see [RFC 9449](https://datatracker.ietf.org/doc/html/rfc9449)
+ */
+suspend fun JwsService.buildDPoPHeader(
+    url: String,
+    httpMethod: String = "POST",
+    accessToken: String? = null
+) = createSignedJwsAddingParams(
+    header = JwsHeader(
+        algorithm = algorithm,
+        type = JwsContentTypeConstants.DPOP_JWT
+    ),
+    payload = JsonWebToken(
+        jwtId = Random.nextBytes(12).encodeToString(Base64UrlStrict),
+        httpMethod = httpMethod,
+        httpTargetUrl = url,
+        accessTokenHash = accessToken?.encodeToByteArray()?.sha256()?.encodeToString(Base64UrlStrict),
+        issuedAt = Clock.System.now(),
+    ).serialize().encodeToByteArray(),
+    addKeyId = false,
+    addJsonWebKey = true,
+    addX5c = false,
+).getOrThrow().serialize()
