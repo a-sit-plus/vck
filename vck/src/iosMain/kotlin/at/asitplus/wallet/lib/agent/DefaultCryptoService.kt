@@ -20,7 +20,7 @@ import kotlin.experimental.ExperimentalNativeApi
  * Beware: It does **not** implement encryption, decryption, key agreement and message digest correctly.
  */
 @Suppress("UNCHECKED_CAST")
-actual class PlatformCryptoShim actual constructor(actual val keyPairAdapter: KeyPairAdapter)  {
+actual class PlatformCryptoShim actual constructor(actual val keyWithCert: KeyWithCert)  {
 
     actual fun encrypt(
         key: ByteArray,

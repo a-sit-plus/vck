@@ -28,9 +28,9 @@ class ValidatorVcTest : FreeSpec() {
     private lateinit var issuer: Issuer
     private lateinit var issuerCredentialStore: IssuerCredentialStore
     private lateinit var issuerJwsService: JwsService
-    private lateinit var issuerKeyPair: KeyPairAdapter
+    private lateinit var issuerKeyPair: KeyWithCert
     private lateinit var verifier: Verifier
-    private lateinit var verifierKeyPair: KeyPairAdapter
+    private lateinit var verifierKeyPair: KeyWithCert
 
     private val dataProvider: IssuerCredentialDataProvider = DummyCredentialDataProvider()
     private val revocationListUrl: String = "https://wallet.a-sit.at/backend/credentials/status/1"
@@ -38,11 +38,11 @@ class ValidatorVcTest : FreeSpec() {
     init {
         beforeEach {
             issuerCredentialStore = InMemoryIssuerCredentialStore()
-            val randomKeyPairAdapter = EphemeralKeyPariAdapter()
+            val randomKeyPairAdapter = EphemeralKeyWithSelfSignedCert()
             issuerKeyPair = randomKeyPairAdapter
             issuer = IssuerAgent(issuerKeyPair, issuerCredentialStore, dataProvider)
             issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyPair))
-            verifierKeyPair = EphemeralKeyPariAdapter()
+            verifierKeyPair = EphemeralKeyWithSelfSignedCert()
             verifier = VerifierAgent(verifierKeyPair)
         }
 
@@ -82,7 +82,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "wrong subject keyId is not be valid" {
             val credential = issuer.issueCredential(
-                EphemeralKeyPariAdapter().publicKey,
+                EphemeralKeyWithSelfSignedCert().publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()

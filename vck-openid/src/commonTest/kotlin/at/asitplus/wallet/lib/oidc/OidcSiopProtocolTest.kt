@@ -6,6 +6,20 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -35,8 +49,8 @@ class OidcSiopProtocolTest : FreeSpec({
     lateinit var responseUrl: String
     lateinit var walletUrl: String
 
-    lateinit var holderKeyPair: KeyPairAdapter
-    lateinit var verifierKeyPair: KeyPairAdapter
+    lateinit var holderKeyPair: KeyWithCert
+    lateinit var verifierKeyPair: KeyWithCert
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -45,8 +59,8 @@ class OidcSiopProtocolTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderKeyPair = EphemeralKeyPariAdapter()
-        verifierKeyPair = EphemeralKeyPariAdapter()
+        holderKeyPair = EphemeralKeyWithSelfSignedCert()
+        verifierKeyPair = EphemeralKeyWithSelfSignedCert()
         val rpUUID = uuid4()
         relyingPartyUrl = "https://example.com/rp/$rpUUID"
         responseUrl = "https://example.com/rp/$rpUUID"
@@ -56,7 +70,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
         holderAgent.storeCredential(
             IssuerAgent(
-                EphemeralKeyPariAdapter(),
+                EphemeralKeyWithSelfSignedCert(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
                 holderKeyPair.publicKey,
@@ -266,7 +280,7 @@ class OidcSiopProtocolTest : FreeSpec({
     }
 
     "test with request object and Attestation JWT" {
-        val sprsCryptoService = DefaultCryptoService(EphemeralKeyPariAdapter())
+        val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithSelfSignedCert())
         val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyPair)
         verifierSiop = OidcSiopVerifier(
             keyPairAdapter = verifierKeyPair,
@@ -281,7 +295,7 @@ class OidcSiopProtocolTest : FreeSpec({
         holderSiop = OidcSiopWallet(
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
-            requestObjectJwsVerifier = verifierAttestationVerifier(sprsCryptoService.keyPairAdapter.jsonWebKey)
+            requestObjectJwsVerifier = verifierAttestationVerifier(sprsCryptoService.keyWithCert.jsonWebKey)
         )
         val authnResponse = holderSiop.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -294,7 +308,7 @@ class OidcSiopProtocolTest : FreeSpec({
         }
     }
     "test with request object and invalid Attestation JWT" {
-        val sprsCryptoService = DefaultCryptoService(EphemeralKeyPariAdapter())
+        val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithSelfSignedCert())
         val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyPair)
 
         verifierSiop = OidcSiopVerifier(
@@ -310,7 +324,7 @@ class OidcSiopProtocolTest : FreeSpec({
         holderSiop = OidcSiopWallet(
             keyPairAdapter = holderKeyPair,
             holder = holderAgent,
-            requestObjectJwsVerifier = verifierAttestationVerifier(EphemeralKeyPariAdapter().jsonWebKey)
+            requestObjectJwsVerifier = verifierAttestationVerifier(EphemeralKeyWithSelfSignedCert().jsonWebKey)
         )
         shouldThrow<OAuth2Exception> {
             holderSiop.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
@@ -410,10 +424,10 @@ class OidcSiopProtocolTest : FreeSpec({
 private suspend fun buildAttestationJwt(
     sprsCryptoService: DefaultCryptoService,
     relyingPartyUrl: String,
-    verifierKeyPair: KeyPairAdapter
+    verifierKeyPair: KeyWithCert
 ): JwsSigned = DefaultJwsService(sprsCryptoService).createSignedJws(
     header = JwsHeader(
-        algorithm = sprsCryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
+        algorithm = sprsCryptoService.keyWithCert.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
     ),
     payload = JsonWebToken(
         issuer = "sprs", // allows Wallet to determine the issuer's key

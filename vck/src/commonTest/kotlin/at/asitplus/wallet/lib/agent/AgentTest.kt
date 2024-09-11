@@ -23,7 +23,7 @@ class AgentTest : FreeSpec({
     lateinit var issuer: Issuer
     lateinit var holder: Holder
     lateinit var verifier: Verifier
-    lateinit var holderKeyPair: KeyPairAdapter
+    lateinit var holderKeyPair: KeyWithCert
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var challenge: String
@@ -32,11 +32,11 @@ class AgentTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
-            EphemeralKeyPariAdapter(),
+            EphemeralKeyWithSelfSignedCert(),
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
-        holderKeyPair = EphemeralKeyPariAdapter()
+        holderKeyPair = EphemeralKeyWithSelfSignedCert()
         holder = HolderAgent(holderKeyPair, holderCredentialStore)
         verifier = VerifierAgent(holderKeyPair)
         challenge = uuid4().toString()

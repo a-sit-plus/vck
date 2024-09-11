@@ -11,16 +11,16 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class IssueCredentialProtocolTest : FreeSpec({
 
-    lateinit var issuerKeyPair: KeyPairAdapter
-    lateinit var holderKeyPair: KeyPairAdapter
+    lateinit var issuerKeyPair: KeyWithCert
+    lateinit var holderKeyPair: KeyWithCert
     lateinit var issuer: Issuer
     lateinit var holder: Holder
     lateinit var issuerProtocol: IssueCredentialProtocol
     lateinit var holderProtocol: IssueCredentialProtocol
 
     beforeEach {
-        issuerKeyPair = EphemeralKeyPariAdapter()
-        holderKeyPair = EphemeralKeyPariAdapter()
+        issuerKeyPair = EphemeralKeyWithSelfSignedCert()
+        holderKeyPair = EphemeralKeyWithSelfSignedCert()
         issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
         holder = HolderAgent(holderKeyPair)
         issuerProtocol = IssueCredentialProtocol.newIssuerInstance(

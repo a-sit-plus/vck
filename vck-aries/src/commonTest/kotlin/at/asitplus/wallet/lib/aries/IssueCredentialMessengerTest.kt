@@ -4,8 +4,8 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
+import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -16,8 +16,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class IssueCredentialMessengerTest : FreeSpec() {
 
-    private lateinit var issuerKeyPair: KeyPairAdapter
-    private lateinit var holderKeyPair: KeyPairAdapter
+    private lateinit var issuerKeyPair: KeyWithCert
+    private lateinit var holderKeyPair: KeyWithCert
     private lateinit var issuer: Issuer
     private lateinit var holder: Holder
     private lateinit var issuerServiceEndpoint: String
@@ -26,8 +26,8 @@ class IssueCredentialMessengerTest : FreeSpec() {
 
     init {
         beforeEach {
-            issuerKeyPair = EphemeralKeyPariAdapter()
-            holderKeyPair = EphemeralKeyPariAdapter()
+            issuerKeyPair = EphemeralKeyWithSelfSignedCert()
+            holderKeyPair = EphemeralKeyWithSelfSignedCert()
             issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
             holder = HolderAgent(holderKeyPair)
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"

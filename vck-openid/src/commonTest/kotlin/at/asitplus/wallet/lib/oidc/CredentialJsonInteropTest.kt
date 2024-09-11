@@ -6,8 +6,8 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.InMemorySubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
+import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -20,17 +20,17 @@ import kotlinx.serialization.json.JsonPrimitive
 @Suppress("unused")
 class CredentialJsonInteropTest : FreeSpec({
 
-    lateinit var holderKeyPair: KeyPairAdapter
+    lateinit var holderKeyPair: KeyWithCert
 
     lateinit var issuerAgent: Issuer
     lateinit var subjectCredentialStore: SubjectCredentialStore
     lateinit var holderAgent: Holder
 
     beforeEach {
-        holderKeyPair = EphemeralKeyPariAdapter()
+        holderKeyPair = EphemeralKeyWithSelfSignedCert()
         subjectCredentialStore = InMemorySubjectCredentialStore()
         holderAgent = HolderAgent(holderKeyPair, subjectCredentialStore)
-        issuerAgent = IssuerAgent(EphemeralKeyPariAdapter(), DummyCredentialDataProvider())
+        issuerAgent = IssuerAgent(EphemeralKeyWithSelfSignedCert(), DummyCredentialDataProvider())
     }
 
     "Plain jwt credential path resolving" {

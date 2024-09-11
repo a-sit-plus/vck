@@ -4,8 +4,8 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
+import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -18,14 +18,14 @@ import kotlinx.coroutines.launch
 
 class IssueCredentialMessengerConcurrentTest : FreeSpec() {
 
-    private lateinit var issuerKeyPair: KeyPairAdapter
+    private lateinit var issuerKeyPair: KeyWithCert
     private lateinit var issuer: Issuer
     private lateinit var issuerServiceEndpoint: String
     private lateinit var issuerMessenger: IssueCredentialMessenger
 
     init {
         beforeEach {
-            issuerKeyPair = EphemeralKeyPariAdapter()
+            issuerKeyPair = EphemeralKeyWithSelfSignedCert()
             issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
             issuerMessenger = initIssuerMessenger(ConstantIndex.AtomicAttribute2023)
@@ -45,7 +45,7 @@ class IssueCredentialMessengerConcurrentTest : FreeSpec() {
     }
 
     private fun initHolderMessenger(): IssueCredentialMessenger {
-        val keyPair = EphemeralKeyPariAdapter()
+        val keyPair = EphemeralKeyWithSelfSignedCert()
         return IssueCredentialMessenger.newHolderInstance(
             holder = HolderAgent(keyPair),
             messageWrapper = MessageWrapper(keyPair),

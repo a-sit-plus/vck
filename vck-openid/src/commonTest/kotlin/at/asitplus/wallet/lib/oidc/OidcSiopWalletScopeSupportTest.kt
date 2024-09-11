@@ -5,8 +5,8 @@ import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
+import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
@@ -70,8 +70,8 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
 
         lateinit var relyingPartyUrl: String
 
-        lateinit var holderKeyPair: KeyPairAdapter
-        lateinit var verifierKeyPair: KeyPairAdapter
+        lateinit var holderKeyPair: KeyWithCert
+        lateinit var verifierKeyPair: KeyWithCert
 
         lateinit var holderAgent: Holder
         lateinit var verifierAgent: Verifier
@@ -80,14 +80,14 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         lateinit var verifierSiop: OidcSiopVerifier
 
         beforeEach {
-            holderKeyPair = EphemeralKeyPariAdapter()
-            verifierKeyPair = EphemeralKeyPariAdapter()
+            holderKeyPair = EphemeralKeyWithSelfSignedCert()
+            verifierKeyPair = EphemeralKeyWithSelfSignedCert()
             relyingPartyUrl = "https://example.com/rp/${uuid4()}"
             holderAgent = HolderAgent(holderKeyPair)
             verifierAgent = VerifierAgent(verifierKeyPair)
 
             holderSiop = OidcSiopWallet(
-                keyPairAdapter = holderKeyPair,
+                keyWithCert = holderKeyPair,
                 holder = holderAgent,
                 scopePresentationDefinitionRetriever = testScopePresentationDefinitionRetriever
             )
@@ -99,7 +99,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
 
         "get empty scope works even without available credentials" {
             val issuerAgent = IssuerAgent(
-                EphemeralKeyPariAdapter(),
+                EphemeralKeyWithSelfSignedCert(),
                 DummyCredentialDataProvider(),
             )
             holderAgent.storeCredential(
@@ -142,7 +142,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
 
         "get MdocMdlWithGivenName scope with available credentials succeeds" {
             val issuerAgent = IssuerAgent(
-                EphemeralKeyPariAdapter(),
+                EphemeralKeyWithSelfSignedCert(),
                 DummyCredentialDataProvider(),
             )
             holderAgent.storeCredential(

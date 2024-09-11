@@ -31,7 +31,7 @@ interface Holder {
     /**
      * The public key for this agent, i.e. the "holder key" that the credentials get bound to.
      */
-    val keyPair: KeyPairAdapter
+    val keyPair: KeyWithCert
 
     /**
      * Sets the revocation list ot use for further processing of Verifiable Credentials
