@@ -10,6 +10,7 @@ import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.supreme.SignatureResult
 import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.signum.supreme.sign.SignatureInput
+import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.signum.supreme.sign.verifierFor
 
 interface CryptoService {
@@ -61,7 +62,7 @@ interface VerifierCryptoService {
         signature: CryptoSignature,
         algorithm: X509SignatureAlgorithm,
         publicKey: CryptoPublicKey,
-    ): KmmResult<Unit>
+    ): KmmResult<at.asitplus.signum.supreme.sign.Verifier.Success>
 
 }
 
@@ -173,7 +174,7 @@ open class DefaultVerifierCryptoService : VerifierCryptoService {
         signature: CryptoSignature,
         algorithm: X509SignatureAlgorithm,
         publicKey: CryptoPublicKey
-    ): KmmResult<Unit> = algorithm.algorithm.verifierFor(publicKey).transform {
+    ): KmmResult<Verifier.Success> = algorithm.algorithm.verifierFor(publicKey).transform {
         it.verify(SignatureInput(input), signature)
     }
 }

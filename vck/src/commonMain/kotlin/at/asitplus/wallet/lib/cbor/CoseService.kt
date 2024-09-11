@@ -15,6 +15,7 @@ import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.supreme.asKmmResult
+import at.asitplus.signum.supreme.sign.Verifier
 
 /**
  * Creates and parses COSE objects.
@@ -45,7 +46,7 @@ interface CoseService {
 
 interface VerifierCoseService {
 
-    fun verifyCose(coseSigned: CoseSigned, signer: CoseKey): KmmResult<Unit>
+    fun verifyCose(coseSigned: CoseSigned, signer: CoseKey): KmmResult<Verifier.Success>
 
 }
 
