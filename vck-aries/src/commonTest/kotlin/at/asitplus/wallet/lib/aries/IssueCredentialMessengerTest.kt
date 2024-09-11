@@ -4,7 +4,7 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -16,8 +16,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class IssueCredentialMessengerTest : FreeSpec() {
 
-    private lateinit var issuerKeyPair: KeyWithCert
-    private lateinit var holderKeyPair: KeyWithCert
+    private lateinit var issuerKeyPair: KeyMaterial
+    private lateinit var holderKeyPair: KeyMaterial
     private lateinit var issuer: Issuer
     private lateinit var holder: Holder
     private lateinit var issuerServiceEndpoint: String

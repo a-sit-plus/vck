@@ -19,7 +19,7 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
@@ -84,7 +84,7 @@ class WalletService(
     constructor(
         clientId: String,
         redirectUrl: String,
-        keyPairAdapter: KeyWithCert,
+        keyPairAdapter: KeyMaterial,
         remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
         stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
     ) : this(
@@ -521,7 +521,7 @@ class WalletService(
         proofType = OpenIdConstants.ProofType.JWT,
         jwt = jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
-                algorithm = cryptoService.keyWithCert.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
+                algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
                 type = OpenIdConstants.ProofType.JWT_HEADER_TYPE.stringRepresentation,
             ),
             payload = JsonWebToken(
@@ -544,9 +544,9 @@ class WalletService(
         proofType = OpenIdConstants.ProofType.CWT,
         cwt = coseService.createSignedCose(
             protectedHeader = CoseHeader(
-                algorithm = cryptoService.keyWithCert.signatureAlgorithm.toCoseAlgorithm().getOrThrow(),
+                algorithm = cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow(),
                 contentType = OpenIdConstants.ProofType.CWT_HEADER_TYPE.stringRepresentation,
-                certificateChain = cryptoService.keyWithCert.getCertificate()?.encodeToDerOrNull()
+                certificateChain = cryptoService.keyMaterial.getCertificate()?.encodeToDerOrNull()
             ),
             payload = CborWebToken(
                 issuer = clientId, // omit when token was pre-authn?

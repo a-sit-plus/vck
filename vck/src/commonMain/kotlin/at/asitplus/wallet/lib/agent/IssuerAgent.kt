@@ -3,12 +3,11 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.io.BitSet
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
@@ -55,35 +54,35 @@ class IssuerAgent(
     private val jwsService: JwsService,
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
-    override val keyPair: KeyWithCert,
-    override val cryptoAlgorithms: Set<X509SignatureAlgorithm>,
+    override val keyMaterial: KeyMaterial,
+    override val cryptoAlgorithms: Set<SignatureAlgorithm>,
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
 ) : Issuer {
 
     constructor(
-        keyWithCert: KeyWithCert = EphemeralKeyWithSelfSignedCert(),
+        keyMaterial: KeyMaterial = EphemeralKeyWithSelfSignedCert(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
         validator = Validator(),
-        jwsService = DefaultJwsService(DefaultCryptoService(keyWithCert)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyWithCert)),
+        jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+        coseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
         dataProvider = dataProvider,
-        keyPair = keyWithCert,
-        cryptoAlgorithms = setOf(keyWithCert.x509SignatureAlgorithm),
+        keyMaterial = keyMaterial,
+        cryptoAlgorithms = setOf(keyMaterial.signatureAlgorithm),
     )
 
     constructor(
-        keyWithCert: KeyWithCert = EphemeralKeyWithSelfSignedCert(),
+        keyMaterial: KeyMaterial = EphemeralKeyWithSelfSignedCert(),
         issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
         validator = Validator(),
         issuerCredentialStore = issuerCredentialStore,
-        jwsService = DefaultJwsService(DefaultCryptoService(keyWithCert)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyWithCert)),
+        jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+        coseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
         dataProvider = dataProvider,
-        keyPair = keyWithCert,
-        cryptoAlgorithms = setOf(keyWithCert.x509SignatureAlgorithm),
+        keyMaterial = keyMaterial,
+        cryptoAlgorithms = setOf(keyMaterial.signatureAlgorithm),
     )
 
     /**
@@ -191,7 +190,7 @@ class IssuerAgent(
         val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
         val vc = VerifiableCredential(
             id = vcId,
-            issuer = keyPair.identifier,
+            issuer = keyMaterial.identifier,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             credentialStatus = credentialStatus,
@@ -231,7 +230,7 @@ class IssuerAgent(
         val jwsPayload = VerifiableCredentialSdJwt(
             subject = subjectId,
             notBefore = issuanceDate,
-            issuer = keyPair.identifier,
+            issuer = keyMaterial.identifier,
             expiration = expirationDate,
             issuedAt = issuanceDate,
             jwtId = vcId,
@@ -261,7 +260,7 @@ class IssuerAgent(
         val subject = RevocationListSubject("$revocationListUrl#list", revocationList)
         val credential = VerifiableCredential(
             id = revocationListUrl,
-            issuer = keyPair.identifier,
+            issuer = keyMaterial.identifier,
             issuanceDate = clock.now(),
             lifetime = revocationListLifetime,
             credentialSubject = subject

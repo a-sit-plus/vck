@@ -31,10 +31,10 @@ import kotlinx.datetime.Instant
  */
 class OidcSiopInteropTest : FreeSpec({
 
-    lateinit var holderKeyPair: KeyWithCert
+    lateinit var holderKeyPair: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderSiop: OidcSiopWallet
-    lateinit var verifierKeyPair: KeyWithCert
+    lateinit var verifierKeyPair: KeyMaterial
     lateinit var verifierAgent: Verifier
     lateinit var verifierSiop: OidcSiopVerifier
 
@@ -324,7 +324,7 @@ class OidcSiopInteropTest : FreeSpec({
         verifierKeyPair = EphemeralKeyWithSelfSignedCert(extensions = extensions)
         verifierAgent = VerifierAgent(verifierKeyPair)
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = "https://example.com/rp",
             responseUrl = "https://example.com/response",
             clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyPair.getCertificate()!!)),

@@ -15,7 +15,7 @@ import kotlinx.coroutines.sync.withLock
 /**
  * Abstracts the management of key material away from [CryptoService].
  */
-interface KeyWithCert : Signer {
+interface KeyMaterial : Signer {
     val identifier: String
 
     fun getUnderLyingSigner(): Signer
@@ -27,15 +27,11 @@ interface KeyWithCert : Signer {
     suspend fun getCertificate(): X509Certificate?
 
     val jsonWebKey: JsonWebKey get() = publicKey.toJsonWebKey(identifier)
-
-    val x509SignatureAlgorithm: X509SignatureAlgorithm //TODO REPLACE WITH SignatureAlgorutm once done
-        get() = signatureAlgorithm.toX509SignatureAlgorithm().getOrThrow()
-
 }
 
 abstract class KeyWithSelfSignedCert(
     private val extensions: List<X509CertificateExtension>
-) : KeyWithCert {
+) : KeyMaterial {
 
     override val identifier: String get() = publicKey.didEncoded
     private val crtMut = Mutex()

@@ -29,9 +29,9 @@ class ValidatorVcTest : FreeSpec() {
     private lateinit var issuer: Issuer
     private lateinit var issuerCredentialStore: IssuerCredentialStore
     private lateinit var issuerJwsService: JwsService
-    private lateinit var issuerKeyPair: KeyWithCert
+    private lateinit var issuerKeyMaterial: KeyMaterial
     private lateinit var verifier: Verifier
-    private lateinit var verifierKeyPair: KeyWithCert
+    private lateinit var verifierKeyMaterial: KeyMaterial
 
     private val dataProvider: IssuerCredentialDataProvider = DummyCredentialDataProvider()
     private val revocationListUrl: String = "https://wallet.a-sit.at/backend/credentials/status/1"
@@ -39,16 +39,16 @@ class ValidatorVcTest : FreeSpec() {
     init {
         beforeEach {
             issuerCredentialStore = InMemoryIssuerCredentialStore()
-            issuerKeyPair = EphemeralKeyWithSelfSignedCert()
-            issuer = IssuerAgent(issuerKeyPair, issuerCredentialStore, dataProvider)
-            issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyPair))
-            verifierKeyPair = EphemeralKeyWithSelfSignedCert()
-            verifier = VerifierAgent(verifierKeyPair)
+            issuerKeyMaterial = EphemeralKeyWithSelfSignedCert()
+            issuer = IssuerAgent(issuerKeyMaterial, issuerCredentialStore, dataProvider)
+            issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyMaterial))
+            verifierKeyMaterial = EphemeralKeyWithSelfSignedCert()
+            verifier = VerifierAgent(verifierKeyMaterial)
         }
 
         "credentials are valid for" {
             val credential = issuer.issueCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()
@@ -59,7 +59,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "revoked credentials are not valid" {
             val credential = issuer.issueCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()
@@ -94,7 +94,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "credential with invalid JWS format is not valid" {
             val credential = issuer.issueCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()
@@ -106,7 +106,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "Manually created and valid credential is valid" - {
             dataProvider.getCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().let {
@@ -121,7 +121,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "Wrong key ends in wrong signature is not valid" - {
             dataProvider.getCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().let {
@@ -137,7 +137,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid sub in credential is not valid" - {
             dataProvider.getCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().let {
@@ -153,7 +153,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid issuer in credential is not valid" - {
             dataProvider.getCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().let {
@@ -168,7 +168,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid jwtId in credential is not valid" - {
             dataProvider.getCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().let {
@@ -184,7 +184,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid expiration in credential is not valid" - {
             dataProvider.getCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().let {
@@ -192,7 +192,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let {
                         VerifiableCredentialJws(
                             vc = it,
-                            subject = verifier.keyPair.identifier,
+                            subject = verifier.keyMaterial.identifier,
                             notBefore = it.issuanceDate,
                             issuer = it.issuer,
                             expiration = Clock.System.now() + 1.hours,
@@ -209,7 +209,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "No expiration date is valid" - {
             dataProvider.getCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().let {
@@ -224,7 +224,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid jws-expiration in credential is not valid" - {
             dataProvider.getCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().let {
@@ -240,7 +240,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "Expiration not matching in credential is not valid" - {
             dataProvider.getCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().let {
@@ -256,7 +256,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid NotBefore in credential is not valid" - {
             dataProvider.getCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().let {
@@ -272,7 +272,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "Invalid issuance date in credential is not valid" - {
             dataProvider.getCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().let {
@@ -288,7 +288,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "Issuance date and not before not matching is not valid" - {
             dataProvider.getCredential(
-                verifierKeyPair.publicKey,
+                verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().let {
@@ -316,7 +316,7 @@ class ValidatorVcTest : FreeSpec() {
         val exp = expirationDate ?: (Clock.System.now() + 60.seconds)
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
             credential = IssuerCredentialStore.Credential.VcJwt(vcId, sub, ConstantIndex.AtomicAttribute2023),
-            subjectPublicKey = issuerKeyPair.publicKey,
+            subjectPublicKey = issuerKeyMaterial.publicKey,
             issuanceDate = issuanceDate,
             expirationDate = exp,
             timePeriod = FixedTimePeriodProvider.timePeriod
@@ -324,7 +324,7 @@ class ValidatorVcTest : FreeSpec() {
         val credentialStatus = CredentialStatus(revocationListUrl, statusListIndex)
         return VerifiableCredential(
             id = vcId,
-            issuer = issuer.keyPair.identifier,
+            issuer = issuer.keyMaterial.identifier,
             credentialStatus = credentialStatus,
             credentialSubject = sub,
             credentialType = type,
@@ -335,7 +335,7 @@ class ValidatorVcTest : FreeSpec() {
 
     private fun wrapVcInJws(
         it: VerifiableCredential,
-        subject: String = verifier.keyPair.identifier,
+        subject: String = verifier.keyMaterial.identifier,
         issuer: String = it.issuer,
         jwtId: String = it.id,
         issuanceDate: Instant = it.issuanceDate,
@@ -358,7 +358,7 @@ class ValidatorVcTest : FreeSpec() {
     private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String? {
         val jwsHeader = JwsHeader(
             algorithm = JwsAlgorithm.ES256,
-            keyId = verifier.keyPair.identifier,
+            keyId = verifier.keyMaterial.identifier,
             type = JwsContentTypeConstants.JWT
         )
         val jwsPayload = vcJws.serialize().encodeToByteArray()
@@ -366,7 +366,7 @@ class ValidatorVcTest : FreeSpec() {
             jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
                     "." + jwsPayload.encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
-        val signature = DefaultCryptoService(issuerKeyPair).sign(signatureInputBytes).signature
+        val signature = DefaultCryptoService(issuerKeyMaterial).sign(signatureInputBytes).signature
         return JwsSigned(jwsHeader, jwsPayload, signature, signatureInput).serialize()
     }
 

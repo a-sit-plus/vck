@@ -11,7 +11,6 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-import kotlinx.serialization.encodeToString
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
@@ -21,7 +20,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
     val holderKeyPair = EphemeralKeyWithSelfSignedCert()
     val oidcSiopWallet = OidcSiopWallet(
-        keyWithCert = holderKeyPair,
+        keyMaterial = holderKeyPair,
         holder = HolderAgent(holderKeyPair),
     )
 

@@ -68,9 +68,9 @@ class OidcSiopWallet(
     private val scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever,
 ) {
     constructor(
-        keyWithCert: KeyWithCert = EphemeralKeyWithSelfSignedCert(),
-        holder: Holder = HolderAgent(keyWithCert),
-        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyWithCert)),
+        keyMaterial: KeyMaterial = EphemeralKeyWithSelfSignedCert(),
+        holder: Holder = HolderAgent(keyMaterial),
+        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
         clock: Clock = Clock.System,
         clientId: String = "https://wallet.a-sit.at/",
         /**
@@ -92,7 +92,7 @@ class OidcSiopWallet(
         scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever = { null },
     ) : this(
         holder = holder,
-        agentPublicKey = keyWithCert.publicKey,
+        agentPublicKey = keyMaterial.publicKey,
         jwsService = jwsService,
         clock = clock,
         clientId = clientId,

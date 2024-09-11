@@ -7,7 +7,6 @@ import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -30,7 +29,7 @@ class AgentSdJwtTest : FreeSpec({
     lateinit var verifier: Verifier
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
-    lateinit var holderKeyPair: KeyWithCert
+    lateinit var holderKeyMaterial: KeyMaterial
     lateinit var challenge: String
 
     beforeEach {
@@ -41,13 +40,13 @@ class AgentSdJwtTest : FreeSpec({
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
-        holderKeyPair = EphemeralKeyWithSelfSignedCert()
-        holder = HolderAgent(holderKeyPair, holderCredentialStore)
+        holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
+        holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
         verifier = VerifierAgent()
         challenge = uuid4().toString()
         holder.storeCredential(
             issuer.issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.SD_JWT,
             ).getOrThrow().toStoreCredentialInput()
@@ -74,7 +73,7 @@ class AgentSdJwtTest : FreeSpec({
 
         val presentationParameters = holder.createPresentation(
             challenge,
-            verifier.keyPair.identifier,
+            verifier.keyMaterial.identifier,
             presentationDefinition = givenNamePresentationDefinition
         ).getOrThrow()
 
@@ -91,8 +90,8 @@ class AgentSdJwtTest : FreeSpec({
 
     "keyBindingJws contains more JWK attributes, still verifies" {
         val sdJwt = createSdJwtPresentation(
-            DefaultJwsService(DefaultCryptoService(holderKeyPair)),
-            verifier.keyPair.identifier,
+            DefaultJwsService(DefaultCryptoService(holderKeyMaterial)),
+            verifier.keyMaterial.identifier,
             challenge,
             holderCredentialStore.getCredentials().getOrThrow()
                 .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>().first(),
@@ -108,7 +107,7 @@ class AgentSdJwtTest : FreeSpec({
     "wrong key binding jwt" {
         val presentationParameters = holder.createPresentation(
             challenge,
-            verifier.keyPair.identifier,
+            verifier.keyMaterial.identifier,
             givenNamePresentationDefinition
         ).getOrThrow()
 
@@ -117,7 +116,7 @@ class AgentSdJwtTest : FreeSpec({
         // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
         val malformedVpSdJwt = vp.sdJwt.replaceAfterLast(
             "~",
-            createFreshSdJwtKeyBinding(challenge, verifier.keyPair.identifier).substringAfterLast("~")
+            createFreshSdJwtKeyBinding(challenge, verifier.keyMaterial.identifier).substringAfterLast("~")
         )
 
         verifier.verifyPresentation(malformedVpSdJwt, challenge)
@@ -128,7 +127,7 @@ class AgentSdJwtTest : FreeSpec({
         val malformedChallenge = challenge.reversed()
         val presentationParameters = holder.createPresentation(
             malformedChallenge,
-            verifier.keyPair.identifier,
+            verifier.keyMaterial.identifier,
             presentationDefinition = givenNamePresentationDefinition
         ).getOrThrow()
 
@@ -142,7 +141,7 @@ class AgentSdJwtTest : FreeSpec({
     "revoked sd jwt" {
         val presentationParameters = holder.createPresentation(
             challenge,
-            verifier.keyPair.identifier,
+            verifier.keyMaterial.identifier,
             presentationDefinition = givenNamePresentationDefinition
         ).getOrThrow()
 
@@ -163,11 +162,11 @@ class AgentSdJwtTest : FreeSpec({
 
 suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {
     val issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert(), DummyCredentialDataProvider())
-    val holderKeyPair = EphemeralKeyWithSelfSignedCert()
-    val holder = HolderAgent(holderKeyPair)
+    val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
+    val holder = HolderAgent(holderKeyMaterial)
     holder.storeCredential(
         issuer.issueCredential(
-            holderKeyPair.publicKey,
+            holderKeyMaterial.publicKey,
             ConstantIndex.AtomicAttribute2023,
             ConstantIndex.CredentialRepresentation.SD_JWT,
         ).getOrThrow().toStoreCredentialInput()

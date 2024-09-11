@@ -4,7 +4,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -23,7 +22,7 @@ class AgentTest : FreeSpec({
     lateinit var issuer: Issuer
     lateinit var holder: Holder
     lateinit var verifier: Verifier
-    lateinit var holderKeyPair: KeyWithCert
+    lateinit var holderKeyMaterial: KeyMaterial
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var challenge: String
@@ -36,16 +35,16 @@ class AgentTest : FreeSpec({
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
-        holderKeyPair = EphemeralKeyWithSelfSignedCert()
-        holder = HolderAgent(holderKeyPair, holderCredentialStore)
-        verifier = VerifierAgent(holderKeyPair)
+        holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
+        holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
+        verifier = VerifierAgent(holderKeyMaterial)
         challenge = uuid4().toString()
     }
 
     "simple walk-through success" {
         holder.storeCredential(
             issuer.issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow().toStoreCredentialInput()
@@ -53,7 +52,7 @@ class AgentTest : FreeSpec({
 
         val presentationParameters = holder.createPresentation(
             challenge,
-            verifier.keyPair.identifier,
+            verifier.keyMaterial.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -67,7 +66,7 @@ class AgentTest : FreeSpec({
     "wrong keyId in presentation leads to InvalidStructure" {
         holder.storeCredential(
             issuer.issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow().toStoreCredentialInput()
@@ -75,7 +74,7 @@ class AgentTest : FreeSpec({
 
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = issuer.keyPair.identifier,
+            audienceId = issuer.keyMaterial.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -88,7 +87,7 @@ class AgentTest : FreeSpec({
 
     "revoked credentials must not be validated" {
         val credentials = issuer.issueCredential(
-            holderKeyPair.publicKey,
+            holderKeyMaterial.publicKey,
             ConstantIndex.AtomicAttribute2023,
             ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         ).getOrThrow()
@@ -108,7 +107,7 @@ class AgentTest : FreeSpec({
 
         "when setting a revocation list before storing credentials" {
             val credentials = issuer.issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()
@@ -125,7 +124,7 @@ class AgentTest : FreeSpec({
 
         "and when setting a revocation list after storing credentials" {
             val credentials = issuer.issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()
@@ -142,7 +141,7 @@ class AgentTest : FreeSpec({
 
             holder.createPresentation(
                 challenge = challenge,
-                audienceId = verifier.keyPair.identifier,
+                audienceId = verifier.keyMaterial.identifier,
                 presentationDefinition = singularPresentationDefinition,
             ).getOrNull() shouldBe null
         }
@@ -158,7 +157,7 @@ class AgentTest : FreeSpec({
 
         "when they are valid" - {
             val credentials = issuer.issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()
@@ -191,7 +190,7 @@ class AgentTest : FreeSpec({
 
         "when the issuer has revoked them" {
             val credentials = issuer.issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()
@@ -217,21 +216,21 @@ class AgentTest : FreeSpec({
     "building presentation without necessary credentials" {
         holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.keyPair.identifier,
+            audienceId = verifier.keyMaterial.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull() shouldBe null
     }
 
     "valid presentation is valid" {
         val credentials = issuer.issueCredential(
-            holderKeyPair.publicKey,
+            holderKeyMaterial.publicKey,
             ConstantIndex.AtomicAttribute2023,
             ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         ).getOrThrow()
         holder.storeCredential(credentials.toStoreCredentialInput())
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.keyPair.identifier,
+            audienceId = verifier.keyMaterial.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -247,14 +246,14 @@ class AgentTest : FreeSpec({
 
     "valid presentation is valid -- some other attributes revoked" {
         val credentials = issuer.issueCredential(
-            holderKeyPair.publicKey,
+            holderKeyMaterial.publicKey,
             ConstantIndex.AtomicAttribute2023,
             ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         ).getOrThrow()
         holder.storeCredential(credentials.toStoreCredentialInput())
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.keyPair.identifier,
+            audienceId = verifier.keyMaterial.identifier,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -263,7 +262,7 @@ class AgentTest : FreeSpec({
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
 
         val credentialsToRevoke = issuer.issueCredential(
-            holderKeyPair.publicKey,
+            holderKeyMaterial.publicKey,
             ConstantIndex.AtomicAttribute2023,
             ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         ).getOrThrow()

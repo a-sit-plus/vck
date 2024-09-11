@@ -11,8 +11,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class IssueCredentialProtocolTest : FreeSpec({
 
-    lateinit var issuerKeyPair: KeyWithCert
-    lateinit var holderKeyPair: KeyWithCert
+    lateinit var issuerKeyPair: KeyMaterial
+    lateinit var holderKeyPair: KeyMaterial
     lateinit var issuer: Issuer
     lateinit var holder: Holder
     lateinit var issuerProtocol: IssueCredentialProtocol

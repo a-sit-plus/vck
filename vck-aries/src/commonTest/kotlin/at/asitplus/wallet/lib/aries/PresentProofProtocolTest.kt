@@ -10,8 +10,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class PresentProofProtocolTest : FreeSpec({
 
-    lateinit var holderKeyPair: KeyWithCert
-    lateinit var verifierKeyPair: KeyWithCert
+    lateinit var holderKeyPair: KeyMaterial
+    lateinit var verifierKeyPair: KeyMaterial
     lateinit var holder: Holder
     lateinit var verifier: Verifier
     lateinit var holderProtocol: PresentProofProtocol

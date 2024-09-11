@@ -22,7 +22,7 @@ class AgentRevocationTest : FreeSpec({
 
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var verifier: Verifier
-    lateinit var verifierKeyPair: KeyWithCert
+    lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var issuer: Issuer
     lateinit var expectedRevokedIndexes: List<Long>
 
@@ -33,8 +33,8 @@ class AgentRevocationTest : FreeSpec({
             issuerCredentialStore,
             DummyCredentialDataProvider()
         )
-        verifierKeyPair = EphemeralKeyWithSelfSignedCert()
-        verifier = VerifierAgent(verifierKeyPair)
+        verifierKeyMaterial = EphemeralKeyWithSelfSignedCert()
+        verifier = VerifierAgent(verifierKeyMaterial)
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
 
@@ -55,7 +55,7 @@ class AgentRevocationTest : FreeSpec({
 
     "credentials should contain status information" {
         val result = issuer.issueCredential(
-            verifierKeyPair.publicKey,
+            verifierKeyMaterial.publicKey,
             ConstantIndex.AtomicAttribute2023,
             ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         ).getOrElse {

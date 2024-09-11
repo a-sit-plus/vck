@@ -3,9 +3,6 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.*
-import at.asitplus.wallet.lib.agent.*
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsHeader
@@ -15,7 +12,7 @@ import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -49,8 +46,8 @@ class OidcSiopProtocolTest : FreeSpec({
     lateinit var responseUrl: String
     lateinit var walletUrl: String
 
-    lateinit var holderKeyPair: KeyWithCert
-    lateinit var verifierKeyPair: KeyWithCert
+    lateinit var holderKeyPair: KeyMaterial
+    lateinit var verifierKeyPair: KeyMaterial
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -83,7 +80,7 @@ class OidcSiopProtocolTest : FreeSpec({
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
             responseUrl = responseUrl,
         )
@@ -108,7 +105,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
     "wrong client nonce should lead to error" {
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
             responseUrl = responseUrl,
             nonceService = object : NonceService {
@@ -282,7 +279,7 @@ class OidcSiopProtocolTest : FreeSpec({
         val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithSelfSignedCert())
         val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyPair)
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
             clientIdScheme = OidcSiopVerifier.ClientIdScheme.VerifierAttestation(attestationJwt),
         )
@@ -293,7 +290,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
         holderSiop = OidcSiopWallet(
             holder = holderAgent,
-            requestObjectJwsVerifier = verifierAttestationVerifier(sprsCryptoService.keyWithCert.jsonWebKey)
+            requestObjectJwsVerifier = verifierAttestationVerifier(sprsCryptoService.keyMaterial.jsonWebKey)
         )
         val authnResponse = holderSiop.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -310,7 +307,7 @@ class OidcSiopProtocolTest : FreeSpec({
         val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyPair)
 
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
             clientIdScheme = OidcSiopVerifier.ClientIdScheme.VerifierAttestation(attestationJwt)
         )
@@ -418,10 +415,10 @@ class OidcSiopProtocolTest : FreeSpec({
 private suspend fun buildAttestationJwt(
     sprsCryptoService: DefaultCryptoService,
     relyingPartyUrl: String,
-    verifierKeyPair: KeyWithCert
+    verifierKeyPair: KeyMaterial
 ): JwsSigned = DefaultJwsService(sprsCryptoService).createSignedJws(
     header = JwsHeader(
-        algorithm = sprsCryptoService.keyWithCert.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
+        algorithm = sprsCryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
     ),
     payload = JsonWebToken(
         issuer = "sprs", // allows Wallet to determine the issuer's key

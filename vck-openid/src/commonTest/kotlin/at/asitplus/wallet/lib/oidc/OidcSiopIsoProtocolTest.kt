@@ -4,7 +4,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -28,8 +28,8 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     lateinit var relyingPartyUrl: String
     lateinit var walletUrl: String
 
-    lateinit var holderKeyPair: KeyWithCert
-    lateinit var verifierKeyPair: KeyWithCert
+    lateinit var holderKeyPair: KeyMaterial
+    lateinit var verifierKeyPair: KeyMaterial
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -72,7 +72,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
 
     "test with Fragment for mDL" {
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(
@@ -94,7 +94,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
 
     "test with Fragment for custom attributes" {
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(
@@ -115,7 +115,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     "Selective Disclosure with mDL" {
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(
@@ -138,7 +138,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     "Selective Disclosure with mDL and encryption" {
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
             responseUrl = relyingPartyUrl + "/${uuid4()}"
         )
@@ -170,7 +170,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
 
     "Selective Disclosure with mDL JSON Path syntax" {
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(

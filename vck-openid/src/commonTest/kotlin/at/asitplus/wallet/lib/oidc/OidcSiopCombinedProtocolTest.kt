@@ -4,7 +4,7 @@ import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -29,8 +29,8 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
     lateinit var relyingPartyUrl: String
 
-    lateinit var holderKeyPair: KeyWithCert
-    lateinit var verifierKeyPair: KeyWithCert
+    lateinit var holderKeyPair: KeyMaterial
+    lateinit var verifierKeyPair: KeyMaterial
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -49,7 +49,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
     }
@@ -65,7 +65,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyPairAdapter = verifierKeyPair,
+                    keyMaterial = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -100,7 +100,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                     holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
                 }
                 verifierSiop = OidcSiopVerifier(
-                    keyPairAdapter = verifierKeyPair,
+                    keyMaterial = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -143,7 +143,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyPairAdapter = verifierKeyPair,
+                    keyMaterial = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -184,7 +184,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyPairAdapter = verifierKeyPair,
+                    keyMaterial = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -230,7 +230,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyPairAdapter = verifierKeyPair,
+                    keyMaterial = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -274,7 +274,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyPairAdapter = verifierKeyPair,
+                    keyMaterial = verifierKeyPair,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -320,7 +320,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         }
 
         verifierSiop = OidcSiopVerifier(
-            keyPairAdapter = verifierKeyPair,
+            keyMaterial = verifierKeyPair,
             relyingPartyUrl = relyingPartyUrl,
         )
 
@@ -362,7 +362,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 })
 
 private suspend fun Holder.storeJwtCredential(
-    holderKeyPair: KeyWithCert,
+    holderKeyPair: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
@@ -378,7 +378,7 @@ private suspend fun Holder.storeJwtCredential(
 }
 
 private suspend fun Holder.storeSdJwtCredential(
-    holderKeyPair: KeyWithCert,
+    holderKeyPair: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
@@ -394,7 +394,7 @@ private suspend fun Holder.storeSdJwtCredential(
 }
 
 private suspend fun Holder.storeIsoCredential(
-    holderKeyPair: KeyWithCert,
+    holderKeyPair: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) = storeCredential(
     IssuerAgent(
