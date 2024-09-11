@@ -39,7 +39,6 @@ inline fun Project.commonApiDependencies(): List<String> {
         addDependency("at.asitplus.signum:supreme", "supreme"), //for iOS Export
         addDependency("at.asitplus.signum:indispensable-cosef", "signum"),
         addDependency("at.asitplus.signum:indispensable-josef", "signum"),
-        //  addDependency("at.asitplus:jsonpath4k", "jsonpath"),
         datetime(),
         addDependency("com.squareup.okio:okio", "okio"),
         addDependency("io.matthewnelson.encoding:base16", "encoding"),
@@ -78,6 +77,10 @@ fun Project.commonIosExports() = arrayOf(
 )
 
 
+/**
+ * Hooks up Kotest tests from common using a frankensteined JUnit runner.
+ * It generates code using KotlinPoet to hook it up as per https://github.com/kotest/kotest/issues/189
+ */
 inline fun Project.wireAndroidInstrumentedTests() {
     logger.lifecycle("  Wiring up Android Instrumented Tests")
     val targetDir = project.layout.projectDirectory.dir("src")
