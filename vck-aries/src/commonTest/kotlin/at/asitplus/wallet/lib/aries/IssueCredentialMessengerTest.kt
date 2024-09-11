@@ -1,12 +1,6 @@
 package at.asitplus.wallet.lib.aries
 
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
-import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
@@ -26,8 +20,8 @@ class IssueCredentialMessengerTest : FreeSpec() {
 
     init {
         beforeEach {
-            issuerKeyPair = EphemeralKeyWithSelfSignedCert()
-            holderKeyPair = EphemeralKeyWithSelfSignedCert()
+            issuerKeyPair = EphemeralKeyWithoutCert()
+            holderKeyPair = EphemeralKeyWithoutCer()
             issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
             holder = HolderAgent(holderKeyPair)
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
