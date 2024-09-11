@@ -68,7 +68,7 @@ class OidcSiopWallet(
     private val scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever,
 ) {
     constructor(
-        keyMaterial: KeyMaterial = EphemeralKeyWithSelfSignedCert(),
+        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         holder: Holder = HolderAgent(keyMaterial),
         jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
         clock: Clock = Clock.System,

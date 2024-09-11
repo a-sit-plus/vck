@@ -1,12 +1,6 @@
 package at.asitplus.wallet.lib.aries
 
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
-import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
@@ -16,8 +10,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class IssueCredentialMessengerTest : FreeSpec() {
 
-    private lateinit var issuerKeyPair: KeyMaterial
-    private lateinit var holderKeyPair: KeyMaterial
+    private lateinit var issuerKeyMaterial: KeyMaterial
+    private lateinit var holderKeyMaterial: KeyMaterial
     private lateinit var issuer: Issuer
     private lateinit var holder: Holder
     private lateinit var issuerServiceEndpoint: String
@@ -26,10 +20,10 @@ class IssueCredentialMessengerTest : FreeSpec() {
 
     init {
         beforeEach {
-            issuerKeyPair = EphemeralKeyWithSelfSignedCert()
-            holderKeyPair = EphemeralKeyWithSelfSignedCert()
-            issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
-            holder = HolderAgent(holderKeyPair)
+            issuerKeyMaterial = EphemeralKeyWithoutCert()
+            holderKeyMaterial = EphemeralKeyWithoutCert()
+            issuer = IssuerAgent(issuerKeyMaterial, DummyCredentialDataProvider())
+            holder = HolderAgent(holderKeyMaterial)
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
             holderMessenger = initHolderMessenger(ConstantIndex.AtomicAttribute2023)
         }
@@ -48,14 +42,14 @@ class IssueCredentialMessengerTest : FreeSpec() {
     private fun initHolderMessenger(scheme: ConstantIndex.CredentialScheme) =
         IssueCredentialMessenger.newHolderInstance(
             holder = holder,
-            messageWrapper = MessageWrapper(holderKeyPair),
+            messageWrapper = MessageWrapper(holderKeyMaterial),
             credentialScheme = scheme,
         )
 
     private fun initIssuerMessenger(scheme: ConstantIndex.CredentialScheme) =
         IssueCredentialMessenger.newIssuerInstance(
             issuer = issuer,
-            messageWrapper = MessageWrapper(issuerKeyPair),
+            messageWrapper = MessageWrapper(issuerKeyMaterial),
             serviceEndpoint = issuerServiceEndpoint,
             credentialScheme = scheme,
         )

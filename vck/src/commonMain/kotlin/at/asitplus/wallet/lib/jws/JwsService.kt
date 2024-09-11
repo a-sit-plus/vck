@@ -161,8 +161,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         if (addJsonWebKey)
             copy = copy.copy(jsonWebKey = cryptoService.keyMaterial.jsonWebKey)
         if (addX5c)
-            copy =
-                copy.copy(certificateChain = listOf(cryptoService.keyMaterial.getCertificate()!!)) //TODO cleanup/nullchecks
+            copy = //Nullpointering is a controlled error case inside the catchin block
+                copy.copy(certificateChain = listOf(cryptoService.keyMaterial.getCertificate()!!))
         createSignedJws(copy, payload).getOrThrow()
     }
 

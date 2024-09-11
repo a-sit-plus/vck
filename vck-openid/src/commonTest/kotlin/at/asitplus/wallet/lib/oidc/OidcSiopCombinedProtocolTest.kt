@@ -1,17 +1,10 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.dif.FormatHolder
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
@@ -24,13 +17,12 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 
-@Suppress("unused")
 class OidcSiopCombinedProtocolTest : FreeSpec({
 
     lateinit var relyingPartyUrl: String
 
-    lateinit var holderKeyPair: KeyMaterial
-    lateinit var verifierKeyPair: KeyMaterial
+    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var verifierKeyMaterial: KeyMaterial
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -39,17 +31,18 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderKeyPair = EphemeralKeyWithSelfSignedCert()
-        verifierKeyPair = EphemeralKeyWithSelfSignedCert()
+        holderKeyMaterial = EphemeralKeyWithoutCert()
+        verifierKeyMaterial = EphemeralKeyWithoutCert()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
-        holderAgent = HolderAgent(holderKeyPair)
-        verifierAgent = VerifierAgent(verifierKeyPair)
+        holderAgent = HolderAgent(holderKeyMaterial)
+        verifierAgent = VerifierAgent(verifierKeyMaterial)
 
         holderSiop = OidcSiopWallet(
+            keyMaterial = holderKeyMaterial,
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(
-            keyMaterial = verifierKeyPair,
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
         )
     }
@@ -59,13 +52,13 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         "test support for plain jwt credential request" - {
             "if not available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeJwtCredential(holderKeyPair, MobileDrivingLicenceScheme)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyMaterial = verifierKeyPair,
+                    keyMaterial = verifierKeyMaterial,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -94,13 +87,13 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
             "if available despite others" {
                 runBlocking {
-                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeJwtCredential(holderKeyPair, MobileDrivingLicenceScheme)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 }
                 verifierSiop = OidcSiopVerifier(
-                    keyMaterial = verifierKeyPair,
+                    keyMaterial = verifierKeyMaterial,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -137,13 +130,13 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         "test support for sd jwt credential request" - {
             "if not available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, MobileDrivingLicenceScheme)
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyMaterial = verifierKeyPair,
+                    keyMaterial = verifierKeyMaterial,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -177,14 +170,14 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
             "if available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, MobileDrivingLicenceScheme)
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyMaterial = verifierKeyPair,
+                    keyMaterial = verifierKeyMaterial,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -224,13 +217,13 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         "test support for mso credential request" - {
             "if not available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyPair, MobileDrivingLicenceScheme)
+                    holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyMaterial = verifierKeyPair,
+                    keyMaterial = verifierKeyMaterial,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -267,14 +260,14 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
             "if available despite others with correct format or correct attribute, but not both" {
                 runBlocking {
-                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyPair, MobileDrivingLicenceScheme)
+                    holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyMaterial = verifierKeyPair,
+                    keyMaterial = verifierKeyMaterial,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -315,12 +308,12 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
     "test presentation of multiple credentials with different formats" {
         runBlocking {
-            holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-            holderAgent.storeIsoCredential(holderKeyPair, MobileDrivingLicenceScheme)
+            holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
         }
 
         verifierSiop = OidcSiopVerifier(
-            keyMaterial = verifierKeyPair,
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
         )
 
@@ -362,15 +355,15 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 })
 
 private suspend fun Holder.storeJwtCredential(
-    holderKeyPair: KeyMaterial,
+    holderKeyMaterial: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
         IssuerAgent(
-            EphemeralKeyWithSelfSignedCert(),
+            EphemeralKeyWithoutCert(),
             DummyCredentialDataProvider(),
         ).issueCredential(
-            holderKeyPair.publicKey,
+            holderKeyMaterial.publicKey,
             credentialScheme,
             ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         ).getOrThrow().toStoreCredentialInput()
@@ -378,15 +371,15 @@ private suspend fun Holder.storeJwtCredential(
 }
 
 private suspend fun Holder.storeSdJwtCredential(
-    holderKeyPair: KeyMaterial,
+    holderKeyMaterial: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
         IssuerAgent(
-            EphemeralKeyWithSelfSignedCert(),
+            EphemeralKeyWithoutCert(),
             DummyCredentialDataProvider(),
         ).issueCredential(
-            holderKeyPair.publicKey,
+            holderKeyMaterial.publicKey,
             credentialScheme,
             ConstantIndex.CredentialRepresentation.SD_JWT,
         ).getOrThrow().toStoreCredentialInput()
@@ -394,14 +387,14 @@ private suspend fun Holder.storeSdJwtCredential(
 }
 
 private suspend fun Holder.storeIsoCredential(
-    holderKeyPair: KeyMaterial,
+    holderKeyMaterial: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) = storeCredential(
     IssuerAgent(
         EphemeralKeyWithSelfSignedCert(),
         DummyCredentialDataProvider(),
     ).issueCredential(
-        holderKeyPair.publicKey,
+        holderKeyMaterial.publicKey,
         credentialScheme,
         ConstantIndex.CredentialRepresentation.ISO_MDOC,
     ).getOrThrow().toStoreCredentialInput()

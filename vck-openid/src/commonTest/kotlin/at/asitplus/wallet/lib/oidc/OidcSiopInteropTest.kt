@@ -31,23 +31,23 @@ import kotlinx.datetime.Instant
  */
 class OidcSiopInteropTest : FreeSpec({
 
-    lateinit var holderKeyPair: KeyMaterial
+    lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderSiop: OidcSiopWallet
-    lateinit var verifierKeyPair: KeyMaterial
+    lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var verifierAgent: Verifier
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderKeyPair = EphemeralKeyWithSelfSignedCert()
-        holderAgent = HolderAgent(holderKeyPair)
+        holderKeyMaterial = EphemeralKeyWithoutCert()
+        holderAgent = HolderAgent(holderKeyMaterial)
         val issuerAgent = IssuerAgent(
-            EphemeralKeyWithSelfSignedCert(),
+            EphemeralKeyWithoutCert(),
             DummyCredentialDataProvider(),
         )
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 EuPidScheme,
                 ConstantIndex.CredentialRepresentation.SD_JWT,
                 EuPidScheme.requiredClaimNames
@@ -55,13 +55,13 @@ class OidcSiopInteropTest : FreeSpec({
         )
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.SD_JWT,
                 listOf("family_name", "given_name")
             ).getOrThrow().toStoreCredentialInput()
         )
-        holderSiop = OidcSiopWallet(holderKeyPair, holderAgent)
+        holderSiop = OidcSiopWallet(holderKeyMaterial, holderAgent)
     }
 
     "EUDI from URL 2024-05-17" {
@@ -279,7 +279,7 @@ class OidcSiopInteropTest : FreeSpec({
 
     "Request in request URI" {
         val input = "mdoc-openid4vp://?request_uri=https%3A%2F%2Fexample.com%2Fd15b5b6f-7821-4031-9a18-ebe491b720a6"
-        val jws = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert())).createSignedJwsAddingParams(
+        val jws = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())).createSignedJwsAddingParams(
             payload = AuthenticationRequestParameters(
                 nonce = "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ==",
                 state = "ef391e30-bacc-4441-af5d-7f42fb682e02",
@@ -321,13 +321,13 @@ class OidcSiopInteropTest : FreeSpec({
                     )
                 }
             ))))
-        verifierKeyPair = EphemeralKeyWithSelfSignedCert(extensions = extensions)
-        verifierAgent = VerifierAgent(verifierKeyPair)
+        verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
+        verifierAgent = VerifierAgent(verifierKeyMaterial)
         verifierSiop = OidcSiopVerifier(
-            keyMaterial = verifierKeyPair,
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = "https://example.com/rp",
             responseUrl = "https://example.com/response",
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyPair.getCertificate()!!)),
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!)),
         )
         val nonce = uuid4().toString()
         val requestUrl = "https://example.com/request/$nonce"
@@ -344,7 +344,7 @@ class OidcSiopInteropTest : FreeSpec({
 
 
         holderSiop = OidcSiopWallet(
-            holderKeyPair,
+            holderKeyMaterial,
             holderAgent,
             remoteResourceRetriever = { if (it == requestUrl) requestUrlForWallet.second else null })
 

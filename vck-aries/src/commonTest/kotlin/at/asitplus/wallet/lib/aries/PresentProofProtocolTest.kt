@@ -10,18 +10,18 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class PresentProofProtocolTest : FreeSpec({
 
-    lateinit var holderKeyPair: KeyMaterial
-    lateinit var verifierKeyPair: KeyMaterial
+    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var holder: Holder
     lateinit var verifier: Verifier
     lateinit var holderProtocol: PresentProofProtocol
     lateinit var verifierProtocol: PresentProofProtocol
 
     beforeEach {
-        holderKeyPair = EphemeralKeyWithSelfSignedCert()
-        verifierKeyPair = EphemeralKeyWithSelfSignedCert()
-        holder = HolderAgent(holderKeyPair)
-        verifier = VerifierAgent(verifierKeyPair)
+        holderKeyMaterial = EphemeralKeyWithoutCert()
+        verifierKeyMaterial = EphemeralKeyWithoutCert()
+        holder = HolderAgent(holderKeyMaterial)
+        verifier = VerifierAgent(verifierKeyMaterial)
         holderProtocol = PresentProofProtocol.newHolderInstance(
             holder = holder,
             serviceEndpoint = "https://example.com/",
@@ -36,10 +36,10 @@ class PresentProofProtocolTest : FreeSpec({
     "presentProofGenericWithInvitation" {
         holder.storeCredential(
             IssuerAgent(
-                EphemeralKeyWithSelfSignedCert(),
+                EphemeralKeyWithoutCert(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().toStoreCredentialInput()
@@ -50,17 +50,17 @@ class PresentProofProtocolTest : FreeSpec({
         val invitationMessage = oobInvitation.message
 
         val parsedInvitation =
-            verifierProtocol.parseMessage(invitationMessage, holderKeyPair.jsonWebKey)
+            verifierProtocol.parseMessage(invitationMessage, holderKeyMaterial.jsonWebKey)
         parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val requestPresentation = parsedInvitation.message
 
         val parsedRequestPresentation =
-            holderProtocol.parseMessage(requestPresentation, verifierKeyPair.jsonWebKey)
+            holderProtocol.parseMessage(requestPresentation, verifierKeyMaterial.jsonWebKey)
         parsedRequestPresentation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val presentation = parsedRequestPresentation.message
 
         val parsedPresentation =
-            verifierProtocol.parseMessage(presentation, holderKeyPair.jsonWebKey)
+            verifierProtocol.parseMessage(presentation, holderKeyMaterial.jsonWebKey)
         parsedPresentation.shouldBeInstanceOf<InternalNextMessage.Finished>()
 
         val receivedPresentation = parsedPresentation.lastMessage
@@ -70,10 +70,10 @@ class PresentProofProtocolTest : FreeSpec({
     "presentProofGenericDirect" {
         holder.storeCredential(
             IssuerAgent(
-                EphemeralKeyWithSelfSignedCert(),
+                EphemeralKeyWithoutCert(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow().toStoreCredentialInput()
@@ -83,12 +83,12 @@ class PresentProofProtocolTest : FreeSpec({
         requestPresentation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
 
         val parsedRequestPresentation =
-            holderProtocol.parseMessage(requestPresentation.message, verifierKeyPair.jsonWebKey)
+            holderProtocol.parseMessage(requestPresentation.message, verifierKeyMaterial.jsonWebKey)
         parsedRequestPresentation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val presentation = parsedRequestPresentation.message
 
         val parsedPresentation =
-            verifierProtocol.parseMessage(presentation, holderKeyPair.jsonWebKey)
+            verifierProtocol.parseMessage(presentation, holderKeyMaterial.jsonWebKey)
         parsedPresentation.shouldBeInstanceOf<InternalNextMessage.Finished>()
 
         val receivedPresentation = parsedPresentation.lastMessage
@@ -102,7 +102,7 @@ class PresentProofProtocolTest : FreeSpec({
                 parentThreadId = uuid4().toString(),
                 attachment = JwmAttachment(id = uuid4().toString(), "mimeType", JwmAttachmentData())
             ),
-            holderKeyPair.jsonWebKey
+            holderKeyMaterial.jsonWebKey
         )
         parsed.shouldBeInstanceOf<InternalNextMessage.IncorrectState>()
     }
@@ -113,12 +113,12 @@ class PresentProofProtocolTest : FreeSpec({
         val invitationMessage = oobInvitation.message
 
         val parsedInvitation =
-            verifierProtocol.parseMessage(invitationMessage, holderKeyPair.jsonWebKey)
+            verifierProtocol.parseMessage(invitationMessage, holderKeyMaterial.jsonWebKey)
         parsedInvitation.shouldBeInstanceOf<InternalNextMessage.SendAndWrap>()
         val requestPresentation = parsedInvitation.message
 
         val parsedRequestPresentation =
-            holderProtocol.parseMessage(requestPresentation, verifierKeyPair.jsonWebKey)
+            holderProtocol.parseMessage(requestPresentation, verifierKeyMaterial.jsonWebKey)
         parsedRequestPresentation.shouldBeInstanceOf<InternalNextMessage.SendProblemReport>()
         val problemReport = parsedRequestPresentation.message
 

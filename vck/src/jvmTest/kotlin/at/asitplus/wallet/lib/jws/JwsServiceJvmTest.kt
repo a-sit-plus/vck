@@ -14,6 +14,7 @@ import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import com.nimbusds.jose.*
@@ -113,7 +114,7 @@ class JwsServiceJvmTest : FreeSpec({
                 else RSADecrypter(ephemeralKey.jcaPrivateKey as RSAPrivateKey)
 
 
-            val keyPairAdapter = EphemeralKeyWithSelfSignedCert(ephemeralKey)
+            val keyPairAdapter = EphemeralKeyWithoutCert(ephemeralKey)
             val cryptoService = DefaultCryptoService(keyPairAdapter)
             val jwsService = DefaultJwsService(cryptoService)
             val verifierJwsService = DefaultVerifierJwsService()

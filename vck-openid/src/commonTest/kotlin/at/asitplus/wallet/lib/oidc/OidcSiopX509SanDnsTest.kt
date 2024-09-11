@@ -18,8 +18,8 @@ class OidcSiopX509SanDnsTest : FreeSpec({
     lateinit var responseUrl: String
     lateinit var walletUrl: String
 
-    lateinit var holderKeyPair: KeyMaterial
-    lateinit var verifierKeyPair: KeyMaterial
+    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var verifierKeyMaterial: KeyMaterial
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -39,31 +39,31 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                     )
                 }
             ))))
-        holderKeyPair = EphemeralKeyWithSelfSignedCert()
-        verifierKeyPair = EphemeralKeyWithSelfSignedCert(extensions = extensions)
+        holderKeyMaterial = EphemeralKeyWithoutCert()
+        verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
         responseUrl = "https://example.com"
         walletUrl = "https://example.com/wallet/${uuid4()}"
-        holderAgent = HolderAgent(holderKeyPair)
-        verifierAgent = VerifierAgent(verifierKeyPair)
+        holderAgent = HolderAgent(holderKeyMaterial)
+        verifierAgent = VerifierAgent(verifierKeyMaterial)
         holderAgent.storeCredential(
             IssuerAgent(
-                EphemeralKeyWithSelfSignedCert(),
+                EphemeralKeyWithoutCert(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.SD_JWT,
             ).getOrThrow().toStoreCredentialInput()
         )
 
         holderSiop = OidcSiopWallet(
-            keyMaterial = holderKeyPair,
+            keyMaterial = holderKeyMaterial,
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(
-            keyMaterial = verifierKeyPair,
+            keyMaterial = verifierKeyMaterial,
             responseUrl = responseUrl,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyPair.getCertificate()!!)),
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!)),
         )
     }
 
