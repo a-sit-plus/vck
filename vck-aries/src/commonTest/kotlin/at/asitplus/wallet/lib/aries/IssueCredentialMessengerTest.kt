@@ -21,7 +21,7 @@ class IssueCredentialMessengerTest : FreeSpec() {
     init {
         beforeEach {
             issuerKeyPair = EphemeralKeyWithoutCert()
-            holderKeyPair = EphemeralKeyWithoutCer()
+            holderKeyPair = EphemeralKeyWithoutCert()
             issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
             holder = HolderAgent(holderKeyPair)
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
