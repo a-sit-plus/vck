@@ -3,11 +3,7 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -418,7 +414,7 @@ private suspend fun buildAttestationJwt(
         issuedAt = Clock.System.now(),
         expiration = Clock.System.now().plus(10.seconds),
         notBefore = Clock.System.now(),
-        confirmationKey = verifierKeyMaterial.jsonWebKey,
+        confirmationClaim = ConfirmationClaim(jsonWebKey = verifierKeyMaterial.jsonWebKey),
     ).serialize().encodeToByteArray()
 ).getOrThrow()
 
@@ -431,7 +427,8 @@ private fun verifierAttestationVerifier(trustedKey: JsonWebKey) =
             if (!verifierJwsService.verifyJws(attestationJwt, trustedKey))
                 return false
             val verifierPublicKey = JsonWebToken.deserialize(attestationJwt.payload.decodeToString())
-                .getOrNull()?.confirmationKey ?: return false
+                .getOrNull()?.confirmationClaim?.jsonWebKey
+                ?: return false
             return verifierJwsService.verifyJws(jws, verifierPublicKey)
         }
     }
