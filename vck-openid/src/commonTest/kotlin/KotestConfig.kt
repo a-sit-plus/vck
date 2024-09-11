@@ -6,7 +6,7 @@ class KotestConfig : AbstractProjectConfig() {
     init {
         Napier.takeLogarithm()
         Napier.base(DebugAntilog())
-        at.asitplus.wallet.mdl.Initializer.initWithVcLib()
-        at.asitplus.wallet.eupid.Initializer.initWithVcLib()
+        at.asitplus.wallet.mdl.Initializer.initWithVCK()
+        at.asitplus.wallet.eupid.Initializer.initWithVCK()
     }
 }

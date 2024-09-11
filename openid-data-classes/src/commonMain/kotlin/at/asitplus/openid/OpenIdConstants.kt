@@ -38,11 +38,6 @@ object OpenIdConstants {
 
     const val CODE_CHALLENGE_METHOD_SHA256 = "S256"
 
-    /**
-     * To be used in [at.asitplus.wallet.lib.oidvci.AuthorizationDetails.type]
-     */
-    const val CREDENTIAL_TYPE_OPENID = "openid_credential"
-
     @Serializable(with = ProofType.Serializer::class)
     sealed class ProofType(val stringRepresentation: String) {
         override fun toString(): String = this::class.simpleName + "(" + stringRepresentation + ")"

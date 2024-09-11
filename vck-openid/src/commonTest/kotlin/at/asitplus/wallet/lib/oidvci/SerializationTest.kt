@@ -20,8 +20,7 @@ class SerializationTest : FunSpec({
         responseType = GRANT_TYPE_CODE,
         clientId = randomString(),
         authorizationDetails = setOf(
-            AuthorizationDetails(
-                type = randomString(),
+            AuthorizationDetails.OpenIdCredential(
                 format = CredentialFormatEnum.JWT_VC,
                 credentialDefinition = SupportedCredentialFormatDefinition(
                     types = listOf(VERIFIABLE_CREDENTIAL, randomString()),
