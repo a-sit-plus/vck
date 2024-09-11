@@ -57,7 +57,7 @@ data class TokenRequestParameters(
      * This parameter MUST only be used if the [grantType] is `urn:ietf:params:oauth:grant-type:pre-authorized_code`.
      */
     @SerialName("tx_code")
-    val transactionCode: CredentialOfferGrantsPreAuthCodeTransactionCode? = null,
+    val transactionCode: String? = null,
 
     /**
      * RFC7636: A cryptographically random string that is used to correlate the authorization request to the token
