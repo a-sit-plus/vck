@@ -11,8 +11,6 @@ import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.openid.OpenIdConstants.Errors
@@ -70,9 +68,9 @@ class OidcSiopWallet(
     private val scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever,
 ) {
     constructor(
-        keyPairAdapter: KeyPairAdapter = EphemeralKeyPariAdapter(),
-        holder: Holder = HolderAgent(keyPairAdapter),
-        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
+        keyWithCert: KeyWithCert = EphemeralKeyWithSelfSignedCert(),
+        holder: Holder = HolderAgent(keyWithCert),
+        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyWithCert)),
         clock: Clock = Clock.System,
         clientId: String = "https://wallet.a-sit.at/",
         /**
@@ -94,7 +92,7 @@ class OidcSiopWallet(
         scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever = { null },
     ) : this(
         holder = holder,
-        agentPublicKey = keyPairAdapter.publicKey,
+        agentPublicKey = keyWithCert.publicKey,
         jwsService = jwsService,
         clock = clock,
         clientId = clientId,

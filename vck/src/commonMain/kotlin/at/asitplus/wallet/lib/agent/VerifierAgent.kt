@@ -15,17 +15,17 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
  */
 class VerifierAgent private constructor(
     private val validator: Validator,
-    override val keyPair: KeyPairAdapter,
+    override val keyPair: KeyWithCert,
 ) : Verifier {
 
-    constructor(keyPairAdapter: KeyPairAdapter) : this(
+    constructor(keyPairAdapter: KeyWithCert) : this(
         validator = Validator(),
         keyPair = keyPairAdapter,
     )
 
     constructor(): this(
         validator = Validator(),
-        keyPair = EphemeralKeyPariAdapter(),
+        keyPair = EphemeralKeyWithSelfSignedCert(),
     )
 
     override fun setRevocationList(it: String): Boolean {

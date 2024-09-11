@@ -1,21 +1,10 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.signum.indispensable.asn1.Asn1
-import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
-import at.asitplus.signum.indispensable.asn1.Asn1Primitive
-import at.asitplus.signum.indispensable.asn1.Asn1String
-import at.asitplus.signum.indispensable.asn1.KnownOIDs
+import at.asitplus.signum.indispensable.asn1.*
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
@@ -29,8 +18,8 @@ class OidcSiopX509SanDnsTest : FreeSpec({
     lateinit var responseUrl: String
     lateinit var walletUrl: String
 
-    lateinit var holderKeyPair: KeyPairAdapter
-    lateinit var verifierKeyPair: KeyPairAdapter
+    lateinit var holderKeyPair: KeyWithCert
+    lateinit var verifierKeyPair: KeyWithCert
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -50,15 +39,15 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                     )
                 }
             ))))
-        holderKeyPair = EphemeralKeyPariAdapter()
-        verifierKeyPair = EphemeralKeyPariAdapter(extensions = extensions)
+        holderKeyPair = EphemeralKeyWithSelfSignedCert()
+        verifierKeyPair = EphemeralKeyWithSelfSignedCert(extensions = extensions)
         responseUrl = "https://example.com"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierKeyPair)
         holderAgent.storeCredential(
             IssuerAgent(
-                EphemeralKeyPariAdapter(),
+                EphemeralKeyWithSelfSignedCert(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
                 holderKeyPair.publicKey,
@@ -68,13 +57,13 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         )
 
         holderSiop = OidcSiopWallet(
-            keyPairAdapter = holderKeyPair,
+            keyWithCert = holderKeyPair,
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(
             keyPairAdapter = verifierKeyPair,
             responseUrl = responseUrl,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyPair.certificate!!)),
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyPair.getCertificate()!!)),
         )
     }
 

@@ -11,7 +11,7 @@ import javax.crypto.KeyAgreement
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-actual open class PlatformCryptoShim actual constructor(actual val keyPairAdapter: KeyPairAdapter) {
+actual open class PlatformCryptoShim actual constructor(actual val keyWithCert: KeyWithCert) {
 
     actual fun encrypt(
         key: ByteArray,
@@ -96,7 +96,7 @@ actual open class PlatformCryptoShim actual constructor(actual val keyPairAdapte
         KeyAgreement.getInstance(algorithm.jcaName).also {
 
             @OptIn(HazardousMaterials::class)
-            it.init(keyPairAdapter.signer.jcaPrivateKey)
+            it.init(keyWithCert.getUnderLyingSigner().jcaPrivateKey)
             it.doPhase(publicKey, true)
         }.generateSecret()
     }.wrap()

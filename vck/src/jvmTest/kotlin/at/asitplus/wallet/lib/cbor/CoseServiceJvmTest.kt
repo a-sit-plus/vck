@@ -7,9 +7,7 @@ import at.asitplus.signum.supreme.HazardousMaterials
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.DefaultKeyPairAdapter
-import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
-import at.asitplus.wallet.lib.agent.PlatformCryptoShim
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import com.authlete.cbor.CBORByteArray
 import com.authlete.cbor.CBORDecoder
 import com.authlete.cbor.CBORTaggedItem
@@ -73,7 +71,7 @@ class CoseServiceJvmTest : FreeSpec({
             val extLibSigner = COSESigner(ephemeralKey.jcaPrivateKey as ECPrivateKey)
 
 
-            val keyPairAdapter = EphemeralKeyPariAdapter(ephemeralKey)
+            val keyPairAdapter = EphemeralKeyWithSelfSignedCert(ephemeralKey)
             val cryptoService = DefaultCryptoService(keyPairAdapter)
             val coseService = DefaultCoseService(cryptoService)
             val verifierCoseService = DefaultVerifierCoseService()
@@ -91,7 +89,7 @@ class CoseServiceJvmTest : FreeSpec({
                     ).getOrThrow()
 
                     withClue("$sigAlgo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
-                        verifierCoseService.verifyCose(signed, cryptoService.keyPairAdapter.coseKey)
+                        verifierCoseService.verifyCose(signed, cryptoService.keyWithCert.publicKey.toCoseKey().getOrThrow())
                             .isSuccess shouldBe true
                     }
                 }

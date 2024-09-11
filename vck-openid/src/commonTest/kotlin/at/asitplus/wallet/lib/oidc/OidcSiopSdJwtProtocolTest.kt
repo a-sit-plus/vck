@@ -3,8 +3,8 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
+import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
@@ -24,8 +24,8 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     lateinit var relyingPartyUrl: String
     lateinit var walletUrl: String
 
-    lateinit var holderKeyPair: KeyPairAdapter
-    lateinit var verifierKeyPair: KeyPairAdapter
+    lateinit var holderKeyPair: KeyWithCert
+    lateinit var verifierKeyPair: KeyWithCert
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -34,8 +34,8 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderKeyPair = EphemeralKeyPariAdapter()
-        verifierKeyPair = EphemeralKeyPariAdapter()
+        holderKeyPair = EphemeralKeyWithSelfSignedCert()
+        verifierKeyPair = EphemeralKeyWithSelfSignedCert()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)
@@ -43,7 +43,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
 
         holderAgent.storeCredential(
             IssuerAgent(
-                EphemeralKeyPariAdapter(),
+                EphemeralKeyWithSelfSignedCert(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
                 holderKeyPair.publicKey,
@@ -53,7 +53,6 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         )
 
         holderSiop = OidcSiopWallet(
-            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(

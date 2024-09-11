@@ -10,16 +10,16 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class PresentProofProtocolTest : FreeSpec({
 
-    lateinit var holderKeyPair: KeyPairAdapter
-    lateinit var verifierKeyPair: KeyPairAdapter
+    lateinit var holderKeyPair: KeyWithCert
+    lateinit var verifierKeyPair: KeyWithCert
     lateinit var holder: Holder
     lateinit var verifier: Verifier
     lateinit var holderProtocol: PresentProofProtocol
     lateinit var verifierProtocol: PresentProofProtocol
 
     beforeEach {
-        holderKeyPair = EphemeralKeyPariAdapter()
-        verifierKeyPair = EphemeralKeyPariAdapter()
+        holderKeyPair = EphemeralKeyWithSelfSignedCert()
+        verifierKeyPair = EphemeralKeyWithSelfSignedCert()
         holder = HolderAgent(holderKeyPair)
         verifier = VerifierAgent(verifierKeyPair)
         holderProtocol = PresentProofProtocol.newHolderInstance(
@@ -36,7 +36,7 @@ class PresentProofProtocolTest : FreeSpec({
     "presentProofGenericWithInvitation" {
         holder.storeCredential(
             IssuerAgent(
-                EphemeralKeyPariAdapter(),
+                EphemeralKeyWithSelfSignedCert(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
                 holderKeyPair.publicKey,
@@ -70,7 +70,7 @@ class PresentProofProtocolTest : FreeSpec({
     "presentProofGenericDirect" {
         holder.storeCredential(
             IssuerAgent(
-                EphemeralKeyPariAdapter(),
+                EphemeralKeyWithSelfSignedCert(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
                 holderKeyPair.publicKey,
