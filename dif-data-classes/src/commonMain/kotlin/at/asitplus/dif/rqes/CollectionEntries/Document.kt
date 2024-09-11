@@ -1,5 +1,12 @@
-package at.asitplus.dif.rqes
+package at.asitplus.dif.rqes.CollectionEntries
 
+import kotlinx.serialization.Serializable
+
+/**
+ *
+ * Class used as part of [SignatureRequestParameters]
+ */
+@Serializable
 data class Document(
     //TODO CSC P.79
     val document: String,

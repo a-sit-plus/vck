@@ -1,13 +1,15 @@
-package at.asitplus.dif.rqes.DocumentDigestEntries
+package at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries
 
-import at.asitplus.dif.rqes.ConformanceLevelEnum
-import at.asitplus.dif.rqes.SignatureFormat
+import at.asitplus.dif.rqes.Enums.ConformanceLevelEnum
+import at.asitplus.dif.rqes.Enums.SignatureFormat
+import at.asitplus.dif.rqes.Enums.SignedEnvelopeProperty
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-data class CscDocumentDigestEntry(
+@Serializable
+data class CscDocumentDigest(
     /**
      * One or more hash values representing one or more SDRs. This
      * parameter SHALL contain the Base64-encoded hash(es) of the
@@ -25,14 +27,29 @@ data class CscDocumentDigestEntry(
     @SerialName("hashAlgorithmOid")
     val hashAlgorithmOid: ObjectIdentifier,
 
-
+    /**
+     * Requested Signature Format
+     */
     val signatureFormat: SignatureFormat,
 
 
+    /**
+     * Requested conformance level. If omitted its value is "Ades-B-B"
+     */
     val conformanceLevel: ConformanceLevelEnum = ConformanceLevelEnum.ADESBB,
-    val signAlgo: String,
+
+    /**
+     * The OID of the algorithm to use for signing
+     */
+    val signAlgo: ObjectIdentifier,
+
+    /**
+     * TODO: Serializer
+     * The Base64-encoded DER-encoded ASN.1 signature parameters
+     */
     val signAlgoParams: String,
-    val signedProps: List<String>,
-    val signedEnvelopeProperty: String,
+
+    val signedProps: List<String>?,
+    val signedEnvelopeProperty: SignedEnvelopeProperty = SignedEnvelopeProperty.defaultProperty(signatureFormat),
 )
 
