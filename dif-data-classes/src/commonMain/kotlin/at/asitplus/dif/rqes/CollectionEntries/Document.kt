@@ -3,8 +3,7 @@ package at.asitplus.dif.rqes.CollectionEntries
 import kotlinx.serialization.Serializable
 
 /**
- *
- * Class used as part of [SignatureRequestParameters]
+ * CSC: Class used as part of [SignatureRequestParameters]
  */
 @Serializable
 data class Document(

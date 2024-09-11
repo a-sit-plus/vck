@@ -110,7 +110,7 @@ sealed class AuthorizationDetails {
          * array both cases, where are document is signed or a digest is signed
          */
         @SerialName("documentDigests")
-        val documentDigestsCSC: Collection<OAuthDocumentDigest>,
+        val documentDigests: Collection<OAuthDocumentDigest>,
 
         /**
          * CSC: String containing the OID of the hash algorithm used to generate the hashes
