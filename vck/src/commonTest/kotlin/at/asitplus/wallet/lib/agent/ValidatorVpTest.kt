@@ -31,7 +31,7 @@ class ValidatorVpTest : FreeSpec({
     lateinit var holder: HolderAgent
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var holderJwsService: JwsService
-    lateinit var holderKeyPair: KeyPairAdapter
+    lateinit var holderKeyPair: KeyWithCert
     lateinit var verifier: Verifier
     lateinit var challenge: String
 
@@ -39,12 +39,12 @@ class ValidatorVpTest : FreeSpec({
         validator = Validator()
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
-            EphemeralKeyPariAdapter(),
+            EphemeralKeyWithSelfSignedCert(),
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
         holderCredentialStore = InMemorySubjectCredentialStore()
-        holderKeyPair = EphemeralKeyPariAdapter()
+        holderKeyPair = EphemeralKeyWithSelfSignedCert()
         holder = HolderAgent(holderKeyPair, holderCredentialStore)
         holderJwsService = DefaultJwsService(DefaultCryptoService(holderKeyPair))
         verifier = VerifierAgent()

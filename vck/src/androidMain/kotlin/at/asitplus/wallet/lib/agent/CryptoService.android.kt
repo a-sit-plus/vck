@@ -7,7 +7,7 @@ import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-actual open class PlatformCryptoShim actual constructor(actual val keyPairAdapter: KeyPairAdapter) {
+actual open class PlatformCryptoShim actual constructor(actual val keyWithCert: KeyWithCert) {
 
     actual fun encrypt(
         key: ByteArray,

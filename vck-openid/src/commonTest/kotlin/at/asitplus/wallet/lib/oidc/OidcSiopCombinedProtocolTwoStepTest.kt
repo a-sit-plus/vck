@@ -5,8 +5,8 @@ import at.asitplus.wallet.lib.agent.CredentialSubmission
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
+import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -26,8 +26,8 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
 
     lateinit var relyingPartyUrl: String
 
-    lateinit var holderKeyPair: KeyPairAdapter
-    lateinit var verifierKeyPair: KeyPairAdapter
+    lateinit var holderKeyPair: KeyWithCert
+    lateinit var verifierKeyPair: KeyWithCert
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -36,14 +36,13 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderKeyPair = EphemeralKeyPariAdapter()
-        verifierKeyPair = EphemeralKeyPariAdapter()
+        holderKeyPair = EphemeralKeyWithSelfSignedCert()
+        verifierKeyPair = EphemeralKeyWithSelfSignedCert()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         holderAgent = HolderAgent(holderKeyPair)
         verifierAgent = VerifierAgent(verifierKeyPair)
 
         holderSiop = OidcSiopWallet(
-            keyPairAdapter = holderKeyPair,
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(
@@ -287,12 +286,12 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
 })
 
 private suspend fun Holder.storeSdJwtCredential(
-    holderKeyPair: KeyPairAdapter,
+    holderKeyPair: KeyWithCert,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
         IssuerAgent(
-            EphemeralKeyPariAdapter(),
+            EphemeralKeyWithSelfSignedCert(),
             DummyCredentialDataProvider(),
         ).issueCredential(
             holderKeyPair.publicKey,
@@ -303,11 +302,11 @@ private suspend fun Holder.storeSdJwtCredential(
 }
 
 private suspend fun Holder.storeIsoCredential(
-    holderKeyPair: KeyPairAdapter,
+    holderKeyPair: KeyWithCert,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) = storeCredential(
     IssuerAgent(
-        EphemeralKeyPariAdapter(),
+        EphemeralKeyWithSelfSignedCert(),
         DummyCredentialDataProvider(),
     ).issueCredential(
         holderKeyPair.publicKey,

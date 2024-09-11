@@ -8,6 +8,7 @@ import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.io.BitSet
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
@@ -54,35 +55,35 @@ class IssuerAgent(
     private val jwsService: JwsService,
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
-    override val keyPair: KeyPairAdapter,
+    override val keyPair: KeyWithCert,
     override val cryptoAlgorithms: Set<X509SignatureAlgorithm>,
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
 ) : Issuer {
 
     constructor(
-        keyPairAdapter: KeyPairAdapter = EphemeralKeyPariAdapter(),
+        keyWithCert: KeyWithCert = EphemeralKeyWithSelfSignedCert(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
         validator = Validator(),
-        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
+        jwsService = DefaultJwsService(DefaultCryptoService(keyWithCert)),
+        coseService = DefaultCoseService(DefaultCryptoService(keyWithCert)),
         dataProvider = dataProvider,
-        keyPair = keyPairAdapter,
-        cryptoAlgorithms = setOf(keyPairAdapter.signatureAlgorithm),
+        keyPair = keyWithCert,
+        cryptoAlgorithms = setOf(keyWithCert.x509SignatureAlgorithm),
     )
 
     constructor(
-        keyPairAdapter: KeyPairAdapter = EphemeralKeyPariAdapter(),
+        keyWithCert: KeyWithCert = EphemeralKeyWithSelfSignedCert(),
         issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
         validator = Validator(),
         issuerCredentialStore = issuerCredentialStore,
-        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
+        jwsService = DefaultJwsService(DefaultCryptoService(keyWithCert)),
+        coseService = DefaultCoseService(DefaultCryptoService(keyWithCert)),
         dataProvider = dataProvider,
-        keyPair = keyPairAdapter,
-        cryptoAlgorithms = setOf(keyPairAdapter.signatureAlgorithm),
+        keyPair = keyWithCert,
+        cryptoAlgorithms = setOf(keyWithCert.x509SignatureAlgorithm),
     )
 
     /**

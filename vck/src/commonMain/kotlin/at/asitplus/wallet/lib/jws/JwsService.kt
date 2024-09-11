@@ -106,7 +106,7 @@ interface VerifierJwsService {
 class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
     override val algorithm: JwsAlgorithm =
-        cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
+        cryptoService.keyWithCert.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
 
     // TODO: Get from crypto service
     override val encryptionAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES
@@ -120,17 +120,17 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         contentType: String?
     ): KmmResult<JwsSigned> = createSignedJws(
         JwsHeader(
-            algorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-            keyId = cryptoService.keyPairAdapter.publicKey.didEncoded,
+            algorithm = cryptoService.keyWithCert.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
+            keyId = cryptoService.keyWithCert.publicKey.didEncoded,
             type = type,
             contentType = contentType
         ), payload
     )
 
     override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray) = catching {
-        if (header.algorithm != cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm()
+        if (header.algorithm != cryptoService.keyWithCert.signatureAlgorithm.toJwsAlgorithm()
                 .getOrThrow()
-            || header.jsonWebKey?.let { it != cryptoService.keyPairAdapter.jsonWebKey } == true
+            || header.jsonWebKey?.let { it != cryptoService.keyWithCert.jsonWebKey } == true
         ) {
             throw IllegalArgumentException("Algorithm or JSON Web Key not matching to cryptoService")
         }
@@ -148,19 +148,19 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         addX5c: Boolean
     ): KmmResult<JwsSigned> = catching {
         var copy = header?.copy(
-            algorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
+            algorithm = cryptoService.keyWithCert.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
         )
             ?: JwsHeader(
-                algorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm()
+                algorithm = cryptoService.keyWithCert.signatureAlgorithm.toJwsAlgorithm()
                     .getOrThrow()
             )
         if (addKeyId)
-            copy = copy.copy(keyId = cryptoService.keyPairAdapter.jsonWebKey.keyId)
+            copy = copy.copy(keyId = cryptoService.keyWithCert.jsonWebKey.keyId)
         if (addJsonWebKey)
-            copy = copy.copy(jsonWebKey = cryptoService.keyPairAdapter.jsonWebKey)
+            copy = copy.copy(jsonWebKey = cryptoService.keyWithCert.jsonWebKey)
         if (addX5c)
             copy =
-                copy.copy(certificateChain = listOf(cryptoService.keyPairAdapter.certificate!!)) //TODO cleanup/nullchecks
+                copy.copy(certificateChain = listOf(cryptoService.keyWithCert.getCertificate()!!)) //TODO cleanup/nullchecks
         createSignedJws(copy, payload).getOrThrow()
     }
 
@@ -204,7 +204,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val jweHeader = (header ?: JweHeader(jweAlgorithm, jweEncryption, type = null)).copy(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
-            jsonWebKey = cryptoService.keyPairAdapter.jsonWebKey,
+            jsonWebKey = cryptoService.keyWithCert.jsonWebKey,
             ephemeralKeyPair = ephemeralKeyPair.publicJsonWebKey
         )
         encryptJwe(ephemeralKeyPair, recipientKey, jweAlgorithm, jweEncryption, jweHeader, payload)
@@ -224,7 +224,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val jweHeader = JweHeader(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
-            jsonWebKey = cryptoService.keyPairAdapter.jsonWebKey,
+            jsonWebKey = cryptoService.keyWithCert.jsonWebKey,
             type = type,
             contentType = contentType,
             ephemeralKeyPair = ephemeralKeyPair.publicJsonWebKey

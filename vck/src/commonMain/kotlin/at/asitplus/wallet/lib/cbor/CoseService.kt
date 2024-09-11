@@ -55,7 +55,7 @@ private const val SIGNATURE1_STRING = "Signature1"
 
 class DefaultCoseService(private val cryptoService: CryptoService) : CoseService {
 
-    override val algorithm: CoseAlgorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
+    override val algorithm: CoseAlgorithm = cryptoService.keyWithCert.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
 
     override suspend fun createSignedCose(
         protectedHeader: CoseHeader?,
@@ -67,11 +67,11 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         var copyProtectedHeader = protectedHeader?.copy(algorithm = algorithm)
             ?: CoseHeader(algorithm = algorithm)
         if (addKeyId) copyProtectedHeader =
-            copyProtectedHeader.copy(kid = cryptoService.keyPairAdapter.publicKey.didEncoded.encodeToByteArray())
+            copyProtectedHeader.copy(kid = cryptoService.keyWithCert.publicKey.didEncoded.encodeToByteArray())
 
-        val copyUnprotectedHeader = if (addCertificate && cryptoService.keyPairAdapter.certificate != null) {
+        val copyUnprotectedHeader = if (addCertificate && cryptoService.keyWithCert.getCertificate() != null) {
             (unprotectedHeader
-                ?: CoseHeader()).copy(certificateChain = cryptoService.keyPairAdapter.certificate!!.encodeToDer())
+                ?: CoseHeader()).copy(certificateChain = cryptoService.keyWithCert.getCertificate()!!.encodeToDer())
         } else {
             unprotectedHeader
         }

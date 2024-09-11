@@ -13,8 +13,7 @@ import at.asitplus.signum.supreme.HazardousMaterials
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.PlatformCryptoShim
-import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import com.nimbusds.jose.*
@@ -27,6 +26,8 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.encodeToString
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.security.Security
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.RSAPrivateKey
@@ -114,7 +115,7 @@ class JwsServiceJvmTest : FreeSpec({
                 else RSADecrypter(ephemeralKey.jcaPrivateKey as RSAPrivateKey)
 
 
-            val keyPairAdapter = EphemeralKeyPariAdapter(ephemeralKey)
+            val keyPairAdapter = EphemeralKeyWithSelfSignedCert(ephemeralKey)
             val cryptoService = DefaultCryptoService(keyPairAdapter)
             val jwsService = DefaultJwsService(cryptoService)
             val verifierJwsService = DefaultVerifierJwsService()
@@ -140,7 +141,7 @@ class JwsServiceJvmTest : FreeSpec({
                     val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
                     val libHeader = JWSHeader.Builder(JWSAlgorithm(algo.name))
                         .type(JOSEObjectType("JWT"))
-                        .jwk(JWK.parse(cryptoService.keyPairAdapter.jsonWebKey.serialize()))
+                        .jwk(JWK.parse(cryptoService.keyWithCert.jsonWebKey.serialize()))
                         .build()
                     val libObject = JWSObject(libHeader, Payload(stringPayload)).also {
                         it.sign(jvmSigner)
@@ -193,7 +194,7 @@ class JwsServiceJvmTest : FreeSpec({
                         val libJweHeader =
                             JWEHeader.Builder(JWEAlgorithm(jweAlgorithm.identifier), EncryptionMethod.A256GCM)
                                 .type(JOSEObjectType(JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON))
-                                .jwk(JWK.parse(cryptoService.keyPairAdapter.jsonWebKey.serialize()))
+                                .jwk(JWK.parse(cryptoService.keyWithCert.jsonWebKey.serialize()))
                                 .contentType(JwsContentTypeConstants.DIDCOMM_PLAIN_JSON)
                                 .build()
                         val libJweObject = JWEObject(libJweHeader, Payload(stringPayload)).also {
@@ -213,7 +214,7 @@ class JwsServiceJvmTest : FreeSpec({
                         val encrypted = jwsService.encryptJweObject(
                             JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
                             stringPayload.encodeToByteArray(),
-                            cryptoService.keyPairAdapter.jsonWebKey,
+                            cryptoService.keyWithCert.jsonWebKey,
                             JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
                             jweAlgorithm,
                             JweEncryption.A256GCM,

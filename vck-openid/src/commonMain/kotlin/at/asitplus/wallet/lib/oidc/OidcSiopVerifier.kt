@@ -104,12 +104,12 @@ class OidcSiopVerifier private constructor(
     }
 
     constructor(
-        keyPairAdapter: KeyPairAdapter = EphemeralKeyPariAdapter(),
+        keyPairAdapter: KeyWithCert = EphemeralKeyWithSelfSignedCert(),
         verifier: Verifier = VerifierAgent(keyPairAdapter),
         relyingPartyUrl: String? = null,
         responseUrl: String? = null,
         verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter, PlatformCryptoShim())),
+        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
         timeLeewaySeconds: Long = 300L,
         clock: Clock = Clock.System,
         nonceService: NonceService = DefaultNonceService(),

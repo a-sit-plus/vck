@@ -19,8 +19,8 @@ import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
+import at.asitplus.wallet.lib.agent.KeyWithCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -62,7 +62,7 @@ class WalletService(
      * Used to prove possession of the key material to create [CredentialRequestProof],
      * i.e. the holder key.
      */
-    private val cryptoService: CryptoService = DefaultCryptoService(EphemeralKeyPariAdapter()),
+    private val cryptoService: CryptoService = DefaultCryptoService(EphemeralKeyWithSelfSignedCert()),
     /**
      * Used to prove possession of the key material to create [CredentialRequestProof].
      */
@@ -84,7 +84,7 @@ class WalletService(
     constructor(
         clientId: String,
         redirectUrl: String,
-        keyPairAdapter: KeyPairAdapter,
+        keyPairAdapter: KeyWithCert,
         remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
         stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
     ) : this(
@@ -521,7 +521,7 @@ class WalletService(
         proofType = OpenIdConstants.ProofType.JWT,
         jwt = jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
-                algorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
+                algorithm = cryptoService.keyWithCert.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
                 type = OpenIdConstants.ProofType.JWT_HEADER_TYPE.stringRepresentation,
             ),
             payload = JsonWebToken(
@@ -544,9 +544,9 @@ class WalletService(
         proofType = OpenIdConstants.ProofType.CWT,
         cwt = coseService.createSignedCose(
             protectedHeader = CoseHeader(
-                algorithm = cryptoService.keyPairAdapter.signatureAlgorithm.toCoseAlgorithm().getOrThrow(),
+                algorithm = cryptoService.keyWithCert.signatureAlgorithm.toCoseAlgorithm().getOrThrow(),
                 contentType = OpenIdConstants.ProofType.CWT_HEADER_TYPE.stringRepresentation,
-                certificateChain = cryptoService.keyPairAdapter.certificate?.encodeToDerOrNull()
+                certificateChain = cryptoService.keyWithCert.getCertificate()?.encodeToDerOrNull()
             ),
             payload = CborWebToken(
                 issuer = clientId, // omit when token was pre-authn?

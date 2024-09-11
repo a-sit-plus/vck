@@ -1,4 +1,6 @@
 import at.asitplus.gradle.*
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
 plugins {
     kotlin("multiplatform")
@@ -17,6 +19,11 @@ version = artifactVersion
 kotlin {
 
     jvm()
+    androidTarget {
+        publishLibraryVariants("release")
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        instrumentedTestVariant.sourceSetTree.set(test)
+    }
     iosArm64()
     iosSimulatorArm64()
     iosX64()
@@ -57,6 +64,8 @@ kotlin {
         }
     }
 }
+
+setupAndroid()
 
 exportIosFramework(
     "OpenIdDataClasses",

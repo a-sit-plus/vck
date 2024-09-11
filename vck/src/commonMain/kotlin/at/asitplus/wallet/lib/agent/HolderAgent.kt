@@ -33,7 +33,7 @@ class HolderAgent(
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val jwsService: JwsService,
     private val coseService: CoseService,
-    override val keyPair: KeyPairAdapter,
+    override val keyPair: KeyWithCert,
     private val verifiablePresentationFactory: VerifiablePresentationFactory = VerifiablePresentationFactory(
         jwsService = jwsService,
         coseService = coseService,
@@ -43,14 +43,14 @@ class HolderAgent(
 ) : Holder {
 
     constructor(
-        keyPairAdapter: KeyPairAdapter,
+        keyWithCert: KeyWithCert,
         subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore()
     ) : this(
         validator = Validator(),
         subjectCredentialStore = subjectCredentialStore,
-        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
-        keyPair = keyPairAdapter
+        jwsService = DefaultJwsService(DefaultCryptoService(keyWithCert)),
+        coseService = DefaultCoseService(DefaultCryptoService(keyWithCert)),
+        keyPair = keyWithCert
     )
 
     /**

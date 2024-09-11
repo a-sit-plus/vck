@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.EphemeralKeyPariAdapter
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -19,14 +19,14 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
     val walletUrl = "https://example.com/wallet/${uuid4()}"
     val responseUrl = "https://example.com/rp/${uuid4()}"
 
-    val holderKeyPair = EphemeralKeyPariAdapter()
+    val holderKeyPair = EphemeralKeyWithSelfSignedCert()
     val oidcSiopWallet = OidcSiopWallet(
-        keyPairAdapter = holderKeyPair,
+        keyWithCert = holderKeyPair,
         holder = HolderAgent(holderKeyPair),
     )
 
     val verifierSiop = OidcSiopVerifier(
-        verifier = VerifierAgent(EphemeralKeyPariAdapter()),
+        verifier = VerifierAgent(EphemeralKeyWithSelfSignedCert()),
         relyingPartyUrl = relyingPartyUrl,
         responseUrl = responseUrl,
     )

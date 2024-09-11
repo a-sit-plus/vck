@@ -22,18 +22,18 @@ class AgentRevocationTest : FreeSpec({
 
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var verifier: Verifier
-    lateinit var verifierKeyPair: KeyPairAdapter
+    lateinit var verifierKeyPair: KeyWithCert
     lateinit var issuer: Issuer
     lateinit var expectedRevokedIndexes: List<Long>
 
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
-            EphemeralKeyPariAdapter(),
+            EphemeralKeyWithSelfSignedCert(),
             issuerCredentialStore,
             DummyCredentialDataProvider()
         )
-        verifierKeyPair = EphemeralKeyPariAdapter()
+        verifierKeyPair = EphemeralKeyWithSelfSignedCert()
         verifier = VerifierAgent(verifierKeyPair)
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
@@ -72,7 +72,7 @@ class AgentRevocationTest : FreeSpec({
 
     "encoding to a known value works" {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(EphemeralKeyPariAdapter(), issuerCredentialStore)
+        issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert(), issuerCredentialStore)
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 
@@ -88,7 +88,7 @@ class AgentRevocationTest : FreeSpec({
 
     "decoding a known value works" {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(EphemeralKeyPariAdapter(), issuerCredentialStore)
+        issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert(), issuerCredentialStore)
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
         issuerCredentialStore.revokeCredentialsWithIndexes(expectedRevokedIndexes)
 
@@ -127,7 +127,7 @@ private fun IssuerCredentialStore.revokeCredentialsWithIndexes(revokedIndexes: L
         val vcId = uuid4().toString()
         val revListIndex = storeGetNextIndex(
             credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred, ConstantIndex.AtomicAttribute2023),
-            subjectPublicKey = EphemeralKeyPariAdapter().publicKey,
+            subjectPublicKey = EphemeralKeyWithSelfSignedCert().publicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             timePeriod = FixedTimePeriodProvider.timePeriod
@@ -147,7 +147,7 @@ private fun IssuerCredentialStore.revokeRandomCredentials(): MutableList<Long> {
         val vcId = uuid4().toString()
         val revListIndex = storeGetNextIndex(
             credential = IssuerCredentialStore.Credential.VcJwt(vcId, cred, ConstantIndex.AtomicAttribute2023),
-            subjectPublicKey = EphemeralKeyPariAdapter().publicKey,
+            subjectPublicKey = EphemeralKeyWithSelfSignedCert().publicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             timePeriod = FixedTimePeriodProvider.timePeriod
