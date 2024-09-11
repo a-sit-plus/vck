@@ -41,13 +41,16 @@ abstract class KeyWithSelfSignedCert(
     private val crtMut = Mutex()
     private var _certificate: X509Certificate? = null
 
+
     override suspend fun getCertificate(): X509Certificate? {
         crtMut.withLock {
             if (_certificate == null) _certificate = X509Certificate.generateSelfSignedCertificate(
                 publicKey,
                 signatureAlgorithm.toX509SignatureAlgorithm().getOrThrow(),
                 extensions
-            ) { sign(it).asKmmResult().onFailure { Napier.w("Could not self-sign Cert", it) } }
+            ) {
+                sign(it).asKmmResult()
+            }.onFailure { Napier.e("Could not self-sign Cert", it) }.getOrNull()
         }
         return _certificate
     }

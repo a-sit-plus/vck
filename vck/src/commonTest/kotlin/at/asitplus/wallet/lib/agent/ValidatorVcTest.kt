@@ -39,8 +39,7 @@ class ValidatorVcTest : FreeSpec() {
     init {
         beforeEach {
             issuerCredentialStore = InMemoryIssuerCredentialStore()
-            val randomKeyPairAdapter = EphemeralKeyWithSelfSignedCert()
-            issuerKeyPair = randomKeyPairAdapter
+            issuerKeyPair = EphemeralKeyWithSelfSignedCert()
             issuer = IssuerAgent(issuerKeyPair, issuerCredentialStore, dataProvider)
             issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyPair))
             verifierKeyPair = EphemeralKeyWithSelfSignedCert()
