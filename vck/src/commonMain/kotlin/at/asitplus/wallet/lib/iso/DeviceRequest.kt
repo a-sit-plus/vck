@@ -385,6 +385,7 @@ open class IssuerSignedListSerializer(val namespace: String) : KSerializer<Issue
 
         @ExperimentalSerializationApi
         override fun getElementAnnotations(index: Int): List<Annotation> {
+            @OptIn(ExperimentalUnsignedTypes::class)
             return listOf(ValueTags(24U))
         }
 

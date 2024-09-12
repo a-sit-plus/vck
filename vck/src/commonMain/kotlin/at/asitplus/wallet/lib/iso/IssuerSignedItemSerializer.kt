@@ -39,6 +39,7 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
                 elementName = IssuerSignedItem.PROP_ELEMENT_VALUE,
                 descriptor = buildElementValueSerializer(value.elementValue).descriptor,
                 annotations = if (value.elementValue is LocalDate || value.elementValue is Instant)
+                    @OptIn(ExperimentalUnsignedTypes::class)
                     listOf(ValueTags(1004uL)) else emptyList()
             )
         }
