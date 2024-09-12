@@ -6,10 +6,6 @@ import kotlinx.serialization.Serializable
 enum class CredentialFormatEnum(val text: String) {
     NONE("none"),
     JWT_VC("jwt_vc_json"),
-    /**
-     * Unofficial constant, used by this library prior to implementing OID4VCI Draft 13.
-     */
-    JWT_VC_SD_UNOFFICIAL("jwt_vc_sd"),
     VC_SD_JWT("vc+sd-jwt"),
     JWT_VC_JSON_LD("jwt_vc_json-ld"),
     JSON_LD("ldp_vc"),

@@ -43,9 +43,11 @@ import kotlinx.datetime.Clock
 import kotlin.random.Random
 
 /**
- * Client service to retrieve credentials using
- * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html).
- * Implemented from Draft `openid-4-verifiable-credential-issuance-1_0-11`, 2023-02-03.
+ * Client service to retrieve credentials using OID4VCI
+ *
+ * Implemented from
+ * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
+ * , Draft 14, 2024-08-21.
  */
 class WalletService(
     /**
@@ -140,7 +142,7 @@ class WalletService(
 
     /**
      * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
-     * [IssuerMetadata.authorizationEndpointUrl]).
+     * [OAuth2AuthorizationServerMetadata.authorizationEndpoint]).
      *
      * Sample ktor code:
      * ```
@@ -183,7 +185,7 @@ class WalletService(
 
     /**
      * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
-     * [IssuerMetadata.authorizationEndpointUrl]).
+     * [OAuth2AuthorizationServerMetadata.authorizationEndpoint]).
      *
      * Sample ktor code:
      * ```
@@ -277,7 +279,7 @@ class WalletService(
      * Request token with an authorization code, e.g. from [createAuthRequest], or pre-auth code.
      *
      * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
-     * [IssuerMetadata.tokenEndpointUrl]).
+     * [OAuth2AuthorizationServerMetadata.tokenEndpoint]).
      *
      * Sample ktor code for authorization code:
      * ```
@@ -369,7 +371,7 @@ class WalletService(
      * Request token with an authorization code, e.g. from [createAuthRequest], or pre-auth code.
      *
      * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
-     * [IssuerMetadata.tokenEndpointUrl]).
+     * [OAuth2AuthorizationServerMetadata.tokenEndpoint]).
      *
      * Sample ktor code for authorization code:
      * ```

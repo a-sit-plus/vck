@@ -2,6 +2,8 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -14,7 +16,6 @@ import kotlinx.serialization.encodeToString
  * which is the registered default-path, see
  * [IANA](https://www.iana.org/assignments/well-known-uris/well-known-uris.xhtml)
  */
-
 @Serializable
 data class OAuth2AuthorizationServerMetadata(
     /**
@@ -35,7 +36,8 @@ data class OAuth2AuthorizationServerMetadata(
      * `RFC6749`.  This is REQUIRED unless no grant types are supported
      * that use the authorization endpoint.
      *
-     * NOTE: Mandatory for our use-case
+     * OIDC SIOPv2: REQUIRED. URL of the Self-Issued OP used by the RP to perform Authentication of the End-User.
+     * Can be custom URI scheme, or Universal Links/App links.
      */
     @SerialName("authorization_endpoint")
     val authorizationEndpoint: String,
@@ -61,11 +63,9 @@ data class OAuth2AuthorizationServerMetadata(
     /**
      * URL of the authorization server's token endpoint `RFC6749`.  This
      * is REQUIRED unless only the implicit grant type is supported.
-     *
-     * NOTE: Mandatory for our use-case
      */
     @SerialName("token_endpoint")
-    val tokenEndpoint: String,
+    val tokenEndpoint: String? = null,
 
     /**
      * OPTIONAL.  URL of the authorization server's JWK Set `JWK`
@@ -77,9 +77,12 @@ data class OAuth2AuthorizationServerMetadata(
      * encryption keys are made available, a "use" (public key use)
      * parameter value is REQUIRED for all keys in the referenced JWK Set
      * to indicate each key's intended usage.
+     *
+     * OIDC SIOPv2: MUST NOT be present in Self-Issued OP Metadata. If it is, the RP MUST ignore it and use the `sub`
+     * Claim in the ID Token to obtain signing keys to validate the signatures from the Self-Issued OpenID Provider.
      */
     @SerialName("jwks_uri")
-    val jwksUri: String? = null,
+    val jsonWebKeySetUrl: String? = null,
 
     /**
      * OPTIONAL.  URL of the authorization server's OAuth 2.0 Dynamic
@@ -93,8 +96,11 @@ data class OAuth2AuthorizationServerMetadata(
      * `RFC6749` "scope" values that this authorization server supports.
      * Servers MAY choose not to advertise some supported scope values
      * even when this parameter is used.
+     *
+     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing supported scopes.
+     * MUST support the `openid` scope value.
      */
-    @SerialName("scope_supported")
+    @SerialName("scopes_supported")
     val scopesSupported: Set<String>? = null,
 
     /**
@@ -103,6 +109,8 @@ data class OAuth2AuthorizationServerMetadata(
      * The array values used are the same as those used with the
      * "response_types" parameter defined by "OAuth 2.0 Dynamic Client
      * Registration Protocol" `RFC7591`.
+     *
+     * OIDC SIOPv2: MUST be `id_token`.
      */
     @SerialName("response_types_supported")
     val responseTypesSupported: Set<String>? = null,
@@ -153,6 +161,76 @@ data class OAuth2AuthorizationServerMetadata(
      */
     @SerialName("token_endpoint_auth_signing_alg_methods_supported")
     val tokenEndPointAuthSigningAlgValuesSupported: Set<String>? = null,
+
+    /**
+     * OIDC Discovery: REQUIRED. JSON array containing a list of the Subject Identifier types that this OP supports.
+     * Valid types include `pairwise` and `public`.
+     */
+    @SerialName("subject_types_supported")
+    val subjectTypesSupported: Set<String>? = null,
+
+    /**
+     * OIDC Discovery: REQUIRED. A JSON array containing a list of the JWS signing algorithms (`alg` values) supported
+     * by the OP for the ID Token to encode the Claims in a JWT (RFC7519).
+     * Valid values include `RS256`, `ES256`, `ES256K`, and `EdDSA`.
+     */
+    @SerialName("id_token_signing_alg_values_supported")
+    val idTokenSigningAlgorithmsSupported: Set<JwsAlgorithm>? = null,
+
+    /**
+     * OIDC SIOPv2: REQUIRED. A JSON array containing a list of the JWS signing algorithms (alg values) supported by the
+     * OP for Request Objects, which are described in Section 6.1 of OpenID.Core.
+     * Valid values include `none`, `RS256`, `ES256`, `ES256K`, and `EdDSA`.
+     */
+    @SerialName("request_object_signing_alg_values_supported")
+    val requestObjectSigningAlgorithmsSupported: Set<JwsAlgorithm>? = null,
+
+    /**
+     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing URI scheme identifiers and optionally method names of
+     * supported Subject Syntax Types.
+     * Valid values include `urn:ietf:params:oauth:jwk-thumbprint`, `did:example` and others.
+     */
+    @SerialName("subject_syntax_types_supported")
+    val subjectSyntaxTypesSupported: Set<String>? = null,
+
+    /**
+     * OIDC SIOPv2: OPTIONAL. A JSON array of strings containing the list of ID Token types supported by the OP,
+     * the default value is `attester_signed_id_token` (the id token is issued by the party operating the OP, i.e. this
+     * is the classical id token as defined in OpenID.Core), may also include `subject_signed_id_token` (Self-Issued
+     * ID Token, i.e. the id token is signed with key material under the end-user's control).
+     */
+    @SerialName("id_token_types_supported")
+    val idTokenTypesSupported: Set<IdTokenType>? = null,
+
+    /**
+     * OID4VP: OPTIONAL. Boolean value specifying whether the Wallet supports the transfer of `presentation_definition`
+     * by reference, with true indicating support. If omitted, the default value is true.
+     */
+    @SerialName("presentation_definition_uri_supported")
+    val presentationDefinitionUriSupported: Boolean = true,
+
+    /**
+     * OID4VP: REQUIRED. An object containing a list of key value pairs, where the key is a string identifying a
+     * Credential format supported by the Wallet. Valid Credential format identifier values are defined in Annex E
+     * of OpenID.VCI. Other values may be used when defined in the profiles of this specification.
+     */
+    @SerialName("vp_formats_supported")
+    val vpFormatsSupported: VpFormatsSupported? = null,
+
+    /**
+     * OID4VP: OPTIONAL. Array of JSON Strings containing the values of the Client Identifier schemes that the Wallet
+     * supports. The values defined by this specification are `pre-registered`, `redirect_uri`, `entity_id`, `did`.
+     * If omitted, the default value is pre-registered.
+     */
+    @SerialName("client_id_schemes_supported")
+    val clientIdSchemesSupported: Set<String>? = null,
+
+    /**
+     * RFC 9449: A JSON array containing a list of the JWS alg values (from the `IANA.JOSE.ALGS` registry) supported
+     * by the authorization server for DPoP proof JWTs.
+     */
+    @SerialName("dpop_signing_alg_values_supported")
+    val dpopSigningAlgValuesSupported: Set<JsonWebAlgorithm>? = null,
 
     /**
      * OPTIONAL.  URL of a page containing human-readable information

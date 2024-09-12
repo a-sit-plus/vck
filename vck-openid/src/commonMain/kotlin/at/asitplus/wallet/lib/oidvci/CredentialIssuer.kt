@@ -23,8 +23,9 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 /**
  * Server implementation to issue credentials using OID4VCI.
  *
- * Implemented from [OpenID for Verifiable Credential Issuance]
- * (https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), Draft 13, 2024-02-08.
+ * Implemented from
+ * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
+ * , Draft 14, 2024-08-21.
  */
 class CredentialIssuer(
     /**
@@ -64,16 +65,9 @@ class CredentialIssuer(
             credentialIssuer = publicContext,
             authorizationServers = setOf(authorizationService.publicContext),
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
-            authorizationEndpointUrl = if (authorizationService is SimpleAuthorizationService)
-                authorizationService.publicContext + authorizationService.authorizationEndpointPath
-            else null,
-            tokenEndpointUrl = if (authorizationService is SimpleAuthorizationService)
-                authorizationService.publicContext + authorizationService.tokenEndpointPath
-            else null,
             supportedCredentialConfigurations = mutableMapOf<String, SupportedCredentialFormat>().apply {
                 credentialSchemes.forEach { putAll(it.toSupportedCredentialFormat(issuer.cryptoAlgorithms)) }
             },
-            supportsCredentialIdentifiers = true,
         )
     }
 
@@ -225,9 +219,7 @@ private fun CredentialRequestParameters.extractCredentialScheme(format: Credenti
     CredentialFormatEnum.JWT_VC -> credentialDefinition?.types?.firstOrNull { it != VERIFIABLE_CREDENTIAL }
         ?.let { AttributeIndex.resolveAttributeType(it) }
 
-    CredentialFormatEnum.VC_SD_JWT,
-    CredentialFormatEnum.JWT_VC_SD_UNOFFICIAL -> sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
-
+    CredentialFormatEnum.VC_SD_JWT -> sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
     CredentialFormatEnum.MSO_MDOC -> docType?.let { AttributeIndex.resolveIsoDoctype(it) }
     else -> null
 }

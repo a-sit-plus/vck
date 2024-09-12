@@ -14,6 +14,8 @@ class DeserializationTest : FunSpec({
     test("OID4VCI  A.1.1. VC Signed as a JWT, Not Using JSON-LD ") {
         val input = """
         {
+            "credential_issuer": "test",
+            "credential_endpoint": "test",
             "credential_configurations_supported": {
                 "UniversityDegreeCredential": {
                     "format": "jwt_vc_json",
@@ -91,6 +93,8 @@ class DeserializationTest : FunSpec({
     test("OID4VCI  A.2. ISO mDL ") {
         val input = """
         {
+            "credential_issuer": "test",
+            "credential_endpoint": "test",
             "credential_configurations_supported": {
                 "org.iso.18013.5.1.mDL": {
                     "format": "mso_mdoc",
@@ -176,6 +180,8 @@ class DeserializationTest : FunSpec({
     test("OID4VCI  A.3. IETF SD-JWT VC") {
         val input = """
         {
+            "credential_issuer": "test",
+            "credential_endpoint": "test",
             "credential_configurations_supported": {
                 "SD_JWT_VC_example_in_OpenID4VCI": {
                     "format": "vc+sd-jwt",

@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -124,7 +125,6 @@ class OidvciInteropTest : FunSpec({
         issuerMetadata.credentialResponseEncryption!!.supportedAlgorithms
             .shouldHaveSingleElement(JweAlgorithm.RSA_OAEP_256)
         issuerMetadata.credentialResponseEncryption!!.encryptionRequired shouldBe true
-        issuerMetadata.supportsCredentialIdentifiers shouldBe true
         // select correct credential config by using a configurationId from the offer it self
         val credentialConfig = issuerMetadata.supportedCredentialConfigurations!!
             .entries.first { it.key == credentialOffer.configurationIds.first() }.toPair()
@@ -143,12 +143,12 @@ class OidvciInteropTest : FunSpec({
         val authorizationServerMetadataUrl =
             issuerMetadata.authorizationServers?.firstOrNull()?.plus("/.well-known/openid-configuration")
         // need to get from URL and parse ...
-        val authorizationServerMetadata = IssuerMetadata(
-            issuer = "https://localhiost/idp/realms/pid-issuer-realm",
-            authorizationEndpointUrl = "https://localhost/idp/realms/pid-issuer-realm/protocol/openid-connect/auth"
+        val authorizationServerMetadata = OAuth2AuthorizationServerMetadata(
+            issuer = "https://localhost/idp/realms/pid-issuer-realm",
+            authorizationEndpoint = "https://localhost/idp/realms/pid-issuer-realm/protocol/openid-connect/auth",
+            tokenEndpoint = "https://localhost/idp/realms/pid-issuer-realm/protocol/openid-connect/token"
         )
-        val authorizationEndpoint = issuerMetadata.authorizationEndpointUrl
-            ?: authorizationServerMetadata.authorizationEndpointUrl
+        val authorizationEndpoint = authorizationServerMetadata.authorizationEndpoint
         authorizationEndpoint.shouldNotBeNull()
 
         // selection of end-user, which credential to get

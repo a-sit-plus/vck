@@ -9,7 +9,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 
 /**
- * To be serialized into `/.well-known/openid-credential-issuer`
+ * Metadata about the credential issuer in
+ * [OpenID4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
+ *
+ * To be serialized into `/.well-known/openid-credential-issuer`.
  */
 @Serializable
 data class IssuerMetadata(
@@ -23,10 +26,12 @@ data class IssuerMetadata(
     val issuer: String? = null,
 
     /**
-     * OID4VCI: REQUIRED. The Credential Issuer's identifier.
+     * OID4VCI: REQUIRED. The Credential Issuer's identifier, by a case sensitive URL using the `https`
+     * scheme that contains scheme, host and, optionally, port number and path components, but no query
+     * or fragment components
      */
     @SerialName("credential_issuer")
-    val credentialIssuer: String? = null,
+    val credentialIssuer: String,
 
     /**
      * OID4VCI: OPTIONAL. Array of strings, where each string is an identifier of the OAuth 2.0 Authorization Server
@@ -42,45 +47,10 @@ data class IssuerMetadata(
      * MAY contain port, path and query parameter components.
      */
     @SerialName("credential_endpoint")
-    val credentialEndpointUrl: String? = null,
+    val credentialEndpointUrl: String,
 
     /**
-     * OIDC Discovery: URL of the OP's OAuth 2.0 Token Endpoint (OpenID.Core). This is REQUIRED unless only the
-     * Implicit Flow is used.
-     */
-    @SerialName("token_endpoint")
-    val tokenEndpointUrl: String? = null,
-
-    /**
-     * OIDC Discovery: REQUIRED. URL of the OP's JSON Web Key Set document. This contains the signing key(s) the RP
-     * uses to validate signatures from the OP. The JWK Set MAY also contain the Server's encryption key(s), which are
-     * used by RPs to encrypt requests to the Server.
-     *
-     * OIDC SIOPv2: MUST NOT be present in Self-Issued OP Metadata. If it is, the RP MUST ignore it and use the `sub`
-     * Claim in the ID Token to obtain signing keys to validate the signatures from the Self-Issued OpenID Provider.
-     */
-    @SerialName("jwks_uri")
-    val jsonWebKeySetUrl: String? = null,
-
-    /**
-     * OIDC Discovery: REQUIRED. URL of the OP's OAuth 2.0 Authorization Endpoint (OpenID.Core).
-     *
-     * OIDC SIOPv2: REQUIRED. URL of the Self-Issued OP used by the RP to perform Authentication of the End-User.
-     * Can be custom URI scheme, or Universal Links/App links.
-     */
-    @SerialName("authorization_endpoint")
-    val authorizationEndpointUrl: String? = null,
-
-    /**
-     * OID4VCI: OPTIONAL. URL of the Credential Issuer's Batch Credential Endpoint, as defined in Section 8.
-     * This URL MUST use the `https` scheme and MAY contain port, path, and query parameter components.
-     * If omitted, the Credential Issuer does not support the Batch Credential Endpoint.
-     */
-    @SerialName("batch_credential_endpoint")
-    val batchCredentialEndpointUrl: String? = null,
-
-    /**
-     * OID4VCI: OPTIONAL. URL of the Credential Issuer's Deferred Credential Endpoint, as defined in Section 9.
+     * OID4VCI: OPTIONAL. URL of the Credential Issuer's Deferred Credential Endpoint, as defined in Section 8.
      * This URL MUST use the `https` scheme and MAY contain port, path, and query parameter components.
      * If omitted, the Credential Issuer does not support the Deferred Credential Endpoint.
      */
@@ -103,20 +73,29 @@ data class IssuerMetadata(
     val credentialResponseEncryption: SupportedAlgorithmsContainer? = null,
 
     /**
-     * OID4VCI: OPTIONAL. Boolean value specifying whether the Credential Issuer supports returning
-     * [AuthorizationDetails.credentialIdentifiers] in the Token Response parameter, with `true`
-     * indicating support. If omitted, the default value is `false`.
+     * OID4VCI: OPTIONAL. Object containing information about the Credential Issuer's supports for batch issuance of
+     * Credentials on the Credential Endpoint. The presence of this parameter means that the issuer supports the proofs
+     * parameter in the Credential Request so can issue more than one Verifiable Credential for the same Credential
+     * Dataset in a single request/response.
      */
-    @SerialName("credential_identifiers_supported")
-    val supportsCredentialIdentifiers: Boolean? = false,
+    @SerialName("batch_credential_issuance")
+    val batchCredentialIssuance: BatchCredentialIssuanceMetadata? = null,
 
     /**
-     * OID4VCI: REQUIRED. Object that describes specifics of the Credential that the Credential Issuer supports
-     * issuance of. This object contains a list of name/value pairs, where each name is a unique identifier of the
-     * supported Credential being described.
+     * OPTIONAL. String that is a signed JWT. This JWT contains Credential Issuer metadata parameters as claims. The
+     * signed metadata MUST be secured using JSON Web Signature (JWS) (`RFC7515`) and MUST contain an `iat` (Issued At)
+     * claim, an `iss` (Issuer) claim denoting the party attesting to the claims in the signed metadata, and `sub`
+     * (Subject) claim matching the Credential Issuer identifier. If the Wallet supports signed metadata, metadata
+     * values conveyed in the signed JWT MUST take precedence over the corresponding values conveyed using plain JSON
+     * elements. If the Credential Issuer wants to enforce use of signed metadata, it omits the respective metadata
+     * parameters from the unsigned part of the Credential Issuer metadata. A [signedMetadata] metadata value MUST NOT
+     * appear as a claim in the JWT. The Wallet MUST establish trust in the signer of the metadata, and obtain the keys
+     * to validate the signature before processing the metadata. The concrete mechanism how to do that is out of scope
+     * of this specification and MAY be defined in the profiles of this specification.
      */
-    @SerialName("credential_configurations_supported")
-    val supportedCredentialConfigurations: Map<String, SupportedCredentialFormat>? = null,
+    // TODO Analyze usage
+    @SerialName("signed_metadata")
+    val signedMetadata: String? = null,
 
     /**
      * OID4VCI: OPTIONAL. An array of objects, where each object contains display properties of a Credential Issuer for
@@ -126,90 +105,13 @@ data class IssuerMetadata(
     val displayProperties: Set<DisplayProperties>? = null,
 
     /**
-     * OIDC Discovery: REQUIRED. JSON array containing a list of the OAuth 2.0 `response_type` values that this OP
-     * supports. Dynamic OpenID Providers MUST support the `code`, `id_token`, and the `token id_token` Response Type
-     * values.
-     * OIDC SIOPv2: MUST be `id_token`.
+     * OID4VCI: REQUIRED. Object that describes specifics of the Credential that the Credential Issuer supports
+     * issuance of. This object contains a list of name/value pairs, where each name is a unique identifier of the
+     * supported Credential being described. This identifier is used in the Credential Offer as defined in
+     * Section 4.1.1 to communicate to the Wallet which Credential is being offered, see [CredentialOffer].
      */
-    @SerialName("response_types_supported")
-    val responseTypesSupported: Set<String>? = null,
-
-    /**
-     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing supported scopes.
-     * MUST support the `openid` scope value.
-     */
-    @SerialName("scopes_supported")
-    val scopesSupported: Set<String>? = null,
-
-    /**
-     * OIDC Discovery: REQUIRED. JSON array containing a list of the Subject Identifier types that this OP supports.
-     * Valid types include `pairwise` and `public`.
-     */
-    @SerialName("subject_types_supported")
-    val subjectTypesSupported: Set<String>? = null,
-
-    /**
-     * OIDC Discovery: REQUIRED. A JSON array containing a list of the JWS signing algorithms (`alg` values) supported
-     * by the OP for the ID Token to encode the Claims in a JWT (RFC7519).
-     * Valid values include `RS256`, `ES256`, `ES256K`, and `EdDSA`.
-     */
-    @SerialName("id_token_signing_alg_values_supported")
-    val idTokenSigningAlgorithmsSupported: Set<JwsAlgorithm>? = null,
-
-    /**
-     * OIDC SIOPv2: REQUIRED. A JSON array containing a list of the JWS signing algorithms (alg values) supported by the
-     * OP for Request Objects, which are described in Section 6.1 of OpenID.Core.
-     * Valid values include `none`, `RS256`, `ES256`, `ES256K`, and `EdDSA`.
-     */
-    @SerialName("request_object_signing_alg_values_supported")
-    val requestObjectSigningAlgorithmsSupported: Set<JwsAlgorithm>? = null,
-
-    /**
-     * OIDC SIOPv2: REQUIRED. A JSON array of strings representing URI scheme identifiers and optionally method names of
-     * supported Subject Syntax Types.
-     * Valid values include `urn:ietf:params:oauth:jwk-thumbprint`, `did:example` and others.
-     */
-    @SerialName("subject_syntax_types_supported")
-    val subjectSyntaxTypesSupported: Set<String>? = null,
-
-    /**
-     * OIDC SIOPv2: OPTIONAL. A JSON array of strings containing the list of ID Token types supported by the OP,
-     * the default value is `attester_signed_id_token` (the id token is issued by the party operating the OP, i.e. this
-     * is the classical id token as defined in OpenID.Core), may also include `subject_signed_id_token` (Self-Issued
-     * ID Token, i.e. the id token is signed with key material under the end-user's control).
-     */
-    @SerialName("id_token_types_supported")
-    val idTokenTypesSupported: Set<IdTokenType>? = null,
-
-    /**
-     * OID4VP: OPTIONAL. Boolean value specifying whether the Wallet supports the transfer of `presentation_definition`
-     * by reference, with true indicating support. If omitted, the default value is true.
-     */
-    @SerialName("presentation_definition_uri_supported")
-    val presentationDefinitionUriSupported: Boolean = true,
-
-    /**
-     * OID4VP: REQUIRED. An object containing a list of key value pairs, where the key is a string identifying a
-     * Credential format supported by the Wallet. Valid Credential format identifier values are defined in Annex E
-     * of OpenID.VCI. Other values may be used when defined in the profiles of this specification.
-     */
-    @SerialName("vp_formats_supported")
-    val vpFormatsSupported: VpFormatsSupported? = null,
-
-    /**
-     * OID4VP: OPTIONAL. Array of JSON Strings containing the values of the Client Identifier schemes that the Wallet
-     * supports. The values defined by this specification are `pre-registered`, `redirect_uri`, `entity_id`, `did`.
-     * If omitted, the default value is pre-registered.
-     */
-    @SerialName("client_id_schemes_supported")
-    val clientIdSchemesSupported: Set<String>? = null,
-
-    /**
-     * RFC 9449: A JSON array containing a list of the JWS alg values (from the `IANA.JOSE.ALGS` registry) supported
-     * by the authorization server for DPoP proof JWTs.
-     */
-    @SerialName("dpop_signing_alg_values_supported")
-    val dpopSigningAlgValuesSupported: Set<JsonWebAlgorithm>? = null,
+    @SerialName("credential_configurations_supported")
+    val supportedCredentialConfigurations: Map<String, SupportedCredentialFormat>? = null,
 ) {
     fun serialize() = jsonSerializer.encodeToString(this)
 

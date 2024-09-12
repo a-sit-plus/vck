@@ -18,8 +18,9 @@ import kotlin.time.Duration.Companion.seconds
  * Simple authorization server implementation, to be used for [CredentialIssuer],
  * when issuing credentials directly from a local [dataProvider].
  *
- * Implemented from [OpenID for Verifiable Credential Issuance]
- * (https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), Draft 13, 2024-02-08.
+ * Implemented from
+ * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
+ * , Draft 14, 2024-08-21.
  */
 class SimpleAuthorizationService(
     /**
@@ -137,7 +138,8 @@ class SimpleAuthorizationService(
 
         // TODO work out mapping of credential identifiers in authorization details to schemes
         val filteredAuthorizationDetails = params.authorizationDetails?.filter {
-            credentialSchemes.map { it.vcType }.contains((it as AuthorizationDetails.OpenIdCredential).credentialConfigurationId) ||
+            credentialSchemes.map { it.vcType }
+                .contains((it as AuthorizationDetails.OpenIdCredential).credentialConfigurationId) ||
                     credentialSchemes.map { it.sdJwtType }.contains(it.credentialConfigurationId) ||
                     credentialSchemes.map { it.isoDocType }.contains(it.credentialConfigurationId)
         }?.toSet()

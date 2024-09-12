@@ -72,7 +72,6 @@ fun decodeFromCredentialIdentifier(input: String): Pair<ConstantIndex.Credential
 }
 
 fun CredentialFormatEnum.toRepresentation() = when (this) {
-    CredentialFormatEnum.JWT_VC_SD_UNOFFICIAL -> ConstantIndex.CredentialRepresentation.SD_JWT
     CredentialFormatEnum.VC_SD_JWT -> ConstantIndex.CredentialRepresentation.SD_JWT
     CredentialFormatEnum.MSO_MDOC -> ConstantIndex.CredentialRepresentation.ISO_MDOC
     else -> ConstantIndex.CredentialRepresentation.PLAIN_JWT
