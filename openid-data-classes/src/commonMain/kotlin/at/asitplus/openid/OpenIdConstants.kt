@@ -38,6 +38,10 @@ object OpenIdConstants {
 
     const val CODE_CHALLENGE_METHOD_SHA256 = "S256"
 
+    const val PROOF_JWT_TYPE = "openid4vci-proof+jwt"
+
+    const val PROOF_CWT_TYPE = "openid4vci-proof+cwt"
+
     @Serializable(with = ProofType.Serializer::class)
     sealed class ProofType(val stringRepresentation: String) {
         override fun toString(): String = this::class.simpleName + "(" + stringRepresentation + ")"
@@ -49,42 +53,27 @@ object OpenIdConstants {
         companion object {
             private const val STRING_JWT = "jwt"
             private const val STRING_CWT = "cwt"
-            private const val STRING_JWT_HEADER = "openid4vci-proof+jwt"
-            private const val STRING_CWT_HEADER = "openid4vci-proof+cwt"
-
         }
 
         /**
-         * Proof type in [at.asitplus.wallet.lib.oidvci.CredentialRequestProof]
+         * Proof type in [at.asitplus.openid.CredentialRequestProof]
          */
         @Serializable(with = Serializer::class)
         object JWT : ProofType(STRING_JWT)
 
         /**
-         * Proof type in [at.asitplus.wallet.lib.oidvci.CredentialRequestProof]
+         * Proof type in [at.asitplus.openid.CredentialRequestProof]
+         *
+         * Removed in OID4VCI Draft 14, kept here for a bit of backwards-compatibility
          */
         @Serializable(with = Serializer::class)
         object CWT : ProofType(STRING_CWT)
-
-        //TODO why are these located here?
-        /**
-         * Constant from OID4VCI
-         */
-        @Serializable(with = Serializer::class)
-        object JWT_HEADER_TYPE : ProofType(STRING_JWT_HEADER)
-
-        /**
-         * Constant from OID4VCI
-         */
-        @Serializable(with = Serializer::class)
-        object CWT_HEADER_TYPE : ProofType(STRING_CWT_HEADER)
 
         /**
          * Any proof type not natively supported by this library
          */
         @Serializable(with = Serializer::class)
         class OTHER(stringRepresentation: String) : ProofType(stringRepresentation)
-
 
         object Serializer : KSerializer<ProofType> {
             override val descriptor: SerialDescriptor =
@@ -94,8 +83,6 @@ object OpenIdConstants {
                 return when (val str = decoder.decodeString()) {
                     STRING_JWT -> JWT
                     STRING_CWT -> CWT
-                    STRING_CWT_HEADER -> CWT_HEADER_TYPE
-                    STRING_JWT_HEADER -> JWT_HEADER_TYPE
                     else -> OTHER(str)
                 }
             }

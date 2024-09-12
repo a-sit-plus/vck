@@ -15,6 +15,8 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.PROOF_CWT_TYPE
+import at.asitplus.openid.OpenIdConstants.PROOF_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.ProofType
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -123,7 +125,7 @@ class CredentialIssuer(
                 if (jwt.nonce == null || !authorizationService.verifyAndRemoveClientNonce(jwt.nonce!!))
                     throw OAuth2Exception(Errors.INVALID_PROOF)
                         .also { Napier.w("credential: client did provide invalid nonce in JWT in proof: ${jwt.nonce}") }
-                if (jwsSigned.header.type != ProofType.JWT_HEADER_TYPE.stringRepresentation)
+                if (jwsSigned.header.type != PROOF_JWT_TYPE)
                     throw OAuth2Exception(Errors.INVALID_PROOF)
                         .also { Napier.w("credential: client did provide invalid header type in JWT in proof: ${jwsSigned.header}") }
                 if (jwt.audience == null || jwt.audience != publicContext)
@@ -134,7 +136,7 @@ class CredentialIssuer(
                         .also { Napier.w("credential: client did provide no valid key in header in JWT in proof: ${jwsSigned.header}") }
             }
 
-            ProofType.CWT -> {
+            ProofType.CWT -> { // Removed in OID4VCI Draft 14, kept here for a bit of backwards-compatibility
                 if (proof.cwt == null)
                     throw OAuth2Exception(Errors.INVALID_PROOF)
                         .also { Napier.w("credential: client did provide invalid proof: $proof") }
@@ -149,7 +151,7 @@ class CredentialIssuer(
                     throw OAuth2Exception(Errors.INVALID_PROOF)
                         .also { Napier.w("credential: client did provide invalid nonce in CWT in proof: ${cwt.nonce}") }
                 val header = coseSigned.protectedHeader.value
-                if (header.contentType != ProofType.CWT_HEADER_TYPE.stringRepresentation)
+                if (header.contentType != PROOF_CWT_TYPE)
                     throw OAuth2Exception(Errors.INVALID_PROOF)
                         .also { Napier.w("credential: client did provide invalid header type in CWT in proof: $header") }
                 if (cwt.audience == null || cwt.audience != publicContext)

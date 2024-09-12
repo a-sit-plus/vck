@@ -9,17 +9,12 @@ import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
-import at.asitplus.signum.indispensable.cosef.CborWebToken
-import at.asitplus.signum.indispensable.cosef.CoseHeader
-import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.*
-import at.asitplus.wallet.lib.cbor.CoseService
-import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
@@ -29,11 +24,10 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
-import at.asitplus.openid.RequestedCredentialClaimSpecification
-import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -68,10 +62,6 @@ class WalletService(
      * Used to prove possession of the key material to create [CredentialRequestProof].
      */
     private val jwsService: JwsService = DefaultJwsService(cryptoService),
-    /**
-     * Used to prove possession of the key material to create [CredentialRequestProof].
-     */
-    private val coseService: CoseService = DefaultCoseService(cryptoService),
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
      * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
@@ -473,14 +463,7 @@ class WalletService(
         clientNonce: String?,
         credentialIssuer: String?,
     ): KmmResult<CredentialRequestParameters> = catching {
-        val cwtProofType = OpenIdConstants.ProofType.CWT.stringRepresentation
-        val isCwt = credential.supportedProofTypes?.containsKey(cwtProofType) == true
-                || credential.format == CredentialFormatEnum.MSO_MDOC
-        val proof = if (isCwt) {
-            createCredentialRequestCwt(null, clientNonce, credentialIssuer)
-        } else {
-            createCredentialRequestJwt(null, clientNonce, credentialIssuer)
-        }
+        val proof = createCredentialRequestJwt(null, clientNonce, credentialIssuer)
         credential.toCredentialRequestParameters(requestedAttributes, proof)
             .also { Napier.i("createCredentialRequest returns $it") }
     }
@@ -518,11 +501,7 @@ class WalletService(
         clientNonce: String?,
         credentialIssuer: String?,
     ): KmmResult<CredentialRequestParameters> = catching {
-        val proof = if (requestOptions.representation == ISO_MDOC) {
-            createCredentialRequestCwt(requestOptions, clientNonce, credentialIssuer)
-        } else {
-            createCredentialRequestJwt(requestOptions, clientNonce, credentialIssuer)
-        }
+        val proof = createCredentialRequestJwt(requestOptions, clientNonce, credentialIssuer)
         requestOptions.toCredentialRequestParameters(proof)
             .also { Napier.i("createCredentialRequest returns $it") }
     }
@@ -536,7 +515,7 @@ class WalletService(
         jwt = jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-                type = OpenIdConstants.ProofType.JWT_HEADER_TYPE.stringRepresentation,
+                type = OpenIdConstants.PROOF_JWT_TYPE
             ),
             payload = JsonWebToken(
                 issuer = clientId, // omit when token was pre-authn?
@@ -548,28 +527,6 @@ class WalletService(
             addJsonWebKey = true,
             addX5c = false,
         ).getOrThrow().serialize()
-    )
-
-    private suspend fun createCredentialRequestCwt(
-        requestOptions: RequestOptions?,
-        clientNonce: String?,
-        credentialIssuer: String?,
-    ) = CredentialRequestProof(
-        proofType = OpenIdConstants.ProofType.CWT,
-        cwt = coseService.createSignedCose(
-            protectedHeader = CoseHeader(
-                algorithm = cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow(),
-                contentType = OpenIdConstants.ProofType.CWT_HEADER_TYPE.stringRepresentation,
-                certificateChain = cryptoService.keyMaterial.getCertificate()?.encodeToDerOrNull()
-            ),
-            payload = CborWebToken(
-                issuer = clientId, // omit when token was pre-authn?
-                audience = credentialIssuer,
-                issuedAt = requestOptions?.clock?.now() ?: Clock.System.now(),
-                nonce = clientNonce?.encodeToByteArray(),
-            ).serialize(),
-            addKeyId = false,
-        ).getOrThrow().serialize().encodeToString(Base64UrlStrict),
     )
 
     private fun RequestOptions.toCredentialRequestParameters(proof: CredentialRequestProof) =
