@@ -173,7 +173,7 @@ open class DefaultVerifierCryptoService : VerifierCryptoService {
         signature: CryptoSignature,
         algorithm: X509SignatureAlgorithm,
         publicKey: CryptoPublicKey
-    ): KmmResult<Unit> = algorithm.algorithm.verifierFor(publicKey).map {
+    ): KmmResult<Unit> = algorithm.algorithm.verifierFor(publicKey).transform {
         it.verify(SignatureInput(input), signature)
     }
 }
