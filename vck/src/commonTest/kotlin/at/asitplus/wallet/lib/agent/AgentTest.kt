@@ -31,11 +31,11 @@ class AgentTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
-            EphemeralKeyWithSelfSignedCert(),
+            EphemeralKeyWithoutCert(),
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
-        holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
+        holderKeyMaterial = EphemeralKeyWithoutCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
         verifier = VerifierAgent(holderKeyMaterial)
         challenge = uuid4().toString()

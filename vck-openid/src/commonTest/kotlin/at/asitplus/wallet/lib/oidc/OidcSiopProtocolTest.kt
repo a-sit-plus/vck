@@ -8,15 +8,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -46,8 +38,8 @@ class OidcSiopProtocolTest : FreeSpec({
     lateinit var responseUrl: String
     lateinit var walletUrl: String
 
-    lateinit var holderKeyPair: KeyMaterial
-    lateinit var verifierKeyPair: KeyMaterial
+    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var verifierKeyMaterial: KeyMaterial
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -56,21 +48,21 @@ class OidcSiopProtocolTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderKeyPair = EphemeralKeyWithSelfSignedCert()
-        verifierKeyPair = EphemeralKeyWithSelfSignedCert()
+        holderKeyMaterial = EphemeralKeyWithoutCert()
+        verifierKeyMaterial = EphemeralKeyWithoutCert()
         val rpUUID = uuid4()
         relyingPartyUrl = "https://example.com/rp/$rpUUID"
         responseUrl = "https://example.com/rp/$rpUUID"
         walletUrl = "https://example.com/wallet/${uuid4()}"
-        holderAgent = HolderAgent(holderKeyPair)
-        verifierAgent = VerifierAgent(verifierKeyPair)
+        holderAgent = HolderAgent(holderKeyMaterial)
+        verifierAgent = VerifierAgent(verifierKeyMaterial)
 
         holderAgent.storeCredential(
             IssuerAgent(
-                EphemeralKeyWithSelfSignedCert(),
+                EphemeralKeyWithoutCert(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow().toStoreCredentialInput()
@@ -80,7 +72,7 @@ class OidcSiopProtocolTest : FreeSpec({
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(
-            keyMaterial = verifierKeyPair,
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
             responseUrl = responseUrl,
         )
@@ -105,7 +97,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
     "wrong client nonce should lead to error" {
         verifierSiop = OidcSiopVerifier(
-            keyMaterial = verifierKeyPair,
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
             responseUrl = responseUrl,
             nonceService = object : NonceService {
@@ -276,10 +268,10 @@ class OidcSiopProtocolTest : FreeSpec({
     }
 
     "test with request object and Attestation JWT" {
-        val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithSelfSignedCert())
-        val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyPair)
+        val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithoutCert())
+        val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyMaterial)
         verifierSiop = OidcSiopVerifier(
-            keyMaterial = verifierKeyPair,
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
             clientIdScheme = OidcSiopVerifier.ClientIdScheme.VerifierAttestation(attestationJwt),
         )
@@ -303,11 +295,11 @@ class OidcSiopProtocolTest : FreeSpec({
         }
     }
     "test with request object and invalid Attestation JWT" {
-        val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithSelfSignedCert())
-        val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyPair)
+        val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithoutCert())
+        val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyMaterial)
 
         verifierSiop = OidcSiopVerifier(
-            keyMaterial = verifierKeyPair,
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
             clientIdScheme = OidcSiopVerifier.ClientIdScheme.VerifierAttestation(attestationJwt)
         )
@@ -318,7 +310,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
         holderSiop = OidcSiopWallet(
             holder = holderAgent,
-            requestObjectJwsVerifier = verifierAttestationVerifier(EphemeralKeyWithSelfSignedCert().jsonWebKey)
+            requestObjectJwsVerifier = verifierAttestationVerifier(EphemeralKeyWithoutCert().jsonWebKey)
         )
         shouldThrow<OAuth2Exception> {
             holderSiop.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
@@ -415,7 +407,7 @@ class OidcSiopProtocolTest : FreeSpec({
 private suspend fun buildAttestationJwt(
     sprsCryptoService: DefaultCryptoService,
     relyingPartyUrl: String,
-    verifierKeyPair: KeyMaterial
+    verifierKeyMaterial: KeyMaterial
 ): JwsSigned = DefaultJwsService(sprsCryptoService).createSignedJws(
     header = JwsHeader(
         algorithm = sprsCryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
@@ -426,7 +418,7 @@ private suspend fun buildAttestationJwt(
         issuedAt = Clock.System.now(),
         expiration = Clock.System.now().plus(10.seconds),
         notBefore = Clock.System.now(),
-        confirmationKey = verifierKeyPair.jsonWebKey,
+        confirmationKey = verifierKeyMaterial.jsonWebKey,
     ).serialize().encodeToByteArray()
 ).getOrThrow()
 

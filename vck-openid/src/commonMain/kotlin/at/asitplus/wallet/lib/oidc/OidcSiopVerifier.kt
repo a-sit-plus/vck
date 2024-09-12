@@ -98,7 +98,7 @@ class OidcSiopVerifier private constructor(
     }
 
     constructor(
-        keyMaterial: KeyMaterial = EphemeralKeyWithSelfSignedCert(),
+        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         verifier: Verifier = VerifierAgent(keyMaterial),
         relyingPartyUrl: String? = null,
         responseUrl: String? = null,

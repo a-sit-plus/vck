@@ -4,6 +4,7 @@ import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.CredentialResponseParameters
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -42,7 +43,11 @@ class OidvciProcessTest : FunSpec({
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
             buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
         )
-        client = WalletService()
+        client = WalletService(
+            clientId = "https://wallet.a-sit.at/app",
+            redirectUrl = "https://wallet.a-sit.at/callback",
+            keyPairAdapter = EphemeralKeyWithSelfSignedCert()
+        )
     }
 
     test("process with W3C VC JWT") {

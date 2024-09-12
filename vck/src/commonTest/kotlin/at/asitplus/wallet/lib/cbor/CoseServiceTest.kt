@@ -7,6 +7,7 @@ import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -23,7 +24,7 @@ class CoseServiceTest : FreeSpec({
     lateinit var randomPayload: ByteArray
 
     beforeEach {
-        val keyMaterial = EphemeralKeyWithSelfSignedCert()
+        val keyMaterial = EphemeralKeyWithoutCert()
         cryptoService = DefaultCryptoService(keyMaterial)
         coseService = DefaultCoseService(cryptoService)
         verifierCoseService = DefaultVerifierCoseService()

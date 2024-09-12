@@ -38,12 +38,12 @@ class ValidatorVpTest : FreeSpec({
         validator = Validator()
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(
-            EphemeralKeyWithSelfSignedCert(),
+            EphemeralKeyWithoutCert(),
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
         holderCredentialStore = InMemorySubjectCredentialStore()
-        holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
+        holderKeyMaterial = EphemeralKeyWithoutCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
         holderJwsService = DefaultJwsService(DefaultCryptoService(holderKeyMaterial))
         verifier = VerifierAgent()

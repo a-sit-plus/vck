@@ -36,11 +36,11 @@ class AgentSdJwtTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
-            EphemeralKeyWithSelfSignedCert(),
+            EphemeralKeyWithoutCert(),
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
-        holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
+        holderKeyMaterial =  EphemeralKeyWithSelfSignedCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
         verifier = VerifierAgent()
         challenge = uuid4().toString()
@@ -161,8 +161,8 @@ class AgentSdJwtTest : FreeSpec({
 })
 
 suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {
-    val issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert(), DummyCredentialDataProvider())
-    val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
+    val issuer = IssuerAgent(EphemeralKeyWithoutCert(), DummyCredentialDataProvider())
+    val holderKeyMaterial = EphemeralKeyWithoutCert()
     val holder = HolderAgent(holderKeyMaterial)
     holder.storeCredential(
         issuer.issueCredential(

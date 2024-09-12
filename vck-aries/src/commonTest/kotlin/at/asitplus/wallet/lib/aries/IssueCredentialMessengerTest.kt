@@ -10,8 +10,8 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class IssueCredentialMessengerTest : FreeSpec() {
 
-    private lateinit var issuerKeyPair: KeyMaterial
-    private lateinit var holderKeyPair: KeyMaterial
+    private lateinit var issuerKeyMaterial: KeyMaterial
+    private lateinit var holderKeyMaterial: KeyMaterial
     private lateinit var issuer: Issuer
     private lateinit var holder: Holder
     private lateinit var issuerServiceEndpoint: String
@@ -20,10 +20,10 @@ class IssueCredentialMessengerTest : FreeSpec() {
 
     init {
         beforeEach {
-            issuerKeyPair = EphemeralKeyWithoutCert()
-            holderKeyPair = EphemeralKeyWithoutCert()
-            issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
-            holder = HolderAgent(holderKeyPair)
+            issuerKeyMaterial = EphemeralKeyWithoutCert()
+            holderKeyMaterial = EphemeralKeyWithoutCert()
+            issuer = IssuerAgent(issuerKeyMaterial, DummyCredentialDataProvider())
+            holder = HolderAgent(holderKeyMaterial)
             issuerServiceEndpoint = "https://example.com/issue?${uuid4()}"
             holderMessenger = initHolderMessenger(ConstantIndex.AtomicAttribute2023)
         }
@@ -42,14 +42,14 @@ class IssueCredentialMessengerTest : FreeSpec() {
     private fun initHolderMessenger(scheme: ConstantIndex.CredentialScheme) =
         IssueCredentialMessenger.newHolderInstance(
             holder = holder,
-            messageWrapper = MessageWrapper(holderKeyPair),
+            messageWrapper = MessageWrapper(holderKeyMaterial),
             credentialScheme = scheme,
         )
 
     private fun initIssuerMessenger(scheme: ConstantIndex.CredentialScheme) =
         IssueCredentialMessenger.newIssuerInstance(
             issuer = issuer,
-            messageWrapper = MessageWrapper(issuerKeyPair),
+            messageWrapper = MessageWrapper(issuerKeyMaterial),
             serviceEndpoint = issuerServiceEndpoint,
             credentialScheme = scheme,
         )

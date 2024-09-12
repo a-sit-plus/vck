@@ -35,11 +35,9 @@ interface KeyMaterial : Signer {
 abstract class KeyWithSelfSignedCert(
     private val extensions: List<X509CertificateExtension>
 ) : KeyMaterial {
-
     override val identifier: String get() = publicKey.didEncoded
     private val crtMut = Mutex()
     private var _certificate: X509Certificate? = null
-
 
     override suspend fun getCertificate(): X509Certificate? {
         crtMut.withLock {
@@ -78,11 +76,9 @@ class EphemeralKeyWithoutCert(
             curve = ECCurve.SECP_256_R_1
             digests = setOf(Digest.SHA256)
         }
-    }.getOrThrow(), extensions: List<X509CertificateExtension> = listOf()
+    }.getOrThrow()
 ) : KeyMaterial, Signer by key.signer().getOrThrow() {
-    override val identifier: String
-        get() = publicKey.didEncoded
-
+    override val identifier: String = publicKey.didEncoded
     override fun getUnderLyingSigner(): Signer = key.signer().getOrThrow()
     override suspend fun getCertificate(): X509Certificate? = null
 }
@@ -90,7 +86,6 @@ class EphemeralKeyWithoutCert(
 interface EphemeralKeyHolder {
     val publicJsonWebKey: JsonWebKey?
     val key: EphemeralKey
-
 }
 
 open class DefaultEphemeralKeyHolder(val crv: ECCurve) : EphemeralKeyHolder {
@@ -100,6 +95,7 @@ open class DefaultEphemeralKeyHolder(val crv: ECCurve) : EphemeralKeyHolder {
             digests = setOf(crv.nativeDigest)
         }
     }.getOrThrow()
+
     override val publicJsonWebKey: JsonWebKey?
         get() = key.publicKey.toJsonWebKey()
 

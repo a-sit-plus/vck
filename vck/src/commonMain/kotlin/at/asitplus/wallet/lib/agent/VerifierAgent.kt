@@ -25,7 +25,7 @@ class VerifierAgent private constructor(
 
     constructor(): this(
         validator = Validator(),
-        keyMaterial = EphemeralKeyWithSelfSignedCert(),
+        keyMaterial = EphemeralKeyWithoutCert(),
     )
 
     override fun setRevocationList(it: String): Boolean {

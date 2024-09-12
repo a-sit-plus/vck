@@ -60,7 +60,7 @@ class IssuerAgent(
 ) : Issuer {
 
     constructor(
-        keyMaterial: KeyMaterial = EphemeralKeyWithSelfSignedCert(),
+        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
         validator = Validator(),
@@ -72,7 +72,7 @@ class IssuerAgent(
     )
 
     constructor(
-        keyMaterial: KeyMaterial = EphemeralKeyWithSelfSignedCert(),
+        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(

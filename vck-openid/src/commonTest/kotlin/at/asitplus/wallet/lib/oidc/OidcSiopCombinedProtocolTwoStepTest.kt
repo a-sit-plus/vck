@@ -1,18 +1,9 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.wallet.lib.agent.CredentialSubmission
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
-import at.asitplus.wallet.lib.agent.SubjectCredentialStore
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.dif.FormatHolder
+import at.asitplus.wallet.lib.agent.*
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
@@ -26,8 +17,8 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
 
     lateinit var relyingPartyUrl: String
 
-    lateinit var holderKeyPair: KeyMaterial
-    lateinit var verifierKeyPair: KeyMaterial
+    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var verifierKeyMaterial: KeyMaterial
 
     lateinit var holderAgent: Holder
     lateinit var verifierAgent: Verifier
@@ -36,17 +27,18 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderKeyPair = EphemeralKeyWithSelfSignedCert()
-        verifierKeyPair = EphemeralKeyWithSelfSignedCert()
+        holderKeyMaterial =  EphemeralKeyWithoutCert()
+        verifierKeyMaterial = EphemeralKeyWithoutCert()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
-        holderAgent = HolderAgent(holderKeyPair)
-        verifierAgent = VerifierAgent(verifierKeyPair)
+        holderAgent = HolderAgent(holderKeyMaterial)
+        verifierAgent = VerifierAgent(verifierKeyMaterial)
 
         holderSiop = OidcSiopWallet(
+            keyMaterial = holderKeyMaterial,
             holder = holderAgent,
         )
         verifierSiop = OidcSiopVerifier(
-            keyMaterial = verifierKeyPair,
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
         )
     }
@@ -54,13 +46,13 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
     "test credential matching" - {
         "only credentials of the correct format are matched" {
             runBlocking {
-                holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             }
 
             verifierSiop = OidcSiopVerifier(
-                keyMaterial = verifierKeyPair,
+                keyMaterial = verifierKeyMaterial,
                 relyingPartyUrl = relyingPartyUrl,
             )
 
@@ -105,13 +97,13 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
         "submission requirements need to macth" - {
             "all credentials matching an input descriptor should be presentable" {
                 runBlocking {
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyMaterial = verifierKeyPair,
+                    keyMaterial = verifierKeyMaterial,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -173,13 +165,13 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
             }
             "credentials not matching an input descriptor should not yield a valid submission" {
                 runBlocking {
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 }
 
                 verifierSiop = OidcSiopVerifier(
-                    keyMaterial = verifierKeyPair,
+                    keyMaterial = verifierKeyMaterial,
                     relyingPartyUrl = relyingPartyUrl,
                 )
 
@@ -286,15 +278,15 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
 })
 
 private suspend fun Holder.storeSdJwtCredential(
-    holderKeyPair: KeyMaterial,
+    holderKeyMaterial: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
         IssuerAgent(
-            EphemeralKeyWithSelfSignedCert(),
+            EphemeralKeyWithoutCert(),
             DummyCredentialDataProvider(),
         ).issueCredential(
-            holderKeyPair.publicKey,
+            holderKeyMaterial.publicKey,
             credentialScheme,
             ConstantIndex.CredentialRepresentation.SD_JWT,
         ).getOrThrow().toStoreCredentialInput()
@@ -302,14 +294,14 @@ private suspend fun Holder.storeSdJwtCredential(
 }
 
 private suspend fun Holder.storeIsoCredential(
-    holderKeyPair: KeyMaterial,
+    holderKeyMaterial: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) = storeCredential(
     IssuerAgent(
         EphemeralKeyWithSelfSignedCert(),
         DummyCredentialDataProvider(),
     ).issueCredential(
-        holderKeyPair.publicKey,
+        holderKeyMaterial.publicKey,
         credentialScheme,
         ConstantIndex.CredentialRepresentation.ISO_MDOC,
     ).getOrThrow().toStoreCredentialInput()
