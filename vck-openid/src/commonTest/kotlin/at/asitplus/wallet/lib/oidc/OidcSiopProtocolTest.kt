@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldHaveSize
@@ -29,6 +30,7 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.datetime.Clock
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 @Suppress("unused")
@@ -347,6 +349,16 @@ class OidcSiopProtocolTest : FreeSpec({
         result.vp.verifiableCredentials.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
         }
+    }
+
+    "test jws" {
+        val key1 = EphemeralKeyWithoutCert().also { println(it.jsonWebKey) }
+        val jws = DefaultJwsService(DefaultCryptoService(key1)).createSignedJwt("foo", Random.Default.nextBytes(32)).getOrThrow()
+
+        DefaultVerifierJwsService().verifyJws(jws, key1.jsonWebKey).shouldBeTrue()
+
+        val key2 = EphemeralKeyWithoutCert().also { println(it.jsonWebKey) }
+        DefaultVerifierJwsService().verifyJws(jws, key2.jsonWebKey).shouldBeFalse() // this fails, wtf?
     }
 
     "test with request object from request_uri as JWS" {
