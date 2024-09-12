@@ -1,11 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.jws.EcCurve
-import at.asitplus.wallet.lib.jws.JsonWebKey
-import at.asitplus.wallet.lib.jws.JweAlgorithm
-import at.asitplus.wallet.lib.jws.JweEncryption
-import at.asitplus.wallet.lib.jws.JwsAlgorithm
+import at.asitplus.wallet.lib.jws.*
 
 interface CryptoService {
 
@@ -85,6 +81,51 @@ interface EphemeralKeyHolder {
     fun toPublicJsonWebKey(): JsonWebKey
 }
 
-expect class DefaultCryptoService() : CryptoService
+expect class DefaultCryptoService() : CryptoService {
+    override suspend fun sign(input: ByteArray): KmmResult<ByteArray>
+    override fun encrypt(
+        key: ByteArray,
+        iv: ByteArray,
+        aad: ByteArray,
+        input: ByteArray,
+        algorithm: JweEncryption
+    ): KmmResult<AuthenticatedCiphertext>
 
-expect class DefaultVerifierCryptoService() : VerifierCryptoService
+    override suspend fun decrypt(
+        key: ByteArray,
+        iv: ByteArray,
+        aad: ByteArray,
+        input: ByteArray,
+        authTag: ByteArray,
+        algorithm: JweEncryption
+    ): KmmResult<ByteArray>
+
+    override fun generateEphemeralKeyPair(ecCurve: EcCurve): KmmResult<EphemeralKeyHolder>
+
+    override fun performKeyAgreement(
+        ephemeralKey: EphemeralKeyHolder,
+        recipientKey: JsonWebKey,
+        algorithm: JweAlgorithm
+    ): KmmResult<ByteArray>
+
+    override fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray>
+
+    override fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray>
+
+    override val keyId: String
+
+    override val jwsAlgorithm: JwsAlgorithm
+
+    override fun toJsonWebKey(): JsonWebKey
+}
+
+expect class DefaultVerifierCryptoService() : VerifierCryptoService {
+    override fun verify(
+        input: ByteArray,
+        signature: ByteArray,
+        algorithm: JwsAlgorithm,
+        publicKey: JsonWebKey
+    ): KmmResult<Boolean>
+
+    override fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey?
+}

@@ -34,7 +34,7 @@ actual open class DefaultCryptoService : CryptoService {
     private val ecCurve: EcCurve = EcCurve.SECP_256_R_1
     private val keyPair: KeyPair
     private val jsonWebKey: JsonWebKey
-    override val keyId: String
+    actual override val keyId: String get() = jsonWebKey.keyId!!
 
     actual constructor() {
         this.keyPair = KeyPairGenerator.getInstance("EC").also { it.initialize(ecCurve.keyLengthBits) }.genKeyPair()
@@ -44,7 +44,7 @@ actual open class DefaultCryptoService : CryptoService {
             (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes),
             (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         )!!
-        this.keyId = jsonWebKey.keyId!!
+
     }
 
     constructor(keyPair: KeyPair) {
@@ -55,14 +55,14 @@ actual open class DefaultCryptoService : CryptoService {
             (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes),
             (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
         )!!
-        this.keyId = jsonWebKey.keyId!!
+
     }
 
-    override val jwsAlgorithm = JwsAlgorithm.ES256
+    actual override val jwsAlgorithm = JwsAlgorithm.ES256
 
-    override fun toJsonWebKey() = jsonWebKey
+    actual override fun toJsonWebKey() = jsonWebKey
 
-    override suspend fun sign(input: ByteArray): KmmResult<ByteArray> =
+    actual override suspend fun sign(input: ByteArray): KmmResult<ByteArray> =
         try {
             val signed = Signature.getInstance(jwsAlgorithm.jcaName).apply {
                 initSign(keyPair.private)
@@ -73,7 +73,7 @@ actual open class DefaultCryptoService : CryptoService {
             KmmResult.failure(e)
         }
 
-    override fun encrypt(
+    actual override fun encrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -95,7 +95,7 @@ actual open class DefaultCryptoService : CryptoService {
         KmmResult.failure(e)
     }
 
-    override suspend fun decrypt(
+    actual override suspend fun decrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -116,7 +116,7 @@ actual open class DefaultCryptoService : CryptoService {
         KmmResult.failure(e)
     }
 
-    override fun performKeyAgreement(
+    actual override fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
@@ -133,7 +133,7 @@ actual open class DefaultCryptoService : CryptoService {
         }
     }
 
-    override fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> = try {
+    actual override fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> = try {
         val parameterSpec = ECNamedCurveTable.getParameterSpec(ephemeralKey.curve?.jcaName)
         val ecPoint = parameterSpec.curve.validatePoint(BigInteger(1, ephemeralKey.x), BigInteger(1, ephemeralKey.y))
         val ecPublicKeySpec = ECPublicKeySpec(ecPoint, parameterSpec)
@@ -147,10 +147,10 @@ actual open class DefaultCryptoService : CryptoService {
         KmmResult.failure(e)
     }
 
-    override fun generateEphemeralKeyPair(ecCurve: EcCurve): KmmResult<EphemeralKeyHolder> =
+    actual override fun generateEphemeralKeyPair(ecCurve: EcCurve): KmmResult<EphemeralKeyHolder> =
         KmmResult.success(JvmEphemeralKeyHolder(ecCurve))
 
-    override fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray> = try {
+    actual override fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray> = try {
         KmmResult.success(MessageDigest.getInstance(digest.jcaName).digest(input))
     } catch (e: Throwable) {
         KmmResult.failure(e)
@@ -160,7 +160,7 @@ actual open class DefaultCryptoService : CryptoService {
 
 actual open class DefaultVerifierCryptoService : VerifierCryptoService {
 
-    override fun verify(
+    actual override fun verify(
         input: ByteArray,
         signature: ByteArray,
         algorithm: JwsAlgorithm,
@@ -178,7 +178,7 @@ actual open class DefaultVerifierCryptoService : VerifierCryptoService {
         }
     }
 
-    override fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? = try {
+    actual override fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? = try {
         val pubKey = CertificateFactory.getInstance("X.509").generateCertificate(it.inputStream()).publicKey
         if (pubKey is ECPublicKey) JsonWebKey.fromJcaKey(pubKey, EcCurve.SECP_256_R_1) else null
     } catch (e: Throwable) {

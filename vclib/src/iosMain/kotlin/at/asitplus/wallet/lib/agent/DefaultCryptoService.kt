@@ -53,8 +53,8 @@ import platform.CoreFoundation.CFDictionaryAddValue as CFDictionaryAddValue1
 @Suppress("UNCHECKED_CAST")
 actual class DefaultCryptoService : CryptoService {
 
-    override val keyId: String
-    override val jwsAlgorithm = JwsAlgorithm.ES256
+    actual override val keyId: String
+    actual override val jwsAlgorithm = JwsAlgorithm.ES256
     private val privateKey: SecKeyRef
     private val publicKey: SecKeyRef
     private val jsonWebKey: JsonWebKey
@@ -72,7 +72,7 @@ actual class DefaultCryptoService : CryptoService {
         this.keyId = jsonWebKey.keyId!!
     }
 
-    override suspend fun sign(input: ByteArray): KmmResult<ByteArray> {
+    actual override suspend fun sign(input: ByteArray): KmmResult<ByteArray> {
         memScoped {
             val inputData = CFBridgingRetain(toData(input)) as CFDataRef
             val signature =
@@ -82,7 +82,7 @@ actual class DefaultCryptoService : CryptoService {
         }
     }
 
-    override fun encrypt(
+    actual override fun encrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -97,7 +97,7 @@ actual class DefaultCryptoService : CryptoService {
         )
     }
 
-    override suspend fun decrypt(
+    actual override suspend fun decrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -111,7 +111,7 @@ actual class DefaultCryptoService : CryptoService {
             KmmResult.failure(IllegalArgumentException())
     }
 
-    override fun generateEphemeralKeyPair(ecCurve: EcCurve): KmmResult<EphemeralKeyHolder> {
+    actual override fun generateEphemeralKeyPair(ecCurve: EcCurve): KmmResult<EphemeralKeyHolder> {
         val query = CFDictionaryCreateMutable(null, 2, null, null).apply {
             CFDictionaryAddValue1(this, kSecAttrKeyType, kSecAttrKeyTypeEC)
             CFDictionaryAddValue1(this, kSecAttrKeySizeInBits, CFBridgingRetain(NSNumber(256)))
@@ -123,7 +123,7 @@ actual class DefaultCryptoService : CryptoService {
         return KmmResult.success(DefaultEphemeralKeyHolder(publicKey, privateKey))
     }
 
-    override fun performKeyAgreement(
+    actual override fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
@@ -131,22 +131,22 @@ actual class DefaultCryptoService : CryptoService {
         return KmmResult.success("sharedSecret-${algorithm.text}".encodeToByteArray())
     }
 
-    override fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
+    actual override fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
         return KmmResult.success("sharedSecret-${algorithm.text}".encodeToByteArray())
     }
 
-    override fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray> {
+    actual override fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray> {
         return KmmResult.success(input)
     }
 
-    override fun toJsonWebKey() = jsonWebKey
+    actual override fun toJsonWebKey() = jsonWebKey
 
 }
 
 @Suppress("UNCHECKED_CAST")
 actual class DefaultVerifierCryptoService : VerifierCryptoService {
 
-    override fun verify(
+    actual override fun verify(
         input: ByteArray,
         signature: ByteArray,
         algorithm: JwsAlgorithm,
@@ -177,7 +177,7 @@ actual class DefaultVerifierCryptoService : VerifierCryptoService {
         }
     }
 
-    override fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? {
+    actual override fun extractPublicKeyFromX509Cert(it: ByteArray): JsonWebKey? {
         memScoped {
             val certData = CFBridgingRetain(toData(it)) as CFDataRef
             val certificate = SecCertificateCreateWithData(null, certData)
