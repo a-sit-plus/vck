@@ -202,7 +202,7 @@ data class DeviceResponse(
 @Serializable
 data class Document(
     @SerialName("docType")
-    val docType: String, // TODO this is relevant for deserializing the elementValue of IssuerSignedItem
+    val docType: String, // this is relevant for deserializing the elementValue of IssuerSignedItem
     @SerialName("issuerSigned")
     val issuerSigned: IssuerSigned,
     @SerialName("deviceSigned")

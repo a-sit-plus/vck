@@ -110,10 +110,11 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
         }
 
         //These are the ones that map to different CBOR data types, the rest don't, so if it is not registered, we'll lose type information
-        runCatching { return decodeStringElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
-        runCatching { return decodeLongElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
-        runCatching { return decodeDoubleElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
-        runCatching { return decodeBooleanElement(descriptor, index) }.exceptionOrNull()?.printStackTrace()
+        //No others must be added here, as they could consume data from the underlying bytes
+        runCatching { return decodeStringElement(descriptor, index) }
+        runCatching { return decodeLongElement(descriptor, index) }
+        runCatching { return decodeDoubleElement(descriptor, index) }
+        runCatching { return decodeBooleanElement(descriptor, index) }
 
         throw IllegalArgumentException("Could not decode value at $index")
     }

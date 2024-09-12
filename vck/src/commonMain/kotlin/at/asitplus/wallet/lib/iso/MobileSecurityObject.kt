@@ -4,27 +4,14 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Instant
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
 import kotlinx.serialization.builtins.ByteArraySerializer
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.descriptors.listSerialDescriptor
-import kotlinx.serialization.descriptors.mapSerialDescriptor
-import kotlinx.serialization.encodeToByteArray
-import kotlinx.serialization.encoding.CompositeDecoder
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.encoding.decodeStructure
-import kotlinx.serialization.encoding.encodeStructure
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for MSO (9.1.2.4)
@@ -103,9 +90,9 @@ data class ValueDigest(
     }
 
     companion object {
-        fun fromIssuerSigned(namspace:String, value: IssuerSignedItem) = ValueDigest(
+        fun fromIssuerSigned(namespace: String, value: IssuerSignedItem) = ValueDigest(
             value.digestId,
-            value.serialize(namspace).wrapInCborTag(24).sha256()
+            value.serialize(namespace).wrapInCborTag(24).sha256()
         )
     }
 }

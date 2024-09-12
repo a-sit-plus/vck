@@ -148,7 +148,7 @@ typealias JsonValueEncoder
         = (value: Any) -> JsonElement?
 
 /**
- * Maps from [IssuerSignedItem.elementIdentifier] to [ItemValueDecoder]
+ * Maps from `IssuerSignedItem.elementIdentifier` to its corresponding [KSerializer]
  */
 typealias ElementIdentifierToItemValueSerializerMap
         = Map<String, KSerializer<*>>
