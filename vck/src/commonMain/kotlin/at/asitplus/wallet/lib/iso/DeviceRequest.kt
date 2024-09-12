@@ -453,7 +453,6 @@ data class IssuerSignedItem(
     @SerialName(PROP_ELEMENT_ID)
     val elementIdentifier: String,
     @SerialName(PROP_ELEMENT_VALUE)
-    // @ValueTags(1004uL)
     val elementValue: Any,
 ) {
 
@@ -549,7 +548,7 @@ data class DeviceAuth(
     @SerialName("deviceSignature")
     val deviceSignature: CoseSigned? = null,
     @SerialName("deviceMac")
-    val deviceMac: CoseSigned? = null, // TODO is COSE_Mac0 //@nodh what does that mean?
+    val deviceMac: CoseSigned? = null, // TODO is COSE_Mac0
 )
 
 

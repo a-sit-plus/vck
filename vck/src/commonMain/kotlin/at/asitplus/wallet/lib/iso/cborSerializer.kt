@@ -29,11 +29,7 @@ internal object CborCredentialSerializer {
         decoderMap[isoNamespace] =
             serializerMap.map { (k, ser) ->
                 k to { descriptor: SerialDescriptor, index: Int, compositeDecoder: CompositeDecoder ->
-                    compositeDecoder.decodeSerializableElement(
-                        descriptor,
-                        index,
-                        ser
-                    )!!
+                    compositeDecoder.decodeSerializableElement(descriptor, index, ser)!!
                 }
             }.toMap()
     }

@@ -34,7 +34,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
     "document serialization with ByteArray" {
 
         val elementId = uuid4().toString()
-        val namespace = "testNS"
+        val namespace = uuid4().toString()
 
 
         CborCredentialSerializer.register(
@@ -50,7 +50,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
         )
 
         val doc = Document(
-            "dummyDoc",
+            uuid4().toString(),
             IssuerSigned(
                 mapOf(
                     namespace to listOf(item)
