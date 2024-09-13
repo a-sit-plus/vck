@@ -181,4 +181,9 @@ data class SignDocParameters(
      */
     @SerialName("returnValidationInformation")
     val returnValidationInformation: Boolean = false,
-) : SignatureRequestParameters
+) : SignatureRequestParameters {
+    init {
+        require(credentialId != null || signatureQualifier != null) { "Either credentialId or signatureQualifier must not be null (both can be present)" }
+        require(documentDigests != null || documents != null) { "Either documentDigests or documents must not be null (both can be present)" }
+    }
+}
