@@ -2,6 +2,7 @@ package at.asitplus.openid
 
 import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.OAuthDocumentDigest
 import at.asitplus.dif.rqes.CollectionEntries.DocumentLocation
+import at.asitplus.dif.rqes.Enums.SignatureQualifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
@@ -103,7 +104,7 @@ sealed class AuthorizationDetails {
          * signature to be created
          */
         @SerialName("signatureQualifier")
-        val signatureQualifier: String? = null,
+        val signatureQualifier: SignatureQualifier? = null,
 
         /**
          * CSC: An array composed of entries for every document to be signed. This applies for

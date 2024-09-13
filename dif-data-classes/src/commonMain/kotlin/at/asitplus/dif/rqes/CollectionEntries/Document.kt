@@ -52,11 +52,7 @@ data class Document(
     @SerialName("signed_props")
     val signedProps: List<String>? = null,
 
-    /**
-     * TODO regarding testcase: this value may or may not be set and this value may or may not match the default value.
-     * If we encode default we fail test cases where the default was not explicitly set
-     * if we do not encode default we fail test cases where the default value coincides with the set value
-     */
+
     @EncodeDefault
     @SerialName("signed_envelope_property")
     val signedEnvelopeProperty: SignedEnvelopeProperty = SignedEnvelopeProperty.defaultProperty(signatureFormat),

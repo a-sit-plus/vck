@@ -5,9 +5,9 @@ package at.asitplus.dif.rqes
 import at.asitplus.dif.rqes.CollectionEntries.Document
 import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.CscDocumentDigest
 import at.asitplus.dif.rqes.Enums.OperationModeEnum
+import at.asitplus.dif.rqes.Enums.SignatureQualifier
 import at.asitplus.dif.rqes.Serializer.SignatureRequestParameterSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
@@ -168,7 +168,7 @@ data class SignDocParameters(
      * a Qualified Electronic Signature according to eIDAS
      */
     @SerialName("signatureQualifier")
-    val signatureQualifier: String? = null,
+    val signatureQualifier: SignatureQualifier? = null,
 
     val documentDigests: Collection<CscDocumentDigest>? = null,
 
