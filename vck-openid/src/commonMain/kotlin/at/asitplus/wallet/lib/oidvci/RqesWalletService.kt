@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.dif.rqes.RqesConstants
+import at.asitplus.dif.rqes.SignDocParameters
 import at.asitplus.dif.rqes.SignatureRequestParameters
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthorizationDetails
@@ -10,6 +11,7 @@ import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
 import at.asitplus.openid.TokenRequestParameters
+import at.asitplus.openid.rqes.RqesRequest
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
@@ -46,42 +48,55 @@ class RqesWalletService(
     /**
      * CSC: Minimal implementation for CSC requests
      */
-    suspend fun createAuthRequest(
+    suspend fun createOAuth2AuthRequest(
+        rqesRequest: RqesRequest,
+        credentialIssuer: String? = null,
+        requestUri: String? = null,
+    ) = createOAuth2AuthRequest(
+        state = rqesRequest.state ?: com.benasher44.uuid.uuid4().toString(),
+        authorizationDetails = rqesRequest.toAuthorizationDetails(),
+        credentialIssuer = credentialIssuer,
+        requestUri = requestUri,
+    )
+
+    /**
+     * CSC: Minimal implementation for CSC requests
+     */
+    suspend fun createOAuth2AuthRequest(
         state: String,
         authorizationDetails: AuthorizationDetails,
         credentialIssuer: String? = null,
         requestUri: String? = null,
-    ): AuthenticationRequestParameters =
-        when (authorizationDetails) {
-            is AuthorizationDetails.OpenIdCredential -> AuthenticationRequestParameters(
-                responseType = GRANT_TYPE_CODE,
-                state = state,
-                clientId = clientId,
-                authorizationDetails = setOf(authorizationDetails),
-                resource = credentialIssuer,
-                redirectUrl = redirectUrl,
-                codeChallenge = generateCodeVerifier(state),
-                codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
-            )
+    ): AuthenticationRequestParameters = when (authorizationDetails) {
+        is AuthorizationDetails.OpenIdCredential -> AuthenticationRequestParameters(
+            responseType = GRANT_TYPE_CODE,
+            state = state,
+            clientId = clientId,
+            authorizationDetails = setOf(authorizationDetails),
+            resource = credentialIssuer,
+            redirectUrl = redirectUrl,
+            codeChallenge = generateCodeVerifier(state),
+            codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
+        )
 
-            is AuthorizationDetails.CSCCredential -> AuthenticationRequestParameters(
-                responseType = GRANT_TYPE_CODE,
-                state = state,
-                clientId = clientId,
-                authorizationDetails = setOf(authorizationDetails),
-                scope = RqesConstants.SCOPE,
-                redirectUrl = redirectUrl,
-                codeChallenge = generateCodeVerifier(state),
-                codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
-                requestUri = requestUri
-            )
-        }
+        is AuthorizationDetails.CSCCredential -> AuthenticationRequestParameters(
+            responseType = GRANT_TYPE_CODE,
+            state = state,
+            clientId = clientId,
+            authorizationDetails = setOf(authorizationDetails),
+            scope = RqesConstants.SCOPE,
+            redirectUrl = redirectUrl,
+            codeChallenge = generateCodeVerifier(state),
+            codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
+            requestUri = requestUri
+        )
+    }
 
 
     /**
      * CSC: Minimal implementation for CSC requests.
      */
-    suspend fun createTokenRequestParameters(
+    suspend fun createOauth2TokenRequestParameters(
         state: String,
         authorizationDetails: AuthorizationDetails,
         authorization: AuthorizationForToken,
@@ -106,8 +121,11 @@ class RqesWalletService(
         )
     }
 
-    suspend fun createSignDocRequestParameters(): SignatureRequestParameters = TODO()
+    suspend fun createSignDocRequestParameters(): SignatureRequestParameters = SignDocParameters(
+
+    )
 
     suspend fun createSignHashRequestParameters(): SignatureRequestParameters = TODO()
 
 }
+

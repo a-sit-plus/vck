@@ -17,7 +17,7 @@ sealed interface SignatureRequestParameters {
     /**
      * The credentialID as defined in the Input parameter table in `/credentials/info`
      */
-    val credentialID: String?
+    val credentialId: String?
 
     /**
      * The Signature Activation Data returned by the Credential Authorization
@@ -61,7 +61,7 @@ sealed interface SignatureRequestParameters {
 data class SignHashParameters(
 
     @SerialName("credentialID")
-    override val credentialID: String,
+    override val credentialId: String,
 
     @SerialName("SAD")
     override val sad: String? = null,
@@ -89,7 +89,7 @@ data class SignHashParameters(
      * String containing the OID of the hash algorithm used to generate the hashes
      */
     @SerialName("hashAlgorithmOID")
-    val hashAlgorithmOID: ObjectIdentifier? = null,
+    val hashAlgorithmOid: ObjectIdentifier? = null,
 
     /**
      * The OID of the algorithm to use for signing. It SHALL be one of the values
@@ -114,13 +114,13 @@ data class SignHashParameters(
 
         other as SignHashParameters
         if (!hashes.contentEquals(other.hashes)) return false
-        if (credentialID != other.credentialID) return false
+        if (credentialId != other.credentialId) return false
         if (sad != other.sad) return false
         if (operationMode != other.operationMode) return false
         if (validityPeriod != other.validityPeriod) return false
         if (responseUri != other.responseUri) return false
         if (clientData != other.clientData) return false
-        if (hashAlgorithmOID != other.hashAlgorithmOID) return false
+        if (hashAlgorithmOid != other.hashAlgorithmOid) return false
         if (signAlgo != other.signAlgo) return false
         if (signAlgoParams != other.signAlgoParams) return false
 
@@ -129,13 +129,13 @@ data class SignHashParameters(
 
     override fun hashCode(): Int {
         var result = hashes.contentHashCode()
-        result = 31 * result + credentialID.hashCode()
+        result = 31 * result + credentialId.hashCode()
         result = 31 * result + (sad?.hashCode() ?: 0)
         result = 31 * result + operationMode.hashCode()
         result = 31 * result + (validityPeriod ?: 0)
         result = 31 * result + (responseUri?.hashCode() ?: 0)
         result = 31 * result + (clientData?.hashCode() ?: 0)
-        result = 31 * result + (hashAlgorithmOID?.hashCode() ?: 0)
+        result = 31 * result + (hashAlgorithmOid?.hashCode() ?: 0)
         result = 31 * result + (signAlgo?.hashCode() ?: 0)
         result = 31 * result + (signAlgoParams?.hashCode() ?: 0)
         return result
@@ -146,7 +146,7 @@ data class SignHashParameters(
 data class SignDocParameters(
 
     @SerialName("credentialID")
-    override val credentialID: String? = null,
+    override val credentialId: String? = null,
 
     @SerialName("SAD")
     override val sad: String? = null,
