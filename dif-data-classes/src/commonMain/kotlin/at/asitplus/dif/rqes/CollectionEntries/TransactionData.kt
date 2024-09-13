@@ -5,7 +5,7 @@ package at.asitplus.dif.rqes.CollectionEntries
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.RqesDocumentDigestEntry
-import at.asitplus.dif.rqes.Enums.SignatureQualifier
+import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
 import at.asitplus.dif.rqes.Serializer.UrlSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
@@ -36,7 +36,7 @@ sealed class TransactionData {
          * to denote a Qualified Electronic Signature according to eIDAS.
          */
         @SerialName("signatureQualifier")
-        val signatureQualifier: SignatureQualifier? = null,
+        val signatureQualifier: SignatureQualifierEnum? = null,
 
         /**
          * CSC: OPTIONAL.
@@ -83,7 +83,7 @@ sealed class TransactionData {
              * Safe way to construct the object as init throws
              */
             fun create(
-                signatureQualifier: SignatureQualifier?,
+                signatureQualifier: SignatureQualifierEnum?,
                 credentialId: String?,
                 documentDigest: List<RqesDocumentDigestEntry>,
                 processID: String?,

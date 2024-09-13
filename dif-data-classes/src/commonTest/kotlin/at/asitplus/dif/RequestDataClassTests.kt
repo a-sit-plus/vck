@@ -179,14 +179,12 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 "sanitycheck" {
                     actual shouldBe sanitycheck
                 }
-                /**
-                 * TODO regarding testcase: signedEnvelopeProperty may or may not be set, in which case there is a default value and a given value may or may not match the default value.
-                 * If we encode default we fail test cases where the default was not explicitly set
-                 * if we do not encode default we fail test cases where the default value coincides with the set value
-                 */
-                "actual test".config(enabled = false) {
-                    //WIP see [Document] for discussion on why disabled
-                    jsonSerializer.encodeToJsonElement(actual).canonicalize() shouldBe expected.canonicalize()
+
+                "actual test".config(enabled = true) {
+                    val test1 = jsonSerializer.encodeToJsonElement(actual).canonicalize()
+                    val test2 = expected.canonicalize()
+                    test1 shouldBe test2
+//                    jsonSerializer.encodeToJsonElement(actual).canonicalize() shouldBe expected.canonicalize()
                 }
             }
         }
