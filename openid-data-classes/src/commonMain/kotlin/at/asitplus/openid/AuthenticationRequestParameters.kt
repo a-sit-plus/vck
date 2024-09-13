@@ -292,7 +292,7 @@ data class AuthenticationRequestParameters(
 
     /**
      * CSC: REQUIRED-"credential"
-     * One or more base64-encoded hash values to be signed
+     * One or more base64url-encoded hash values to be signed
      */
     @SerialName("hashes")
     @Serializable(HashesSerializer::class)
