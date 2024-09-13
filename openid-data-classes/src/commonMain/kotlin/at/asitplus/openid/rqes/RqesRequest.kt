@@ -1,8 +1,12 @@
 package at.asitplus.openid.rqes
 
+import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.CscDocumentDigest
 import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.OAuthDocumentDigest
 import at.asitplus.dif.rqes.CollectionEntries.DocumentLocation
-import at.asitplus.dif.rqes.Enums.SignatureQualifier
+import at.asitplus.dif.rqes.Enums.ConformanceLevelEnum
+import at.asitplus.dif.rqes.Enums.SignatureFormat
+import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
+import at.asitplus.dif.rqes.Enums.SignedEnvelopeProperty
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
@@ -50,7 +54,7 @@ data class RqesRequest(
 
 
     @SerialName("signatureQualifier")
-    val signatureQualifier: SignatureQualifier = SignatureQualifier.EU_EIDAS_QES,
+    val signatureQualifier: SignatureQualifierEnum = SignatureQualifierEnum.EU_EIDAS_QES,
 
 
     @SerialName("documentDigests")
@@ -65,13 +69,31 @@ data class RqesRequest(
     @SerialName("clientData")
     val clientData: String?,
 ) {
-    fun toAuthorizationDetails(): AuthorizationDetails {
-        return AuthorizationDetails.CSCCredential(
+    fun toAuthorizationDetails(): AuthorizationDetails =
+        AuthorizationDetails.CSCCredential(
             credentialID = this.clientId,
             signatureQualifier = this.signatureQualifier,
             hashAlgorithmOID = this.hashAlgorithmOid,
             documentDigests = this.documentDigests,
             documentLocations = this.documentLocations,
         )
-    }
+
+    fun getCscDocumentDigests(
+        signatureFormat: SignatureFormat,
+        conformanceLevelEnum: ConformanceLevelEnum? = ConformanceLevelEnum.ADESBB,
+        signAlgorithm: ObjectIdentifier,
+        signAlgoParam: String? = null,
+        signedProps: List<String>? = null,
+        signedEnvelopeProperty: SignedEnvelopeProperty? = SignedEnvelopeProperty.defaultProperty(signatureFormat)
+    ): CscDocumentDigest =
+        CscDocumentDigest(
+            hashes = this.documentDigests.map { it.hash },
+            hashAlgorithmOid = this.hashAlgorithmOid,
+            signatureFormat = signatureFormat,
+            conformanceLevel = conformanceLevelEnum,
+            signAlgo = signAlgorithm,
+            signAlgoParams = signAlgoParam,
+            signedProps = signedProps,
+            signedEnvelopeProperty = signedEnvelopeProperty
+        )
 }
