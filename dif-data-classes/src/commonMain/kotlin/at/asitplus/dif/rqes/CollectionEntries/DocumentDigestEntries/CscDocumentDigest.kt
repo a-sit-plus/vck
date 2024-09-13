@@ -50,6 +50,7 @@ data class CscDocumentDigest(
     val conformanceLevel: ConformanceLevelEnum? = null,
 
     /**
+     * TODO use Indespensable [SignatureAlgorithm]? <- needs to be extended to point to OID
      * The OID of the algorithm to use for signing
      */
     @SerialName("signAlgo")

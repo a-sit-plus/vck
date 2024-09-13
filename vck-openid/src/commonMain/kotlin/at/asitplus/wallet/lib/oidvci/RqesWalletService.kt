@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.dif.rqes.Enums.SignatureFormat
 import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
 import at.asitplus.dif.rqes.RqesConstants
 import at.asitplus.dif.rqes.SignDocParameters
@@ -13,12 +14,14 @@ import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.rqes.RqesRequest
+import at.asitplus.signum.indispensable.asn1.KnownOIDs.ecdsaWithSHA256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.oidvci.WalletService.AuthorizationForToken
+import com.benasher44.uuid.uuid4
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 
@@ -54,7 +57,7 @@ class RqesWalletService(
         credentialIssuer: String? = null,
         requestUri: String? = null,
     ) = createOAuth2AuthRequest(
-        state = rqesRequest.state ?: com.benasher44.uuid.uuid4().toString(),
+        state = rqesRequest.state ?: uuid4().toString(),
         authorizationDetails = rqesRequest.toAuthorizationDetails(),
         credentialIssuer = credentialIssuer,
         requestUri = requestUri,
@@ -99,7 +102,7 @@ class RqesWalletService(
      */
     suspend fun createOauth2TokenRequestParameters(
         state: String,
-        authorizationDetails: AuthorizationDetails,
+        authorizationDetails: Set<AuthorizationDetails>,
         authorization: AuthorizationForToken,
     ) = when (authorization) {
         is AuthorizationForToken.Code -> TokenRequestParameters(
@@ -107,7 +110,7 @@ class RqesWalletService(
             code = authorization.code,
             redirectUrl = redirectUrl,
             clientId = clientId,
-            authorizationDetails = setOf(authorizationDetails),
+            authorizationDetails = authorizationDetails,
             codeVerifier = stateToCodeStore.remove(state)
         )
 
@@ -115,18 +118,23 @@ class RqesWalletService(
             grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
             redirectUrl = redirectUrl,
             clientId = clientId,
-            authorizationDetails = setOf(authorizationDetails),
+            authorizationDetails = authorizationDetails,
             transactionCode = authorization.preAuth.transactionCode,
             preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
             codeVerifier = stateToCodeStore.remove(state)
         )
     }
 
+    /**
+     * TODO: could also use [Document] instead of [CscDocumentDigest]
+     */
     suspend fun createSignDocRequestParameters(rqesRequest: RqesRequest): SignatureRequestParameters = SignDocParameters(
-        signatureQualifier = SignatureQualifierEnum.EU_EIDAS_QES,
-        documentDigests = rqesRequest.getCscDocumentDigests()
-
-
+        signatureQualifier = rqesRequest.signatureQualifier,
+        documentDigests = listOf(rqesRequest.getCscDocumentDigests(
+            signatureFormat = SignatureFormat.CADES,
+            signAlgorithm = ecdsaWithSHA256,
+        )),
+        responseUri = this.redirectUrl, //TODO double check
     )
 
     suspend fun createSignHashRequestParameters(rqesRequest: RqesRequest): SignatureRequestParameters = TODO()
