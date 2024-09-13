@@ -7,6 +7,7 @@ import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.CscDocumentD
 import at.asitplus.dif.rqes.Enums.OperationModeEnum
 import at.asitplus.dif.rqes.Serializer.SignatureRequestParameterSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
@@ -63,32 +64,32 @@ data class SignHashParameters(
     override val credentialID: String,
 
     @SerialName("SAD")
-    override val sad: String?,
+    override val sad: String? = null,
 
     @SerialName("operationMode")
     override val operationMode: OperationModeEnum = OperationModeEnum.SYNCHRONOUS,
 
     @SerialName("validity_period")
-    override val validityPeriod: Int?,
+    override val validityPeriod: Int? = null,
 
     @SerialName("response_uri")
-    override val responseUri: String?,
+    override val responseUri: String? = null,
 
     @SerialName("clientData")
-    override val clientData: String?,
+    override val clientData: String? = null,
 
     /**
      * Input-type is JsonArray - do not use HashesSerializer!
      * One or more base64-encoded hash values to be signed
      */
     @SerialName("hashes")
-    val hashes: List<ByteArray>,
+    val hashes: Hashes,
 
     /**
      * String containing the OID of the hash algorithm used to generate the hashes
      */
     @SerialName("hashAlgorithmOID")
-    val hashAlgorithmOID: String? = null,
+    val hashAlgorithmOID: ObjectIdentifier? = null,
 
     /**
      * The OID of the algorithm to use for signing. It SHALL be one of the values
@@ -96,17 +97,50 @@ data class SignHashParameters(
      * in `credentials/list`
      */
     @SerialName("signAlgo")
-    val signAlgo: ObjectIdentifier,
+    val signAlgo: ObjectIdentifier? = null,
 
     /**
-     * The Base64-encoded DER-encoded ASN.1 signature parameters, if required by
+     * TODO: The Base64-encoded DER-encoded ASN.1 signature parameters, if required by
      * the signature algorithm. Some algorithms like RSASSA-PSS, as defined in RFC8017,
      * may require additional parameters
      */
     @SerialName("signAlgoParams")
     val signAlgoParams: String? = null,
 
-    ) : SignatureRequestParameters
+    ) : SignatureRequestParameters {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as SignHashParameters
+        if (!hashes.contentEquals(other.hashes)) return false
+        if (credentialID != other.credentialID) return false
+        if (sad != other.sad) return false
+        if (operationMode != other.operationMode) return false
+        if (validityPeriod != other.validityPeriod) return false
+        if (responseUri != other.responseUri) return false
+        if (clientData != other.clientData) return false
+        if (hashAlgorithmOID != other.hashAlgorithmOID) return false
+        if (signAlgo != other.signAlgo) return false
+        if (signAlgoParams != other.signAlgoParams) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = hashes.contentHashCode()
+        result = 31 * result + credentialID.hashCode()
+        result = 31 * result + (sad?.hashCode() ?: 0)
+        result = 31 * result + operationMode.hashCode()
+        result = 31 * result + (validityPeriod ?: 0)
+        result = 31 * result + (responseUri?.hashCode() ?: 0)
+        result = 31 * result + (clientData?.hashCode() ?: 0)
+        result = 31 * result + (hashAlgorithmOID?.hashCode() ?: 0)
+        result = 31 * result + (signAlgo?.hashCode() ?: 0)
+        result = 31 * result + (signAlgoParams?.hashCode() ?: 0)
+        return result
+    }
+}
 
 @Serializable
 data class SignDocParameters(
@@ -115,19 +149,19 @@ data class SignDocParameters(
     override val credentialID: String? = null,
 
     @SerialName("SAD")
-    override val sad: String?,
+    override val sad: String? = null,
 
     @SerialName("operationMode")
     override val operationMode: OperationModeEnum = OperationModeEnum.SYNCHRONOUS,
 
     @SerialName("validity_period")
-    override val validityPeriod: Int?,
+    override val validityPeriod: Int? = null,
 
     @SerialName("response_uri")
-    override val responseUri: String?,
+    override val responseUri: String? = null,
 
     @SerialName("clientData")
-    override val clientData: String?,
+    override val clientData: String? = null,
 
     /**
      * Identifier of the signature type to be created, e.g. “eu_eidas_qes” to denote

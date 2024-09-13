@@ -1,7 +1,7 @@
 package at.asitplus.dif
 
-import at.asitplus.dif.rqes.Serializer.Base64URLTransactionDataSerializer
 import at.asitplus.dif.rqes.CollectionEntries.TransactionData
+import at.asitplus.dif.rqes.Serializer.Base64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
@@ -168,7 +168,7 @@ class TransactionDataInterop : FreeSpec({
  */
 fun JsonElement.canonicalize(): JsonElement =
     when (this) {
-        is JsonObject -> JsonObject(this.entries.sortedBy { it.key }.associate { it.key to it.value.canonicalize() })
+        is JsonObject -> JsonObject(this.entries.sortedBy { it.key }.sortedBy { jsonSerializer.encodeToString(it.value) }.associate { it.key to it.value.canonicalize() })
         is JsonArray -> JsonArray(this.map { it.canonicalize() }.sortedBy { jsonSerializer.encodeToString(it) })
         is JsonPrimitive -> this
         JsonNull -> this

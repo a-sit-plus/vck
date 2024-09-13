@@ -12,58 +12,58 @@ import kotlinx.serialization.Serializable
 enum class ConformanceLevelEnum {
 
     /**
-     * “Ades-B” SHALL be used to request the creation
+     * “AdES-B” SHALL be used to request the creation
      * of a baseline etsits level B signature
      */
-    @SerialName("Ades-B")
+    @SerialName("AdES-B")
     ADESB,
 
     /**
-     * “Ades-B-B” SHALL be used to request the creation
+     * “AdES-B-B” SHALL be used to request the creation
      * of a baseline 191x2 level B signature
      */
-    @SerialName("Ades-B-B")
+    @SerialName("AdES-B-B")
     ADESBB,
 
     /**
-     * “Ades-B-T” SHALL be used to request the creation
+     * “AdES-B-T” SHALL be used to request the creation
      * of a baseline 191x2 level T signature
      */
-    @SerialName("Ades-B-T")
+    @SerialName("AdES-B-T")
     ADESBT,
 
     /**
-     * “Ades-B-LT” SHALL be used to request the creation
+     * “AdES-B-LT” SHALL be used to request the creation
      * of a baseline 191x2 level LT signature
      */
-    @SerialName("Ades-B-LT")
+    @SerialName("AdES-B-LT")
     ADESBLT,
 
     /**
-     * “Ades-B-LTA” SHALL be used to request the creation
+     * “AdES-B-LTA” SHALL be used to request the creation
      * of a baseline 191x2 level LTA signature
      */
-    @SerialName("Ades-B-LTA")
+    @SerialName("AdES-B-LTA")
     ADESBLTA,
 
     /**
-     * “Ades-T” SHALL be used to request the creation
+     * “AdES-T” SHALL be used to request the creation
      * of a baseline etsits level T signature
      */
-    @SerialName("Ades-T")
+    @SerialName("AdES-T")
     ADEST,
 
     /**
-     * “Ades-LT” SHALL be used to request the creation
+     * “AdES-LT” SHALL be used to request the creation
      * of a baseline etsits level LT signature
      */
-    @SerialName("Ades-T-LT")
+    @SerialName("AdES-T-LT")
     ADESTLT,
 
     /**
-     * “Ades-LTA” SHALL be used to request the creation
+     * “AdES-LTA” SHALL be used to request the creation
      * of a baseline etsits level LTA signature.
      */
-    @SerialName("Ades-T-LTA")
+    @SerialName("AdES-T-LTA")
     ADESTLTA
 }
