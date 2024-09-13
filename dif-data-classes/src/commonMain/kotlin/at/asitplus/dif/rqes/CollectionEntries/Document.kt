@@ -29,9 +29,8 @@ data class Document(
     /**
      * Requested conformance level. If omitted its value is "Ades-B-B"
      */
-    @EncodeDefault
     @SerialName("conformance_level")
-    val conformanceLevel: ConformanceLevelEnum = ConformanceLevelEnum.ADESBB,
+    val conformanceLevel: ConformanceLevelEnum? = null,
 
     /**
      * The OID of the algorithm to use for signing
@@ -52,10 +51,12 @@ data class Document(
     @SerialName("signed_props")
     val signedProps: List<String>? = null,
 
-
-    @EncodeDefault
+    /**
+     * if omitted/null it is assumed to have value
+     * `SignedEnvelopeProperty.defaultProperty(signatureFormat)`
+     */
     @SerialName("signed_envelope_property")
-    val signedEnvelopeProperty: SignedEnvelopeProperty = SignedEnvelopeProperty.defaultProperty(signatureFormat),
+    val signedEnvelopeProperty: SignedEnvelopeProperty? = null,
 )
 //{
 //    override fun equals(other: Any?): Boolean {

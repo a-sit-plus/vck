@@ -2,7 +2,7 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.rqes.Enums.SignatureQualifier
+import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
 import at.asitplus.dif.rqes.Serializer.HashesSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
@@ -282,7 +282,7 @@ data class AuthenticationRequestParameters(
      * signature to be created
      */
     @SerialName("signatureQualifier")
-    val signatureQualifier: SignatureQualifier? = null,
+    val signatureQualifier: SignatureQualifierEnum? = null,
 
     /**
      * CSC: Required-"credential"

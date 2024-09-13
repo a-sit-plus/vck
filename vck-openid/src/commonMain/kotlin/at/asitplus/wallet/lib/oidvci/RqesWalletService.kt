@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
 import at.asitplus.dif.rqes.RqesConstants
 import at.asitplus.dif.rqes.SignDocParameters
 import at.asitplus.dif.rqes.SignatureRequestParameters
@@ -121,11 +122,14 @@ class RqesWalletService(
         )
     }
 
-    suspend fun createSignDocRequestParameters(): SignatureRequestParameters = SignDocParameters(
+    suspend fun createSignDocRequestParameters(rqesRequest: RqesRequest): SignatureRequestParameters = SignDocParameters(
+        signatureQualifier = SignatureQualifierEnum.EU_EIDAS_QES,
+        documentDigests = rqesRequest.getCscDocumentDigests()
+
 
     )
 
-    suspend fun createSignHashRequestParameters(): SignatureRequestParameters = TODO()
+    suspend fun createSignHashRequestParameters(rqesRequest: RqesRequest): SignatureRequestParameters = TODO()
 
 }
 
