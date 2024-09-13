@@ -304,7 +304,7 @@ data class AuthenticationRequestParameters(
      * String containing the OID of the hash algorithm used to generate the hashes
      */
     @SerialName("hashAlgorithmOID")
-    val hashAlgorithmOID: String? = null,
+    val hashAlgorithmOid: String? = null,
 
     /**
      * CSC: OPTIONAL

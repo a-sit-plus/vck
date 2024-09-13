@@ -2,7 +2,7 @@ package at.asitplus.dif
 
 import at.asitplus.dif.rqes.CollectionEntries.TransactionData
 import at.asitplus.dif.rqes.Serializer.Base64URLTransactionDataSerializer
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import io.github.aakira.napier.Napier
@@ -62,7 +62,7 @@ class TransactionDataInterop : FreeSpec({
     val transactionDataTest = TransactionData.QCertCreationAcceptance(
         qcTermsConditionsUri = "abc",
         qcHash = "cde".decodeBase64Bytes(),
-        qcHashAlgorithmOID = ObjectIdentifier("2.16.840.1.101.3.4.2.1")
+        qcHashAlgorithmOid = sha_256
     )
 
     "Serialization is stable" {
