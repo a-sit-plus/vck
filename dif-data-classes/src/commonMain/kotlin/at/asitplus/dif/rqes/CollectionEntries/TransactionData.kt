@@ -127,7 +127,7 @@ sealed class TransactionData {
          * String containing the base64-encoded
          * octet-representation of applying the
          * algorithm from
-         * [qcHashAlgorithmOID] to the octet-
+         * [qcHashAlgorithmOid] to the octet-
          * representation of the document
          * referenced by [qcTermsConditionsUri]
          */
@@ -144,7 +144,7 @@ sealed class TransactionData {
          */
         @SerialName("QC_hashAlgorithmOID")
         @Serializable(ObjectIdSerializer::class)
-        val qcHashAlgorithmOID: ObjectIdentifier,
+        val qcHashAlgorithmOid: ObjectIdentifier,
     ) : TransactionData() {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -154,7 +154,7 @@ sealed class TransactionData {
 
             if (qcTermsConditionsUri != other.qcTermsConditionsUri) return false
             if (!qcHash.contentEquals(other.qcHash)) return false
-            if (qcHashAlgorithmOID != other.qcHashAlgorithmOID) return false
+            if (qcHashAlgorithmOid != other.qcHashAlgorithmOid) return false
 
             return true
         }
@@ -162,7 +162,7 @@ sealed class TransactionData {
         override fun hashCode(): Int {
             var result = qcTermsConditionsUri.hashCode()
             result = 31 * result + qcHash.contentHashCode()
-            result = 31 * result + qcHashAlgorithmOID.hashCode()
+            result = 31 * result + qcHashAlgorithmOid.hashCode()
             return result
         }
     }

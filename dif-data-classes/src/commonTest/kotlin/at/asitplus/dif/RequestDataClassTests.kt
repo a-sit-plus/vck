@@ -9,7 +9,6 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
@@ -141,15 +140,15 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         val dummyEntries =
             listOf(
                 SignHashParameters(
-                    credentialID = "1234",
+                    credentialId = "1234",
                     hashes = listOf("abcd".decodeToByteArray(Base64Strict)),
                 ),
                 SignDocParameters(
-                    credentialID = "1234",
+                    credentialId = "1234",
                     documents = listOf() //TODO add documents
                 ),
                 SignDocParameters(
-                    credentialID = "1234",
+                    credentialId = "1234",
                     documentDigests = listOf() //TODO add documentdigest
                 )
             )
