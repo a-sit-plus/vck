@@ -35,6 +35,7 @@ interface NonceService {
  */
 class DefaultNonceService : NonceService {
 
+    // TODO Remove values after a certain timeout
     private val mutex = Mutex()
     private val values = mutableListOf<String>()
 

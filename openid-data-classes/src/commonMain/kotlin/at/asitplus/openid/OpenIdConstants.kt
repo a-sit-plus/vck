@@ -30,6 +30,9 @@ object OpenIdConstants {
 
     const val PREFIX_DID_KEY = "did:key"
 
+    /** OID4VCI support binding keys to [at.asitplus.signum.indispensable.josef.JsonWebKey] */
+    const val BINDING_METHOD_JWK = "jwk"
+
     const val PATH_WELL_KNOWN_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
 
     const val SCOPE_OPENID = "openid"

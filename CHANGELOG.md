@@ -32,7 +32,8 @@ Release NEXT:
  * Add `KeyStoreMaterial` to JVM target for convenience
  - Update implementation of [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) to draft 14 from 2024-08-21
  - Move some fields from `IssuerMetadata` to `OAuth2AuthorizationServerMetadata` to match the semantics
- - Remove proof type `cwt` for OpenID for Verifiable Credential Issuance, as per draft 14
+ - Remove proof type `cwt` for OpenID for Verifiable Credential Issuance, as per draft 14, but keep parsing it for a bit of backwards-compatibility
+ - OID4VCI: Remove binding method for `did:key`, as it was never completely implemented, but add binding method `jwk` for JSON Web Keys.
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments

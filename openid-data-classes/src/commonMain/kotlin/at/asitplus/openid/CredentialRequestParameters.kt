@@ -27,6 +27,7 @@ data class CredentialRequestParameters(
      * as those defined in Appendix A MUST NOT be present.
      */
     @SerialName("credential_identifier")
+    // TODO Update
     val credentialIdentifier: String? = null,
 
     /**
@@ -68,13 +69,20 @@ data class CredentialRequestParameters(
     val sdJwtVcType: String? = null,
 
     /**
-     * OID4VCI: OPTIONAL. Object containing the proof of possession of the cryptographic key material the issued
-     * Credential would be bound to. The proof object is REQUIRED if the [SupportedCredentialFormat.supportedProofTypes]
-     * parameter is non-empty and present in the [IssuerMetadata.supportedCredentialConfigurations] for the requested
-     * Credential.
+     * OID4VCI: OPTIONAL. Object providing a single proof of possession of the cryptographic key material to which the
+     * issued Credential instance will be bound to. [proof] parameter MUST NOT be present if [proofs] parameter is used.
      */
     @SerialName("proof")
     val proof: CredentialRequestProof? = null,
+
+    /**
+     * OID4VCI: OPTIONAL. Object providing one or more proof of possessions of the cryptographic key material to which
+     * the issued Credential instances will be bound to. The [proofs] parameter MUST NOT be present if [proof] parameter
+     * is used. [proofs] object contains exactly one parameter named as the proof type in Section 7.2.1, the value set
+     * for this parameter is an array containing parameters as defined by the corresponding proof type.
+     */
+    @SerialName("proofs")
+    val proofs: CredentialRequestProofContainer? = null,
 ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)

@@ -191,6 +191,7 @@ data class OAuth2AuthorizationServerMetadata(
      * Valid values include `urn:ietf:params:oauth:jwk-thumbprint`, `did:example` and others.
      */
     @SerialName("subject_syntax_types_supported")
+    // TODO Verify usage of "jwk", maybe remove did
     val subjectSyntaxTypesSupported: Set<String>? = null,
 
     /**

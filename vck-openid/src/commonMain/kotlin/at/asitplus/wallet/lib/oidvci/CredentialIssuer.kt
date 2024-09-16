@@ -110,15 +110,7 @@ class CredentialIssuer(
         accessToken: String,
         params: CredentialRequestParameters
     ): KmmResult<CredentialResponseParameters> = catching {
-        val proof = params.proof
-            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-                .also { Napier.w("credential: client did not provide proof of possession") }
-        val subjectPublicKey = when (proof.proofType) {
-            ProofType.JWT -> proof.validateJwtProof()
-            ProofType.CWT -> proof.validateCwtProof()
-            else -> throw OAuth2Exception(Errors.INVALID_PROOF)
-                .also { Napier.w("credential: client did provide invalid proof type: ${proof.proofType}") }
-        }
+        val subjectPublicKey = validateProofExtractSubjectPublicKey(params)
 
         val userInfo = authorizationService.getUserInfo(accessToken).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_TOKEN)
@@ -165,22 +157,37 @@ class CredentialIssuer(
             .also { Napier.i("credential returns $it") }
     }
 
-    private suspend fun CredentialRequestProof.validateJwtProof(): CryptoPublicKey {
-        if (jwt == null)
-            throw OAuth2Exception(Errors.INVALID_PROOF)
-                .also { Napier.w("client did provide invalid proof: $this") }
-        val jwsSigned = JwsSigned.parse(jwt!!).getOrNull()
+    private suspend fun validateProofExtractSubjectPublicKey(params: CredentialRequestParameters): CryptoPublicKey =
+        params.proof?.validateProof()
+            ?: params.proofs?.validateProof()
+            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+                .also { Napier.w("credential: client did not provide proof of possession") }
+
+    private suspend fun CredentialRequestProof.validateProof() = when (proofType) {
+        ProofType.JWT -> jwt?.validateJwtProof()
+        ProofType.CWT -> cwt?.validateCwtProof()
+        else -> null
+    }
+
+    private suspend fun CredentialRequestProofContainer.validateProof() = when (proofType) {
+        ProofType.JWT -> jwt?.map { it.validateJwtProof() }?.toSet()?.singleOrNull()
+        else -> null
+    }
+
+    private suspend fun String.validateJwtProof(): CryptoPublicKey {
+        val jwsSigned = JwsSigned.parse(this).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid proof: $this") }
         val jwt = JsonWebToken.deserialize(jwsSigned.payload.decodeToString()).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid JWT in proof: $this") }
-        if (jwt.nonce == null || !authorizationService.verifyAndRemoveClientNonce(jwt.nonce!!))
-            throw OAuth2Exception(Errors.INVALID_PROOF)
-                .also { Napier.w("client did provide invalid nonce in JWT in proof: ${jwt.nonce}") }
         if (jwsSigned.header.type != PROOF_JWT_TYPE)
             throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid header type in JWT in proof: ${jwsSigned.header}") }
+        if (authorizationService.supportsClientNonce)
+        if (jwt.nonce == null || !authorizationService.verifyClientNonce(jwt.nonce!!))
+            throw OAuth2Exception(Errors.INVALID_PROOF)
+                .also { Napier.w("client did provide invalid nonce in JWT in proof: ${jwt.nonce}") }
         if (jwt.audience == null || jwt.audience != publicContext)
             throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid audience in JWT in proof: ${jwsSigned.header}") }
@@ -192,17 +199,14 @@ class CredentialIssuer(
     /**
      * Removed in OID4VCI Draft 14, kept here for a bit of backwards-compatibility
      */
-    private suspend fun CredentialRequestProof.validateCwtProof(): CryptoPublicKey {
-        if (cwt == null)
-            throw OAuth2Exception(Errors.INVALID_PROOF)
-                .also { Napier.w("client did provide invalid proof: $this") }
-        val coseSigned = CoseSigned.deserialize(cwt!!.decodeToByteArray(Base64UrlStrict)).getOrNull()
+    private suspend fun String.validateCwtProof(): CryptoPublicKey {
+        val coseSigned = CoseSigned.deserialize(decodeToByteArray(Base64UrlStrict)).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid proof: $this") }
         val cwt = coseSigned.payload?.let { CborWebToken.deserialize(it).getOrNull() }
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid CWT in proof: $this") }
-        if (cwt.nonce == null || !authorizationService.verifyAndRemoveClientNonce(cwt.nonce!!.decodeToString()))
+        if (cwt.nonce == null || !authorizationService.verifyClientNonce(cwt.nonce!!.decodeToString()))
             throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid nonce in CWT in proof: ${cwt.nonce}") }
         val header = coseSigned.protectedHeader.value

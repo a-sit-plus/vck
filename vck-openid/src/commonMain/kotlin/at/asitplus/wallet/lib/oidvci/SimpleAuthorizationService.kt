@@ -62,6 +62,8 @@ class SimpleAuthorizationService(
     val accessTokenToUserInfoStore: MapStore<String, OidcUserInfoExtended> = DefaultMapStore()
 ) : OAuth2AuthorizationServer {
 
+    override val supportsClientNonce: Boolean = true
+
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`
      */
@@ -176,8 +178,8 @@ class SimpleAuthorizationService(
         }
     }
 
-    override suspend fun verifyAndRemoveClientNonce(nonce: String): Boolean {
-        return clientNonceService.verifyAndRemoveNonce(nonce)
+    override suspend fun verifyClientNonce(nonce: String): Boolean {
+        return clientNonceService.verifyNonce(nonce)
     }
 
     override suspend fun getUserInfo(accessToken: String): KmmResult<OidcUserInfoExtended> = catching {

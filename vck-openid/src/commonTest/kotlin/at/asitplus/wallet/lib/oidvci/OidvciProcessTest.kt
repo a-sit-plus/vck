@@ -1,13 +1,12 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.CredentialFormatEnum
-import at.asitplus.openid.CredentialResponseParameters
-import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.IssuerSigned
@@ -62,6 +61,45 @@ class OidvciProcessTest : FunSpec({
         val jws = JwsSigned.parse(serializedCredential).getOrThrow()
         val vcJws = VerifiableCredentialJws.deserialize(jws.payload.decodeToString()).getOrThrow()
         vcJws.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+    }
+
+    test("process with W3C VC JWT, proof over different keys") {
+        val requestOptions = WalletService.RequestOptions(
+            ConstantIndex.AtomicAttribute2023,
+            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
+        )
+        val authnRequest = client.createAuthRequest(requestOptions)
+        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+        val code = authnResponse.params.code.shouldNotBeNull()
+        val tokenRequest = client.createTokenRequestParameters(
+            requestOptions = requestOptions,
+            authorization = WalletService.AuthorizationForToken.Code(code)
+        )
+        val token = authorizationService.token(tokenRequest).getOrThrow()
+        val proof = client.createCredentialRequestJwt(
+            requestOptions = requestOptions,
+            clientNonce = token.clientNonce,
+            credentialIssuer = issuer.metadata.credentialIssuer
+        )
+        val differentProof = WalletService().createCredentialRequestJwt(
+            requestOptions = requestOptions,
+            clientNonce = token.clientNonce,
+            credentialIssuer = issuer.metadata.credentialIssuer
+        )
+        val credentialRequest = CredentialRequestParameters(
+            format = CredentialFormatEnum.JWT_VC,
+            credentialDefinition = SupportedCredentialFormatDefinition(
+                types = listOf(VERIFIABLE_CREDENTIAL) + ConstantIndex.AtomicAttribute2023.vcType,
+            ),
+            proofs = CredentialRequestProofContainer(
+                proofType = OpenIdConstants.ProofType.JWT,
+                jwt = setOf(proof.jwt!!, differentProof.jwt!!)
+            )
+        )
+
+        val credential = issuer.credential(token.accessToken, credentialRequest)
+        credential.isFailure shouldBe true
+        credential.exceptionOrNull().shouldBeInstanceOf<OAuth2Exception>()
     }
 
     test("can't cash in token twice") {

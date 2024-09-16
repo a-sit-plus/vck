@@ -1,8 +1,10 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.*
+import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_COSE_KEY
+import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
+import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.signum.indispensable.SignatureAlgorithm
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.Issuer
@@ -21,7 +23,7 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
             format = CredentialFormatEnum.MSO_MDOC,
             scope = isoNamespace!!,
             docType = isoDocType!!,
-            supportedBindingMethods = setOf(OpenIdConstants.BINDING_METHOD_COSE_KEY),
+            supportedBindingMethods = setOf(BINDING_METHOD_JWK, BINDING_METHOD_COSE_KEY),
             supportedSigningAlgorithms = cryptoAlgorithms
                 .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
                 .toSet(),
@@ -38,7 +40,7 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
                 types = listOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType!!),
                 credentialSubject = claimNames.associateWith { CredentialSubjectMetadataSingle() }
             ),
-            supportedBindingMethods = setOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
+            supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
             supportedSigningAlgorithms = cryptoAlgorithms
                 .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
                 .toSet(),
@@ -49,7 +51,7 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
             format = CredentialFormatEnum.VC_SD_JWT,
             scope = sdJwtType!!,
             sdJwtVcType = sdJwtType!!,
-            supportedBindingMethods = setOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
+            supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
             supportedSigningAlgorithms = cryptoAlgorithms
                 .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
                 .toSet(),
