@@ -506,7 +506,7 @@ class WalletService(
             .also { Napier.i("createCredentialRequest returns $it") }
     }
 
-    private suspend fun createCredentialRequestJwt(
+    internal suspend fun createCredentialRequestJwt(
         requestOptions: RequestOptions?,
         clientNonce: String?,
         credentialIssuer: String?,
@@ -532,26 +532,27 @@ class WalletService(
     private fun RequestOptions.toCredentialRequestParameters(proof: CredentialRequestProof) =
         representation.toCredentialRequestParameters(credentialScheme, requestedAttributes, proof)
 
-    private fun SupportedCredentialFormat.toAuthnDetails(requestedAttributes: Set<String>?): AuthorizationDetails = when (this.format) {
-        CredentialFormatEnum.JWT_VC -> AuthorizationDetails.OpenIdCredential(
-            format = format,
-            credentialDefinition = credentialDefinition
-        )
+    private fun SupportedCredentialFormat.toAuthnDetails(requestedAttributes: Set<String>?): AuthorizationDetails =
+        when (this.format) {
+            CredentialFormatEnum.JWT_VC -> AuthorizationDetails.OpenIdCredential(
+                format = format,
+                credentialDefinition = credentialDefinition
+            )
 
-        CredentialFormatEnum.VC_SD_JWT -> AuthorizationDetails.OpenIdCredential(
-            format = format,
-            sdJwtVcType = sdJwtVcType,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
-        )
+            CredentialFormatEnum.VC_SD_JWT -> AuthorizationDetails.OpenIdCredential(
+                format = format,
+                sdJwtVcType = sdJwtVcType,
+                claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
+            )
 
-        CredentialFormatEnum.MSO_MDOC -> AuthorizationDetails.OpenIdCredential(
-            format = format,
-            docType = docType,
-            claims = requestedAttributes?.toRequestedClaimsIso(isoClaims?.keys?.firstOrNull() ?: docType!!)
-        )
+            CredentialFormatEnum.MSO_MDOC -> AuthorizationDetails.OpenIdCredential(
+                format = format,
+                docType = docType,
+                claims = requestedAttributes?.toRequestedClaimsIso(isoClaims?.keys?.firstOrNull() ?: docType!!)
+            )
 
-        else -> throw IllegalArgumentException("Credential format $format not supported for AuthorizationDetails")
-    }
+            else -> throw IllegalArgumentException("Credential format $format not supported for AuthorizationDetails")
+        }
 
     private fun RequestOptions.toAuthnDetails() =
         representation.toAuthorizationDetails(credentialScheme, requestedAttributes)

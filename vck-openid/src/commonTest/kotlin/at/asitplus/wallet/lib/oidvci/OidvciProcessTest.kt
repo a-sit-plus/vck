@@ -85,11 +85,7 @@ class OidvciProcessTest : FunSpec({
         authorizationService = SimpleAuthorizationService(
             dataProvider = DummyOAuth2DataProvider,
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
-            codeToUserInfoStore = object : MapStore<String, OidcUserInfoExtended> {
-                override suspend fun put(key: String, value: OidcUserInfoExtended) = Unit
-                override suspend fun get(key: String): OidcUserInfoExtended? = null
-                override suspend fun remove(key: String): OidcUserInfoExtended? = null
-            }
+            codeToUserInfoStore = defectMapStore()
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
@@ -127,26 +123,21 @@ class OidvciProcessTest : FunSpec({
 
     test("process with W3C VC SD-JWT, credential offer, pre-authn") {
         val offer = issuer.credentialOffer()
-            .also { println(it.serialize()) }
         val metadata = issuer.metadata
-            .also { println(it.serialize()) }
 
         val selectedCredentialConfigurationId = "AtomicAttribute2023#vc+sd-jwt"
         val selectedCredential = metadata.supportedCredentialConfigurations!![selectedCredentialConfigurationId]!!
         val tokenRequest = client.createTokenRequestParameters(
             authorization = WalletService.AuthorizationForToken.PreAuthCode(offer.grants!!.preAuthorizedCode!!),
             credential = selectedCredential,
-        ).also { println(it.serialize()) }
+        )
         val token = authorizationService.token(tokenRequest).getOrThrow()
-            .also { println(it.serialize()) }
         val credentialRequest = client.createCredentialRequest(
             credential = selectedCredential,
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer
         ).getOrThrow()
-            .also { println(it.serialize()) }
         val credential = issuer.credential(token.accessToken, credentialRequest).getOrThrow()
-            .also { println(it.serialize()) }
 
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential.shouldNotBeNull()
@@ -243,6 +234,12 @@ class OidvciProcessTest : FunSpec({
     }
 
 })
+
+private fun defectMapStore() = object : MapStore<String, OidcUserInfoExtended> {
+    override suspend fun put(key: String, value: OidcUserInfoExtended) = Unit
+    override suspend fun get(key: String): OidcUserInfoExtended? = null
+    override suspend fun remove(key: String): OidcUserInfoExtended? = null
+}
 
 private suspend fun runProcess(
     authorizationService: SimpleAuthorizationService,
