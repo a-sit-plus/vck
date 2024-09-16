@@ -71,6 +71,7 @@ class CredentialIssuer(
             supportedCredentialConfigurations = mutableMapOf<String, SupportedCredentialFormat>().apply {
                 credentialSchemes.forEach { putAll(it.toSupportedCredentialFormat(issuer.cryptoAlgorithms)) }
             },
+            batchCredentialIssuance = BatchCredentialIssuanceMetadata(1)
         )
     }
 
@@ -159,7 +160,6 @@ class CredentialIssuer(
             throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("credential: issuer did not issue credential: $issuedCredentialResult") }
         }
-        // TODO Implement Batch Credential Endpoint for more than one credential response
 
         issuedCredential.toCredentialResponseParameters()
             .also { Napier.i("credential returns $it") }
