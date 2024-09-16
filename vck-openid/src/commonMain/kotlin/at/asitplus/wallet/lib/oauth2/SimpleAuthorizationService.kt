@@ -160,7 +160,7 @@ class SimpleAuthorizationService(
             tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
             expires = 3600.seconds,
             clientNonce = clientNonceService.provideNonce(),
-            authorizationDetails = filteredAuthorizationDetails
+            authorizationDetailsList = filteredAuthorizationDetails?.toList()
         ).also { Napier.i("token returns $it") }
     }
 
