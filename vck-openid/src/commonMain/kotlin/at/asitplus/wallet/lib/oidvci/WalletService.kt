@@ -152,21 +152,31 @@ class WalletService(
      * val authn = AuthenticationResponseParameters.deserialize(authnResponse.bodyAsText()).getOrThrow()
      * ```
      *
-     * @param credential which credential from [IssuerMetadata.supportedCredentialConfigurations] to request
+     * @param credentialConfigurationId which credential (the key) from [IssuerMetadata.supportedCredentialConfigurations] to request
+     * @param scope which credential (the value `scope`) from [IssuerMetadata.supportedCredentialConfigurations] to request
      * @param credentialIssuer from [IssuerMetadata.credentialIssuer]
      * @param authorizationServers from [IssuerMetadata.authorizationServers]
      */
     suspend fun createAuthRequest(
         state: String,
-        credential: Pair<String, SupportedCredentialFormat>,
+        credentialConfigurationId: String? = null,
+        scope: String? = null,
         credentialIssuer: String? = null,
         authorizationServers: Set<String>? = null,
     ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         state = state,
         clientId = clientId,
-        authorizationDetails = setOf(credential.toAuthnDetails(authorizationServers)),
-        scope = credential.first,
+        authorizationDetails = credentialConfigurationId?.let {
+            setOf(
+                AuthorizationDetails.OpenIdCredential(
+                    credentialConfigurationId = it,
+                    locations = authorizationServers,
+                    credentialIdentifiers = setOf(it) // TODO Test in real-world settings, is this correct?
+                )
+            )
+        },
+        scope = scope,
         resource = credentialIssuer,
         redirectUrl = redirectUrl,
         codeChallenge = generateCodeVerifier(state),
@@ -394,14 +404,13 @@ class WalletService(
      * Be sure to include a DPoP header if [IssuerMetadata.dpopSigningAlgValuesSupported] is set,
      * see [JwsService.buildDPoPHeader].
      *
-     * @param credential which credential from [IssuerMetadata.supportedCredentialConfigurations] to request
-     * @param requestedAttributes attributes that shall be requested explicitly (selective disclosure)
+     * @param credentialConfigurationId which credential (the key) from
+     * [IssuerMetadata.supportedCredentialConfigurations] to request
      * @param state used in [createAuthRequest], e.g. when using authorization codes
      * @param authorization for the token endpoint
      */
     suspend fun createTokenRequestParameters(
-        credential: SupportedCredentialFormat,
-        requestedAttributes: Set<String>? = null,
+        credentialConfigurationId: String,
         state: String? = null,
         authorization: AuthorizationForToken,
     ) = when (authorization) {
@@ -410,7 +419,11 @@ class WalletService(
             code = authorization.code,
             redirectUrl = redirectUrl,
             clientId = clientId,
-            authorizationDetails = setOf(credential.toAuthnDetails(requestedAttributes)),
+            authorizationDetails = setOf(
+                AuthorizationDetails.OpenIdCredential(
+                    credentialConfigurationId = credentialConfigurationId,
+                )
+            ),
             codeVerifier = state?.let { stateToCodeStore.remove(it) }
         )
 
@@ -418,7 +431,11 @@ class WalletService(
             grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
             redirectUrl = redirectUrl,
             clientId = clientId,
-            authorizationDetails = setOf(credential.toAuthnDetails(requestedAttributes)),
+            authorizationDetails = setOf(
+                AuthorizationDetails.OpenIdCredential(
+                    credentialConfigurationId = credentialConfigurationId,
+                )
+            ),
             transactionCode = authorization.transactionCode,
             preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
             codeVerifier = state?.let { stateToCodeStore.remove(it) }
@@ -452,20 +469,19 @@ class WalletService(
      * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
      * see [JwsService.buildDPoPHeader].
      *
-     * @param credential which credential from [IssuerMetadata.supportedCredentialConfigurations] to request
-     * @param requestedAttributes attributes that shall be requested explicitly (selective disclosure)
+     * @param authorizationDetails from the token response, see [TokenResponseParameters.authorizationDetails]
      * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
      * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
      */
     suspend fun createCredentialRequest(
-        credential: SupportedCredentialFormat,
-        requestedAttributes: Set<String>? = null,
+        authorizationDetails: AuthorizationDetails.OpenIdCredential,
         clientNonce: String?,
         credentialIssuer: String?,
     ): KmmResult<CredentialRequestParameters> = catching {
-        val proof = createCredentialRequestJwt(null, clientNonce, credentialIssuer)
-        credential.toCredentialRequestParameters(requestedAttributes, proof)
-            .also { Napier.i("createCredentialRequest returns $it") }
+        CredentialRequestParameters(
+            credentialIdentifier = authorizationDetails.credentialConfigurationId,
+            proof = createCredentialRequestJwt(null, clientNonce, credentialIssuer),
+        ).also { Napier.i("createCredentialRequest returns $it") }
     }
 
     /**
@@ -531,28 +547,6 @@ class WalletService(
 
     private fun RequestOptions.toCredentialRequestParameters(proof: CredentialRequestProof) =
         representation.toCredentialRequestParameters(credentialScheme, requestedAttributes, proof)
-
-    private fun SupportedCredentialFormat.toAuthnDetails(requestedAttributes: Set<String>?): AuthorizationDetails =
-        when (this.format) {
-            CredentialFormatEnum.JWT_VC -> AuthorizationDetails.OpenIdCredential(
-                format = format,
-                credentialDefinition = credentialDefinition
-            )
-
-            CredentialFormatEnum.VC_SD_JWT -> AuthorizationDetails.OpenIdCredential(
-                format = format,
-                sdJwtVcType = sdJwtVcType,
-                claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
-            )
-
-            CredentialFormatEnum.MSO_MDOC -> AuthorizationDetails.OpenIdCredential(
-                format = format,
-                docType = docType,
-                claims = requestedAttributes?.toRequestedClaimsIso(isoClaims?.keys?.firstOrNull() ?: docType!!)
-            )
-
-            else -> throw IllegalArgumentException("Credential format $format not supported for AuthorizationDetails")
-        }
 
     private fun RequestOptions.toAuthnDetails() =
         representation.toAuthorizationDetails(credentialScheme, requestedAttributes)
@@ -629,11 +623,13 @@ class WalletService(
     private fun SupportedCredentialFormat.toCredentialRequestParameters(
         requestedAttributes: Set<String>?,
         proof: CredentialRequestProof,
+        authorizationDetails: AuthorizationDetails.OpenIdCredential?,
     ) = when (format) {
         CredentialFormatEnum.JWT_VC -> CredentialRequestParameters(
+            credentialIdentifier = authorizationDetails?.credentialConfigurationId,
             format = format,
             credentialDefinition = credentialDefinition,
-            proof = proof
+            proof = proof,
         )
 
         CredentialFormatEnum.VC_SD_JWT -> CredentialRequestParameters(
@@ -653,16 +649,6 @@ class WalletService(
         else -> throw IllegalArgumentException("format $format not applicable to create credential request")
     }
 }
-
-private fun Pair<String, SupportedCredentialFormat>.toAuthnDetails(authorizationServers: Set<String>?)
-        : AuthorizationDetails = AuthorizationDetails.OpenIdCredential(
-    credentialConfigurationId = first,
-    format = second.format,
-    docType = second.docType,
-    sdJwtVcType = second.sdJwtVcType,
-    credentialDefinition = second.credentialDefinition,
-    locations = authorizationServers
-)
 
 private fun Collection<String>.toRequestedClaimsSdJwt(sdJwtType: String) =
     mapOf(sdJwtType to this.associateWith { RequestedCredentialClaimSpecification() })

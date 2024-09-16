@@ -24,7 +24,6 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
-
 class OidvciProcessTest : FunSpec({
 
     lateinit var authorizationService: SimpleAuthorizationService
@@ -161,17 +160,15 @@ class OidvciProcessTest : FunSpec({
 
     test("process with W3C VC SD-JWT, credential offer, pre-authn") {
         val offer = issuer.credentialOffer()
-        val metadata = issuer.metadata
 
-        val selectedCredentialConfigurationId = "AtomicAttribute2023#vc+sd-jwt"
-        val selectedCredential = metadata.supportedCredentialConfigurations!![selectedCredentialConfigurationId]!!
+        val credentialIdToRequest = "AtomicAttribute2023#vc+sd-jwt"
         val tokenRequest = client.createTokenRequestParameters(
+            credentialConfigurationId = credentialIdToRequest,
             authorization = WalletService.AuthorizationForToken.PreAuthCode(offer.grants!!.preAuthorizedCode!!),
-            credential = selectedCredential,
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
         val credentialRequest = client.createCredentialRequest(
-            credential = selectedCredential,
+            authorizationDetails = token.authorizationDetails!!.first() as AuthorizationDetails.OpenIdCredential,
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer
         ).getOrThrow()

@@ -9,26 +9,25 @@ import kotlinx.serialization.encodeToString
 @Serializable
 data class CredentialRequestParameters(
     /**
-     * OID4VCI: REQUIRED when the `credential_identifiers` parameter was not returned from the Token Response.
-     * It MUST NOT be used otherwise. It is a String that determines the format of the Credential to be issued,
-     * which may determine the type and any other information related to the Credential to be issued.
-     * Credential Format Profiles consist of the Credential format specific parameters that are defined in Appendix A.
-     * When this parameter is used, the [credentialIdentifier] Credential Request parameter MUST NOT be present.
-     * REQUIRED. Format of the Credential to be issued. This Credential format identifier determines further parameters
-     * required to determine the type and (optionally) the content of the credential to be issued.
+     * OID4VCI: REQUIRED when an [AuthorizationDetails.OpenIdCredential] was returned from the
+     * [TokenResponseParameters]. It MUST NOT be used otherwise. A string that identifies a Credential Dataset that is
+     * requested for issuance. When this parameter is used, the [format] parameter and any other Credential format
+     * specific parameters such as those defined in Appendix A MUST NOT be present
+     */
+    @SerialName("credential_identifier")
+    val credentialIdentifier: String? = null,
+
+    /**
+     * OID4VCI: REQUIRED if an [AuthorizationDetails.OpenIdCredential] was not returned from the
+     * [TokenResponseParameters] (e.g. when the credential was requested using a [AuthenticationRequestParameters.scope]
+     * or a pre-authorisation code was used that did not return an [AuthorizationDetails.OpenIdCredential]).
+     * It MUST NOT be used otherwise. A string that determines the format of the Credential to be issued, which may
+     * determine the type and any other information related to the Credential to be issued. Credential Format Profiles
+     * consist of the Credential format specific parameters that are defined in Appendix A. When this parameter is used,
+     * the [credentialIdentifier] parameter MUST NOT be present.
      */
     @SerialName("format")
     val format: CredentialFormatEnum? = null,
-
-    /**
-     * OID4VCI: REQUIRED when `credential_identifiers` parameter was returned from the Token Response.
-     * It MUST NOT be used otherwise. It is a String that identifies a Credential that is being requested to be issued.
-     * When this parameter is used, the [format] parameter and any other Credential format specific parameters such
-     * as those defined in Appendix A MUST NOT be present.
-     */
-    @SerialName("credential_identifier")
-    // TODO Update
-    val credentialIdentifier: String? = null,
 
     /**
      * OID4VCI:  OPTIONAL. Object containing information for encrypting the Credential Response. If this request element

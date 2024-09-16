@@ -68,9 +68,9 @@ class CredentialIssuer(
             credentialIssuer = publicContext,
             authorizationServers = setOf(authorizationService.publicContext),
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
-            supportedCredentialConfigurations = mutableMapOf<String, SupportedCredentialFormat>().apply {
-                credentialSchemes.forEach { putAll(it.toSupportedCredentialFormat(issuer.cryptoAlgorithms)) }
-            },
+            supportedCredentialConfigurations = credentialSchemes
+                .flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).entries }
+                .associate { it.key to it.value },
             batchCredentialIssuance = BatchCredentialIssuanceMetadata(1)
         )
     }
@@ -131,9 +131,11 @@ class CredentialIssuer(
             }
 
             params.credentialIdentifier != null -> {
-                val (credentialScheme, representation) = decodeFromCredentialIdentifier(params.credentialIdentifier!!)
-                    ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-                        .also { Napier.w("credential: client did not provide correct credential identifier: ${params.credentialIdentifier}") }
+                val (credentialScheme, representation)
+                        = decodeFromCredentialIdentifier(params.credentialIdentifier!!) ?: run {
+                    Napier.w("client did not provide correct credential identifier: ${params.credentialIdentifier}")
+                    throw OAuth2Exception(Errors.INVALID_REQUEST)
+                }
                 issuer.issueCredential(
                     subjectPublicKey = subjectPublicKey,
                     credentialScheme = credentialScheme,
@@ -144,8 +146,8 @@ class CredentialIssuer(
             }
 
             else -> {
+                Napier.w("client did not provide format or credential identifier in params: $params")
                 throw OAuth2Exception(Errors.INVALID_REQUEST)
-                    .also { Napier.w("credential: client did not provide format or credential identifier in params: $params") }
             }
         }
         val issuedCredential = issuedCredentialResult.getOrElse {
@@ -185,9 +187,9 @@ class CredentialIssuer(
             throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid header type in JWT in proof: ${jwsSigned.header}") }
         if (authorizationService.supportsClientNonce)
-        if (jwt.nonce == null || !authorizationService.verifyClientNonce(jwt.nonce!!))
-            throw OAuth2Exception(Errors.INVALID_PROOF)
-                .also { Napier.w("client did provide invalid nonce in JWT in proof: ${jwt.nonce}") }
+            if (jwt.nonce == null || !authorizationService.verifyClientNonce(jwt.nonce!!))
+                throw OAuth2Exception(Errors.INVALID_PROOF)
+                    .also { Napier.w("client did provide invalid nonce in JWT in proof: ${jwt.nonce}") }
         if (jwt.audience == null || jwt.audience != publicContext)
             throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid audience in JWT in proof: ${jwsSigned.header}") }

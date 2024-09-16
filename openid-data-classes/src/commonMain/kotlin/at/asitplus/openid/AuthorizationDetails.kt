@@ -53,7 +53,7 @@ sealed class AuthorizationDetails {
 
         /**
          * OID4VCI: W3C VC: OPTIONAL. Object containing a detailed description of the Credential consisting of the
-         * following parameters. see [SupportedCredentialFormatDefinition].
+         * following parameters, see [SupportedCredentialFormatDefinition].
          */
         @SerialName("credential_definition")
         val credentialDefinition: SupportedCredentialFormatDefinition? = null,
@@ -79,7 +79,6 @@ sealed class AuthorizationDetails {
          * Credential Configuration in the [IssuerMetadata.supportedCredentialConfigurations]. The Wallet MUST use these
          * identifiers together with an Access Token in subsequent Credential Requests.
          */
-        // TODO is required in OID4VCI!
         @SerialName("credential_identifiers")
         val credentialIdentifiers: Set<String>? = null,
     ) : AuthorizationDetails()

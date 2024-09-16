@@ -16,7 +16,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
-fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<SignatureAlgorithm>)
+fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<SignatureAlgorithm>? = null)
         : Map<String, SupportedCredentialFormat> {
     val iso = if (supportsIso) {
         isoNamespace!! to SupportedCredentialFormat.forIsoMdoc(
@@ -25,8 +25,8 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
             docType = isoDocType!!,
             supportedBindingMethods = setOf(BINDING_METHOD_JWK, BINDING_METHOD_COSE_KEY),
             supportedSigningAlgorithms = cryptoAlgorithms
-                .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
-                .toSet(),
+                ?.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
+                ?.toSet(),
             isoClaims = mapOf(
                 isoNamespace!! to claimNames.associateWith { RequestedCredentialClaimSpecification() }
             )
@@ -42,8 +42,8 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
             ),
             supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
             supportedSigningAlgorithms = cryptoAlgorithms
-                .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
-                .toSet(),
+                ?.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
+                ?.toSet(),
         )
     } else null
     val sdJwt = if (supportsSdJwt) {
@@ -53,22 +53,35 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
             sdJwtVcType = sdJwtType!!,
             supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
             supportedSigningAlgorithms = cryptoAlgorithms
-                .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
-                .toSet(),
+                ?.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
+                ?.toSet(),
             sdJwtClaims = claimNames.associateWith { RequestedCredentialClaimSpecification() }
         )
     } else null
     return listOfNotNull(iso, jwtVc, sdJwt).toMap()
 }
 
+fun ConstantIndex.CredentialScheme.toCredentialIdentifier() =
+    listOfNotNull(
+        if (supportsIso) isoNamespace!! else null,
+        if (supportsVcJwt) encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC) else null,
+        if (supportsSdJwt) encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT) else null
+    )
+
 /**
- * Reverse functionality of [decodeFromCredentialIdentifier]
+ * Reverse functionality of [decodeFromCredentialIdentifier],
+ * i.e. encodes a credential [type] and [format] to a single string,
+ * e.g. from [at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023] and [CredentialFormatEnum.JWT_VC] to
+ * `AtomicAttribute2023#jwt_vc_json`
  */
 private fun encodeToCredentialIdentifier(type: String, format: CredentialFormatEnum) =
     "$type#${format.text}"
 
 /**
- * Reverse functionality of [encodeToCredentialIdentifier]
+ * Reverse functionality of [encodeToCredentialIdentifier],
+ * i.e. decodes a single string into a credential scheme and format,
+ * e.g. from `AtomicAttribute2023#jwt_vc_json` to
+ * [at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023] and [CredentialFormatEnum.JWT_VC]
  */
 fun decodeFromCredentialIdentifier(input: String): Pair<ConstantIndex.CredentialScheme, CredentialFormatEnum>? {
     val vcTypeOrSdJwtType = input.substringBeforeLast("#")

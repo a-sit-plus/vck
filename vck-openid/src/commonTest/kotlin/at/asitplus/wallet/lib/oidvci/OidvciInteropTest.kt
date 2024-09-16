@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
-import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -17,7 +17,6 @@ import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.*
 
 class OidvciInteropTest : FunSpec({
 
@@ -139,65 +138,35 @@ class OidvciInteropTest : FunSpec({
         // TODO this is wrong in EUDIW's metadata? Should be an array! credentialConfig.credentialDefinition!!.types
         credential.credentialDefinition!!.claims!!.firstNotNullOfOrNull { it.key == "family_name" }
             .shouldNotBeNull()
-
-        val authorizationServerMetadataUrl =
-            issuerMetadata.authorizationServers?.firstOrNull()?.plus("/.well-known/openid-configuration")
-        // need to get from URL and parse ...
-        val authorizationServerMetadata = OAuth2AuthorizationServerMetadata(
-            issuer = "https://localhost/idp/realms/pid-issuer-realm",
-            authorizationEndpoint = "https://localhost/idp/realms/pid-issuer-realm/protocol/openid-connect/auth",
-            tokenEndpoint = "https://localhost/idp/realms/pid-issuer-realm/protocol/openid-connect/token"
-        )
-        val authorizationEndpoint = authorizationServerMetadata.authorizationEndpoint
-        authorizationEndpoint.shouldNotBeNull()
-
-        // selection of end-user, which credential to get
-        // would also need to parse from authorizationServerMetadata if `request_parameter_supported` is true and so on ...
-        val authnRequest = client.createAuthRequest(
-            uuid4().toString(),
-            credentialConfig,
-            issuerMetadata.credentialIssuer,
-            issuerMetadata.authorizationServers
-        )
-        println(URLBuilder(authorizationEndpoint)
-            .apply {
-                authnRequest.encodeToParameters().forEach {
-                    this.parameters.append(it.key, it.value)
-                }
-            }
-            .buildString()
-        )
-        // Clients may also need to push the authorization request, which is a FORM POST 5.1.4
     }
 
-    test("process with pre-authorized code and credential offer") {
+    test("process with pre-authorized code, credential offer, and authorization details") {
         val client = WalletService()
         val credentialOffer = issuer.credentialOffer()
         val credentialIssuerMetadata = issuer.metadata
-        val credentialConfig = credentialIssuerMetadata.supportedCredentialConfigurations!!
-            .entries.first { it.key == credentialOffer.configurationIds.first() }.toPair()
+        val credentialIdToRequest = credentialOffer.configurationIds.first()
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
-            state,
-            credentialConfig,
-            credentialIssuerMetadata.credentialIssuer,
-            credentialIssuerMetadata.authorizationServers
+            state = state,
+            credentialConfigurationId = credentialIdToRequest,
+            credentialIssuer = credentialIssuerMetadata.credentialIssuer,
+            authorizationServers = credentialIssuerMetadata.authorizationServers
         )
         val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code
         code.shouldNotBeNull()
-        // TODO Provide a way to authenticate the client ...
-        //  but how? see `token_endpoint_auth_method` in Client Metadata, RFC 6749
+
         val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
         val tokenRequest = client.createTokenRequestParameters(
-            credential = credentialConfig.second,
+            credentialConfigurationId = credentialIdToRequest,
             state = state,
             authorization = WalletService.AuthorizationForToken.PreAuthCode(preAuth),
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
+        token.authorizationDetails.shouldNotBeNull()
         val credentialRequest = client.createCredentialRequest(
-            credential = credentialConfig.second,
+            authorizationDetails = token.authorizationDetails!!.first() as AuthorizationDetails.OpenIdCredential,
             clientNonce = token.clientNonce,
             credentialIssuer = credentialIssuerMetadata.credentialIssuer
         ).getOrThrow()
@@ -205,5 +174,9 @@ class OidvciInteropTest : FunSpec({
 
         credential.shouldNotBeNull()
     }
+
+    // TODO Test with scope values
+
+    // TODO Test without authorization details
 
 })

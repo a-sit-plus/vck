@@ -20,16 +20,16 @@ data class CredentialOffer(
 
     /**
      * OID4VCI: REQUIRED. Array of unique strings that each identify one of the keys in the name/value pairs stored in
-     * the `credential_configurations_supported` Credential Issuer metadata. The Wallet uses these string values to
+     * [IssuerMetadata.supportedCredentialConfigurations]. The Wallet uses these string values to
      * obtain the respective object that contains information about the Credential being offered as defined in
      * Section 11.2.3. For example, these string values can be used to obtain `scope` values to be used in the
-     * Authorization Request.
+     * Authorization Request, see [AuthenticationRequestParameters.scope].
      */
     @SerialName("credential_configuration_ids")
     val configurationIds: Collection<String>,
 
     /**
-     * OID4VCI: OPTIONAL. If `grants` is not present or is empty, the Wallet MUST determine the Grant Types the
+     * OID4VCI: OPTIONAL. If [grants] is not present or is empty, the Wallet MUST determine the Grant Types the
      * Credential Issuer's Authorization Server supports using the respective metadata. When multiple grants are
      * present, it is at the Wallet's discretion which one to use.
      */

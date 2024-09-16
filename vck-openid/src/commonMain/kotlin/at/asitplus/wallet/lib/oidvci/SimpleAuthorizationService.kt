@@ -62,6 +62,10 @@ class SimpleAuthorizationService(
     val accessTokenToUserInfoStore: MapStore<String, OidcUserInfoExtended> = DefaultMapStore()
 ) : OAuth2AuthorizationServer {
 
+    val supportedConfigurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() }
+    val supportedCredentialSchemes = credentialSchemes
+        .flatMap { it.toSupportedCredentialFormat().entries }
+        .associate { it.key to it.value }
     override val supportsClientNonce: Boolean = true
 
     /**
@@ -138,14 +142,6 @@ class SimpleAuthorizationService(
         } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
             .also { Napier.w("token: could not load user info for $params}") }
 
-        // TODO work out mapping of credential identifiers in authorization details to schemes
-        val filteredAuthorizationDetails = params.authorizationDetails?.filter {
-            credentialSchemes.map { it.vcType }
-                .contains((it as AuthorizationDetails.OpenIdCredential).credentialConfigurationId) ||
-                    credentialSchemes.map { it.sdJwtType }.contains(it.credentialConfigurationId) ||
-                    credentialSchemes.map { it.isoDocType }.contains(it.credentialConfigurationId)
-        }?.toSet()
-
         params.codeVerifier?.let { codeVerifier ->
             params.code?.let { code ->
                 codeToCodeChallengeStore.remove(code)?.let { codeChallenge ->
@@ -158,6 +154,21 @@ class SimpleAuthorizationService(
                 }
             }
         }
+
+        val filteredAuthorizationDetails = params.authorizationDetails
+            ?.filterIsInstance<AuthorizationDetails.OpenIdCredential>()
+            ?.filter { authnDetails ->
+                authnDetails.credentialConfigurationId?.let {
+                    supportedCredentialSchemes.containsKey(it)
+                } ?: authnDetails.format?.let {
+                    supportedCredentialSchemes.values.any {
+                        it.format == authnDetails.format &&
+                                it.docType == authnDetails.docType &&
+                                it.sdJwtVcType == authnDetails.sdJwtVcType &&
+                                it.credentialDefinition == authnDetails.credentialDefinition
+                    }
+                } ?: false
+            }?.toSet()
 
         TokenResponseParameters(
             accessToken = tokenService.provideNonce().also {
