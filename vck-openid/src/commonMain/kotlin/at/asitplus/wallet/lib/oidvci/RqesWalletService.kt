@@ -102,7 +102,7 @@ class RqesWalletService(
      */
     suspend fun createOauth2TokenRequestParameters(
         state: String,
-        authorizationDetails: AuthorizationDetails,
+        authorizationDetails: Set<AuthorizationDetails>,
         authorization: AuthorizationForToken,
     ) = when (authorization) {
         is AuthorizationForToken.Code -> TokenRequestParameters(
@@ -110,7 +110,7 @@ class RqesWalletService(
             code = authorization.code,
             redirectUrl = redirectUrl,
             clientId = clientId,
-            authorizationDetails = setOf(authorizationDetails),
+            authorizationDetails = authorizationDetails,
             codeVerifier = stateToCodeStore.remove(state)
         )
 
@@ -118,7 +118,7 @@ class RqesWalletService(
             grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
             redirectUrl = redirectUrl,
             clientId = clientId,
-            authorizationDetails = setOf(authorizationDetails),
+            authorizationDetails = authorizationDetails,
             transactionCode = authorization.preAuth.transactionCode,
             preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
             codeVerifier = stateToCodeStore.remove(state)
