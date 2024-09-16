@@ -1,18 +1,14 @@
-@file:UseSerializers(UrlSerializer::class)
-
 package at.asitplus.dif.rqes.CollectionEntries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.RqesDocumentDigestEntry
 import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
-import at.asitplus.dif.rqes.Serializer.UrlSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.UseSerializers
 
 
 /**
