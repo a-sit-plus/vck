@@ -1,10 +1,12 @@
 package at.asitplus.dif.rqes.Enums
 
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * All available signed envelope properties and their associated [SignatureFormat]s
  */
+@Serializable
 enum class SignedEnvelopeProperty(val viableSignatureFormats: List<SignatureFormat>) {
 
     @SerialName("Detached")

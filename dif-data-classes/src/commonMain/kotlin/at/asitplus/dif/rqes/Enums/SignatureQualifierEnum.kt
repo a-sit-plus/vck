@@ -1,8 +1,10 @@
 package at.asitplus.dif.rqes.Enums
 
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 @Suppress("unused")
+@Serializable
 enum class SignatureQualifierEnum {
 
     @SerialName("eu_eidas_qes")
