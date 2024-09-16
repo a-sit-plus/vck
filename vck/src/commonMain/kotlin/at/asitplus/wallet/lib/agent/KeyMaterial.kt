@@ -100,3 +100,9 @@ open class DefaultEphemeralKeyHolder(val crv: ECCurve) : EphemeralKeyHolder {
         get() = key.publicKey.toJsonWebKey()
 
 }
+
+abstract class SignerBasedKeyMaterial(val signer: Signer): KeyMaterial, Signer by signer{
+    override val identifier = signer.publicKey.didEncoded
+
+    override fun getUnderLyingSigner() = signer
+}

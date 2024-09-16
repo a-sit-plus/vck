@@ -29,7 +29,7 @@ Release NEXT:
    * Serialization 1.7.2 proper
    * JsonPath4K 2.3.0 (with proper Kotlin 2.0.20 support)
    * Signum 3.7.0 (only dependency updates to align everything, no alignments in code)
-
+ * Add `KeyStoreMaterial` to JVM target for convenience
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments
