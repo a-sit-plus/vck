@@ -38,8 +38,9 @@ data class TokenRequestParameters(
     val clientId: String,
 
     /**
-     * OID4VP: TODO Definition
-     * RFC9396
+     * OID4VCI: Credential Issuers MAY support requesting authorization to issue a Credential using this parameter.
+     * The request parameter `authorization_details` defined in Section 2 of `RFC9396` MUST be used to convey the
+     * details about the Credentials the Wallet wants to obtain.
      */
     @SerialName("authorization_details")
     val authorizationDetails: Set<AuthorizationDetails>? = null,

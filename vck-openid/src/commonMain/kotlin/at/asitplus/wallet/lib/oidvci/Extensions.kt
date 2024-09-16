@@ -14,14 +14,17 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
-fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<SignatureAlgorithm>): Map<String, SupportedCredentialFormat> {
+fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<SignatureAlgorithm>)
+        : Map<String, SupportedCredentialFormat> {
     val iso = if (supportsIso) {
         isoNamespace!! to SupportedCredentialFormat.forIsoMdoc(
             format = CredentialFormatEnum.MSO_MDOC,
             scope = isoNamespace!!,
             docType = isoDocType!!,
             supportedBindingMethods = setOf(OpenIdConstants.BINDING_METHOD_COSE_KEY),
-            supportedSigningAlgorithms = cryptoAlgorithms.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }.toSet(),
+            supportedSigningAlgorithms = cryptoAlgorithms
+                .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
+                .toSet(),
             isoClaims = mapOf(
                 isoNamespace!! to claimNames.associateWith { RequestedCredentialClaimSpecification() }
             )
@@ -36,7 +39,9 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
                 credentialSubject = claimNames.associateWith { CredentialSubjectMetadataSingle() }
             ),
             supportedBindingMethods = setOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
-            supportedSigningAlgorithms = cryptoAlgorithms.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }.toSet(),
+            supportedSigningAlgorithms = cryptoAlgorithms
+                .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
+                .toSet(),
         )
     } else null
     val sdJwt = if (supportsSdJwt) {
@@ -45,7 +50,9 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
             scope = sdJwtType!!,
             sdJwtVcType = sdJwtType!!,
             supportedBindingMethods = setOf(OpenIdConstants.PREFIX_DID_KEY, OpenIdConstants.URN_TYPE_JWK_THUMBPRINT),
-            supportedSigningAlgorithms = cryptoAlgorithms.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }.toSet(),
+            supportedSigningAlgorithms = cryptoAlgorithms
+                .mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
+                .toSet(),
             sdJwtClaims = claimNames.associateWith { RequestedCredentialClaimSpecification() }
         )
     } else null
