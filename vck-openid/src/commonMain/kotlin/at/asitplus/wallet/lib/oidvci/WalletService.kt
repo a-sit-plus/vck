@@ -195,8 +195,8 @@ class WalletService(
     ): KmmResult<CredentialRequestParameters> = catching {
         CredentialRequestParameters(
             credentialIdentifier = authorizationDetails.credentialConfigurationId,
-            proof = createCredentialRequestJwt(clientNonce, credentialIssuer),
-        ).also { Napier.i("createCredentialRequest returns $it") }
+        ).copy(proof = createCredentialRequestJwt(clientNonce, credentialIssuer))
+            .also { Napier.i("createCredentialRequest returns $it") }
     }
 
     /**
@@ -237,9 +237,10 @@ class WalletService(
         clientNonce: String?,
         credentialIssuer: String?,
     ): KmmResult<CredentialRequestParameters> = catching {
-        requestOptions.toCredentialRequestParameters(
-            createCredentialRequestJwt(clientNonce, credentialIssuer, requestOptions.clock)
-        ).also { Napier.i("createCredentialRequest returns $it") }
+        with(requestOptions) {
+            credentialScheme.toCredentialRequestParameters(representation, requestedAttributes)
+        }.copy(proof = createCredentialRequestJwt(clientNonce, credentialIssuer, requestOptions.clock))
+            .also { Napier.i("createCredentialRequest returns $it") }
     }
 
     /**
@@ -285,10 +286,9 @@ class WalletService(
         clientNonce: String?,
         credentialIssuer: String?,
     ): KmmResult<CredentialRequestParameters> = catching {
-        supportedCredentialFormat.toCredentialRequestParameters(
-            proof = createCredentialRequestJwt(clientNonce, credentialIssuer),
-            requestedAttributes = requestedAttributes,
-        ).also { Napier.i("createCredentialRequest returns $it") }
+        supportedCredentialFormat.toCredentialRequestParameters(requestedAttributes)
+            .copy(proof = createCredentialRequestJwt(clientNonce, credentialIssuer))
+            .also { Napier.i("createCredentialRequest returns $it") }
     }
 
     internal suspend fun createCredentialRequestJwt(
@@ -313,9 +313,6 @@ class WalletService(
             addX5c = false,
         ).getOrThrow().serialize()
     )
-
-    private fun RequestOptions.toCredentialRequestParameters(proof: CredentialRequestProof) =
-        representation.toCredentialRequestParameters(proof, credentialScheme, requestedAttributes)
 
     private fun RequestOptions.toAuthnDetails() =
         representation.toAuthorizationDetails(credentialScheme, requestedAttributes)
@@ -359,58 +356,50 @@ class WalletService(
             claims = requestedAttributes?.toRequestedClaimsIso(isoNamespace!!)
         ) else null
 
-    private fun CredentialRepresentation.toCredentialRequestParameters(
-        proof: CredentialRequestProof,
-        credentialScheme: ConstantIndex.CredentialScheme,
+    private fun ConstantIndex.CredentialScheme.toCredentialRequestParameters(
+        credentialRepresentation: CredentialRepresentation,
         requestedAttributes: Set<String>?,
     ) = when {
-        this == PLAIN_JWT && credentialScheme.supportsVcJwt -> CredentialRequestParameters(
-            format = toFormat(),
+        credentialRepresentation == PLAIN_JWT && supportsVcJwt -> CredentialRequestParameters(
+            format = CredentialFormatEnum.JWT_VC,
             credentialDefinition = SupportedCredentialFormatDefinition(
-                types = listOf(VERIFIABLE_CREDENTIAL) + credentialScheme.vcType!!,
+                types = listOf(VERIFIABLE_CREDENTIAL) + vcType!!,
             ),
-            proof = proof
         )
 
-        this == SD_JWT && credentialScheme.supportsSdJwt -> CredentialRequestParameters(
-            format = toFormat(),
-            sdJwtVcType = credentialScheme.sdJwtType!!,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(credentialScheme.sdJwtType!!),
-            proof = proof
+        credentialRepresentation == SD_JWT && supportsSdJwt -> CredentialRequestParameters(
+            format = CredentialFormatEnum.VC_SD_JWT,
+            sdJwtVcType = sdJwtType!!,
+            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtType!!),
         )
 
-        this == ISO_MDOC && credentialScheme.supportsIso -> CredentialRequestParameters(
-            format = toFormat(),
-            docType = credentialScheme.isoDocType,
-            claims = requestedAttributes?.toRequestedClaimsIso(credentialScheme.isoNamespace!!),
-            proof = proof
+        credentialRepresentation == ISO_MDOC && supportsIso -> CredentialRequestParameters(
+            format = CredentialFormatEnum.MSO_MDOC,
+            docType = isoDocType,
+            claims = requestedAttributes?.toRequestedClaimsIso(isoNamespace!!),
         )
 
-        else -> throw IllegalArgumentException("format $this not applicable to $credentialScheme")
+        else -> throw IllegalArgumentException("format $credentialRepresentation not applicable to $this")
     }
 
     private fun SupportedCredentialFormat.toCredentialRequestParameters(
-        proof: CredentialRequestProof,
         requestedAttributes: Set<String>?,
     ) = when (format) {
         CredentialFormatEnum.JWT_VC -> CredentialRequestParameters(
             format = format,
             credentialDefinition = credentialDefinition,
-            proof = proof,
         )
 
         CredentialFormatEnum.VC_SD_JWT -> CredentialRequestParameters(
             format = format,
             sdJwtVcType = sdJwtVcType,
             claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
-            proof = proof
         )
 
         CredentialFormatEnum.MSO_MDOC -> CredentialRequestParameters(
             format = format,
             docType = docType,
             claims = requestedAttributes?.toRequestedClaimsIso(isoClaims?.keys?.firstOrNull() ?: docType!!),
-            proof = proof
         )
 
         else -> throw IllegalArgumentException("format $format not applicable to create credential request")

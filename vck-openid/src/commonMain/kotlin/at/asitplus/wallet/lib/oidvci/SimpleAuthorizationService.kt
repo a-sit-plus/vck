@@ -62,7 +62,6 @@ class SimpleAuthorizationService(
     val accessTokenToUserInfoStore: MapStore<String, OidcUserInfoExtended> = DefaultMapStore()
 ) : OAuth2AuthorizationServer {
 
-    val supportedConfigurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() }
     val supportedCredentialSchemes = credentialSchemes
         .flatMap { it.toSupportedCredentialFormat().entries }
         .associate { it.key to it.value }
@@ -181,17 +180,15 @@ class SimpleAuthorizationService(
         ).also { Napier.i("token returns $it") }
     }
 
-    override suspend fun providePreAuthorizedCode(): String? {
-        return codeService.provideCode().also {
+    override suspend fun providePreAuthorizedCode(): String? =
+        codeService.provideCode().also {
             val userInfo = dataProvider.loadUserInfo()
                 ?: return null.also { Napier.w("authorize: could not load user info from data provider") }
             codeToUserInfoStore.put(it, userInfo)
         }
-    }
 
-    override suspend fun verifyClientNonce(nonce: String): Boolean {
-        return clientNonceService.verifyNonce(nonce)
-    }
+    override suspend fun verifyClientNonce(nonce: String): Boolean =
+        clientNonceService.verifyNonce(nonce)
 
     override suspend fun getUserInfo(accessToken: String): KmmResult<OidcUserInfoExtended> = catching {
         if (!tokenService.verifyNonce(accessToken)) {

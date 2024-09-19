@@ -78,21 +78,34 @@ class CredentialIssuer(
     /**
      * Offer all [credentialSchemes] to clients.
      * Callers may need to transport this in [CredentialOfferUrlParameters] to (HTTPS) clients.
+     *
+     * @param provideCodeFlow whether to provide [CredentialOfferGrantsAuthCode] in
+     * [CredentialOfferGrants.authorizationCode]
+     * @param providePreAuthorizedCode whether to provide [CredentialOfferGrantsPreAuthCode] in
+     * [CredentialOfferGrants.preAuthorizedCode], if [authorizationService] supports it too
      */
-    suspend fun credentialOffer(): CredentialOffer = CredentialOffer(
+    suspend fun credentialOffer(
+        provideCodeFlow: Boolean = true,
+        providePreAuthorizedCode: Boolean = true,
+    ): CredentialOffer = CredentialOffer(
         credentialIssuer = publicContext,
         configurationIds = credentialSchemes.flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).keys },
         grants = CredentialOfferGrants(
-            authorizationCode = CredentialOfferGrantsAuthCode(
-                issuerState = uuid4().toString(), // TODO remember this state, for subsequent requests from the Wallet
-                authorizationServer = authorizationService.publicContext
-            ),
-            preAuthorizedCode = authorizationService.providePreAuthorizedCode()?.let {
-                CredentialOfferGrantsPreAuthCode(
-                    preAuthorizedCode = it,
+            authorizationCode = if (provideCodeFlow) {
+                CredentialOfferGrantsAuthCode(
+                    // TODO remember this state, for subsequent requests from the Wallet
+                    issuerState = uuid4().toString(),
                     authorizationServer = authorizationService.publicContext
                 )
-            }
+            } else null,
+            preAuthorizedCode = if (providePreAuthorizedCode) {
+                authorizationService.providePreAuthorizedCode()?.let {
+                    CredentialOfferGrantsPreAuthCode(
+                        preAuthorizedCode = it,
+                        authorizationServer = authorizationService.publicContext
+                    )
+                }
+            } else null,
         )
     )
 
@@ -100,7 +113,8 @@ class CredentialIssuer(
      * Verifies the [accessToken] to contain a token from [authorizationService],
      * verifies the proof sent by the client (must contain a nonce sent from [authorizationService]),
      * and issues credentials to the client.
-     * Send the result JSON-serialized back to the client.
+     *
+     * Callers need to send the result JSON-serialized back to the client.
      *
      * @param accessToken The value of HTTP header `Authorization` sent by the client,
      *                    with the prefix `Bearer ` removed, so the plain access token
@@ -116,40 +130,32 @@ class CredentialIssuer(
             ?: throw OAuth2Exception(Errors.INVALID_TOKEN)
                 .also { Napier.w("credential: client did not provide correct token: $accessToken") }
 
-        val issuedCredentialResult = when {
-            params.format != null -> {
-                val credentialScheme = params.extractCredentialScheme(params.format!!)
-                    ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-                        .also { Napier.w("credential: client did not provide correct credential scheme: $params") }
-                issuer.issueCredential(
-                    subjectPublicKey = subjectPublicKey,
-                    credentialScheme = credentialScheme,
-                    representation = params.format!!.toRepresentation(),
-                    claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
-                    dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
-                )
-            }
-
-            params.credentialIdentifier != null -> {
-                val (credentialScheme, representation)
-                        = decodeFromCredentialIdentifier(params.credentialIdentifier!!) ?: run {
-                    Napier.w("client did not provide correct credential identifier: ${params.credentialIdentifier}")
-                    throw OAuth2Exception(Errors.INVALID_REQUEST)
-                }
-                issuer.issueCredential(
-                    subjectPublicKey = subjectPublicKey,
-                    credentialScheme = credentialScheme,
-                    representation = representation.toRepresentation(),
-                    claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
-                    dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
-                )
-            }
-
-            else -> {
-                Napier.w("client did not provide format or credential identifier in params: $params")
+        val issuedCredentialResult = params.format?.let { format ->
+            val credentialScheme = params.extractCredentialScheme(format)
+                ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+                    .also { Napier.w("credential: client did not provide correct credential scheme: $params") }
+            issuer.issueCredential(
+                subjectPublicKey = subjectPublicKey,
+                credentialScheme = credentialScheme,
+                representation = params.format!!.toRepresentation(),
+                claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
+                dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
+            )
+        } ?: params.credentialIdentifier?.let { credentialIdentifier ->
+            val (credentialScheme, representation) = decodeFromCredentialIdentifier(credentialIdentifier) ?: run {
+                Napier.w("client did not provide correct credential identifier: $credentialIdentifier")
                 throw OAuth2Exception(Errors.INVALID_REQUEST)
             }
-        }
+            issuer.issueCredential(
+                subjectPublicKey = subjectPublicKey,
+                credentialScheme = credentialScheme,
+                representation = representation.toRepresentation(),
+                claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
+                dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
+            )
+        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            .also { Napier.w("client did not provide format or credential identifier in params: $params") }
+
         val issuedCredential = issuedCredentialResult.getOrElse {
             throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("credential: issuer did not issue credential: $issuedCredentialResult") }

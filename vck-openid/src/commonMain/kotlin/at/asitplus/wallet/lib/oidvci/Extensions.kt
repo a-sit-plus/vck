@@ -78,19 +78,24 @@ private fun encodeToCredentialIdentifier(type: String, format: CredentialFormatE
     "$type#${format.text}"
 
 /**
- * Reverse functionality of [encodeToCredentialIdentifier],
+ * Reverse functionality of [encodeToCredentialIdentifier], which can also handle ISO namespaces,
  * i.e. decodes a single string into a credential scheme and format,
  * e.g. from `AtomicAttribute2023#jwt_vc_json` to
  * [at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023] and [CredentialFormatEnum.JWT_VC]
  */
 fun decodeFromCredentialIdentifier(input: String): Pair<ConstantIndex.CredentialScheme, CredentialFormatEnum>? {
-    val vcTypeOrSdJwtType = input.substringBeforeLast("#")
-    val credentialScheme = AttributeIndex.resolveSdJwtAttributeType(vcTypeOrSdJwtType)
-        ?: AttributeIndex.resolveAttributeType(vcTypeOrSdJwtType)
-        ?: return null
-    val format = CredentialFormatEnum.parse(input.substringAfterLast("#"))
-        ?: return null
-    return Pair(credentialScheme, format)
+    if (input.contains("#")) {
+        val vcTypeOrSdJwtType = input.substringBeforeLast("#")
+        val credentialScheme = AttributeIndex.resolveSdJwtAttributeType(vcTypeOrSdJwtType)
+            ?: AttributeIndex.resolveAttributeType(vcTypeOrSdJwtType)
+            ?: return null
+        val format = CredentialFormatEnum.parse(input.substringAfterLast("#"))
+            ?: return null
+        return Pair(credentialScheme, format)
+    } else {
+        return AttributeIndex.resolveIsoNamespace(input)
+            ?.let { Pair(it, CredentialFormatEnum.MSO_MDOC) }
+    }
 }
 
 fun CredentialFormatEnum.toRepresentation() = when (this) {
