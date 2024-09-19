@@ -23,6 +23,23 @@ data class TokenRequestParameters(
     val code: String? = null,
 
     /**
+     * RFC6749: OPTIONAL. The authorization and token endpoints allow the client to specify the
+     * scope of the access request using the "scope" request parameter.  In
+     * turn, the authorization server uses the "scope" response parameter to
+     * inform the client of the scope of the access token issued.
+     */
+    @SerialName("scope")
+    val scope: String? = null,
+
+    /**
+     * RFC8707: When requesting a token, the client can indicate the desired target service(s) where it intends to use
+     * that token by way of the [resource] parameter and can indicate the desired scope of the requested token using the
+     * [scope] parameter.
+     */
+    @SerialName("resource")
+    val resource: String? = null,
+
+    /**
      * RFC6749:
      * REQUIRED, if the "redirect_uri" parameter was included in the authorization request,
      * and their values MUST be identical.

@@ -195,7 +195,7 @@ class WalletService(
     ): KmmResult<CredentialRequestParameters> = catching {
         CredentialRequestParameters(
             credentialIdentifier = authorizationDetails.credentialConfigurationId,
-            proof = createCredentialRequestJwt(null, clientNonce, credentialIssuer),
+            proof = createCredentialRequestJwt(clientNonce, credentialIssuer),
         ).also { Napier.i("createCredentialRequest returns $it") }
     }
 
@@ -205,7 +205,7 @@ class WalletService(
      *
      * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
      * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
-     * 
+     *
      * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
      * see [JwsService.buildDPoPHeader].
      *
@@ -238,14 +238,63 @@ class WalletService(
         credentialIssuer: String?,
     ): KmmResult<CredentialRequestParameters> = catching {
         requestOptions.toCredentialRequestParameters(
-            createCredentialRequestJwt(requestOptions, clientNonce, credentialIssuer)
+            createCredentialRequestJwt(clientNonce, credentialIssuer, requestOptions.clock)
+        ).also { Napier.i("createCredentialRequest returns $it") }
+    }
+
+    /**
+     * Send the result as JSON-serialized content to the server at `/credential` (or more specific
+     * [IssuerMetadata.credentialEndpointUrl]).
+     *
+     * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
+     * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
+     *
+     * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
+     * see [JwsService.buildDPoPHeader].
+     *
+     * See [OAuth2Client.createTokenRequestParameters].
+     *
+     * Sample ktor code:
+     * ```
+     * val credentialToRequest = ... // user selection
+     * val supportedCredentialFormat = issuer.metadata.supportedCredentialConfigurations[credentialToRequest]
+     * val token = ...
+     * val credentialRequest = client.createCredentialRequest(
+     *     supportedCredentialFormat = supportedCredentialFormat,
+     *     requestedAttributes = setOf("..."), // or null
+     *     clientNonce = token.clientNonce,
+     *     credentialIssuer = issuerMetadata.credentialIssuer,
+     * ).getOrThrow()
+     *
+     * val credentialResponse = httpClient.post(issuerMetadata.credentialEndpointUrl) {
+     *     setBody(credentialRequest)
+     *     headers {
+     *         append(HttpHeaders.Authorization, "Bearer ${token.accessToken}")
+     *     }
+     * }
+     * ```
+     *
+     * @param supportedCredentialFormat to request, value from [IssuerMetadata.supportedCredentialConfigurations]
+     * @param requestedAttributes to request issuance of some attributes only, or `null` to request all
+     * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
+     * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
+     */
+    suspend fun createCredentialRequest(
+        supportedCredentialFormat: SupportedCredentialFormat,
+        requestedAttributes: Set<String>? = null,
+        clientNonce: String?,
+        credentialIssuer: String?,
+    ): KmmResult<CredentialRequestParameters> = catching {
+        supportedCredentialFormat.toCredentialRequestParameters(
+            proof = createCredentialRequestJwt(clientNonce, credentialIssuer),
+            requestedAttributes = requestedAttributes,
         ).also { Napier.i("createCredentialRequest returns $it") }
     }
 
     internal suspend fun createCredentialRequestJwt(
-        requestOptions: RequestOptions?,
         clientNonce: String?,
         credentialIssuer: String?,
+        clock: Clock = Clock.System,
     ): CredentialRequestProof = CredentialRequestProof(
         proofType = OpenIdConstants.ProofType.JWT,
         jwt = jwsService.createSignedJwsAddingParams(
@@ -256,7 +305,7 @@ class WalletService(
             payload = JsonWebToken(
                 issuer = clientId, // omit when token was pre-authn?
                 audience = credentialIssuer,
-                issuedAt = requestOptions?.clock?.now() ?: Clock.System.now(),
+                issuedAt = clock.now(),
                 nonce = clientNonce,
             ).serialize().encodeToByteArray(),
             addKeyId = false,
@@ -266,7 +315,7 @@ class WalletService(
     )
 
     private fun RequestOptions.toCredentialRequestParameters(proof: CredentialRequestProof) =
-        representation.toCredentialRequestParameters(credentialScheme, requestedAttributes, proof)
+        representation.toCredentialRequestParameters(proof, credentialScheme, requestedAttributes)
 
     private fun RequestOptions.toAuthnDetails() =
         representation.toAuthorizationDetails(credentialScheme, requestedAttributes)
@@ -311,9 +360,9 @@ class WalletService(
         ) else null
 
     private fun CredentialRepresentation.toCredentialRequestParameters(
+        proof: CredentialRequestProof,
         credentialScheme: ConstantIndex.CredentialScheme,
         requestedAttributes: Set<String>?,
-        proof: CredentialRequestProof,
     ) = when {
         this == PLAIN_JWT && credentialScheme.supportsVcJwt -> CredentialRequestParameters(
             format = toFormat(),
@@ -341,12 +390,10 @@ class WalletService(
     }
 
     private fun SupportedCredentialFormat.toCredentialRequestParameters(
-        requestedAttributes: Set<String>?,
         proof: CredentialRequestProof,
-        authorizationDetails: AuthorizationDetails.OpenIdCredential?,
+        requestedAttributes: Set<String>?,
     ) = when (format) {
         CredentialFormatEnum.JWT_VC -> CredentialRequestParameters(
-            credentialIdentifier = authorizationDetails?.credentialConfigurationId,
             format = format,
             credentialDefinition = credentialDefinition,
             proof = proof,

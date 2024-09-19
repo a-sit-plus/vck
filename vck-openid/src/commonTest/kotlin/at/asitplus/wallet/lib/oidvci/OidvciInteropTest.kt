@@ -15,6 +15,7 @@ import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldHaveSingleElement
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -180,8 +181,46 @@ class OidvciInteropTest : FunSpec({
         credential.shouldNotBeNull()
     }
 
-    // TODO Test with scope values
+    test("process with pre-authorized code, credential offer, and scope") {
+        val client = WalletService()
+        val credentialOffer = issuer.credentialOffer()
+        val credentialIdToRequest = credentialOffer.configurationIds.first()
+        // OID4VCI 5.1.2 Using scope Parameter to Request Issuance of a Credential
+        val supportedCredentialFormat = issuer.metadata.supportedCredentialConfigurations?.get(credentialIdToRequest)
+            .shouldNotBeNull()
+        val scope = supportedCredentialFormat.scope
+            .shouldNotBeNull()
+        val state = uuid4().toString()
+        val authnRequest = client.oauth2Client.createAuthRequest(
+            state = state,
+            scope = scope,
+            resource = issuer.metadata.credentialIssuer,
+        )
+        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+        val code = authnResponse.params.code
+        code.shouldNotBeNull()
 
-    // TODO Test without authorization details
+        val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
+        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
+            state = state,
+            authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth),
+            scope = scope,
+            resource = issuer.metadata.credentialIssuer,
+        )
+        val token = authorizationService.token(tokenRequest).getOrThrow()
+        token.authorizationDetails.shouldBeNull()
+
+        val credentialRequest = client.createCredentialRequest(
+            supportedCredentialFormat,
+            clientNonce = token.clientNonce,
+            credentialIssuer = issuer.metadata.credentialIssuer
+        ).getOrThrow()
+        val credential = issuer.credential(token.accessToken, credentialRequest)
+
+        credential.shouldNotBeNull()
+    }
+
+    // TODO test with not-pre-authorized code flow
 
 })

@@ -48,9 +48,10 @@ class OAuth2Client(
      * ```
      *
      * @param state to keep internal state in further requests
-     * @param scope in OID4VCI flows the value `scope` from [IssuerMetadata.supportedCredentialConfigurations])
+     * @param scope in OID4VCI flows the value `scope` from [IssuerMetadata.supportedCredentialConfigurations]
      * @param authorizationDetails from RFC 9396 OAuth 2.0 Rich Authorization Requests
-     * @param resource in OID4VCI flows the value of [IssuerMetadata.credentialIssuer]
+     * @param resource from RFC 8707 Resource Indicators for OAuth 2.0, in OID4VCI flows the value
+     * of [IssuerMetadata.credentialIssuer]
      */
     suspend fun createAuthRequest(
         state: String,
@@ -134,19 +135,26 @@ class OAuth2Client(
      * @param state to keep internal state in further requests
      * @param authorization for the token endpoint
      * @param authorizationDetails from RFC 9396 OAuth 2.0 Rich Authorization Requests
+     * @param scope in OID4VCI flows the value `scope` from [IssuerMetadata.supportedCredentialConfigurations]
+     * @param resource from RFC 8707 Resource Indicators for OAuth 2.0, in OID4VCI flows the value
+     * of [IssuerMetadata.credentialIssuer]
      */
     suspend fun createTokenRequestParameters(
         state: String,
         authorization: AuthorizationForToken,
         authorizationDetails: Set<AuthorizationDetails>? = null,
+        scope: String? = null,
+        resource: String? = null,
     ) = when (authorization) {
         is AuthorizationForToken.Code -> TokenRequestParameters(
             grantType = OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE,
-            code = authorization.code,
             redirectUrl = redirectUrl,
             clientId = clientId,
             codeVerifier = stateToCodeStore.remove(state),
             authorizationDetails = authorizationDetails,
+            scope = scope,
+            resource = resource,
+            code = authorization.code,
         )
 
         is AuthorizationForToken.PreAuthCode -> TokenRequestParameters(
@@ -155,6 +163,8 @@ class OAuth2Client(
             clientId = clientId,
             codeVerifier = stateToCodeStore.remove(state),
             authorizationDetails = authorizationDetails,
+            scope = scope,
+            resource = resource,
             transactionCode = authorization.transactionCode,
             preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
         )

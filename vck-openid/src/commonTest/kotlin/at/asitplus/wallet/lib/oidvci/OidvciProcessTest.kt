@@ -82,14 +82,14 @@ class OidvciProcessTest : FunSpec({
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
         val proof = client.createCredentialRequestJwt(
-            requestOptions = requestOptions,
             clientNonce = token.clientNonce,
-            credentialIssuer = issuer.metadata.credentialIssuer
+            credentialIssuer = issuer.metadata.credentialIssuer,
+            clock = requestOptions.clock
         )
         val differentProof = WalletService().createCredentialRequestJwt(
-            requestOptions = requestOptions,
             clientNonce = token.clientNonce,
-            credentialIssuer = issuer.metadata.credentialIssuer
+            credentialIssuer = issuer.metadata.credentialIssuer,
+            clock = requestOptions.clock
         )
         val credentialRequest = CredentialRequestParameters(
             format = CredentialFormatEnum.JWT_VC,
