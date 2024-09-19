@@ -161,12 +161,17 @@ class WalletService(
      *
      * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
      * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
-     * See [createTokenRequestParameters].
+     *
+     * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
+     * see [JwsService.buildDPoPHeader].
+     *
+     * See [OAuth2Client.createTokenRequestParameters].
      *
      * Sample ktor code:
      * ```
-     * val credentialRequest = client.createCredentialRequestJwt(
-     *     requestOptions = requestOptions,
+     * val token = ...
+     * val credentialRequest = client.createCredentialRequest(
+     *     authorizationDetails = authorizationDetails,
      *     clientNonce = token.clientNonce,
      *     credentialIssuer = issuerMetadata.credentialIssuer
      * ).getOrThrow()
@@ -178,9 +183,6 @@ class WalletService(
      *     }
      * }
      * ```
-     *
-     * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
-     * see [JwsService.buildDPoPHeader].
      *
      * @param authorizationDetails from the token response, see [TokenResponseParameters.authorizationDetails]
      * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
@@ -203,11 +205,16 @@ class WalletService(
      *
      * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
      * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
-     * See [createTokenRequestParameters].
+     * 
+     * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
+     * see [JwsService.buildDPoPHeader].
+     *
+     * See [OAuth2Client.createTokenRequestParameters].
      *
      * Sample ktor code:
      * ```
-     * val credentialRequest = client.createCredentialRequestJwt(
+     * val token = ...
+     * val credentialRequest = client.createCredentialRequest(
      *     requestOptions = requestOptions,
      *     clientNonce = token.clientNonce,
      *     credentialIssuer = issuerMetadata.credentialIssuer
@@ -230,9 +237,9 @@ class WalletService(
         clientNonce: String?,
         credentialIssuer: String?,
     ): KmmResult<CredentialRequestParameters> = catching {
-        val proof = createCredentialRequestJwt(requestOptions, clientNonce, credentialIssuer)
-        requestOptions.toCredentialRequestParameters(proof)
-            .also { Napier.i("createCredentialRequest returns $it") }
+        requestOptions.toCredentialRequestParameters(
+            createCredentialRequestJwt(requestOptions, clientNonce, credentialIssuer)
+        ).also { Napier.i("createCredentialRequest returns $it") }
     }
 
     internal suspend fun createCredentialRequestJwt(
