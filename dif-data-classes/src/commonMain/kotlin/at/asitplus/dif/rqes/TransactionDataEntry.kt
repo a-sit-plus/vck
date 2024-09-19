@@ -23,6 +23,7 @@ sealed class TransactionDataEntry {
      * D3.1: UC Specification WP3:
      * Transaction data entry used to authorize a qualified electronic signature
      */
+    @ConsistentCopyVisibility
     @Serializable
     @SerialName("qes_authorization")
     data class QesAuthorization private constructor(

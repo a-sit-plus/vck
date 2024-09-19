@@ -57,7 +57,7 @@ kotlin {
 exportIosFramework(
     "VckAriesKmm",
     transitiveExports = false,
-    *commonIosExports(), project(":vck")
+    project(":vck")
 )
 
 val javadocJar = setupDokka(

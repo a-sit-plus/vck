@@ -13,6 +13,7 @@ import kotlinx.serialization.json.encodeToJsonElement
  * being offered.
  */
 @Serializable
+@ConsistentCopyVisibility
 data class SupportedCredentialFormat private constructor(
     /**
      * OID4VCI: REQUIRED. A JSON string identifying the format of this credential, e.g. `jwt_vc_json` or `ldp_vc`.

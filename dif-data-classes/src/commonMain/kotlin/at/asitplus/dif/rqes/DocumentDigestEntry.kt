@@ -12,6 +12,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 
+@ConsistentCopyVisibility
 @Serializable
 data class DocumentDigestEntry private constructor(
     /**
@@ -149,6 +150,7 @@ data class DocumentDigestEntry private constructor(
      * information how to access
      * [documentLocationUri].
      */
+    @ConsistentCopyVisibility
     @Serializable
     @SerialName("documentLocation_method")
     data class DocumentLocationMethod private constructor(

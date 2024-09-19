@@ -1,7 +1,6 @@
 import at.asitplus.gradle.*
 
 import at.asitplus.gradle.commonImplementationAndApiDependencies
-import at.asitplus.gradle.commonIosExports
 import at.asitplus.gradle.exportIosFramework
 import at.asitplus.gradle.setupDokka
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
@@ -72,7 +71,8 @@ setupAndroid()
 exportIosFramework(
     name = "VckKmm",
     transitiveExports = false,
-    *commonIosExports(), project(":dif-data-classes")
+    project(":dif-data-classes"),
+    "at.asitplus.signum:supreme:${VcLibVersions.supreme}"
 )
 
 val javadocJar = setupDokka(
