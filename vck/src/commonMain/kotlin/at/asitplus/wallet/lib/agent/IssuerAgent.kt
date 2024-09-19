@@ -13,22 +13,10 @@ import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.CredentialStatus
-import at.asitplus.wallet.lib.data.RevocationListSubject
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
-import at.asitplus.wallet.lib.data.VerifiableCredential
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import at.asitplus.wallet.lib.iso.DeviceKeyInfo
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.IssuerSignedList
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
-import at.asitplus.wallet.lib.iso.ValidityInfo
-import at.asitplus.wallet.lib.iso.ValueDigest
-import at.asitplus.wallet.lib.iso.ValueDigestList
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -146,7 +134,7 @@ class IssuerAgent(
             digestAlgorithm = "SHA-256",
             valueDigests = mapOf(
                 scheme.isoNamespace!! to ValueDigestList(credential.issuerSignedItems.map {
-                    ValueDigest.fromIssuerSigned(it)
+                    ValueDigest.fromIssuerSigned(scheme.isoNamespace!!, it)
                 })
             ),
             deviceKeyInfo = deviceKeyInfo,
@@ -158,14 +146,13 @@ class IssuerAgent(
             )
         )
         val issuerSigned = IssuerSigned(
-            namespaces = mapOf(
-                scheme.isoNamespace!! to IssuerSignedList.withItems(credential.issuerSignedItems)
-            ),
+            namespacedItems = mapOf(scheme.isoNamespace!! to credential.issuerSignedItems),
             issuerAuth = coseService.createSignedCose(
                 payload = mso.serializeForIssuerAuth(),
                 addKeyId = false,
                 addCertificate = true,
-            ).getOrThrow()
+            ).getOrThrow(),
+            24 // TODO verify serialization of this
         )
         return Issuer.IssuedCredential.Iso(issuerSigned, scheme)
     }

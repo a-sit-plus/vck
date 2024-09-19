@@ -22,6 +22,14 @@ Release NEXT:
  * Extend `TokenResponseParameters` to be able to handle CSC/QES flows
  - In `TokenRequestParameters`, change `transactionCode` to `String`, as it needs to be entered by the user potentially
  - Add extension method to build DPoP headers acc. to [RFC 9449](https://datatracker.ietf.org/doc/html/rfc9449), see `WalletService`
+ * Proper registration of serializers for ISO credentials (breaking change)
+ * Update dependencies to have everything aligned with Kotlin 2.0.20:
+   * Kotlin 2.0.20
+   * EU PID + MDL Credentials in test scope
+   * Serialization 1.7.2 proper
+   * JsonPath4K 2.3.0 (with proper Kotlin 2.0.20 support)
+   * Signum 3.7.0 (only dependency updates to align everything, no alignments in code)
+
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments

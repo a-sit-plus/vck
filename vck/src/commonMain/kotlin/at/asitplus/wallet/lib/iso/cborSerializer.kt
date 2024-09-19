@@ -14,7 +14,7 @@ internal object CborCredentialSerializer {
 
     private val serializerLookupFunctions = mutableSetOf<SerializerLookup>()
     private val encoderFunctions = mutableSetOf<ItemValueEncoder>()
-    private val decoderFunctions = mutableSetOf<ItemValueDecoder>()
+    private val decoderMap = mutableMapOf<String, Map<String, ItemValueDecoder>>()
 
     fun register(function: SerializerLookup) {
         serializerLookupFunctions += function
@@ -24,8 +24,14 @@ internal object CborCredentialSerializer {
         encoderFunctions += function
     }
 
-    fun register(function: ItemValueDecoder) {
-        decoderFunctions += function
+
+    fun register(serializerMap: Map<String, KSerializer<*>>, isoNamespace: String) {
+        decoderMap[isoNamespace] =
+            serializerMap.map { (k, ser) ->
+                k to { descriptor: SerialDescriptor, index: Int, compositeDecoder: CompositeDecoder ->
+                    compositeDecoder.decodeSerializableElement(descriptor, index, ser)!!
+                }
+            }.toMap()
     }
 
     fun lookupSerializer(element: Any): KSerializer<*>? {
@@ -36,8 +42,14 @@ internal object CborCredentialSerializer {
         encoderFunctions.firstOrNull { it.invoke(descriptor, index, compositeEncoder, value) }
     }
 
-    fun decode(descriptor: SerialDescriptor, index: Int, compositeDecoder: CompositeDecoder): Any? =
-        decoderFunctions.firstNotNullOfOrNull {
+    fun decode(
+        descriptor: SerialDescriptor,
+        index: Int,
+        compositeDecoder: CompositeDecoder,
+        elementIdentifier: String,
+        isoDocType: String
+    ): Any? =
+        decoderMap[isoDocType]?.get(elementIdentifier)?.let {
             runCatching { it.invoke(descriptor, index, compositeDecoder) }.getOrNull()
         }
 }

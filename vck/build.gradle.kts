@@ -36,11 +36,15 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
-                api("at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}") {
-                    exclude("org.jetbrains.kotlin", "kotlin-reflect")
-                }
                 api(project(":dif-data-classes"))
                 commonImplementationAndApiDependencies()
+            }
+        }
+
+        commonTest {
+            dependencies {
+                implementation("io.arrow-kt:arrow-core:1.2.4") //to make arrow's nonFatalOrThrow work in tests
+                implementation(kotlin("reflect"))
             }
         }
 
@@ -53,6 +57,8 @@ kotlin {
         jvmTest {
             dependencies {
                 implementation(signum.jose)
+                implementation(kotlin("reflect"))
+                implementation("io.arrow-kt:arrow-core-jvm:1.2.4") //to make arrow's nonFatalOrThrow work in tests
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
                 implementation("com.authlete:cbor:${VcLibVersions.Jvm.`authlete-cbor`}")
             }
@@ -65,7 +71,7 @@ setupAndroid()
 
 exportIosFramework(
     name = "VckKmm",
-    static = false,
+    transitiveExports = false,
     *commonIosExports(), project(":dif-data-classes")
 )
 
@@ -119,7 +125,6 @@ publishing {
         }
     }
 }
-
 
 repositories {
     maven(url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
