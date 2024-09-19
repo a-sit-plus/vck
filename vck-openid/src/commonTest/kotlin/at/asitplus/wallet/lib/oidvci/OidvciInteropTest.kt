@@ -6,6 +6,7 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
@@ -146,10 +147,13 @@ class OidvciInteropTest : FunSpec({
         val credentialIssuerMetadata = issuer.metadata
         val credentialIdToRequest = credentialOffer.configurationIds.first()
         val state = uuid4().toString()
-        val authnRequest = client.createAuthRequest(
+        val authnRequest = client.oauth2Client.createAuthRequest(
             state = state,
-            authorizationDetails = client.buildAuthorizationDetails(credentialIdToRequest, credentialIssuerMetadata.authorizationServers),
-            credentialIssuer = credentialIssuerMetadata.credentialIssuer,
+            authorizationDetails = client.buildAuthorizationDetails(
+                credentialIdToRequest,
+                credentialIssuerMetadata.authorizationServers
+            ),
+            resource = credentialIssuerMetadata.credentialIssuer
         )
         val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -157,10 +161,12 @@ class OidvciInteropTest : FunSpec({
         code.shouldNotBeNull()
 
         val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
-        val tokenRequest = client.createTokenRequestParameters(
-            credentialConfigurationId = credentialIdToRequest,
+        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
             state = state,
-            authorization = WalletService.AuthorizationForToken.PreAuthCode(preAuth),
+            authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth),
+            authorizationDetails = setOf(
+                AuthorizationDetails.OpenIdCredential(credentialConfigurationId = credentialIdToRequest)
+            )
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
         token.authorizationDetails.shouldNotBeNull()

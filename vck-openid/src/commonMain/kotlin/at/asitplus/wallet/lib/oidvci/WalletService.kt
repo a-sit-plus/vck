@@ -2,13 +2,8 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.rqes.RqesConstants
 import at.asitplus.openid.*
-import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.openid.OpenIdConstants.Errors
-import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
-import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
-import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -26,6 +21,7 @@ import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
 import com.benasher44.uuid.uuid4
@@ -71,6 +67,8 @@ class WalletService(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     private val stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
 ) {
+
+    val oauth2Client: OAuth2Client = OAuth2Client(clientId, redirectUrl)
 
     constructor(
         clientId: String,
@@ -131,7 +129,7 @@ class WalletService(
     }
 
     /**
-     * Build authorization details for use in [createAuthRequest].
+     * Build authorization details for use in [OAuth2Client.createAuthRequest].
      *
      *
      * @param credentialConfigurationId which credential (the key) from
@@ -151,317 +149,11 @@ class WalletService(
     )
 
     /**
-     * Build authorization details for use in [createAuthRequest].
+     * Build authorization details for use in [OAuth2Client.createAuthRequest].
      */
     suspend fun buildAuthorizationDetails(
         requestOptions: RequestOptions
     ) = setOfNotNull(requestOptions.toAuthnDetails())
-
-    /**
-     * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
-     * [OAuth2AuthorizationServerMetadata.authorizationEndpoint]).
-     *
-     * Sample ktor code:
-     * ```
-     * val credentialConfig = issuerMetadata.supportedCredentialConfigurations!!
-     *     .entries.first { it.key == credentialOffer.configurationIds.first() }.toPair()
-     * val authnRequest = client.createAuthRequest(
-     *     state = state,
-     *     credential = credentialConfig,
-     *     credentialIssuer = issuerMetadata.credentialIssuer,
-     *     authorizationServers = issuerMetadata.authorizationServers
-     * )
-     * val authnResponse = httpClient.get(issuerMetadata.authorizationEndpointUrl!!) {
-     *     url {
-     *         authnRequest.encodeToParameters().forEach { parameters.append(it.key, it.value) }
-     *     }
-     * }
-     * val authn = AuthenticationResponseParameters.deserialize(authnResponse.bodyAsText()).getOrThrow()
-     * ```
-     *
-     * @param state to send to the server, for internal state keeping
-     * @param scope which credential (the value `scope` from
-     * [IssuerMetadata.supportedCredentialConfigurations]) to request
-     * @param authorizationDetails from [buildAuthorizationDetails]
-     * @param credentialIssuer from [IssuerMetadata.credentialIssuer]
-     */
-    suspend fun createAuthRequest(
-        state: String,
-        authorizationDetails: Set<AuthorizationDetails>,
-        scope: String? = null,
-        credentialIssuer: String? = null,
-    ) = AuthenticationRequestParameters(
-        responseType = GRANT_TYPE_CODE,
-        state = state,
-        clientId = clientId,
-        authorizationDetails = authorizationDetails,
-        scope = scope,
-        resource = credentialIssuer,
-        redirectUrl = redirectUrl,
-        codeChallenge = generateCodeVerifier(state),
-        codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
-    )
-
-    /**
-     * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
-     * [OAuth2AuthorizationServerMetadata.authorizationEndpoint]).
-     *
-     * Sample ktor code:
-     * ```
-     * val authnRequest = client.createAuthRequest(
-     *     requestOptions = requestOptions,
-     *     credentialIssuer = issuerMetadata.credentialIssuer,
-     * )
-     * val authnResponse = httpClient.get(issuerMetadata.authorizationEndpointUrl!!) {
-     *     url {
-     *         authnRequest.encodeToParameters().forEach { parameters.append(it.key, it.value) }
-     *     }
-     * }
-     * val authn = AuthenticationResponseParameters.deserialize(authnResponse.bodyAsText()).getOrThrow()
-     * ```
-     *
-     * @param requestOptions which credential in which representation to request
-     * @param authorizationDetails from [buildAuthorizationDetails]
-     * @param credentialIssuer from [IssuerMetadata.credentialIssuer]
-     */
-    suspend fun createAuthRequest(
-        requestOptions: RequestOptions,
-        authorizationDetails: Set<AuthorizationDetails>,
-        credentialIssuer: String? = null,
-    ) = AuthenticationRequestParameters(
-        responseType = GRANT_TYPE_CODE,
-        state = requestOptions.state,
-        clientId = clientId,
-        authorizationDetails = authorizationDetails,
-        resource = credentialIssuer,
-        redirectUrl = redirectUrl,
-        codeChallenge = generateCodeVerifier(requestOptions.state),
-        codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
-    )
-
-    /**
-     * CSC: Minimal implementation for CSC requests
-     */
-    suspend fun createAuthRequest(
-        state: String,
-        authorizationDetails: AuthorizationDetails,
-        credentialIssuer: String? = null,
-        requestUri: String? = null,
-    ): AuthenticationRequestParameters =
-        when (authorizationDetails) {
-            is AuthorizationDetails.OpenIdCredential -> AuthenticationRequestParameters(
-                responseType = GRANT_TYPE_CODE,
-                state = state,
-                clientId = clientId,
-                authorizationDetails = setOf(authorizationDetails),
-                resource = credentialIssuer,
-                redirectUrl = redirectUrl,
-                codeChallenge = generateCodeVerifier(state),
-                codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
-            )
-
-            is AuthorizationDetails.CSCCredential -> AuthenticationRequestParameters(
-                responseType = GRANT_TYPE_CODE,
-                state = state,
-                clientId = clientId,
-                authorizationDetails = setOf(authorizationDetails),
-                scope = RqesConstants.SCOPE,
-                redirectUrl = redirectUrl,
-                codeChallenge = generateCodeVerifier(state),
-                codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
-                requestUri = requestUri
-            )
-        }
-
-    @OptIn(ExperimentalStdlibApi::class)
-    private suspend fun generateCodeVerifier(state: String): String {
-        val codeVerifier = Random.nextBytes(32).toHexString(HexFormat.Default)
-        stateToCodeStore.put(state, codeVerifier)
-        return codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
-    }
-
-    sealed class AuthorizationForToken {
-        /**
-         * Authorization code from an actual OAuth2 Authorization Server, or [SimpleAuthorizationService.authorize]
-         */
-        data class Code(val code: String) : AuthorizationForToken()
-
-        /**
-         * Pre-auth code from [CredentialOfferGrants.preAuthorizedCode] in [CredentialOffer.grants],
-         * optionally with a [transactionCode] which is transmitted out-of-band, and may be entered by the user.
-         */
-        data class PreAuthCode(
-            val preAuth: CredentialOfferGrantsPreAuthCode,
-            val transactionCode: String? = null
-        ) : AuthorizationForToken()
-    }
-
-    /**
-     * Request token with an authorization code, e.g. from [createAuthRequest], or pre-auth code.
-     *
-     * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
-     * [OAuth2AuthorizationServerMetadata.tokenEndpoint]).
-     *
-     * Sample ktor code for authorization code:
-     * ```
-     * val authnRequest = client.createAuthRequest(requestOptions)
-     * val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
-     * val code = authnResponse.params.code
-     * val tokenRequest = client.createTokenRequestParameters(requestOptions, code = code)
-     * val tokenResponse = httpClient.submitForm(
-     *     url = issuerMetadata.tokenEndpointUrl!!,
-     *     formParameters = parameters {
-     *         tokenRequest.encodeToParameters().forEach { append(it.key, it.value) }
-     *     }
-     * )
-     * val token = TokenResponseParameters.deserialize(tokenResponse.bodyAsText()).getOrThrow()
-     * ```
-     *
-     * Sample ktor code for pre-authn code:
-     * ```
-     * val tokenRequest =
-     *     client.createTokenRequestParameters(requestOptions, credentialOffer.grants!!.preAuthorizedCode)
-     * val tokenResponse = httpClient.submitForm(
-     *     url = issuerMetadata.tokenEndpointUrl!!,
-     *     formParameters = parameters {
-     *         tokenRequest.encodeToParameters().forEach { append(it.key, it.value) }
-     *     }
-     * )
-     * val token = TokenResponseParameters.deserialize(tokenResponse.bodyAsText()).getOrThrow()
-     * ```
-     *
-     * Be sure to include a DPoP header if [IssuerMetadata.dpopSigningAlgValuesSupported] is set,
-     * see [JwsService.buildDPoPHeader].
-     *
-     * @param requestOptions which credential in which representation to request
-     * @param authorization for the token endpoint
-     */
-    suspend fun createTokenRequestParameters(
-        requestOptions: RequestOptions,
-        authorization: AuthorizationForToken,
-    ) = when (authorization) {
-        is AuthorizationForToken.Code -> TokenRequestParameters(
-            grantType = GRANT_TYPE_AUTHORIZATION_CODE,
-            code = authorization.code,
-            redirectUrl = redirectUrl,
-            clientId = clientId,
-            authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
-            codeVerifier = stateToCodeStore.remove(requestOptions.state)
-        )
-
-        is AuthorizationForToken.PreAuthCode -> TokenRequestParameters(
-            grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
-            redirectUrl = redirectUrl,
-            clientId = clientId,
-            authorizationDetails = (requestOptions.toAuthnDetails())?.let { setOf(it) },
-            transactionCode = authorization.transactionCode,
-            preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
-            codeVerifier = stateToCodeStore.remove(requestOptions.state)
-        )
-    }
-
-    /**
-     * CSC: Minimal implementation for CSC requests.
-     */
-    suspend fun createTokenRequestParameters(
-        state: String,
-        authorizationDetails: AuthorizationDetails,
-        authorization: AuthorizationForToken,
-    ) = when (authorization) {
-        is AuthorizationForToken.Code -> TokenRequestParameters(
-            grantType = GRANT_TYPE_AUTHORIZATION_CODE,
-            code = authorization.code,
-            redirectUrl = redirectUrl,
-            clientId = clientId,
-            authorizationDetails = setOf(authorizationDetails),
-            codeVerifier = stateToCodeStore.remove(state)
-        )
-
-        is AuthorizationForToken.PreAuthCode -> TokenRequestParameters(
-            grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
-            redirectUrl = redirectUrl,
-            clientId = clientId,
-            authorizationDetails = setOf(authorizationDetails),
-            transactionCode = authorization.transactionCode,
-            preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
-            codeVerifier = stateToCodeStore.remove(state)
-        )
-    }
-
-    /**
-     * Request token with an authorization code, e.g. from [createAuthRequest], or pre-auth code.
-     *
-     * Send the result as POST parameters (form-encoded) to the server at `/token` (or more specific
-     * [OAuth2AuthorizationServerMetadata.tokenEndpoint]).
-     *
-     * Sample ktor code for authorization code:
-     * ```
-     * val authnRequest = client.createAuthRequest(requestOptions)
-     * val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
-     * val code = authnResponse.params.code
-     * val tokenRequest = client.createTokenRequestParameters(requestOptions, code = code)
-     * val tokenResponse = httpClient.submitForm(
-     *     url = issuerMetadata.tokenEndpointUrl!!,
-     *     formParameters = parameters {
-     *         tokenRequest.encodeToParameters().forEach { append(it.key, it.value) }
-     *     }
-     * )
-     * val token = TokenResponseParameters.deserialize(tokenResponse.bodyAsText()).getOrThrow()
-     * ```
-     *
-     * Sample ktor code for pre-authn code:
-     * ```
-     * val tokenRequest =
-     *     client.createTokenRequestParameters(requestOptions, credentialOffer.grants!!.preAuthorizedCode)
-     * val tokenResponse = httpClient.submitForm(
-     *     url = issuerMetadata.tokenEndpointUrl!!,
-     *     formParameters = parameters {
-     *         tokenRequest.encodeToParameters().forEach { append(it.key, it.value) }
-     *     }
-     * )
-     * val token = TokenResponseParameters.deserialize(tokenResponse.bodyAsText()).getOrThrow()
-     * ```
-     *
-     * Be sure to include a DPoP header if [IssuerMetadata.dpopSigningAlgValuesSupported] is set,
-     * see [JwsService.buildDPoPHeader].
-     *
-     * @param credentialConfigurationId which credential (the key) from
-     * [IssuerMetadata.supportedCredentialConfigurations] to request
-     * @param state used in [createAuthRequest], e.g. when using authorization codes
-     * @param authorization for the token endpoint
-     */
-    suspend fun createTokenRequestParameters(
-        credentialConfigurationId: String,
-        state: String? = null,
-        authorization: AuthorizationForToken,
-    ) = when (authorization) {
-        is AuthorizationForToken.Code -> TokenRequestParameters(
-            grantType = GRANT_TYPE_AUTHORIZATION_CODE,
-            code = authorization.code,
-            redirectUrl = redirectUrl,
-            clientId = clientId,
-            authorizationDetails = setOf(
-                AuthorizationDetails.OpenIdCredential(
-                    credentialConfigurationId = credentialConfigurationId,
-                )
-            ),
-            codeVerifier = state?.let { stateToCodeStore.remove(it) }
-        )
-
-        is AuthorizationForToken.PreAuthCode -> TokenRequestParameters(
-            grantType = GRANT_TYPE_PRE_AUTHORIZED_CODE,
-            redirectUrl = redirectUrl,
-            clientId = clientId,
-            authorizationDetails = setOf(
-                AuthorizationDetails.OpenIdCredential(
-                    credentialConfigurationId = credentialConfigurationId,
-                )
-            ),
-            transactionCode = authorization.transactionCode,
-            preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
-            codeVerifier = state?.let { stateToCodeStore.remove(it) }
-        )
-    }
 
     /**
      * Send the result as JSON-serialized content to the server at `/credential` (or more specific

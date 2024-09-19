@@ -35,6 +35,7 @@ Release NEXT:
  - Remove proof type `cwt` for OpenID for Verifiable Credential Issuance, as per draft 14, but keep parsing it for a bit of backwards-compatibility
  - OID4VCI: Remove binding method for `did:key`, as it was never completely implemented, but add binding method `jwk` for JSON Web Keys.
  - OID4VCI: Rework interface of `WalletService` to make selecting the credential configuration by its ID more explicit
+ - Introudce `OAuth2Client` to extract creating authentication requests and token requests from OID4VCI `WalletService`
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments
