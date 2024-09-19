@@ -69,8 +69,8 @@ setupAndroid()
 
 exportIosFramework(
     "OpenIdDataClasses",
-    transitiveExports = false,
-    *commonIosExports(), project(":dif-data-classes")
+    transitiveExports = true,
+    project(":dif-data-classes")
 )
 
 val javadocJar = setupDokka(

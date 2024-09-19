@@ -29,21 +29,14 @@ inline fun Project.commonApiDependencies(): List<String> {
     project.AspVersions.versions["supreme"] = VcLibVersions.supreme
     project.AspVersions.versions["jsonpath"] = VcLibVersions.jsonpath
     project.AspVersions.versions["okio"] = signumVersionCatalog.findVersion("okio").get().toString()
-    project.AspVersions.versions["encoding"] = "2.2.1"
 
 
     return listOf(
         coroutines(),
-        serialization("json"),
-        serialization("cbor"),
-        addDependency("at.asitplus.signum:supreme", "supreme"), //for iOS Export
+        addDependency("at.asitplus.signum:supreme", "supreme"),
         addDependency("at.asitplus.signum:indispensable-cosef", "signum"),
         addDependency("at.asitplus.signum:indispensable-josef", "signum"),
-        datetime(),
         addDependency("com.squareup.okio:okio", "okio"),
-        addDependency("io.matthewnelson.encoding:base16", "encoding"),
-        addDependency("io.matthewnelson.encoding:base64", "encoding"),
-        addDependency("io.matthewnelson.encoding:core", "encoding"),
         addDependency("at.asitplus:jsonpath4k", "jsonpath"),
     )
 }
@@ -57,25 +50,7 @@ inline fun KotlinDependencyHandler.commonImplementationDependencies() {
     implementation(project.ktor("http"))
     implementation(project.napier())
     implementation(project.ktor("utils"))
-    project.AspVersions.versions["uuid"] = VcLibVersions.uuid
-    implementation(project.addDependency("com.benasher44:uuid", "uuid"))
 }
-
-
-fun Project.commonIosExports() = arrayOf(
-    datetime(),
-    "com.ionspin.kotlin:bignum:${signumVersionCatalog.findVersion("bignum").get()}",
-    kmmresult(),
-    "at.asitplus.signum:supreme:${VcLibVersions.supreme}",
-    "at.asitplus.signum:indispensable:${VcLibVersions.signum}",
-    "at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}",
-    "at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}",
-    "at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}",
-    "io.matthewnelson.encoding:core:${AspVersions.versions["encoding"]}",
-    "io.matthewnelson.encoding:base16:${AspVersions.versions["encoding"]}",
-    "io.matthewnelson.encoding:base64:${AspVersions.versions["encoding"]}",
-)
-
 
 /**
  * Hooks up Kotest tests from common using a frankensteined JUnit runner.
