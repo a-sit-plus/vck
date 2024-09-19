@@ -151,7 +151,7 @@ data class RqesDocumentDigestEntry private constructor(
     @ConsistentCopyVisibility
     @Serializable
     @SerialName("documentLocation_method")
-    data class DocumentLocationMethod private constructor(
+    data class DocumentLocationMethod constructor(
         val method: Method,
     )
 
