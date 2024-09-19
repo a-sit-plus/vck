@@ -84,12 +84,12 @@ class OidvciProcessTest : FunSpec({
             authorizationDetails = client.buildAuthorizationDetails(requestOptions)
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
-        val proof = client.createCredentialRequestJwt(
+        val proof = client.createCredentialRequestProof(
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,
             clock = requestOptions.clock
         )
-        val differentProof = WalletService().createCredentialRequestJwt(
+        val differentProof = WalletService().createCredentialRequestProof(
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,
             clock = requestOptions.clock
@@ -165,8 +165,10 @@ class OidvciProcessTest : FunSpec({
             )
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
+        token.authorizationDetails.shouldNotBeNull()
+        val first = token.authorizationDetails!!.first().shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
         val credentialRequest = client.createCredentialRequest(
-            authorizationDetails = token.authorizationDetails!!.first() as AuthorizationDetails.OpenIdCredential,
+            input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialConfigurationId!!),
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer
         ).getOrThrow()
@@ -294,7 +296,7 @@ private suspend fun runProcess(
     )
     val token = authorizationService.token(tokenRequest).getOrThrow()
     val credentialRequest = client.createCredentialRequest(
-        requestOptions,
+        WalletService.CredentialRequestInput.RequestOptions(requestOptions),
         token.clientNonce,
         issuer.metadata.credentialIssuer
     ).getOrThrow()

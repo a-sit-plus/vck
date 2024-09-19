@@ -40,7 +40,7 @@ data class OAuth2AuthorizationServerMetadata(
      * Can be custom URI scheme, or Universal Links/App links.
      */
     @SerialName("authorization_endpoint")
-    val authorizationEndpoint: String,
+    val authorizationEndpoint: String? = null,
 
     /**
      * RFC 9126: The URL of the pushed authorization request endpoint at which a client can post an authorization

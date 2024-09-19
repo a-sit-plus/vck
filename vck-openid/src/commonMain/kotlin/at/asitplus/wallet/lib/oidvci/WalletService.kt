@@ -158,48 +158,17 @@ class WalletService(
         requestOptions: RequestOptions
     ) = setOfNotNull(requestOptions.toAuthnDetails())
 
-    /**
-     * Send the result as JSON-serialized content to the server at `/credential` (or more specific
-     * [IssuerMetadata.credentialEndpointUrl]).
-     *
-     * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
-     * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
-     *
-     * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
-     * see [JwsService.buildDPoPHeader].
-     *
-     * See [OAuth2Client.createTokenRequestParameters].
-     *
-     * Sample ktor code:
-     * ```
-     * val token = ...
-     * val credentialRequest = client.createCredentialRequest(
-     *     authorizationDetails = authorizationDetails,
-     *     clientNonce = token.clientNonce,
-     *     credentialIssuer = issuerMetadata.credentialIssuer
-     * ).getOrThrow()
-     *
-     * val credentialResponse = httpClient.post(issuerMetadata.credentialEndpointUrl) {
-     *     setBody(credentialRequest)
-     *     headers {
-     *         append(HttpHeaders.Authorization, "Bearer ${token.accessToken}")
-     *     }
-     * }
-     * ```
-     *
-     * @param authorizationDetails from the token response, see [TokenResponseParameters.authorizationDetails]
-     * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
-     * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
-     */
-    suspend fun createCredentialRequest(
-        authorizationDetails: AuthorizationDetails.OpenIdCredential,
-        clientNonce: String?,
-        credentialIssuer: String?,
-    ): KmmResult<CredentialRequestParameters> = catching {
-        CredentialRequestParameters(
-            credentialIdentifier = authorizationDetails.credentialConfigurationId,
-        ).copy(proof = createCredentialRequestJwt(clientNonce, credentialIssuer))
-            .also { Napier.i("createCredentialRequest returns $it") }
+    sealed class CredentialRequestInput {
+        /**
+         * @param id from the token response, see [TokenResponseParameters.authorizationDetails]
+         * and [AuthorizationDetails.OpenIdCredential.credentialConfigurationId]
+         */
+        data class CredentialIdentifier(val id: String) : CredentialRequestInput()
+        data class RequestOptions(val requestOptions: WalletService.RequestOptions) : CredentialRequestInput()
+        data class Format(
+            val supportedCredentialFormat: SupportedCredentialFormat,
+            val requestedAttributes: Set<String>? = null
+        ) : CredentialRequestInput()
     }
 
     /**
@@ -231,70 +200,33 @@ class WalletService(
      * }
      * ```
      *
-     * @param requestOptions which credential in which representation to request
+     * @param input which credential to request, see subclasses of [CredentialRequestInput]
      * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
      * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
      */
     suspend fun createCredentialRequest(
-        requestOptions: RequestOptions,
+        input: CredentialRequestInput,
         clientNonce: String?,
         credentialIssuer: String?,
     ): KmmResult<CredentialRequestParameters> = catching {
-        with(requestOptions) {
-            credentialScheme.toCredentialRequestParameters(representation, requestedAttributes)
-        }.copy(proof = createCredentialRequestJwt(clientNonce, credentialIssuer, requestOptions.clock))
-            .also { Napier.i("createCredentialRequest returns $it") }
+        val clock = (input as? CredentialRequestInput.RequestOptions)?.requestOptions?.clock ?: Clock.System
+        when (input) {
+            is CredentialRequestInput.CredentialIdentifier ->
+                CredentialRequestParameters(credentialIdentifier = input.id)
+
+            is CredentialRequestInput.Format ->
+                input.supportedCredentialFormat.toCredentialRequestParameters(input.requestedAttributes)
+
+            is CredentialRequestInput.RequestOptions -> with(input.requestOptions) {
+                credentialScheme.toCredentialRequestParameters(representation, requestedAttributes)
+            }
+        }.copy(
+            proof = createCredentialRequestProof(clientNonce, credentialIssuer, clock)
+        ).also { Napier.i("createCredentialRequest returns $it") }
     }
 
-    /**
-     * Send the result as JSON-serialized content to the server at `/credential` (or more specific
-     * [IssuerMetadata.credentialEndpointUrl]).
-     *
-     * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
-     * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
-     *
-     * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
-     * see [JwsService.buildDPoPHeader].
-     *
-     * See [OAuth2Client.createTokenRequestParameters].
-     *
-     * Sample ktor code:
-     * ```
-     * val credentialToRequest = ... // user selection
-     * val supportedCredentialFormat = issuer.metadata.supportedCredentialConfigurations[credentialToRequest]
-     * val token = ...
-     * val credentialRequest = client.createCredentialRequest(
-     *     supportedCredentialFormat = supportedCredentialFormat,
-     *     requestedAttributes = setOf("..."), // or null
-     *     clientNonce = token.clientNonce,
-     *     credentialIssuer = issuerMetadata.credentialIssuer,
-     * ).getOrThrow()
-     *
-     * val credentialResponse = httpClient.post(issuerMetadata.credentialEndpointUrl) {
-     *     setBody(credentialRequest)
-     *     headers {
-     *         append(HttpHeaders.Authorization, "Bearer ${token.accessToken}")
-     *     }
-     * }
-     * ```
-     *
-     * @param supportedCredentialFormat to request, value from [IssuerMetadata.supportedCredentialConfigurations]
-     * @param requestedAttributes to request issuance of some attributes only, or `null` to request all
-     * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
-     * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
-     */
-    suspend fun createCredentialRequest(
-        supportedCredentialFormat: SupportedCredentialFormat,
-        requestedAttributes: Set<String>? = null,
-        clientNonce: String?,
-        credentialIssuer: String?,
-    ): KmmResult<CredentialRequestParameters> = catching {
-        supportedCredentialFormat.toCredentialRequestParameters(requestedAttributes)
-            .copy(proof = createCredentialRequestJwt(clientNonce, credentialIssuer))
-            .also { Napier.i("createCredentialRequest returns $it") }
-    }
 
-    internal suspend fun createCredentialRequestJwt(
+    internal suspend fun createCredentialRequestProof(
         clientNonce: String?,
         credentialIssuer: String?,
         clock: Clock = Clock.System,
