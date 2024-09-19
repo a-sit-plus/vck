@@ -71,7 +71,7 @@ setupAndroid()
 
 exportIosFramework(
     "DifDataClasses",
-    static = false,
+    transitiveExports = false,
     *commonIosExports(),
 )
 

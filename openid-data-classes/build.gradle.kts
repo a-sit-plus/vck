@@ -69,7 +69,7 @@ setupAndroid()
 
 exportIosFramework(
     "OpenIdDataClasses",
-    static = false,
+    transitiveExports = false,
     *commonIosExports(), project(":dif-data-classes")
 )
 

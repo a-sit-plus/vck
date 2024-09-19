@@ -71,7 +71,7 @@ setupAndroid()
 
 exportIosFramework(
     name = "VckKmm",
-    static = false,
+    transitiveExports = false,
     *commonIosExports(), project(":dif-data-classes")
 )
 
