@@ -15,7 +15,7 @@ data class SupportedCredentialFormatDefinition(
      * according to (VC_DATA), Section 4.3, e.g. `VerifiableCredential`, `UniversityDegreeCredential`
      */
     @SerialName("type")
-    val types: Collection<String>? = null,
+    val types: Set<String>? = null,
 
     /**
      * OID4VCI:
@@ -26,7 +26,4 @@ data class SupportedCredentialFormatDefinition(
     @SerialName("credentialSubject")
     val credentialSubject: Map<String, CredentialSubjectMetadataSingle>? = null,
 
-    // TODO is present in EUDIW issuer ... but is this really valid?
-    @SerialName("claims")
-    val claims: Map<String, RequestedCredentialClaimSpecification>? = null,
 )

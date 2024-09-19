@@ -37,7 +37,7 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
             format = CredentialFormatEnum.JWT_VC,
             scope = vcType!!,
             credentialDefinition = SupportedCredentialFormatDefinition(
-                types = listOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType!!),
+                types = setOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType!!),
                 credentialSubject = claimNames.associateWith { CredentialSubjectMetadataSingle() }
             ),
             supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),

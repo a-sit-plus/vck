@@ -40,13 +40,12 @@ class OidvciInteropTest : FunSpec({
 
     test("Parse EUDIW URL") {
         val url =
-            "eudi-openid4ci://credentialsOffer?credential_offer=%7B%22credential_issuer%22:%22https://localhost/pid-issuer%22,%22credential_configuration_ids%22:[%22eu.europa.ec.eudiw.pid_vc_sd_jwt%22],%22grants%22:%7B%22authorization_code%22:%7B%22authorization_server%22:%22https://localhost/idp/realms/pid-issuer-realm%22%7D%7D%7D"
+            "openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22https%3A%2F%2Flocalhost%2Fpid-issuer%22%2C%22credential_configuration_ids%22%3A%5B%22eu.europa.ec.eudi.pid_vc_sd_jwt%22%5D%2C%22grants%22%3A%7B%22authorization_code%22%3A%7B%22authorization_server%22%3A%22https%3A%2F%2Flocalhost%2Fidp%2Frealms%2Fpid-issuer-realm%22%7D%7D%7D"
 
-        val client = WalletService()
+        val credentialOffer = WalletService().parseCredentialOffer(url).getOrThrow()
+        credentialOffer.grants?.authorizationCode.shouldNotBeNull()
+        credentialOffer.credentialIssuer shouldBe "https://localhost/pid-issuer"
 
-        val credentialOffer = client.parseCredentialOffer(url).getOrThrow()
-            .also { println(it) }
-        //val credentialIssuerMetadataUrl = credentialOffer.credentialIssuer + PATH_WELL_KNOWN_CREDENTIAL_ISSUER
         val credentialIssuerMetadataString = """
             {
               "credential_issuer": "https://localhost/pid-issuer",
@@ -67,9 +66,47 @@ class OidvciInteropTest : FunSpec({
               },
               "credential_identifiers_supported": true,
               "credential_configurations_supported": {
-                "eu.europa.ec.eudiw.pid_vc_sd_jwt": {
+                "eu.europa.ec.eudi.pid_mso_mdoc": {
+                  "format": "mso_mdoc",
+                  "scope": "eu.europa.ec.eudi.pid_mso_mdoc",
+                  "proof_types_supported": {
+                    "jwt": {
+                      "proof_signing_alg_values_supported": [
+                        "ES256"
+                      ]
+                    }
+                  },
+                  "doctype": "eu.europa.ec.eudi.pid.1",
+                  "display": [
+                    {
+                      "name": "PID",
+                      "locale": "en",
+                      "logo": {
+                        "uri": "https://examplestate.com/public/mdl.png",
+                        "alt_text": "A square figure of a PID"
+                      }
+                    }
+                  ],
+                  "policy": {
+                    "one_time_use": true
+                  },
+                  "claims": {
+                    "eu.europa.ec.eudi.pid.1": {
+                      "family_name": {
+                        "mandatory": true,
+                        "display": [
+                          {
+                            "name": "Current Family Name",
+                            "locale": "en"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                "eu.europa.ec.eudi.pid_vc_sd_jwt": {
                   "format": "vc+sd-jwt",
-                  "scope": "eu.europa.ec.eudiw.pid_vc_sd_jwt",
+                  "scope": "eu.europa.ec.eudi.pid_vc_sd_jwt",
                   "cryptographic_binding_methods_supported": [
                     "jwk"
                   ],
@@ -84,7 +121,7 @@ class OidvciInteropTest : FunSpec({
                       ]
                     }
                   },
-                  "vct": "eu.europa.ec.eudiw.pid.1",
+                  "vct": "eu.europa.ec.eudi.pid.1",
                   "display": [
                     {
                       "name": "PID",
@@ -95,8 +132,6 @@ class OidvciInteropTest : FunSpec({
                       }
                     }
                   ],
-                  "credential_definition": {
-                    "type": ["eu.europa.ec.eudiw.pid.1"],
                     "claims": {
                       "family_name": {
                         "mandatory": false,
@@ -106,9 +141,40 @@ class OidvciInteropTest : FunSpec({
                             "locale": "en"
                           }
                         ]
-                      },
-                      "issuance_date": {
-                        "mandatory": true
+                      }
+                    }
+                },
+                "org.iso.18013.5.1.mDL": {
+                  "format": "mso_mdoc",
+                  "scope": "org.iso.18013.5.1.mDL",
+                  "proof_types_supported": {
+                    "jwt": {
+                      "proof_signing_alg_values_supported": [
+                        "ES256"
+                      ]
+                    }
+                  },
+                  "doctype": "org.iso.18013.5.1.mDL",
+                  "display": [
+                    {
+                      "name": "Mobile Driving Licence",
+                      "locale": "en"
+                    }
+                  ],
+                  "policy": {
+                    "one_time_use": false,
+                    "batch_size": 2
+                  },
+                  "claims": {
+                    "org.iso.18013.5.1": {
+                      "family_name": {
+                        "mandatory": true,
+                        "display": [
+                          {
+                            "name": "Last name, surname, or primary identifier of the mDL holder.",
+                            "locale": "en"
+                          }
+                        ]
                       }
                     }
                   }
@@ -126,20 +192,20 @@ class OidvciInteropTest : FunSpec({
         issuerMetadata.credentialResponseEncryption!!.supportedAlgorithms
             .shouldHaveSingleElement(JweAlgorithm.RSA_OAEP_256)
         issuerMetadata.credentialResponseEncryption!!.encryptionRequired shouldBe true
-        // select correct credential config by using a configurationId from the offer it self
+
         val credentialConfig = issuerMetadata.supportedCredentialConfigurations!!
             .entries.first { it.key == credentialOffer.configurationIds.first() }.toPair()
 
         val credential = credentialConfig.second
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
-        credential.scope shouldBe "eu.europa.ec.eudiw.pid_vc_sd_jwt"
+        credential.scope shouldBe "eu.europa.ec.eudi.pid_vc_sd_jwt"
         credential.supportedBindingMethods!!.shouldHaveSingleElement("jwk")
         credential.supportedSigningAlgorithms!!.shouldHaveSingleElement("ES256")
         credential.supportedProofTypes!!["jwt"]!!.supportedSigningAlgorithms.shouldContainAll("RS256", "ES256")
-        credential.sdJwtVcType shouldBe "eu.europa.ec.eudiw.pid.1"
-        // TODO this is wrong in EUDIW's metadata? Should be an array! credentialConfig.credentialDefinition!!.types
-        credential.credentialDefinition!!.claims!!.firstNotNullOfOrNull { it.key == "family_name" }
-            .shouldNotBeNull()
+        credential.sdJwtVcType shouldBe "eu.europa.ec.eudi.pid.1"
+        // this is still wrong in EUDIW's metadata:
+        // Should be an array: credentialConfig.credentialDefinition!!.types,
+        // but is a single string
     }
 
     test("process with pre-authorized code, credential offer, and authorization details") {

@@ -332,7 +332,7 @@ class WalletService(
         AuthorizationDetails.OpenIdCredential(
             format = format,
             credentialDefinition = SupportedCredentialFormatDefinition(
-                types = listOf(VERIFIABLE_CREDENTIAL, vcType!!),
+                types = setOf(VERIFIABLE_CREDENTIAL, vcType!!),
             ),
         ) else null
 
@@ -363,7 +363,7 @@ class WalletService(
         credentialRepresentation == PLAIN_JWT && supportsVcJwt -> CredentialRequestParameters(
             format = CredentialFormatEnum.JWT_VC,
             credentialDefinition = SupportedCredentialFormatDefinition(
-                types = listOf(VERIFIABLE_CREDENTIAL) + vcType!!,
+                types = setOf(VERIFIABLE_CREDENTIAL, vcType!!),
             ),
         )
 

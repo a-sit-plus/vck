@@ -94,7 +94,7 @@ class OidvciProcessTest : FunSpec({
         val credentialRequest = CredentialRequestParameters(
             format = CredentialFormatEnum.JWT_VC,
             credentialDefinition = SupportedCredentialFormatDefinition(
-                types = listOf(VERIFIABLE_CREDENTIAL) + ConstantIndex.AtomicAttribute2023.vcType,
+                types = setOf(VERIFIABLE_CREDENTIAL, ConstantIndex.AtomicAttribute2023.vcType),
             ),
             proofs = CredentialRequestProofContainer(
                 proofType = OpenIdConstants.ProofType.JWT,

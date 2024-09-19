@@ -1,10 +1,10 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.*
-import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.oidc.jsonSerializer
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -23,7 +23,7 @@ class SerializationTest : FunSpec({
             AuthorizationDetails.OpenIdCredential(
                 format = CredentialFormatEnum.JWT_VC,
                 credentialDefinition = SupportedCredentialFormatDefinition(
-                    types = listOf(VERIFIABLE_CREDENTIAL, randomString()),
+                    types = setOf(VERIFIABLE_CREDENTIAL, randomString()),
                 )
             )
         ),
@@ -58,7 +58,7 @@ class SerializationTest : FunSpec({
     fun createCredentialRequest() = CredentialRequestParameters(
         format = CredentialFormatEnum.JWT_VC,
         credentialDefinition = SupportedCredentialFormatDefinition(
-            types = listOf(randomString(), randomString()),
+            types = setOf(randomString(), randomString()),
         ),
         proof = CredentialRequestProof(
             proofType = OpenIdConstants.ProofType.OTHER(randomString()),
