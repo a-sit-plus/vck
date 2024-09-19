@@ -1,13 +1,13 @@
-package at.asitplus.wallet.lib.oidvci
+package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.wallet.lib.oidvci.*
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -16,7 +16,7 @@ import kotlin.time.Duration.Companion.seconds
 
 /**
  * Simple authorization server implementation, to be used for [CredentialIssuer],
- * when issuing credentials directly from a local [dataProvider].
+ * with the actual authentication and authorization logic implemented in [strategy].
  *
  * Implemented from
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
@@ -24,13 +24,9 @@ import kotlin.time.Duration.Companion.seconds
  */
 class SimpleAuthorizationService(
     /**
-     * Source of user data.
+     * Used to load user data and filter authorization details
      */
-    private val dataProvider: OAuth2DataProvider,
-    /**
-     * List of supported schemes.
-     */
-    private val credentialSchemes: Set<ConstantIndex.CredentialScheme>,
+    private val strategy: AuthorizationServiceStrategy,
     /**
      * Used to create and verify authorization codes during issuing.
      */
@@ -51,20 +47,17 @@ class SimpleAuthorizationService(
      * Used to build [OAuth2AuthorizationServerMetadata.authorizationEndpoint], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [authorize].
      */
-    val authorizationEndpointPath: String = "/authorize",
+    private val authorizationEndpointPath: String = "/authorize",
     /**
      * Used to build [OAuth2AuthorizationServerMetadata.tokenEndpoint], i.e. implementers need to forward requests
      * to that URI (which starts with [publicContext]) to [token].
      */
-    val tokenEndpointPath: String = "/token",
-    val codeToCodeChallengeStore: MapStore<String, String> = DefaultMapStore(),
-    val codeToUserInfoStore: MapStore<String, OidcUserInfoExtended> = DefaultMapStore(),
-    val accessTokenToUserInfoStore: MapStore<String, OidcUserInfoExtended> = DefaultMapStore()
-) : OAuth2AuthorizationServer {
+    private val tokenEndpointPath: String = "/token",
+    private val codeToCodeChallengeStore: MapStore<String, String> = DefaultMapStore(),
+    private val codeToUserInfoStore: MapStore<String, OidcUserInfoExtended> = DefaultMapStore(),
+    private val accessTokenToUserInfoStore: MapStore<String, OidcUserInfoExtended> = DefaultMapStore(),
+) : OAuth2AuthorizationServerAdapter {
 
-    val supportedCredentialSchemes = credentialSchemes
-        .flatMap { it.toSupportedCredentialFormat().entries }
-        .associate { it.key to it.value }
     override val supportsClientNonce: Boolean = true
 
     /**
@@ -90,11 +83,11 @@ class SimpleAuthorizationService(
             throw OAuth2Exception(Errors.INVALID_REQUEST, "redirect_uri not set")
                 .also { Napier.w("authorize: client did not set redirect_uri in $request") }
 
-        val code = codeService.provideCode().also {
-            val userInfo = dataProvider.loadUserInfo(request)
+        val code = codeService.provideCode().also { code ->
+            val userInfo = strategy.loadUserInfo(request, code)
                 ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                     .also { Napier.w("authorize: could not load user info from $request") }
-            codeToUserInfoStore.put(it, userInfo)
+            codeToUserInfoStore.put(code, userInfo)
         }
         val responseParams = AuthenticationResponseParameters(
             code = code,
@@ -155,19 +148,7 @@ class SimpleAuthorizationService(
         }
 
         val filteredAuthorizationDetails = params.authorizationDetails
-            ?.filterIsInstance<AuthorizationDetails.OpenIdCredential>()
-            ?.filter { authnDetails ->
-                authnDetails.credentialConfigurationId?.let {
-                    supportedCredentialSchemes.containsKey(it)
-                } ?: authnDetails.format?.let {
-                    supportedCredentialSchemes.values.any {
-                        it.format == authnDetails.format &&
-                                it.docType == authnDetails.docType &&
-                                it.sdJwtVcType == authnDetails.sdJwtVcType &&
-                                it.credentialDefinition == authnDetails.credentialDefinition
-                    }
-                } ?: false
-            }?.toSet()
+            ?.let { strategy.filterAuthorizationDetails(it) }
 
         TokenResponseParameters(
             accessToken = tokenService.provideNonce().also {
@@ -180,11 +161,9 @@ class SimpleAuthorizationService(
         ).also { Napier.i("token returns $it") }
     }
 
-    override suspend fun providePreAuthorizedCode(): String? =
+    override suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String =
         codeService.provideCode().also {
-            val userInfo = dataProvider.loadUserInfo()
-                ?: return null.also { Napier.w("authorize: could not load user info from data provider") }
-            codeToUserInfoStore.put(it, userInfo)
+            codeToUserInfoStore.put(it, user)
         }
 
     override suspend fun verifyClientNonce(nonce: String): Boolean =

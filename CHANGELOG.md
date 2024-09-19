@@ -31,12 +31,13 @@ Release NEXT:
    * Signum 3.7.0 (only dependency updates to align everything, no alignments in code)
  * Add `KeyStoreMaterial` to JVM target for convenience
  - Update implementation of [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) to draft 14 from 2024-08-21
- - Move some fields from `IssuerMetadata` to `OAuth2AuthorizationServerMetadata` to match the semantics
- - Remove proof type `cwt` for OpenID for Verifiable Credential Issuance, as per draft 14, but keep parsing it for a bit of backwards-compatibility
- - OID4VCI: Remove binding method for `did:key`, as it was never completely implemented, but add binding method `jwk` for JSON Web Keys.
- - OID4VCI: Rework interface of `WalletService` to make selecting the credential configuration by its ID more explicit
- - OID4VCI: Support requesting issuance of credential using scope values
- - Introudce `OAuth2Client` to extract creating authentication requests and token requests from OID4VCI `WalletService`
+   - Move some fields from `IssuerMetadata` to `OAuth2AuthorizationServerMetadata` to match the semantics
+   - Remove proof type `cwt` for OpenID for Verifiable Credential Issuance, as per draft 14, but keep parsing it for a bit of backwards-compatibility
+   - Remove binding method for `did:key`, as it was never completely implemented, but add binding method `jwk` for JSON Web Keys.
+   - Rework interface of `WalletService` to make selecting the credential configuration by its ID more explicit
+   - Support requesting issuance of credential using scope values
+   - Introudce `OAuth2Client` to extract creating authentication requests and token requests from OID4VCI `WalletService`
+   - Refactor `SimpleAuthorizationService` to extract actual authentication and authorization into `AuthorizationServiceStrategy`
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments

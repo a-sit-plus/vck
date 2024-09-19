@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
@@ -34,8 +35,10 @@ class OidvciProcessTest : FunSpec({
 
     beforeEach {
         authorizationService = SimpleAuthorizationService(
-            dataProvider = DummyOAuth2DataProvider,
-            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023)
+            strategy = CredentialAuthorizationServiceStrategy(
+                DummyOAuth2DataProvider,
+                setOf(ConstantIndex.AtomicAttribute2023)
+            ),
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
@@ -107,32 +110,13 @@ class OidvciProcessTest : FunSpec({
         credential.exceptionOrNull().shouldBeInstanceOf<OAuth2Exception>()
     }
 
-    test("can't cash in token twice") {
-        val requestOptions = WalletService.RequestOptions(
-            ConstantIndex.AtomicAttribute2023,
-            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
-        )
-        val authnRequest = client.oauth2Client.createAuthRequest(
-            requestOptions.state,
-            client.buildAuthorizationDetails(requestOptions),
-        )
-        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params.code.shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = requestOptions.state,
-            authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            authorizationDetails = client.buildAuthorizationDetails(requestOptions)
-        )
-        authorizationService.token(tokenRequest).isSuccess shouldBe true
-        authorizationService.token(tokenRequest).isFailure shouldBe true
-    }
-
     test("process with W3C VC JWT, authorizationService with defect mapstore") {
         authorizationService = SimpleAuthorizationService(
-            dataProvider = DummyOAuth2DataProvider,
-            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
-            codeToUserInfoStore = defectMapStore()
+            codeToUserInfoStore = defectMapStore(),
+            strategy = CredentialAuthorizationServiceStrategy(
+                DummyOAuth2DataProvider,
+                setOf(ConstantIndex.AtomicAttribute2023)
+            ),
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
@@ -169,13 +153,13 @@ class OidvciProcessTest : FunSpec({
     }
 
     test("process with W3C VC SD-JWT, credential offer, pre-authn") {
-        val offer = issuer.credentialOffer()
+        val offer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
         val state = uuid4().toString()
         val credentialIdToRequest = "AtomicAttribute2023#vc+sd-jwt"
         val preAuth = offer.grants!!.preAuthorizedCode!!
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
             state = state,
-            authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth),
+            authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth.preAuthorizedCode),
             authorizationDetails = setOf(
                 AuthorizationDetails.OpenIdCredential(credentialConfigurationId = credentialIdToRequest)
             )

@@ -34,7 +34,7 @@ class CredentialIssuer(
     /**
      * Used to get the user data, and access tokens.
      */
-    private val authorizationService: OAuth2AuthorizationServer,
+    private val authorizationService: OAuth2AuthorizationServerAdapter,
     /**
      * Used to actually issue the credential.
      */
@@ -77,35 +77,43 @@ class CredentialIssuer(
 
     /**
      * Offer all [credentialSchemes] to clients.
-     * Callers may need to transport this in [CredentialOfferUrlParameters] to (HTTPS) clients.
      *
-     * @param provideCodeFlow whether to provide [CredentialOfferGrantsAuthCode] in
-     * [CredentialOfferGrants.authorizationCode]
-     * @param providePreAuthorizedCode whether to provide [CredentialOfferGrantsPreAuthCode] in
-     * [CredentialOfferGrants.preAuthorizedCode], if [authorizationService] supports it too
+     * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
+     * i.e. by displaying a QR Code that can be scanned with wallet appps.
      */
-    suspend fun credentialOffer(
-        provideCodeFlow: Boolean = true,
-        providePreAuthorizedCode: Boolean = true,
+    suspend fun credentialOfferWithAuthorizationCode(): CredentialOffer = CredentialOffer(
+        credentialIssuer = publicContext,
+        configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
+        grants = CredentialOfferGrants(
+            authorizationCode =
+            CredentialOfferGrantsAuthCode(
+                // TODO remember this state, for subsequent requests from the Wallet
+                issuerState = uuid4().toString(),
+                authorizationServer = authorizationService.publicContext
+            ),
+        )
+    )
+
+    /**
+     * Offer all [credentialSchemes] to clients.
+     *
+     * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
+     * i.e. by displaying a QR Code that can be scanned with wallet appps.
+     *
+     * @param user used to create the credential when the wallet app requests the credential
+     */
+    suspend fun credentialOfferWithPreAuthnForUser(
+        user: OidcUserInfoExtended,
     ): CredentialOffer = CredentialOffer(
         credentialIssuer = publicContext,
-        configurationIds = credentialSchemes.flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).keys },
+        configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
         grants = CredentialOfferGrants(
-            authorizationCode = if (provideCodeFlow) {
-                CredentialOfferGrantsAuthCode(
-                    // TODO remember this state, for subsequent requests from the Wallet
-                    issuerState = uuid4().toString(),
+            preAuthorizedCode = authorizationService.providePreAuthorizedCode(user)?.let {
+                CredentialOfferGrantsPreAuthCode(
+                    preAuthorizedCode = it,
                     authorizationServer = authorizationService.publicContext
                 )
-            } else null,
-            preAuthorizedCode = if (providePreAuthorizedCode) {
-                authorizationService.providePreAuthorizedCode()?.let {
-                    CredentialOfferGrantsPreAuthCode(
-                        preAuthorizedCode = it,
-                        authorizationServer = authorizationService.publicContext
-                    )
-                }
-            } else null,
+            }
         )
     )
 

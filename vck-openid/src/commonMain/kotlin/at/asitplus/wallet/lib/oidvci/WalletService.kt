@@ -9,7 +9,10 @@ import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
@@ -73,13 +76,13 @@ class WalletService(
     constructor(
         clientId: String,
         redirectUrl: String,
-        keyPairAdapter: KeyMaterial,
+        keyMaterial: KeyMaterial,
         remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
         stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
     ) : this(
         clientId = clientId,
         redirectUrl = redirectUrl,
-        cryptoService = DefaultCryptoService(keyPairAdapter),
+        cryptoService = DefaultCryptoService(keyMaterial),
         remoteResourceRetriever = remoteResourceRetriever,
         stateToCodeStore = stateToCodeStore
     )

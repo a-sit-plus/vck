@@ -84,11 +84,12 @@ class OAuth2Client(
         data class Code(val code: String) : AuthorizationForToken()
 
         /**
-         * Pre-auth code from [CredentialOfferGrants.preAuthorizedCode] in [CredentialOffer.grants],
+         * Pre-auth code from [CredentialOfferGrantsPreAuthCode.preAuthorizedCode] in
+         * [CredentialOfferGrants.preAuthorizedCode] in [CredentialOffer.grants],
          * optionally with a [transactionCode] which is transmitted out-of-band, and may be entered by the user.
          */
         data class PreAuthCode(
-            val preAuth: CredentialOfferGrantsPreAuthCode,
+            val preAuthorizedCode: String,
             val transactionCode: String? = null
         ) : AuthorizationForToken()
     }
@@ -166,7 +167,7 @@ class OAuth2Client(
             scope = scope,
             resource = resource,
             transactionCode = authorization.transactionCode,
-            preAuthorizedCode = authorization.preAuth.preAuthorizedCode,
+            preAuthorizedCode = authorization.preAuthorizedCode,
         )
     }
 

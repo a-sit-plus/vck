@@ -3,6 +3,8 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -13,14 +15,14 @@ import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
-import at.asitplus.openid.OidcUserInfo
-import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUE_DATE
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
@@ -165,12 +167,14 @@ class DummyOAuth2IssuerCredentialDataProvider(
 }
 
 object DummyOAuth2DataProvider : OAuth2DataProvider {
-    override suspend fun loadUserInfo(request: AuthenticationRequestParameters?) =
-        OidcUserInfoExtended.fromOidcUserInfo(
-            OidcUserInfo(
-                subject = "subject",
-                givenName = "Erika",
-                familyName = "Musterfrau"
-            )
-        ).getOrThrow()
+    val user = OidcUserInfoExtended.fromOidcUserInfo(
+        OidcUserInfo(
+            subject = "subject",
+            givenName = "Erika",
+            familyName = "Musterfrau",
+            picture = Random.nextBytes(64).encodeToString(Base64())
+        )
+    ).getOrThrow()
+
+    override suspend fun loadUserInfo(request: AuthenticationRequestParameters, code: String) = user
 }

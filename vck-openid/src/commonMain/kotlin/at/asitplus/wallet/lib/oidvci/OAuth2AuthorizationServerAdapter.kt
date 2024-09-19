@@ -5,9 +5,11 @@ import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
 
 /**
- * Used by [CredentialIssuer] to obtain user data when issuing credentials using OID4VCI.
+ * Used in OID4VCI by [CredentialIssuer] to obtain user data when issuing credentials using OID4VCI.
+ *
+ * Could also be a remote service
  */
-interface OAuth2AuthorizationServer {
+interface OAuth2AuthorizationServerAdapter {
 
     /**
      * Used in several fields in [at.asitplus.openid.IssuerMetadata], to provide endpoint URLs to clients.
@@ -18,7 +20,7 @@ interface OAuth2AuthorizationServer {
      * Provide a pre-authorized code (for flow defined in OID4VCI), to be used by the Wallet implementation
      * to load credentials.
      */
-    suspend fun providePreAuthorizedCode(): String?
+    suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String
 
     /**
      * Get the [OidcUserInfoExtended] (holding [at.asitplus.openid.OidcUserInfo]) associated with the [accessToken],
