@@ -139,8 +139,9 @@ class RqesWalletService(
         responseUri = this.redirectUrl, //TODO double check
     )
 
-    suspend fun createSignHashRequestParameters(rqesRequest: RqesRequest, sad: String): SignatureRequestParameters = SignHashParameters(
-        credentialId = rqesRequest.clientId,
+    suspend fun createSignHashRequestParameters(rqesRequest: RqesRequest, credentialId: String, sad: String): SignatureRequestParameters = SignHashParameters(
+        credentialId = credentialId,
+        sad = sad,
         hashes = rqesRequest.documentDigests.map { it.hash }
     )
 
