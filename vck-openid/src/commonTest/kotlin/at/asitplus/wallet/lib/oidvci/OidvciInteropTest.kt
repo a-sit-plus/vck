@@ -148,9 +148,8 @@ class OidvciInteropTest : FunSpec({
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,
-            credentialConfigurationId = credentialIdToRequest,
+            authorizationDetails = client.buildAuthorizationDetails(credentialIdToRequest, credentialIssuerMetadata.authorizationServers),
             credentialIssuer = credentialIssuerMetadata.credentialIssuer,
-            authorizationServers = credentialIssuerMetadata.authorizationServers
         )
         val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()

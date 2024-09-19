@@ -131,6 +131,33 @@ class WalletService(
     }
 
     /**
+     * Build authorization details for use in [createAuthRequest].
+     *
+     *
+     * @param credentialConfigurationId which credential (the key) from
+     * [IssuerMetadata.supportedCredentialConfigurations] to request
+     * @param authorizationServers from [IssuerMetadata.authorizationServers]
+     */
+    suspend fun buildAuthorizationDetails(
+        credentialConfigurationId: String,
+        authorizationServers: Set<String>? = null,
+    ) = setOf(
+        AuthorizationDetails.OpenIdCredential(
+            credentialConfigurationId = credentialConfigurationId,
+            locations = authorizationServers,
+            // TODO Test in real-world settings, is this correct?
+            credentialIdentifiers = setOf(credentialConfigurationId)
+        )
+    )
+
+    /**
+     * Build authorization details for use in [createAuthRequest].
+     */
+    suspend fun buildAuthorizationDetails(
+        requestOptions: RequestOptions
+    ) = setOfNotNull(requestOptions.toAuthnDetails())
+
+    /**
      * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
      * [OAuth2AuthorizationServerMetadata.authorizationEndpoint]).
      *
@@ -152,30 +179,22 @@ class WalletService(
      * val authn = AuthenticationResponseParameters.deserialize(authnResponse.bodyAsText()).getOrThrow()
      * ```
      *
-     * @param credentialConfigurationId which credential (the key) from [IssuerMetadata.supportedCredentialConfigurations] to request
-     * @param scope which credential (the value `scope`) from [IssuerMetadata.supportedCredentialConfigurations] to request
+     * @param state to send to the server, for internal state keeping
+     * @param scope which credential (the value `scope` from
+     * [IssuerMetadata.supportedCredentialConfigurations]) to request
+     * @param authorizationDetails from [buildAuthorizationDetails]
      * @param credentialIssuer from [IssuerMetadata.credentialIssuer]
-     * @param authorizationServers from [IssuerMetadata.authorizationServers]
      */
     suspend fun createAuthRequest(
         state: String,
-        credentialConfigurationId: String? = null,
+        authorizationDetails: Set<AuthorizationDetails>,
         scope: String? = null,
         credentialIssuer: String? = null,
-        authorizationServers: Set<String>? = null,
     ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         state = state,
         clientId = clientId,
-        authorizationDetails = credentialConfigurationId?.let {
-            setOf(
-                AuthorizationDetails.OpenIdCredential(
-                    credentialConfigurationId = it,
-                    locations = authorizationServers,
-                    credentialIdentifiers = setOf(it) // TODO Test in real-world settings, is this correct?
-                )
-            )
-        },
+        authorizationDetails = authorizationDetails,
         scope = scope,
         resource = credentialIssuer,
         redirectUrl = redirectUrl,
@@ -202,16 +221,18 @@ class WalletService(
      * ```
      *
      * @param requestOptions which credential in which representation to request
+     * @param authorizationDetails from [buildAuthorizationDetails]
      * @param credentialIssuer from [IssuerMetadata.credentialIssuer]
      */
     suspend fun createAuthRequest(
         requestOptions: RequestOptions,
+        authorizationDetails: Set<AuthorizationDetails>,
         credentialIssuer: String? = null,
     ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         state = requestOptions.state,
         clientId = clientId,
-        authorizationDetails = requestOptions.toAuthnDetails()?.let { setOf(it) },
+        authorizationDetails = authorizationDetails,
         resource = credentialIssuer,
         redirectUrl = redirectUrl,
         codeChallenge = generateCodeVerifier(requestOptions.state),

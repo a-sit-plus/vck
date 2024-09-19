@@ -44,7 +44,7 @@ class OidvciProcessTest : FunSpec({
         client = WalletService(
             clientId = "https://wallet.a-sit.at/app",
             redirectUrl = "https://wallet.a-sit.at/callback",
-            keyPairAdapter = EphemeralKeyWithSelfSignedCert()
+            keyMaterial = EphemeralKeyWithSelfSignedCert()
         )
     }
 
@@ -67,7 +67,7 @@ class OidvciProcessTest : FunSpec({
             ConstantIndex.AtomicAttribute2023,
             representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )
-        val authnRequest = client.createAuthRequest(requestOptions)
+        val authnRequest = client.createAuthRequest(requestOptions, client.buildAuthorizationDetails(requestOptions))
         val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
         val code = authnResponse.params.code.shouldNotBeNull()
         val tokenRequest = client.createTokenRequestParameters(
@@ -106,7 +106,7 @@ class OidvciProcessTest : FunSpec({
             ConstantIndex.AtomicAttribute2023,
             representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )
-        val authnRequest = client.createAuthRequest(requestOptions)
+        val authnRequest = client.createAuthRequest(requestOptions, client.buildAuthorizationDetails(requestOptions))
         val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
         val code = authnResponse.params.code.shouldNotBeNull()
@@ -282,7 +282,7 @@ private suspend fun runProcess(
     client: WalletService,
     requestOptions: WalletService.RequestOptions,
 ): CredentialResponseParameters {
-    val authnRequest = client.createAuthRequest(requestOptions)
+    val authnRequest = client.createAuthRequest(requestOptions, client.buildAuthorizationDetails(requestOptions))
     val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
     authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
     val code = authnResponse.params.code.shouldNotBeNull()
