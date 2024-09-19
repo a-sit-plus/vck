@@ -5,6 +5,7 @@ Release NEXT:
  - Remove `OidcSiopVerifier.newInstance()` methods and replace them with constructors
  - Remove `Validator.newDefaultInstance()` methods and replace them with constructors
  - Remove `WalletService.newDefaultInstance()` methods and replace them with constructors
+ - Fix serialization of byte arrays in SD-JWT disclosures and claims
  * Add `TransactionDataEntry` class
  * Add `DocumentDigestEntry` class
  * Add `DocumentDigestEntryCSC` class

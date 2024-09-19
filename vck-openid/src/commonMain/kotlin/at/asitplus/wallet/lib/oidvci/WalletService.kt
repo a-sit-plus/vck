@@ -74,8 +74,8 @@ class WalletService(
     val oauth2Client: OAuth2Client = OAuth2Client(clientId, redirectUrl)
 
     constructor(
-        clientId: String,
-        redirectUrl: String,
+        clientId: String = "https://wallet.a-sit.at/app",
+        redirectUrl: String = "$clientId/callback",
         keyMaterial: KeyMaterial,
         remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
         stateToCodeStore: MapStore<String, String> = DefaultMapStore(),

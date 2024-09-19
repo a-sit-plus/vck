@@ -22,11 +22,13 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUE_DATE
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
+
 
 class DummyOAuth2IssuerCredentialDataProvider(
     private val userInfo: OidcUserInfoExtended,
@@ -60,16 +62,17 @@ class DummyOAuth2IssuerCredentialDataProvider(
         val givenName = userInfo.userInfo.givenName
         val subjectId = subjectPublicKey.didEncoded
         val claims = listOfNotNull(
-            givenName?.let { optionalClaim(claimNames, "given_name", it) },
+            givenName?.let { optionalClaim(claimNames, CLAIM_GIVEN_NAME, it) },
             familyName?.let { optionalClaim(claimNames, "family_name", it) },
             userInfo.userInfo.birthDate?.let { optionalClaim(claimNames, "date_of_birth", it) },
+            userInfo.userInfo.picture?.let { optionalClaim(claimNames, CLAIM_PORTRAIT, it.decodeToByteArray(Base64())) },
         )
         return when (representation) {
             ConstantIndex.CredentialRepresentation.SD_JWT ->
                 CredentialToBeIssued.VcSd(claims, expiration)
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                AtomicAttribute2023(subjectId, "given_name", givenName ?: "no value"), expiration,
+                AtomicAttribute2023(subjectId, GIVEN_NAME, givenName ?: "no value"), expiration,
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -157,13 +160,17 @@ class DummyOAuth2IssuerCredentialDataProvider(
     private fun optionalClaim(claimNames: Collection<String>?, name: String, value: Any) =
         if (claimNames.isNullOrContains(name)) ClaimToBeIssued(name, value) else null
 
-
     private fun issuerSignedItem(name: String, value: Any, digestId: UInt) = IssuerSignedItem(
         digestId = digestId,
         random = Random.nextBytes(16),
         elementIdentifier = name,
         elementValue = value
     )
+
+    companion object {
+        const val CLAIM_GIVEN_NAME = "given_name"
+        const val CLAIM_PORTRAIT = "portrait"
+    }
 }
 
 object DummyOAuth2DataProvider : OAuth2DataProvider {
