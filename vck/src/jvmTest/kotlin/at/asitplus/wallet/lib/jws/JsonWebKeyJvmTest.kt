@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.jws
 
 import at.asitplus.signum.indispensable.ECCurve
-import at.asitplus.signum.indispensable.asn1.ensureSize
+import at.asitplus.signum.indispensable.io.ensureSize
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
