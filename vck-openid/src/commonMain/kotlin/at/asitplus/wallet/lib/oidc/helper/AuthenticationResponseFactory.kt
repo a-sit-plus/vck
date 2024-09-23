@@ -1,23 +1,19 @@
 package at.asitplus.wallet.lib.oidc.helper
 
+import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.ResponseMode.*
+import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.AuthenticationResponse
-import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
-import at.asitplus.openid.OpenIdConstants.Errors
-import at.asitplus.openid.OpenIdConstants.ResponseMode.DIRECT_POST
-import at.asitplus.openid.OpenIdConstants.ResponseMode.DIRECT_POST_JWT
-import at.asitplus.openid.OpenIdConstants.ResponseMode.FRAGMENT
-import at.asitplus.openid.OpenIdConstants.ResponseMode.OTHER
-import at.asitplus.openid.OpenIdConstants.ResponseMode.QUERY
-import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
+import io.ktor.http.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
@@ -44,10 +40,14 @@ internal class AuthenticationResponseFactory(
         request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
-        val url = request.parameters.responseUrl ?: request.parameters.redirectUrl
-        ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+        val url = request.parameters.responseUrl
+            ?: request.parameters.redirectUrl
+            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
         val responseSerialized = buildJarm(request, response)
-        val jarm = AuthenticationResponseParameters(response = responseSerialized)
+        val jarm = AuthenticationResponseParameters(
+            response = responseSerialized,
+            state = request.parameters.state
+        )
         return AuthenticationResponseResult.Post(url, jarm.encodeToParameters())
     }
 
@@ -55,8 +55,9 @@ internal class AuthenticationResponseFactory(
         request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
-        val url = request.parameters.responseUrl ?: request.parameters.redirectUrl
-        ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+        val url = request.parameters.responseUrl
+            ?: request.parameters.redirectUrl
+            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
         return AuthenticationResponseResult.Post(url, response.params.encodeToParameters())
     }
 
@@ -84,8 +85,8 @@ internal class AuthenticationResponseFactory(
     ): AuthenticationResponseResult.Redirect {
         val url = request.parameters.redirectUrl?.let { redirectUrl ->
             URLBuilder(redirectUrl).apply {
-                    encodedFragment = response.params.encodeToParameters().formUrlEncode()
-                }.buildString()
+                encodedFragment = response.params.encodeToParameters().formUrlEncode()
+            }.buildString()
         } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
         return AuthenticationResponseResult.Redirect(url, response.params)
     }

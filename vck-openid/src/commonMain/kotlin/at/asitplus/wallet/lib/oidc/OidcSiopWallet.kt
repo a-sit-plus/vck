@@ -140,12 +140,10 @@ class OidcSiopWallet(
      */
     suspend fun createAuthnResponse(
         request: AuthenticationRequestParametersFrom,
-    ): KmmResult<AuthenticationResponseResult> = createAuthnResponseParams(request).map {
-        AuthenticationResponseFactory(jwsService).createAuthenticationResponse(
-            request,
-            response = it,
-        )
-    }
+    ): KmmResult<AuthenticationResponseResult> =
+        createAuthnResponseParams(request).map {
+            AuthenticationResponseFactory(jwsService).createAuthenticationResponse(request, it)
+        }
 
     /**
      * Creates the authentication response from the RP's [params]

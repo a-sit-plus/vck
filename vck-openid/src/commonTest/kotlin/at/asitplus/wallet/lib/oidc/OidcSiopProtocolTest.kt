@@ -174,8 +174,8 @@ class OidcSiopProtocolTest : FreeSpec({
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         authnResponse.url.shouldBe(relyingPartyUrl)
-        authnResponse.params.shouldHaveSize(1)
-        val jarmResponse = authnResponse.params.values.first()
+        authnResponse.params.shouldHaveSize(2)
+        val jarmResponse = authnResponse.params.entries.first { it.key == "response" }.value
         DefaultVerifierJwsService().verifyJwsObject(JwsSigned.parse(jarmResponse).getOrThrow()).shouldBeTrue()
 
         val result =
