@@ -46,6 +46,12 @@ interface CryptoService {
 
     fun messageDigest(input: ByteArray, digest: Digest): ByteArray
 
+    fun hmac(
+        key: ByteArray,
+        algorithm: JweEncryption,
+        input: ByteArray
+    ): KmmResult<ByteArray>
+
     val keyMaterial: KeyMaterial
 
 }
@@ -87,7 +93,7 @@ data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteA
     }
 }
 
-expect class PlatformCryptoShim constructor(keyMaterial: KeyMaterial) {
+expect class PlatformCryptoShim(keyMaterial: KeyMaterial) {
 
     val keyMaterial: KeyMaterial
 
@@ -118,6 +124,12 @@ expect class PlatformCryptoShim constructor(keyMaterial: KeyMaterial) {
         ephemeralKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray>
+
+    fun hmac(
+        key: ByteArray,
+        algorithm: JweEncryption,
+        input: ByteArray
+    ): KmmResult<ByteArray>
 }
 
 open class DefaultCryptoService(
@@ -145,7 +157,8 @@ open class DefaultCryptoService(
         input: ByteArray,
         authTag: ByteArray,
         algorithm: JweEncryption
-    ): KmmResult<ByteArray> = platformCryptoShim.decrypt(key, iv, aad, input, authTag, algorithm)
+    ): KmmResult<ByteArray> =
+        platformCryptoShim.decrypt(key, iv, aad, input, authTag, algorithm)
 
     override fun generateEphemeralKeyPair(ecCurve: ECCurve) = DefaultEphemeralKeyHolder(ecCurve)
 
@@ -158,6 +171,8 @@ open class DefaultCryptoService(
     override fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm) =
         platformCryptoShim.performKeyAgreement(ephemeralKey, algorithm)
 
+    override fun hmac(key: ByteArray, algorithm: JweEncryption, input: ByteArray): KmmResult<ByteArray> =
+        platformCryptoShim.hmac(key, algorithm, input)
 
     override fun messageDigest(
         input: ByteArray,

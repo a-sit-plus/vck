@@ -63,5 +63,8 @@ actual class PlatformCryptoShim actual constructor(actual val keyMaterial: KeyMa
         return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
     }
 
+    actual fun hmac(key: ByteArray, algorithm: JweEncryption, input: ByteArray): KmmResult<ByteArray> {
+        return KmmResult.success("hmac".encodeToByteArray() + key)
+    }
 
 }

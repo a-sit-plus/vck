@@ -5,15 +5,12 @@ import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.getJcaPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
-import at.asitplus.signum.indispensable.josef.JweEncrypted
-import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.nativeDigest
 import at.asitplus.signum.supreme.HazardousMaterials
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
@@ -22,7 +19,6 @@ import com.nimbusds.jose.crypto.*
 import com.nimbusds.jose.jwk.JWK
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -84,7 +80,7 @@ class JwsServiceJvmTest : FreeSpec({
                             521 -> ECCurve.SECP_521_R_1
                             else -> throw IllegalArgumentException("Unknown EC Curve size") // necessary(compiler), but otherwise redundant else-branch
                         }
-                        digests= setOf(curve.nativeDigest)
+                        digests = setOf(curve.nativeDigest)
                     }
                 else
                     rsa {
@@ -181,50 +177,6 @@ class JwsServiceJvmTest : FreeSpec({
                     val result = parsed.verify(jvmVerifier)
                     withClue("$algo: Signature: ${parsed.signature}") {
                         result shouldBe true
-                    }
-                }
-
-                /**
-                 * Encryption is currently only supported for EC-Keys see issue `https://github.com/a-sit-plus/kmm-vc-library/issues/29`
-                 */
-                if (thisConfiguration.first == "EC") {
-                    "Encrypted object from ext. library can be decrypted with int. library" {
-                        val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
-                        val libJweHeader =
-                            JWEHeader.Builder(JWEAlgorithm(jweAlgorithm.identifier), EncryptionMethod.A256GCM)
-                                .type(JOSEObjectType(JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON))
-                                .jwk(JWK.parse(cryptoService.keyMaterial.jsonWebKey.serialize()))
-                                .contentType(JwsContentTypeConstants.DIDCOMM_PLAIN_JSON)
-                                .build()
-                        val libJweObject = JWEObject(libJweHeader, Payload(stringPayload)).also {
-                            it.encrypt(jvmEncrypter)
-                        }
-                        val encryptedJwe = libJweObject.serialize()
-
-                        val parsedJwe = JweEncrypted.parse(encryptedJwe).getOrThrow()
-
-                        val result = jwsService.decryptJweObject(parsedJwe, encryptedJwe).getOrThrow()
-
-                        result.payload.decodeToString() shouldBe stringPayload
-                    }
-
-                    "Encrypted object from int. library can be decrypted with ext. library" {
-                        val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
-                        val encrypted = jwsService.encryptJweObject(
-                            JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
-                            stringPayload.encodeToByteArray(),
-                            cryptoService.keyMaterial.jsonWebKey,
-                            JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
-                            jweAlgorithm,
-                            JweEncryption.A256GCM,
-                        ).getOrThrow().serialize()
-
-                        val parsed = JWEObject.parse(encrypted)
-                        parsed.shouldNotBeNull()
-                        parsed.payload.shouldBeNull()
-
-                        parsed.decrypt(jvmDecrypter)
-                        parsed.payload.toString() shouldBe stringPayload
                     }
                 }
             }

@@ -38,6 +38,7 @@ Release NEXT:
    - Support requesting issuance of credential using scope values
    - Introudce `OAuth2Client` to extract creating authentication requests and token requests from OID4VCI `WalletService`
    - Refactor `SimpleAuthorizationService` to extract actual authentication and authorization into `AuthorizationServiceStrategy`
+ - Implement JWE encryption with AES-CBC-HMAC algorithms
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments
