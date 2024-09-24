@@ -294,13 +294,13 @@ data class IssuerSigned private constructor(
 }
 
 object NamespacedIssuerSignedListSerializer : KSerializer<Map<String, IssuerSignedList>> {
-    val mapSerializer = MapSerializer(String.serializer(), object : IssuerSignedListSerializer("") {})
+
+    private val mapSerializer = MapSerializer(String.serializer(), object : IssuerSignedListSerializer("") {})
+
     override val descriptor = mapSerializer.descriptor
+
     override fun deserialize(decoder: Decoder): Map<String, IssuerSignedList> = NamespacedMapEntryDeserializer().let {
-        MapSerializer(
-            it.namespaceSerializer,
-            it.itemSerializer
-        ).deserialize(decoder)
+        MapSerializer(it.namespaceSerializer, it.itemSerializer).deserialize(decoder)
     }
 
     class NamespacedMapEntryDeserializer {
@@ -371,7 +371,7 @@ data class IssuerSignedList(
  * Serializes [IssuerSignedList.entries] as an "inline list",
  * having serialized instances of [IssuerSignedItem] as the values.
  */
-open class IssuerSignedListSerializer(val namespace: String) : KSerializer<IssuerSignedList> {
+open class IssuerSignedListSerializer(private val namespace: String) : KSerializer<IssuerSignedList> {
 
     override val descriptor: SerialDescriptor = object : SerialDescriptor {
         @ExperimentalSerializationApi
@@ -427,14 +427,10 @@ open class IssuerSignedListSerializer(val namespace: String) : KSerializer<Issue
                 val index = decodeElementIndex(descriptor)
                 if (index == CompositeDecoder.DECODE_DONE) {
                     break
-                } else {
-                    val readBytes = decoder.decodeSerializableValue(ByteArraySerializer())
-
-                    entries += ByteStringWrapper(
-                        value = IssuerSignedItem.deserialize(readBytes, namespace = namespace).getOrThrow(),
-                        serialized = readBytes
-                    )
                 }
+                val readBytes = decoder.decodeSerializableValue(ByteArraySerializer())
+                val issuerSignedItem = IssuerSignedItem.deserialize(readBytes, namespace).getOrThrow()
+                entries += ByteStringWrapper(issuerSignedItem, readBytes)
             }
         }
         return IssuerSignedList(entries)
@@ -469,14 +465,14 @@ data class IssuerSignedItem(
         if (digestId != other.digestId) return false
         if (!random.contentEquals(other.random)) return false
         if (elementIdentifier != other.elementIdentifier) return false
-        if(elementValue is ByteArray && other.elementValue is ByteArray) return elementValue.contentEquals(other.elementValue)
-        if(elementValue is IntArray && other.elementValue is IntArray) return elementValue.contentEquals(other.elementValue)
-        if(elementValue is BooleanArray && other.elementValue is BooleanArray) return elementValue.contentEquals(other.elementValue)
-        if(elementValue is CharArray && other.elementValue is CharArray) return elementValue.contentEquals(other.elementValue)
-        if(elementValue is ShortArray && other.elementValue is ShortArray) return elementValue.contentEquals(other.elementValue)
-        if(elementValue is LongArray && other.elementValue is LongArray) return elementValue.contentEquals(other.elementValue)
-        if(elementValue is FloatArray && other.elementValue is FloatArray) return elementValue.contentEquals(other.elementValue)
-        if(elementValue is DoubleArray && other.elementValue is DoubleArray) return elementValue.contentEquals(other.elementValue)
+        if (elementValue is ByteArray && other.elementValue is ByteArray) return elementValue.contentEquals(other.elementValue)
+        if (elementValue is IntArray && other.elementValue is IntArray) return elementValue.contentEquals(other.elementValue)
+        if (elementValue is BooleanArray && other.elementValue is BooleanArray) return elementValue.contentEquals(other.elementValue)
+        if (elementValue is CharArray && other.elementValue is CharArray) return elementValue.contentEquals(other.elementValue)
+        if (elementValue is ShortArray && other.elementValue is ShortArray) return elementValue.contentEquals(other.elementValue)
+        if (elementValue is LongArray && other.elementValue is LongArray) return elementValue.contentEquals(other.elementValue)
+        if (elementValue is FloatArray && other.elementValue is FloatArray) return elementValue.contentEquals(other.elementValue)
+        if (elementValue is DoubleArray && other.elementValue is DoubleArray) return elementValue.contentEquals(other.elementValue)
         return if (elementValue is Array<*> && other.elementValue is Array<*>) elementValue.contentDeepEquals(other.elementValue)
         //It was time for Thomas to leave. He had seen everything.
         else elementValue == other.elementValue
