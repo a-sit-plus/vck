@@ -17,14 +17,16 @@ class RqesWalletService(
     private val oauth2Client: OAuth2Client = OAuth2Client(clientId = clientId, redirectUrl = redirectUrl),
 ) {
 
-
-    suspend fun createOAuth2AuthenticationRequest(rqesRequest: RqesRequest): AuthenticationRequestParameters =
+    suspend fun createOAuth2AuthenticationRequest(
+        rqesRequest: RqesRequest,
+        credentialId: ByteArray,
+    ): AuthenticationRequestParameters =
         oauth2Client.createAuthRequest(
             state = uuid4().toString(),
             authorizationDetails = setOf(rqesRequest.toAuthorizationDetails()),
-            scope = RqesConstants.SCOPE
+            scope = RqesConstants.SCOPE,
+            credentialId = credentialId,
         )
-
 
     /**
      * TODO: could also use [Document] instead of [CscDocumentDigest], also [credential_id] instead of [SAD]
