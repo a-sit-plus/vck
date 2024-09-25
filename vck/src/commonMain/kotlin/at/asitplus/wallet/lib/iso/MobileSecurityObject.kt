@@ -29,13 +29,13 @@ data class MobileSecurityObject(
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     fun serializeForIssuerAuth() = vckCborSerializer.encodeToByteArray(
-        ByteStringWrapperSerializer<MobileSecurityObject>(serializer()), ByteStringWrapper(this)
+        ByteStringWrapperSerializer(serializer()), ByteStringWrapper(this)
     ).wrapInCborTag(24)
 
     companion object {
         fun deserializeFromIssuerAuth(it: ByteArray) = kotlin.runCatching {
             vckCborSerializer.decodeFromByteArray(
-                ByteStringWrapperSerializer<MobileSecurityObject>(serializer()),
+                ByteStringWrapperSerializer(serializer()),
                 it.stripCborTag(24)
             ).value
         }.wrap()

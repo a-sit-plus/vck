@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import kotlinx.serialization.*
 
 /**
@@ -17,25 +17,8 @@ data class IssuerSigned private constructor(
     @SerialName("issuerAuth")
     val issuerAuth: CoseSigned,
 ) {
-
-    constructor(
-        namespacedItems: Map<String, List<IssuerSignedItem>>,
-        issuerAuth: CoseSigned,
-        tag: Byte? = null
-    ) : this(
-        issuerAuth = issuerAuth,
-        namespaces = namespacedItems.map { (ns, value) ->
-            ns to IssuerSignedList(
-                value.map { item ->
-                    ByteStringWrapper(
-                        item,
-                        item.serialize(ns).let { tag?.let { tg -> it.wrapInCborTag(tg) } ?: it })
-                })
-        }.toMap()
-    )
-
-    fun getIssuerAuthPayloadAsMso() = issuerAuth.payload?.stripCborTag(24)?.let {
-        vckCborSerializer.decodeFromByteArray(ByteStringWrapperSerializer(MobileSecurityObject.serializer()), it).value
+    fun getIssuerAuthPayloadAsMso() = catching {
+        MobileSecurityObject.deserializeFromIssuerAuth(issuerAuth.payload!!).getOrThrow()
     }
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
@@ -59,5 +42,19 @@ data class IssuerSigned private constructor(
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             vckCborSerializer.decodeFromByteArray<IssuerSigned>(it)
         }.wrap()
+
+        // Note: Can't be a secondary constructor, because it would have the same JVM signature as the primary one.
+        fun fromIssuerSignedItems(
+            namespacedItems: Map<String, List<IssuerSignedItem>>,
+            issuerAuth: CoseSigned
+        ): IssuerSigned = IssuerSigned(
+            issuerAuth = issuerAuth,
+            namespaces = namespacedItems.map { (namespace, value) ->
+                namespace to IssuerSignedList(value.map { item ->
+                    ByteStringWrapper(item, item.serialize(namespace).wrapInCborTag(24))
+                })
+            }.toMap()
+        )
+
     }
 }

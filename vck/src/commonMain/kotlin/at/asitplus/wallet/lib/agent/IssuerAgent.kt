@@ -145,14 +145,13 @@ class IssuerAgent(
                 validUntil = expirationDate,
             )
         )
-        val issuerSigned = IssuerSigned(
+        val issuerSigned = IssuerSigned.fromIssuerSignedItems(
             namespacedItems = mapOf(scheme.isoNamespace!! to credential.issuerSignedItems),
             issuerAuth = coseService.createSignedCose(
                 payload = mso.serializeForIssuerAuth(),
                 addKeyId = false,
                 addCertificate = true,
             ).getOrThrow(),
-            24 // TODO verify serialization of this
         )
         return Issuer.IssuedCredential.Iso(issuerSigned, scheme)
     }

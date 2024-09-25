@@ -68,7 +68,14 @@ val vckCborSerializer by lazy {
 }
 
 
-fun ByteArray.stripCborTag(tag: Byte) = this.dropWhile { it == 0xd8.toByte() }.dropWhile { it == tag }.toByteArray()
+fun ByteArray.stripCborTag(tag: Byte): ByteArray {
+    val tagBytes = byteArrayOf(0xd8.toByte(), tag)
+    return if (this.take(tagBytes.size).toByteArray().contentEquals(tagBytes)) {
+        this.drop(tagBytes.size).toByteArray()
+    } else {
+        this
+    }
+}
 
 fun ByteArray.wrapInCborTag(tag: Byte) = byteArrayOf(0xd8.toByte()) + byteArrayOf(tag) + this
 

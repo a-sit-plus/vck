@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.io.Base64Strict
@@ -23,7 +24,6 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 
 
 /**
@@ -262,7 +262,7 @@ class Validator(
                 .also { Napier.w("IssuerAuth not verified: $issuerAuth") }
         }
 
-        val mso = issuerSigned.getIssuerAuthPayloadAsMso()
+        val mso = issuerSigned.getIssuerAuthPayloadAsMso().getOrNull()
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("MSO is null: ${issuerAuth.payload?.encodeToString(Base16(strict = true))}") }
         if (mso.docType != doc.docType) {
@@ -304,12 +304,10 @@ class Validator(
     }
 
     private fun ByteStringWrapper<IssuerSignedItem>.verify(mdlItems: ValueDigestList?): Boolean {
-        val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId } ?: return false
-        // TODO analyze usages of tag wrapping
+        val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId }
+            ?: return false
         val verifierHash = serialized.wrapInCborTag(24).sha256()
-        if (!verifierHash.encodeToString(Base16(strict = true))
-                .contentEquals(issuerHash.value.encodeToString(Base16(strict = true)))
-        ) {
+        if (!verifierHash.contentEquals(issuerHash.value)) {
             Napier.w("Could not verify hash of value for ${value.elementIdentifier}")
             return false
         }

@@ -53,7 +53,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
         val issuerAuth = CoseSigned(protectedHeader, null, null, byteArrayOf())
         val doc = Document(
             docType = uuid4().toString(),
-            issuerSigned = IssuerSigned(
+            issuerSigned = IssuerSigned.fromIssuerSignedItems(
                 mapOf(namespace to listOf(item)),
                 issuerAuth
             ),
