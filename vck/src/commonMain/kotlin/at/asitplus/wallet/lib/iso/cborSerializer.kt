@@ -9,6 +9,7 @@ import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.CompositeEncoder
+import okio.ByteString.Companion.toByteString
 
 internal object CborCredentialSerializer {
 
@@ -65,3 +66,10 @@ val vckCborSerializer by lazy {
         encodeDefaults = false
     }
 }
+
+
+fun ByteArray.stripCborTag(tag: Byte) = this.dropWhile { it == 0xd8.toByte() }.dropWhile { it == tag }.toByteArray()
+
+fun ByteArray.wrapInCborTag(tag: Byte) = byteArrayOf(0xd8.toByte()) + byteArrayOf(tag) + this
+
+fun ByteArray.sha256(): ByteArray = toByteString().sha256().toByteArray()
