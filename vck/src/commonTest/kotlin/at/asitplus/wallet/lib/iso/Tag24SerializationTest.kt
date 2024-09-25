@@ -1,11 +1,20 @@
 package at.asitplus.wallet.lib.iso
 
+import arrow.core.fold
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.data.ConstantIndex
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldContainOnlyOnce
 import io.kotest.matchers.string.shouldStartWith
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -43,7 +52,7 @@ class Tag24SerializationTest : FreeSpec({
         val serialized = vckCborSerializer.encodeToByteArray(input)
             .also { println(it.encodeToString(Base16(true))) }
 
-        serialized.encodeToString(Base16(true)).shouldContain("D818")
+        serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         vckCborSerializer.decodeFromByteArray<DeviceSigned>(serialized) shouldBe input
     }
 
@@ -55,12 +64,12 @@ class Tag24SerializationTest : FreeSpec({
         val serialized = vckCborSerializer.encodeToByteArray(input)
             .also { println(it.encodeToString(Base16(true))) }
 
-        serialized.encodeToString(Base16(true)).shouldContain("D818")
+        serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         vckCborSerializer.decodeFromByteArray<DocRequest>(serialized) shouldBe input
     }
 
     "IssuerSigned" {
-        val input = IssuerSigned(
+        val input = IssuerSigned.fromIssuerSignedItems(
             namespacedItems = mapOf(
                 "org.iso.something" to listOf(issuerSignedItem())
             ),
@@ -70,8 +79,27 @@ class Tag24SerializationTest : FreeSpec({
         val serialized = vckCborSerializer.encodeToByteArray(input)
             .also { println(it.encodeToString(Base16(true))) }
 
-        serialized.encodeToString(Base16(true)).shouldContain("D818")
+        serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         vckCborSerializer.decodeFromByteArray<IssuerSigned>(serialized) shouldBe input
+    }
+
+    "IssuerSigned from IssuerAgent" {
+        val issuerAgent = IssuerAgent(dataProvider = DummyCredentialDataProvider())
+        val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
+        val issuedCredential = issuerAgent.issueCredential(
+            holderKeyMaterial.publicKey,
+            ConstantIndex.AtomicAttribute2023,
+            ConstantIndex.CredentialRepresentation.ISO_MDOC
+        ).getOrThrow().shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
+
+        issuedCredential.issuerSigned.namespaces!!.shouldNotBeEmpty()
+        val numberOfClaims = issuedCredential.issuerSigned.namespaces!!.fold(0) { acc, entry ->
+            acc + entry.value.entries.size
+        }
+        println(issuedCredential.issuerSigned.serialize().encodeToString(Base16(true)))
+        val serialized = issuedCredential.issuerSigned.serialize().encodeToString(Base16(true))
+        "D818".toRegex().findAll(serialized).toList().shouldHaveSize(numberOfClaims + 1)
+        // add 1 for MSO in IssuerAuth
     }
 
     "IssuerAuth" {
@@ -83,7 +111,6 @@ class Tag24SerializationTest : FreeSpec({
             docType = "docType",
             validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
         )
-        // todo should not be an explicit function
         val serializedMso = mso.serializeForIssuerAuth()
             .also { println(it.encodeToString(Base16(true))) }
         val input = CoseSigned(
@@ -96,7 +123,7 @@ class Tag24SerializationTest : FreeSpec({
         val serialized = vckCborSerializer.encodeToByteArray(input)
             .also { println(it.encodeToString(Base16(true))) }
 
-        serialized.encodeToString(Base16(true)).shouldContain("D818")
+        serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         serializedMso.encodeToString(Base16(true)).shouldStartWith("D818")
         vckCborSerializer.decodeFromByteArray<CoseSigned>(serialized) shouldBe input
         MobileSecurityObject.deserializeFromIssuerAuth(serializedMso).getOrThrow() shouldBe mso

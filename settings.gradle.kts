@@ -43,6 +43,7 @@ include(":openid-data-classes")
 include(":vck")
 include(":vck-aries")
 include(":vck-openid")
+include(":mobiledrivinglicence")
 
 dependencyResolutionManagement {
     repositories {

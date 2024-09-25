@@ -103,7 +103,7 @@ class VerifiablePresentationFactory(
         return Holder.CreatePresentationResult.Document(
             Document(
                 docType = credential.scheme.isoDocType!!,
-                issuerSigned = IssuerSigned(
+                issuerSigned = IssuerSigned.fromIssuerSignedItems(
                     namespacedItems = disclosedItems,
                     issuerAuth = credential.issuerSigned.issuerAuth
                 ),
