@@ -51,6 +51,7 @@ class OAuth2Client(
      * @param scope in OID4VCI flows the value `scope` from [IssuerMetadata.supportedCredentialConfigurations]
      * @param authorizationDetails from RFC 9396 OAuth 2.0 Rich Authorization Requests
      * @param resource from RFC 8707 Resource Indicators for OAuth 2.0, in OID4VCI flows the value
+     * @param requestUri from CSC API v2.0.0.2: URI pointing to a pushed authorization request previously uploaded by the client
      * of [IssuerMetadata.credentialIssuer]
      */
     suspend fun createAuthRequest(
@@ -58,6 +59,7 @@ class OAuth2Client(
         authorizationDetails: Set<AuthorizationDetails>? = null,
         scope: String? = null,
         resource: String? = null,
+        requestUri: String? = null,
     ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         state = state,
@@ -68,6 +70,7 @@ class OAuth2Client(
         redirectUrl = redirectUrl,
         codeChallenge = generateCodeVerifier(state),
         codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
+        requestUri = requestUri,
     )
 
     @OptIn(ExperimentalStdlibApi::class)
