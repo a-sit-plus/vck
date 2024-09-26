@@ -22,7 +22,6 @@ object ValueDigestListSerializer : KSerializer<ValueDigestList> {
             var index = 0
             value.entries.forEach {
                 this.encodeIntElement(descriptor, index++, it.key.toInt())
-                // TODO Values need to be tagged with 24 ... resulting in prefix D818
                 this.encodeSerializableElement(descriptor, index++, ByteArraySerializer(), it.value)
             }
         }
