@@ -21,7 +21,6 @@ data class IssuerSignedItem(
     val elementValue: Any,
 ) {
 
-
     fun serialize(namespace: String) = vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace), this)
 
     override fun equals(other: Any?): Boolean {

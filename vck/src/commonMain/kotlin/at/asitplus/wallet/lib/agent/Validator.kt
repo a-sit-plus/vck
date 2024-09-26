@@ -303,6 +303,11 @@ class Validator(
         )
     }
 
+    /**
+     * Verify that calculated digests equal the corresponding digest values in the MSO.
+     *
+     * See ISO/IEC 18013-5:2021, 9.3.1 Inspection procedure for issuer data authentication
+     */
     private fun ByteStringWrapper<IssuerSignedItem>.verify(mdlItems: ValueDigestList?): Boolean {
         val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId }
             ?: return false

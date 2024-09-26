@@ -32,6 +32,12 @@ data class ValueDigest(
     }
 
     companion object {
+        /**
+         * Input for digest calculation is this structure:
+         * `IssuerSignedItemBytes = #6.24(bstr .cbor IssuerSignedItem)`
+         *
+         * See ISO/IEC 18013-5:2021, 9.1.2.5 Message digest function
+         */
         fun fromIssuerSigned(namespace: String, value: IssuerSignedItem) = ValueDigest(
             value.digestId,
             value.serialize(namespace).wrapInCborTag(24).sha256()
