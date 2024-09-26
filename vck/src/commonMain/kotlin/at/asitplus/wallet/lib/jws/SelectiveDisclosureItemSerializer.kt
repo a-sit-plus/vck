@@ -9,7 +9,7 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Encodes [SelectiveDisclosureItem] as needed by SD-JWT spec,
@@ -24,19 +24,12 @@ object SelectiveDisclosureItemSerializer : KSerializer<SelectiveDisclosureItem> 
     override val descriptor: SerialDescriptor = listSerializer.descriptor
 
     override fun serialize(encoder: Encoder, value: SelectiveDisclosureItem) {
-        val valueElement = when (val value = value.claimValue) {
-            is Boolean -> JsonPrimitive(value)
-            is Number -> JsonPrimitive(value)
-            is UInt -> JsonPrimitive(value)
-            is ByteArray -> JsonPrimitive(value.encodeToString(Base64UrlStrict))
-            else -> JsonPrimitive(value.toString())
-        }
         encoder.encodeSerializableValue(
             listSerializer,
             listOf(
                 JsonPrimitive(value.salt.encodeToString(Base64UrlStrict)),
                 JsonPrimitive(value.claimName),
-                valueElement
+                value.claimValue
             )
         )
     }
@@ -48,13 +41,7 @@ object SelectiveDisclosureItemSerializer : KSerializer<SelectiveDisclosureItem> 
         return SelectiveDisclosureItem(
             salt = firstElement.content.decodeToByteArray(Base64UrlStrict),
             claimName = secondElement.content,
-            claimValue = thirdElement.booleanOrNull
-                ?: thirdElement.longOrNull
-                ?: thirdElement.intOrNull
-                ?: thirdElement.doubleOrNull
-                ?: thirdElement.floatOrNull
-                ?: runCatching { thirdElement.content.decodeToByteArray(Base64UrlStrict) }.getOrNull()
-                ?: thirdElement.content
+            claimValue = thirdElement
         )
     }
 

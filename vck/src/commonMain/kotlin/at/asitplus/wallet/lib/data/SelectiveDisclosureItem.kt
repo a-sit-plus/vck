@@ -6,9 +6,10 @@ import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.SelectiveDisclosureItemSerializer
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.Contextual
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Selective Disclosure item in SD-JWT format
@@ -17,9 +18,11 @@ import kotlinx.serialization.encodeToString
 data class SelectiveDisclosureItem(
     val salt: ByteArray,
     val claimName: String,
-    @Contextual
-    val claimValue: Any,
+    val claimValue: JsonPrimitive,
 ) {
+
+    constructor(salt: ByteArray, claimName: String, claimValue: Any)
+            : this(salt, claimName, claimValue.toJsonPrimitive())
 
     fun serialize() = vckJsonSerializer.encodeToString(this)
 
@@ -57,7 +60,6 @@ data class SelectiveDisclosureItem(
                 ")"
     }
 
-
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
             vckJsonSerializer.decodeFromString<SelectiveDisclosureItem>(it)
@@ -70,4 +72,16 @@ data class SelectiveDisclosureItem(
         fun String.hashDisclosure() = encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
     }
 
+}
+private fun Any.toJsonPrimitive() =  when (this) {
+    is Boolean -> JsonPrimitive(this)
+    is Number -> JsonPrimitive(this)
+    is String -> JsonPrimitive(this)
+    is ByteArray -> JsonPrimitive(encodeToString(Base64UrlStrict))
+    is LocalDate -> JsonPrimitive(this.toString())
+    is UByte -> JsonPrimitive(this)
+    is UShort -> JsonPrimitive(this)
+    is UInt -> JsonPrimitive(this)
+    is ULong -> JsonPrimitive(this)
+    else -> JsonPrimitive(toString())
 }

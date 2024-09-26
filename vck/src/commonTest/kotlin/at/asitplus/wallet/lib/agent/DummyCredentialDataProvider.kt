@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
@@ -28,7 +29,7 @@ class DummyCredentialDataProvider(
         } ?: listOf(
             ClaimToBeIssued("given_name", "Susanne"),
             ClaimToBeIssued("family_name", "Meier"),
-            ClaimToBeIssued("date_of_birth", "1990-01-01"),
+            ClaimToBeIssued("date_of_birth", LocalDate.parse("1990-01-01")),
         )
         val subjectId = subjectPublicKey.didEncoded
         when (representation) {

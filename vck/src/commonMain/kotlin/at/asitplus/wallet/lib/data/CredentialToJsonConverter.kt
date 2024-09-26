@@ -4,13 +4,7 @@ import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.*
 
 object CredentialToJsonConverter {
     // in openid4vp, the claims to be presented are described using a JSONPath, so compiling this to a JsonElement seems reasonable
@@ -31,14 +25,8 @@ object CredentialToJsonConverter {
             }
 
             is SubjectCredentialStore.StoreEntry.SdJwt -> {
-                val pairs = credential.disclosures.map {
-                    it.value?.let {
-                        it.claimName to when (val value = it.claimValue) {
-                            is Boolean -> JsonPrimitive(value)
-                            is Number -> JsonPrimitive(value)
-                            else -> JsonPrimitive(it.claimValue.toString())
-                        }
-                    }
+                val pairs = credential.disclosures.map { entry ->
+                    entry.value?.let { it.claimName to it.claimValue }
                 }.filterNotNull().toMap()
                 buildJsonObject {
                     put("vct", JsonPrimitive(credential.scheme.sdJwtType ?: credential.scheme.vcType))

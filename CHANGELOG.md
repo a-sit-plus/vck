@@ -5,7 +5,6 @@ Release NEXT:
  - Remove `OidcSiopVerifier.newInstance()` methods and replace them with constructors
  - Remove `Validator.newDefaultInstance()` methods and replace them with constructors
  - Remove `WalletService.newDefaultInstance()` methods and replace them with constructors
- - Fix serialization of byte arrays in SD-JWT disclosures and claims
  * Add `TransactionDataEntry` class
  * Add `DocumentDigestEntry` class
  * Add `DocumentDigestEntryCSC` class
@@ -45,6 +44,7 @@ Release NEXT:
    - Move `credentialScheme`, `representation`, `requestedAttributes` from `RequestOptions` to `RequestOptionsCredentials`
    - In `OidcSiopVerifier` move `responseUrl` from constructor parameter to `RequestOptions`
    - Add `IdToken` as result case to `OidcSiopVerifier.AuthnResponseResult`, when only an `id_token` is requested and received
+ - Disclosures for SD-JWT (in class `SelectiveDisclosureItem`) now contain a `JsonPrimitive` for the value, so that implementers can deserialize the value accordingly
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments

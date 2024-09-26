@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -40,7 +40,7 @@ class AgentSdJwtTest : FreeSpec({
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
-        holderKeyMaterial =  EphemeralKeyWithSelfSignedCert()
+        holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
         verifier = VerifierAgent()
         challenge = uuid4().toString()
@@ -53,37 +53,22 @@ class AgentSdJwtTest : FreeSpec({
         )
     }
 
-    val givenNamePresentationDefinition = PresentationDefinition(
-        id = uuid4().toString(),
-        inputDescriptors = listOf(
-            DifInputDescriptor(
-                id = uuid4().toString(),
-                constraints = Constraint(
-                    fields = listOf(
-                        ConstraintField(
-                            path = listOf("$['given_name']")
-                        )
-                    )
-                )
-            )
-        )
-    )
-
     "simple walk-through success" {
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.keyMaterial.identifier,
-            presentationDefinition = givenNamePresentationDefinition
+            presentationDefinition = buildPresDef("given_name", "date_of_birth")
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
-            .also { println("Presentation: ${it.sdJwt}") }
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-        verified.disclosures shouldHaveSize 1
-        verified.disclosures.forAll { it.claimName shouldBe "given_name" }
+        verified.disclosures shouldHaveSize 2
+        println(verified.disclosures)
+        verified.disclosures.first { it.claimName == "given_name" }.claimValue.content shouldBe "Susanne"
+        verified.disclosures.first { it.claimName == "date_of_birth" }.claimValue.content shouldBe "1990-01-01"
         verified.isRevoked shouldBe false
     }
 
@@ -108,7 +93,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.keyMaterial.identifier,
-            presentationDefinition = givenNamePresentationDefinition
+            presentationDefinition = buildPresDef("given_name"),
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -126,7 +111,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = malformedChallenge,
             audienceId = verifier.keyMaterial.identifier,
-            presentationDefinition = givenNamePresentationDefinition
+            presentationDefinition = buildPresDef("given_name")
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -140,7 +125,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.keyMaterial.identifier,
-            presentationDefinition = givenNamePresentationDefinition
+            presentationDefinition = buildPresDef("given_name")
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -157,6 +142,18 @@ class AgentSdJwtTest : FreeSpec({
     }
 
 })
+
+private fun buildPresDef(vararg attributeName: String) = PresentationDefinition(
+    id = uuid4().toString(),
+    inputDescriptors = listOf(
+        DifInputDescriptor(
+            id = uuid4().toString(),
+            constraints = Constraint(
+                fields = attributeName.map { ConstraintField(path = listOf("$['$it']")) }
+            )
+        )
+    )
+)
 
 suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {
     val issuer = IssuerAgent(EphemeralKeyWithoutCert(), DummyCredentialDataProvider())
