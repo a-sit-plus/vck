@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.aries
 
+import at.asitplus.dif.*
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.Holder
@@ -7,25 +8,7 @@ import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.AriesGoalCodeParser
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
-import at.asitplus.dif.Constraint
-import at.asitplus.dif.ConstraintField
-import at.asitplus.dif.ConstraintFilter
-import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.FormatContainerJwt
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.PresentationDefinition
-import at.asitplus.wallet.lib.msg.AttachmentFormatReference
-import at.asitplus.wallet.lib.msg.JsonWebMessage
-import at.asitplus.wallet.lib.msg.JwmAttachment
-import at.asitplus.wallet.lib.msg.OutOfBandInvitation
-import at.asitplus.wallet.lib.msg.OutOfBandInvitationBody
-import at.asitplus.wallet.lib.msg.OutOfBandService
-import at.asitplus.wallet.lib.msg.Presentation
-import at.asitplus.wallet.lib.msg.PresentationBody
-import at.asitplus.wallet.lib.msg.RequestPresentation
-import at.asitplus.wallet.lib.msg.RequestPresentationAttachment
-import at.asitplus.wallet.lib.msg.RequestPresentationAttachmentOptions
-import at.asitplus.wallet.lib.msg.RequestPresentationBody
+import at.asitplus.wallet.lib.msg.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.encodeToString
@@ -203,6 +186,7 @@ class PresentProofProtocol(
             .also { this.state = State.REQUEST_PRESENTATION_SENT }
     }
 
+    @Suppress("DEPRECATION")
     private fun buildRequestPresentationMessage(
         credentialScheme: ConstantIndex.CredentialScheme,
         parentThreadId: String? = null,

@@ -2,24 +2,24 @@ package at.asitplus.wallet.lib.oidc.helper
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.dif.ClaimFormatEnum
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.IdToken
+import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.ID_TOKEN
+import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CredentialSubmission
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.toDefaultSubmission
-import at.asitplus.dif.ClaimFormatEnum
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
-import at.asitplus.openid.IdToken
-import at.asitplus.openid.OpenIdConstants.Errors
-import at.asitplus.openid.OpenIdConstants.ID_TOKEN
-import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
@@ -44,7 +44,7 @@ internal class PresentationFactory(
         val credentialSubmissions = inputDescriptorSubmissions
             ?: holder.matchInputDescriptorsAgainstCredentialStore(
                 inputDescriptors = presentationDefinition.inputDescriptors,
-                fallbackFormatHolder = presentationDefinition.formats ?: clientMetadata?.vpFormats,
+                fallbackFormatHolder = clientMetadata?.vpFormats,
             ).getOrThrow().toDefaultSubmission()
 
         presentationDefinition.validateSubmission(
@@ -129,9 +129,9 @@ internal class PresentationFactory(
             }
 
             val constraintFieldMatches = holder.evaluateInputDescriptorAgainstCredential(
-                inputDescriptor,
-                submission.value.credential,
-                fallbackFormatHolder = this.formats ?: clientMetadata?.vpFormats,
+                inputDescriptor = inputDescriptor,
+                credential = submission.value.credential,
+                fallbackFormatHolder = clientMetadata?.vpFormats,
                 pathAuthorizationValidator = { true },
             ).getOrThrow()
 

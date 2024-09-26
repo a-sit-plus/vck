@@ -60,8 +60,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
             val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
 
             val matches = holderAgent.matchInputDescriptorsAgainstCredentialStore(
-                presentationDefinition.inputDescriptors,
-                presentationDefinition.formats,
+                presentationDefinition.inputDescriptors
             ).getOrThrow()
             val inputDescriptorMatches = matches[inputDescriptorId].shouldNotBeNull()
             inputDescriptorMatches shouldHaveSize 2
@@ -94,8 +93,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                 val presentationDefinition = preparationState.presentationDefinition.shouldNotBeNull()
                 val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
                 val matches = holderAgent.matchInputDescriptorsAgainstCredentialStore(
-                    presentationDefinition.inputDescriptors,
-                    presentationDefinition.formats,
+                    presentationDefinition.inputDescriptors
                 ).getOrThrow().also {
                     it shouldHaveSize 1
                 }
@@ -145,7 +143,6 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
 
                     holderAgent.matchInputDescriptorsAgainstCredentialStore(
                         presentationDefinitionSdJwt.inputDescriptors,
-                        presentationDefinitionSdJwt.formats,
                     ).getOrThrow().also {
                         it.shouldHaveSize(1)
                         it.entries.first().value.let {
@@ -175,7 +172,6 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
 
                 val matches = holderAgent.matchInputDescriptorsAgainstCredentialStore(
                     presentationDefinition.inputDescriptors,
-                    presentationDefinition.formats,
                 ).getOrThrow().also {
                     it shouldHaveSize 1
                 }
