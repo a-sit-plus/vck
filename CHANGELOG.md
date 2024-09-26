@@ -42,6 +42,7 @@ Release NEXT:
  - SIOPv2/OpenID4VP: Support requesting and receiving claims from different credentials, i.e. a combined presentation
    - Require request options on every method in `OidcSiopVerifier`
    - Move `credentialScheme`, `representation`, `requestedAttributes` from `RequestOptions` to `RequestOptionsCredentials`
+   - In `OidcSiopVerifier` move `responseUrl` from constructor parameter to `RequestOptions`
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments

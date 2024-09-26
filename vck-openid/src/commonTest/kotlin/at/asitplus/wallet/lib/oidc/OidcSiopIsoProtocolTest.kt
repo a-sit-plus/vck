@@ -25,7 +25,6 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     lateinit var verifierKeyMaterial: KeyMaterial
 
     lateinit var holderAgent: Holder
-    lateinit var verifierAgent: Verifier
 
     lateinit var holderSiop: OidcSiopWallet
     lateinit var verifierSiop: OidcSiopVerifier
@@ -36,7 +35,6 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
-        verifierAgent = VerifierAgent(verifierKeyMaterial)
 
         val issuerAgent = IssuerAgent(
             EphemeralKeyWithSelfSignedCert(),
@@ -144,7 +142,6 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
-            responseUrl = relyingPartyUrl + "/${uuid4()}"
         )
         val requestOptions = OidcSiopVerifier.RequestOptions(
             credentials = setOf(
@@ -153,12 +150,13 @@ class OidcSiopIsoProtocolTest : FreeSpec({
                 )
             ),
             responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
+            responseUrl = "https://example.com/response",
             encryption = true
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = requestOptions
-        ).also { println(it) }
+        )
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
@@ -211,12 +209,12 @@ private suspend fun runProcess(
     val authnRequest = verifierSiop.createAuthnRequestUrl(
         walletUrl = walletUrl,
         requestOptions = requestOptions
-    ).also { println(it) }
+    )
 
     val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-    authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().also { println(it) }
+    authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
     val result = verifierSiop.validateAuthnResponse(authnResponse.url)
     result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
-    return result.document.also { println(it) }
+    return result.document
 }

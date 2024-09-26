@@ -1,7 +1,10 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.signum.indispensable.asn1.*
+import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
+import at.asitplus.signum.indispensable.asn1.Asn1Primitive
+import at.asitplus.signum.indispensable.asn1.Asn1String
+import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
@@ -9,21 +12,16 @@ import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
-import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OidcSiopX509SanDnsTest : FreeSpec({
 
-    lateinit var responseUrl: String
-    lateinit var walletUrl: String
-
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
 
     lateinit var holderAgent: Holder
-    lateinit var verifierAgent: Verifier
 
     lateinit var holderSiop: OidcSiopWallet
     lateinit var verifierSiop: OidcSiopVerifier
@@ -42,10 +40,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
             ))))
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
-        responseUrl = "https://example.com"
-        walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
-        verifierAgent = VerifierAgent(verifierKeyMaterial)
         holderAgent.storeCredential(
             IssuerAgent(
                 EphemeralKeyWithoutCert(),
@@ -63,7 +58,6 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         )
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            responseUrl = responseUrl,
             clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!)),
         )
     }
@@ -79,11 +73,12 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                     )
                 ),
                 responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
+                responseUrl = "https://example.com/response",
             )
-        ).also { println(it) }.getOrThrow()
+        ).getOrThrow()
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>().also { println(it) }
+        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
         val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()

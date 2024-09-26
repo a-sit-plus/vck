@@ -31,14 +31,12 @@ import kotlin.time.Duration.Companion.seconds
 class OidcSiopProtocolTest : FreeSpec({
 
     lateinit var relyingPartyUrl: String
-    lateinit var responseUrl: String
     lateinit var walletUrl: String
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
 
     lateinit var holderAgent: Holder
-    lateinit var verifierAgent: Verifier
 
     lateinit var holderSiop: OidcSiopWallet
     lateinit var verifierSiop: OidcSiopVerifier
@@ -48,10 +46,8 @@ class OidcSiopProtocolTest : FreeSpec({
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         val rpUUID = uuid4()
         relyingPartyUrl = "https://example.com/rp/$rpUUID"
-        responseUrl = "https://example.com/rp/$rpUUID"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
-        verifierAgent = VerifierAgent(verifierKeyMaterial)
 
         holderAgent.storeCredential(
             IssuerAgent(
@@ -70,7 +66,6 @@ class OidcSiopProtocolTest : FreeSpec({
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
-            responseUrl = responseUrl,
         )
     }
 
@@ -95,7 +90,6 @@ class OidcSiopProtocolTest : FreeSpec({
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
-            responseUrl = responseUrl,
             nonceService = object : NonceService {
                 override suspend fun provideNonce(): String {
                     return uuid4().toString()
@@ -130,7 +124,6 @@ class OidcSiopProtocolTest : FreeSpec({
         qrcode shouldContain requestUrlNonce
 
         val metadataObject = verifierSiop.createSignedMetadata().getOrThrow()
-            .also { println(it) }
         DefaultVerifierJwsService().verifyJwsObject(metadataObject).shouldBeTrue()
 
         val authnRequestUrl = verifierSiop.createAuthnRequestUrlWithRequestObject(walletUrl, defaultRequestOptions)
@@ -154,7 +147,8 @@ class OidcSiopProtocolTest : FreeSpec({
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
                 credentials = setOf(OidcSiopVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
-                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST
+                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
+                responseUrl = relyingPartyUrl,
             )
         )
 
@@ -173,7 +167,8 @@ class OidcSiopProtocolTest : FreeSpec({
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
                 credentials = setOf(OidcSiopVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
-                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT
+                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
+                responseUrl = relyingPartyUrl,
             )
         )
 
@@ -243,7 +238,6 @@ class OidcSiopProtocolTest : FreeSpec({
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-            .also { println(it) }
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
@@ -372,7 +366,6 @@ class OidcSiopProtocolTest : FreeSpec({
 
         val authnResponse = holderSiop.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-            .also { println(it) }
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
@@ -461,7 +454,7 @@ private suspend fun verifySecondProtocolRun(
     validation.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
 }
 
-private val defaultRequestOptions = OidcSiopVerifier.RequestOptions(
+private val defaultRequestOptions = RequestOptions(
     credentials = setOf(
         OidcSiopVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
     )

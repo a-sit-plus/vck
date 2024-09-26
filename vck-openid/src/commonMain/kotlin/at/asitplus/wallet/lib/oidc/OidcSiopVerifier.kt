@@ -50,7 +50,6 @@ import kotlin.time.toDuration
 class OidcSiopVerifier private constructor(
     private val verifier: Verifier,
     private val relyingPartyUrl: String?,
-    private val responseUrl: String?,
     private val jwsService: JwsService,
     private val verifierJwsService: VerifierJwsService,
     timeLeewaySeconds: Long = 300L,
@@ -83,7 +82,6 @@ class OidcSiopVerifier private constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         verifier: Verifier = VerifierAgent(keyMaterial),
         relyingPartyUrl: String? = null,
-        responseUrl: String? = null,
         verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
         jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
         timeLeewaySeconds: Long = 300L,
@@ -93,7 +91,6 @@ class OidcSiopVerifier private constructor(
     ) : this(
         verifier = verifier,
         relyingPartyUrl = relyingPartyUrl,
-        responseUrl = responseUrl,
         jwsService = jwsService,
         verifierJwsService = verifierJwsService,
         timeLeewaySeconds = timeLeewaySeconds,
@@ -167,18 +164,22 @@ class OidcSiopVerifier private constructor(
         /**
          * Response mode to request, see [OpenIdConstants.ResponseMode]
          */
-        val responseMode: OpenIdConstants.ResponseMode? = null,
+        val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.FRAGMENT,
+        /**
+         * Response URL to set in the [AuthenticationRequestParameters]
+         */
+        val responseUrl: String? = null,
         /**
          * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
          */
-        val state: String? = uuid4().toString(),
+        val state: String = uuid4().toString(),
         /**
          * Optional URL to include [metadata] by reference instead of by value (directly embedding in authn request)
          */
         val clientMetadataUrl: String? = null,
         /**
          * Set this value to include metadata with encryption parameters set. Beware if setting this value and also
-         * [clientMetadataUrl], that the URL shall point to [getCreateMetadataWithEncryption].
+         * [clientMetadataUrl], that the URL shall point to [OidcSiopVerifier.metadataWithEncryption].
          */
         val encryption: Boolean = false,
     )
@@ -298,12 +299,15 @@ class OidcSiopVerifier private constructor(
         responseType = "$ID_TOKEN $VP_TOKEN", // TODO move to RequestOptions
         clientId = clientId,
         redirectUrl = requestOptions.buildRedirectUrl(),
-        responseUrl = responseUrl,
+        responseUrl = requestOptions.responseUrl,
         clientIdScheme = clientIdScheme.clientIdScheme,
         scope = requestOptions.buildScope(),
         nonce = nonceService.provideNonce(),
-        clientMetadata = requestOptions.clientMetadataUrl?.let { null }
-            ?: if (requestOptions.encryption) metadataWithEncryption else metadata,
+        clientMetadata = if (requestOptions.clientMetadataUrl != null) {
+            null
+        } else {
+            if (requestOptions.encryption) metadataWithEncryption else metadata
+        },
         clientMetadataUri = requestOptions.clientMetadataUrl,
         idTokenType = IdTokenType.SUBJECT_SIGNED.text,
         responseMode = requestOptions.responseMode,

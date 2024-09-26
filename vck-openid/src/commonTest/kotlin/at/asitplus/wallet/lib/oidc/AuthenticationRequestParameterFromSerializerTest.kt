@@ -16,7 +16,6 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
     val relyingPartyUrl = "https://example.com/rp/${uuid4()}"
     val walletUrl = "https://example.com/wallet/${uuid4()}"
-    val responseUrl = "https://example.com/rp/${uuid4()}"
 
     val holderKeyMaterial = EphemeralKeyWithoutCert()
     val oidcSiopWallet = OidcSiopWallet(
@@ -27,7 +26,6 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
     val verifierSiop = OidcSiopVerifier(
         verifier = VerifierAgent(EphemeralKeyWithoutCert()),
         relyingPartyUrl = relyingPartyUrl,
-        responseUrl = responseUrl,
     )
 
     val representations = listOf(

@@ -2,7 +2,10 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.signum.indispensable.asn1.*
+import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
+import at.asitplus.signum.indispensable.asn1.Asn1Primitive
+import at.asitplus.signum.indispensable.asn1.Asn1String
+import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
@@ -36,7 +39,6 @@ class OidcSiopInteropTest : FreeSpec({
     lateinit var holderAgent: Holder
     lateinit var holderSiop: OidcSiopWallet
     lateinit var verifierKeyMaterial: KeyMaterial
-    lateinit var verifierAgent: Verifier
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
@@ -172,7 +174,6 @@ class OidcSiopInteropTest : FreeSpec({
         )
 
         holderSiop.parseAuthenticationRequestParameters(url).getOrThrow()
-            .also { println(it) }
     }
 
     "EUDI AuthnRequest can be parsed" {
@@ -323,11 +324,9 @@ class OidcSiopInteropTest : FreeSpec({
                 }
             ))))
         verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
-        verifierAgent = VerifierAgent(verifierKeyMaterial)
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = "https://example.com/rp",
-            responseUrl = "https://example.com/response",
             clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!)),
         )
         val nonce = uuid4().toString()
@@ -337,6 +336,7 @@ class OidcSiopInteropTest : FreeSpec({
             requestUrl = requestUrl,
             requestOptions = OidcSiopVerifier.RequestOptions(
                 responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
+                responseUrl = "https://example.com/response",
                 credentials = setOf(
                     OidcSiopVerifier.RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
@@ -345,7 +345,7 @@ class OidcSiopInteropTest : FreeSpec({
                     )
                 )
             )
-        ).getOrThrow().also { println(it) }
+        ).getOrThrow()
 
 
         holderSiop = OidcSiopWallet(
@@ -354,13 +354,11 @@ class OidcSiopInteropTest : FreeSpec({
             remoteResourceRetriever = { if (it == requestUrl) requestUrlForWallet.second else null })
 
         val parameters = holderSiop.parseAuthenticationRequestParameters(requestUrlForWallet.first).getOrThrow()
-        val stae = holderSiop.startAuthorizationResponsePreparation(parameters).getOrThrow()
-        val response = holderSiop.finalizeAuthorizationResponse(parameters, stae).getOrThrow()
+        val preparation = holderSiop.startAuthorizationResponsePreparation(parameters).getOrThrow()
+        val response = holderSiop.finalizeAuthorizationResponse(parameters, preparation).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
-            .also { println(it) }
         verifierSiop.validateAuthnResponse(params = response.params.decode())
             .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-            .also { println(it) }
     }
 
 })
