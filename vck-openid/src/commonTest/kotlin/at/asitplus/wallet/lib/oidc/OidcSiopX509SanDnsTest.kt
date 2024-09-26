@@ -71,9 +71,14 @@ class OidcSiopX509SanDnsTest : FreeSpec({
     "test with Fragment" {
         val authnRequest = verifierSiop.createAuthnRequestAsSignedRequestObject(
             requestOptions = RequestOptions(
-                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                credentials = setOf(
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.SD_JWT,
+                        listOf("given_name")
+                    )
+                ),
                 responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
-                requestedAttributes = listOf("given_name")
             )
         ).also { println(it) }.getOrThrow()
 

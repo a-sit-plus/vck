@@ -161,26 +161,17 @@ class OidcSiopVerifier private constructor(
 
     data class RequestOptions(
         /**
+         * Requested credentials, should be at least one
+         */
+        val credentials: Set<RequestOptionsCredential>,
+        /**
          * Response mode to request, see [OpenIdConstants.ResponseMode]
          */
         val responseMode: OpenIdConstants.ResponseMode? = null,
         /**
-         * Required representation, see [ConstantIndex.CredentialRepresentation]
-         */
-        val representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-        /**
          * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
          */
         val state: String? = uuid4().toString(),
-        /**
-         * Credential type to request, or `null` to make no restrictions
-         */
-        val credentialScheme: ConstantIndex.CredentialScheme? = null,
-        /**
-         * List of attributes that shall be requested explicitly (selective disclosure),
-         * or `null` to make no restrictions
-         */
-        val requestedAttributes: List<String>? = null,
         /**
          * Optional URL to include [metadata] by reference instead of by value (directly embedding in authn request)
          */
@@ -192,12 +183,28 @@ class OidcSiopVerifier private constructor(
         val encryption: Boolean = false,
     )
 
+    data class RequestOptionsCredential(
+        /**
+         * Credential type to request, or `null` to make no restrictions
+         */
+        val credentialScheme: ConstantIndex.CredentialScheme,
+        /**
+         * Required representation, see [ConstantIndex.CredentialRepresentation]
+         */
+        val representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+        /**
+         * List of attributes that shall be requested explicitly (selective disclosure),
+         * or `null` to make no restrictions
+         */
+        val requestedAttributes: List<String>? = null,
+    )
+
     /**
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl].
      */
     suspend fun createAuthnRequestUrl(
         walletUrl: String,
-        requestOptions: RequestOptions = RequestOptions(),
+        requestOptions: RequestOptions,
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
         createAuthnRequest(requestOptions).encodeToParameters()
@@ -211,7 +218,7 @@ class OidcSiopVerifier private constructor(
      */
     suspend fun createAuthnRequestUrlWithRequestObject(
         walletUrl: String,
-        requestOptions: RequestOptions = RequestOptions()
+        requestOptions: RequestOptions,
     ): KmmResult<String> = catching {
         val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow()
         val urlBuilder = URLBuilder(walletUrl)
@@ -234,7 +241,7 @@ class OidcSiopVerifier private constructor(
     suspend fun createAuthnRequestUrlWithRequestObjectByReference(
         walletUrl: String,
         requestUrl: String,
-        requestOptions: RequestOptions = RequestOptions()
+        requestOptions: RequestOptions,
     ): KmmResult<Pair<String, String>> = catching {
         val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow()
         val urlBuilder = URLBuilder(walletUrl)
@@ -260,7 +267,7 @@ class OidcSiopVerifier private constructor(
      * ```
      */
     suspend fun createAuthnRequestAsSignedRequestObject(
-        requestOptions: RequestOptions = RequestOptions(),
+        requestOptions: RequestOptions,
     ): KmmResult<JwsSigned> = catching {
         val requestObject = createAuthnRequest(requestOptions)
         val requestObjectSerialized = jsonSerializer.encodeToString(
@@ -286,9 +293,9 @@ class OidcSiopVerifier private constructor(
      * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
      */
     suspend fun createAuthnRequest(
-        requestOptions: RequestOptions = RequestOptions(),
+        requestOptions: RequestOptions,
     ) = AuthenticationRequestParameters(
-        responseType = "$ID_TOKEN $VP_TOKEN",
+        responseType = "$ID_TOKEN $VP_TOKEN", // TODO move to RequestOptions
         clientId = clientId,
         redirectUrl = requestOptions.buildRedirectUrl(),
         responseUrl = responseUrl,
@@ -303,20 +310,17 @@ class OidcSiopVerifier private constructor(
         state = requestOptions.state,
         presentationDefinition = PresentationDefinition(
             id = uuid4().toString(),
-            formats = requestOptions.representation.toFormatHolder(),
-            inputDescriptors = listOf(
-                requestOptions.toInputDescriptor()
-            ),
+            inputDescriptors = requestOptions.credentials.map {
+                it.toInputDescriptor()
+            },
         ),
     )
 
-    private fun RequestOptions.buildScope() = listOfNotNull(
-        SCOPE_OPENID,
-        SCOPE_PROFILE,
-        credentialScheme?.sdJwtType,
-        credentialScheme?.vcType,
-        credentialScheme?.isoNamespace
-    )
+    private fun RequestOptions.buildScope() = (
+            listOf(SCOPE_OPENID, SCOPE_PROFILE)
+                    + credentials.mapNotNull { it.credentialScheme.sdJwtType }
+                    + credentials.mapNotNull { it.credentialScheme.vcType }
+                    + credentials.mapNotNull { it.credentialScheme.isoNamespace })
         .joinToString(" ")
 
     private val clientId: String? by lazy {
@@ -333,8 +337,9 @@ class OidcSiopVerifier private constructor(
     ) null else relyingPartyUrl
 
     //TODO extend for InputDescriptor interface in case QES
-    private fun RequestOptions.toInputDescriptor() = DifInputDescriptor(
+    private fun RequestOptionsCredential.toInputDescriptor() = DifInputDescriptor(
         id = buildId(),
+        format = toFormatHolder(),
         constraints = toConstraint(),
     )
 
@@ -343,26 +348,24 @@ class OidcSiopVerifier private constructor(
      * encoding it into the descriptor id as in the following non-normative example fow now:
      * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
      */
-    private fun RequestOptions.buildId() =
-        if (credentialScheme?.isoDocType != null && representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
+    private fun RequestOptionsCredential.buildId() =
+        if (credentialScheme.isoDocType != null && representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
             credentialScheme.isoDocType!! else uuid4().toString()
 
-    private fun RequestOptions.toConstraint() =
+    private fun RequestOptionsCredential.toConstraint() =
         Constraint(fields = (toAttributeConstraints() + toTypeConstraint()).filterNotNull())
 
-    private fun RequestOptions.toAttributeConstraints() =
+    private fun RequestOptionsCredential.toAttributeConstraints() =
         requestedAttributes?.createConstraints(representation, credentialScheme)
             ?: listOf()
 
-    private fun RequestOptions.toTypeConstraint() = credentialScheme?.let {
-        when (representation) {
-            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> it.toVcConstraint()
-            ConstantIndex.CredentialRepresentation.SD_JWT -> it.toSdJwtConstraint()
-            ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
-        }
+    private fun RequestOptionsCredential.toTypeConstraint() = when (representation) {
+        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> this.credentialScheme.toVcConstraint()
+        ConstantIndex.CredentialRepresentation.SD_JWT -> this.credentialScheme.toSdJwtConstraint()
+        ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
     }
 
-    private fun ConstantIndex.CredentialRepresentation.toFormatHolder() = when (this) {
+    private fun RequestOptionsCredential.toFormatHolder() = when (representation) {
         ConstantIndex.CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
         ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerJwt)
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
@@ -387,10 +390,10 @@ class OidcSiopVerifier private constructor(
         ) else null
 
     private fun List<String>.createConstraints(
-        credentialRepresentation: ConstantIndex.CredentialRepresentation,
+        representation: ConstantIndex.CredentialRepresentation,
         credentialScheme: ConstantIndex.CredentialScheme?,
     ): Collection<ConstraintField> = map {
-        if (credentialRepresentation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
+        if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
             credentialScheme.toConstraintField(it)
         else
             ConstraintField(path = listOf("\$[${it.quote()}]"))

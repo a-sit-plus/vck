@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
@@ -29,15 +29,15 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
 
     "test scopes" - {
         val testScopes = object {
-            val EmptyPresentationRequest: String = "emptyPresentationRequest"
-            val MdocMdlWithGivenName: String = "mdocMdlWithGivenName"
+            val emptyPresentationRequest: String = "emptyPresentationRequest"
+            val mdocMdlWithGivenName: String = "mdocMdlWithGivenName"
         }
         val testScopePresentationDefinitionRetriever = mapOf(
-            testScopes.EmptyPresentationRequest to PresentationDefinition(
+            testScopes.emptyPresentationRequest to PresentationDefinition(
                 id = uuid4().toString(),
                 inputDescriptors = listOf()
             ),
-            testScopes.MdocMdlWithGivenName to PresentationDefinition(
+            testScopes.mdocMdlWithGivenName to PresentationDefinition(
                 id = uuid4().toString(),
                 inputDescriptors = listOf(
                     DifInputDescriptor(
@@ -101,10 +101,10 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
                 ).getOrThrow().toStoreCredentialInput()
             )
 
-            val authnRequest = verifierSiop.createAuthnRequest().let { request ->
+            val authnRequest = verifierSiop.createAuthnRequest(defaultRequestOptions).let { request ->
                 request.copy(
                     presentationDefinition = null,
-                    scope = request.scope + " " + testScopes.EmptyPresentationRequest
+                    scope = request.scope + " " + testScopes.emptyPresentationRequest
                 )
             }
 
@@ -117,10 +117,10 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         }
 
         "get MdocMdlWithGivenName scope without available credentials fails" {
-            val authnRequest = verifierSiop.createAuthnRequest().let { request ->
+            val authnRequest = verifierSiop.createAuthnRequest(defaultRequestOptions).let { request ->
                 request.copy(
                     presentationDefinition = null,
-                    scope = request.scope + " " + testScopes.MdocMdlWithGivenName
+                    scope = request.scope + " " + testScopes.mdocMdlWithGivenName
                 )
             }
 
@@ -145,10 +145,10 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             )
 
 
-            val authnRequest = verifierSiop.createAuthnRequest().let { request ->
+            val authnRequest = verifierSiop.createAuthnRequest(defaultRequestOptions).let { request ->
                 request.copy(
                     presentationDefinition = null,
-                    scope = request.scope + " " + testScopes.MdocMdlWithGivenName
+                    scope = request.scope + " " + testScopes.mdocMdlWithGivenName
                 )
             }
 
@@ -161,3 +161,9 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         }
     }
 })
+
+private val defaultRequestOptions = OidcSiopVerifier.RequestOptions(
+    credentials = setOf(
+        OidcSiopVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+    )
+)

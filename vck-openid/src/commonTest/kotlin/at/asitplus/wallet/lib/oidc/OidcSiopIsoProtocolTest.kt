@@ -31,7 +31,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderKeyMaterial =  EphemeralKeyWithoutCert()
+        holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
@@ -73,11 +73,13 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             verifierSiop,
             walletUrl,
             OidcSiopVerifier.RequestOptions(
-                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                credentialScheme = MobileDrivingLicenceScheme,
-                requestedAttributes = listOf(
-                    MobileDrivingLicenceDataElements.GIVEN_NAME
-                ),
+                credentials = setOf(
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        MobileDrivingLicenceScheme, ConstantIndex.CredentialRepresentation.ISO_MDOC, listOf(
+                            MobileDrivingLicenceDataElements.GIVEN_NAME
+                        )
+                    )
+                )
             ),
             holderSiop
         )
@@ -95,9 +97,13 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             verifierSiop,
             walletUrl,
             OidcSiopVerifier.RequestOptions(
-                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                credentialScheme = ConstantIndex.AtomicAttribute2023,
-                requestedAttributes = listOf("given_name"),
+                credentials = setOf(
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                        listOf("given_name")
+                    )
+                )
             ),
             holderSiop
         )
@@ -116,9 +122,13 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             verifierSiop,
             walletUrl,
             OidcSiopVerifier.RequestOptions(
-                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                credentialScheme = MobileDrivingLicenceScheme,
-                requestedAttributes = listOf(requestedClaim),
+                credentials = setOf(
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        MobileDrivingLicenceScheme,
+                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                        listOf(requestedClaim)
+                    )
+                )
             ),
             holderSiop,
         )
@@ -137,9 +147,11 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             responseUrl = relyingPartyUrl + "/${uuid4()}"
         )
         val requestOptions = OidcSiopVerifier.RequestOptions(
-            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-            credentialScheme = MobileDrivingLicenceScheme,
-            requestedAttributes = listOf(requestedClaim),
+            credentials = setOf(
+                OidcSiopVerifier.RequestOptionsCredential(
+                    MobileDrivingLicenceScheme, ConstantIndex.CredentialRepresentation.ISO_MDOC, listOf(requestedClaim)
+                )
+            ),
             responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
             encryption = true
         )
@@ -171,9 +183,13 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             verifierSiop,
             walletUrl,
             OidcSiopVerifier.RequestOptions(
-                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                credentialScheme = MobileDrivingLicenceScheme,
-                requestedAttributes = listOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
+                credentials = setOf(
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        MobileDrivingLicenceScheme,
+                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                        listOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
+                    )
+                )
             ),
             holderSiop,
         )

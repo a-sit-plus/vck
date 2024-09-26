@@ -39,6 +39,9 @@ Release NEXT:
    - Introudce `OAuth2Client` to extract creating authentication requests and token requests from OID4VCI `WalletService`
    - Refactor `SimpleAuthorizationService` to extract actual authentication and authorization into `AuthorizationServiceStrategy`
  - Implement JWE encryption with AES-CBC-HMAC algorithms
+ - SIOPv2/OpenID4VP: Support requesting and receiving claims from different credentials, i.e. a combined presentation
+   - Require request options on every method in `OidcSiopVerifier`
+   - Move `credentialScheme`, `representation`, `requestedAttributes` from `RequestOptions` to `RequestOptionsCredentials`
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments

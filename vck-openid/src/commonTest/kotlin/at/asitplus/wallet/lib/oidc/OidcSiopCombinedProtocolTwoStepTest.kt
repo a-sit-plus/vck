@@ -1,9 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.dif.FormatHolder
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
@@ -11,7 +9,6 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.coroutines.runBlocking
 
 class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
 
@@ -21,17 +18,15 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
     lateinit var verifierKeyMaterial: KeyMaterial
 
     lateinit var holderAgent: Holder
-    lateinit var verifierAgent: Verifier
 
     lateinit var holderSiop: OidcSiopWallet
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderKeyMaterial =  EphemeralKeyWithoutCert()
+        holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
-        verifierAgent = VerifierAgent(verifierKeyMaterial)
 
         holderSiop = OidcSiopWallet(
             keyMaterial = holderKeyMaterial,
@@ -45,37 +40,20 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
 
     "test credential matching" - {
         "only credentials of the correct format are matched" {
-            runBlocking {
-                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-                holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-            }
-
-            verifierSiop = OidcSiopVerifier(
-                keyMaterial = verifierKeyMaterial,
-                relyingPartyUrl = relyingPartyUrl,
-            )
+            holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
             val authnRequest = verifierSiop.createAuthnRequest(
                 requestOptions = OidcSiopVerifier.RequestOptions(
-                    credentialScheme = ConstantIndex.AtomicAttribute2023,
-                    representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                )
-            ).let { request ->
-                request.copy(
-                    presentationDefinition = request.presentationDefinition?.let { presentationDefinition ->
-                        presentationDefinition.copy(
-                            // only support msoMdoc here
-                            formats = FormatHolder(
-                                msoMdoc = presentationDefinition.formats?.msoMdoc
-                            ),
-                            inputDescriptors = presentationDefinition.inputDescriptors.map { inputDescriptor ->
-                                (inputDescriptor as DifInputDescriptor).copy(format = null)
-                            }
+                    credentials = setOf(
+                        OidcSiopVerifier.RequestOptionsCredential(
+                            ConstantIndex.AtomicAttribute2023,
+                            ConstantIndex.CredentialRepresentation.ISO_MDOC
                         )
-                    },
+                    )
                 )
-            }
+            )
             val preparationState = holderSiop.startAuthorizationResponsePreparation(authnRequest.serialize())
                 .getOrThrow()
             val presentationDefinition = preparationState.presentationDefinition.shouldNotBeNull()
@@ -94,41 +72,22 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
     }
 
     "test credential submission" - {
-        "submission requirements need to macth" - {
+        "submission requirements need to match" - {
             "all credentials matching an input descriptor should be presentable" {
-                runBlocking {
-                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-                }
-
-                verifierSiop = OidcSiopVerifier(
-                    keyMaterial = verifierKeyMaterial,
-                    relyingPartyUrl = relyingPartyUrl,
-                )
+                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val authnRequest = verifierSiop.createAuthnRequest(
                     requestOptions = OidcSiopVerifier.RequestOptions(
-                        credentialScheme = ConstantIndex.AtomicAttribute2023,
-                        representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                    )
-                ).let { request ->
-                    request.copy(
-                        presentationDefinition = request.presentationDefinition?.let { presentationDefinition ->
-                            presentationDefinition.copy(
-                                // only support msoMdoc here
-                                formats = FormatHolder(
-                                    msoMdoc = presentationDefinition.formats?.msoMdoc
-                                ),
-                                inputDescriptors = presentationDefinition.inputDescriptors.map { inputDescriptor ->
-                                    (inputDescriptor as DifInputDescriptor).copy(
-                                        format = null
-                                    )
-                                }
+                        credentials = setOf(
+                            OidcSiopVerifier.RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023,
+                                ConstantIndex.CredentialRepresentation.ISO_MDOC
                             )
-                        },
+                        )
                     )
-                }
+                )
 
                 val params = holderSiop.parseAuthenticationRequestParameters(authnRequest.serialize()).getOrThrow()
                 val preparationState = holderSiop.startAuthorizationResponsePreparation(params).getOrThrow()
@@ -164,39 +123,20 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                 }
             }
             "credentials not matching an input descriptor should not yield a valid submission" {
-                runBlocking {
-                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-                }
-
-                verifierSiop = OidcSiopVerifier(
-                    keyMaterial = verifierKeyMaterial,
-                    relyingPartyUrl = relyingPartyUrl,
-                )
+                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val sdJwtMatches = run {
                     val authnRequestSdJwt = verifierSiop.createAuthnRequest(
                         requestOptions = OidcSiopVerifier.RequestOptions(
-                            credentialScheme = ConstantIndex.AtomicAttribute2023,
-                            representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                        )
-                    ).let { request ->
-                        request.copy(
-                            presentationDefinition = request.presentationDefinition?.let { presentationDefinition ->
-                                presentationDefinition.copy(
-                                    // only support msoMdoc here
-                                    inputDescriptors = presentationDefinition.inputDescriptors.map { inputDescriptor ->
-                                        (inputDescriptor as DifInputDescriptor).copy(
-                                            format = FormatHolder(
-                                                jwtSd = presentationDefinition.formats?.jwtSd
-                                            ),
-                                        )
-                                    }
+                            credentials = setOf(
+                                OidcSiopVerifier.RequestOptionsCredential(
+                                    ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.SD_JWT
                                 )
-                            },
+                            )
                         )
-                    }
+                    )
 
                     val preparationStateSdJwt = holderSiop.startAuthorizationResponsePreparation(
                         holderSiop.parseAuthenticationRequestParameters(authnRequestSdJwt.serialize()).getOrThrow()
@@ -220,25 +160,13 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
 
                 val authnRequest = verifierSiop.createAuthnRequest(
                     requestOptions = OidcSiopVerifier.RequestOptions(
-                        credentialScheme = ConstantIndex.AtomicAttribute2023,
-                        representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                    )
-                ).let { request ->
-                    request.copy(
-                        presentationDefinition = request.presentationDefinition?.let { presentationDefinition ->
-                            presentationDefinition.copy(
-                                // only support msoMdoc here
-                                inputDescriptors = presentationDefinition.inputDescriptors.map { inputDescriptor ->
-                                    (inputDescriptor as DifInputDescriptor).copy(
-                                        format = FormatHolder(
-                                            msoMdoc = presentationDefinition.formats?.msoMdoc
-                                        ),
-                                    )
-                                }
+                        credentials = setOf(
+                            OidcSiopVerifier.RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.ISO_MDOC
                             )
-                        },
+                        )
                     )
-                }
+                )
 
                 val params = holderSiop.parseAuthenticationRequestParameters(authnRequest.serialize()).getOrThrow()
                 val preparationState = holderSiop.startAuthorizationResponsePreparation(params).getOrThrow()

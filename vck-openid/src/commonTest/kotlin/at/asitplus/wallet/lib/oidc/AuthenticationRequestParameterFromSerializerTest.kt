@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -39,8 +39,11 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
     representations.forEach { representation ->
         val reqOptions = OidcSiopVerifier.RequestOptions(
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
-            representation = representation,
+            credentials = setOf(
+                OidcSiopVerifier.RequestOptionsCredential(
+                    ConstantIndex.AtomicAttribute2023, representation
+                )
+            )
         )
 
         "URL test $representation" {

@@ -337,9 +337,13 @@ class OidcSiopInteropTest : FreeSpec({
             requestUrl = requestUrl,
             requestOptions = OidcSiopVerifier.RequestOptions(
                 responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
-                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                credentialScheme = ConstantIndex.AtomicAttribute2023,
-                requestedAttributes = listOf("family_name", "given_name")
+                credentials = setOf(
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.SD_JWT,
+                        listOf("family_name", "given_name")
+                    )
+                )
             )
         ).getOrThrow().also { println(it) }
 
