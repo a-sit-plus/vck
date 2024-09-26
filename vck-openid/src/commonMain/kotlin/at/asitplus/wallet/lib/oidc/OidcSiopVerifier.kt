@@ -162,13 +162,23 @@ class OidcSiopVerifier private constructor(
          */
         val credentials: Set<RequestOptionsCredential>,
         /**
-         * Response mode to request, see [OpenIdConstants.ResponseMode]
+         * Response mode to request, see [OpenIdConstants.ResponseMode],
+         * by default [OpenIdConstants.ResponseMode.FRAGMENT].
+         * Setting this to any other value may require setting [responseUrl] too.
          */
         val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.FRAGMENT,
         /**
-         * Response URL to set in the [AuthenticationRequestParameters]
+         * Response URL to set in the [AuthenticationRequestParameters.responseUrl],
+         * required if [responseMode] is set to [OpenIdConstants.ResponseMode.DIRECT_POST] or
+         * [OpenIdConstants.ResponseMode.DIRECT_POST_JWT].
          */
         val responseUrl: String? = null,
+        /**
+         * Response type to set in [AuthenticationRequestParameters.responseType],
+         * by default only `vp_token` (as per OpenID4VP spec).
+         * Be sure to separate values by a space, e.g. `vp_token id_token`.
+         */
+        val responseType: String = VP_TOKEN,
         /**
          * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
          */
@@ -296,7 +306,7 @@ class OidcSiopVerifier private constructor(
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions,
     ) = AuthenticationRequestParameters(
-        responseType = "$ID_TOKEN $VP_TOKEN", // TODO move to RequestOptions
+        responseType = requestOptions.responseType,
         clientId = clientId,
         redirectUrl = requestOptions.buildRedirectUrl(),
         responseUrl = requestOptions.responseUrl,
