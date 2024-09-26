@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.iso
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import kotlinx.serialization.*
 
 /**
@@ -44,16 +43,25 @@ data class IssuerSigned private constructor(
         }.wrap()
 
         // Note: Can't be a secondary constructor, because it would have the same JVM signature as the primary one.
+        /**
+         * Ensures the serialization of this structure in [Document.issuerSigned]:
+         * ```
+         * IssuerNameSpaces = { ; Returned data elements for each namespace
+         *     + NameSpace => [ + IssuerSignedItemBytes ]
+         * }
+         * IssuerSignedItemBytes = #6.24(bstr .cbor IssuerSignedItem)
+         * ```
+         *
+         * See ISO/IEC 18013-5:2021, 8.3.2.1.2.2 Device retrieval mdoc response
+         */
         fun fromIssuerSignedItems(
             namespacedItems: Map<String, List<IssuerSignedItem>>,
-            issuerAuth: CoseSigned
+            issuerAuth: CoseSigned,
         ): IssuerSigned = IssuerSigned(
-            issuerAuth = issuerAuth,
             namespaces = namespacedItems.map { (namespace, value) ->
-                namespace to IssuerSignedList(value.map { item ->
-                    ByteStringWrapper(item, item.serialize(namespace).wrapInCborTag(24))
-                })
-            }.toMap()
+                namespace to IssuerSignedList.fromIssuerSignedItems(value, namespace)
+            }.toMap(),
+            issuerAuth = issuerAuth,
         )
 
     }

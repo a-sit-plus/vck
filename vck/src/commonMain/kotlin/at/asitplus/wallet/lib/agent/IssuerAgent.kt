@@ -134,7 +134,7 @@ class IssuerAgent(
             digestAlgorithm = "SHA-256",
             valueDigests = mapOf(
                 scheme.isoNamespace!! to ValueDigestList(credential.issuerSignedItems.map {
-                    ValueDigest.fromIssuerSigned(scheme.isoNamespace!!, it)
+                    ValueDigest.fromIssuerSignedItem(it, scheme.isoNamespace!!)
                 })
             ),
             deviceKeyInfo = deviceKeyInfo,

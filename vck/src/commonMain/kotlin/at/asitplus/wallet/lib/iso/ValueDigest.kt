@@ -38,9 +38,10 @@ data class ValueDigest(
          *
          * See ISO/IEC 18013-5:2021, 9.1.2.5 Message digest function
          */
-        fun fromIssuerSigned(namespace: String, value: IssuerSignedItem) = ValueDigest(
-            value.digestId,
-            value.serialize(namespace).wrapInCborTag(24).sha256()
-        )
+        fun fromIssuerSignedItem(value: IssuerSignedItem, namespace: String): ValueDigest =
+            ValueDigest(
+                value.digestId,
+                value.serialize(namespace).wrapInCborTag(24).sha256()
+            )
     }
 }

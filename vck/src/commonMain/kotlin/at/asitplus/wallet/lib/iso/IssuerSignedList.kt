@@ -25,4 +25,22 @@ data class IssuerSignedList(
     override fun hashCode(): Int {
         return 31 * entries.hashCode()
     }
+
+    companion object {
+        /**
+         * Ensures the serialization of this structure in [Document.issuerSigned]:
+         * ```
+         * IssuerNameSpaces = { ; Returned data elements for each namespace
+         *     + NameSpace => [ + IssuerSignedItemBytes ]
+         * }
+         * IssuerSignedItemBytes = #6.24(bstr .cbor IssuerSignedItem)
+         * ```
+         *
+         * See ISO/IEC 18013-5:2021, 8.3.2.1.2.2 Device retrieval mdoc response
+         */
+        fun fromIssuerSignedItems(items: List<IssuerSignedItem>, namespace: String) =
+            IssuerSignedList(items.map { item ->
+                ByteStringWrapper(item, item.serialize(namespace).wrapInCborTag(24))
+            })
+    }
 }
