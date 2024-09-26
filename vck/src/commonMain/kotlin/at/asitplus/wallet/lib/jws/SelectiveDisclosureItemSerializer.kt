@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.jws
 
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
-import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.KSerializer
@@ -10,12 +9,7 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.floatOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.*
 
 /**
  * Encodes [SelectiveDisclosureItem] as needed by SD-JWT spec,
@@ -33,6 +27,7 @@ object SelectiveDisclosureItemSerializer : KSerializer<SelectiveDisclosureItem> 
         val valueElement = when (val value = value.claimValue) {
             is Boolean -> JsonPrimitive(value)
             is Number -> JsonPrimitive(value)
+            is UInt -> JsonPrimitive(value)
             is ByteArray -> JsonPrimitive(value.encodeToString(Base64UrlStrict))
             else -> JsonPrimitive(value.toString())
         }
