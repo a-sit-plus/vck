@@ -114,7 +114,7 @@ class Issuer {
             digestAlgorithm = "SHA-256",
             valueDigests = mapOf(
                 ConstantIndex.AtomicAttribute2023.isoNamespace to ValueDigestList(entries = issuerSigned.map {
-                    ValueDigest.fromIssuerSigned(ConstantIndex.AtomicAttribute2023.isoNamespace, it)
+                    ValueDigest.fromIssuerSignedItem(it, ConstantIndex.AtomicAttribute2023.isoNamespace)
                 })
             ),
             deviceKeyInfo = walletKeyInfo,
