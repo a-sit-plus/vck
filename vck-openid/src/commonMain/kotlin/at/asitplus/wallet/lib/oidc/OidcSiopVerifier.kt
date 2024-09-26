@@ -320,8 +320,8 @@ class OidcSiopVerifier private constructor(
             listOf(SCOPE_OPENID, SCOPE_PROFILE)
                     + credentials.mapNotNull { it.credentialScheme.sdJwtType }
                     + credentials.mapNotNull { it.credentialScheme.vcType }
-                    + credentials.mapNotNull { it.credentialScheme.isoNamespace })
-        .joinToString(" ")
+                    + credentials.mapNotNull { it.credentialScheme.isoNamespace }
+            ).joinToString(" ")
 
     private val clientId: String? by lazy {
         clientIdFromCertificateChain ?: relyingPartyUrl

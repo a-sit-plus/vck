@@ -3,20 +3,15 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
+import at.asitplus.dif.*
+import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
-import at.asitplus.dif.ClaimFormatEnum
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.InputEvaluator
-import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.PresentationSubmission
-import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -141,17 +136,18 @@ class HolderAgent(
     /**
      * Gets a list of all valid stored credentials sorted by preference
      */
-    private suspend fun getValidCredentialsByPriority() = getCredentials()?.filter {
-        it.status != Validator.RevocationStatus.REVOKED
-    }?.map { it.storeEntry }?.sortedBy {
-        // prefer iso credentials and sd jwt credentials over plain vc credentials
-        // -> they support selective disclosure!
-        when (it) {
-            is SubjectCredentialStore.StoreEntry.Vc -> 2
-            is SubjectCredentialStore.StoreEntry.SdJwt -> 1
-            is SubjectCredentialStore.StoreEntry.Iso -> 1
+    private suspend fun getValidCredentialsByPriority() = getCredentials()
+        ?.filter { it.status != Validator.RevocationStatus.REVOKED }
+        ?.map { it.storeEntry }
+        ?.sortedBy {
+            // prefer iso credentials and sd jwt credentials over plain vc credentials
+            // -> they support selective disclosure!
+            when (it) {
+                is SubjectCredentialStore.StoreEntry.Vc -> 2
+                is SubjectCredentialStore.StoreEntry.SdJwt -> 1
+                is SubjectCredentialStore.StoreEntry.Iso -> 1
+            }
         }
-    }
 
 
     override suspend fun createPresentation(
