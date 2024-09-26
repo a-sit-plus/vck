@@ -28,7 +28,7 @@ class Tag0SerializationTest : FreeSpec({
         val serialized = vckCborSerializer.encodeToByteArray(input)
             .also { println(it.encodeToString(Base16(true))) }
 
-        val text = "781E" // COSE "text" for text value, i.e. the serialized Instant
+        val text = "78" // COSE "text" for text value, i.e. the serialized Instant
         val tag0 = "C0$text" // COSE tag 0 plus "text"
         val hexEncoded = serialized.encodeToString(Base16(true))
         hexEncoded.shouldContain("7369676E6564$tag0") // "signed"<tag><text>
