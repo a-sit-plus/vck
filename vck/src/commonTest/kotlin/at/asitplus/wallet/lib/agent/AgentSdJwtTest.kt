@@ -59,7 +59,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.keyMaterial.identifier,
-            presentationDefinition = buildPresDef(CLAIM_GIVEN_NAME, CLAIM_DATE_OF_BIRTH)
+            presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME, CLAIM_DATE_OF_BIRTH)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -95,7 +95,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.keyMaterial.identifier,
-            presentationDefinition = buildPresDef(CLAIM_GIVEN_NAME),
+            presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -113,7 +113,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = malformedChallenge,
             audienceId = verifier.keyMaterial.identifier,
-            presentationDefinition = buildPresDef(CLAIM_GIVEN_NAME)
+            presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -127,7 +127,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.keyMaterial.identifier,
-            presentationDefinition = buildPresDef(CLAIM_GIVEN_NAME)
+            presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -145,7 +145,7 @@ class AgentSdJwtTest : FreeSpec({
 
 })
 
-private fun buildPresDef(vararg attributeName: String) = PresentationDefinition(
+private fun buildPresentationDefinition(vararg attributeName: String) = PresentationDefinition(
     id = uuid4().toString(),
     inputDescriptors = listOf(
         DifInputDescriptor(
