@@ -1,6 +1,6 @@
 # Changelog
 
-Release NEXT:
+Release 5.0.0:
  - Remove `OidcSiopWallet.newDefaultInstance()` and replace it with a constructor
  - Remove `OidcSiopVerifier.newInstance()` methods and replace them with constructors
  - Remove `Validator.newDefaultInstance()` methods and replace them with constructors
