@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.josef.*
 import javax.crypto.Cipher
+import javax.crypto.Mac
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
@@ -77,6 +78,16 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
     actual fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
         return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
     }
+
+    actual fun hmac(
+        key: ByteArray,
+        algorithm: JweEncryption,
+        input: ByteArray,
+    ): KmmResult<ByteArray> = runCatching {
+        Mac.getInstance(algorithm.jcaHmacName).also {
+            it.init(SecretKeySpec(key, algorithm.jcaKeySpecName))
+        }.doFinal(input)
+    }.wrap()
 
 }
 
