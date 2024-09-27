@@ -7,6 +7,8 @@ import at.asitplus.dif.PresentationDefinition
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -57,7 +59,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.keyMaterial.identifier,
-            presentationDefinition = buildPresDef("given_name", "date_of_birth")
+            presentationDefinition = buildPresDef(CLAIM_GIVEN_NAME, CLAIM_DATE_OF_BIRTH)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -66,9 +68,9 @@ class AgentSdJwtTest : FreeSpec({
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         verified.disclosures shouldHaveSize 2
-        println(verified.disclosures)
-        verified.disclosures.first { it.claimName == "given_name" }.claimValue.content shouldBe "Susanne"
-        verified.disclosures.first { it.claimName == "date_of_birth" }.claimValue.content shouldBe "1990-01-01"
+
+        verified.disclosures.first { it.claimName == CLAIM_GIVEN_NAME }.claimValue.content shouldBe "Susanne"
+        verified.disclosures.first { it.claimName == CLAIM_DATE_OF_BIRTH }.claimValue.content shouldBe "1990-01-01"
         verified.isRevoked shouldBe false
     }
 
@@ -80,12 +82,12 @@ class AgentSdJwtTest : FreeSpec({
             audienceId = verifier.keyMaterial.identifier,
             challenge = challenge,
             validSdJwtCredential = credential,
-            claimName = "given_name"
+            claimName = CLAIM_GIVEN_NAME
         ).sdJwt
         val verified = verifier.verifyPresentation(sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         verified.disclosures shouldHaveSize 1
-        verified.disclosures.forAll { it.claimName shouldBe "given_name" }
+        verified.disclosures.forAll { it.claimName shouldBe CLAIM_GIVEN_NAME }
         verified.isRevoked shouldBe false
     }
 
@@ -93,7 +95,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.keyMaterial.identifier,
-            presentationDefinition = buildPresDef("given_name"),
+            presentationDefinition = buildPresDef(CLAIM_GIVEN_NAME),
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -111,7 +113,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = malformedChallenge,
             audienceId = verifier.keyMaterial.identifier,
-            presentationDefinition = buildPresDef("given_name")
+            presentationDefinition = buildPresDef(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -125,7 +127,7 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifier.keyMaterial.identifier,
-            presentationDefinition = buildPresDef("given_name")
+            presentationDefinition = buildPresDef(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()

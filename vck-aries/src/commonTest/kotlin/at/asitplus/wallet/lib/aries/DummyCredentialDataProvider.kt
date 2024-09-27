@@ -8,8 +8,13 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
@@ -31,9 +36,10 @@ class DummyCredentialDataProvider(
         val subjectId = subjectPublicKey.didEncoded
         val expiration = clock.now() + defaultLifetime
         val claims = listOf(
-            ClaimToBeIssued("given_name", "Susanne"),
-            ClaimToBeIssued("family_name", "Meier"),
-            ClaimToBeIssued("date_of_birth", "1990-01-01"),
+            ClaimToBeIssued(CLAIM_GIVEN_NAME, "Susanne"),
+            ClaimToBeIssued(CLAIM_FAMILY_NAME, "Meier"),
+            ClaimToBeIssued(CLAIM_DATE_OF_BIRTH, LocalDate.parse("1990-01-01")),
+            ClaimToBeIssued(CLAIM_PORTRAIT, Random.nextBytes(32)),
         )
         when (representation) {
             ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
@@ -42,7 +48,7 @@ class DummyCredentialDataProvider(
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                subject = AtomicAttribute2023(subjectId, "given_name", "Susanne"),
+                subject = AtomicAttribute2023(subjectId, CLAIM_GIVEN_NAME, "Susanne"),
                 expiration = expiration,
             )
 

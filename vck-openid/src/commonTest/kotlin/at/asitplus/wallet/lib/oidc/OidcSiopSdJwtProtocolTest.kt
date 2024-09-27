@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -55,7 +56,11 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     }
 
     "Selective Disclosure with custom credential" {
-        val requestedClaim = "given_name"
+        val requestedClaim = CLAIM_GIVEN_NAME
+        verifierSiop = OidcSiopVerifier(
+            keyMaterial = verifierKeyMaterial,
+            relyingPartyUrl = relyingPartyUrl,
+        )
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
@@ -71,7 +76,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         authnRequest shouldContain requestedClaim
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().also { println(it) }
+        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()

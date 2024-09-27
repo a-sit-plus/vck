@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -192,7 +193,7 @@ class OidvciProcessTest : FunSpec({
             WalletService.RequestOptions(
                 ConstantIndex.AtomicAttribute2023,
                 representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                requestedAttributes = setOf("family_name")
+                requestedAttributes = setOf(CLAIM_FAMILY_NAME)
             )
         )
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT

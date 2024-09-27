@@ -15,6 +15,8 @@ import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidvci.decode
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -61,7 +63,7 @@ class OidcSiopInteropTest : FreeSpec({
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.SD_JWT,
-                listOf("family_name", "given_name")
+                listOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
             ).getOrThrow().toStoreCredentialInput()
         )
         holderSiop = OidcSiopWallet(holderKeyMaterial, holderAgent)
@@ -341,7 +343,7 @@ class OidcSiopInteropTest : FreeSpec({
                     OidcSiopVerifier.RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.SD_JWT,
-                        listOf("family_name", "given_name")
+                        listOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
                     )
                 )
             )

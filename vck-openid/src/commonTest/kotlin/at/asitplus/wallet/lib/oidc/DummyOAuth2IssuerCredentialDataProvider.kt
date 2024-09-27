@@ -13,6 +13,10 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
@@ -62,10 +66,18 @@ class DummyOAuth2IssuerCredentialDataProvider(
         val givenName = userInfo.userInfo.givenName
         val subjectId = subjectPublicKey.didEncoded
         val claims = listOfNotNull(
-            givenName?.let { optionalClaim(claimNames, CLAIM_GIVEN_NAME, it) },
-            familyName?.let { optionalClaim(claimNames, "family_name", it) },
-            userInfo.userInfo.birthDate?.let { optionalClaim(claimNames, "date_of_birth", it) },
-            userInfo.userInfo.picture?.let { optionalClaim(claimNames, CLAIM_PORTRAIT, it.decodeToByteArray(Base64())) },
+            givenName?.let {
+                optionalClaim(claimNames, CLAIM_GIVEN_NAME, it)
+            },
+            familyName?.let {
+                optionalClaim(claimNames, CLAIM_FAMILY_NAME, it)
+            },
+            userInfo.userInfo.birthDate?.let {
+                optionalClaim(claimNames, CLAIM_DATE_OF_BIRTH, LocalDate.parse(it))
+            },
+            userInfo.userInfo.picture?.let {
+                optionalClaim(claimNames, CLAIM_PORTRAIT, it.decodeToByteArray(Base64()))
+            },
         )
         return when (representation) {
             ConstantIndex.CredentialRepresentation.SD_JWT ->
@@ -166,20 +178,16 @@ class DummyOAuth2IssuerCredentialDataProvider(
         elementIdentifier = name,
         elementValue = value
     )
-
-    companion object {
-        const val CLAIM_GIVEN_NAME = "given_name"
-        const val CLAIM_PORTRAIT = "portrait"
-    }
 }
 
 object DummyOAuth2DataProvider : OAuth2DataProvider {
     val user = OidcUserInfoExtended.fromOidcUserInfo(
         OidcUserInfo(
             subject = "subject",
-            givenName = "Erika",
-            familyName = "Musterfrau",
-            picture = Random.nextBytes(64).encodeToString(Base64())
+            givenName = "Susanne",
+            familyName = "Meier",
+            picture = Random.nextBytes(64).encodeToString(Base64()),
+            birthDate = "1990-01-01"
         )
     ).getOrThrow()
 

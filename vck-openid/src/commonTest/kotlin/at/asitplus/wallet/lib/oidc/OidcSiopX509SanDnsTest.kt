@@ -10,6 +10,7 @@ import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
@@ -69,7 +70,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                     OidcSiopVerifier.RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.SD_JWT,
-                        listOf("given_name")
+                        listOf(CLAIM_GIVEN_NAME)
                     )
                 ),
                 responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,

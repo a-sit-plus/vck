@@ -10,6 +10,8 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -59,8 +61,8 @@ class Wallet {
         this.storedMdlItems = mdlItems
         mso.valueDigests[ConstantIndex.AtomicAttribute2023.isoNamespace].shouldNotBeNull()
 
-        extractDataString(mdlItems, GIVEN_NAME).shouldNotBeNull()
-        extractDataString(mdlItems, FAMILY_NAME).shouldNotBeNull()
+        extractDataString(mdlItems, CLAIM_GIVEN_NAME).shouldNotBeNull()
+        extractDataString(mdlItems, CLAIM_FAMILY_NAME).shouldNotBeNull()
     }
 
     suspend fun buildDeviceResponse(verifierRequest: DeviceRequest): DeviceResponse {
@@ -105,8 +107,8 @@ class Issuer {
 
     suspend fun buildDeviceResponse(walletKeyInfo: DeviceKeyInfo): DeviceResponse {
         val issuerSigned = listOf(
-            buildIssuerSignedItem(FAMILY_NAME, "Mustermann", 0U),
-            buildIssuerSignedItem(GIVEN_NAME, "Max", 1U),
+            buildIssuerSignedItem(CLAIM_FAMILY_NAME, "Meier", 0U),
+            buildIssuerSignedItem(CLAIM_GIVEN_NAME, "Susanne", 1U),
         )
 
         val mso = MobileSecurityObject(
@@ -168,8 +170,8 @@ class Verifier {
                         namespaces = mapOf(
                             ConstantIndex.AtomicAttribute2023.isoNamespace to ItemsRequestList(
                                 listOf(
-                                    SingleItemsRequest(FAMILY_NAME, true),
-                                    SingleItemsRequest(GIVEN_NAME, true),
+                                    SingleItemsRequest(CLAIM_FAMILY_NAME, true),
+                                    SingleItemsRequest(CLAIM_GIVEN_NAME, true),
                                 )
                             )
                         )
@@ -204,8 +206,8 @@ class Verifier {
         val namespaces = issuerSigned.namespaces.shouldNotBeNull()
         val issuerSignedItems = namespaces[ConstantIndex.AtomicAttribute2023.isoNamespace].shouldNotBeNull()
 
-        extractAndVerifyData(issuerSignedItems, mdlItems, FAMILY_NAME)
-        extractAndVerifyData(issuerSignedItems, mdlItems, GIVEN_NAME)
+        extractAndVerifyData(issuerSignedItems, mdlItems, CLAIM_FAMILY_NAME)
+        extractAndVerifyData(issuerSignedItems, mdlItems, CLAIM_GIVEN_NAME)
     }
 
     private fun extractAndVerifyData(
@@ -235,6 +237,3 @@ fun buildIssuerSignedItem(elementIdentifier: String, elementValue: Any, digestId
     elementIdentifier = elementIdentifier,
     elementValue = elementValue
 )
-
-const val FAMILY_NAME = "family_name"
-const val GIVEN_NAME = "given_name"

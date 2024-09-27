@@ -5,6 +5,10 @@ import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -27,9 +31,10 @@ class DummyCredentialDataProvider(
         val claims = claimNames?.map {
             ClaimToBeIssued(it, "${it}_DUMMY_VALUE")
         } ?: listOf(
-            ClaimToBeIssued("given_name", "Susanne"),
-            ClaimToBeIssued("family_name", "Meier"),
-            ClaimToBeIssued("date_of_birth", LocalDate.parse("1990-01-01")),
+            ClaimToBeIssued(CLAIM_GIVEN_NAME, "Susanne"),
+            ClaimToBeIssued(CLAIM_FAMILY_NAME, "Meier"),
+            ClaimToBeIssued(CLAIM_DATE_OF_BIRTH, LocalDate.parse("1990-01-01")),
+            ClaimToBeIssued(CLAIM_PORTRAIT, Random.nextBytes(32)),
         )
         val subjectId = subjectPublicKey.didEncoded
         when (representation) {
@@ -39,7 +44,7 @@ class DummyCredentialDataProvider(
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                subject = AtomicAttribute2023(subjectId, "given_name", "Susanne"),
+                subject = AtomicAttribute2023(subjectId, CLAIM_GIVEN_NAME, "Susanne"),
                 expiration = expiration,
             )
 

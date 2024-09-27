@@ -10,6 +10,10 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.mdl.DrivingPrivilege
 import at.asitplus.wallet.mdl.DrivingPrivilegeCode
@@ -48,9 +52,10 @@ class DummyCredentialDataProvider(
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
             val subjectId = subjectPublicKey.didEncoded
             val claims = listOfNotNull(
-                optionalClaim(claimNames, "given_name", "Susanne"),
-                optionalClaim(claimNames, "family_name", "Meier"),
-                optionalClaim(claimNames, "date_of_birth", "1990-01-01"),
+                optionalClaim(claimNames, CLAIM_GIVEN_NAME, "Susanne"),
+                optionalClaim(claimNames, CLAIM_FAMILY_NAME, "Meier"),
+                optionalClaim(claimNames, CLAIM_DATE_OF_BIRTH, LocalDate.parse("1990-01-01")),
+                optionalClaim(claimNames, CLAIM_PORTRAIT, Random.nextBytes(32)),
             )
             when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
@@ -59,7 +64,7 @@ class DummyCredentialDataProvider(
                 )
 
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                    subject = AtomicAttribute2023(subjectId, "given_name", "Susanne"),
+                    subject = AtomicAttribute2023(subjectId, CLAIM_GIVEN_NAME, "Susanne"),
                     expiration = expiration,
                 )
 

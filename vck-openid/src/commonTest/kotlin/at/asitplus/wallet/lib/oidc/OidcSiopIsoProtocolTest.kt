@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
@@ -99,7 +100,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
                     OidcSiopVerifier.RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        listOf("given_name")
+                        listOf(CLAIM_GIVEN_NAME)
                     )
                 )
             ),
