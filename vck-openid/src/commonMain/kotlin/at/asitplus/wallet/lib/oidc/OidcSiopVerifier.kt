@@ -8,9 +8,7 @@ import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
-import at.asitplus.openid.OpenIdConstants.ClientIdScheme.REDIRECT_URI
-import at.asitplus.openid.OpenIdConstants.ClientIdScheme.VERIFIER_ATTESTATION
-import at.asitplus.openid.OpenIdConstants.ClientIdScheme.X509_SAN_DNS
+import at.asitplus.openid.OpenIdConstants.ClientIdScheme.*
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
 import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
@@ -36,6 +34,7 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -56,6 +55,8 @@ class OidcSiopVerifier private constructor(
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
     private val clientIdScheme: ClientIdScheme = ClientIdScheme.RedirectUri,
+    private val stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
+    private val stateToResponseTypeStore: MapStore<String, String> = DefaultMapStore(),
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
@@ -64,17 +65,21 @@ class OidcSiopVerifier private constructor(
         /**
          * Verifier Attestation JWT to include (in header `jwt`) when creating request objects as JWS,
          * to allow the Wallet to verify the authenticity of this Verifier.
-         * OID4VP client id scheme "verifier attestation",
-         * see [at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.VERIFIER_ATTESTATION].
+         * OID4VP client id scheme `verifier attestation`,
+         * see [at.asitplus.openid.OpenIdConstants.ClientIdScheme.VERIFIER_ATTESTATION].
          */
         data class VerifierAttestation(val attestationJwt: JwsSigned) : ClientIdScheme(VERIFIER_ATTESTATION)
 
         /**
          * Certificate chain to include in JWS headers and to extract `client_id` from (in SAN extension), from OID4VP
-         * client id scheme "x509_san_dns",
-         * see [at.asitplus.wallet.lib.oidc.OpenIdConstants.ClientIdScheme.X509_SAN_DNS].
+         * client id scheme `x509_san_dns`,
+         * see [at.asitplus.openid.OpenIdConstants.ClientIdScheme.X509_SAN_DNS].
          */
         data class CertificateSanDns(val chain: CertificateChain) : ClientIdScheme(X509_SAN_DNS)
+
+        /**
+         * Simple: `redirect_uri` has to match `client_id`
+         */
         data object RedirectUri : ClientIdScheme(REDIRECT_URI)
     }
 
@@ -87,7 +92,14 @@ class OidcSiopVerifier private constructor(
         timeLeewaySeconds: Long = 300L,
         clock: Clock = Clock.System,
         nonceService: NonceService = DefaultNonceService(),
-        clientIdScheme: ClientIdScheme = ClientIdScheme.RedirectUri
+        clientIdScheme: ClientIdScheme = ClientIdScheme.RedirectUri,
+        /**
+         * Used to store the nonce, associated to the state, to first send [AuthenticationRequestParameters.nonce],
+         * and then verify the challenge in the submitted verifiable presentation in
+         * [AuthenticationResponseParameters.vpToken].
+         */
+        stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
+        stateToResponseTypeStore: MapStore<String, String> = DefaultMapStore(),
     ) : this(
         verifier = verifier,
         relyingPartyUrl = relyingPartyUrl,
@@ -97,6 +109,8 @@ class OidcSiopVerifier private constructor(
         clock = clock,
         nonceService = nonceService,
         clientIdScheme = clientIdScheme,
+        stateToNonceStore = stateToNonceStore,
+        stateToResponseTypeStore = stateToResponseTypeStore,
     )
 
     private val containerJwt =
@@ -306,13 +320,15 @@ class OidcSiopVerifier private constructor(
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions,
     ) = AuthenticationRequestParameters(
-        responseType = requestOptions.responseType,
+        responseType = requestOptions.responseType
+            .also { stateToResponseTypeStore.put(requestOptions.state, it) },
         clientId = clientId,
         redirectUrl = requestOptions.buildRedirectUrl(),
         responseUrl = requestOptions.responseUrl,
         clientIdScheme = clientIdScheme.clientIdScheme,
         scope = requestOptions.buildScope(),
-        nonce = nonceService.provideNonce(),
+        nonce = nonceService.provideNonce()
+            .also { stateToNonceStore.put(requestOptions.state, it) },
         clientMetadata = if (requestOptions.clientMetadataUrl != null) {
             null
         } else {
@@ -436,6 +452,11 @@ class OidcSiopVerifier private constructor(
         data class ValidationError(val field: String, val state: String?) : AuthnResponseResult()
 
         /**
+         * Wallet provided an `id_token`, no `vp_token` (as requested by us!)
+         */
+        data class IdToken(val idToken: at.asitplus.openid.IdToken, val state: String?) : AuthnResponseResult()
+
+        /**
          * Validation results of all returned verifiable presentations
          */
         data class VerifiablePresentationValidationResults(val validationResults: List<AuthnResponseResult>) :
@@ -496,10 +517,13 @@ class OidcSiopVerifier private constructor(
      * Validates [AuthenticationResponseParameters] from the Wallet
      */
     suspend fun validateAuthnResponse(params: AuthenticationResponseParameters): AuthnResponseResult {
+        val state = params.state
+            ?: return AuthnResponseResult.ValidationError("state", params.state)
+                .also { Napier.w("Invalid state: ${params.state}") }
         params.response?.let { response ->
             JwsSigned.parse(response).getOrNull()?.let { jarmResponse ->
                 if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
-                    return AuthnResponseResult.ValidationError("response", params.state)
+                    return AuthnResponseResult.ValidationError("response", state)
                         .also { Napier.w { "JWS of response not verified: ${params.response}" } }
                 }
                 AuthenticationResponseParameters.deserialize(jarmResponse.payload.decodeToString())
@@ -512,78 +536,113 @@ class OidcSiopVerifier private constructor(
                 }
             }
         }
-        val idTokenJws = params.idToken
-            ?: return AuthnResponseResult.ValidationError("idToken", params.state)
-                .also { Napier.w("Could not parse idToken: $params") }
+        val responseType = stateToResponseTypeStore.get(state)
+            ?: return AuthnResponseResult.ValidationError("state", state)
+                .also { Napier.w("State not associated with response type: $state") }
+
+        val idToken: IdToken? = if (responseType.contains(ID_TOKEN)) {
+            params.idToken?.let { idToken ->
+                catching {
+                    extractValidatedIdToken(idToken)
+                }.getOrElse {
+                    return AuthnResponseResult.ValidationError("idToken", state)
+                }
+            } ?: return AuthnResponseResult.ValidationError("idToken", state)
+                .also { Napier.w("State not associated with response type: $state") }
+        } else null
+
+        if (responseType.contains(VP_TOKEN)) {
+            val expectedNonce = stateToNonceStore.get(state)
+                ?: return AuthnResponseResult.ValidationError("state", state)
+                    .also { Napier.w("State not associated with nonce: $state") }
+            val presentationSubmission = params.presentationSubmission
+                ?: return AuthnResponseResult.ValidationError("presentation_submission", state)
+                    .also { Napier.w("presentation_submission empty") }
+            val descriptors = presentationSubmission.descriptorMap
+                ?: return AuthnResponseResult.ValidationError("presentation_submission", state)
+                    .also { Napier.w("presentation_submission contains no descriptors") }
+            val verifiablePresentation = params.vpToken
+                ?: return AuthnResponseResult.ValidationError("vp_token is null", state)
+                    .also { Napier.w("No VP in response") }
+
+            val validationResults = descriptors.map { descriptor ->
+                val relatedPresentation =
+                    JsonPath(descriptor.cumulativeJsonPath).query(verifiablePresentation).first().value
+                val result = runCatching {
+                    verifyPresentationResult(descriptor, relatedPresentation, expectedNonce)
+                }.getOrElse {
+                    return AuthnResponseResult.ValidationError("Invalid presentation format", state)
+                        .also { Napier.w("Invalid presentation format: $relatedPresentation") }
+                }
+                result.mapToAuthnResponseResult(state)
+            }
+
+            return if (validationResults.size != 1) {
+                AuthnResponseResult.VerifiablePresentationValidationResults(validationResults)
+            } else validationResults[0]
+        }
+
+        return idToken?.let { AuthnResponseResult.IdToken(it, state) }
+            ?: AuthnResponseResult.Error("Neither id_token nor vp_token", state)
+    }
+
+
+    @Throws(IllegalArgumentException::class, CancellationException::class)
+    private suspend fun extractValidatedIdToken(idTokenJws: String): IdToken {
         val jwsSigned = JwsSigned.parse(idTokenJws).getOrNull()
-            ?: return AuthnResponseResult.ValidationError("idToken", params.state)
+            ?: throw IllegalArgumentException("idToken")
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
         if (!verifierJwsService.verifyJwsObject(jwsSigned))
-            return AuthnResponseResult.ValidationError("idToken", params.state)
+            throw IllegalArgumentException("idToken")
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
-        val idToken = IdToken.deserialize(jwsSigned.payload.decodeToString()).getOrElse { ex ->
-            return AuthnResponseResult.ValidationError("idToken", params.state)
-                .also { Napier.w("Could not deserialize idToken: $idTokenJws", ex) }
-        }
+        val idToken = IdToken.deserialize(jwsSigned.payload.decodeToString()).getOrThrow()
         if (idToken.issuer != idToken.subject)
-            return AuthnResponseResult.ValidationError("iss", params.state)
+            throw IllegalArgumentException("idToken.iss")
                 .also { Napier.d("Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}") }
         val validAudiences = listOfNotNull(relyingPartyUrl, clientIdFromCertificateChain)
         if (idToken.audience !in validAudiences)
-            return AuthnResponseResult.ValidationError("aud", params.state)
+            throw IllegalArgumentException("idToken.aud")
                 .also { Napier.d("audience not valid: ${idToken.audience}") }
         if (idToken.expiration < (clock.now() - timeLeeway))
-            return AuthnResponseResult.ValidationError("exp", params.state)
+            throw IllegalArgumentException("idToken.exp")
                 .also { Napier.d("expirationDate before now: ${idToken.expiration}") }
         if (idToken.issuedAt > (clock.now() + timeLeeway))
-            return AuthnResponseResult.ValidationError("iat", params.state)
+            throw IllegalArgumentException("idToken.iat")
                 .also { Napier.d("issuedAt after now: ${idToken.issuedAt}") }
         if (!nonceService.verifyAndRemoveNonce(idToken.nonce)) {
-            return AuthnResponseResult.ValidationError("nonce", params.state)
+            throw IllegalArgumentException("idToken.nonce")
                 .also { Napier.d("nonce not valid: ${idToken.nonce}, not known to us") }
         }
         if (idToken.subjectJwk == null)
-            return AuthnResponseResult.ValidationError("nonce", params.state)
+            throw IllegalArgumentException("idToken.sub_jwk")
                 .also { Napier.d("sub_jwk is null") }
         if (idToken.subject != idToken.subjectJwk!!.jwkThumbprint)
-            return AuthnResponseResult.ValidationError("sub", params.state)
+            throw IllegalArgumentException("idToken.sub")
                 .also { Napier.d("subject does not equal thumbprint of sub_jwk: ${idToken.subject}") }
-
-        val presentationSubmission = params.presentationSubmission
-            ?: return AuthnResponseResult.ValidationError("presentation_submission", params.state)
-                .also { Napier.w("presentation_submission empty") }
-        val descriptors = presentationSubmission.descriptorMap
-            ?: return AuthnResponseResult.ValidationError("presentation_submission", params.state)
-                .also { Napier.w("presentation_submission contains no descriptors") }
-        val verifiablePresentation = params.vpToken
-            ?: return AuthnResponseResult.ValidationError("vp_token is null", params.state)
-                .also { Napier.w("No VP in response") }
-
-        val validationResults = descriptors.map { descriptor ->
-            val relatedPresentation =
-                JsonPath(descriptor.cumulativeJsonPath).query(verifiablePresentation).first().value
-            val result = runCatching {
-                when (descriptor.format) {
-                    ClaimFormatEnum.JWT_VP -> verifyJwtVpResult(relatedPresentation, idToken)
-                    ClaimFormatEnum.JWT_SD -> verifyJwtSdResult(relatedPresentation, idToken)
-                    ClaimFormatEnum.MSO_MDOC -> verifyMsoMdocResult(relatedPresentation, idToken)
-                    else -> throw IllegalArgumentException()
-                }
-            }.getOrElse {
-                return AuthnResponseResult.ValidationError("Invalid presentation format", params.state)
-                    .also { Napier.w("Invalid presentation format: $relatedPresentation") }
-            }
-            result.mapToAuthnResponseResult(params.state)
-        }
-
-        return if (validationResults.size != 1) {
-            AuthnResponseResult.VerifiablePresentationValidationResults(validationResults)
-        } else validationResults[0]
+        return idToken
     }
 
-    private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(
-        state: String?
-    ) = when (this) {
+    /**
+     * Extract and verifies verifiable presentations, according to format defined in
+     * [OpenID for VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html),
+     * as referenced by [OpenID for VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html).
+     */
+    private fun verifyPresentationResult(
+        descriptor: PresentationSubmissionDescriptor,
+        relatedPresentation: JsonElement,
+        challenge: String
+    ) = when (descriptor.format) {
+        ClaimFormatEnum.JWT_SD,
+        ClaimFormatEnum.MSO_MDOC,
+        ClaimFormatEnum.JWT_VP -> when (relatedPresentation) {
+            is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, challenge)
+            else -> throw IllegalArgumentException()
+        }
+
+        else -> throw IllegalArgumentException()
+    }
+
+    private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
         is Verifier.VerifyPresentationResult.InvalidStructure ->
             AuthnResponseResult.Error("parse vp failed", state)
                 .also { Napier.w("VP error: $this") }
@@ -605,35 +664,6 @@ class OidcSiopVerifier private constructor(
                 .also { Napier.i("VP success: $this") }
     }
 
-    private fun verifyMsoMdocResult(
-        relatedPresentation: JsonElement,
-        idToken: IdToken
-    ) = when (relatedPresentation) {
-        // must be a string
-        // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.5-1
-        is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, idToken.nonce)
-        else -> throw IllegalArgumentException()
-    }
-
-    private fun verifyJwtSdResult(
-        relatedPresentation: JsonElement,
-        idToken: IdToken
-    ) = when (relatedPresentation) {
-        // must be a string
-        // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.5-1
-        is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, idToken.nonce)
-        else -> throw IllegalArgumentException()
-    }
-
-    private fun verifyJwtVpResult(
-        relatedPresentation: JsonElement,
-        idToken: IdToken
-    ) = when (relatedPresentation) {
-        // must be a string
-        // source: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.5-1
-        is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, idToken.nonce)
-        else -> throw IllegalArgumentException()
-    }
 }
 
 

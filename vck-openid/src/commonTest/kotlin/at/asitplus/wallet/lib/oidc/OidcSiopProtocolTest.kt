@@ -3,6 +3,8 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.OpenIdConstants.ID_TOKEN
+import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -86,23 +88,39 @@ class OidcSiopProtocolTest : FreeSpec({
         verifySecondProtocolRun(verifierSiop, walletUrl, holderSiop)
     }
 
-    "wrong client nonce should lead to error" {
+    "wrong client nonce in id_token should lead to error" {
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
             nonceService = object : NonceService {
-                override suspend fun provideNonce(): String {
-                    return uuid4().toString()
-                }
-
-                override suspend fun verifyNonce(it: String): Boolean {
-                    return false
-                }
-
-                override suspend fun verifyAndRemoveNonce(it: String): Boolean {
-                    return false
-                }
+                override suspend fun provideNonce() = uuid4().toString()
+                override suspend fun verifyNonce(it: String) = false
+                override suspend fun verifyAndRemoveNonce(it: String) = false
             }
+        )
+        val requestOptions = RequestOptions(
+            credentials = setOf(OidcSiopVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+            responseType = "$ID_TOKEN $VP_TOKEN"
+        )
+        val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl, requestOptions)
+
+        val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
+        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+        val result = verifierSiop.validateAuthnResponse(authnResponse.url)
+        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.ValidationError>()
+        result.field shouldBe "idToken"
+    }
+
+    "wrong client nonce in vp_token should lead to error" {
+        verifierSiop = OidcSiopVerifier(
+            keyMaterial = verifierKeyMaterial,
+            relyingPartyUrl = relyingPartyUrl,
+            stateToNonceStore = object : MapStore<String, String> {
+                override suspend fun put(key: String, value: String) {}
+                override suspend fun get(key: String): String? = null
+                override suspend fun remove(key: String): String? = null
+            },
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl, defaultRequestOptions)
 
@@ -111,7 +129,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.ValidationError>()
-        result.field shouldBe "nonce"
+        result.field shouldBe "state"
     }
 
     "test with QR Code" {

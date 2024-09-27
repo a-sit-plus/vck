@@ -43,6 +43,7 @@ Release NEXT:
    - Require request options on every method in `OidcSiopVerifier`
    - Move `credentialScheme`, `representation`, `requestedAttributes` from `RequestOptions` to `RequestOptionsCredentials`
    - In `OidcSiopVerifier` move `responseUrl` from constructor parameter to `RequestOptions`
+   - Add `IdToken` as result case to `OidcSiopVerifier.AuthnResponseResult`, when only an `id_token` is requested and received
 
 Release 4.1.2:
  * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments
