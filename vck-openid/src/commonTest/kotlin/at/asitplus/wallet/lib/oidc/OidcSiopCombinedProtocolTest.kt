@@ -4,14 +4,17 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
+import io.kotest.assertions.fail
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
@@ -217,7 +220,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 OidcSiopVerifier.RequestOptionsCredential(
                     credentialScheme = ConstantIndex.AtomicAttribute2023,
                     representation = CredentialRepresentation.SD_JWT,
-                    requestedAttributes = listOf("date_of_birth"),
+                    requestedAttributes = listOf(CLAIM_DATE_OF_BIRTH),
                 ),
                 OidcSiopVerifier.RequestOptionsCredential(
                     credentialScheme = EuPidScheme,
@@ -234,10 +237,25 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val validationResults = verifierSiop.validateAuthnResponse(authnResponse.url)
+        val groupedResult = verifierSiop.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
-        validationResults.validationResults.size shouldBe 2
-        // TODO verify that the correct credentials are actually returned
+        groupedResult.validationResults.size shouldBe 2
+        groupedResult.validationResults.forEach { result ->
+            result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
+            result.disclosures.shouldNotBeEmpty()
+            when (result.sdJwt.verifiableCredentialType) {
+                EuPidScheme.sdJwtType -> {
+                    result.disclosures.firstOrNull { it.claimName == EuPidScheme.Attributes.FAMILY_NAME }.shouldNotBeNull()
+                    result.disclosures.firstOrNull { it.claimName == EuPidScheme.Attributes.GIVEN_NAME }.shouldNotBeNull()
+                }
+                ConstantIndex.AtomicAttribute2023.sdJwtType -> {
+                    result.disclosures.firstOrNull() { it.claimName == CLAIM_DATE_OF_BIRTH }.shouldNotBeNull()
+                }
+                else -> {
+                    fail("Unexpected SD-JWT type: ${result.sdJwt.verifiableCredentialType}")
+                }
+            }
+        }
     }
 })
 
