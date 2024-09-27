@@ -40,7 +40,7 @@ class VerifierAgent private constructor(
         if (sdJwtSigned != null) {
             return validator.verifyVpSdJwt(it, challenge, keyMaterial.publicKey)
         }
-        val jwsSigned = JwsSigned.parse(it).getOrNull()
+        val jwsSigned = JwsSigned.deserialize(it).getOrNull()
         if (jwsSigned != null) {
             return validator.verifyVpJws(it, challenge, keyMaterial.publicKey)
         }

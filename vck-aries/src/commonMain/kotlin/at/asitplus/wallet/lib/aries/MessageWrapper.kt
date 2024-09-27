@@ -2,19 +2,10 @@ package at.asitplus.wallet.lib.aries
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JweAlgorithm
-import at.asitplus.signum.indispensable.josef.JweEncrypted
-import at.asitplus.signum.indispensable.josef.JweEncryption
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.msg.JsonWebMessage
 import io.github.aakira.napier.Napier
 
@@ -25,11 +16,11 @@ class MessageWrapper(
 ) {
 
     suspend fun parseMessage(it: String): ReceivedMessage {
-        val jwsSigned = JwsSigned.parse(it).getOrNull()
+        val jwsSigned = JwsSigned.deserialize(it).getOrNull()
         if (jwsSigned != null) {
-            return parseJwsMessage(jwsSigned, it)
+            return parseJwsMessage(jwsSigned)
         }
-        val jweEncrypted = JweEncrypted.parse(it).getOrNull()
+        val jweEncrypted = JweEncrypted.deserialize(it).getOrNull()
         if (jweEncrypted != null)
             return parseJweMessage(jweEncrypted, it)
         return ReceivedMessage.Error
@@ -47,10 +38,10 @@ class MessageWrapper(
         }
         val payloadString = joseObject.payload.decodeToString()
         if (joseObject.header.contentType == JwsContentTypeConstants.DIDCOMM_SIGNED_JSON) {
-            val parsed = JwsSigned.parse(payloadString).getOrNull()
+            val parsed = JwsSigned.deserialize(payloadString).getOrNull()
                 ?: return ReceivedMessage.Error
                     .also { Napier.w("Could not parse inner JWS") }
-            return parseJwsMessage(parsed, payloadString)
+            return parseJwsMessage(parsed)
         }
         if (joseObject.header.contentType == JwsContentTypeConstants.DIDCOMM_PLAIN_JSON) {
             val message = JsonWebMessage.deserialize(payloadString).getOrElse { ex ->
@@ -63,7 +54,7 @@ class MessageWrapper(
             .also { Napier.w("ContentType not matching") }
     }
 
-    private fun parseJwsMessage(joseObject: JwsSigned, serialized: String): ReceivedMessage {
+    private fun parseJwsMessage(joseObject: JwsSigned): ReceivedMessage {
         Napier.d("Parsing JWS ${joseObject.serialize()}")
         if (!verifierJwsService.verifyJwsObject(joseObject))
             return ReceivedMessage.Error

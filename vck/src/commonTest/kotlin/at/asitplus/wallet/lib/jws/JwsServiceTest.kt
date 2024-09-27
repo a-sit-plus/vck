@@ -1,16 +1,9 @@
 package at.asitplus.wallet.lib.jws
 
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JweAlgorithm
-import at.asitplus.signum.indispensable.josef.JweEncrypted
-import at.asitplus.signum.indispensable.josef.JweEncryption
-import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
@@ -50,7 +43,7 @@ class JwsServiceTest : FreeSpec({
         val signed = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, payload).getOrThrow().serialize()
         signed.shouldNotBeNull()
 
-        val parsed = JwsSigned.parse(signed).getOrThrow()
+        val parsed = JwsSigned.deserialize(signed).getOrThrow()
         parsed.serialize() shouldBe signed
         parsed.payload shouldBe payload
 
@@ -119,7 +112,7 @@ class JwsServiceTest : FreeSpec({
             JweEncryption.A256GCM,
         ).getOrThrow().serialize()
         encrypted.shouldNotBeNull()
-        val parsed = JweEncrypted.parse(encrypted).getOrThrow()
+        val parsed = JweEncrypted.deserialize(encrypted).getOrThrow()
 
         val result = jwsService.decryptJweObject(parsed, encrypted).getOrThrow()
         result.payload.decodeToString() shouldBe stringPayload

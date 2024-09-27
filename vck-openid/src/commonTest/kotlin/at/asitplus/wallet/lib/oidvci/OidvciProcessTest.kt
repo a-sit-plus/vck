@@ -63,7 +63,7 @@ class OidvciProcessTest : FunSpec({
         credential.format shouldBe CredentialFormatEnum.JWT_VC
         val serializedCredential = credential.credential.shouldNotBeNull()
 
-        val jws = JwsSigned.parse(serializedCredential).getOrThrow()
+        val jws = JwsSigned.deserialize(serializedCredential).getOrThrow()
         val vcJws = VerifiableCredentialJws.deserialize(jws.payload.decodeToString()).getOrThrow()
         vcJws.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
     }
@@ -146,7 +146,7 @@ class OidvciProcessTest : FunSpec({
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential.shouldNotBeNull()
 
-        val jws = JwsSigned.parse(serializedCredential.substringBefore("~")).getOrThrow()
+        val jws = JwsSigned.deserialize(serializedCredential.substringBefore("~")).getOrThrow()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString()).getOrThrow()
 
         sdJwt.disclosureDigests.shouldNotBeNull()
@@ -178,7 +178,7 @@ class OidvciProcessTest : FunSpec({
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential.shouldNotBeNull()
 
-        val jws = JwsSigned.parse(serializedCredential.substringBefore("~")).getOrThrow()
+        val jws = JwsSigned.deserialize(serializedCredential.substringBefore("~")).getOrThrow()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString()).getOrThrow()
 
         sdJwt.disclosureDigests.shouldNotBeNull()
@@ -199,7 +199,7 @@ class OidvciProcessTest : FunSpec({
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential.shouldNotBeNull()
 
-        val jws = JwsSigned.parse(serializedCredential.substringBeforeLast("~")).getOrThrow()
+        val jws = JwsSigned.deserialize(serializedCredential.substringBeforeLast("~")).getOrThrow()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString()).getOrThrow()
 
         sdJwt.disclosureDigests.shouldNotBeNull()

@@ -3,6 +3,11 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
+import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.PROOF_CWT_TYPE
+import at.asitplus.openid.OpenIdConstants.PROOF_JWT_TYPE
+import at.asitplus.openid.OpenIdConstants.ProofType
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CborWebToken
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -14,11 +19,6 @@ import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
-import at.asitplus.openid.OpenIdConstants.Errors
-import at.asitplus.openid.OpenIdConstants.PROOF_CWT_TYPE
-import at.asitplus.openid.OpenIdConstants.PROOF_JWT_TYPE
-import at.asitplus.openid.OpenIdConstants.ProofType
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -191,7 +191,7 @@ class CredentialIssuer(
     }
 
     private suspend fun String.validateJwtProof(): CryptoPublicKey {
-        val jwsSigned = JwsSigned.parse(this).getOrNull()
+        val jwsSigned = JwsSigned.deserialize(this).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid proof: $this") }
         val jwt = JsonWebToken.deserialize(jwsSigned.payload.decodeToString()).getOrNull()

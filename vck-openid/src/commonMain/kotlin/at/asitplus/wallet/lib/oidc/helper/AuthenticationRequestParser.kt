@@ -2,21 +2,21 @@ package at.asitplus.wallet.lib.oidc.helper
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
+import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import io.github.aakira.napier.Napier
-import io.ktor.http.Url
-import io.ktor.util.flattenEntries
+import io.ktor.http.*
+import io.ktor.util.*
 
 internal class AuthenticationRequestParser(
     /**
@@ -78,7 +78,7 @@ internal class AuthenticationRequestParser(
         }
 
     private fun parseRequestObjectJws(requestObject: String): AuthenticationRequestParametersFrom.JwsSigned? {
-        return JwsSigned.parse(requestObject).getOrNull()?.let { jws ->
+        return JwsSigned.deserialize(requestObject).getOrNull()?.let { jws ->
             val params = AuthenticationRequestParameters.deserialize(jws.payload.decodeToString()).getOrElse {
                 return null
                     .apply { Napier.w("parseRequestObjectJws: Deserialization failed", it) }

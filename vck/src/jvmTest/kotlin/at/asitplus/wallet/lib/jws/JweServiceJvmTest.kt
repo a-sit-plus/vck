@@ -1,9 +1,7 @@
 package at.asitplus.wallet.lib.jws
 
 import at.asitplus.signum.indispensable.ECCurve
-import at.asitplus.signum.indispensable.ECCurve.SECP_256_R_1
-import at.asitplus.signum.indispensable.ECCurve.SECP_384_R_1
-import at.asitplus.signum.indispensable.ECCurve.SECP_521_R_1
+import at.asitplus.signum.indispensable.ECCurve.*
 import at.asitplus.signum.indispensable.getJcaPublicKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncrypted
@@ -69,7 +67,7 @@ class JweServiceJvmTest : FreeSpec({
                         .apply { encrypt(jvmEncrypter) }
                     val encryptedJwe = libJweObject.serialize()
 
-                    val parsedJwe = JweEncrypted.parse(encryptedJwe).getOrThrow()
+                    val parsedJwe = JweEncrypted.deserialize(encryptedJwe).getOrThrow()
                     val result = jwsService.decryptJweObject(parsedJwe, encryptedJwe).getOrThrow()
                     result.payload.decodeToString() shouldBe stringPayload
                 }
