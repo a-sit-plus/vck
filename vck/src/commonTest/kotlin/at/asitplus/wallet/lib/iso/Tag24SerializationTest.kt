@@ -50,7 +50,6 @@ class Tag24SerializationTest : FreeSpec({
         )
 
         val serialized = vckCborSerializer.encodeToByteArray(input)
-            .also { println(it.encodeToString(Base16(true))) }
 
         serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         vckCborSerializer.decodeFromByteArray<DeviceSigned>(serialized) shouldBe input
@@ -62,7 +61,6 @@ class Tag24SerializationTest : FreeSpec({
         )
 
         val serialized = vckCborSerializer.encodeToByteArray(input)
-            .also { println(it.encodeToString(Base16(true))) }
 
         serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         vckCborSerializer.decodeFromByteArray<DocRequest>(serialized) shouldBe input
@@ -77,7 +75,6 @@ class Tag24SerializationTest : FreeSpec({
         )
 
         val serialized = vckCborSerializer.encodeToByteArray(input)
-            .also { println(it.encodeToString(Base16(true))) }
 
         serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         vckCborSerializer.decodeFromByteArray<IssuerSigned>(serialized) shouldBe input
@@ -96,7 +93,6 @@ class Tag24SerializationTest : FreeSpec({
         val numberOfClaims = issuedCredential.issuerSigned.namespaces!!.fold(0) { acc, entry ->
             acc + entry.value.entries.size
         }
-        println(issuedCredential.issuerSigned.serialize().encodeToString(Base16(true)))
         val serialized = issuedCredential.issuerSigned.serialize().encodeToString(Base16(true))
         "D818".toRegex().findAll(serialized).toList().shouldHaveSize(numberOfClaims + 1)
         // add 1 for MSO in IssuerAuth
@@ -112,7 +108,6 @@ class Tag24SerializationTest : FreeSpec({
             validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
         )
         val serializedMso = mso.serializeForIssuerAuth()
-            .also { println(it.encodeToString(Base16(true))) }
         val input = CoseSigned(
             protectedHeader = ByteStringWrapper(CoseHeader()),
             unprotectedHeader = null,
@@ -121,7 +116,6 @@ class Tag24SerializationTest : FreeSpec({
         )
 
         val serialized = vckCborSerializer.encodeToByteArray(input)
-            .also { println(it.encodeToString(Base16(true))) }
 
         serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         serializedMso.encodeToString(Base16(true)).shouldStartWith("D818")

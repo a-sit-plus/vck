@@ -109,7 +109,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             }
 
             val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-            authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().also { println(it) }
+            authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             val result = verifierSiop.validateAuthnResponse(authnResponse.url)
             result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
@@ -153,7 +153,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             }
 
             val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-            authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().also { println(it) }
+            authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             val result = verifierSiop.validateAuthnResponse(authnResponse.url)
             result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()

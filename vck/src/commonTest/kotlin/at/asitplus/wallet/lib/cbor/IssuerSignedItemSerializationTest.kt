@@ -65,7 +65,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
 
         val serialized = doc.serialize()
 
-        serialized.encodeToString(Base16(true)).apply { println(this) }.shouldNotContain("D903EC")
+        serialized.encodeToString(Base16(true)).shouldNotContain("D903EC")
         val parsed = Document.deserialize(serialized).getOrThrow()
         parsed shouldBe doc
     }
