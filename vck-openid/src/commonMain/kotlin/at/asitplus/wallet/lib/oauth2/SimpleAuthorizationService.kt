@@ -3,10 +3,10 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
+import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
-import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.wallet.lib.oidvci.*
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -61,7 +61,8 @@ class SimpleAuthorizationService(
     override val supportsClientNonce: Boolean = true
 
     /**
-     * Serve this result JSON-serialized under `/.well-known/openid-configuration`
+     * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
+     * see [OpenIdConstants.PATH_WELL_KNOWN_OPENID_CONFIGURATION]
      */
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(

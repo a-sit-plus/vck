@@ -35,6 +35,8 @@ object OpenIdConstants {
 
     const val PATH_WELL_KNOWN_CREDENTIAL_ISSUER = "/.well-known/openid-credential-issuer"
 
+    const val PATH_WELL_KNOWN_OPENID_CONFIGURATION = "/.well-known/openid-configuration"
+
     const val SCOPE_OPENID = "openid"
 
     const val SCOPE_PROFILE = "profile"
