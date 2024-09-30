@@ -13,9 +13,9 @@ import java.security.KeyStore
  * @param certAlias optional(i.e. nullable) alias for the certificate to return when invoking [getCertificate]
  *
  */
-class KeyStoreyMaterial
+class KeyStoreMaterial
 @JvmOverloads constructor(
-    val keyStore: KeyStore,
+    private val keyStore: KeyStore,
     keyAlias: String,
     privateKeyPassword: CharArray,
     providerName: String? = null,

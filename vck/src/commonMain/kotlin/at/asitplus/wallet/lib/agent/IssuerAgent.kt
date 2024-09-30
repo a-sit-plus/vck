@@ -43,7 +43,7 @@ class IssuerAgent(
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
     override val keyMaterial: KeyMaterial,
-    override val cryptoAlgorithms: Set<SignatureAlgorithm>,
+    override val cryptoAlgorithms: Set<SignatureAlgorithm> = setOf(keyMaterial.signatureAlgorithm),
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
 ) : Issuer {
 
