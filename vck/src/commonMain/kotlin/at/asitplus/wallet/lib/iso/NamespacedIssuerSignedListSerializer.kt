@@ -49,9 +49,9 @@ object NamespacedIssuerSignedListSerializer : KSerializer<Map<String, IssuerSign
         }
     }
 
-
-    override fun serialize(encoder: Encoder, value: Map<String, IssuerSignedList>) {
-        mapSerializer.serialize(encoder, value)
-    }
+    override fun serialize(encoder: Encoder, value: Map<String, IssuerSignedList>) =
+        NamespacedMapEntryDeserializer().let {
+            MapSerializer(it.namespaceSerializer, it.itemSerializer).serialize(encoder, value)
+        }
 
 }
