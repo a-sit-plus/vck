@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.wallet.lib.ItemValueDecoder
 import at.asitplus.wallet.lib.ItemValueEncoder
-import at.asitplus.wallet.lib.SerializerLookup
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.cbor.Cbor
@@ -13,34 +12,45 @@ import okio.ByteString.Companion.toByteString
 
 internal object CborCredentialSerializer {
 
-    private val serializerLookupFunctions = mutableSetOf<SerializerLookup>()
-    private val encoderFunctions = mutableSetOf<ItemValueEncoder>()
     private val decoderMap = mutableMapOf<String, Map<String, ItemValueDecoder>>()
-
-    fun register(function: SerializerLookup) {
-        serializerLookupFunctions += function
-    }
-
-    fun register(function: ItemValueEncoder) {
-        encoderFunctions += function
-    }
-
+    private val encoderMap = mutableMapOf<String, Map<String, ItemValueEncoder>>()
+    private val serializerLookupMap = mutableMapOf<String, Map<String, KSerializer<*>>>()
 
     fun register(serializerMap: Map<String, KSerializer<*>>, isoNamespace: String) {
         decoderMap[isoNamespace] =
             serializerMap.map { (k, ser) ->
-                k to { descriptor: SerialDescriptor, index: Int, compositeDecoder: CompositeDecoder ->
-                    compositeDecoder.decodeSerializableElement(descriptor, index, ser)!!
-                }
+                k to decodeFun(ser)
             }.toMap()
+        encoderMap[isoNamespace] =
+            serializerMap.map { (k, ser) ->
+                @Suppress("UNCHECKED_CAST")
+                k to encodeFun(ser as KSerializer<Any>)
+            }.toMap()
+        serializerLookupMap[isoNamespace] = serializerMap
     }
 
-    fun lookupSerializer(element: Any): KSerializer<*>? {
-        return serializerLookupFunctions.firstNotNullOfOrNull { it.invoke(element) }
-    }
+    private fun decodeFun(ser: KSerializer<*>) =
+        { descriptor: SerialDescriptor, index: Int, compositeDecoder: CompositeDecoder ->
+            compositeDecoder.decodeSerializableElement(descriptor, index, ser)!!
+        }
 
-    fun encode(descriptor: SerialDescriptor, index: Int, compositeEncoder: CompositeEncoder, value: Any) {
-        encoderFunctions.firstOrNull { it.invoke(descriptor, index, compositeEncoder, value) }
+    private fun encodeFun(ser: KSerializer<Any>) =
+        { descriptor: SerialDescriptor, index: Int, compositeEncoder: CompositeEncoder, value: Any ->
+            compositeEncoder.encodeSerializableElement(descriptor, index, ser, value)
+        }
+
+    fun lookupSerializer(namespace: String, elementIdentifier: String): KSerializer<*>? =
+        serializerLookupMap[namespace]?.get(elementIdentifier)
+
+    fun encode(
+        namespace: String,
+        elementIdentifier: String,
+        descriptor: SerialDescriptor,
+        index: Int,
+        compositeEncoder: CompositeEncoder,
+        value: Any
+    ) {
+        encoderMap[namespace]?.get(elementIdentifier)?.invoke(descriptor, index, compositeEncoder, value)
     }
 
     fun decode(
@@ -48,15 +58,11 @@ internal object CborCredentialSerializer {
         index: Int,
         compositeDecoder: CompositeDecoder,
         elementIdentifier: String,
-        isoDocType: String
-    ): Any? =
-        decoderMap[isoDocType]?.get(elementIdentifier)?.let {
-            runCatching { it.invoke(descriptor, index, compositeDecoder) }.getOrNull()
-        }
+        isoNamespace: String,
+    ): Any? = decoderMap[isoNamespace]?.get(elementIdentifier)?.let {
+        runCatching { it.invoke(descriptor, index, compositeDecoder) }.getOrNull()
+    }
 }
-
-@Deprecated("use vckCborSerializer instead", replaceWith = ReplaceWith("vckCborSerializer"))
-val cborSerializer get() = vckCborSerializer
 
 @OptIn(ExperimentalSerializationApi::class)
 val vckCborSerializer by lazy {

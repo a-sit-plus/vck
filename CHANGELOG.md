@@ -22,7 +22,7 @@ Release 5.0.0:
  * Extend `TokenResponseParameters` to be able to handle CSC/QES flows
  - In `TokenRequestParameters`, change `transactionCode` to `String`, as it needs to be entered by the user potentially
  - Add extension method to build DPoP headers acc. to [RFC 9449](https://datatracker.ietf.org/doc/html/rfc9449), see `WalletService`
- * Proper registration of serializers for ISO credentials (breaking change)
+ * Proper registration of serializers for ISO credentials (breaking change), see API in `LibraryInitializer`
  * Update dependencies to have everything aligned with Kotlin 2.0.20:
    * Kotlin 2.0.20
    * EU PID + MDL Credentials in test scope

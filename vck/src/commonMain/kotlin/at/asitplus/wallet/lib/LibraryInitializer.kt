@@ -72,26 +72,20 @@ object LibraryInitializer {
      * which need to specify several functions to allow encoding any values
      * in [at.asitplus.wallet.lib.iso.IssuerSignedItem]. See the function typealiases for implementation notes.
      *
-     * @param serializerLookup used to build the serializer descriptor for [at.asitplus.wallet.lib.iso.IssuerSignedItem]
-     * @param itemValueEncoder used to actually serialize the element value in [at.asitplus.wallet.lib.iso.IssuerSignedItemSerializer]
      * @param jsonValueEncoder used to describe the credential in input descriptors used in verifiable presentations,
      *                         e.g. when used in SIOPv2
-     * @param itemValueDecoderMap used to actually deserialize `Any` object in [at.asitplus.wallet.lib.iso.IssuerSignedItemSerializer],
-     * with `elementIdentifier` as the key
+     * @param itemValueSerializerMap used to actually serialize and deserialize `Any` object in
+     * [at.asitplus.wallet.lib.iso.IssuerSignedItemSerializer], with `elementIdentifier` as the key
      */
     fun registerExtensionLibrary(
         credentialScheme: ConstantIndex.CredentialScheme,
         serializersModule: SerializersModule? = null,
-        serializerLookup: SerializerLookup,
-        itemValueEncoder: ItemValueEncoder,
         jsonValueEncoder: JsonValueEncoder,
-        itemValueDecoderMap: ElementIdentifierToItemValueSerializerMap = emptyMap(),
+        itemValueSerializerMap: ElementIdentifierToItemValueSerializerMap = emptyMap(),
     ) {
         registerExtensionLibrary(credentialScheme, serializersModule)
-        CborCredentialSerializer.register(serializerLookup)
-        CborCredentialSerializer.register(itemValueEncoder)
         JsonCredentialSerializer.register(jsonValueEncoder)
-        credentialScheme.isoNamespace?.let { CborCredentialSerializer.register(itemValueDecoderMap, it) }
+        credentialScheme.isoNamespace?.let { CborCredentialSerializer.register(itemValueSerializerMap, it) }
     }
 
 }
@@ -114,7 +108,7 @@ object LibraryInitializer {
  * ```
  */
 typealias ItemValueEncoder
-        = (descriptor: SerialDescriptor, index: Int, compositeEncoder: CompositeEncoder, value: Any) -> Boolean
+        = (descriptor: SerialDescriptor, index: Int, compositeEncoder: CompositeEncoder, value: Any) -> Unit
 
 /**
  * Implementation may be

@@ -35,13 +35,15 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
     }
 
     private fun CompositeEncoder.encodeAnything(value: IssuerSignedItem, index: Int) {
+        val elementValueSerializer =
+            buildElementValueSerializer(namespace, value.elementValue, value.elementIdentifier)
         val descriptor = buildClassSerialDescriptor("IssuerSignedItem") {
             element(PROP_DIGEST_ID, Long.serializer().descriptor)
             element(PROP_RANDOM, ByteArraySerializer().descriptor)
             element(PROP_ELEMENT_ID, String.serializer().descriptor)
             element(
                 elementName = PROP_ELEMENT_VALUE,
-                descriptor = buildElementValueSerializer(value.elementValue).descriptor,
+                descriptor = elementValueSerializer.descriptor,
                 annotations = value.elementValue.annotations()
             )
         }
@@ -49,11 +51,12 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
         when (val it = value.elementValue) {
             is String -> encodeStringElement(descriptor, index, it)
             is Int -> encodeIntElement(descriptor, index, it)
+            is Long -> encodeLongElement(descriptor, index, it)
             is LocalDate -> encodeSerializableElement(descriptor, index, LocalDate.serializer(), it)
             is Instant -> encodeSerializableElement(descriptor, index, InstantStringSerializer(), it)
             is Boolean -> encodeBooleanElement(descriptor, index, it)
             is ByteArray -> encodeSerializableElement(descriptor, index, ByteArraySerializer(), it)
-            else -> CborCredentialSerializer.encode(descriptor, index, this, it)
+            else -> CborCredentialSerializer.encode(namespace, value.elementIdentifier, descriptor, index, this, it)
         }
     }
 
@@ -65,15 +68,21 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
             emptyList()
         }
 
-    private inline fun <reified T> buildElementValueSerializer(element: T) = when (element) {
+    private inline fun <reified T> buildElementValueSerializer(
+        namespace: String,
+        elementValue: T,
+        elementIdentifier: String
+    ) = when (elementValue) {
         is String -> String.serializer()
         is Int -> Int.serializer()
+        is Long -> Long.serializer()
         is LocalDate -> LocalDate.serializer()
         is Instant -> InstantStringSerializer()
         is Boolean -> Boolean.serializer()
         is ByteArray -> ByteArraySerializer()
-        is Any -> CborCredentialSerializer.lookupSerializer(element) ?: error("descriptor not found for $element")
-        else -> error("descriptor not found for $element")
+        is Any -> CborCredentialSerializer.lookupSerializer(namespace, elementIdentifier)
+            ?: error("serializer not found for $elementIdentifier, with value $elementValue")
+        else -> error("serializer not found for $elementIdentifier, with value $elementValue")
     }
 
 
