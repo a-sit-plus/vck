@@ -93,11 +93,11 @@ data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteA
     }
 }
 
-expect class PlatformCryptoShim(keyMaterial: KeyMaterial) {
+expect open class PlatformCryptoShim(keyMaterial: KeyMaterial) {
 
     val keyMaterial: KeyMaterial
 
-    fun encrypt(
+    open fun encrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -105,7 +105,7 @@ expect class PlatformCryptoShim(keyMaterial: KeyMaterial) {
         algorithm: JweEncryption
     ): KmmResult<AuthenticatedCiphertext>
 
-    suspend fun decrypt(
+    open suspend fun decrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -114,18 +114,18 @@ expect class PlatformCryptoShim(keyMaterial: KeyMaterial) {
         algorithm: JweEncryption
     ): KmmResult<ByteArray>
 
-    fun performKeyAgreement(
+    open fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray>
 
-    fun performKeyAgreement(
+    open fun performKeyAgreement(
         ephemeralKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray>
 
-    fun hmac(
+    open fun hmac(
         key: ByteArray,
         algorithm: JweEncryption,
         input: ByteArray

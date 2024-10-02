@@ -20,9 +20,9 @@ import kotlin.experimental.ExperimentalNativeApi
  * Beware: It does **not** implement encryption, decryption, key agreement and message digest correctly.
  */
 @Suppress("UNCHECKED_CAST")
-actual class PlatformCryptoShim actual constructor(actual val keyMaterial: KeyMaterial)  {
+actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: KeyMaterial)  {
 
-    actual fun encrypt(
+    actual open fun encrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -37,7 +37,7 @@ actual class PlatformCryptoShim actual constructor(actual val keyMaterial: KeyMa
         )
     }
 
-    actual suspend fun decrypt(
+    actual open suspend fun decrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -51,7 +51,7 @@ actual class PlatformCryptoShim actual constructor(actual val keyMaterial: KeyMa
             KmmResult.failure(IllegalArgumentException())
     }
 
-    actual fun performKeyAgreement(
+    actual open fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
@@ -59,11 +59,11 @@ actual class PlatformCryptoShim actual constructor(actual val keyMaterial: KeyMa
         return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
     }
 
-    actual fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
+    actual open fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
         return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
     }
 
-    actual fun hmac(key: ByteArray, algorithm: JweEncryption, input: ByteArray): KmmResult<ByteArray> {
+    actual open fun hmac(key: ByteArray, algorithm: JweEncryption, input: ByteArray): KmmResult<ByteArray> {
         return KmmResult.success("hmac".encodeToByteArray() + key)
     }
 

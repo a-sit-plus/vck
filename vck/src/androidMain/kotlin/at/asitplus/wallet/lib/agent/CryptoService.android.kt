@@ -10,7 +10,7 @@ import javax.crypto.spec.SecretKeySpec
 
 actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: KeyMaterial) {
 
-    actual fun encrypt(
+    actual open fun encrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -42,7 +42,7 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
     }.wrap()
 
 
-    actual suspend fun decrypt(
+    actual open suspend fun decrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -67,7 +67,7 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
         }.doFinal(input + authTag)
     }.wrap()
 
-    actual fun performKeyAgreement(
+    actual open fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
@@ -75,11 +75,11 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
         return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
     }
 
-    actual fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
+    actual open fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
         return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
     }
 
-    actual fun hmac(
+    actual open fun hmac(
         key: ByteArray,
         algorithm: JweEncryption,
         input: ByteArray,
