@@ -1,7 +1,8 @@
 # Changelog
 
 Release 5.1.0:
- - tbd
+ - Update JsonPath4K to 2.4.0
+ - Fix XCF export with transitive dependencies
 
 Release 5.0.0:
  - Remove `OidcSiopWallet.newDefaultInstance()` and replace it with a constructor

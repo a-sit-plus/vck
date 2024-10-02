@@ -70,9 +70,8 @@ setupAndroid()
 
 exportIosFramework(
     name = "VckKmm",
-    transitiveExports = false,
-    project(":dif-data-classes"),
-    "at.asitplus.signum:supreme:${VcLibVersions.supreme}"
+    transitiveExports = true,
+    project(":dif-data-classes")
 )
 
 val javadocJar = setupDokka(

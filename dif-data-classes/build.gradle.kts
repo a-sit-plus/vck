@@ -32,7 +32,12 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(project.napier())
-                implementation(project.ktor("http"))
+                implementation(project.ktor("http")) {
+                    //will be upgraded anyways, just to remove it from XCF dependencies
+                    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
+                }
+                //and here, we manually add it with the correct version
+                implementation(coroutines())
                 api("com.benasher44:uuid:${VcLibVersions.uuid}")
                 api("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}")
                 api("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
