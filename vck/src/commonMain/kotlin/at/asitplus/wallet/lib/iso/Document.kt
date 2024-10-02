@@ -12,7 +12,7 @@ import kotlinx.serialization.encodeToByteArray
 @Serializable
 data class Document(
     @SerialName("docType")
-    val docType: String, // this is relevant for deserializing the elementValue of IssuerSignedItem
+    val docType: String,
     @SerialName("issuerSigned")
     val issuerSigned: IssuerSigned,
     @SerialName("deviceSigned")
