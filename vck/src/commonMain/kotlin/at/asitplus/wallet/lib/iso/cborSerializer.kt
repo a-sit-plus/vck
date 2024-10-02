@@ -1,7 +1,5 @@
 package at.asitplus.wallet.lib.iso
 
-import at.asitplus.wallet.lib.ItemValueDecoder
-import at.asitplus.wallet.lib.ItemValueEncoder
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.cbor.Cbor
@@ -86,3 +84,10 @@ fun ByteArray.stripCborTag(tag: Byte): ByteArray {
 fun ByteArray.wrapInCborTag(tag: Byte) = byteArrayOf(0xd8.toByte()) + byteArrayOf(tag) + this
 
 fun ByteArray.sha256(): ByteArray = toByteString().sha256().toByteArray()
+
+
+private typealias ItemValueEncoder
+        = (descriptor: SerialDescriptor, index: Int, compositeEncoder: CompositeEncoder, value: Any) -> Unit
+
+private typealias ItemValueDecoder
+        = (descriptor: SerialDescriptor, index: Int, compositeDecoder: CompositeDecoder) -> Any
