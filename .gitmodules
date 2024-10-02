@@ -4,9 +4,3 @@
 [submodule "kmp-crypto"]
 	path = signum
 	url = https://github.com/a-sit-plus/signum.git
-[submodule "mobile-driving-licence-credential"]
-	path = mobile-driving-licence-credential
-	url = git@github.com:a-sit-plus/mobile-driving-licence-credential.git
-[submodule "eu-pid-credential"]
-	path = eu-pid-credential
-	url = ../eu-pid-credential
