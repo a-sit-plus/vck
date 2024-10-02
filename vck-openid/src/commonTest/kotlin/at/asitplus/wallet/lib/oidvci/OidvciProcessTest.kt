@@ -166,8 +166,8 @@ class OidvciProcessTest : FunSpec({
             )
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
-        token.authorizationDetails.shouldNotBeNull()
-        val first = token.authorizationDetails!!.first().shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
+        token.authorizationDetailsList.shouldNotBeNull()
+        val first = token.authorizationDetailsList!!.first().shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
         val credentialRequest = client.createCredentialRequest(
             input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialConfigurationId!!),
             clientNonce = token.clientNonce,
