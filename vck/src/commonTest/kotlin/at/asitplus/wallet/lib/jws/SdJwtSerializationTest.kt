@@ -11,6 +11,7 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
+import kotlin.random.nextUInt
 
 class SdJwtSerializationTest : FreeSpec({
 
@@ -20,12 +21,30 @@ class SdJwtSerializationTest : FreeSpec({
         val value = Random.nextBytes(16).encodeToString(Base64())
         val item = SelectiveDisclosureItem(salt, name, value)
 
-        val serialized = item.serialize().also { println(it) }
+        val serialized = item.serialize()
 
         serialized shouldContain "["
         serialized shouldContain """"${salt.encodeToString(Base64UrlStrict)}""""
         serialized shouldContain """"$name""""
         serialized shouldContain """"$value""""
+        serialized shouldContain "]"
+
+        val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
+        deserialized shouldBe item
+    }
+
+    "Serialization is correct for ByteArray" {
+        val salt = Random.nextBytes(32)
+        val name = Random.nextBytes(16).encodeToString(Base64())
+        val value = Random.nextBytes(16)
+        val item = SelectiveDisclosureItem(salt, name, value)
+
+        val serialized = item.serialize()
+
+        serialized shouldContain "["
+        serialized shouldContain """"${salt.encodeToString(Base64UrlStrict)}""""
+        serialized shouldContain """"$name""""
+        serialized shouldContain """"${value.encodeToString(Base64UrlStrict)}""""
         serialized shouldContain "]"
 
         val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
@@ -38,7 +57,7 @@ class SdJwtSerializationTest : FreeSpec({
         val value = true
         val item = SelectiveDisclosureItem(salt, name, value)
 
-        val serialized = item.serialize().also { println(it) }
+        val serialized = item.serialize()
 
         serialized shouldContain "["
         serialized shouldContain """$value"""
@@ -49,13 +68,30 @@ class SdJwtSerializationTest : FreeSpec({
         deserialized shouldBe item
     }
 
-    "Serialization is correct for Number" {
+    "Serialization is correct for Long" {
         val salt = Random.nextBytes(32)
         val name = Random.nextBytes(16).encodeToString(Base64())
         val value = Random.nextLong()
         val item = SelectiveDisclosureItem(salt, name, value)
 
-        val serialized = item.serialize().also { println(it) }
+        val serialized = item.serialize()
+
+        serialized shouldContain "["
+        serialized shouldContain """$value"""
+        serialized shouldNotContain """"$value""""
+        serialized shouldContain "]"
+
+        val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
+        deserialized shouldBe item
+    }
+
+    "Serialization is correct for UInt" {
+        val salt = Random.nextBytes(32)
+        val name = Random.nextBytes(16).encodeToString(Base64())
+        val value = Random.nextUInt()
+        val item = SelectiveDisclosureItem(salt, name, value)
+
+        val serialized = item.serialize()
 
         serialized shouldContain "["
         serialized shouldContain """$value"""

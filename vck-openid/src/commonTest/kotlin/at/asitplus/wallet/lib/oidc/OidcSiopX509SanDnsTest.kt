@@ -1,38 +1,28 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.signum.indispensable.asn1.Asn1
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.asn1.Asn1Primitive
 import at.asitplus.signum.indispensable.asn1.Asn1String
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
+import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
-import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OidcSiopX509SanDnsTest : FreeSpec({
 
-    lateinit var responseUrl: String
-    lateinit var walletUrl: String
-
-    lateinit var holderKeyPair: KeyPairAdapter
-    lateinit var verifierKeyPair: KeyPairAdapter
+    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var verifierKeyMaterial: KeyMaterial
 
     lateinit var holderAgent: Holder
-    lateinit var verifierAgent: Verifier
 
     lateinit var holderSiop: OidcSiopWallet
     lateinit var verifierSiop: OidcSiopVerifier
@@ -49,46 +39,47 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                     )
                 }
             ))))
-        holderKeyPair = RandomKeyPairAdapter()
-        verifierKeyPair = RandomKeyPairAdapter(extensions)
-        responseUrl = "https://example.com"
-        walletUrl = "https://example.com/wallet/${uuid4()}"
-        holderAgent = HolderAgent(holderKeyPair)
-        verifierAgent = VerifierAgent(verifierKeyPair)
+        holderKeyMaterial = EphemeralKeyWithoutCert()
+        verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
+        holderAgent = HolderAgent(holderKeyMaterial)
         holderAgent.storeCredential(
             IssuerAgent(
-                RandomKeyPairAdapter(),
+                EphemeralKeyWithoutCert(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.SD_JWT,
             ).getOrThrow().toStoreCredentialInput()
         )
 
-        holderSiop = OidcSiopWallet.newDefaultInstance(
-            keyPairAdapter = holderKeyPair,
+        holderSiop = OidcSiopWallet(
+            keyMaterial = holderKeyMaterial,
             holder = holderAgent,
         )
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
-            relyingPartyUrl = null,
-            responseUrl = responseUrl,
-            x5c = listOf(verifierKeyPair.certificate!!)
+        verifierSiop = OidcSiopVerifier(
+            keyMaterial = verifierKeyMaterial,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!)),
         )
     }
 
     "test with Fragment" {
         val authnRequest = verifierSiop.createAuthnRequestAsSignedRequestObject(
             requestOptions = RequestOptions(
-                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                credentials = setOf(
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.SD_JWT,
+                        listOf(CLAIM_GIVEN_NAME)
+                    )
+                ),
                 responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
-                requestedAttributes = listOf("given_name")
+                responseUrl = "https://example.com/response",
             )
-        ).also { println(it) }.getOrThrow()
+        ).getOrThrow()
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>().also { println(it) }
+        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
         val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()

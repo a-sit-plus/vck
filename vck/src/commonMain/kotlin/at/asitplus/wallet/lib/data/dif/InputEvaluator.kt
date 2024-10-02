@@ -2,18 +2,15 @@ package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.ConstraintFilter
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.RequirementEnum
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import io.github.aakira.napier.Napier
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.*
 
 /**
  * Specification: https://identity.foundation/presentation-exchange/spec/v2.0.0/#input-evaluation
@@ -61,7 +58,8 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
     // source: https://json-schema.org/draft-07/schema#
     // this currently is only a tentative implementation
     val typeMatchesElement = when (this) {
-        is JsonArray -> filter.type == "array" // TODO: need recursive type check; Need element count check (minItems = 1) for root, need check for unique items at root (whatever that means)
+        // TODO: need recursive type check; Need element count check (minItems = 1) for root, need check for unique items at root (whatever that means)
+        is JsonArray -> filter.type == "array"
         is JsonObject -> filter.type == "object"
         is JsonPrimitive -> when (filter.type) {
             "string" -> this.isString

@@ -2,6 +2,9 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.OidcUserInfo
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -10,20 +13,26 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
-import at.asitplus.wallet.lib.oidvci.OidcUserInfo
-import at.asitplus.wallet.lib.oidvci.OidcUserInfoExtended
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUE_DATE
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
+
 
 class DummyOAuth2IssuerCredentialDataProvider(
     private val userInfo: OidcUserInfoExtended,
@@ -57,16 +66,25 @@ class DummyOAuth2IssuerCredentialDataProvider(
         val givenName = userInfo.userInfo.givenName
         val subjectId = subjectPublicKey.didEncoded
         val claims = listOfNotNull(
-            givenName?.let { optionalClaim(claimNames, "given_name", it) },
-            familyName?.let { optionalClaim(claimNames, "family_name", it) },
-            userInfo.userInfo.birthDate?.let { optionalClaim(claimNames, "date_of_birth", it) },
+            givenName?.let {
+                optionalClaim(claimNames, CLAIM_GIVEN_NAME, it)
+            },
+            familyName?.let {
+                optionalClaim(claimNames, CLAIM_FAMILY_NAME, it)
+            },
+            userInfo.userInfo.birthDate?.let {
+                optionalClaim(claimNames, CLAIM_DATE_OF_BIRTH, LocalDate.parse(it))
+            },
+            userInfo.userInfo.picture?.let {
+                optionalClaim(claimNames, CLAIM_PORTRAIT, it.decodeToByteArray(Base64()))
+            },
         )
         return when (representation) {
             ConstantIndex.CredentialRepresentation.SD_JWT ->
                 CredentialToBeIssued.VcSd(claims, expiration)
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                AtomicAttribute2023(subjectId, "given_name", givenName ?: "no value"), expiration,
+                AtomicAttribute2023(subjectId, GIVEN_NAME, givenName ?: "no value"), expiration,
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -154,7 +172,6 @@ class DummyOAuth2IssuerCredentialDataProvider(
     private fun optionalClaim(claimNames: Collection<String>?, name: String, value: Any) =
         if (claimNames.isNullOrContains(name)) ClaimToBeIssued(name, value) else null
 
-
     private fun issuerSignedItem(name: String, value: Any, digestId: UInt) = IssuerSignedItem(
         digestId = digestId,
         random = Random.nextBytes(16),
@@ -164,12 +181,15 @@ class DummyOAuth2IssuerCredentialDataProvider(
 }
 
 object DummyOAuth2DataProvider : OAuth2DataProvider {
-    override suspend fun loadUserInfo(request: AuthenticationRequestParameters?) =
-        OidcUserInfoExtended.fromOidcUserInfo(
-            OidcUserInfo(
-                subject = "subject",
-                givenName = "Erika",
-                familyName = "Musterfrau"
-            )
-        ).getOrThrow()
+    val user = OidcUserInfoExtended.fromOidcUserInfo(
+        OidcUserInfo(
+            subject = "subject",
+            givenName = "Susanne",
+            familyName = "Meier",
+            picture = Random.nextBytes(64).encodeToString(Base64()),
+            birthDate = "1990-01-01"
+        )
+    ).getOrThrow()
+
+    override suspend fun loadUserInfo(request: AuthenticationRequestParameters, code: String) = user
 }

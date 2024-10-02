@@ -1,132 +1,95 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.dif.FormatHolder
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
-import io.github.aakira.napier.Napier
+import io.kotest.assertions.fail
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.coroutines.runBlocking
 
-@Suppress("unused")
 class OidcSiopCombinedProtocolTest : FreeSpec({
 
     lateinit var relyingPartyUrl: String
 
-    lateinit var holderKeyPair: KeyPairAdapter
-    lateinit var verifierKeyPair: KeyPairAdapter
+    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var verifierKeyMaterial: KeyMaterial
 
     lateinit var holderAgent: Holder
-    lateinit var verifierAgent: Verifier
 
     lateinit var holderSiop: OidcSiopWallet
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderKeyPair = RandomKeyPairAdapter()
-        verifierKeyPair = RandomKeyPairAdapter()
+        holderKeyMaterial = EphemeralKeyWithoutCert()
+        verifierKeyMaterial = EphemeralKeyWithoutCert()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
-        holderAgent = HolderAgent(holderKeyPair)
-        verifierAgent = VerifierAgent(verifierKeyPair)
+        holderAgent = HolderAgent(holderKeyMaterial)
 
-        holderSiop = OidcSiopWallet.newDefaultInstance(
-            keyPairAdapter = holderKeyPair,
+        holderSiop = OidcSiopWallet(
+            keyMaterial = holderKeyMaterial,
             holder = holderAgent,
         )
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
         )
     }
 
-    "test support for format holder specification" - {
+    "support for format holder specification" - {
 
-        "test support for plain jwt credential request" - {
+        "support for plain jwt credential request" - {
             "if not available despite others with correct format or correct attribute, but not both" {
-                runBlocking {
-                    holderAgent.storeJwtCredential(holderKeyPair, MobileDrivingLicenceScheme)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                }
-
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
-                    relyingPartyUrl = relyingPartyUrl,
-                )
+                holderAgent.storeJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val authnRequest = verifierSiop.createAuthnRequest(
                     requestOptions = OidcSiopVerifier.RequestOptions(
-                        credentialScheme = ConstantIndex.AtomicAttribute2023,
-                        representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                    )
-                ).let { request ->
-                    request.copy(
-                        clientMetadata = request.clientMetadata?.let { clientMetadata ->
-                            clientMetadata.copy(
-                                vpFormats = FormatHolder(
-                                    // only allow plain jwt
-                                    jwtVp = clientMetadata.vpFormats?.jwtVp
-                                )
+                        credentials = setOf(
+                            OidcSiopVerifier.RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023, CredentialRepresentation.PLAIN_JWT
                             )
-                        }
+                        )
                     )
-                }
-
+                )
                 shouldThrow<OAuth2Exception> {
                     holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                 }
             }
 
             "if available despite others" {
-                runBlocking {
-                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeJwtCredential(holderKeyPair, MobileDrivingLicenceScheme)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                }
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
-                    relyingPartyUrl = relyingPartyUrl,
-                )
+                holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val authnRequest = verifierSiop.createAuthnRequest(
                     requestOptions = OidcSiopVerifier.RequestOptions(
-                        credentialScheme = ConstantIndex.AtomicAttribute2023,
-                    )
-                ).let { request ->
-                    request.copy(
-                        clientMetadata = request.clientMetadata?.let { clientMetadata ->
-                            clientMetadata.copy(
-                                vpFormats = FormatHolder(
-                                    // only allow plain jwt
-                                    jwtVp = clientMetadata.vpFormats?.jwtVp
-                                )
+                        credentials = setOf(
+                            OidcSiopVerifier.RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023,
+                                CredentialRepresentation.PLAIN_JWT
                             )
-                        }
+                        )
                     )
-                }
+                )
 
                 val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-                authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-                    .also { println(it) }
+                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
                 val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-                result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+                    .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
                 result.vp.verifiableCredentials.shouldNotBeEmpty()
                 result.vp.verifiableCredentials.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
@@ -134,275 +97,210 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
             }
         }
 
-        "test support for sd jwt credential request" - {
+        "support for sd jwt credential request" - {
             "if not available despite others with correct format or correct attribute, but not both" {
-                runBlocking {
-                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, MobileDrivingLicenceScheme)
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                }
-
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
-                    relyingPartyUrl = relyingPartyUrl,
-                )
+                holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
+                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val authnRequest = verifierSiop.createAuthnRequest(
                     requestOptions = OidcSiopVerifier.RequestOptions(
-                        credentialScheme = ConstantIndex.AtomicAttribute2023,
-                        representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                    )
-                ).let { request ->
-                    request.copy(
-                        presentationDefinition = request.presentationDefinition?.let { presentationDefinition ->
-                            presentationDefinition.copy(
-                                formats = FormatHolder(
-                                    // only support SD_JWT here
-                                    jwtSd = presentationDefinition.formats?.jwtSd,
-                                ),
-                                inputDescriptors = presentationDefinition.inputDescriptors.map { inputDescriptor ->
-                                    inputDescriptor.copy(
-                                        format = null
-                                    )
-                                }
+                        credentials = setOf(
+                            OidcSiopVerifier.RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023, CredentialRepresentation.SD_JWT
                             )
-                        },
+                        )
                     )
-                }
-
+                )
                 shouldThrow<OAuth2Exception> {
                     holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                 }
             }
 
             "if available despite others with correct format or correct attribute, but not both" {
-                runBlocking {
-                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, MobileDrivingLicenceScheme)
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                }
-
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
-                    relyingPartyUrl = relyingPartyUrl,
-                )
+                holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
+                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val authnRequest = verifierSiop.createAuthnRequest(
                     requestOptions = OidcSiopVerifier.RequestOptions(
-                        credentialScheme = ConstantIndex.AtomicAttribute2023,
-                        representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                    )
-                ).let { request ->
-                    request.copy(
-                        presentationDefinition = request.presentationDefinition?.let { presentationDefinition ->
-                            presentationDefinition.copy(
-                                formats = FormatHolder(
-                                    // only support SD_JWT here
-                                    jwtSd = presentationDefinition.formats?.jwtSd,
-                                ),
-                                inputDescriptors = presentationDefinition.inputDescriptors.map { inputDescriptor ->
-                                    inputDescriptor.copy(
-                                        format = null
-                                    )
-                                }
+                        credentials = setOf(
+                            OidcSiopVerifier.RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023, CredentialRepresentation.SD_JWT
                             )
-                        },
+                        )
                     )
-                }
-
+                )
                 val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-                authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-                    .also { println(it) }
+                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
                 val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-                result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
+                    .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
                 result.sdJwt.type?.shouldContain(ConstantIndex.AtomicAttribute2023.vcType)
             }
         }
 
-        "test support for mso credential request" - {
+        "support for mso credential request" - {
             "if not available despite others with correct format or correct attribute, but not both" {
-                runBlocking {
-                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyPair, MobileDrivingLicenceScheme)
-                }
-
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
-                    relyingPartyUrl = relyingPartyUrl,
-                )
+                holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
                 val authnRequest = verifierSiop.createAuthnRequest(
                     requestOptions = OidcSiopVerifier.RequestOptions(
-                        credentialScheme = ConstantIndex.AtomicAttribute2023,
-                        representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                    ),
-                ).let { request ->
-                    request.copy(
-                        presentationDefinition = request.presentationDefinition?.let { presentationDefinition ->
-                            presentationDefinition.copy(
-                                // only support msoMdoc here
-                                formats = FormatHolder(
-                                    msoMdoc = presentationDefinition.formats?.msoMdoc
-                                ),
-                                inputDescriptors = presentationDefinition.inputDescriptors.map { inputDescriptor ->
-                                    inputDescriptor.copy(
-                                        format = null
-                                    )
-                                }
+                        credentials = setOf(
+                            OidcSiopVerifier.RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023, CredentialRepresentation.ISO_MDOC
                             )
-                        },
-                    )
-                }
-                Napier.d("Create response")
-
+                        )
+                    ),
+                )
                 shouldThrow<OAuth2Exception> {
-                    holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow().also {
-                        Napier.d("response: $it")
-                    }
+                    holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                 }
             }
 
             "if available despite others with correct format or correct attribute, but not both" {
-                runBlocking {
-                    holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeSdJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-                    holderAgent.storeIsoCredential(holderKeyPair, MobileDrivingLicenceScheme)
-                }
-
-                verifierSiop = OidcSiopVerifier.newInstance(
-                    verifier = verifierAgent,
-                    relyingPartyUrl = relyingPartyUrl,
-                )
+                holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
                 val authnRequest = verifierSiop.createAuthnRequest(
                     requestOptions = OidcSiopVerifier.RequestOptions(
-                        credentialScheme = ConstantIndex.AtomicAttribute2023,
-                        representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                    ),
-                ).let { request ->
-                    request.copy(
-                        presentationDefinition = request.presentationDefinition?.let { presentationDefinition ->
-                            presentationDefinition.copy(
-                                formats = FormatHolder(
-                                    // only support msoMdoc here
-                                    msoMdoc = presentationDefinition.formats?.msoMdoc
-                                ),
-                                inputDescriptors = presentationDefinition.inputDescriptors.map { inputDescriptor ->
-                                    inputDescriptor.copy(
-                                        format = null
-                                    )
-                                }
+                        credentials = setOf(
+                            OidcSiopVerifier.RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023,
+                                CredentialRepresentation.ISO_MDOC
                             )
-                        },
-                    )
-                }
-
-                Napier.d("request: $authnRequest")
+                        )
+                    ),
+                )
                 val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-                authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-                    .also { println(it) }
+                    .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-                val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-                result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
+                verifierSiop.validateAuthnResponse(authnResponse.url)
+                    .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
             }
         }
     }
 
 
-    "test presentation of multiple credentials with different formats" {
-        runBlocking {
-            holderAgent.storeJwtCredential(holderKeyPair, ConstantIndex.AtomicAttribute2023)
-            holderAgent.storeIsoCredential(holderKeyPair, MobileDrivingLicenceScheme)
-        }
+    "presentation of multiple credentials with different formats in one request/response" {
+        holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+        holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
-            relyingPartyUrl = relyingPartyUrl,
-        )
-
-        val authnRequest1 = verifierSiop.createAuthnRequest(
+        val authnRequest = verifierSiop.createAuthnRequest(
             requestOptions = OidcSiopVerifier.RequestOptions(
-                credentialScheme = ConstantIndex.AtomicAttribute2023,
-                representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-            ),
-        )
-        val authnRequest2 = verifierSiop.createAuthnRequest(
-            requestOptions = OidcSiopVerifier.RequestOptions(
-                credentialScheme = MobileDrivingLicenceScheme,
-                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-            ),
-        )
-        val inputDescriptors2 = authnRequest2.presentationDefinition?.inputDescriptors ?: listOf()
-
-        val authnRequest = authnRequest1.copy(
-            presentationDefinition = authnRequest1.presentationDefinition?.let { presentationDefinition ->
-                presentationDefinition.copy(
-                    inputDescriptors = presentationDefinition.inputDescriptors.map {
-                        it.copy(format = presentationDefinition.formats)
-                    } + inputDescriptors2.map {
-                        it.copy(format = authnRequest2.presentationDefinition?.formats)
-                    },
-                    formats = null,
+                credentials = setOf(
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        ConstantIndex.AtomicAttribute2023, CredentialRepresentation.PLAIN_JWT
+                    ),
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        MobileDrivingLicenceScheme, CredentialRepresentation.ISO_MDOC
+                    )
                 )
-            }
+            ),
         )
-
         val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-            .also { println(it) }
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val validationResults = verifierSiop.validateAuthnResponse(authnResponse.url)
-        validationResults.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
         validationResults.validationResults.size shouldBe 2
+    }
+
+    "presentation of multiple SD-JWT credentials in one request/response" {
+        holderAgent.storeSdJwtCredential(holderKeyMaterial, EuPidScheme)
+        holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+
+        val requestOptions = OidcSiopVerifier.RequestOptions(
+            credentials = setOf(
+                OidcSiopVerifier.RequestOptionsCredential(
+                    credentialScheme = ConstantIndex.AtomicAttribute2023,
+                    representation = CredentialRepresentation.SD_JWT,
+                    requestedAttributes = listOf(CLAIM_DATE_OF_BIRTH),
+                ),
+                OidcSiopVerifier.RequestOptionsCredential(
+                    credentialScheme = EuPidScheme,
+                    representation = CredentialRepresentation.SD_JWT,
+                    requestedAttributes = listOf(
+                        EuPidScheme.Attributes.FAMILY_NAME,
+                        EuPidScheme.Attributes.GIVEN_NAME
+                    ),
+                )
+            )
+        )
+        val authnRequest = verifierSiop.createAuthnRequest(requestOptions)
+
+        val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+        val groupedResult = verifierSiop.validateAuthnResponse(authnResponse.url)
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
+        groupedResult.validationResults.size shouldBe 2
+        groupedResult.validationResults.forEach { result ->
+            result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
+            result.disclosures.shouldNotBeEmpty()
+            when (result.sdJwt.verifiableCredentialType) {
+                EuPidScheme.sdJwtType -> {
+                    result.disclosures.firstOrNull { it.claimName == EuPidScheme.Attributes.FAMILY_NAME }.shouldNotBeNull()
+                    result.disclosures.firstOrNull { it.claimName == EuPidScheme.Attributes.GIVEN_NAME }.shouldNotBeNull()
+                }
+                ConstantIndex.AtomicAttribute2023.sdJwtType -> {
+                    result.disclosures.firstOrNull() { it.claimName == CLAIM_DATE_OF_BIRTH }.shouldNotBeNull()
+                }
+                else -> {
+                    fail("Unexpected SD-JWT type: ${result.sdJwt.verifiableCredentialType}")
+                }
+            }
+        }
     }
 })
 
 private suspend fun Holder.storeJwtCredential(
-    holderKeyPair: KeyPairAdapter,
+    holderKeyMaterial: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
         IssuerAgent(
-            RandomKeyPairAdapter(),
+            EphemeralKeyWithoutCert(),
             DummyCredentialDataProvider(),
         ).issueCredential(
-            holderKeyPair.publicKey,
+            holderKeyMaterial.publicKey,
             credentialScheme,
-            ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+            CredentialRepresentation.PLAIN_JWT,
         ).getOrThrow().toStoreCredentialInput()
     )
 }
 
 private suspend fun Holder.storeSdJwtCredential(
-    holderKeyPair: KeyPairAdapter,
+    holderKeyMaterial: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
         IssuerAgent(
-            RandomKeyPairAdapter(),
+            EphemeralKeyWithoutCert(),
             DummyCredentialDataProvider(),
         ).issueCredential(
-            holderKeyPair.publicKey,
+            holderKeyMaterial.publicKey,
             credentialScheme,
-            ConstantIndex.CredentialRepresentation.SD_JWT,
+            CredentialRepresentation.SD_JWT,
         ).getOrThrow().toStoreCredentialInput()
     )
 }
 
 private suspend fun Holder.storeIsoCredential(
-    holderKeyPair: KeyPairAdapter,
+    holderKeyMaterial: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) = storeCredential(
     IssuerAgent(
-        RandomKeyPairAdapter(),
+        EphemeralKeyWithSelfSignedCert(),
         DummyCredentialDataProvider(),
     ).issueCredential(
-        holderKeyPair.publicKey,
+        holderKeyMaterial.publicKey,
         credentialScheme,
-        ConstantIndex.CredentialRepresentation.ISO_MDOC,
+        CredentialRepresentation.ISO_MDOC,
     ).getOrThrow().toStoreCredentialInput()
 )

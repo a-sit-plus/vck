@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import kotlinx.datetime.Instant
@@ -48,13 +48,13 @@ interface Issuer {
     /**
      * The public key for this agent, i.e. the public part of the key that signs issued credentials.
      */
-    val keyPair: KeyPairAdapter
+    val keyMaterial: KeyMaterial
 
     /**
      * The cryptographic algorithms supported by this issuer, i.e. the ones from its cryptographic service,
      * used to sign credentials.
      */
-    val cryptoAlgorithms: Set<X509SignatureAlgorithm>
+    val cryptoAlgorithms: Set<SignatureAlgorithm>
 
     /**
      * Issues credentials for some [credentialScheme] to the subject specified with its public

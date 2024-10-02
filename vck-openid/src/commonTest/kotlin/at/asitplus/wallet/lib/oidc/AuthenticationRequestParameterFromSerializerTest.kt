@@ -1,7 +1,8 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -10,24 +11,21 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-import kotlinx.serialization.encodeToString
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
     val relyingPartyUrl = "https://example.com/rp/${uuid4()}"
     val walletUrl = "https://example.com/wallet/${uuid4()}"
-    val responseUrl = "https://example.com/rp/${uuid4()}"
 
-    val holderKeyPair = RandomKeyPairAdapter()
-    val oidcSiopWallet = OidcSiopWallet.newDefaultInstance(
-        keyPairAdapter = holderKeyPair,
-        holder = HolderAgent(holderKeyPair),
+    val holderKeyMaterial = EphemeralKeyWithoutCert()
+    val oidcSiopWallet = OidcSiopWallet(
+        keyMaterial = holderKeyMaterial,
+        holder = HolderAgent(holderKeyMaterial),
     )
 
-    val verifierSiop = OidcSiopVerifier.newInstance(
-        verifier = VerifierAgent(RandomKeyPairAdapter()),
+    val verifierSiop = OidcSiopVerifier(
+        verifier = VerifierAgent(EphemeralKeyWithoutCert()),
         relyingPartyUrl = relyingPartyUrl,
-        responseUrl = responseUrl,
     )
 
     val representations = listOf(
@@ -39,8 +37,11 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
     representations.forEach { representation ->
         val reqOptions = OidcSiopVerifier.RequestOptions(
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
-            representation = representation,
+            credentials = setOf(
+                OidcSiopVerifier.RequestOptionsCredential(
+                    ConstantIndex.AtomicAttribute2023, representation
+                )
+            )
         )
 
         "URL test $representation" {

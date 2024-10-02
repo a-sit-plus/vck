@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.aries
 
+import at.asitplus.dif.*
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.Holder
@@ -7,26 +8,7 @@ import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.AriesGoalCodeParser
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.SchemaIndex
-import at.asitplus.wallet.lib.data.dif.Constraint
-import at.asitplus.wallet.lib.data.dif.ConstraintField
-import at.asitplus.wallet.lib.data.dif.ConstraintFilter
-import at.asitplus.wallet.lib.data.dif.FormatContainerJwt
-import at.asitplus.wallet.lib.data.dif.FormatHolder
-import at.asitplus.wallet.lib.data.dif.InputDescriptor
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.data.dif.SchemaReference
-import at.asitplus.wallet.lib.msg.AttachmentFormatReference
-import at.asitplus.wallet.lib.msg.JsonWebMessage
-import at.asitplus.wallet.lib.msg.JwmAttachment
-import at.asitplus.wallet.lib.msg.OutOfBandInvitation
-import at.asitplus.wallet.lib.msg.OutOfBandInvitationBody
-import at.asitplus.wallet.lib.msg.OutOfBandService
-import at.asitplus.wallet.lib.msg.Presentation
-import at.asitplus.wallet.lib.msg.PresentationBody
-import at.asitplus.wallet.lib.msg.RequestPresentation
-import at.asitplus.wallet.lib.msg.RequestPresentationAttachment
-import at.asitplus.wallet.lib.msg.RequestPresentationAttachmentOptions
-import at.asitplus.wallet.lib.msg.RequestPresentationBody
+import at.asitplus.wallet.lib.msg.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.encodeToString
@@ -204,18 +186,18 @@ class PresentProofProtocol(
             .also { this.state = State.REQUEST_PRESENTATION_SENT }
     }
 
+    @Suppress("DEPRECATION")
     private fun buildRequestPresentationMessage(
         credentialScheme: ConstantIndex.CredentialScheme,
         parentThreadId: String? = null,
     ): RequestPresentation? {
-        val verifierIdentifier = verifier?.keyPair?.identifier ?: return null
+        val verifierIdentifier = verifier?.keyMaterial?.identifier ?: return null
         val claimsConstraints = requestedClaims?.map(this::buildConstraintFieldForClaim) ?: listOf()
         val typeConstraints = buildConstraintFieldForType(credentialScheme.vcType!!)
         val presentationDefinition = PresentationDefinition(
             inputDescriptors = listOf(
-                InputDescriptor(
+                DifInputDescriptor(
                     name = credentialScheme.vcType!!,
-                    schema = SchemaReference(uri = credentialScheme.schemaUri),
                     constraints = Constraint(
                         fields = claimsConstraints + typeConstraints
                     )

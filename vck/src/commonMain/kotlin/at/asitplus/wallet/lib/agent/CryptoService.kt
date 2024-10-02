@@ -3,28 +3,19 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.ECCurve
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.*
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.supreme.SignatureResult
+import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.supreme.sign.SignatureInput
+import at.asitplus.signum.supreme.sign.Verifier
+import at.asitplus.signum.supreme.sign.verifierFor
 
 interface CryptoService {
 
-    suspend fun sign(input: ByteArray): KmmResult<CryptoSignature.RawByteEncodable> =
-        doSign(input).map {
-            when (it) {
-                is CryptoSignature.RawByteEncodable -> it
-                is CryptoSignature.NotRawByteEncodable -> when (it) {
-                    is CryptoSignature.EC.IndefiniteLength -> it.withCurve((keyPairAdapter.publicKey as CryptoPublicKey.EC).curve)
-                }
-            }
-    }
-
-    suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature>
+    suspend fun sign(input: ByteArray): SignatureResult<CryptoSignature.RawByteEncodable>
 
     fun encrypt(
         key: ByteArray,
@@ -43,7 +34,7 @@ interface CryptoService {
         algorithm: JweEncryption
     ): KmmResult<ByteArray>
 
-    fun generateEphemeralKeyPair(ecCurve: ECCurve): KmmResult<EphemeralKeyHolder>
+    fun generateEphemeralKeyPair(ecCurve: ECCurve): EphemeralKeyHolder
 
     fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
@@ -53,9 +44,15 @@ interface CryptoService {
 
     fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray>
 
-    fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray>
+    fun messageDigest(input: ByteArray, digest: Digest): ByteArray
 
-    val keyPairAdapter: KeyPairAdapter
+    fun hmac(
+        key: ByteArray,
+        algorithm: JweEncryption,
+        input: ByteArray
+    ): KmmResult<ByteArray>
+
+    val keyMaterial: KeyMaterial
 
 }
 
@@ -71,7 +68,7 @@ interface VerifierCryptoService {
         signature: CryptoSignature,
         algorithm: X509SignatureAlgorithm,
         publicKey: CryptoPublicKey,
-    ): KmmResult<Boolean>
+    ): KmmResult<at.asitplus.signum.supreme.sign.Verifier.Success>
 
 }
 
@@ -96,13 +93,11 @@ data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteA
     }
 }
 
-interface EphemeralKeyHolder {
-    val publicJsonWebKey: JsonWebKey?
-}
+expect open class PlatformCryptoShim(keyMaterial: KeyMaterial) {
 
-expect class DefaultCryptoService : CryptoService {
-    override suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature>
-    override fun encrypt(
+    val keyMaterial: KeyMaterial
+
+    open fun encrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -110,7 +105,7 @@ expect class DefaultCryptoService : CryptoService {
         algorithm: JweEncryption
     ): KmmResult<AuthenticatedCiphertext>
 
-    override suspend fun decrypt(
+    open suspend fun decrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -119,33 +114,82 @@ expect class DefaultCryptoService : CryptoService {
         algorithm: JweEncryption
     ): KmmResult<ByteArray>
 
-    override fun generateEphemeralKeyPair(ecCurve: ECCurve): KmmResult<EphemeralKeyHolder>
-    override fun performKeyAgreement(
+    open fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray>
 
-    override fun performKeyAgreement(
+    open fun performKeyAgreement(
         ephemeralKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray>
 
+    open fun hmac(
+        key: ByteArray,
+        algorithm: JweEncryption,
+        input: ByteArray
+    ): KmmResult<ByteArray>
+}
+
+open class DefaultCryptoService(
+    override val keyMaterial: KeyMaterial
+) : CryptoService {
+
+    private val platformCryptoShim by lazy { PlatformCryptoShim(keyMaterial) }
+
+    override suspend fun sign(input: ByteArray) = keyMaterial.sign(input)
+
+
+    override fun encrypt(
+        key: ByteArray,
+        iv: ByteArray,
+        aad: ByteArray,
+        input: ByteArray,
+        algorithm: JweEncryption
+    ): KmmResult<AuthenticatedCiphertext> =
+        platformCryptoShim.encrypt(key, iv, aad, input, algorithm)
+
+    override suspend fun decrypt(
+        key: ByteArray,
+        iv: ByteArray,
+        aad: ByteArray,
+        input: ByteArray,
+        authTag: ByteArray,
+        algorithm: JweEncryption
+    ): KmmResult<ByteArray> =
+        platformCryptoShim.decrypt(key, iv, aad, input, authTag, algorithm)
+
+    override fun generateEphemeralKeyPair(ecCurve: ECCurve) = DefaultEphemeralKeyHolder(ecCurve)
+
+    override fun performKeyAgreement(
+        ephemeralKey: EphemeralKeyHolder,
+        recipientKey: JsonWebKey,
+        algorithm: JweAlgorithm
+    ) = platformCryptoShim.performKeyAgreement(ephemeralKey, recipientKey, algorithm)
+
+    override fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm) =
+        platformCryptoShim.performKeyAgreement(ephemeralKey, algorithm)
+
+    override fun hmac(key: ByteArray, algorithm: JweEncryption, input: ByteArray): KmmResult<ByteArray> =
+        platformCryptoShim.hmac(key, algorithm, input)
+
     override fun messageDigest(
         input: ByteArray,
         digest: Digest
-    ): KmmResult<ByteArray>
-
-    override val keyPairAdapter: KeyPairAdapter
-    constructor(keyPairAdapter: KeyPairAdapter)
+    ) = digest.digest(input)
 }
 
-expect class DefaultVerifierCryptoService() : VerifierCryptoService {
-    override val supportedAlgorithms: List<X509SignatureAlgorithm>
+open class DefaultVerifierCryptoService : VerifierCryptoService {
+    override val supportedAlgorithms: List<X509SignatureAlgorithm> =
+        listOf(X509SignatureAlgorithm.ES256)
+
     override fun verify(
         input: ByteArray,
         signature: CryptoSignature,
         algorithm: X509SignatureAlgorithm,
         publicKey: CryptoPublicKey
-    ): KmmResult<Boolean>
+    ): KmmResult<Verifier.Success> = algorithm.algorithm.verifierFor(publicKey).transform {
+        it.verify(SignatureInput(input), signature)
+    }
 }

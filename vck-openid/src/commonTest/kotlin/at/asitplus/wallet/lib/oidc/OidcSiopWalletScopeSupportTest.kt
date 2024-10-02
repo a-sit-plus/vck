@@ -1,21 +1,13 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.dif.Constraint
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.DifInputDescriptor
+import at.asitplus.dif.PresentationDefinition
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.dif.Constraint
-import at.asitplus.wallet.lib.data.dif.ConstraintField
-import at.asitplus.wallet.lib.data.dif.InputDescriptor
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.data.dif.SchemaReference
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
@@ -37,18 +29,18 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
 
     "test scopes" - {
         val testScopes = object {
-            val EmptyPresentationRequest: String = "emptyPresentationRequest"
-            val MdocMdlWithGivenName: String = "mdocMdlWithGivenName"
+            val emptyPresentationRequest: String = "emptyPresentationRequest"
+            val mdocMdlWithGivenName: String = "mdocMdlWithGivenName"
         }
         val testScopePresentationDefinitionRetriever = mapOf(
-            testScopes.EmptyPresentationRequest to PresentationDefinition(
+            testScopes.emptyPresentationRequest to PresentationDefinition(
                 id = uuid4().toString(),
                 inputDescriptors = listOf()
             ),
-            testScopes.MdocMdlWithGivenName to PresentationDefinition(
+            testScopes.mdocMdlWithGivenName to PresentationDefinition(
                 id = uuid4().toString(),
                 inputDescriptors = listOf(
-                    InputDescriptor(
+                    DifInputDescriptor(
                         id = MobileDrivingLicenceScheme.isoDocType,
                         constraints = Constraint(
                             fields = listOf(
@@ -62,9 +54,6 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
                                 )
                             )
                         ),
-                        schema = listOf(
-                            SchemaReference(MobileDrivingLicenceScheme.schemaUri)
-                        )
                     )
                 )
             ),
@@ -72,8 +61,8 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
 
         lateinit var relyingPartyUrl: String
 
-        lateinit var holderKeyPair: KeyPairAdapter
-        lateinit var verifierKeyPair: KeyPairAdapter
+        lateinit var holderKeyMaterial: KeyMaterial
+        lateinit var verifierKeyMaterial: KeyMaterial
 
         lateinit var holderAgent: Holder
         lateinit var verifierAgent: Verifier
@@ -82,45 +71,45 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         lateinit var verifierSiop: OidcSiopVerifier
 
         beforeEach {
-            holderKeyPair = RandomKeyPairAdapter()
-            verifierKeyPair = RandomKeyPairAdapter()
+            holderKeyMaterial = EphemeralKeyWithoutCert()
+            verifierKeyMaterial = EphemeralKeyWithoutCert()
             relyingPartyUrl = "https://example.com/rp/${uuid4()}"
-            holderAgent = HolderAgent(holderKeyPair)
-            verifierAgent = VerifierAgent(verifierKeyPair)
+            holderAgent = HolderAgent(holderKeyMaterial)
+            verifierAgent = VerifierAgent(verifierKeyMaterial)
 
-            holderSiop = OidcSiopWallet.newDefaultInstance(
-                keyPairAdapter = holderKeyPair,
+            holderSiop = OidcSiopWallet(
+                keyMaterial = holderKeyMaterial,
                 holder = holderAgent,
                 scopePresentationDefinitionRetriever = testScopePresentationDefinitionRetriever
             )
-            verifierSiop = OidcSiopVerifier.newInstance(
-                verifier = verifierAgent,
+            verifierSiop = OidcSiopVerifier(
+                keyMaterial = verifierKeyMaterial,
                 relyingPartyUrl = relyingPartyUrl,
             )
         }
 
         "get empty scope works even without available credentials" {
             val issuerAgent = IssuerAgent(
-                RandomKeyPairAdapter(),
+                EphemeralKeyWithSelfSignedCert(),
                 DummyCredentialDataProvider(),
             )
             holderAgent.storeCredential(
                 issuerAgent.issueCredential(
-                    holderKeyPair.publicKey,
+                    holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 ).getOrThrow().toStoreCredentialInput()
             )
 
-            val authnRequest = verifierSiop.createAuthnRequest().let { request ->
+            val authnRequest = verifierSiop.createAuthnRequest(defaultRequestOptions).let { request ->
                 request.copy(
                     presentationDefinition = null,
-                    scope = request.scope + " " + testScopes.EmptyPresentationRequest
+                    scope = request.scope + " " + testScopes.emptyPresentationRequest
                 )
             }
 
             val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-            authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().also { println(it) }
+            authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             val result = verifierSiop.validateAuthnResponse(authnResponse.url)
             result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
@@ -128,10 +117,10 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         }
 
         "get MdocMdlWithGivenName scope without available credentials fails" {
-            val authnRequest = verifierSiop.createAuthnRequest().let { request ->
+            val authnRequest = verifierSiop.createAuthnRequest(defaultRequestOptions).let { request ->
                 request.copy(
                     presentationDefinition = null,
-                    scope = request.scope + " " + testScopes.MdocMdlWithGivenName
+                    scope = request.scope + " " + testScopes.mdocMdlWithGivenName
                 )
             }
 
@@ -144,27 +133,27 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
 
         "get MdocMdlWithGivenName scope with available credentials succeeds" {
             val issuerAgent = IssuerAgent(
-                RandomKeyPairAdapter(),
+                EphemeralKeyWithSelfSignedCert(),
                 DummyCredentialDataProvider(),
             )
             holderAgent.storeCredential(
                 issuerAgent.issueCredential(
-                    holderKeyPair.publicKey,
+                    holderKeyMaterial.publicKey,
                     MobileDrivingLicenceScheme,
                     ConstantIndex.CredentialRepresentation.ISO_MDOC,
                 ).getOrThrow().toStoreCredentialInput()
             )
 
 
-            val authnRequest = verifierSiop.createAuthnRequest().let { request ->
+            val authnRequest = verifierSiop.createAuthnRequest(defaultRequestOptions).let { request ->
                 request.copy(
                     presentationDefinition = null,
-                    scope = request.scope + " " + testScopes.MdocMdlWithGivenName
+                    scope = request.scope + " " + testScopes.mdocMdlWithGivenName
                 )
             }
 
             val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
-            authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().also { println(it) }
+            authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
             val result = verifierSiop.validateAuthnResponse(authnResponse.url)
             result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
@@ -172,3 +161,9 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         }
     }
 })
+
+private val defaultRequestOptions = OidcSiopVerifier.RequestOptions(
+    credentials = setOf(
+        OidcSiopVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+    )
+)

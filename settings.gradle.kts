@@ -4,10 +4,14 @@ import java.util.*
 pluginManagement {
     includeBuild("conventions-vclib")
     repositories {
-        maven("https://maven.pkg.jetbrains.space/kotlin/p/dokka/dev")
         google()
         gradlePluginPortal()
         mavenCentral()
+        maven("https://s01.oss.sonatype.org/content/repositories/snapshots")
+        maven {
+            url = uri("https://raw.githubusercontent.com/a-sit-plus/gradle-conventions-plugin/mvn/repo")
+            name = "aspConventions"
+        }
     }
 }
 
@@ -17,18 +21,26 @@ if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
             substitute(module("at.asitplus.signum:indispensable")).using(project(":indispensable"))
             substitute(module("at.asitplus.signum:indispensable-josef")).using(project(":indispensable-josef"))
             substitute(module("at.asitplus.signum:indispensable-cosef")).using(project(":indispensable-cosef"))
+            substitute(module("at.asitplus.signum:supreme")).using(project(":supreme"))
         }
     }
 } else logger.lifecycle("Excluding Signum from this build")
 
 rootProject.name = "vc-k"
+include(":dif-data-classes")
+include(":openid-data-classes")
 include(":vck")
 include(":vck-aries")
 include(":vck-openid")
+include(":mobiledrivinglicence")
 
 dependencyResolutionManagement {
-    repositories.add(repositories.mavenCentral())
-    repositories.add(repositories.mavenLocal())
+    repositories {
+        maven("https://s01.oss.sonatype.org/content/repositories/snapshots") //Signum snapshot
+        mavenLocal()
+        mavenCentral()
+    }
+
     versionCatalogs {
         val versions = Properties().apply {
             kotlin.runCatching {

@@ -1,7 +1,10 @@
+import at.asitplus.gradle.*
+
 import at.asitplus.gradle.commonImplementationAndApiDependencies
-import at.asitplus.gradle.commonIosExports
 import at.asitplus.gradle.exportIosFramework
 import at.asitplus.gradle.setupDokka
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
 plugins {
     kotlin("multiplatform")
@@ -18,16 +21,29 @@ group = "at.asitplus.wallet"
 version = artifactVersion
 
 
-
 kotlin {
+
     jvm()
+    androidTarget {
+        publishLibraryVariants("release")
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        instrumentedTestVariant.sourceSetTree.set(test)
+    }
     iosArm64()
     iosSimulatorArm64()
     iosX64()
     sourceSets {
         commonMain {
             dependencies {
+                api(project(":dif-data-classes"))
                 commonImplementationAndApiDependencies()
+            }
+        }
+
+        commonTest {
+            dependencies {
+                implementation("io.arrow-kt:arrow-core:1.2.4") //to make arrow's nonFatalOrThrow work in tests
+                implementation(kotlin("reflect"))
             }
         }
 
@@ -40,6 +56,8 @@ kotlin {
         jvmTest {
             dependencies {
                 implementation(signum.jose)
+                implementation(kotlin("reflect"))
+                implementation("io.arrow-kt:arrow-core-jvm:1.2.4") //to make arrow's nonFatalOrThrow work in tests
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
                 implementation("com.authlete:cbor:${VcLibVersions.Jvm.`authlete-cbor`}")
             }
@@ -47,10 +65,14 @@ kotlin {
     }
 }
 
+
+setupAndroid()
+
 exportIosFramework(
     name = "VckKmm",
-    static = false,
-    *commonIosExports()
+    transitiveExports = false,
+    project(":dif-data-classes"),
+    "at.asitplus.signum:supreme:${VcLibVersions.supreme}"
 )
 
 val javadocJar = setupDokka(
@@ -88,23 +110,6 @@ publishing {
                     connection.set("scm:git:git@github.com:a-sit-plus/vck.git")
                     developerConnection.set("scm:git:git@github.com:a-sit-plus/vck.git")
                     url.set("https://github.com/a-sit-plus/vck")
-                }
-            }
-        }
-        //REMOVE ME AFTER REBRANDED ARTIFACT HAS BEEN PUBLISHED
-        create<MavenPublication>("relocation") {
-            pom {
-                // Old artifact coordinates
-                artifactId = "vclib"
-                version = artifactVersion
-
-                distributionManagement {
-                    relocation {
-                        // New artifact coordinates
-                        artifactId = "vck"
-                        version = artifactVersion
-                        message = " artifactId have been changed"
-                    }
                 }
             }
         }

@@ -1,5 +1,63 @@
 # Changelog
 
+Release 5.0.0:
+ - Remove `OidcSiopWallet.newDefaultInstance()` and replace it with a constructor
+ - Remove `OidcSiopVerifier.newInstance()` methods and replace them with constructors
+ - Remove `Validator.newDefaultInstance()` methods and replace them with constructors
+ - Remove `WalletService.newDefaultInstance()` methods and replace them with constructors
+ * Add `TransactionDataEntry` class
+ * Add `DocumentDigestEntry` class
+ * Add `DocumentDigestEntryCSC` class
+ * Add `DocumentLocationsEntry` class
+ * Add `Method` class
+ * Update `InputDescriptors`
+   * New member `transaction_data`
+   * Removed member `schema`
+ * Update `AuthorizationDetails`
+   * Now sealed class with subclasses 
+     * `OpenIdCredential`
+     * `CSCCredential`
+ * Extend `AuthenticationRequestParameters` to be able to handle CSC/QES flows
+ * Extend `TokenRequestParameters` to be able to handle CSC/QES flows
+ * Extend `TokenResponseParameters` to be able to handle CSC/QES flows
+ - In `TokenRequestParameters`, change `transactionCode` to `String`, as it needs to be entered by the user potentially
+ - Add extension method to build DPoP headers acc. to [RFC 9449](https://datatracker.ietf.org/doc/html/rfc9449), see `WalletService`
+ * Proper registration of serializers for ISO credentials (breaking change), see API in `LibraryInitializer`
+ * Update dependencies to have everything aligned with Kotlin 2.0.20:
+   * Kotlin 2.0.20
+   * EU PID + MDL Credentials in test scope
+   * Serialization 1.7.2 proper
+   * JsonPath4K 2.3.0 (with proper Kotlin 2.0.20 support)
+   * Signum 3.7.0 (only dependency updates to align everything, no alignments in code)
+ * Add `KeyStoreMaterial` to JVM target for convenience
+ - Update implementation of [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) to draft 14 from 2024-08-21
+   - Move some fields from `IssuerMetadata` to `OAuth2AuthorizationServerMetadata` to match the semantics
+   - Remove proof type `cwt` for OpenID for Verifiable Credential Issuance, as per draft 14, but keep parsing it for a bit of backwards-compatibility
+   - Remove binding method for `did:key`, as it was never completely implemented, but add binding method `jwk` for JSON Web Keys.
+   - Rework interface of `WalletService` to make selecting the credential configuration by its ID more explicit
+   - Support requesting issuance of credential using scope values
+   - Introudce `OAuth2Client` to extract creating authentication requests and token requests from OID4VCI `WalletService`
+   - Refactor `SimpleAuthorizationService` to extract actual authentication and authorization into `AuthorizationServiceStrategy`
+ - Implement JWE encryption with AES-CBC-HMAC algorithms
+ - SIOPv2/OpenID4VP: Support requesting and receiving claims from different credentials, i.e. a combined presentation
+   - Require request options on every method in `OidcSiopVerifier`
+   - Move `credentialScheme`, `representation`, `requestedAttributes` from `RequestOptions` to `RequestOptionsCredentials`
+   - In `OidcSiopVerifier` move `responseUrl` from constructor parameter to `RequestOptions`
+   - Add `IdToken` as result case to `OidcSiopVerifier.AuthnResponseResult`, when only an `id_token` is requested and received
+ - Disclosures for SD-JWT (in class `SelectiveDisclosureItem`) now contain a `JsonPrimitive` for the value, so that implementers can deserialize the value accordingly
+
+Release 4.1.2:
+ * In `OidcSiopVerifier` add parameter `nonceService` to externalize creation and validation of nonces, e.g. for deployments in load-balanced environments
+ * In `SimpleAuthorizationService` change type of `tokenService` to `NonceService`
+ * Add constructor parameters to `SimpleAuthorizationService` to externalize storage of maps, e.g. for deployments in load-balanced environments
+ * Add constructor parameter to `WalletService` to externalize storage of state-to-code map, e.g. for deployments in load-balanced environments
+* Update to latest Signum for KMP signer and verifier.
+* Update dependencies:
+  * Kotlin 2.0.20
+  * Serialization 1.7.2 stable
+  * JsonPath4K 2.3.0
+* Add Android targets
+
 Release 4.1.1 (Bugfix Release):
 * correctly configure and name JSON serializer:
   * `jsonSerializer` -> `vckJsonSerializer`

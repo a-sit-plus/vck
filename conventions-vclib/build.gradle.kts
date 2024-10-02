@@ -10,11 +10,19 @@ group = "at.asitplus.gradle"
 
 dependencies {
     api("at.asitplus.gradle:k2")
+    api("com.squareup:kotlinpoet:1.16.0")
+    api("com.android.library:com.android.library.gradle.plugin:8.2.2")
+    api("de.mannodermaus.gradle.plugins:android-junit5:1.11.0.0")
+
 }
 
 repositories {
-    maven("https://maven.pkg.jetbrains.space/kotlin/p/dokka/dev")
+    maven {
+        url = uri("https://raw.githubusercontent.com/a-sit-plus/gradle-conventions-plugin/mvn/repo")
+        name = "aspConventions"
+    } //KOTEST snapshot
     mavenCentral()
+    google()
     gradlePluginPortal()
 }
 

@@ -1,66 +1,29 @@
-@file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.signum.indispensable.*
-import at.asitplus.signum.indispensable.ECCurve.SECP_256_R_1
-import at.asitplus.signum.indispensable.cosef.CoseKey
-import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
-import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.getJcaPublicKey
 import at.asitplus.signum.indispensable.josef.*
-import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.signum.indispensable.pki.X509CertificateExtension
-import org.bouncycastle.jce.ECNamedCurveTable
-import org.bouncycastle.jce.provider.JCEECPublicKey
-import org.bouncycastle.jce.spec.ECPublicKeySpec
-import java.math.BigInteger
-import java.security.KeyPair
-import java.security.KeyPairGenerator
-import java.security.MessageDigest
+import at.asitplus.signum.supreme.HazardousMaterials
+import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
+import io.github.aakira.napier.Napier
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.security.Security
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
-import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.Mac
+import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-
-actual open class DefaultCryptoService : CryptoService {
-
-    actual final override val keyPairAdapter: KeyPairAdapter
-
-    private val jvmKeyPairAdapter: JvmKeyPairAdapter
-
-    actual constructor(keyPairAdapter: KeyPairAdapter) {
-        assert(keyPairAdapter is JvmKeyPairAdapter)
-        keyPairAdapter as JvmKeyPairAdapter
-        this.jvmKeyPairAdapter = keyPairAdapter
-        this.keyPairAdapter = keyPairAdapter
+actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: KeyMaterial) {
+    companion object {
+        init {
+            Napier.d { "Adding BC" }
+            Security.addProvider(BouncyCastleProvider())
+        }
     }
 
-    /**
-     * Constructor which allows all public keys implemented in `KMP-Crypto`
-     * Because RSA needs the algorithm parameter to be useful (as it cannot be inferred from the key)
-     * it's mandatory
-     * Also used for custom certificates
-     */
-    constructor(
-        keyPair: KeyPair,
-        algorithm: X509SignatureAlgorithm,
-    ) {
-        this.jvmKeyPairAdapter = JvmKeyPairAdapter(keyPair, algorithm, null)
-        this.keyPairAdapter = jvmKeyPairAdapter
-    }
-
-    actual override suspend fun doSign(input: ByteArray): KmmResult<CryptoSignature> = runCatching {
-        val sig = keyPairAdapter.signingAlgorithm.algorithm.getJCASignatureInstance().getOrThrow().apply {
-            initSign(jvmKeyPairAdapter.keyPair.private)
-            update(input)
-        }.sign()
-        CryptoSignature.parseFromJca(sig, keyPairAdapter.signingAlgorithm)
-    }.wrap()
-
-    actual override fun encrypt(
+    actual open fun encrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -68,18 +31,13 @@ actual open class DefaultCryptoService : CryptoService {
         algorithm: JweEncryption
     ): KmmResult<AuthenticatedCiphertext> = runCatching {
         val jcaCiphertext = Cipher.getInstance(algorithm.jcaName).also {
+            it.init(
+                Cipher.ENCRYPT_MODE,
+                SecretKeySpec(key, algorithm.jcaKeySpecName),
+                IvParameterSpec(iv)
+            )
             if (algorithm.isAuthenticatedEncryption) {
-                it.init(
-                    Cipher.ENCRYPT_MODE,
-                    SecretKeySpec(key, algorithm.jcaKeySpecName),
-                    GCMParameterSpec(algorithm.ivLengthBits, iv)
-                )
                 it.updateAAD(aad)
-            } else {
-                it.init(
-                    Cipher.ENCRYPT_MODE,
-                    SecretKeySpec(key, algorithm.jcaKeySpecName),
-                )
             }
         }.doFinal(input)
         if (algorithm.isAuthenticatedEncryption) {
@@ -91,8 +49,7 @@ actual open class DefaultCryptoService : CryptoService {
         }
     }.wrap()
 
-
-    actual override suspend fun decrypt(
+    actual open suspend fun decrypt(
         key: ByteArray,
         iv: ByteArray,
         aad: ByteArray,
@@ -100,124 +57,53 @@ actual open class DefaultCryptoService : CryptoService {
         authTag: ByteArray,
         algorithm: JweEncryption
     ): KmmResult<ByteArray> = runCatching {
+        val wholeInput = input + if (algorithm.isAuthenticatedEncryption) authTag else byteArrayOf()
         Cipher.getInstance(algorithm.jcaName).also {
+            it.init(
+                Cipher.DECRYPT_MODE,
+                SecretKeySpec(key, algorithm.jcaKeySpecName),
+                IvParameterSpec(iv)
+            )
             if (algorithm.isAuthenticatedEncryption) {
-                it.init(
-                    Cipher.DECRYPT_MODE,
-                    SecretKeySpec(key, algorithm.jcaKeySpecName),
-                    GCMParameterSpec(algorithm.ivLengthBits, iv)
-                )
                 it.updateAAD(aad)
-            } else {
-                it.init(
-                    Cipher.DECRYPT_MODE,
-                    SecretKeySpec(key, algorithm.jcaKeySpecName),
-                )
             }
-        }.doFinal(input + authTag)
+        }.doFinal(wholeInput)
     }.wrap()
 
-    actual override fun performKeyAgreement(
+    actual open fun hmac(
+        key: ByteArray,
+        algorithm: JweEncryption,
+        input: ByteArray,
+    ): KmmResult<ByteArray> = runCatching {
+        Mac.getInstance(algorithm.jcaHmacName).also {
+            it.init(SecretKeySpec(key, algorithm.jcaKeySpecName))
+        }.doFinal(input)
+    }.wrap()
+
+    actual open fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray> = runCatching {
-        require(ephemeralKey is JvmEphemeralKeyHolder) { "JVM Type expected" }
-        val jvmKey = recipientKey.toCryptoPublicKey().transform { it1 -> it1.getJcaPublicKey() }.getOrThrow()
+        val jvmKey = recipientKey.toCryptoPublicKey().getOrThrow().getJcaPublicKey().getOrThrow()
         KeyAgreement.getInstance(algorithm.jcaName).also {
-            it.init(ephemeralKey.keyPair.private)
-            it.doPhase(
-                jvmKey, true
-            )
+            @OptIn(HazardousMaterials::class)
+            it.init(ephemeralKey.key.jcaPrivateKey)
+            it.doPhase(jvmKey, true)
         }.generateSecret()
     }.wrap()
 
-    actual override fun performKeyAgreement(
+    actual open fun performKeyAgreement(
         ephemeralKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray> = runCatching {
-        val parameterSpec = ECNamedCurveTable.getParameterSpec(ephemeralKey.curve?.jcaName)
-        val xBigInteger = BigInteger(1, ephemeralKey.x)
-        val yBigInteger = BigInteger(1, ephemeralKey.y)
-        val ecPoint = parameterSpec.curve.validatePoint(xBigInteger, yBigInteger)
-        val ecPublicKeySpec = ECPublicKeySpec(ecPoint, parameterSpec)
-        val publicKey = JCEECPublicKey("EC", ecPublicKeySpec)
-
+        val publicKey = ephemeralKey.toCryptoPublicKey().getOrThrow().getJcaPublicKey().getOrThrow()
         KeyAgreement.getInstance(algorithm.jcaName).also {
-            it.init(jvmKeyPairAdapter.keyPair.private)
+            @OptIn(HazardousMaterials::class)
+            it.init(keyMaterial.getUnderLyingSigner().jcaPrivateKey)
             it.doPhase(publicKey, true)
         }.generateSecret()
     }.wrap()
 
-    actual override fun generateEphemeralKeyPair(ecCurve: ECCurve): KmmResult<EphemeralKeyHolder> =
-        KmmResult.success(JvmEphemeralKeyHolder(ecCurve))
-
-    actual override fun messageDigest(input: ByteArray, digest: Digest): KmmResult<ByteArray> = runCatching {
-        MessageDigest.getInstance(digest.jcaName).digest(input)
-    }.wrap()
-
 }
 
-class JvmKeyPairAdapter(
-    val keyPair: KeyPair,
-    override val signingAlgorithm: X509SignatureAlgorithm,
-    override val certificate: X509Certificate?
-) : KeyPairAdapter {
-    override val publicKey: CryptoPublicKey
-        get() = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
-    override val identifier: String
-        get() = publicKey.didEncoded
-    override val jsonWebKey: JsonWebKey
-        get() = publicKey.toJsonWebKey()
-    override val coseKey: CoseKey
-        get() = publicKey.toCoseKey(signingAlgorithm.toCoseAlgorithm().getOrThrow()).getOrThrow()
-}
-
-actual fun RandomKeyPairAdapter(extensions: List<X509CertificateExtension>): KeyPairAdapter {
-    val keyPair = genEc256KeyPair()
-    val signingAlgorithm = X509SignatureAlgorithm.ES256
-    val publicKey = CryptoPublicKey.fromJcaPublicKey(keyPair.public).getOrThrow()
-    val certificate = X509Certificate.generateSelfSignedCertificate(publicKey, signingAlgorithm, extensions) {
-        runCatching {
-            CryptoSignature.parseFromJca(signingAlgorithm.getJCASignatureInstance().getOrThrow().apply {
-                initSign(keyPair.private)
-                update(it)
-            }.sign(), signingAlgorithm)
-        }.wrap()
-    }
-    return JvmKeyPairAdapter(keyPair, signingAlgorithm, certificate)
-}
-
-private fun genEc256KeyPair(): KeyPair =
-    KeyPairGenerator.getInstance("EC")
-        .also { it.initialize(SECP_256_R_1.keyLengthBits.toInt()) }
-        .genKeyPair()
-
-actual open class DefaultVerifierCryptoService : VerifierCryptoService {
-
-    actual override val supportedAlgorithms: List<X509SignatureAlgorithm> =
-        X509SignatureAlgorithm.entries.filter { it.isEc }
-
-    actual override fun verify(
-        input: ByteArray,
-        signature: CryptoSignature,
-        algorithm: X509SignatureAlgorithm,
-        publicKey: CryptoPublicKey,
-    ): KmmResult<Boolean> = runCatching {
-        algorithm.getJCASignatureInstance().getOrThrow().apply {
-            initVerify(publicKey.getJcaPublicKey().getOrThrow())
-            update(input)
-        }.verify(signature.jcaSignatureBytes)
-    }.wrap()
-}
-
-open class JvmEphemeralKeyHolder(private val ecCurve: ECCurve) : EphemeralKeyHolder {
-
-    val keyPair: KeyPair =
-        KeyPairGenerator.getInstance("EC").also { it.initialize(ecCurve.keyLengthBits.toInt()) }.genKeyPair()
-
-    override val publicJsonWebKey: JsonWebKey? by lazy {
-        CryptoPublicKey.fromJcaPublicKey(keyPair.public).map { it.toJsonWebKey() }.getOrNull()
-    }
-
-}

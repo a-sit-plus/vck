@@ -14,6 +14,8 @@ import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.supreme.asKmmResult
+import at.asitplus.signum.supreme.sign.Verifier
 
 /**
  * Creates and parses COSE objects.
@@ -44,7 +46,7 @@ interface CoseService {
 
 interface VerifierCoseService {
 
-    fun verifyCose(coseSigned: CoseSigned, signer: CoseKey): KmmResult<Boolean>
+    fun verifyCose(coseSigned: CoseSigned, signer: CoseKey): KmmResult<Verifier.Success>
 
 }
 
@@ -55,7 +57,7 @@ private const val SIGNATURE1_STRING = "Signature1"
 
 class DefaultCoseService(private val cryptoService: CryptoService) : CoseService {
 
-    override val algorithm: CoseAlgorithm = cryptoService.keyPairAdapter.signingAlgorithm.toCoseAlgorithm().getOrThrow()
+    override val algorithm: CoseAlgorithm = cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
 
     override suspend fun createSignedCose(
         protectedHeader: CoseHeader?,
@@ -67,11 +69,11 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         var copyProtectedHeader = protectedHeader?.copy(algorithm = algorithm)
             ?: CoseHeader(algorithm = algorithm)
         if (addKeyId) copyProtectedHeader =
-            copyProtectedHeader.copy(kid = cryptoService.keyPairAdapter.publicKey.didEncoded.encodeToByteArray())
+            copyProtectedHeader.copy(kid = cryptoService.keyMaterial.publicKey.didEncoded.encodeToByteArray())
 
-        val copyUnprotectedHeader = if (addCertificate && cryptoService.keyPairAdapter.certificate != null) {
+        val copyUnprotectedHeader = if (addCertificate && cryptoService.keyMaterial.getCertificate() != null) {
             (unprotectedHeader
-                ?: CoseHeader()).copy(certificateChain = cryptoService.keyPairAdapter.certificate!!.encodeToDer())
+                ?: CoseHeader()).copy(certificateChain = cryptoService.keyMaterial.getCertificate()!!.encodeToDer())
         } else {
             unprotectedHeader
         }
@@ -83,7 +85,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
             payload = payload,
         ).serialize()
 
-        val signature = cryptoService.sign(signatureInput).getOrElse {
+        val signature = cryptoService.sign(signatureInput).asKmmResult().getOrElse {
             Napier.w("No signature from native code", it)
             throw it
         }

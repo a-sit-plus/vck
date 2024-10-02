@@ -26,9 +26,6 @@ internal object JsonCredentialSerializer {
 
 }
 
-@Deprecated("use vckJsonSerializer", replaceWith = ReplaceWith("vckJsonSerializer"))
-val jsonSerializer get() = vckJsonSerializer
-
 val vckJsonSerializer by lazy {
     Json {
         prettyPrint = false

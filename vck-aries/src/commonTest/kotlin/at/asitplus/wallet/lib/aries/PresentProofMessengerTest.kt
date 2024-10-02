@@ -16,9 +16,9 @@ import kotlin.time.toDuration
 
 class PresentProofMessengerTest : FreeSpec() {
 
-    private lateinit var holderKeyPair: KeyPairAdapter
-    private lateinit var verifierKeyPair: KeyPairAdapter
-    private lateinit var issuerKeyPair: KeyPairAdapter
+    private lateinit var holderKeyMaterial: KeyMaterial
+    private lateinit var verifierKeyMaterial: KeyMaterial
+    private lateinit var issuerKeyMaterial: KeyMaterial
     private lateinit var holderCredentialStore: SubjectCredentialStore
     private lateinit var holder: Holder
     private lateinit var verifier: Verifier
@@ -30,13 +30,13 @@ class PresentProofMessengerTest : FreeSpec() {
     init {
 
         beforeEach {
-            holderKeyPair = RandomKeyPairAdapter()
-            verifierKeyPair = RandomKeyPairAdapter()
-            issuerKeyPair = RandomKeyPairAdapter()
+            holderKeyMaterial = EphemeralKeyWithoutCert()
+            verifierKeyMaterial = EphemeralKeyWithoutCert()
+            issuerKeyMaterial = EphemeralKeyWithoutCert()
             holderCredentialStore = InMemorySubjectCredentialStore()
-            holder = HolderAgent(holderKeyPair, holderCredentialStore)
-            verifier = VerifierAgent(verifierKeyPair)
-            issuer = IssuerAgent(issuerKeyPair, DummyCredentialDataProvider())
+            holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
+            verifier = VerifierAgent(verifierKeyMaterial)
+            issuer = IssuerAgent(issuerKeyMaterial, DummyCredentialDataProvider())
             verifierChallenge = uuid4().toString()
             holderServiceEndpoint = "https://example.com/present-proof?${uuid4()}"
         }
@@ -44,20 +44,20 @@ class PresentProofMessengerTest : FreeSpec() {
         "presentProof" {
             holder.storeCredential(
                 issuer.issueCredential(
-                    holderKeyPair.publicKey,
+                    holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
                 ).getOrThrow().toStoreCredentialInput()
             )
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
-                messageWrapper = MessageWrapper(holderKeyPair),
+                messageWrapper = MessageWrapper(holderKeyMaterial),
                 serviceEndpoint = holderServiceEndpoint,
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
             )
             val verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
-                messageWrapper = MessageWrapper(verifierKeyPair),
+                messageWrapper = MessageWrapper(verifierKeyMaterial),
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
             )
 
@@ -84,7 +84,7 @@ class PresentProofMessengerTest : FreeSpec() {
 
         "selectiveDisclosure" {
             val issuedCredential = issuer.issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
             ).getOrThrow()
@@ -97,13 +97,13 @@ class PresentProofMessengerTest : FreeSpec() {
 
             val holderMessenger = PresentProofMessenger.newHolderInstance(
                 holder = holder,
-                messageWrapper = MessageWrapper(holderKeyPair),
+                messageWrapper = MessageWrapper(holderKeyMaterial),
                 serviceEndpoint = "https://example.com",
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
             )
             val verifierMessenger = PresentProofMessenger.newVerifierInstance(
                 verifier = verifier,
-                messageWrapper = MessageWrapper(verifierKeyPair),
+                messageWrapper = MessageWrapper(verifierKeyMaterial),
                 challengeForPresentation = verifierChallenge,
                 credentialScheme = ConstantIndex.AtomicAttribute2023,
                 requestedClaims = listOf(attributeName)

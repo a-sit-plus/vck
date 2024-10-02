@@ -5,11 +5,11 @@ import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.data.dif.ConstraintField
-import at.asitplus.wallet.lib.data.dif.FormatHolder
-import at.asitplus.wallet.lib.data.dif.InputDescriptor
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.data.dif.PresentationSubmission
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.PresentationSubmission
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import kotlinx.serialization.Serializable
 
@@ -31,7 +31,7 @@ interface Holder {
     /**
      * The public key for this agent, i.e. the "holder key" that the credentials get bound to.
      */
-    val keyPair: KeyPairAdapter
+    val keyPair: KeyMaterial
 
     /**
      * Sets the revocation list ot use for further processing of Verifiable Credentials

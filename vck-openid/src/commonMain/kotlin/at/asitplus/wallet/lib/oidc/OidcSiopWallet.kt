@@ -2,32 +2,28 @@ package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.openid.*
+import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
+import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.ID_TOKEN
+import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
+import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
+import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
+import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.CredentialSubmission
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.Errors
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.ID_TOKEN
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.PREFIX_DID_KEY
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.SCOPE_OPENID
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
-import at.asitplus.wallet.lib.oidc.OpenIdConstants.VP_TOKEN
 import at.asitplus.wallet.lib.oidc.helper.AuthenticationRequestParser
 import at.asitplus.wallet.lib.oidc.helper.AuthenticationResponseFactory
 import at.asitplus.wallet.lib.oidc.helper.AuthorizationRequestValidator
 import at.asitplus.wallet.lib.oidc.helper.PresentationFactory
 import at.asitplus.wallet.lib.oidc.helpers.AuthorizationResponsePreparationState
-import at.asitplus.wallet.lib.oidvci.IssuerMetadata
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
@@ -68,40 +64,50 @@ class OidcSiopWallet(
      */
     private val scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever,
 ) {
-    companion object {
-        fun newDefaultInstance(
-            keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
-            holder: Holder = HolderAgent(keyPairAdapter),
-            jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-            clock: Clock = Clock.System,
-            clientId: String = "https://wallet.a-sit.at/",
-            remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-            requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true },
-            scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever = { null },
-        ): OidcSiopWallet {
-            return OidcSiopWallet(
-                holder = holder,
-                agentPublicKey = keyPairAdapter.publicKey,
-                jwsService = jwsService,
-                clock = clock,
-                clientId = clientId,
-                remoteResourceRetriever = remoteResourceRetriever,
-                requestObjectJwsVerifier = requestObjectJwsVerifier,
-                scopePresentationDefinitionRetriever = scopePresentationDefinitionRetriever,
-            )
-        }
-    }
+    constructor(
+        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+        holder: Holder = HolderAgent(keyMaterial),
+        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+        clock: Clock = Clock.System,
+        clientId: String = "https://wallet.a-sit.at/",
+        /**
+         * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
+         * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
+         * Implementations need to fetch the url passed in, and return either the body, if there is one,
+         * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
+         */
+        remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
+        /**
+         * Need to verify the request object serialized as a JWS,
+         * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PRE_REGISTERED]).
+         */
+        requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true },
+        /**
+         * Need to implement if the presentation definition needs to be derived from a scope value.
+         * See [ScopePresentationDefinitionRetriever] for implementation instructions.
+         */
+        scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever = { null },
+    ) : this(
+        holder = holder,
+        agentPublicKey = keyMaterial.publicKey,
+        jwsService = jwsService,
+        clock = clock,
+        clientId = clientId,
+        remoteResourceRetriever = remoteResourceRetriever,
+        requestObjectJwsVerifier = requestObjectJwsVerifier,
+        scopePresentationDefinitionRetriever = scopePresentationDefinitionRetriever,
+    )
 
-    val metadata: IssuerMetadata by lazy {
-        IssuerMetadata(
+    val metadata: OAuth2AuthorizationServerMetadata by lazy {
+        OAuth2AuthorizationServerMetadata(
             issuer = clientId,
-            authorizationEndpointUrl = clientId,
+            authorizationEndpoint = clientId,
             responseTypesSupported = setOf(ID_TOKEN),
             scopesSupported = setOf(SCOPE_OPENID),
             subjectTypesSupported = setOf("pairwise", "public"),
             idTokenSigningAlgorithmsSupported = setOf(jwsService.algorithm),
             requestObjectSigningAlgorithmsSupported = setOf(jwsService.algorithm),
-            subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY),
+            subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY, BINDING_METHOD_JWK),
             idTokenTypesSupported = setOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,
         )
@@ -134,12 +140,10 @@ class OidcSiopWallet(
      */
     suspend fun createAuthnResponse(
         request: AuthenticationRequestParametersFrom,
-    ): KmmResult<AuthenticationResponseResult> = createAuthnResponseParams(request).map {
-        AuthenticationResponseFactory(jwsService).createAuthenticationResponse(
-            request,
-            response = it,
-        )
-    }
+    ): KmmResult<AuthenticationResponseResult> =
+        createAuthnResponseParams(request).map {
+            AuthenticationResponseFactory(jwsService).createAuthenticationResponse(request, it)
+        }
 
     /**
      * Creates the authentication response from the RP's [params]
@@ -164,7 +168,7 @@ class OidcSiopWallet(
         }
 
     /**
-     * Starts the authorization response building process from the RP's authentication request in [input]
+     * Starts the authorization response building process from the RP's authentication request in [params]
      */
     suspend fun startAuthorizationResponsePreparation(
         params: AuthenticationRequestParametersFrom

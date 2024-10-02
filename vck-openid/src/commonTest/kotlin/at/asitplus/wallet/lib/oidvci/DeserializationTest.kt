@@ -1,24 +1,21 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.wallet.lib.data.VcDataModelConstants
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParameters
-import at.asitplus.wallet.lib.oidc.OpenIdConstants
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.IssuerMetadata
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
-import io.ktor.http.*
-import kotlinx.serialization.encodeToString
-import kotlin.random.Random
-import kotlin.time.Duration.Companion.seconds
 
 class DeserializationTest : FunSpec({
 
     test("OID4VCI  A.1.1. VC Signed as a JWT, Not Using JSON-LD ") {
         val input = """
         {
+            "credential_issuer": "test",
+            "credential_endpoint": "test",
             "credential_configurations_supported": {
                 "UniversityDegreeCredential": {
                     "format": "jwt_vc_json",
@@ -96,6 +93,8 @@ class DeserializationTest : FunSpec({
     test("OID4VCI  A.2. ISO mDL ") {
         val input = """
         {
+            "credential_issuer": "test",
+            "credential_endpoint": "test",
             "credential_configurations_supported": {
                 "org.iso.18013.5.1.mDL": {
                     "format": "mso_mdoc",
@@ -181,6 +180,8 @@ class DeserializationTest : FunSpec({
     test("OID4VCI  A.3. IETF SD-JWT VC") {
         val input = """
         {
+            "credential_issuer": "test",
+            "credential_endpoint": "test",
             "credential_configurations_supported": {
                 "SD_JWT_VC_example_in_OpenID4VCI": {
                     "format": "vc+sd-jwt",

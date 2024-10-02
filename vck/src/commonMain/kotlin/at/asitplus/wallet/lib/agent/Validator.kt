@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.io.Base64Strict
@@ -23,7 +24,6 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 
 
 /**
@@ -38,21 +38,16 @@ class Validator(
     private val zlibService: ZlibService = DefaultZlibService(),
 ) {
 
-    companion object {
-        fun newDefaultInstance(
-            cryptoService: VerifierCryptoService,
-            parser: Parser = Parser()
-        ) = Validator(
-            verifierJwsService = DefaultVerifierJwsService(cryptoService = cryptoService),
-            verifierCoseService = DefaultVerifierCoseService(cryptoService = cryptoService),
-            parser = parser
-        )
-
-        /**
-         * Explicitly empty argument list to use it in Swift
-         */
-        fun newDefaultInstance() = Validator()
-    }
+    constructor(
+        cryptoService: VerifierCryptoService,
+        parser: Parser = Parser(),
+        zlibService: ZlibService = DefaultZlibService(),
+    ) : this(
+        verifierJwsService = DefaultVerifierJwsService(cryptoService = cryptoService),
+        verifierCoseService = DefaultVerifierCoseService(cryptoService = cryptoService),
+        parser = parser,
+        zlibService = zlibService
+    )
 
     private var revocationList: BitSet? = null
 
@@ -64,7 +59,7 @@ class Validator(
      */
     fun setRevocationList(it: String): Boolean {
         Napier.d("setRevocationList: Loading $it")
-        val jws = JwsSigned.parse(it).getOrNull()
+        val jws = JwsSigned.deserialize(it).getOrNull()
             ?: return false
                 .also { Napier.w("Revocation List: Could not parse JWS") }
         if (!verifierJwsService.verifyJwsObject(jws))
@@ -154,7 +149,7 @@ class Validator(
         publicKey: CryptoPublicKey
     ): Verifier.VerifyPresentationResult {
         Napier.d("Verifying VP $input")
-        val jws = JwsSigned.parse(input).getOrNull()
+        val jws = JwsSigned.deserialize(input).getOrNull()
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("VP: Could not parse JWS") }
         if (!verifierJwsService.verifyJwsObject(jws))
@@ -262,12 +257,12 @@ class Validator(
         } ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
             .also { Napier.w("Got no issuer key in $issuerAuth") }
 
-        if (verifierCoseService.verifyCose(issuerAuth, issuerKey).getOrNull() != true) {
+        if (verifierCoseService.verifyCose(issuerAuth, issuerKey).isFailure) {
             return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("IssuerAuth not verified: $issuerAuth") }
         }
 
-        val mso = issuerSigned.getIssuerAuthPayloadAsMso()
+        val mso = issuerSigned.getIssuerAuthPayloadAsMso().getOrNull()
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("MSO is null: ${issuerAuth.payload?.encodeToString(Base16(strict = true))}") }
         if (mso.docType != doc.docType) {
@@ -279,7 +274,7 @@ class Validator(
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("DeviceSignature is null: ${doc.deviceSigned.deviceAuth}") }
 
-        if (verifierCoseService.verifyCose(deviceSignature, walletKey).getOrNull() != true) {
+        if (verifierCoseService.verifyCose(deviceSignature, walletKey).isFailure) {
             return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
                 .also { Napier.w("DeviceSignature not verified") }
         }
@@ -304,17 +299,20 @@ class Validator(
             }
         }
         return Verifier.VerifyPresentationResult.SuccessIso(
-            IsoDocumentParsed(validItems = validItems, invalidItems = invalidItems)
+            IsoDocumentParsed(mso = mso, validItems = validItems, invalidItems = invalidItems)
         )
     }
 
+    /**
+     * Verify that calculated digests equal the corresponding digest values in the MSO.
+     *
+     * See ISO/IEC 18013-5:2021, 9.3.1 Inspection procedure for issuer data authentication
+     */
     private fun ByteStringWrapper<IssuerSignedItem>.verify(mdlItems: ValueDigestList?): Boolean {
-        val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId } ?: return false
-        // TODO analyze usages of tag wrapping
+        val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId }
+            ?: return false
         val verifierHash = serialized.wrapInCborTag(24).sha256()
-        if (!verifierHash.encodeToString(Base16(strict = true))
-                .contentEquals(issuerHash.value.encodeToString(Base16(strict = true)))
-        ) {
+        if (!verifierHash.contentEquals(issuerHash.value)) {
             Napier.w("Could not verify hash of value for ${value.elementIdentifier}")
             return false
         }
@@ -329,7 +327,7 @@ class Validator(
      */
     fun verifyVcJws(input: String, publicKey: CryptoPublicKey?): Verifier.VerifyCredentialResult {
         Napier.d("Verifying VC-JWS $input")
-        val jws = JwsSigned.parse(input).getOrNull()
+        val jws = JwsSigned.deserialize(input).getOrNull()
             ?: return Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.w("VC: Could not parse JWS") }
         if (!verifierJwsService.verifyJwsObject(jws))
@@ -427,7 +425,7 @@ class Validator(
             )
         }
         val result = verifierCoseService.verifyCose(it.issuerAuth, issuerKey)
-        if (result.getOrNull() != true) {
+        if (result.isFailure) {
             Napier.w("ISO: Could not verify credential", result.exceptionOrNull())
             return Verifier.VerifyCredentialResult.InvalidStructure(
                 it.serialize().encodeToString(Base16(strict = true))

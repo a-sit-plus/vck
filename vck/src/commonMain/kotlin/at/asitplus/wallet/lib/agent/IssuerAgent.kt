@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.io.BitSet
@@ -13,22 +13,10 @@ import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.CredentialStatus
-import at.asitplus.wallet.lib.data.RevocationListSubject
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
-import at.asitplus.wallet.lib.data.VerifiableCredential
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import at.asitplus.wallet.lib.iso.DeviceKeyInfo
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.IssuerSignedList
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
-import at.asitplus.wallet.lib.iso.ValidityInfo
-import at.asitplus.wallet.lib.iso.ValueDigest
-import at.asitplus.wallet.lib.iso.ValueDigestList
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -54,35 +42,35 @@ class IssuerAgent(
     private val jwsService: JwsService,
     private val coseService: CoseService,
     private val clock: Clock = Clock.System,
-    override val keyPair: KeyPairAdapter,
-    override val cryptoAlgorithms: Set<X509SignatureAlgorithm>,
+    override val keyMaterial: KeyMaterial,
+    override val cryptoAlgorithms: Set<SignatureAlgorithm> = setOf(keyMaterial.signatureAlgorithm),
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
 ) : Issuer {
 
     constructor(
-        keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
+        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
-        validator = Validator.newDefaultInstance(),
-        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
+        validator = Validator(),
+        jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+        coseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
         dataProvider = dataProvider,
-        keyPair = keyPairAdapter,
-        cryptoAlgorithms = setOf(keyPairAdapter.signingAlgorithm),
+        keyMaterial = keyMaterial,
+        cryptoAlgorithms = setOf(keyMaterial.signatureAlgorithm),
     )
 
     constructor(
-        keyPairAdapter: KeyPairAdapter = RandomKeyPairAdapter(),
+        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
         dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
-        validator = Validator.newDefaultInstance(),
+        validator = Validator(),
         issuerCredentialStore = issuerCredentialStore,
-        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
+        jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+        coseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
         dataProvider = dataProvider,
-        keyPair = keyPairAdapter,
-        cryptoAlgorithms = setOf(keyPairAdapter.signingAlgorithm),
+        keyMaterial = keyMaterial,
+        cryptoAlgorithms = setOf(keyMaterial.signatureAlgorithm),
     )
 
     /**
@@ -146,7 +134,7 @@ class IssuerAgent(
             digestAlgorithm = "SHA-256",
             valueDigests = mapOf(
                 scheme.isoNamespace!! to ValueDigestList(credential.issuerSignedItems.map {
-                    ValueDigest.fromIssuerSigned(it)
+                    ValueDigest.fromIssuerSignedItem(it, scheme.isoNamespace!!)
                 })
             ),
             deviceKeyInfo = deviceKeyInfo,
@@ -157,15 +145,13 @@ class IssuerAgent(
                 validUntil = expirationDate,
             )
         )
-        val issuerSigned = IssuerSigned(
-            namespaces = mapOf(
-                scheme.isoNamespace!! to IssuerSignedList.withItems(credential.issuerSignedItems)
-            ),
+        val issuerSigned = IssuerSigned.fromIssuerSignedItems(
+            namespacedItems = mapOf(scheme.isoNamespace!! to credential.issuerSignedItems),
             issuerAuth = coseService.createSignedCose(
                 payload = mso.serializeForIssuerAuth(),
                 addKeyId = false,
                 addCertificate = true,
-            ).getOrThrow()
+            ).getOrThrow(),
         )
         return Issuer.IssuedCredential.Iso(issuerSigned, scheme)
     }
@@ -190,7 +176,7 @@ class IssuerAgent(
         val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
         val vc = VerifiableCredential(
             id = vcId,
-            issuer = keyPair.identifier,
+            issuer = keyMaterial.identifier,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             credentialStatus = credentialStatus,
@@ -230,7 +216,7 @@ class IssuerAgent(
         val jwsPayload = VerifiableCredentialSdJwt(
             subject = subjectId,
             notBefore = issuanceDate,
-            issuer = keyPair.identifier,
+            issuer = keyMaterial.identifier,
             expiration = expirationDate,
             issuedAt = issuanceDate,
             jwtId = vcId,
@@ -260,7 +246,7 @@ class IssuerAgent(
         val subject = RevocationListSubject("$revocationListUrl#list", revocationList)
         val credential = VerifiableCredential(
             id = revocationListUrl,
-            issuer = keyPair.identifier,
+            issuer = keyMaterial.identifier,
             issuanceDate = clock.now(),
             lifetime = revocationListLifetime,
             credentialSubject = subject

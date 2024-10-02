@@ -3,20 +3,15 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
+import at.asitplus.dif.*
+import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
-import at.asitplus.wallet.lib.data.dif.ClaimFormatEnum
-import at.asitplus.wallet.lib.data.dif.FormatHolder
-import at.asitplus.wallet.lib.data.dif.InputDescriptor
 import at.asitplus.wallet.lib.data.dif.InputEvaluator
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
-import at.asitplus.wallet.lib.data.dif.PresentationSubmission
-import at.asitplus.wallet.lib.data.dif.PresentationSubmissionDescriptor
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -29,11 +24,11 @@ import io.github.aakira.napier.Napier
  * and present credentials to other agents.
  */
 class HolderAgent(
-    private val validator: Validator = Validator.newDefaultInstance(),
+    private val validator: Validator = Validator(),
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
     private val jwsService: JwsService,
     private val coseService: CoseService,
-    override val keyPair: KeyPairAdapter,
+    override val keyPair: KeyMaterial,
     private val verifiablePresentationFactory: VerifiablePresentationFactory = VerifiablePresentationFactory(
         jwsService = jwsService,
         coseService = coseService,
@@ -43,14 +38,14 @@ class HolderAgent(
 ) : Holder {
 
     constructor(
-        keyPairAdapter: KeyPairAdapter,
+        keyMaterial: KeyMaterial,
         subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore()
     ) : this(
-        validator = Validator.newDefaultInstance(DefaultVerifierCryptoService(), Parser()),
+        validator = Validator(),
         subjectCredentialStore = subjectCredentialStore,
-        jwsService = DefaultJwsService(DefaultCryptoService(keyPairAdapter)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyPairAdapter)),
-        keyPair = keyPairAdapter
+        jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+        coseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
+        keyPair = keyMaterial
     )
 
     /**
@@ -141,17 +136,18 @@ class HolderAgent(
     /**
      * Gets a list of all valid stored credentials sorted by preference
      */
-    private suspend fun getValidCredentialsByPriority() = getCredentials()?.filter {
-        it.status != Validator.RevocationStatus.REVOKED
-    }?.map { it.storeEntry }?.sortedBy {
-        // prefer iso credentials and sd jwt credentials over plain vc credentials
-        // -> they support selective disclosure!
-        when (it) {
-            is SubjectCredentialStore.StoreEntry.Vc -> 2
-            is SubjectCredentialStore.StoreEntry.SdJwt -> 1
-            is SubjectCredentialStore.StoreEntry.Iso -> 1
+    private suspend fun getValidCredentialsByPriority() = getCredentials()
+        ?.filter { it.status != Validator.RevocationStatus.REVOKED }
+        ?.map { it.storeEntry }
+        ?.sortedBy {
+            // prefer iso credentials and sd jwt credentials over plain vc credentials
+            // -> they support selective disclosure!
+            when (it) {
+                is SubjectCredentialStore.StoreEntry.Vc -> 2
+                is SubjectCredentialStore.StoreEntry.SdJwt -> 1
+                is SubjectCredentialStore.StoreEntry.Iso -> 1
+            }
         }
-    }
 
 
     override suspend fun createPresentation(

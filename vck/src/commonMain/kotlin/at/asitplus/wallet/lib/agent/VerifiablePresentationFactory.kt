@@ -2,20 +2,16 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.iso.DeviceAuth
-import at.asitplus.wallet.lib.iso.DeviceSigned
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.IssuerSignedList
-import at.asitplus.wallet.lib.iso.sha256
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -94,22 +90,26 @@ class VerifiablePresentationFactory(
         val disclosedItems = namespaceToAttributesMap.mapValues { namespaceToAttributeNamesEntry ->
             val namespace = namespaceToAttributeNamesEntry.key
             val attributeNames = namespaceToAttributeNamesEntry.value
-            IssuerSignedList(attributeNames.map { attributeName ->
+            attributeNames.map { attributeName ->
                 credential.issuerSigned.namespaces?.get(
                     namespace
                 )?.entries?.find {
                     it.value.elementIdentifier == attributeName
-                }
+                }?.value
                     ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
-            })
+            }
         }
 
         return Holder.CreatePresentationResult.Document(
             Document(
-                docType = credential.scheme.isoDocType!!, issuerSigned = IssuerSigned(
-                    namespaces = disclosedItems, issuerAuth = credential.issuerSigned.issuerAuth
-                ), deviceSigned = DeviceSigned(
-                    namespaces = byteArrayOf(), deviceAuth = DeviceAuth(
+                docType = credential.scheme.isoDocType!!,
+                issuerSigned = IssuerSigned.fromIssuerSignedItems(
+                    namespacedItems = disclosedItems,
+                    issuerAuth = credential.issuerSigned.issuerAuth
+                ),
+                deviceSigned = DeviceSigned(
+                    namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf())),
+                    deviceAuth = DeviceAuth(
                         deviceSignature = deviceSignature
                     )
                 )
@@ -140,7 +140,7 @@ class VerifiablePresentationFactory(
         val issuerJwtPlusDisclosures =
             SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
         val keyBinding = createKeyBindingJws(audienceId, challenge, issuerJwtPlusDisclosures)
-        val jwsFromIssuer = JwsSigned.parse(validSdJwtCredential.vcSerialized.substringBefore("~")).getOrElse {
+        val jwsFromIssuer = JwsSigned.deserialize(validSdJwtCredential.vcSerialized.substringBefore("~")).getOrElse {
             Napier.w("Could not re-create JWS from stored SD-JWT", it)
             throw PresentationException(it)
         }

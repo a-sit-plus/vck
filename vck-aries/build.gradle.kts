@@ -1,7 +1,6 @@
-import at.asitplus.gradle.commonImplementationDependencies
-import at.asitplus.gradle.commonIosExports
-import at.asitplus.gradle.exportIosFramework
-import at.asitplus.gradle.setupDokka
+import at.asitplus.gradle.*
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
 plugins {
     kotlin("multiplatform")
@@ -17,9 +16,18 @@ group = "at.asitplus.wallet"
 version = artifactVersion
 
 
+setupAndroid()
+
 kotlin {
 
     jvm()
+
+    androidTarget {
+        publishLibraryVariants("release")
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        instrumentedTestVariant.sourceSetTree.set(test)
+    }
+
     iosArm64()
     iosSimulatorArm64()
     iosX64()
@@ -48,8 +56,8 @@ kotlin {
 
 exportIosFramework(
     "VckAriesKmm",
-    static = false,
-    *commonIosExports(), project(":vck")
+    transitiveExports = false,
+    project(":vck")
 )
 
 val javadocJar = setupDokka(

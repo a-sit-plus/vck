@@ -68,12 +68,21 @@ object ConstantIndex {
     }
 
     object AtomicAttribute2023 : CredentialScheme {
+        const val CLAIM_GIVEN_NAME = "given_name"
+        const val CLAIM_FAMILY_NAME = "family_name"
+        const val CLAIM_DATE_OF_BIRTH = "date_of_birth"
+        const val CLAIM_PORTRAIT = "portrait"
         override val schemaUri: String = "https://wallet.a-sit.at/schemas/1.0.0/AtomicAttribute2023.json"
         override val vcType: String = "AtomicAttribute2023"
         override val sdJwtType: String = "AtomicAttribute2023"
         override val isoNamespace: String = "at.a-sit.wallet.atomic-attribute-2023"
         override val isoDocType: String = "at.a-sit.wallet.atomic-attribute-2023.iso"
-        override val claimNames: Collection<String> = listOf("given_name", "family_name", "date_of_birth")
+        override val claimNames: Collection<String> = listOf(
+            CLAIM_GIVEN_NAME,
+            CLAIM_FAMILY_NAME,
+            CLAIM_DATE_OF_BIRTH,
+            CLAIM_PORTRAIT
+        )
     }
 
     val CredentialScheme.supportsSdJwt

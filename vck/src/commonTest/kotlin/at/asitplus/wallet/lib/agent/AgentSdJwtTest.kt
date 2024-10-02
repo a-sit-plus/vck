@@ -1,13 +1,15 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.dif.Constraint
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.DifInputDescriptor
+import at.asitplus.dif.PresentationDefinition
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.dif.Constraint
-import at.asitplus.wallet.lib.data.dif.ConstraintField
-import at.asitplus.wallet.lib.data.dif.InputDescriptor
-import at.asitplus.wallet.lib.data.dif.PresentationDefinition
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -29,95 +31,78 @@ class AgentSdJwtTest : FreeSpec({
     lateinit var verifier: Verifier
     lateinit var issuerCredentialStore: IssuerCredentialStore
     lateinit var holderCredentialStore: SubjectCredentialStore
-    lateinit var holderKeyPair: KeyPairAdapter
+    lateinit var holderKeyMaterial: KeyMaterial
     lateinit var challenge: String
 
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
         issuer = IssuerAgent(
-            RandomKeyPairAdapter(),
+            EphemeralKeyWithoutCert(),
             issuerCredentialStore,
             DummyCredentialDataProvider(),
         )
-        holderKeyPair = RandomKeyPairAdapter()
-        holder = HolderAgent(holderKeyPair, holderCredentialStore)
+        holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
+        holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
         verifier = VerifierAgent()
         challenge = uuid4().toString()
         holder.storeCredential(
             issuer.issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.SD_JWT,
             ).getOrThrow().toStoreCredentialInput()
         )
     }
 
-    val givenNamePresentationDefinition = PresentationDefinition(
-        id = uuid4().toString(),
-        inputDescriptors = listOf(
-            InputDescriptor(
-                id = uuid4().toString(),
-                constraints = Constraint(
-                    fields = listOf(
-                        ConstraintField(
-                            path = listOf("$['given_name']")
-                        )
-                    )
-                )
-            )
-        )
-    )
-
     "simple walk-through success" {
-
         val presentationParameters = holder.createPresentation(
-            challenge,
-            verifier.keyPair.identifier,
-            presentationDefinition = givenNamePresentationDefinition
+            challenge = challenge,
+            audienceId = verifier.keyMaterial.identifier,
+            presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME, CLAIM_DATE_OF_BIRTH)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
-            .also { println("Presentation: ${it.sdJwt}") }
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-        verified.disclosures shouldHaveSize 1
-        verified.disclosures.forAll { it.claimName shouldBe "given_name" }
+        verified.disclosures shouldHaveSize 2
+
+        verified.disclosures.first { it.claimName == CLAIM_GIVEN_NAME }.claimValue.content shouldBe "Susanne"
+        verified.disclosures.first { it.claimName == CLAIM_DATE_OF_BIRTH }.claimValue.content shouldBe "1990-01-01"
         verified.isRevoked shouldBe false
     }
 
     "keyBindingJws contains more JWK attributes, still verifies" {
+        val credential = holderCredentialStore.getCredentials().getOrThrow()
+            .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>().first()
         val sdJwt = createSdJwtPresentation(
-            DefaultJwsService(DefaultCryptoService(holderKeyPair)),
-            verifier.keyPair.identifier,
-            challenge,
-            holderCredentialStore.getCredentials().getOrThrow()
-                .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>().first(),
-            "given_name"
+            jwsService = DefaultJwsService(DefaultCryptoService(holderKeyMaterial)),
+            audienceId = verifier.keyMaterial.identifier,
+            challenge = challenge,
+            validSdJwtCredential = credential,
+            claimName = CLAIM_GIVEN_NAME
         ).sdJwt
         val verified = verifier.verifyPresentation(sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         verified.disclosures shouldHaveSize 1
-        verified.disclosures.forAll { it.claimName shouldBe "given_name" }
+        verified.disclosures.forAll { it.claimName shouldBe CLAIM_GIVEN_NAME }
         verified.isRevoked shouldBe false
     }
 
     "wrong key binding jwt" {
         val presentationParameters = holder.createPresentation(
-            challenge,
-            verifier.keyPair.identifier,
-            givenNamePresentationDefinition
+            challenge = challenge,
+            audienceId = verifier.keyMaterial.identifier,
+            presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
         // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
-        val malformedVpSdJwt = vp.sdJwt.replaceAfterLast(
-            "~",
-            createFreshSdJwtKeyBinding(challenge, verifier.keyPair.identifier).substringAfterLast("~")
-        )
+        val freshKbJwt = createFreshSdJwtKeyBinding(challenge, verifier.keyMaterial.identifier)
+        val malformedVpSdJwt = vp.sdJwt.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
 
         verifier.verifyPresentation(malformedVpSdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
@@ -126,9 +111,9 @@ class AgentSdJwtTest : FreeSpec({
     "wrong challenge in key binding jwt" {
         val malformedChallenge = challenge.reversed()
         val presentationParameters = holder.createPresentation(
-            malformedChallenge,
-            verifier.keyPair.identifier,
-            presentationDefinition = givenNamePresentationDefinition
+            challenge = malformedChallenge,
+            audienceId = verifier.keyMaterial.identifier,
+            presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -140,18 +125,18 @@ class AgentSdJwtTest : FreeSpec({
 
     "revoked sd jwt" {
         val presentationParameters = holder.createPresentation(
-            challenge,
-            verifier.keyPair.identifier,
-            presentationDefinition = givenNamePresentationDefinition
+            challenge = challenge,
+            audienceId = verifier.keyMaterial.identifier,
+            presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
-        issuer.revokeCredentialsWithId(
-            holderCredentialStore.getCredentials().getOrThrow()
-                .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
-                .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }) shouldBe true
+        val listOfJwtId = holderCredentialStore.getCredentials().getOrThrow()
+            .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
+            .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
+        issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
         verifier.setRevocationList(issuer.issueRevocationListCredential()!!) shouldBe true
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
@@ -160,13 +145,25 @@ class AgentSdJwtTest : FreeSpec({
 
 })
 
+private fun buildPresentationDefinition(vararg attributeName: String) = PresentationDefinition(
+    id = uuid4().toString(),
+    inputDescriptors = listOf(
+        DifInputDescriptor(
+            id = uuid4().toString(),
+            constraints = Constraint(
+                fields = attributeName.map { ConstraintField(path = listOf("$['$it']")) }
+            )
+        )
+    )
+)
+
 suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {
-    val issuer = IssuerAgent(RandomKeyPairAdapter(), DummyCredentialDataProvider())
-    val holderKeyPair = RandomKeyPairAdapter()
-    val holder = HolderAgent(holderKeyPair)
+    val issuer = IssuerAgent(EphemeralKeyWithoutCert(), DummyCredentialDataProvider())
+    val holderKeyMaterial = EphemeralKeyWithoutCert()
+    val holder = HolderAgent(holderKeyMaterial)
     holder.storeCredential(
         issuer.issueCredential(
-            holderKeyPair.publicKey,
+            holderKeyMaterial.publicKey,
             ConstantIndex.AtomicAttribute2023,
             ConstantIndex.CredentialRepresentation.SD_JWT,
         ).getOrThrow().toStoreCredentialInput()
@@ -176,10 +173,11 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
         audienceId = verifierId,
         presentationDefinition = PresentationDefinition(
             id = uuid4().toString(),
-            inputDescriptors = listOf(InputDescriptor(id = uuid4().toString()))
+            inputDescriptors = listOf(DifInputDescriptor(id = uuid4().toString()))
         ),
     ).getOrThrow()
-    return (presentationResult.presentationResults.first() as Holder.CreatePresentationResult.SdJwt).sdJwt
+    val sdJwt = presentationResult.presentationResults.first() as Holder.CreatePresentationResult.SdJwt
+    return sdJwt.sdJwt
 }
 
 private suspend fun createSdJwtPresentation(
@@ -189,17 +187,15 @@ private suspend fun createSdJwtPresentation(
     validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
     claimName: String,
 ): Holder.CreatePresentationResult.SdJwt {
-    val filteredDisclosures = validSdJwtCredential.disclosures.filter { it.value!!.claimName == claimName }.keys
-    val issuerJwtPlusDisclosures =
-        SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
+    val filteredDisclosures = validSdJwtCredential.disclosures
+        .filter { it.value!!.claimName == claimName }.keys
+    val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
     val keyBinding = createKeyBindingJws(jwsService, audienceId, challenge, issuerJwtPlusDisclosures)
-    val jwsFromIssuer =
-        JwsSigned.parse(validSdJwtCredential.vcSerialized.substringBefore("~")).getOrElse {
-            Napier.w("Could not re-create JWS from stored SD-JWT", it)
-            throw PresentationException(it)
-        }
-    val sdJwt =
-        SdJwtSigned.serializePresentation(jwsFromIssuer, filteredDisclosures, keyBinding)
+    val jwsFromIssuer = JwsSigned.deserialize(validSdJwtCredential.vcSerialized.substringBefore("~")).getOrElse {
+        Napier.w("Could not re-create JWS from stored SD-JWT", it)
+        throw PresentationException(it)
+    }
+    val sdJwt = SdJwtSigned.serializePresentation(jwsFromIssuer, filteredDisclosures, keyBinding)
     return Holder.CreatePresentationResult.SdJwt(sdJwt)
 }
 

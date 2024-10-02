@@ -1,14 +1,9 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyPairAdapter
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
@@ -27,63 +22,63 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     lateinit var relyingPartyUrl: String
     lateinit var walletUrl: String
 
-    lateinit var holderKeyPair: KeyPairAdapter
-    lateinit var verifierKeyPair: KeyPairAdapter
+    lateinit var holderKeyMaterial: KeyMaterial
+    lateinit var verifierKeyMaterial: KeyMaterial
 
     lateinit var holderAgent: Holder
-    lateinit var verifierAgent: Verifier
 
     lateinit var holderSiop: OidcSiopWallet
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
-        holderKeyPair = RandomKeyPairAdapter()
-        verifierKeyPair = RandomKeyPairAdapter()
+        holderKeyMaterial = EphemeralKeyWithoutCert()
+        verifierKeyMaterial = EphemeralKeyWithoutCert()
         relyingPartyUrl = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
-        holderAgent = HolderAgent(holderKeyPair)
-        verifierAgent = VerifierAgent(verifierKeyPair)
+        holderAgent = HolderAgent(holderKeyMaterial)
 
         val issuerAgent = IssuerAgent(
-            RandomKeyPairAdapter(),
+            EphemeralKeyWithSelfSignedCert(),
             DummyCredentialDataProvider(),
         )
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 MobileDrivingLicenceScheme,
                 ConstantIndex.CredentialRepresentation.ISO_MDOC,
             ).getOrThrow().toStoreCredentialInput()
         )
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                holderKeyPair.publicKey,
+                holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.ISO_MDOC,
             ).getOrThrow().toStoreCredentialInput()
         )
 
 
-        holderSiop = OidcSiopWallet.newDefaultInstance(
-            keyPairAdapter = holderKeyPair,
+        holderSiop = OidcSiopWallet(
             holder = holderAgent,
+            keyMaterial = holderKeyMaterial
         )
     }
 
     "test with Fragment for mDL" {
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(
             verifierSiop,
             walletUrl,
             OidcSiopVerifier.RequestOptions(
-                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                credentialScheme = MobileDrivingLicenceScheme,
-                requestedAttributes = listOf(
-                    MobileDrivingLicenceDataElements.GIVEN_NAME
-                ),
+                credentials = setOf(
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        MobileDrivingLicenceScheme, ConstantIndex.CredentialRepresentation.ISO_MDOC, listOf(
+                            MobileDrivingLicenceDataElements.GIVEN_NAME
+                        )
+                    )
+                )
             ),
             holderSiop
         )
@@ -93,17 +88,21 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     }
 
     "test with Fragment for custom attributes" {
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(
             verifierSiop,
             walletUrl,
             OidcSiopVerifier.RequestOptions(
-                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                credentialScheme = ConstantIndex.AtomicAttribute2023,
-                requestedAttributes = listOf("given_name"),
+                credentials = setOf(
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                        listOf(CLAIM_GIVEN_NAME)
+                    )
+                )
             ),
             holderSiop
         )
@@ -114,17 +113,21 @@ class OidcSiopIsoProtocolTest : FreeSpec({
 
     "Selective Disclosure with mDL" {
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(
             verifierSiop,
             walletUrl,
             OidcSiopVerifier.RequestOptions(
-                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                credentialScheme = MobileDrivingLicenceScheme,
-                requestedAttributes = listOf(requestedClaim),
+                credentials = setOf(
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        MobileDrivingLicenceScheme,
+                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                        listOf(requestedClaim)
+                    )
+                )
             ),
             holderSiop,
         )
@@ -137,22 +140,24 @@ class OidcSiopIsoProtocolTest : FreeSpec({
 
     "Selective Disclosure with mDL and encryption" {
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
-            responseUrl = relyingPartyUrl + "/${uuid4()}"
         )
         val requestOptions = OidcSiopVerifier.RequestOptions(
-            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-            credentialScheme = MobileDrivingLicenceScheme,
-            requestedAttributes = listOf(requestedClaim),
+            credentials = setOf(
+                OidcSiopVerifier.RequestOptionsCredential(
+                    MobileDrivingLicenceScheme, ConstantIndex.CredentialRepresentation.ISO_MDOC, listOf(requestedClaim)
+                )
+            ),
             responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
+            responseUrl = "https://example.com/response",
             encryption = true
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = requestOptions
-        ).also { println(it) }
+        )
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
@@ -169,17 +174,21 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     }
 
     "Selective Disclosure with mDL JSON Path syntax" {
-        verifierSiop = OidcSiopVerifier.newInstance(
-            verifier = verifierAgent,
+        verifierSiop = OidcSiopVerifier(
+            keyMaterial = verifierKeyMaterial,
             relyingPartyUrl = relyingPartyUrl,
         )
         val document = runProcess(
             verifierSiop,
             walletUrl,
             OidcSiopVerifier.RequestOptions(
-                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                credentialScheme = MobileDrivingLicenceScheme,
-                requestedAttributes = listOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
+                credentials = setOf(
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        MobileDrivingLicenceScheme,
+                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                        listOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
+                    )
+                )
             ),
             holderSiop,
         )
@@ -201,12 +210,12 @@ private suspend fun runProcess(
     val authnRequest = verifierSiop.createAuthnRequestUrl(
         walletUrl = walletUrl,
         requestOptions = requestOptions
-    ).also { println(it) }
+    )
 
     val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-    authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>().also { println(it) }
+    authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
     val result = verifierSiop.validateAuthnResponse(authnResponse.url)
     result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
-    return result.document.also { println(it) }
+    return result.document
 }
