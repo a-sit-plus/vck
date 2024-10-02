@@ -299,7 +299,7 @@ class Validator(
             }
         }
         return Verifier.VerifyPresentationResult.SuccessIso(
-            IsoDocumentParsed(validItems = validItems, invalidItems = invalidItems)
+            IsoDocumentParsed(mso = mso, validItems = validItems, invalidItems = invalidItems)
         )
     }
 
