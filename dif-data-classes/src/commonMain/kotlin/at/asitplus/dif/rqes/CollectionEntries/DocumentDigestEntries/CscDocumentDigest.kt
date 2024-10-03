@@ -4,13 +4,15 @@ import at.asitplus.dif.rqes.Enums.ConformanceLevelEnum
 import at.asitplus.dif.rqes.Enums.SignatureFormat
 import at.asitplus.dif.rqes.Enums.SignedEnvelopeProperty
 import at.asitplus.dif.rqes.Hashes
+import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
 import at.asitplus.dif.rqes.contentEquals
 import at.asitplus.dif.rqes.contentHashCode
+import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import io.ktor.util.reflect.*
-import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 
 /**
@@ -50,24 +52,26 @@ data class CscDocumentDigest(
     val conformanceLevel: ConformanceLevelEnum? = null,
 
     /**
-     * TODO use Indespensable [SignatureAlgorithm]? <- needs to be extended to point to OID
      * The OID of the algorithm to use for signing
      */
     @SerialName("signAlgo")
     val signAlgo: ObjectIdentifier,
 
     /**
-     * TODO: Serializer
-     * The Base64-encoded DER-encoded ASN.1 signature parameters
+     * The Base64-encoded DER-encoded ASN.1 signature algorithm parameters if required by
+     * the signature algorithm - Necessary for RSASSA-PSS for example
      */
     @SerialName("signAlgoParams")
-    val signAlgoParams: String? = null,
+    @Serializable(Asn1EncodableBase64Serializer::class)
+    val signAlgoParams: Asn1Element? = null,
 
     /**
-     * TODO: CSC P. 80
+     * Defined in CSC v2.0.0.2 P. 81
+     * Defines a second way to encode all attributes, none of which are necessary
+     * Will be ignored until use-case arises
      */
     @SerialName("signed_props")
-    val signedProps: List<String>? = null,
+    val signedProps: List<JsonObject>? = null,
 
     /**
      * if omitted/null it is assumed to have value
