@@ -118,11 +118,13 @@ data class SignHashParameters(
     val signAlgorithm: X509SignatureAlgorithm? =
         run {
             val DERencoded = signAlgoOid?.encodeToTlv()?.asSequence()
-            kotlin.runCatching { X509SignatureAlgorithm.doDecode(DERencoded) }.getOrElse {
-                Napier.d { "Could not deserialize signature algorithm from OID $signAlgoOid. Reason: $it" }
-                null
-            }.also {
-                require(it?.digest != Digest.SHA1)
+            DERencoded?.let {
+                kotlin.runCatching { X509SignatureAlgorithm.doDecode(DERencoded) }.getOrElse {
+                    Napier.d { "Could not deserialize signature algorithm from OID $signAlgoOid. Reason: $it" }
+                    null
+                }.also {
+                    require(it?.digest != Digest.SHA1)
+                }
             }
         }
 
