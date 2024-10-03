@@ -7,7 +7,7 @@ import at.asitplus.dif.rqes.SignHashParameters
 import at.asitplus.dif.rqes.SignatureRequestParameters
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.rqes.RqesRequest
-import at.asitplus.signum.indispensable.asn1.KnownOIDs.ecdsaWithSHA256
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import com.benasher44.uuid.uuid4
 
@@ -38,7 +38,7 @@ class RqesWalletService(
             documentDigests = listOf(
                 rqesRequest.getCscDocumentDigests(
                     signatureFormat = SignatureFormat.CADES,
-                    signAlgorithm = ecdsaWithSHA256,
+                    signAlgorithm = X509SignatureAlgorithm.ES256,
                 )
             ),
             responseUri = this.redirectUrl, //TODO double check
@@ -51,7 +51,8 @@ class RqesWalletService(
     ): SignatureRequestParameters = SignHashParameters(
         credentialId = credentialId,
         sad = sad,
-        hashes = rqesRequest.documentDigests.map { it.hash }
+        hashes = rqesRequest.documentDigests.map { it.hash },
+        signAlgoOid = X509SignatureAlgorithm.ES256.oid
     )
 
 }

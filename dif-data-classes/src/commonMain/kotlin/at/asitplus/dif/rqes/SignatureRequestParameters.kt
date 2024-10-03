@@ -6,10 +6,18 @@ import at.asitplus.dif.rqes.CollectionEntries.Document
 import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.CscDocumentDigest
 import at.asitplus.dif.rqes.Enums.OperationModeEnum
 import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
+import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
 import at.asitplus.dif.rqes.Serializer.SignatureRequestParameterSerializer
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.asn1.encoding.Asn1
+import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.UseSerializers
 
 @Serializable(with = SignatureRequestParameterSerializer::class)
@@ -51,8 +59,9 @@ sealed interface SignatureRequestParameters {
     val responseUri: String?
 
     /**
-     * The clientData as defined in the Input parameter table in `oauth2/authorize`
-     * TODO double check
+     * Arbitrary data from the signature application. It can be used to handle a
+     * transaction identifier or other application-spe cific data that may be useful for
+     * debugging purposes
      */
     val clientData: String?
 }
@@ -97,17 +106,43 @@ data class SignHashParameters(
      * in `credentials/list`
      */
     @SerialName("signAlgo")
-    val signAlgo: ObjectIdentifier? = null,
+    val signAlgoOid: ObjectIdentifier,
 
     /**
-     * TODO: The Base64-encoded DER-encoded ASN.1 signature parameters, if required by
-     * the signature algorithm. Some algorithms like RSASSA-PSS, as defined in RFC8017,
-     * may require additional parameters
+     * The Base64-encoded DER-encoded ASN.1 signature algorithm parameters if required by
+     * the signature algorithm - Necessary for RSASSA-PSS for example
      */
     @SerialName("signAlgoParams")
-    val signAlgoParams: String? = null,
+    @Serializable(with = Asn1EncodableBase64Serializer::class)
+    val signAlgoParams: Asn1Element? = null,
 
     ) : SignatureRequestParameters {
+
+    @Transient
+    val signAlgorithm: SignatureAlgorithm? =
+        kotlin.runCatching {
+            X509SignatureAlgorithm.doDecode(Asn1.Sequence {
+                +signAlgoOid
+                +(signAlgoParams ?: Asn1.Null())
+            }).also {
+                require(it.digest != Digest.SHA1)
+            }.algorithm
+        }.getOrElse {
+            Napier.w { "Could not resolve $signAlgoOid" }
+            null
+        }
+
+    @Transient
+    val hashAlgorithm: Digest = hashAlgorithmOid?.let {
+        Digest.entries.find { digest -> digest.oid == it }
+    } ?: when(signAlgorithm) {
+        //TODO change as soon as digest is a member of the interface
+        is SignatureAlgorithm.ECDSA -> signAlgorithm.digest
+        is SignatureAlgorithm.HMAC -> signAlgorithm.digest
+        is SignatureAlgorithm.RSA -> signAlgorithm.digest
+        null -> null
+    } ?: throw Exception("Unknown hashing algorithm in $hashAlgorithmOid and $signAlgoOid")
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -121,7 +156,7 @@ data class SignHashParameters(
         if (responseUri != other.responseUri) return false
         if (clientData != other.clientData) return false
         if (hashAlgorithmOid != other.hashAlgorithmOid) return false
-        if (signAlgo != other.signAlgo) return false
+        if (signAlgoOid != other.signAlgoOid) return false
         if (signAlgoParams != other.signAlgoParams) return false
 
         return true
@@ -136,7 +171,7 @@ data class SignHashParameters(
         result = 31 * result + (responseUri?.hashCode() ?: 0)
         result = 31 * result + (clientData?.hashCode() ?: 0)
         result = 31 * result + (hashAlgorithmOid?.hashCode() ?: 0)
-        result = 31 * result + (signAlgo?.hashCode() ?: 0)
+        result = 31 * result + (signAlgoOid?.hashCode() ?: 0)
         result = 31 * result + (signAlgoParams?.hashCode() ?: 0)
         return result
     }
@@ -170,8 +205,10 @@ data class SignDocParameters(
     @SerialName("signatureQualifier")
     val signatureQualifier: SignatureQualifierEnum? = null,
 
+    @SerialName("documentDigests")
     val documentDigests: Collection<CscDocumentDigest>? = null,
 
+    @SerialName("documents")
     val documents: Collection<Document>? = null,
 
     /**
@@ -181,7 +218,8 @@ data class SignDocParameters(
      */
     @SerialName("returnValidationInformation")
     val returnValidationInformation: Boolean = false,
-) : SignatureRequestParameters {
+
+    ) : SignatureRequestParameters {
     init {
         require(credentialId != null || signatureQualifier != null) { "Either credentialId or signatureQualifier must not be null (both can be present)" }
         require(documentDigests != null || documents != null) { "Either documentDigests or documents must not be null (both can be present)" }

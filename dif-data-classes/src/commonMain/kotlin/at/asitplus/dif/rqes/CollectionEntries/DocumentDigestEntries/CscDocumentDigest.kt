@@ -7,11 +7,17 @@ import at.asitplus.dif.rqes.Hashes
 import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
 import at.asitplus.dif.rqes.contentEquals
 import at.asitplus.dif.rqes.contentHashCode
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.asn1.encoding.Asn1
+import io.github.aakira.napier.Napier
 import io.ktor.util.reflect.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
 
 
@@ -55,14 +61,14 @@ data class CscDocumentDigest(
      * The OID of the algorithm to use for signing
      */
     @SerialName("signAlgo")
-    val signAlgo: ObjectIdentifier,
+    val signAlgoOid: ObjectIdentifier,
 
     /**
      * The Base64-encoded DER-encoded ASN.1 signature algorithm parameters if required by
      * the signature algorithm - Necessary for RSASSA-PSS for example
      */
     @SerialName("signAlgoParams")
-    @Serializable(Asn1EncodableBase64Serializer::class)
+    @Serializable(with = Asn1EncodableBase64Serializer::class)
     val signAlgoParams: Asn1Element? = null,
 
     /**
@@ -80,6 +86,32 @@ data class CscDocumentDigest(
     @SerialName("signed_envelope_property")
     val signedEnvelopeProperty: SignedEnvelopeProperty? = null,
 ) {
+
+    @Transient
+    val signAlgorithm: SignatureAlgorithm? =
+        kotlin.runCatching {
+            X509SignatureAlgorithm.doDecode(Asn1.Sequence {
+                +signAlgoOid
+                +(signAlgoParams ?: Asn1.Null())
+            }).also {
+                require(it.digest != Digest.SHA1)
+            }.algorithm
+        }.getOrElse {
+            Napier.w { "Could not resolve $signAlgoOid" }
+            null
+        }
+
+    @Transient
+    val hashAlgorithm: Digest = hashAlgorithmOid?.let {
+        Digest.entries.find { digest -> digest.oid == it }
+    } ?: when(signAlgorithm) {
+        //TODO change as soon as digest is a member of the interface
+        is SignatureAlgorithm.ECDSA -> signAlgorithm.digest
+        is SignatureAlgorithm.HMAC -> signAlgorithm.digest
+        is SignatureAlgorithm.RSA -> signAlgorithm.digest
+        null -> null
+    } ?: throw Exception("Unknown hashing algorithm in $hashAlgorithmOid and $signAlgoOid")
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -90,7 +122,7 @@ data class CscDocumentDigest(
         if (hashAlgorithmOid != other.hashAlgorithmOid) return false
         if (signatureFormat != other.signatureFormat) return false
         if (conformanceLevel != other.conformanceLevel) return false
-        if (signAlgo != other.signAlgo) return false
+        if (signAlgoOid != other.signAlgoOid) return false
         if (signAlgoParams != other.signAlgoParams) return false
         if (signedProps != other.signedProps) return false
         if (signedEnvelopeProperty != other.signedEnvelopeProperty) return false
@@ -103,7 +135,7 @@ data class CscDocumentDigest(
         result = 31 * result + (hashAlgorithmOid?.hashCode() ?: 0)
         result = 31 * result + signatureFormat.hashCode()
         result = 31 * result + conformanceLevel.hashCode()
-        result = 31 * result + signAlgo.hashCode()
+        result = 31 * result + signAlgoOid.hashCode()
         result = 31 * result + (signAlgoParams?.hashCode() ?: 0)
         result = 31 * result + (signedProps?.hashCode() ?: 0)
         result = 31 * result + signedEnvelopeProperty.hashCode()

@@ -9,6 +9,8 @@ import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
 import at.asitplus.dif.rqes.Enums.SignedEnvelopeProperty
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
@@ -18,6 +20,7 @@ import kotlinx.serialization.json.JsonObject
 
 /**
  * TODO: Find new home (different subfolder most likely)
+ * TODO: Describe vars
  *
  * In the Wallet centric model this is the request
  * coming from the Driving application to the wallet which starts
@@ -47,17 +50,14 @@ data class RqesRequest(
     @SerialName("response_uri")
     val responseUri: String? = null,
 
-
     @SerialName("nonce")
     val nonce: String,
 
     @SerialName("state")
     val state: String? = null,
 
-
     @SerialName("signatureQualifier")
     val signatureQualifier: SignatureQualifierEnum = SignatureQualifierEnum.EU_EIDAS_QES,
-
 
     @SerialName("documentDigests")
     val documentDigests: List<OAuthDocumentDigest>,
@@ -66,7 +66,7 @@ data class RqesRequest(
     val documentLocations: List<DocumentLocation>,
 
     @SerialName("hashAlgorithmOID")
-    val hashAlgorithmOid: ObjectIdentifier = sha_256,
+    val hashAlgorithmOid: ObjectIdentifier = Digest.SHA256.oid,
 
     @SerialName("clientData")
     val clientData: String?,
@@ -82,10 +82,10 @@ data class RqesRequest(
 
     fun getCscDocumentDigests(
         signatureFormat: SignatureFormat,
-        conformanceLevelEnum: ConformanceLevelEnum? = ConformanceLevelEnum.ADESBB,
-        signAlgorithm: ObjectIdentifier,
+        signAlgorithm: X509SignatureAlgorithm,
         signAlgoParam: Asn1Element? = null,
         signedProps: List<JsonObject>? = null,
+        conformanceLevelEnum: ConformanceLevelEnum? = ConformanceLevelEnum.ADESBB,
         signedEnvelopeProperty: SignedEnvelopeProperty? = SignedEnvelopeProperty.defaultProperty(signatureFormat)
     ): CscDocumentDigest =
         CscDocumentDigest(
@@ -93,7 +93,7 @@ data class RqesRequest(
             hashAlgorithmOid = this.hashAlgorithmOid,
             signatureFormat = signatureFormat,
             conformanceLevel = conformanceLevelEnum,
-            signAlgo = signAlgorithm,
+            signAlgoOid = signAlgorithm.oid,
             signAlgoParams = signAlgoParam,
             signedProps = signedProps,
             signedEnvelopeProperty = signedEnvelopeProperty
