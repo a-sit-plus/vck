@@ -104,8 +104,8 @@ data class RqesDocumentDigestEntry private constructor(
         require(hash != null || dataToBeSignedRepresentation != null)
         require(hashAlgorithmOID?.toString() iff hash?.toString())
         require(dtbsrHashAlgorithmOID?.toString() iff dataToBeSignedRepresentation?.toString())
-        require(documentLocationUri?.toString() iff hash?.toString())
-        require(documentLocationMethod?.toString() iff documentLocationUri?.toString())
+        require(documentLocationUri iff hash?.toString())
+        require(documentLocationMethod?.toString() iff documentLocationUri)
     }
 
     override fun equals(other: Any?): Boolean {

@@ -9,10 +9,12 @@ import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
 import at.asitplus.dif.rqes.Enums.SignedEnvelopeProperty
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 /**
  * TODO: Find new home (different subfolder most likely)
@@ -82,8 +84,8 @@ data class RqesRequest(
         signatureFormat: SignatureFormat,
         conformanceLevelEnum: ConformanceLevelEnum? = ConformanceLevelEnum.ADESBB,
         signAlgorithm: ObjectIdentifier,
-        signAlgoParam: String? = null,
-        signedProps: List<String>? = null,
+        signAlgoParam: Asn1Element? = null,
+        signedProps: List<JsonObject>? = null,
         signedEnvelopeProperty: SignedEnvelopeProperty? = SignedEnvelopeProperty.defaultProperty(signatureFormat)
     ): CscDocumentDigest =
         CscDocumentDigest(
