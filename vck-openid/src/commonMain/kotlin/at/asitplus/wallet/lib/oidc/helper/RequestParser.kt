@@ -19,7 +19,7 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
 
-internal class RequestParser(
+class RequestParser(
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
      * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
