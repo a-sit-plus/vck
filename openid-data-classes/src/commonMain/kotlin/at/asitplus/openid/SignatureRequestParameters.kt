@@ -1,4 +1,4 @@
-package at.asitplus.openid.rqes
+package at.asitplus.openid
 
 import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.CscDocumentDigest
 import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.OAuthDocumentDigest
@@ -7,8 +7,6 @@ import at.asitplus.dif.rqes.enums.ConformanceLevelEnum
 import at.asitplus.dif.rqes.enums.SignatureFormat
 import at.asitplus.dif.rqes.enums.SignatureQualifierEnum
 import at.asitplus.dif.rqes.enums.SignedEnvelopeProperty
-import at.asitplus.openid.AuthorizationDetails
-import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
@@ -26,7 +24,7 @@ import kotlinx.serialization.json.JsonObject
  * the process
  */
 @Serializable
-data class RqesRequest(
+data class SignatureRequestParameters(
 
     @SerialName("response_type")
     val responseType: String,
@@ -69,7 +67,7 @@ data class RqesRequest(
 
     @SerialName("clientData")
     val clientData: String?,
-) {
+) : RequestParameters {
     fun toAuthorizationDetails(): AuthorizationDetails =
         AuthorizationDetails.CSCCredential(
             credentialID = this.clientId,
@@ -85,7 +83,7 @@ data class RqesRequest(
         signAlgoParam: Asn1Element? = null,
         signedProps: List<JsonObject>? = null,
         conformanceLevelEnum: ConformanceLevelEnum? = ConformanceLevelEnum.ADESBB,
-        signedEnvelopeProperty: SignedEnvelopeProperty? = SignedEnvelopeProperty.defaultProperty(signatureFormat)
+        signedEnvelopeProperty: SignedEnvelopeProperty? = SignedEnvelopeProperty.defaultProperty(signatureFormat),
     ): CscDocumentDigest =
         CscDocumentDigest(
             hashes = this.documentDigests.map { it.hash },

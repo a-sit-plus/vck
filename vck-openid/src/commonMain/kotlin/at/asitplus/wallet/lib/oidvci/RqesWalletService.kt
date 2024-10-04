@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.dif.rqes.CSCSignatureRequestParameters
 import at.asitplus.dif.rqes.enums.SignatureFormat
 import at.asitplus.dif.rqes.RqesConstants
 import at.asitplus.dif.rqes.SignDocParameters
 import at.asitplus.dif.rqes.SignHashParameters
-import at.asitplus.dif.rqes.SignatureRequestParameters
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.rqes.RqesRequest
+import at.asitplus.openid.rqes.SignatureRequestParameters
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import com.benasher44.uuid.uuid4
@@ -18,7 +18,7 @@ class RqesWalletService(
 ) {
 
     suspend fun createOAuth2AuthenticationRequest(
-        rqesRequest: RqesRequest,
+        rqesRequest: at.asitplus.openid.rqes.SignatureRequestParameters,
         credentialId: ByteArray,
     ): AuthenticationRequestParameters =
         oauth2Client.createAuthRequest(
@@ -30,8 +30,9 @@ class RqesWalletService(
 
     /**
      * TODO: could also use [Document] instead of [CscDocumentDigest], also [credential_id] instead of [SAD]
+     * TODO implement [CredentialInfo] dataclass + hand over here
      */
-    suspend fun createSignDocRequestParameters(rqesRequest: RqesRequest, sad: String): SignatureRequestParameters =
+    suspend fun createSignDocRequestParameters(rqesRequest: SignatureRequestParameters, sad: String): CSCSignatureRequestParameters =
         SignDocParameters(
             sad = sad,
             signatureQualifier = rqesRequest.signatureQualifier,
@@ -44,11 +45,13 @@ class RqesWalletService(
             responseUri = this.redirectUrl, //TODO double check
         )
 
+
+    //TODO implement [CredentialInfo] dataclass + hand over here
     suspend fun createSignHashRequestParameters(
-        rqesRequest: RqesRequest,
+        rqesRequest: at.asitplus.openid.rqes.SignatureRequestParameters,
         credentialId: String,
         sad: String,
-    ): SignatureRequestParameters = SignHashParameters(
+    ): CSCSignatureRequestParameters = SignHashParameters(
         credentialId = credentialId,
         sad = sad,
         hashes = rqesRequest.documentDigests.map { it.hash },
