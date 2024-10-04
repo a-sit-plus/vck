@@ -1,4 +1,4 @@
-package at.asitplus.openid.rqes
+package at.asitplus.openid
 
 import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.CscDocumentDigest
 import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.OAuthDocumentDigest
@@ -7,8 +7,6 @@ import at.asitplus.dif.rqes.Enums.ConformanceLevelEnum
 import at.asitplus.dif.rqes.Enums.SignatureFormat
 import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
 import at.asitplus.dif.rqes.Enums.SignedEnvelopeProperty
-import at.asitplus.openid.AuthorizationDetails
-import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
@@ -69,7 +67,7 @@ data class SignatureRequestParameters(
 
     @SerialName("clientData")
     val clientData: String?,
-) {
+) : RequestParameters {
     fun toAuthorizationDetails(): AuthorizationDetails =
         AuthorizationDetails.CSCCredential(
             credentialID = this.clientId,

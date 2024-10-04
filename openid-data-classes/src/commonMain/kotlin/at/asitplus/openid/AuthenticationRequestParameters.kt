@@ -339,7 +339,7 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("clientData")
     val clientData: String? = null,
-) {
+): RequestParameters {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
