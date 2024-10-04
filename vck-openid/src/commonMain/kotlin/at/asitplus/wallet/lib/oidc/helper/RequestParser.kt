@@ -6,18 +6,24 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.RequestParametersSerializer
+import at.asitplus.openid.SignatureRequestParameters
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidc.RequestParametersFrom
+import at.asitplus.wallet.lib.oidc.RequestParametersFromSerializer
+import at.asitplus.wallet.lib.oidc.SignatureRequestParametersFrom
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
+import kotlinx.serialization.json.encodeToJsonElement
 
 class RequestParser(
     /**
@@ -47,15 +53,22 @@ class RequestParser(
      * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
+     * TODO finish all cases as in URI
      */
     suspend fun parseRequestParameters(input: String): KmmResult<RequestParametersFrom> = catching {
         // maybe it is a request JWS
         val parsedParams = kotlin.run { parseRequestObjectJws(input) }
             ?: kotlin.runCatching { // maybe it's in the URL parameters
                 Url(input).let {
-                    val params = it.parameters.flattenEntries().toMap()
-                        .decodeFromUrlQuery<AuthenticationRequestParameters>()
-                    AuthenticationRequestParametersFrom.Uri(it, params)
+                    val params = vckJsonSerializer.encodeToJsonElement(it.parameters)
+                    vckJsonSerializer.decodeFromJsonElement(RequestParametersSerializer, params).let { result ->
+                        when (result) {
+                            is AuthenticationRequestParameters ->
+                                AuthenticationRequestParametersFrom.Uri(it, result)
+                            is SignatureRequestParameters ->
+                                SignatureRequestParametersFrom.Uri(it, result)
+                        }
+                    }
                 }
             }.onFailure { it.printStackTrace() }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
