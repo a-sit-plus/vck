@@ -6,7 +6,7 @@ import at.asitplus.dif.rqes.RqesConstants
 import at.asitplus.dif.rqes.SignDocParameters
 import at.asitplus.dif.rqes.SignHashParameters
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.SignatureRequestParameters
+import at.asitplus.openid.rqes.SignatureRequestParameters
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import com.benasher44.uuid.uuid4
@@ -18,7 +18,7 @@ class RqesWalletService(
 ) {
 
     suspend fun createOAuth2AuthenticationRequest(
-        rqesRequest: SignatureRequestParameters,
+        rqesRequest: at.asitplus.openid.rqes.SignatureRequestParameters,
         credentialId: ByteArray,
     ): AuthenticationRequestParameters =
         oauth2Client.createAuthRequest(
@@ -48,7 +48,7 @@ class RqesWalletService(
 
     //TODO implement [CredentialInfo] dataclass + hand over here
     suspend fun createSignHashRequestParameters(
-        rqesRequest: SignatureRequestParameters,
+        rqesRequest: at.asitplus.openid.rqes.SignatureRequestParameters,
         credentialId: String,
         sad: String,
     ): CSCSignatureRequestParameters = SignHashParameters(

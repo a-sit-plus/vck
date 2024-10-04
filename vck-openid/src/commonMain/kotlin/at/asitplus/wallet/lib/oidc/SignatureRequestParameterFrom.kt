@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.catching
-import at.asitplus.dif.rqes.serializers.UrlSerializer
+import at.asitplus.dif.rqes.Serializer.UrlSerializer
 import at.asitplus.openid.JwsSignedSerializer
-import at.asitplus.openid.SignatureRequestParameters
+import at.asitplus.openid.rqes.SignatureRequestParameters
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -19,7 +19,7 @@ sealed class SignatureRequestParametersFrom : RequestParametersFrom {
             catching { jsonSerializer.decodeFromString<SignatureRequestParameters>(input) }
     }
 
-    abstract override val parameters: SignatureRequestParameters
+    abstract val parameters: SignatureRequestParameters
 
     @Serializable
     @SerialName("JwsSigned")
