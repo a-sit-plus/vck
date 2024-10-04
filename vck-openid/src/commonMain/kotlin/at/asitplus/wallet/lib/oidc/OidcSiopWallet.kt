@@ -3,7 +3,11 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.IdTokenType
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
@@ -11,16 +15,22 @@ import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CredentialSubmission
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidc.helper.AuthenticationRequestParser
+import at.asitplus.wallet.lib.oidc.helper.RequestParser
 import at.asitplus.wallet.lib.oidc.helper.AuthenticationResponseFactory
 import at.asitplus.wallet.lib.oidc.helper.AuthorizationRequestValidator
 import at.asitplus.wallet.lib.oidc.helper.PresentationFactory
@@ -129,11 +139,10 @@ class OidcSiopWallet(
      * [AuthenticationResponseResult].
      */
     suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParametersFrom> =
-        AuthenticationRequestParser.createWithDefaults(
+        RequestParser.createWithDefaults(
             remoteResourceRetriever = remoteResourceRetriever,
             requestObjectJwsVerifier = requestObjectJwsVerifier,
-        ).parseAuthenticationRequestParameters(input)
-
+        ).parseRequestParameters(input).transform { KmmResult(it as AuthenticationRequestParametersFrom) }
     /**
      * Pass in the deserialized [AuthenticationRequestParameters], which were either encoded as query params,
      * or JSON serialized as a JWT Request Object.

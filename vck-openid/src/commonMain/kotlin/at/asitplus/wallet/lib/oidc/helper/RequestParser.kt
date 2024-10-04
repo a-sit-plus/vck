@@ -12,13 +12,14 @@ import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
+import at.asitplus.wallet.lib.oidc.RequestParametersFrom
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
 
-internal class AuthenticationRequestParser(
+internal class RequestParser(
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
      * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
@@ -36,7 +37,7 @@ internal class AuthenticationRequestParser(
         fun createWithDefaults(
             remoteResourceRetriever: RemoteResourceRetrieverFunction? = null,
             requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
-        ) = AuthenticationRequestParser(
+        ) = RequestParser(
             remoteResourceRetriever = remoteResourceRetriever ?: { null },
             requestObjectJwsVerifier = requestObjectJwsVerifier ?: RequestObjectJwsVerifier { _, _ -> true },
         )
@@ -47,7 +48,7 @@ internal class AuthenticationRequestParser(
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParametersFrom> = catching {
+    suspend fun parseRequestParameters(input: String): KmmResult<RequestParametersFrom> = catching {
         // maybe it is a request JWS
         val parsedParams = kotlin.run { parseRequestObjectJws(input) }
             ?: kotlin.runCatching { // maybe it's in the URL parameters
@@ -64,20 +65,21 @@ internal class AuthenticationRequestParser(
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("Could not parse authentication request: $input") }
 
-        val extractedParams = parsedParams.let { extractRequestObject(it.parameters) ?: it }
-            .also { Napier.i("Parsed authentication request: $it") }
+        val extractedParams =
+            parsedParams.let { extractRequestObject((it as AuthenticationRequestParametersFrom).parameters) ?: it }
+                .also { Napier.i("Parsed authentication request: $it") }
         extractedParams
     }
 
-    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParametersFrom? =
+    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): RequestParametersFrom? =
         params.request?.let { requestObject ->
             parseRequestObjectJws(requestObject)
         } ?: params.requestUri?.let { uri ->
             remoteResourceRetriever.invoke(uri)
-                ?.let { parseAuthenticationRequestParameters(it).getOrNull() }
+                ?.let { parseRequestParameters(it).getOrNull() }
         }
 
-    private fun parseRequestObjectJws(requestObject: String): AuthenticationRequestParametersFrom.JwsSigned? {
+    private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom? {
         return JwsSigned.deserialize(requestObject).getOrNull()?.let { jws ->
             val params = AuthenticationRequestParameters.deserialize(jws.payload.decodeToString()).getOrElse {
                 return null

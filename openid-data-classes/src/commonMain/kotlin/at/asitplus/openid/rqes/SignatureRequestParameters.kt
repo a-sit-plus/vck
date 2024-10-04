@@ -26,7 +26,7 @@ import kotlinx.serialization.json.JsonObject
  * the process
  */
 @Serializable
-data class RqesRequest(
+data class SignatureRequestParameters(
 
     @SerialName("response_type")
     val responseType: String,
@@ -85,7 +85,7 @@ data class RqesRequest(
         signAlgoParam: Asn1Element? = null,
         signedProps: List<JsonObject>? = null,
         conformanceLevelEnum: ConformanceLevelEnum? = ConformanceLevelEnum.ADESBB,
-        signedEnvelopeProperty: SignedEnvelopeProperty? = SignedEnvelopeProperty.defaultProperty(signatureFormat)
+        signedEnvelopeProperty: SignedEnvelopeProperty? = SignedEnvelopeProperty.defaultProperty(signatureFormat),
     ): CscDocumentDigest =
         CscDocumentDigest(
             hashes = this.documentDigests.map { it.hash },
