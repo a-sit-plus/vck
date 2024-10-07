@@ -1,7 +1,7 @@
 # Changelog
 
 Release 5.1.0:
- - tbd
+ - Fix decoding ISO structures generated with older library
 
 Release 5.0.0:
  - Remove `OidcSiopWallet.newDefaultInstance()` and replace it with a constructor

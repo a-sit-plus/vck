@@ -6,6 +6,7 @@ import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import kotlinx.serialization.*
+import kotlinx.serialization.cbor.Cbor
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for MSO (9.1.2.4)
@@ -38,8 +39,8 @@ data class MobileSecurityObject(
      * See ISO/IEC 18013-5:2021, 9.1.2.4 Signing method and structure for MSO
      */
     fun serializeForIssuerAuth() = vckCborSerializer.encodeToByteArray(
-        ByteStringWrapperSerializer(serializer()), ByteStringWrapper(this)
-    ).wrapInCborTag(24)
+            ByteStringWrapperSerializer(serializer()), ByteStringWrapper(this)
+        ).wrapInCborTag(24)
 
     companion object {
         /**
@@ -52,7 +53,7 @@ data class MobileSecurityObject(
          * See ISO/IEC 18013-5:2021, 9.1.2.4 Signing method and structure for MSO
          */
         fun deserializeFromIssuerAuth(it: ByteArray) = kotlin.runCatching {
-            vckCborSerializer.decodeFromByteArray(
+            Cbor(vckCborSerializer) { verifyValueTags = false }.decodeFromByteArray(
                 ByteStringWrapperSerializer(serializer()),
                 it.stripCborTag(24)
             ).value

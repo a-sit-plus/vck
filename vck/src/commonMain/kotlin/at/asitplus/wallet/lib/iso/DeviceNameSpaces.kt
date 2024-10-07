@@ -1,7 +1,11 @@
 package at.asitplus.wallet.lib.iso
 
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.mapSerialDescriptor
 import kotlinx.serialization.encoding.*
 
 /**
@@ -37,21 +41,23 @@ object DeviceNameSpacesSerializer : KSerializer<DeviceNameSpaces> {
 
     override fun deserialize(decoder: Decoder): DeviceNameSpaces {
         val entries = mutableMapOf<String, DeviceSignedItemList>()
-        decoder.decodeStructure(descriptor) {
-            lateinit var key: String
-            var value: DeviceSignedItemList
-            while (true) {
-                val index = decodeElementIndex(descriptor)
-                if (index == CompositeDecoder.DECODE_DONE) {
-                    break
-                } else if (index % 2 == 0) {
-                    key = decodeStringElement(descriptor, index)
-                } else if (index % 2 == 1) {
-                    value = decodeSerializableElement(descriptor, index, DeviceSignedItemList.serializer())
-                    entries[key] = value
+        runCatching {
+            decoder.decodeStructure(descriptor) {
+                lateinit var key: String
+                var value: DeviceSignedItemList
+                while (true) {
+                    val index = decodeElementIndex(descriptor)
+                    if (index == CompositeDecoder.DECODE_DONE) {
+                        break
+                    } else if (index % 2 == 0) {
+                        key = decodeStringElement(descriptor, index)
+                    } else if (index % 2 == 1) {
+                        value = decodeSerializableElement(descriptor, index, DeviceSignedItemList.serializer())
+                        entries[key] = value
+                    }
                 }
             }
-        }
+        } // ignore deserializing null structure
         return DeviceNameSpaces(entries)
     }
 }
