@@ -30,6 +30,7 @@ class RqesWalletService(
 
     /**
      * TODO: could also use [Document] instead of [CscDocumentDigest], also [credential_id] instead of [SAD]
+     * TODO implement [CredentialInfo] dataclass + hand over here
      */
     suspend fun createSignDocRequestParameters(rqesRequest: SignatureRequestParameters, sad: String): CSCSignatureRequestParameters =
         SignDocParameters(
@@ -44,6 +45,8 @@ class RqesWalletService(
             responseUri = this.redirectUrl, //TODO double check
         )
 
+
+    //TODO implement [CredentialInfo] dataclass + hand over here
     suspend fun createSignHashRequestParameters(
         rqesRequest: SignatureRequestParameters,
         credentialId: String,
