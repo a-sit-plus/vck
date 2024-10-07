@@ -19,7 +19,7 @@ sealed class SignatureRequestParametersFrom : RequestParametersFrom {
             catching { jsonSerializer.decodeFromString<SignatureRequestParameters>(input) }
     }
 
-    abstract val parameters: SignatureRequestParameters
+    abstract override val parameters: SignatureRequestParameters
 
     @Serializable
     @SerialName("JwsSigned")

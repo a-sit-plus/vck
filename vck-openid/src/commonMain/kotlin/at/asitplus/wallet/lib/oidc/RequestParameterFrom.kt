@@ -1,11 +1,14 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.openid.RequestParameters
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.json.JsonContentPolymorphicSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 
-sealed interface RequestParametersFrom
+sealed interface RequestParametersFrom {
+    val parameters: RequestParameters
+}
 
 object RequestParametersFromSerializer :
     JsonContentPolymorphicSerializer<RequestParametersFrom>(RequestParametersFrom::class) {

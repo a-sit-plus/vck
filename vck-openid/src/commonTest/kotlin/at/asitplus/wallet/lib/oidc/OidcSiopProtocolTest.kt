@@ -5,6 +5,7 @@ import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.RequestParameters
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -446,7 +447,7 @@ private suspend fun buildAttestationJwt(
 
 private fun verifierAttestationVerifier(trustedKey: JsonWebKey) =
     object : RequestObjectJwsVerifier {
-        override fun invoke(jws: JwsSigned, authnRequest: AuthenticationRequestParameters): Boolean {
+        override fun invoke(jws: JwsSigned, request: RequestParameters): Boolean {
             val attestationJwt = jws.header.attestationJwt?.let { JwsSigned.deserialize(it).getOrThrow() }
                 ?: return false
             val verifierJwsService = DefaultVerifierJwsService()
