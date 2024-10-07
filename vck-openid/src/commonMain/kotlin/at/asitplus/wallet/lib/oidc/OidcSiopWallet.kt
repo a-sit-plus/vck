@@ -16,6 +16,7 @@ import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.RequestParameters
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -30,10 +31,10 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidc.helper.RequestParser
 import at.asitplus.wallet.lib.oidc.helper.AuthenticationResponseFactory
 import at.asitplus.wallet.lib.oidc.helper.AuthorizationRequestValidator
 import at.asitplus.wallet.lib.oidc.helper.PresentationFactory
+import at.asitplus.wallet.lib.oidc.helper.RequestParser
 import at.asitplus.wallet.lib.oidc.helpers.AuthorizationResponsePreparationState
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
@@ -143,6 +144,7 @@ class OidcSiopWallet(
             remoteResourceRetriever = remoteResourceRetriever,
             requestObjectJwsVerifier = requestObjectJwsVerifier,
         ).parseRequestParameters(input).transform { KmmResult(it as AuthenticationRequestParametersFrom) }
+
     /**
      * Pass in the deserialized [AuthenticationRequestParameters], which were either encoded as query params,
      * or JSON serialized as a JWT Request Object.
@@ -158,7 +160,7 @@ class OidcSiopWallet(
      * Creates the authentication response from the RP's [params]
      */
     suspend fun createAuthnResponseParams(
-        params: AuthenticationRequestParametersFrom
+        params: AuthenticationRequestParametersFrom,
     ): KmmResult<AuthenticationResponse> = startAuthorizationResponsePreparation(params).map {
         finalizeAuthorizationResponseParameters(
             request = params,
@@ -180,7 +182,7 @@ class OidcSiopWallet(
      * Starts the authorization response building process from the RP's authentication request in [params]
      */
     suspend fun startAuthorizationResponsePreparation(
-        params: AuthenticationRequestParametersFrom
+        params: AuthenticationRequestParametersFrom,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         val clientMetadata = params.parameters.loadClientMetadata()
         val presentationDefinition = params.parameters.loadPresentationDefinition()
@@ -321,7 +323,7 @@ typealias ScopePresentationDefinitionRetriever = suspend (String) -> Presentatio
  * Implementations need to verify the passed [JwsSigned] and return its result
  */
 fun interface RequestObjectJwsVerifier {
-    operator fun invoke(jws: JwsSigned, authnRequest: AuthenticationRequestParameters): Boolean
+    operator fun invoke(jws: JwsSigned, request: RequestParameters): Boolean
 }
 
 private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> {
