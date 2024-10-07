@@ -16,13 +16,10 @@ import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidc.RequestParametersFrom
-import at.asitplus.wallet.lib.oidc.RequestParametersFromSerializer
 import at.asitplus.wallet.lib.oidc.SignatureRequestParametersFrom
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import io.ktor.util.*
 import kotlinx.serialization.json.encodeToJsonElement
 
 class RequestParser(
@@ -60,26 +57,39 @@ class RequestParser(
         val parsedParams = kotlin.run { parseRequestObjectJws(input) }
             ?: kotlin.runCatching { // maybe it's in the URL parameters
                 Url(input).let {
-                    val params = vckJsonSerializer.encodeToJsonElement(it.parameters)
+                    val params =
+                        vckJsonSerializer.encodeToJsonElement(it.parameters) //ToDo Double check if this in-between step is necessary
                     vckJsonSerializer.decodeFromJsonElement(RequestParametersSerializer, params).let { result ->
                         when (result) {
                             is AuthenticationRequestParameters ->
                                 AuthenticationRequestParametersFrom.Uri(it, result)
+
                             is SignatureRequestParameters ->
                                 SignatureRequestParametersFrom.Uri(it, result)
+                                    .also { Napier.d { "It did make a difference for URI" } }
                         }
                     }
                 }
             }.onFailure { it.printStackTrace() }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
-                val params = AuthenticationRequestParameters.deserialize(input).getOrThrow()
-                AuthenticationRequestParametersFrom.Json(input, params)
+//                val params = AuthenticationRequestParameters.deserialize(input).getOrThrow()
+//                AuthenticationRequestParametersFrom.Json(input, params)
+                val params = vckJsonSerializer.decodeFromString(RequestParametersSerializer, input)
+                when (params) {
+                    is AuthenticationRequestParameters ->
+                        AuthenticationRequestParametersFrom.Json(input, params)
+
+                    is SignatureRequestParameters ->
+                        SignatureRequestParametersFrom.Json(input, params)
+                            .also { Napier.d { "It did make a difference for Json" } }
+                }
             }.getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("Could not parse authentication request: $input") }
 
+        Napier.d { "it is of type ${parsedParams::class}" }
         val extractedParams =
-            parsedParams.let { extractRequestObject((it as AuthenticationRequestParametersFrom).parameters) ?: it }
+            parsedParams.let { extractRequestObject(it.parameters as AuthenticationRequestParameters) ?: it }
                 .also { Napier.i("Parsed authentication request: $it") }
         extractedParams
     }
@@ -94,13 +104,25 @@ class RequestParser(
 
     private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom? {
         return JwsSigned.deserialize(requestObject).getOrNull()?.let { jws ->
-            val params = AuthenticationRequestParameters.deserialize(jws.payload.decodeToString()).getOrElse {
+            val params = kotlin.runCatching {
+                vckJsonSerializer.decodeFromString(
+                    RequestParametersSerializer,
+                    jws.payload.decodeToString()
+                )
+            }.getOrElse {
                 return null
                     .apply { Napier.w("parseRequestObjectJws: Deserialization failed", it) }
             }
-            if (requestObjectJwsVerifier.invoke(jws, params))
-                AuthenticationRequestParametersFrom.JwsSigned(jws, params)
-            else null
+            if (requestObjectJwsVerifier.invoke(jws, params)) {
+                when (params) {
+                    is AuthenticationRequestParameters ->
+                        AuthenticationRequestParametersFrom.JwsSigned(jws, params)
+
+                    is SignatureRequestParameters ->
+                        SignatureRequestParametersFrom.JwsSigned(jws, params)
+                            .also { Napier.d { "It did make a difference for JwsSigned" } }
+                }
+            } else null
                 .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
         }
     }

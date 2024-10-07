@@ -11,7 +11,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 
 
-
 @Serializable
 sealed class AuthenticationRequestParametersFrom : RequestParametersFrom {
 
@@ -22,7 +21,7 @@ sealed class AuthenticationRequestParametersFrom : RequestParametersFrom {
             catching { jsonSerializer.decodeFromString<AuthenticationRequestParametersFrom>(input) }
     }
 
-    abstract val parameters: AuthenticationRequestParameters
+    abstract override val parameters: AuthenticationRequestParameters
 
     @Serializable
     @SerialName("JwsSigned")
