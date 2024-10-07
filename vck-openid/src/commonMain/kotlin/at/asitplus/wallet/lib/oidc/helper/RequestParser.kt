@@ -66,29 +66,26 @@ class RequestParser(
 
                         is SignatureRequestParameters ->
                             SignatureRequestParametersFrom.Uri(it, result)
-                                .also { Napier.d { "It did make a difference for URI" } }
                     }
                 }
 //                }
             }.onFailure { it.printStackTrace() }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
-//                val params = AuthenticationRequestParameters.deserialize(input).getOrThrow()
-//                AuthenticationRequestParametersFrom.Json(input, params)
                 when (val params = jsonSerializer.decodeFromString(RequestParametersSerializer, input)) {
                     is AuthenticationRequestParameters ->
                         AuthenticationRequestParametersFrom.Json(input, params)
 
                     is SignatureRequestParameters ->
                         SignatureRequestParametersFrom.Json(input, params)
-                            .also { Napier.d { "It did make a difference for Json" } }
                 }
             }.getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("Could not parse authentication request: $input") }
 
-        Napier.d { "it is of type ${parsedParams::class}" }
         val extractedParams =
-            parsedParams.let { extractRequestObject(it.parameters as AuthenticationRequestParameters) ?: it }
+            (parsedParams.parameters as? AuthenticationRequestParameters)?.let {
+                extractRequestObject(it)
+            } ?: parsedParams
                 .also { Napier.i("Parsed authentication request: $it") }
         extractedParams
     }
@@ -119,7 +116,6 @@ class RequestParser(
 
                     is SignatureRequestParameters ->
                         SignatureRequestParametersFrom.JwsSigned(jws, params)
-                            .also { Napier.d { "It did make a difference for JwsSigned" } }
                 }
             } else null
                 .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
