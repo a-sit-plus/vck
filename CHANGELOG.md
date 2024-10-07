@@ -2,6 +2,9 @@
 
 Release 5.1.0:
  - tbd
+ - New Class `SignatureRequestFrom` to handle signature requests by reference
+ - Rename `AuthenticationRequestParser` to `RequestParser`
+   - `RequestParser` can now handle `SignatureRequestFrom`
 
 Release 5.0.0:
  - Remove `OidcSiopWallet.newDefaultInstance()` and replace it with a constructor

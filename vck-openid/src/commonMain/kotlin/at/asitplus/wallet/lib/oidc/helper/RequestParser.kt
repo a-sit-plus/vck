@@ -28,7 +28,7 @@ import kotlinx.serialization.json.JsonObject
 class RequestParser(
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
-     * or the authentication request itself as `request_uri`, or `presentation_definition_uri`.
+     * or the request itself as `request_uri`, or `presentation_definition_uri`.
      * Implementations need to fetch the url passed in, and return either the body, if there is one,
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
@@ -50,7 +50,7 @@ class RequestParser(
     }
 
     /**
-     * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
+     * Pass in the URL sent by the Verifier (containing the [RequestParameters] as query parameters),
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
@@ -68,7 +68,6 @@ class RequestParser(
                             SignatureRequestParametersFrom.Uri(it, result)
                     }
                 }
-//                }
             }.onFailure { it.printStackTrace() }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
                 when (val params = jsonSerializer.decodeFromString(RequestParametersSerializer, input)) {
@@ -83,11 +82,10 @@ class RequestParser(
                 .also { Napier.w("Could not parse authentication request: $input") }
 
         val extractedParams =
-            (parsedParams.parameters as? AuthenticationRequestParameters)?.let {
-                extractRequestObject(it)
-            } ?: parsedParams
-                .also { Napier.i("Parsed authentication request: $it") }
-        extractedParams
+            (parsedParams.parameters as? AuthenticationRequestParameters)?.let { extractRequestObject(it) }
+                ?: parsedParams
+
+        extractedParams.also { Napier.i("Parsed authentication request: $it") }
     }
 
     private suspend fun extractRequestObject(params: AuthenticationRequestParameters): RequestParametersFrom? =
