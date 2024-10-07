@@ -10,17 +10,20 @@ import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.openid.SignatureRequestParameters
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidc.RequestParametersFrom
 import at.asitplus.wallet.lib.oidc.SignatureRequestParametersFrom
+import at.asitplus.wallet.lib.oidc.jsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.wallet.lib.oidvci.json
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import kotlinx.serialization.json.encodeToJsonElement
+import io.ktor.util.*
+import kotlinx.serialization.json.JsonObject
 
 class RequestParser(
     /**
@@ -50,32 +53,28 @@ class RequestParser(
      * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
-     * TODO finish all cases as in URI
      */
     suspend fun parseRequestParameters(input: String): KmmResult<RequestParametersFrom> = catching {
         // maybe it is a request JWS
         val parsedParams = kotlin.run { parseRequestObjectJws(input) }
             ?: kotlin.runCatching { // maybe it's in the URL parameters
                 Url(input).let {
-                    val params =
-                        vckJsonSerializer.encodeToJsonElement(it.parameters) //ToDo Double check if this in-between step is necessary
-                    vckJsonSerializer.decodeFromJsonElement(RequestParametersSerializer, params).let { result ->
-                        when (result) {
-                            is AuthenticationRequestParameters ->
-                                AuthenticationRequestParametersFrom.Uri(it, result)
+                    val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
+                    when (val result = json.decodeFromJsonElement(RequestParametersSerializer, params)) {
+                        is AuthenticationRequestParameters ->
+                            AuthenticationRequestParametersFrom.Uri(it, result)
 
-                            is SignatureRequestParameters ->
-                                SignatureRequestParametersFrom.Uri(it, result)
-                                    .also { Napier.d { "It did make a difference for URI" } }
-                        }
+                        is SignatureRequestParameters ->
+                            SignatureRequestParametersFrom.Uri(it, result)
+                                .also { Napier.d { "It did make a difference for URI" } }
                     }
                 }
+//                }
             }.onFailure { it.printStackTrace() }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
 //                val params = AuthenticationRequestParameters.deserialize(input).getOrThrow()
 //                AuthenticationRequestParametersFrom.Json(input, params)
-                val params = vckJsonSerializer.decodeFromString(RequestParametersSerializer, input)
-                when (params) {
+                when (val params = jsonSerializer.decodeFromString(RequestParametersSerializer, input)) {
                     is AuthenticationRequestParameters ->
                         AuthenticationRequestParametersFrom.Json(input, params)
 
@@ -105,7 +104,7 @@ class RequestParser(
     private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom? {
         return JwsSigned.deserialize(requestObject).getOrNull()?.let { jws ->
             val params = kotlin.runCatching {
-                vckJsonSerializer.decodeFromString(
+                jsonSerializer.decodeFromString(
                     RequestParametersSerializer,
                     jws.payload.decodeToString()
                 )
