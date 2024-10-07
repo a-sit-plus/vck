@@ -243,53 +243,17 @@ class Validator(
     /**
      * Validates an ISO document, equivalent of a Verifiable Presentation
      */
-    fun verifyDocument(doc: Document, challenge: String): Verifier.VerifyPresentationResult {
-        val docSerialized = doc.serialize().encodeToString(Base16(strict = true))
-        if (doc.errors != null) {
+    fun verifyDocument(input: Document, challenge: String): Verifier.VerifyPresentationResult {
+        val docSerialized = input.serialize().encodeToString(Base16(true))
+        val (doc, mso) = kotlin.runCatching {
+            extractDocumentMsoVerified(input, challenge)
+        }.getOrElse {
             return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
-                .also { Napier.w("Document has errors: ${doc.errors}") }
-        }
-        val issuerSigned = doc.issuerSigned
-        val issuerAuth = issuerSigned.issuerAuth
-
-        val issuerKey = issuerAuth.unprotectedHeader?.certificateChain?.let {
-            X509Certificate.decodeFromDerOrNull(it)?.publicKey?.toCoseKey()?.getOrNull()
-        } ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
-            .also { Napier.w("Got no issuer key in $issuerAuth") }
-
-        if (verifierCoseService.verifyCose(issuerAuth, issuerKey).isFailure) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
-                .also { Napier.w("IssuerAuth not verified: $issuerAuth") }
-        }
-
-        val mso = issuerSigned.getIssuerAuthPayloadAsMso().getOrNull()
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
-                .also { Napier.w("MSO is null: ${issuerAuth.payload?.encodeToString(Base16(strict = true))}") }
-        if (mso.docType != doc.docType) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
-                .also { Napier.w("Invalid MSO docType '${mso.docType}' does not match Doc docType '${doc.docType}") }
-        }
-        val walletKey = mso.deviceKeyInfo.deviceKey
-        val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
-                .also { Napier.w("DeviceSignature is null: ${doc.deviceSigned.deviceAuth}") }
-
-        if (verifierCoseService.verifyCose(deviceSignature, walletKey).isFailure) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
-                .also { Napier.w("DeviceSignature not verified") }
-        }
-
-        val deviceSignaturePayload = deviceSignature.payload
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
-                .also { Napier.w("DeviceSignature does not contain challenge") }
-        if (!deviceSignaturePayload.contentEquals(challenge.encodeToByteArray())) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
-                .also { Napier.w("DeviceSignature does not contain correct challenge") }
         }
 
         val validItems = mutableListOf<IssuerSignedItem>()
         val invalidItems = mutableListOf<IssuerSignedItem>()
-        issuerSigned.namespaces?.forEach { (namespace, issuerSignedItems) ->
+        doc.issuerSigned.namespaces?.forEach { (namespace, issuerSignedItems) ->
             issuerSignedItems.entries.forEach {
                 if (it.verify(mso.valueDigests[namespace])) {
                     validItems += it.value
@@ -301,6 +265,54 @@ class Validator(
         return Verifier.VerifyPresentationResult.SuccessIso(
             IsoDocumentParsed(mso = mso, validItems = validItems, invalidItems = invalidItems)
         )
+    }
+    
+    @Throws(IllegalArgumentException::class)
+    fun extractDocumentMsoVerified(doc: Document, challenge: String): Pair<Document, MobileSecurityObject> {
+        if (doc.errors != null) {
+            Napier.w("Document has errors: ${doc.errors}")
+            throw IllegalArgumentException("doc.errors")
+        }
+        val issuerAuth = doc.issuerSigned.issuerAuth
+
+        val issuerKey = issuerAuth.unprotectedHeader?.certificateChain?.let {
+            X509Certificate.decodeFromDerOrNull(it)?.publicKey?.toCoseKey()?.getOrNull()
+        } ?: throw IllegalArgumentException("No issuer key")
+
+        verifierCoseService.verifyCose(issuerAuth, issuerKey).getOrElse {
+            Napier.w("IssuerAuth not verified: $issuerAuth", it)
+            throw IllegalArgumentException("doc.issuerSigned.issuerAuth", it)
+        }
+
+        val mso = doc.issuerSigned.getIssuerAuthPayloadAsMso().getOrElse {
+            Napier.w("MSO could not be parsed", it)
+            throw IllegalArgumentException("doc.issuerSigned.issuerAuth.payloay", it)
+        }
+
+        if (mso.docType != doc.docType) {
+            Napier.w("Invalid MSO docType '${mso.docType}' does not match Doc docType '${doc.docType}")
+            throw IllegalArgumentException("mso.docType")
+
+        }
+        val walletKey = mso.deviceKeyInfo.deviceKey
+        val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature
+            ?: throw IllegalArgumentException("doc.deviceSigned.deviceAuth.deviceSignature")
+
+        verifierCoseService.verifyCose(deviceSignature, walletKey).getOrElse {
+            Napier.w("DeviceSignature not verified", it)
+            throw IllegalArgumentException("doc.deviceSigned.deviceAuth.deviceSignature", it)
+        }
+
+        val deviceSignaturePayload = deviceSignature.payload
+            ?: throw IllegalArgumentException("doc.deviceSigned.deviceAuth.deviceSignature.payload")
+
+        if (!deviceSignaturePayload.contentEquals(challenge.encodeToByteArray())) {
+            Napier.w("DeviceSignature does not contain correct challenge:" +
+                    " ${deviceSignaturePayload.encodeToString(Base16)}, $challenge")
+            throw IllegalArgumentException("challenge")
+        }
+
+        return Pair(doc, mso)
     }
 
     /**
