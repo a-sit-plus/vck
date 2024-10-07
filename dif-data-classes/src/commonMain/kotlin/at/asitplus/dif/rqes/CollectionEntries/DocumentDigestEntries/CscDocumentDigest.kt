@@ -8,9 +8,11 @@ import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
 import at.asitplus.dif.rqes.contentEquals
 import at.asitplus.dif.rqes.contentHashCode
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import io.github.aakira.napier.Napier
 import io.ktor.util.reflect.*
 import kotlinx.serialization.SerialName
@@ -86,11 +88,14 @@ data class CscDocumentDigest(
 ) {
 
     @Transient
-    val signAlgorithm: X509SignatureAlgorithm? =
+    val signAlgorithm: SignatureAlgorithm? =
         kotlin.runCatching {
-            X509SignatureAlgorithm.fromOid(signAlgoOid).also {
+            X509SignatureAlgorithm.doDecode(Asn1.Sequence {
+                +signAlgoOid
+                +(signAlgoParams ?: Asn1.Null())
+            }).also {
                 require(it.digest != Digest.SHA1)
-            }
+            }.algorithm
         }.getOrElse {
             Napier.w { "Could not resolve $signAlgoOid" }
             null
@@ -99,8 +104,13 @@ data class CscDocumentDigest(
     @Transient
     val hashAlgorithm: Digest = hashAlgorithmOid?.let {
         Digest.entries.find { digest -> digest.oid == it }
-    } ?: signAlgorithm?.digest
-    ?: throw Exception("Unknown hashing algorithm in $hashAlgorithmOid and $signAlgoOid")
+    } ?: when(signAlgorithm) {
+        //TODO change as soon as digest is a member of the interface
+        is SignatureAlgorithm.ECDSA -> signAlgorithm.digest
+        is SignatureAlgorithm.HMAC -> signAlgorithm.digest
+        is SignatureAlgorithm.RSA -> signAlgorithm.digest
+        null -> null
+    } ?: throw Exception("Unknown hashing algorithm in $hashAlgorithmOid and $signAlgoOid")
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
