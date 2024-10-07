@@ -3,6 +3,7 @@ package at.asitplus.dif
 import at.asitplus.dif.rqes.CSCSignatureRequestParameters
 import at.asitplus.dif.rqes.SignDocParameters
 import at.asitplus.dif.rqes.SignHashParameters
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64Strict
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
@@ -142,6 +143,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 SignHashParameters(
                     credentialId = "1234",
                     hashes = listOf("abcd".decodeToByteArray(Base64Strict)),
+                    signAlgoOid = X509SignatureAlgorithm.ES256.oid
                 ),
                 SignDocParameters(
                     credentialId = "1234",
