@@ -15,6 +15,7 @@ import io.github.aakira.napier.Napier
 import io.ktor.util.reflect.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
 
 
@@ -83,23 +84,23 @@ data class CscDocumentDigest(
     @SerialName("signed_envelope_property")
     val signedEnvelopeProperty: SignedEnvelopeProperty? = null,
 ) {
-    
+
+    @Transient
     val signAlgorithm: X509SignatureAlgorithm? =
-        run {
-            val DERencoded = signAlgoOid.encodeToTlv().asSequence()
-            kotlin.runCatching { X509SignatureAlgorithm.doDecode(DERencoded) }.getOrElse {
-                Napier.d { "Could not deserialize signature algorithm from OID $signAlgoOid. Reason: $it" }
-                null
-            }.also {
-                require(it?.digest != Digest.SHA1)
+        kotlin.runCatching {
+            X509SignatureAlgorithm.fromOid(signAlgoOid).also {
+                require(it.digest != Digest.SHA1)
             }
+        }.getOrElse {
+            Napier.w { "Could not resolve $signAlgoOid" }
+            null
         }
 
-    val hashAlgorithm: Digest? by lazy {
-        hashAlgorithmOid?.let {
-            Digest.entries.find { digest -> digest.oid == it }
-        }
-    }
+    @Transient
+    val hashAlgorithm: Digest = hashAlgorithmOid?.let {
+        Digest.entries.find { digest -> digest.oid == it }
+    } ?: signAlgorithm?.digest
+    ?: throw Exception("Unknown hashing algorithm in $hashAlgorithmOid and $signAlgoOid")
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

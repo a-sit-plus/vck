@@ -15,6 +15,7 @@ import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.UseSerializers
 
 @Serializable(with = SignatureRequestParameterSerializer::class)
@@ -103,7 +104,7 @@ data class SignHashParameters(
      * in `credentials/list`
      */
     @SerialName("signAlgo")
-    val signAlgoOid: ObjectIdentifier? = null,
+    val signAlgoOid: ObjectIdentifier,
 
     /**
      * The Base64-encoded DER-encoded ASN.1 signature algorithm parameters if required by
@@ -115,18 +116,22 @@ data class SignHashParameters(
 
     ) : SignatureRequestParameters {
 
+    @Transient
     val signAlgorithm: X509SignatureAlgorithm? =
-        run {
-            val DERencoded = signAlgoOid?.encodeToTlv()?.asSequence()
-            DERencoded?.let {
-                kotlin.runCatching { X509SignatureAlgorithm.doDecode(DERencoded) }.getOrElse {
-                    Napier.d { "Could not deserialize signature algorithm from OID $signAlgoOid. Reason: $it" }
-                    null
-                }.also {
-                    require(it?.digest != Digest.SHA1)
-                }
+        kotlin.runCatching {
+            X509SignatureAlgorithm.fromOid(signAlgoOid).also {
+                require(it.digest != Digest.SHA1)
             }
+        }.getOrElse {
+            Napier.w { "Could not resolve $signAlgoOid" }
+            null
         }
+
+    @Transient
+    val hashAlgorithm: Digest = hashAlgorithmOid?.let {
+        Digest.entries.find { digest -> digest.oid == it }
+    } ?: signAlgorithm?.digest
+    ?: throw Exception("Unknown hashing algorithm in $hashAlgorithmOid and $signAlgoOid")
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -190,8 +195,10 @@ data class SignDocParameters(
     @SerialName("signatureQualifier")
     val signatureQualifier: SignatureQualifierEnum? = null,
 
+    @SerialName("documentDigests")
     val documentDigests: Collection<CscDocumentDigest>? = null,
 
+    @SerialName("documents")
     val documents: Collection<Document>? = null,
 
     /**
@@ -201,7 +208,8 @@ data class SignDocParameters(
      */
     @SerialName("returnValidationInformation")
     val returnValidationInformation: Boolean = false,
-) : SignatureRequestParameters {
+
+    ) : SignatureRequestParameters {
     init {
         require(credentialId != null || signatureQualifier != null) { "Either credentialId or signatureQualifier must not be null (both can be present)" }
         require(documentDigests != null || documents != null) { "Either documentDigests or documents must not be null (both can be present)" }
