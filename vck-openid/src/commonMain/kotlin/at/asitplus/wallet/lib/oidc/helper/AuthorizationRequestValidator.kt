@@ -128,7 +128,7 @@ internal class AuthorizationRequestValidator {
             Napier.w("response_mode is $responseMode, but redirect_url is set")
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
-        if (responseUrl == null) {
+        if (responseUri == null) {
             Napier.w("response_mode is $responseMode, but response_url is not set")
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }

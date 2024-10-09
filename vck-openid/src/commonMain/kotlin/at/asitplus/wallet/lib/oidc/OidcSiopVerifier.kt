@@ -182,7 +182,7 @@ class OidcSiopVerifier private constructor(
          */
         val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.FRAGMENT,
         /**
-         * Response URL to set in the [AuthenticationRequestParameters.responseUrl],
+         * Response URL to set in the [AuthenticationRequestParameters.responseUri],
          * required if [responseMode] is set to [OpenIdConstants.ResponseMode.DIRECT_POST] or
          * [OpenIdConstants.ResponseMode.DIRECT_POST_JWT].
          */
@@ -324,7 +324,7 @@ class OidcSiopVerifier private constructor(
             .also { stateToResponseTypeStore.put(requestOptions.state, it) },
         clientId = clientId,
         redirectUrl = requestOptions.buildRedirectUrl(),
-        responseUrl = requestOptions.responseUrl,
+        responseUri = requestOptions.responseUrl,
         clientIdScheme = clientIdScheme.clientIdScheme,
         scope = requestOptions.buildScope(),
         nonce = nonceService.provideNonce()
