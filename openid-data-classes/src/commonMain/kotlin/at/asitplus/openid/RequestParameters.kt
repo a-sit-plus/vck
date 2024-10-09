@@ -9,10 +9,10 @@ import kotlinx.serialization.json.jsonObject
 @Serializable
 sealed interface RequestParameters {
     val responseType: String?
-    val clientId: String?
+    val clientId: String
     val clientIdScheme: OpenIdConstants.ClientIdScheme?
     val responseMode: OpenIdConstants.ResponseMode?
-    val responseUrl: String?
+    val responseUri: String?
     val nonce: String?
     val state: String?
 }
