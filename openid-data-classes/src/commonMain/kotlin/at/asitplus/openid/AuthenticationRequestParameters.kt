@@ -2,20 +2,16 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
+import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
+import at.asitplus.dif.rqes.Serializer.HashesSerializer
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import kotlinx.datetime.Instant
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 
 /**
  * Contents of an OIDC Authentication Request.
@@ -277,10 +273,14 @@ data class AuthenticationRequestParameters(
 
     /**
      * CSC: REQUIRED-"credential"
-     * The identifier associated to the credential to authorize
+     * The identifier associated to the credential to authorize.
+     * This parameter value may contain characters that are reserved, unsafe or
+     * forbidden in URLs and therefore SHALL be url-encoded by the signature
+     * application
      */
     @SerialName("credentialID")
-    val credentialID: String? = null,
+    @Serializable(ByteArrayBase64UrlSerializer::class)
+    val credentialID: ByteArray? = null,
 
     /**
      * CSC: Required-"credential"
@@ -288,7 +288,7 @@ data class AuthenticationRequestParameters(
      * signature to be created
      */
     @SerialName("signatureQualifier")
-    val signatureQualifier: String? = null,
+    val signatureQualifier: SignatureQualifierEnum? = null,
 
     /**
      * CSC: Required-"credential"
@@ -299,7 +299,7 @@ data class AuthenticationRequestParameters(
 
     /**
      * CSC: REQUIRED-"credential"
-     * One or more base64-encoded hash values to be signed
+     * One or more base64url-encoded hash values to be signed
      */
     @SerialName("hashes")
     @Serializable(HashesSerializer::class)
@@ -310,7 +310,7 @@ data class AuthenticationRequestParameters(
      * String containing the OID of the hash algorithm used to generate the hashes
      */
     @SerialName("hashAlgorithmOID")
-    val hashAlgorithmOID: String? = null,
+    val hashAlgorithmOid: ObjectIdentifier? = null,
 
     /**
      * CSC: OPTIONAL
@@ -340,6 +340,97 @@ data class AuthenticationRequestParameters(
     @SerialName("clientData")
     val clientData: String? = null,
 ) {
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as AuthenticationRequestParameters
+
+        if (responseType != other.responseType) return false
+        if (clientId != other.clientId) return false
+        if (redirectUrl != other.redirectUrl) return false
+        if (scope != other.scope) return false
+        if (state != other.state) return false
+        if (nonce != other.nonce) return false
+        if (claims != other.claims) return false
+        if (clientMetadata != other.clientMetadata) return false
+        if (clientMetadataUri != other.clientMetadataUri) return false
+        if (idTokenHint != other.idTokenHint) return false
+        if (request != other.request) return false
+        if (requestUri != other.requestUri) return false
+        if (idTokenType != other.idTokenType) return false
+        if (presentationDefinition != other.presentationDefinition) return false
+        if (presentationDefinitionUrl != other.presentationDefinitionUrl) return false
+        if (authorizationDetails != other.authorizationDetails) return false
+        if (clientIdScheme != other.clientIdScheme) return false
+        if (walletIssuer != other.walletIssuer) return false
+        if (userHint != other.userHint) return false
+        if (issuerState != other.issuerState) return false
+        if (responseMode != other.responseMode) return false
+        if (responseUrl != other.responseUrl) return false
+        if (audience != other.audience) return false
+        if (issuer != other.issuer) return false
+        if (issuedAt != other.issuedAt) return false
+        if (resource != other.resource) return false
+        if (codeChallenge != other.codeChallenge) return false
+        if (codeChallengeMethod != other.codeChallengeMethod) return false
+        if (lang != other.lang) return false
+        if (credentialID != null) {
+            if (other.credentialID == null) return false
+            if (!credentialID.contentEquals(other.credentialID)) return false
+        } else if (other.credentialID != null) return false
+        if (signatureQualifier != other.signatureQualifier) return false
+        if (numSignatures != other.numSignatures) return false
+        if (hashes != other.hashes) return false
+        if (hashAlgorithmOid != other.hashAlgorithmOid) return false
+        if (description != other.description) return false
+        if (accountToken != other.accountToken) return false
+        if (clientData != other.clientData) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = responseType?.hashCode() ?: 0
+        result = 31 * result + (clientId?.hashCode() ?: 0)
+        result = 31 * result + (redirectUrl?.hashCode() ?: 0)
+        result = 31 * result + (scope?.hashCode() ?: 0)
+        result = 31 * result + (state?.hashCode() ?: 0)
+        result = 31 * result + (nonce?.hashCode() ?: 0)
+        result = 31 * result + (claims?.hashCode() ?: 0)
+        result = 31 * result + (clientMetadata?.hashCode() ?: 0)
+        result = 31 * result + (clientMetadataUri?.hashCode() ?: 0)
+        result = 31 * result + (idTokenHint?.hashCode() ?: 0)
+        result = 31 * result + (request?.hashCode() ?: 0)
+        result = 31 * result + (requestUri?.hashCode() ?: 0)
+        result = 31 * result + (idTokenType?.hashCode() ?: 0)
+        result = 31 * result + (presentationDefinition?.hashCode() ?: 0)
+        result = 31 * result + (presentationDefinitionUrl?.hashCode() ?: 0)
+        result = 31 * result + (authorizationDetails?.hashCode() ?: 0)
+        result = 31 * result + (clientIdScheme?.hashCode() ?: 0)
+        result = 31 * result + (walletIssuer?.hashCode() ?: 0)
+        result = 31 * result + (userHint?.hashCode() ?: 0)
+        result = 31 * result + (issuerState?.hashCode() ?: 0)
+        result = 31 * result + (responseMode?.hashCode() ?: 0)
+        result = 31 * result + (responseUrl?.hashCode() ?: 0)
+        result = 31 * result + (audience?.hashCode() ?: 0)
+        result = 31 * result + (issuer?.hashCode() ?: 0)
+        result = 31 * result + (issuedAt?.hashCode() ?: 0)
+        result = 31 * result + (resource?.hashCode() ?: 0)
+        result = 31 * result + (codeChallenge?.hashCode() ?: 0)
+        result = 31 * result + (codeChallengeMethod?.hashCode() ?: 0)
+        result = 31 * result + (lang?.hashCode() ?: 0)
+        result = 31 * result + (credentialID?.contentHashCode() ?: 0)
+        result = 31 * result + (signatureQualifier?.hashCode() ?: 0)
+        result = 31 * result + (numSignatures ?: 0)
+        result = 31 * result + (hashes?.hashCode() ?: 0)
+        result = 31 * result + (hashAlgorithmOid?.hashCode() ?: 0)
+        result = 31 * result + (description?.hashCode() ?: 0)
+        result = 31 * result + (accountToken?.hashCode() ?: 0)
+        result = 31 * result + (clientData?.hashCode() ?: 0)
+        return result
+    }
 
     fun serialize() = jsonSerializer.encodeToString(this)
 

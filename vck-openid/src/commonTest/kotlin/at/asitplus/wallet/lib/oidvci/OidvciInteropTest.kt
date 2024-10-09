@@ -228,8 +228,8 @@ class OidvciInteropTest : FunSpec({
             )
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
-        token.authorizationDetails.shouldNotBeNull()
-        val first = token.authorizationDetails!!.first().shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
+        token.authorizationDetailsList.shouldNotBeNull()
+        val first = token.authorizationDetailsList!!.first().shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
         val credentialRequest = client.createCredentialRequest(
             input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialConfigurationId!!),
             clientNonce = token.clientNonce,
@@ -265,7 +265,7 @@ class OidvciInteropTest : FunSpec({
             authorizationDetails = authorizationDetails
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
-        token.authorizationDetails.shouldNotBeNull()
+        token.authorizationDetailsList.shouldNotBeNull()
         val credentialRequest = client.createCredentialRequest(
             input = WalletService.CredentialRequestInput.RequestOptions(requestOptions),
             clientNonce = token.clientNonce,
@@ -297,7 +297,7 @@ class OidvciInteropTest : FunSpec({
             resource = issuer.metadata.credentialIssuer,
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
-        token.authorizationDetails.shouldBeNull()
+        token.authorizationDetailsList.shouldBeNull()
 
         val credentialRequest = client.createCredentialRequest(
             input = WalletService.CredentialRequestInput.Format(supportedCredentialFormat),

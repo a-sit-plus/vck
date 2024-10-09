@@ -1,20 +1,18 @@
-@file:UseSerializers(UrlSerializer::class)
-
-package at.asitplus.dif.rqes
+package at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.dif.rqes.Method
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.UseSerializers
 
 @ConsistentCopyVisibility
 @Serializable
-data class DocumentDigestEntry private constructor(
+data class RqesDocumentDigestEntry private constructor(
     /**
      * D3.1: UC Specification WP3: REQUIRED.
      * String containing a human-readable
@@ -58,7 +56,7 @@ data class DocumentDigestEntry private constructor(
      * of the designated document.
      */
     @SerialName("documentLocation_uri")
-    val documentLocationUri: Url? = null,
+    val documentLocationUri: String? = null,
 
     /**
      * D3.1: UC Specification WP3: OPTIONAL.
@@ -106,15 +104,15 @@ data class DocumentDigestEntry private constructor(
         require(hash != null || dataToBeSignedRepresentation != null)
         require(hashAlgorithmOID?.toString() iff hash?.toString())
         require(dtbsrHashAlgorithmOID?.toString() iff dataToBeSignedRepresentation?.toString())
-        require(documentLocationUri?.toString() iff hash?.toString())
-        require(documentLocationMethod?.toString() iff documentLocationUri?.toString())
+        require(documentLocationUri iff hash?.toString())
+        require(documentLocationMethod?.toString() iff documentLocationUri)
     }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
 
-        other as DocumentDigestEntry
+        other as RqesDocumentDigestEntry
 
         if (label != other.label) return false
         if (hash != null) {
@@ -153,7 +151,7 @@ data class DocumentDigestEntry private constructor(
     @ConsistentCopyVisibility
     @Serializable
     @SerialName("documentLocation_method")
-    data class DocumentLocationMethod private constructor(
+    data class DocumentLocationMethod constructor(
         val method: Method,
     )
 
@@ -165,13 +163,13 @@ data class DocumentDigestEntry private constructor(
             label: String,
             hash: ByteArray?,
             hashAlgorithmOID: ObjectIdentifier?,
-            documentLocationUri: Url?,
+            documentLocationUri: String?,
             documentLocationMethod: DocumentLocationMethod?,
             dtbsr: ByteArray?,
             dtbsrHashAlgorithmOID: ObjectIdentifier?,
-        ): KmmResult<DocumentDigestEntry> =
+        ): KmmResult<RqesDocumentDigestEntry> =
             kotlin.runCatching {
-                DocumentDigestEntry(
+                RqesDocumentDigestEntry(
                     label = label,
                     hash = hash,
                     hashAlgorithmOID = hashAlgorithmOID,
@@ -188,5 +186,5 @@ data class DocumentDigestEntry private constructor(
 /**
  * Checks that either both strings are present or null
  */
-private infix fun String?.iff(other: String?): Boolean =
+internal infix fun String?.iff(other: String?): Boolean =
     (this != null && other != null) or (this == null && other == null)

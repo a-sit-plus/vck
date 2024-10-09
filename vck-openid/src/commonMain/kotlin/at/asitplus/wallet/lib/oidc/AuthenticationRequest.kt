@@ -1,10 +1,8 @@
-@file:UseSerializers(JwsSignedSerializer::class, UrlSerializer::class)
-
 package at.asitplus.wallet.lib.oidc
 
 
 import at.asitplus.catching
-import at.asitplus.dif.rqes.UrlSerializer
+import at.asitplus.dif.rqes.Serializer.UrlSerializer
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import io.ktor.http.*
@@ -30,6 +28,7 @@ sealed class AuthenticationRequestParametersFrom {
     @Serializable
     @SerialName("JwsSigned")
     data class JwsSigned(
+        @Serializable(JwsSignedSerializer::class)
         val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned,
         override val parameters: AuthenticationRequestParameters,
     ) : AuthenticationRequestParametersFrom()
@@ -37,6 +36,7 @@ sealed class AuthenticationRequestParametersFrom {
     @Serializable
     @SerialName("Uri")
     data class Uri(
+        @Serializable(UrlSerializer::class)
         val url: Url,
         override val parameters: AuthenticationRequestParameters,
     ) : AuthenticationRequestParametersFrom()
