@@ -23,6 +23,7 @@ import kotlinx.serialization.json.JsonObject
 @Serializable
 data class Document(
     /**
+     * TODO
      * base64-encoded document content to be signed, testcases weird so for now string
      */
     @SerialName("document")

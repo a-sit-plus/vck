@@ -1,5 +1,3 @@
-@file:UseSerializers(SignatureRequestParameterSerializer::class)
-
 package at.asitplus.dif.rqes
 
 import at.asitplus.dif.rqes.CollectionEntries.Document
@@ -7,7 +5,7 @@ import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.CscDocumentD
 import at.asitplus.dif.rqes.Enums.OperationModeEnum
 import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
 import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
-import at.asitplus.dif.rqes.Serializer.SignatureRequestParameterSerializer
+import at.asitplus.dif.rqes.Serializer.CSCSignatureRequestParameterSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
@@ -20,8 +18,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.UseSerializers
 
-@Serializable(with = SignatureRequestParameterSerializer::class)
-sealed interface SignatureRequestParameters {
+@Serializable(with = CSCSignatureRequestParameterSerializer::class)
+sealed interface CSCSignatureRequestParameters {
     /**
      * The credentialID as defined in the Input parameter table in `/credentials/info`
      */
@@ -116,7 +114,7 @@ data class SignHashParameters(
     @Serializable(with = Asn1EncodableBase64Serializer::class)
     val signAlgoParams: Asn1Element? = null,
 
-    ) : SignatureRequestParameters {
+    ) : CSCSignatureRequestParameters {
 
     @Transient
     val signAlgorithm: SignatureAlgorithm? =
@@ -219,7 +217,7 @@ data class SignDocParameters(
     @SerialName("returnValidationInformation")
     val returnValidationInformation: Boolean = false,
 
-    ) : SignatureRequestParameters {
+) : CSCSignatureRequestParameters {
     init {
         require(credentialId != null || signatureQualifier != null) { "Either credentialId or signatureQualifier must not be null (both can be present)" }
         require(documentDigests != null || documents != null) { "Either documentDigests or documents must not be null (both can be present)" }
