@@ -7,7 +7,15 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 
 @Serializable
-sealed interface RequestParameters
+sealed interface RequestParameters {
+    val responseType: String?
+    val clientId: String
+    val clientIdScheme: OpenIdConstants.ClientIdScheme?
+    val responseMode: OpenIdConstants.ResponseMode?
+    val responseUri: String?
+    val nonce: String?
+    val state: String?
+}
 
 object RequestParametersSerializer : JsonContentPolymorphicSerializer<RequestParameters>(RequestParameters::class) {
     override fun selectDeserializer(element: JsonElement): DeserializationStrategy<RequestParameters> {
