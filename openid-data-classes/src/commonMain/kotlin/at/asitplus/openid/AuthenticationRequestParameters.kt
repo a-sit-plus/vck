@@ -31,13 +31,13 @@ data class AuthenticationRequestParameters(
      * Optional when JAR (RFC9101) is used.
      */
     @SerialName("response_type")
-    val responseType: String? = null,
+    override val responseType: String? = null,
 
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      */
     @SerialName("client_id")
-    val clientId: String,
+    override val clientId: String,
 
     /**
      * OIDC: REQUIRED. Redirection URI to which the response will be sent. This URI MUST exactly match one of the
@@ -64,7 +64,7 @@ data class AuthenticationRequestParameters(
      * parameter with a browser cookie.
      */
     @SerialName("state")
-    val state: String? = null,
+    override val state: String? = null,
 
     /**
      * OIDC: OPTIONAL. String value used to associate a Client session with an ID Token, and to mitigate replay attacks.
@@ -72,7 +72,7 @@ data class AuthenticationRequestParameters(
      * be present in the nonce values used to prevent attackers from guessing values.
      */
     @SerialName("nonce")
-    val nonce: String? = null,
+    override val nonce: String? = null,
 
     /**
      * OIDC: OPTIONAL. This parameter is used to request that specific Claims be returned. The value is a JSON object
@@ -173,7 +173,7 @@ data class AuthenticationRequestParameters(
      * scheme.
      */
     @SerialName("client_id_scheme")
-    val clientIdScheme: OpenIdConstants.ClientIdScheme? = null,
+    override val clientIdScheme: OpenIdConstants.ClientIdScheme? = null,
 
     /**
      * OID4VP: OPTIONAL. String containing the Wallet's identifier. The Credential Issuer can use the discovery process
@@ -207,7 +207,7 @@ data class AuthenticationRequestParameters(
      * authentication process to a certain endpoint using the HTTP POST method.
      */
     @SerialName("response_mode")
-    val responseMode: OpenIdConstants.ResponseMode? = null,
+    override val responseMode: OpenIdConstants.ResponseMode? = null,
 
     /**
      * OID4VP: OPTIONAL. The Response URI to which the Wallet MUST send the Authorization Response using an HTTPS POST
@@ -218,7 +218,7 @@ data class AuthenticationRequestParameters(
      * `invalid_request` Authorization Response error.
      */
     @SerialName("response_uri")
-    val responseUrl: String? = null,
+    override val responseUri: String? = null,
 
     /**
      * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`
