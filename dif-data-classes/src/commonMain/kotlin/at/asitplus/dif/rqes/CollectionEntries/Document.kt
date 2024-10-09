@@ -4,10 +4,17 @@ import at.asitplus.dif.rqes.Enums.ConformanceLevelEnum
 import at.asitplus.dif.rqes.Enums.SignatureFormat
 import at.asitplus.dif.rqes.Enums.SignedEnvelopeProperty
 import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.asn1.encoding.Asn1
+import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
+import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -19,8 +26,8 @@ data class Document(
      * base64-encoded document content to be signed, testcases weird so for now string
      */
     @SerialName("document")
-//    @Serializable(ByteArrayBase64Serializer::class)
-    val document: String,
+    @Serializable(ByteArrayBase64Serializer::class)
+    val document: ByteArray,
 
     /**
      * Requested Signature Format
@@ -38,7 +45,7 @@ data class Document(
      * The OID of the algorithm to use for signing
      */
     @SerialName("signAlgo")
-    val signAlgo: ObjectIdentifier,
+    val signAlgoOid: ObjectIdentifier,
 
     /**
      * The Base64-encoded DER-encoded ASN.1 signature parameters
@@ -61,31 +68,44 @@ data class Document(
      */
     @SerialName("signed_envelope_property")
     val signedEnvelopeProperty: SignedEnvelopeProperty? = null,
-)
-//{
-//    override fun equals(other: Any?): Boolean {
-//        if (this === other) return true
-//        if (other == null || this::class != other::class) return false
-//
-//        other as Document
-//
-//        if (!document.contentEquals(other.document)) return false
-//        if (signatureFormat != other.signatureFormat) return false
-//        if (conformanceLevel != other.conformanceLevel) return false
-//        if (signAlgo != other.signAlgo) return false
-//        if (signAlgoParams != other.signAlgoParams) return false
-//        if (signedProps != other.signedProps) return false
-//
-//        return true
-//    }
-//
-//    override fun hashCode(): Int {
-//        var result = document.contentHashCode()
-//        result = 31 * result + signatureFormat.hashCode()
-//        result = 31 * result + conformanceLevel.hashCode()
-//        result = 31 * result + signAlgo.hashCode()
-//        result = 31 * result + (signAlgoParams?.hashCode() ?: 0)
-//        result = 31 * result + (signedProps?.hashCode() ?: 0)
-//        return result
-//    }
-//}
+) {
+    @Transient
+    val signAlgorithm: SignatureAlgorithm? =
+        kotlin.runCatching {
+            X509SignatureAlgorithm.doDecode(Asn1.Sequence {
+                +signAlgoOid
+                +(signAlgoParams ?: Asn1.Null())
+            }).also {
+                require(it.digest != Digest.SHA1)
+            }.algorithm
+        }.getOrElse {
+            Napier.w { "Could not resolve $signAlgoOid" }
+            null
+        }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as Document
+
+        if (!document.contentEquals(other.document)) return false
+        if (signatureFormat != other.signatureFormat) return false
+        if (conformanceLevel != other.conformanceLevel) return false
+        if (signAlgoOid != other.signAlgoOid) return false
+        if (signAlgoParams != other.signAlgoParams) return false
+        if (signedProps != other.signedProps) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = document.contentHashCode()
+        result = 31 * result + signatureFormat.hashCode()
+        result = 31 * result + conformanceLevel.hashCode()
+        result = 31 * result + signAlgoOid.hashCode()
+        result = 31 * result + (signAlgoParams?.hashCode() ?: 0)
+        result = 31 * result + (signedProps?.hashCode() ?: 0)
+        return result
+    }
+}
