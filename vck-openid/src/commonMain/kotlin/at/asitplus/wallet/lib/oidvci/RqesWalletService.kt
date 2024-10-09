@@ -51,7 +51,8 @@ class RqesWalletService(
     ): SignatureRequestParameters = SignHashParameters(
         credentialId = credentialId,
         sad = sad,
-        hashes = rqesRequest.documentDigests.map { it.hash }
+        hashes = rqesRequest.documentDigests.map { it.hash },
+        signAlgoOid = X509SignatureAlgorithm.ES256.oid
     )
 
 }
