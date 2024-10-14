@@ -4,6 +4,7 @@ import at.asitplus.dif.rqes.enums.ConformanceLevelEnum
 import at.asitplus.dif.rqes.enums.SignatureFormat
 import at.asitplus.dif.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
+import at.asitplus.dif.rqes.getSignAlgorithm
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
@@ -70,8 +71,7 @@ data class Document(
     val signedEnvelopeProperty: SignedEnvelopeProperty? = null,
 ) {
     @Transient
-    val signAlgorithm: SignatureAlgorithm? =
-        getSignAlgorithm(signAlgoOid)
+    val signAlgorithm: SignatureAlgorithm? = getSignAlgorithm(signAlgoOid, signAlgoParams)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
