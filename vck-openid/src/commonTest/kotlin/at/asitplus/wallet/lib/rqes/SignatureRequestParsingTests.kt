@@ -4,6 +4,7 @@ import at.asitplus.wallet.lib.oidc.SignatureRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.helper.RequestParser
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 
 class SignatureRequestParsingTests : FreeSpec({
     //TODO better tests
