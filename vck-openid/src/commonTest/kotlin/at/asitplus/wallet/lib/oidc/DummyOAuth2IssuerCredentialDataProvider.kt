@@ -81,10 +81,10 @@ class DummyOAuth2IssuerCredentialDataProvider(
         )
         return when (representation) {
             ConstantIndex.CredentialRepresentation.SD_JWT ->
-                CredentialToBeIssued.VcSd(claims, expiration)
+                CredentialToBeIssued.VcSd(claims, expiration, ConstantIndex.AtomicAttribute2023)
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                AtomicAttribute2023(subjectId, GIVEN_NAME, givenName ?: "no value"), expiration,
+                AtomicAttribute2023(subjectId, GIVEN_NAME, givenName ?: "no value"), expiration, ConstantIndex.AtomicAttribute2023
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -92,6 +92,7 @@ class DummyOAuth2IssuerCredentialDataProvider(
                     issuerSignedItem(claim.name, claim.value, index.toUInt())
                 },
                 expiration,
+                ConstantIndex.AtomicAttribute2023
             )
         }
     }
@@ -116,7 +117,7 @@ class DummyOAuth2IssuerCredentialDataProvider(
             if (claimNames.isNullOrContains(EXPIRY_DATE))
                 issuerSignedItem(EXPIRY_DATE, "2033-01-01", digestId++) else null,
         )
-        return CredentialToBeIssued.Iso(issuerSignedItems, expiration)
+        return CredentialToBeIssued.Iso(issuerSignedItems, expiration, MobileDrivingLicenceScheme)
     }
 
     private fun getEupId(
@@ -141,7 +142,7 @@ class DummyOAuth2IssuerCredentialDataProvider(
             optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_AUTHORITY, issuingCountry),
         )
         return when (representation) {
-            ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(claims, expiration)
+            ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(claims, expiration, EuPidScheme)
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                 EuPidCredential(
@@ -155,6 +156,7 @@ class DummyOAuth2IssuerCredentialDataProvider(
                     issuingAuthority = issuingCountry,
                 ),
                 expiration,
+                EuPidScheme
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -162,6 +164,7 @@ class DummyOAuth2IssuerCredentialDataProvider(
                     issuerSignedItem(claim.name, claim.value, index.toUInt())
                 },
                 expiration,
+                EuPidScheme
             )
         }
     }

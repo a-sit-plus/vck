@@ -86,7 +86,7 @@ class IssuerAgent(
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>?,
-        dataProviderOverride: IssuerCredentialDataProvider?
+        dataProviderOverride: IssuerCredentialDataProvider?,
     ): KmmResult<Issuer.IssuedCredential> = catching {
         val provider = dataProviderOverride ?: dataProvider
         val toBeIssued =
@@ -98,28 +98,27 @@ class IssuerAgent(
      * Wraps the credential-to-be-issued in [credential] into a single instance of [CredentialToBeIssued],
      * according to the representation, i.e. it essentially signs the credential with the issuer key.
      */
-    suspend fun issueCredential(
+    override suspend fun issueCredential(
         credential: CredentialToBeIssued,
         subjectPublicKey: CryptoPublicKey,
         scheme: ConstantIndex.CredentialScheme,
     ): KmmResult<Issuer.IssuedCredential> = catching {
         when (credential) {
-            is CredentialToBeIssued.Iso -> issueMdoc(credential, scheme, subjectPublicKey, clock.now())
-            is CredentialToBeIssued.VcJwt -> issueVc(credential, scheme, subjectPublicKey, clock.now())
-            is CredentialToBeIssued.VcSd -> issueVcSd(credential, scheme, subjectPublicKey, clock.now())
+            is CredentialToBeIssued.Iso -> issueMdoc(credential, subjectPublicKey, clock.now())
+            is CredentialToBeIssued.VcJwt -> issueVc(credential, subjectPublicKey, clock.now())
+            is CredentialToBeIssued.VcSd -> issueVcSd(credential, subjectPublicKey, clock.now())
         }
     }
 
     private suspend fun issueMdoc(
         credential: CredentialToBeIssued.Iso,
-        scheme: ConstantIndex.CredentialScheme,
         subjectPublicKey: CryptoPublicKey,
         issuanceDate: Instant
     ): Issuer.IssuedCredential {
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.Iso(credential.issuerSignedItems, scheme),
+            credential = IssuerCredentialStore.Credential.Iso(credential.issuerSignedItems, credential.scheme),
             subjectPublicKey = subjectPublicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
@@ -133,12 +132,12 @@ class IssuerAgent(
             version = "1.0",
             digestAlgorithm = "SHA-256",
             valueDigests = mapOf(
-                scheme.isoNamespace!! to ValueDigestList(credential.issuerSignedItems.map {
-                    ValueDigest.fromIssuerSignedItem(it, scheme.isoNamespace!!)
+                credential.scheme.isoNamespace!! to ValueDigestList(credential.issuerSignedItems.map {
+                    ValueDigest.fromIssuerSignedItem(it, credential.scheme.isoNamespace!!)
                 })
             ),
             deviceKeyInfo = deviceKeyInfo,
-            docType = scheme.isoDocType!!,
+            docType = credential.scheme.isoDocType!!,
             validityInfo = ValidityInfo(
                 signed = issuanceDate,
                 validFrom = issuanceDate,
@@ -146,19 +145,18 @@ class IssuerAgent(
             )
         )
         val issuerSigned = IssuerSigned.fromIssuerSignedItems(
-            namespacedItems = mapOf(scheme.isoNamespace!! to credential.issuerSignedItems),
+            namespacedItems = mapOf(credential.scheme.isoNamespace!! to credential.issuerSignedItems),
             issuerAuth = coseService.createSignedCose(
                 payload = mso.serializeForIssuerAuth(),
                 addKeyId = false,
                 addCertificate = true,
             ).getOrThrow(),
         )
-        return Issuer.IssuedCredential.Iso(issuerSigned, scheme)
+        return Issuer.IssuedCredential.Iso(issuerSigned, credential.scheme)
     }
 
     private suspend fun issueVc(
         credential: CredentialToBeIssued.VcJwt,
-        scheme: ConstantIndex.CredentialScheme,
         subjectPublicKey: CryptoPublicKey,
         issuanceDate: Instant,
     ): Issuer.IssuedCredential {
@@ -166,7 +164,7 @@ class IssuerAgent(
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcJwt(vcId, credential.subject, scheme),
+            credential = IssuerCredentialStore.Credential.VcJwt(vcId, credential.subject, credential.scheme),
             subjectPublicKey = subjectPublicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
@@ -181,17 +179,16 @@ class IssuerAgent(
             expirationDate = expirationDate,
             credentialStatus = credentialStatus,
             credentialSubject = credential.subject,
-            credentialType = scheme.vcType!!,
+            credentialType = credential.scheme.vcType!!,
         )
 
         val vcInJws = wrapVcInJws(vc)
             ?: throw RuntimeException("Signing failed")
-        return Issuer.IssuedCredential.VcJwt(vcInJws, scheme)
+        return Issuer.IssuedCredential.VcJwt(vcInJws, credential.scheme)
     }
 
     private suspend fun issueVcSd(
         credential: CredentialToBeIssued.VcSd,
-        scheme: ConstantIndex.CredentialScheme,
         subjectPublicKey: CryptoPublicKey,
         issuanceDate: Instant
     ): Issuer.IssuedCredential {
@@ -200,7 +197,7 @@ class IssuerAgent(
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
         val subjectId = subjectPublicKey.didEncoded
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcSd(vcId, credential.claims, scheme),
+            credential = IssuerCredentialStore.Credential.VcSd(vcId, credential.claims, credential.scheme),
             subjectPublicKey = subjectPublicKey,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
@@ -221,7 +218,7 @@ class IssuerAgent(
             issuedAt = issuanceDate,
             jwtId = vcId,
             disclosureDigests = disclosureDigests,
-            verifiableCredentialType = scheme.sdJwtType ?: scheme.schemaUri,
+            verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
             selectiveDisclosureAlgorithm = "sha-256",
             confirmationKey = subjectPublicKey.toJsonWebKey(),
             credentialStatus = credentialStatus,
@@ -231,7 +228,7 @@ class IssuerAgent(
             throw RuntimeException("Signing failed", it)
         }
         val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~")
-        return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, scheme)
+        return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme)
     }
 
     /**

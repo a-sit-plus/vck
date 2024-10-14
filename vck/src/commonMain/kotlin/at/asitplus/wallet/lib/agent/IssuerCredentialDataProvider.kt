@@ -13,8 +13,8 @@ import kotlinx.datetime.Instant
 interface IssuerCredentialDataProvider {
 
     /**
-     * Gets called with a resolved [credentialScheme], the holder key in [subjectPublicKey] and the requested
-     * credential [representation].
+     * Gets called with a resolved [credentialScheme],
+     * the holder key in [subjectPublicKey] and the requested credential [representation].
      * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
      * [claimNames] to request only some claims (if supported by the representation).
      */
@@ -30,16 +30,19 @@ sealed class CredentialToBeIssued {
     data class VcJwt(
         val subject: CredentialSubject,
         val expiration: Instant,
+        val scheme: ConstantIndex.CredentialScheme,
     ) : CredentialToBeIssued()
 
     data class VcSd(
         val claims: Collection<ClaimToBeIssued>,
         val expiration: Instant,
+        val scheme: ConstantIndex.CredentialScheme,
     ) : CredentialToBeIssued()
 
     data class Iso(
         val issuerSignedItems: List<IssuerSignedItem>,
         val expiration: Instant,
+        val scheme: ConstantIndex.CredentialScheme,
     ) : CredentialToBeIssued()
 }
 

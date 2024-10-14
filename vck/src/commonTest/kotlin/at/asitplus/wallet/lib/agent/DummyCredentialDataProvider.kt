@@ -41,11 +41,13 @@ class DummyCredentialDataProvider(
             ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
                 claims = claims,
                 expiration = expiration,
+                scheme = credentialScheme,
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                 subject = AtomicAttribute2023(subjectId, CLAIM_GIVEN_NAME, "Susanne"),
                 expiration = expiration,
+                scheme = credentialScheme,
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -53,6 +55,7 @@ class DummyCredentialDataProvider(
                     issuerSignedItem(claim.name, claim.value, index.toUInt())
                 },
                 expiration = expiration,
+                scheme = credentialScheme,
             )
         }
     }
