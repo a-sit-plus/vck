@@ -36,7 +36,7 @@ class ValidatorVcTest : FreeSpec() {
         beforeEach {
             issuerCredentialStore = InMemoryIssuerCredentialStore()
             issuerKeyMaterial = EphemeralKeyWithoutCert()
-            issuer = IssuerAgent(issuerKeyMaterial, issuerCredentialStore, dataProvider)
+            issuer = IssuerAgent(issuerKeyMaterial, issuerCredentialStore)
             issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyMaterial))
             verifierKeyMaterial = EphemeralKeyWithoutCert()
             verifier = VerifierAgent(verifierKeyMaterial)
@@ -44,7 +44,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "credentials are valid for" {
             val credential = issuer.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                dataProvider.getCredential(
                     verifierKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -57,7 +57,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "revoked credentials are not valid" {
             val credential = issuer.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                dataProvider.getCredential(
                     verifierKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -82,7 +82,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "wrong subject keyId is not be valid" {
             val credential = issuer.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                dataProvider.getCredential(
                     EphemeralKeyWithoutCert().publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -96,7 +96,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "credential with invalid JWS format is not valid" {
             val credential = issuer.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                dataProvider.getCredential(
                     verifierKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,

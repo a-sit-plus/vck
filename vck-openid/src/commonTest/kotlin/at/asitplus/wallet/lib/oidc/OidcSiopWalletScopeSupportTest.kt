@@ -89,12 +89,8 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         }
 
         "get empty scope works even without available credentials" {
-            val issuerAgent = IssuerAgent(
-                EphemeralKeyWithSelfSignedCert(),
-                DummyCredentialDataProvider(),
-            )
             holderAgent.storeCredential(
-                issuerAgent.issueCredential(
+                IssuerAgent(EphemeralKeyWithSelfSignedCert()).issueCredential(
                     DummyCredentialDataProvider().getCredential(
                         holderKeyMaterial.publicKey,
                         ConstantIndex.AtomicAttribute2023,
@@ -134,12 +130,8 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         }
 
         "get MdocMdlWithGivenName scope with available credentials succeeds" {
-            val issuerAgent = IssuerAgent(
-                EphemeralKeyWithSelfSignedCert(),
-                DummyCredentialDataProvider(),
-            )
             holderAgent.storeCredential(
-                issuerAgent.issueCredential(
+                IssuerAgent(EphemeralKeyWithSelfSignedCert()).issueCredential(
                     DummyCredentialDataProvider().getCredential(
                         holderKeyMaterial.publicKey,
                         MobileDrivingLicenceScheme,

@@ -206,10 +206,7 @@ private suspend fun Holder.storeSdJwtCredential(
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
-        IssuerAgent(
-            EphemeralKeyWithoutCert(),
-            DummyCredentialDataProvider(),
-        ).issueCredential(
+        IssuerAgent().issueCredential(
             DummyCredentialDataProvider().getCredential(
                 holderKeyMaterial.publicKey,
                 credentialScheme,
@@ -223,10 +220,7 @@ private suspend fun Holder.storeIsoCredential(
     holderKeyMaterial: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) = storeCredential(
-    IssuerAgent(
-        EphemeralKeyWithSelfSignedCert(),
-        DummyCredentialDataProvider(),
-    ).issueCredential(
+    IssuerAgent(EphemeralKeyWithSelfSignedCert()).issueCredential(
         DummyCredentialDataProvider().getCredential(
             holderKeyMaterial.publicKey,
             credentialScheme,

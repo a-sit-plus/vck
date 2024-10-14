@@ -37,10 +37,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
 
-        val issuerAgent = IssuerAgent(
-            EphemeralKeyWithSelfSignedCert(),
-            DummyCredentialDataProvider(),
-        )
+        val issuerAgent = IssuerAgent(EphemeralKeyWithSelfSignedCert())
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
                 DummyCredentialDataProvider().getCredential(

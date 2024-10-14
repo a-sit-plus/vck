@@ -35,7 +35,6 @@ class IssuerAgent(
     private val validator: Validator,
     private val issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
     private val revocationListBaseUrl: String = "https://wallet.a-sit.at/backend/credentials/status",
-    private val dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     private val zlibService: ZlibService = DefaultZlibService(),
     private val revocationListLifetime: Duration = 48.hours,
     private val jwsService: JwsService,
@@ -48,26 +47,12 @@ class IssuerAgent(
 
     constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-        dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
-    ) : this(
-        validator = Validator(),
-        jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-        coseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
-        dataProvider = dataProvider,
-        keyMaterial = keyMaterial,
-        cryptoAlgorithms = setOf(keyMaterial.signatureAlgorithm),
-    )
-
-    constructor(
-        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
-        dataProvider: IssuerCredentialDataProvider = EmptyCredentialDataProvider,
     ) : this(
         validator = Validator(),
         issuerCredentialStore = issuerCredentialStore,
         jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
         coseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
-        dataProvider = dataProvider,
         keyMaterial = keyMaterial,
         cryptoAlgorithms = setOf(keyMaterial.signatureAlgorithm),
     )

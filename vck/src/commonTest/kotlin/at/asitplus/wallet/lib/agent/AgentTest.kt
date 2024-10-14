@@ -30,11 +30,7 @@ class AgentTest : FreeSpec({
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
-        issuer = IssuerAgent(
-            EphemeralKeyWithoutCert(),
-            issuerCredentialStore,
-            DummyCredentialDataProvider(),
-        )
+        issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore)
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
         verifier = VerifierAgent(holderKeyMaterial)

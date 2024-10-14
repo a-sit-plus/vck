@@ -43,10 +43,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
         holderAgent = HolderAgent(holderKeyMaterial)
         holderAgent.storeCredential(
-            IssuerAgent(
-                EphemeralKeyWithoutCert(),
-                DummyCredentialDataProvider(),
-            ).issueCredential(
+            IssuerAgent().issueCredential(
                 DummyCredentialDataProvider().getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,

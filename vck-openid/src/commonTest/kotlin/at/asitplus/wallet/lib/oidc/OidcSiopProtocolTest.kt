@@ -52,10 +52,7 @@ class OidcSiopProtocolTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent(
-                EphemeralKeyWithoutCert(),
-                DummyCredentialDataProvider(),
-            ).issueCredential(
+            IssuerAgent().issueCredential(
                 DummyCredentialDataProvider().getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,

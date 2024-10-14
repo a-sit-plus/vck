@@ -36,10 +36,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         verifierAgent = VerifierAgent(verifierKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent(
-                EphemeralKeyWithoutCert(),
-                DummyCredentialDataProvider(),
-            ).issueCredential(
+            IssuerAgent().issueCredential(
                 DummyCredentialDataProvider().getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,

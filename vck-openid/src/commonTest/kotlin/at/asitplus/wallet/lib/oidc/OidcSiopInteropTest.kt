@@ -46,10 +46,7 @@ class OidcSiopInteropTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(holderKeyMaterial)
-        val issuerAgent = IssuerAgent(
-            EphemeralKeyWithoutCert(),
-            DummyCredentialDataProvider(),
-        )
+        val issuerAgent = IssuerAgent()
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
                 DummyCredentialDataProvider().getCredential(
