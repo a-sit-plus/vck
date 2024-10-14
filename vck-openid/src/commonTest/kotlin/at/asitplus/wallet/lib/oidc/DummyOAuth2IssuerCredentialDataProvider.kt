@@ -10,7 +10,6 @@ import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
-import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
@@ -18,6 +17,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMIL
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.oidvci.CredentialIssuerDataProvider
 import at.asitplus.wallet.lib.oidvci.OAuth2DataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
@@ -34,31 +34,32 @@ import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
 
-class DummyOAuth2IssuerCredentialDataProvider(
-    private val userInfo: OidcUserInfoExtended,
-    private val clock: Clock = Clock.System,
-) : IssuerCredentialDataProvider {
+object DummyOAuth2IssuerCredentialDataProvider : CredentialIssuerDataProvider {
 
+    private val clock: Clock = Clock.System
     private val defaultLifetime = 1.minutes
 
     override fun getCredential(
+        userInfo: OidcUserInfoExtended,
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>?
     ): KmmResult<CredentialToBeIssued> = catching {
         when (credentialScheme) {
-            ConstantIndex.AtomicAttribute2023 -> getAtomicAttribute(subjectPublicKey, claimNames, representation)
-            MobileDrivingLicenceScheme -> getMdl(subjectPublicKey, claimNames)
-            EuPidScheme -> getEupId(subjectPublicKey, claimNames, representation)
+            ConstantIndex.AtomicAttribute2023 -> getAtomic(userInfo, subjectPublicKey, representation, claimNames)
+            MobileDrivingLicenceScheme -> getMdl(userInfo, subjectPublicKey, claimNames)
+            EuPidScheme -> getEupId(userInfo, subjectPublicKey, representation, claimNames)
             else -> throw NotImplementedError()
         }
     }
 
-    private fun getAtomicAttribute(
+
+    private fun getAtomic(
+        userInfo: OidcUserInfoExtended,
         subjectPublicKey: CryptoPublicKey,
-        claimNames: Collection<String>?,
-        representation: ConstantIndex.CredentialRepresentation
+        representation: ConstantIndex.CredentialRepresentation,
+        claimNames: Collection<String>?
     ): CredentialToBeIssued {
         val issuance = clock.now()
         val expiration = issuance + defaultLifetime
@@ -106,6 +107,7 @@ class DummyOAuth2IssuerCredentialDataProvider(
     }
 
     private fun getMdl(
+        userInfo: OidcUserInfoExtended,
         subjectPublicKey: CryptoPublicKey,
         claimNames: Collection<String>?
     ): CredentialToBeIssued.Iso {
@@ -130,9 +132,10 @@ class DummyOAuth2IssuerCredentialDataProvider(
     }
 
     private fun getEupId(
+        userInfo: OidcUserInfoExtended,
         subjectPublicKey: CryptoPublicKey,
-        claimNames: Collection<String>?,
-        representation: ConstantIndex.CredentialRepresentation
+        representation: ConstantIndex.CredentialRepresentation,
+        claimNames: Collection<String>?
     ): CredentialToBeIssued {
         val issuance = clock.now()
         val expiration = issuance + defaultLifetime

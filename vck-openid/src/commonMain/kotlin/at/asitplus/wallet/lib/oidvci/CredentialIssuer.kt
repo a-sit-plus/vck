@@ -14,8 +14,8 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
@@ -55,9 +55,7 @@ class CredentialIssuer(
     /**
      * Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]
      */
-    private val buildIssuerCredentialDataProviderOverride: (OidcUserInfoExtended) -> IssuerCredentialDataProvider = {
-        OAuth2IssuerCredentialDataProvider(it)
-    }
+    private val credentialProvider: CredentialIssuerDataProvider
 ) {
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`
@@ -143,12 +141,21 @@ class CredentialIssuer(
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("credential: client did not provide correct credential scheme: $params") }
 
-        val issuedCredential = issuer.issueCredential(
+        val claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
+
+        val credentialToBeIssued = credentialProvider.getCredential(
+            userInfo = userInfo,
             subjectPublicKey = subjectPublicKey,
             credentialScheme = credentialScheme,
             representation = representation.toRepresentation(),
-            claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
-            dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
+            claimNames = claimNames
+        ).getOrElse {
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
+                .also { Napier.w("credential: did not get any credential from provideUserInfo", it) }
+        }
+
+        val issuedCredential = issuer.issueCredential(
+            credential = credentialToBeIssued
         ).getOrElse {
             throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("credential: issuer did not issue credential", it) }
@@ -232,8 +239,28 @@ private fun CredentialRequestParameters.extractCredentialScheme(format: Credenti
 
     CredentialFormatEnum.VC_SD_JWT -> sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
         ?.let { it to CredentialFormatEnum.VC_SD_JWT }
+
     CredentialFormatEnum.MSO_MDOC -> docType?.let { AttributeIndex.resolveIsoDoctype(it) }
         ?.let { it to CredentialFormatEnum.MSO_MDOC }
 
     else -> null
+}
+
+fun interface CredentialIssuerDataProvider {
+
+    /**
+     * Gets called with the user authorized in [userInfo],
+     * a resolved [credentialScheme],
+     * the holder key in [subjectPublicKey],
+     * and the requested credential [representation].
+     * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
+     * [claimNames] to request only some claims (if supported by the representation).
+     */
+    fun getCredential(
+        userInfo: OidcUserInfoExtended,
+        subjectPublicKey: CryptoPublicKey,
+        credentialScheme: ConstantIndex.CredentialScheme,
+        representation: ConstantIndex.CredentialRepresentation,
+        claimNames: Collection<String>?,
+    ): KmmResult<CredentialToBeIssued>
 }

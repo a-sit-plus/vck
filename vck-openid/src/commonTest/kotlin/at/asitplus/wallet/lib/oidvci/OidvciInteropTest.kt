@@ -37,7 +37,7 @@ class OidvciInteropTest : FunSpec({
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
-            buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
+            credentialProvider = DummyOAuth2IssuerCredentialDataProvider
         )
     }
 

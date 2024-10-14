@@ -45,7 +45,7 @@ class OidvciProcessTest : FunSpec({
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
-            buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
+            credentialProvider = DummyOAuth2IssuerCredentialDataProvider,
         )
         client = WalletService(
             clientId = "https://wallet.a-sit.at/app",
@@ -123,7 +123,7 @@ class OidvciProcessTest : FunSpec({
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
             credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
-            buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
+            credentialProvider = DummyOAuth2IssuerCredentialDataProvider
         )
         val requestOptions = WalletService.RequestOptions(
             ConstantIndex.AtomicAttribute2023,
