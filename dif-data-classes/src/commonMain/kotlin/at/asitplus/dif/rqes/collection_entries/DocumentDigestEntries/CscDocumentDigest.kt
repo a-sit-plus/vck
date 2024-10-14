@@ -1,21 +1,18 @@
 package at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries
 
+import at.asitplus.dif.rqes.Hashes
+import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
+import at.asitplus.dif.rqes.contentEquals
+import at.asitplus.dif.rqes.contentHashCode
 import at.asitplus.dif.rqes.enums.ConformanceLevelEnum
 import at.asitplus.dif.rqes.enums.SignatureFormat
 import at.asitplus.dif.rqes.enums.SignedEnvelopeProperty
-import at.asitplus.dif.rqes.Hashes
-import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
-import at.asitplus.dif.rqes.collection_entries.getSignAlgorithm
-import at.asitplus.dif.rqes.contentEquals
-import at.asitplus.dif.rqes.contentHashCode
+import at.asitplus.dif.rqes.getHashAlgorithm
 import at.asitplus.dif.rqes.getSignAlgorithm
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.asn1.encoding.Asn1
-import io.github.aakira.napier.Napier
 import io.ktor.util.reflect.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -94,7 +91,8 @@ data class CscDocumentDigest(
         getSignAlgorithm(signAlgoOid, signAlgoParams)
 
     @Transient
-    val hashAlgorithm: Digest = getHashAlgorithm()
+    val hashAlgorithm: Digest = getHashAlgorithm(hashAlgorithmOid, signAlgorithm)
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
