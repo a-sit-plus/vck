@@ -48,9 +48,11 @@ class AgentSdJwtTest : FreeSpec({
         challenge = uuid4().toString()
         holder.storeCredential(
             issuer.issueCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
+                DummyCredentialDataProvider().getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
     }
@@ -163,9 +165,11 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
     val holder = HolderAgent(holderKeyMaterial)
     holder.storeCredential(
         issuer.issueCredential(
-            holderKeyMaterial.publicKey,
-            ConstantIndex.AtomicAttribute2023,
-            ConstantIndex.CredentialRepresentation.SD_JWT,
+            DummyCredentialDataProvider().getCredential(
+                holderKeyMaterial.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.SD_JWT,
+            ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
     )
     val presentationResult = holder.createPresentation(

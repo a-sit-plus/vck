@@ -55,9 +55,11 @@ class AgentRevocationTest : FreeSpec({
 
     "credentials should contain status information" {
         val result = issuer.issueCredential(
-            verifierKeyMaterial.publicKey,
-            ConstantIndex.AtomicAttribute2023,
-            ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+            DummyCredentialDataProvider().getCredential(
+                verifierKeyMaterial.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+            ).getOrThrow()
         ).getOrElse {
             fail("no issued credentials")
         }

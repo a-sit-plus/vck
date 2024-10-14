@@ -3,6 +3,7 @@
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact
  - Add `credentialScheme` and `subjectPublicKey` to internal `CredentialToBeIssued`
+ - Refactor `issueCredential` of `Issuer` to directly get the credential-to-be-issued
 
 Release 5.0.1:
  - Update JsonPath4K to 2.4.0

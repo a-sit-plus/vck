@@ -95,9 +95,11 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             )
             holderAgent.storeCredential(
                 issuerAgent.issueCredential(
-                    holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    DummyCredentialDataProvider().getCredential(
+                        holderKeyMaterial.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    ).getOrThrow()
                 ).getOrThrow().toStoreCredentialInput()
             )
 
@@ -138,12 +140,13 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             )
             holderAgent.storeCredential(
                 issuerAgent.issueCredential(
-                    holderKeyMaterial.publicKey,
-                    MobileDrivingLicenceScheme,
-                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    DummyCredentialDataProvider().getCredential(
+                        holderKeyMaterial.publicKey,
+                        MobileDrivingLicenceScheme,
+                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    ).getOrThrow()
                 ).getOrThrow().toStoreCredentialInput()
             )
-
 
             val authnRequest = verifierSiop.createAuthnRequest(defaultRequestOptions).let { request ->
                 request.copy(

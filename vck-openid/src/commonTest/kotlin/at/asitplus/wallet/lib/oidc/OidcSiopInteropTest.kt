@@ -52,18 +52,22 @@ class OidcSiopInteropTest : FreeSpec({
         )
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                holderKeyMaterial.publicKey,
-                EuPidScheme,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
-                EuPidScheme.requiredClaimNames
+                DummyCredentialDataProvider().getCredential(
+                    holderKeyMaterial.publicKey,
+                    EuPidScheme,
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                    EuPidScheme.requiredClaimNames
+                ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
-                listOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
+                DummyCredentialDataProvider().getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                    listOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
+                ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
         holderSiop = OidcSiopWallet(holderKeyMaterial, holderAgent)

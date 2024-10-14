@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.io.Base64Strict
@@ -72,27 +71,6 @@ class IssuerAgent(
         keyMaterial = keyMaterial,
         cryptoAlgorithms = setOf(keyMaterial.signatureAlgorithm),
     )
-
-    /**
-     * Issues credentials for some [credentialScheme] to the subject specified with its public
-     * key in [subjectPublicKey] in the format specified by [representation].
-     * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
-     * [claimNames] to request only some claims (if supported by the representation).
-     *
-     * @param dataProviderOverride Set this parameter to override the default [dataProvider] for this issuing process
-     */
-    override suspend fun issueCredential(
-        subjectPublicKey: CryptoPublicKey,
-        credentialScheme: ConstantIndex.CredentialScheme,
-        representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>?,
-        dataProviderOverride: IssuerCredentialDataProvider?,
-    ): KmmResult<Issuer.IssuedCredential> = catching {
-        val provider = dataProviderOverride ?: dataProvider
-        val toBeIssued =
-            provider.getCredential(subjectPublicKey, credentialScheme, representation, claimNames).getOrThrow()
-        issueCredential(toBeIssued).getOrThrow()
-    }
 
     /**
      * Wraps the credential-to-be-issued in [credential] into a single instance of [CredentialToBeIssued],

@@ -40,9 +40,11 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
                 EphemeralKeyWithoutCert(),
                 DummyCredentialDataProvider(),
             ).issueCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
+                DummyCredentialDataProvider().getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
 

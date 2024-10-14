@@ -84,9 +84,11 @@ class Tag24SerializationTest : FreeSpec({
         val issuerAgent = IssuerAgent(dataProvider = DummyCredentialDataProvider())
         val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
         val issuedCredential = issuerAgent.issueCredential(
-            holderKeyMaterial.publicKey,
-            ConstantIndex.AtomicAttribute2023,
-            ConstantIndex.CredentialRepresentation.ISO_MDOC
+            DummyCredentialDataProvider().getCredential(
+                holderKeyMaterial.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.ISO_MDOC
+            ).getOrThrow()
         ).getOrThrow().shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
         issuedCredential.issuerSigned.namespaces!!.shouldNotBeEmpty()
