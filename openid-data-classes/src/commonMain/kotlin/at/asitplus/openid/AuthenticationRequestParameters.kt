@@ -3,7 +3,7 @@ package at.asitplus.openid
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.dif.rqes.enums.SignatureQualifierEnum
-import at.asitplus.dif.rqes.Serializer.HashesSerializer
+import at.asitplus.dif.rqes.serializers.HashesSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken

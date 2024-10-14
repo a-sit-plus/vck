@@ -1,7 +1,7 @@
 package at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries
 
 import at.asitplus.dif.rqes.Hashes
-import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
+import at.asitplus.dif.rqes.serializers.Asn1EncodableBase64Serializer
 import at.asitplus.dif.rqes.contentEquals
 import at.asitplus.dif.rqes.contentHashCode
 import at.asitplus.dif.rqes.enums.ConformanceLevelEnum
