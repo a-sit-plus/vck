@@ -22,7 +22,6 @@ import kotlinx.serialization.json.JsonObject
 
 /**
  * CSC: Class used as part of [SignatureRequestParameters]
- * TODO finish member description
  */
 @Serializable
 data class CscDocumentDigest(
@@ -85,43 +84,12 @@ data class CscDocumentDigest(
     @SerialName("signed_envelope_property")
     val signedEnvelopeProperty: SignedEnvelopeProperty? = null,
 ) {
-
     @Transient
     val signAlgorithm: SignatureAlgorithm? =
         getSignAlgorithm(signAlgoOid, signAlgoParams)
 
     @Transient
     val hashAlgorithm: Digest = getHashAlgorithm(hashAlgorithmOid, signAlgorithm)
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as CscDocumentDigest
-
-        if (!hashes.contentEquals(other.hashes)) return false
-        if (hashAlgorithmOid != other.hashAlgorithmOid) return false
-        if (signatureFormat != other.signatureFormat) return false
-        if (conformanceLevel != other.conformanceLevel) return false
-        if (signAlgoOid != other.signAlgoOid) return false
-        if (signAlgoParams != other.signAlgoParams) return false
-        if (signedProps != other.signedProps) return false
-        if (signedEnvelopeProperty != other.signedEnvelopeProperty) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = hashes.contentHashCode()
-        result = 31 * result + (hashAlgorithmOid?.hashCode() ?: 0)
-        result = 31 * result + signatureFormat.hashCode()
-        result = 31 * result + conformanceLevel.hashCode()
-        result = 31 * result + signAlgoOid.hashCode()
-        result = 31 * result + (signAlgoParams?.hashCode() ?: 0)
-        result = 31 * result + (signedProps?.hashCode() ?: 0)
-        result = 31 * result + signedEnvelopeProperty.hashCode()
-        return result
-    }
 }
 
 

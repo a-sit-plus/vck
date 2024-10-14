@@ -12,6 +12,7 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -120,6 +121,43 @@ data class SignHashParameters(
 
     @Transient
     val hashAlgorithm: Digest = getHashAlgorithm(hashAlgorithmOid, signAlgorithm)
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as SignHashParameters
+        if (!hashes.contentEquals(other.hashes)) return false
+        if (credentialId != other.credentialId) return false
+        if (sad != other.sad) return false
+        if (operationMode != other.operationMode) return false
+        if (validityPeriod != other.validityPeriod) return false
+        if (responseUri != other.responseUri) return false
+        if (clientData != other.clientData) return false
+        if (hashAlgorithmOid != other.hashAlgorithmOid) return false
+        if (signAlgoOid != other.signAlgoOid) return false
+        if (signAlgoParams != other.signAlgoParams) return false
+        if (signAlgorithm != other.signAlgorithm) return false
+        if (hashAlgorithm != other.hashAlgorithm) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = hashes.contentHashCode()
+        result = 31 * result + (sad?.hashCode() ?: 0)
+        result = 31 * result + operationMode.hashCode()
+        result = 31 * result + (validityPeriod ?: 0)
+        result = 31 * result + (responseUri?.hashCode() ?: 0)
+        result = 31 * result + (clientData?.hashCode() ?: 0)
+        result = 31 * result + credentialId.hashCode()
+        result = 31 * result + (hashAlgorithmOid?.hashCode() ?: 0)
+        result = 31 * result + signAlgoOid.hashCode()
+        result = 31 * result + (signAlgoParams?.hashCode() ?: 0)
+        result = 31 * result + (signAlgorithm?.hashCode() ?: 0)
+        result = 31 * result + hashAlgorithm.hashCode()
+        return result
+    }
 }
 
 @Serializable

@@ -87,7 +87,7 @@ data class TokenResponseParameters(
      * It MUST NOT be used otherwise.
      */
     @SerialName("authorization_details")
-    val authorizationDetailsList: List<AuthorizationDetails>? = null,
+    val authorizationDetails: Set<AuthorizationDetails>? = null,
 
     /**
      * CSC: OPTIONAL
