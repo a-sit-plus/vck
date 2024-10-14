@@ -37,7 +37,7 @@ data class AuthenticationRequestParameters(
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      */
     @SerialName("client_id")
-    override val clientId: String,
+    override val clientId: String? = null,
 
     /**
      * OIDC: REQUIRED. Redirection URI to which the response will be sent. This URI MUST exactly match one of the
@@ -218,7 +218,7 @@ data class AuthenticationRequestParameters(
      * `invalid_request` Authorization Response error.
      */
     @SerialName("response_uri")
-    override val responseUri: String? = null,
+    override val responseUrl: String? = null,
 
     /**
      * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`
