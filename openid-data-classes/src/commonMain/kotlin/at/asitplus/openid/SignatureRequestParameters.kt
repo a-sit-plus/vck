@@ -7,6 +7,7 @@ import at.asitplus.dif.rqes.enums.ConformanceLevelEnum
 import at.asitplus.dif.rqes.enums.SignatureFormat
 import at.asitplus.dif.rqes.enums.SignatureQualifierEnum
 import at.asitplus.dif.rqes.enums.SignedEnvelopeProperty
+import at.asitplus.dif.rqes.getHashAlgorithm
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
@@ -18,7 +19,6 @@ import kotlinx.serialization.json.JsonObject
 
 /**
  * TODO: Find new home (different subfolder most likely)
- * TODO: Describe vars
  *
  * In the Wallet centric model this is the request
  * coming from the Driving application to the wallet which starts
@@ -141,7 +141,7 @@ data class SignatureRequestParameters(
 ) : RequestParameters {
 
     @Transient
-    val hashAlgorithm: Digest? = Digest.entries.find { digest -> digest.oid == hashAlgorithmOid }
+    val hashAlgorithm: Digest = getHashAlgorithm(hashAlgorithmOid)
 
     fun toAuthorizationDetails(): AuthorizationDetails =
         AuthorizationDetails.CSCCredential(
