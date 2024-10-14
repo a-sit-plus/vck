@@ -49,7 +49,7 @@ class DummyOAuth2IssuerCredentialDataProvider(
     ): KmmResult<CredentialToBeIssued> = catching {
         when (credentialScheme) {
             ConstantIndex.AtomicAttribute2023 -> getAtomicAttribute(subjectPublicKey, claimNames, representation)
-            MobileDrivingLicenceScheme -> getMdl(claimNames)
+            MobileDrivingLicenceScheme -> getMdl(subjectPublicKey, claimNames)
             EuPidScheme -> getEupId(subjectPublicKey, claimNames, representation)
             else -> throw NotImplementedError()
         }
@@ -80,11 +80,18 @@ class DummyOAuth2IssuerCredentialDataProvider(
             },
         )
         return when (representation) {
-            ConstantIndex.CredentialRepresentation.SD_JWT ->
-                CredentialToBeIssued.VcSd(claims, expiration, ConstantIndex.AtomicAttribute2023)
+            ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
+                claims,
+                expiration,
+                ConstantIndex.AtomicAttribute2023,
+                subjectPublicKey
+            )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                AtomicAttribute2023(subjectId, GIVEN_NAME, givenName ?: "no value"), expiration, ConstantIndex.AtomicAttribute2023
+                AtomicAttribute2023(subjectId, GIVEN_NAME, givenName ?: "no value"),
+                expiration,
+                ConstantIndex.AtomicAttribute2023,
+                subjectPublicKey
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -92,12 +99,14 @@ class DummyOAuth2IssuerCredentialDataProvider(
                     issuerSignedItem(claim.name, claim.value, index.toUInt())
                 },
                 expiration,
-                ConstantIndex.AtomicAttribute2023
+                ConstantIndex.AtomicAttribute2023,
+                subjectPublicKey
             )
         }
     }
 
     private fun getMdl(
+        subjectPublicKey: CryptoPublicKey,
         claimNames: Collection<String>?
     ): CredentialToBeIssued.Iso {
         val issuance = clock.now()
@@ -117,7 +126,7 @@ class DummyOAuth2IssuerCredentialDataProvider(
             if (claimNames.isNullOrContains(EXPIRY_DATE))
                 issuerSignedItem(EXPIRY_DATE, "2033-01-01", digestId++) else null,
         )
-        return CredentialToBeIssued.Iso(issuerSignedItems, expiration, MobileDrivingLicenceScheme)
+        return CredentialToBeIssued.Iso(issuerSignedItems, expiration, MobileDrivingLicenceScheme, subjectPublicKey)
     }
 
     private fun getEupId(
@@ -142,7 +151,12 @@ class DummyOAuth2IssuerCredentialDataProvider(
             optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_AUTHORITY, issuingCountry),
         )
         return when (representation) {
-            ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(claims, expiration, EuPidScheme)
+            ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
+                claims,
+                expiration,
+                EuPidScheme,
+                subjectPublicKey,
+            )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                 EuPidCredential(
@@ -156,7 +170,8 @@ class DummyOAuth2IssuerCredentialDataProvider(
                     issuingAuthority = issuingCountry,
                 ),
                 expiration,
-                EuPidScheme
+                EuPidScheme,
+                subjectPublicKey,
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -164,7 +179,8 @@ class DummyOAuth2IssuerCredentialDataProvider(
                     issuerSignedItem(claim.name, claim.value, index.toUInt())
                 },
                 expiration,
-                EuPidScheme
+                EuPidScheme,
+                subjectPublicKey,
             )
         }
     }

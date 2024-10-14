@@ -74,6 +74,12 @@ interface Issuer {
     ): KmmResult<IssuedCredential>
 
     /**
+     * Wraps the credential-to-be-issued in [credential] into a single instance of [IssuedCredential],
+     * according to the representation, i.e. it essentially signs the credential with the issuer key.
+     */
+    suspend fun issueCredential(credential: CredentialToBeIssued): KmmResult<IssuedCredential>
+
+    /**
      * Wraps the revocation information into a VC,
      * returns a JWS representation of that.
      * @param timePeriod time Period to issue a revocation list for

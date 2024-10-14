@@ -42,12 +42,14 @@ class DummyCredentialDataProvider(
                 claims = claims,
                 expiration = expiration,
                 scheme = credentialScheme,
+                subjectPublicKey = subjectPublicKey,
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                 subject = AtomicAttribute2023(subjectId, CLAIM_GIVEN_NAME, "Susanne"),
                 expiration = expiration,
                 scheme = credentialScheme,
+                subjectPublicKey = subjectPublicKey,
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -56,6 +58,7 @@ class DummyCredentialDataProvider(
                 },
                 expiration = expiration,
                 scheme = credentialScheme,
+                subjectPublicKey = subjectPublicKey,
             )
         }
     }

@@ -31,18 +31,21 @@ sealed class CredentialToBeIssued {
         val subject: CredentialSubject,
         val expiration: Instant,
         val scheme: ConstantIndex.CredentialScheme,
+        val subjectPublicKey: CryptoPublicKey,
     ) : CredentialToBeIssued()
 
     data class VcSd(
         val claims: Collection<ClaimToBeIssued>,
         val expiration: Instant,
         val scheme: ConstantIndex.CredentialScheme,
+        val subjectPublicKey: CryptoPublicKey,
     ) : CredentialToBeIssued()
 
     data class Iso(
         val issuerSignedItems: List<IssuerSignedItem>,
         val expiration: Instant,
         val scheme: ConstantIndex.CredentialScheme,
+        val subjectPublicKey: CryptoPublicKey,
     ) : CredentialToBeIssued()
 }
 

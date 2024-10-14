@@ -47,12 +47,14 @@ class OAuth2IssuerCredentialDataProvider(
                 claims = claims,
                 expiration = expiration,
                 scheme = credentialScheme,
+                subjectPublicKey = subjectPublicKey,
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                 subject = AtomicAttribute2023(subjectId, "given_name", userInfo.userInfo.givenName ?: "no value"),
                 expiration = expiration,
                 scheme = credentialScheme,
+                subjectPublicKey = subjectPublicKey,
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -61,6 +63,7 @@ class OAuth2IssuerCredentialDataProvider(
                 },
                 expiration = expiration,
                 scheme = credentialScheme,
+                subjectPublicKey = subjectPublicKey,
             )
         }
     }
