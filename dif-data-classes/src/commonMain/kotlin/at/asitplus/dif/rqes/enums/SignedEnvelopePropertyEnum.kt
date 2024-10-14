@@ -1,10 +1,11 @@
-package at.asitplus.dif.rqes.Enums
+package at.asitplus.dif.rqes.enums
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
  * All available signed envelope properties and their associated [SignatureFormat]s
+ * TODO use `viableSignatureFormats` in input validation
  */
 @Serializable
 enum class SignedEnvelopeProperty(val viableSignatureFormats: List<SignatureFormat>) {

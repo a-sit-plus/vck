@@ -40,7 +40,7 @@ class OAuth2ClientTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth),
         )
         val token = server.token(tokenRequest).getOrThrow()
-        token.authorizationDetailsList.shouldBeNull()
+        token.authorizationDetails.shouldBeNull()
     }
 
     test("process with pre-authorized code, can't use it twice") {
@@ -71,7 +71,7 @@ class OAuth2ClientTest : FunSpec({
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
         )
         val token = server.token(tokenRequest).getOrThrow()
-        token.authorizationDetailsList.shouldBeNull()
+        token.authorizationDetails.shouldBeNull()
     }
 
 })

@@ -1,18 +1,17 @@
 package at.asitplus.openid.rqes
 
-import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.CscDocumentDigest
-import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.OAuthDocumentDigest
-import at.asitplus.dif.rqes.CollectionEntries.DocumentLocation
-import at.asitplus.dif.rqes.Enums.ConformanceLevelEnum
-import at.asitplus.dif.rqes.Enums.SignatureFormat
-import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
-import at.asitplus.dif.rqes.Enums.SignedEnvelopeProperty
+import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.CscDocumentDigest
+import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.OAuthDocumentDigest
+import at.asitplus.dif.rqes.collection_entries.DocumentLocation
+import at.asitplus.dif.rqes.enums.ConformanceLevelEnum
+import at.asitplus.dif.rqes.enums.SignatureFormat
+import at.asitplus.dif.rqes.enums.SignatureQualifierEnum
+import at.asitplus.dif.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
-import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -75,7 +74,7 @@ data class RqesRequest(
         AuthorizationDetails.CSCCredential(
             credentialID = this.clientId,
             signatureQualifier = this.signatureQualifier,
-            hashAlgorithmOID = this.hashAlgorithmOid,
+            hashAlgorithmOid = this.hashAlgorithmOid,
             documentDigests = this.documentDigests,
             documentLocations = this.documentLocations,
         )
