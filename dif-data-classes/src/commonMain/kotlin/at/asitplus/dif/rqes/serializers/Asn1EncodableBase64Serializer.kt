@@ -1,4 +1,4 @@
-package at.asitplus.dif.rqes.Serializer
+package at.asitplus.dif.rqes.serializers
 
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.encoding.parse

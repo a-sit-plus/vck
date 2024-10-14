@@ -2,8 +2,8 @@
 
 package at.asitplus.dif.rqes
 
-import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
-import at.asitplus.dif.rqes.Serializer.SignatureRequestParameterSerializer
+import at.asitplus.dif.rqes.serializers.Asn1EncodableBase64Serializer
+import at.asitplus.dif.rqes.serializers.SignatureRequestParameterSerializer
 import at.asitplus.dif.rqes.collection_entries.Document
 import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.CscDocumentDigest
 import at.asitplus.dif.rqes.enums.OperationModeEnum
@@ -12,7 +12,6 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient

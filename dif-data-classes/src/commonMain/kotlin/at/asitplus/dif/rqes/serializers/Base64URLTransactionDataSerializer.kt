@@ -1,4 +1,4 @@
-package at.asitplus.dif.rqes.Serializer
+package at.asitplus.dif.rqes.serializers
 
 import at.asitplus.dif.jsonSerializer
 import at.asitplus.dif.rqes.collection_entries.TransactionData

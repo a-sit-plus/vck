@@ -1,4 +1,4 @@
-package at.asitplus.dif.rqes.Serializer
+package at.asitplus.dif.rqes.serializers
 
 import io.ktor.http.*
 import kotlinx.serialization.KSerializer
