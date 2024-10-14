@@ -138,35 +138,20 @@ class CredentialIssuer(
             ?: throw OAuth2Exception(Errors.INVALID_TOKEN)
                 .also { Napier.w("credential: client did not provide correct token: $accessToken") }
 
-        val issuedCredentialResult = params.format?.let { format ->
-            val credentialScheme = params.extractCredentialScheme(format)
-                ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-                    .also { Napier.w("credential: client did not provide correct credential scheme: $params") }
-            issuer.issueCredential(
-                subjectPublicKey = subjectPublicKey,
-                credentialScheme = credentialScheme,
-                representation = params.format!!.toRepresentation(),
-                claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
-                dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
-            )
-        } ?: params.credentialIdentifier?.let { credentialIdentifier ->
-            val (credentialScheme, representation) = decodeFromCredentialIdentifier(credentialIdentifier) ?: run {
-                Napier.w("client did not provide correct credential identifier: $credentialIdentifier")
-                throw OAuth2Exception(Errors.INVALID_REQUEST)
-            }
-            issuer.issueCredential(
-                subjectPublicKey = subjectPublicKey,
-                credentialScheme = credentialScheme,
-                representation = representation.toRepresentation(),
-                claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
-                dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
-            )
-        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-            .also { Napier.w("client did not provide format or credential identifier in params: $params") }
+        val (credentialScheme, representation) = params.format?.let { params.extractCredentialScheme(it) }
+            ?: params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
+            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+                .also { Napier.w("credential: client did not provide correct credential scheme: $params") }
 
-        val issuedCredential = issuedCredentialResult.getOrElse {
+        val issuedCredential = issuer.issueCredential(
+            subjectPublicKey = subjectPublicKey,
+            credentialScheme = credentialScheme,
+            representation = representation.toRepresentation(),
+            claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null },
+            dataProviderOverride = buildIssuerCredentialDataProviderOverride(userInfo)
+        ).getOrElse {
             throw OAuth2Exception(Errors.INVALID_REQUEST)
-                .also { Napier.w("credential: issuer did not issue credential: $issuedCredentialResult") }
+                .also { Napier.w("credential: issuer did not issue credential", it) }
         }
 
         issuedCredential.toCredentialResponseParameters()
@@ -243,8 +228,12 @@ class CredentialIssuer(
 private fun CredentialRequestParameters.extractCredentialScheme(format: CredentialFormatEnum) = when (format) {
     CredentialFormatEnum.JWT_VC -> credentialDefinition?.types?.firstOrNull { it != VERIFIABLE_CREDENTIAL }
         ?.let { AttributeIndex.resolveAttributeType(it) }
+        ?.let { it to CredentialFormatEnum.JWT_VC }
 
     CredentialFormatEnum.VC_SD_JWT -> sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
+        ?.let { it to CredentialFormatEnum.VC_SD_JWT }
     CredentialFormatEnum.MSO_MDOC -> docType?.let { AttributeIndex.resolveIsoDoctype(it) }
+        ?.let { it to CredentialFormatEnum.MSO_MDOC }
+
     else -> null
 }
