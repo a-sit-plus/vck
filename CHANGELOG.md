@@ -1,7 +1,7 @@
 # Changelog
 
 Release 5.1.0:
- - tbd
+ - Drop ARIES protocol implementation, and the `vck-aries` artifact
 
 Release 5.0.1:
  - Update JsonPath4K to 2.4.0
