@@ -1,7 +1,7 @@
 package at.asitplus.dif
 
 import at.asitplus.dif.rqes.collection_entries.TransactionData
-import at.asitplus.dif.rqes.Serializer.Base64URLTransactionDataSerializer
+import at.asitplus.dif.rqes.serializers.Base64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer

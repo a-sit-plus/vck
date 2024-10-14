@@ -2,7 +2,7 @@
 
 package at.asitplus.dif
 
-import at.asitplus.dif.rqes.Serializer.Base64URLTransactionDataSerializer
+import at.asitplus.dif.rqes.serializers.Base64URLTransactionDataSerializer
 import at.asitplus.dif.rqes.collection_entries.TransactionData
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName
