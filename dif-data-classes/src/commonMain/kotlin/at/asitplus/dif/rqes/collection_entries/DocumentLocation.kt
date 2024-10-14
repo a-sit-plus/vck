@@ -1,4 +1,4 @@
-package at.asitplus.dif.rqes.CollectionEntries
+package at.asitplus.dif.rqes.collection_entries
 
 import at.asitplus.dif.rqes.Method
 import io.ktor.http.*

@@ -3,14 +3,11 @@
 package at.asitplus.dif
 
 import at.asitplus.dif.rqes.Serializer.Base64URLTransactionDataSerializer
-import at.asitplus.dif.rqes.CollectionEntries.TransactionData
+import at.asitplus.dif.rqes.collection_entries.TransactionData
 import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
-import kotlinx.serialization.json.JsonContentPolymorphicSerializer
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.jsonObject
 
 @Serializable(with = InputDescriptorSerializer::class)
 sealed interface InputDescriptor {

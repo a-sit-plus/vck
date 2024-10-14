@@ -1,8 +1,8 @@
 package at.asitplus.openid
 
-import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.OAuthDocumentDigest
-import at.asitplus.dif.rqes.CollectionEntries.DocumentLocation
-import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
+import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.OAuthDocumentDigest
+import at.asitplus.dif.rqes.collection_entries.DocumentLocation
+import at.asitplus.dif.rqes.enums.SignatureQualifierEnum
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
@@ -119,7 +119,7 @@ sealed class AuthorizationDetails {
          */
         @SerialName("hashAlgorithmOID")
         @Serializable(ObjectIdSerializer::class)
-        val hashAlgorithmOID: ObjectIdentifier,
+        val hashAlgorithmOid: ObjectIdentifier,
 
         /**
          * CSC: An array of strings designating the locations of

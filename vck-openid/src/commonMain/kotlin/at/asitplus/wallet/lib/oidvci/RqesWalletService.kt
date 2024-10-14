@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.dif.rqes.Enums.SignatureFormat
+import at.asitplus.dif.rqes.enums.SignatureFormat
 import at.asitplus.dif.rqes.RqesConstants
 import at.asitplus.dif.rqes.SignDocParameters
 import at.asitplus.dif.rqes.SignHashParameters
