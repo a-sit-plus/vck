@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.catching
-import at.asitplus.dif.rqes.Serializer.UrlSerializer
+import at.asitplus.dif.rqes.serializers.UrlSerializer
 import at.asitplus.openid.JwsSignedSerializer
 import at.asitplus.openid.SignatureRequestParameters
 import io.ktor.http.*
