@@ -40,7 +40,7 @@ internal class AuthenticationResponseFactory(
         request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
-        val url = request.parameters.responseUri
+        val url = request.parameters.responseUrl
             ?: request.parameters.redirectUrl
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
         val responseSerialized = buildJarm(request, response)
@@ -55,7 +55,7 @@ internal class AuthenticationResponseFactory(
         request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
-        val url = request.parameters.responseUri
+        val url = request.parameters.responseUrl
             ?: request.parameters.redirectUrl
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
         return AuthenticationResponseResult.Post(url, response.params.encodeToParameters())

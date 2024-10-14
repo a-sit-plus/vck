@@ -246,7 +246,7 @@ class OidcSiopInteropTest : FreeSpec({
         val parsed = jsonSerializer.decodeFromString<AuthenticationRequestParameters>(input)
         parsed.shouldNotBeNull()
 
-        parsed.responseUri shouldBe "https://verifier-backend.eudiw.dev/wallet/direct_post"
+        parsed.responseUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/direct_post"
         parsed.clientIdScheme shouldBe OpenIdConstants.ClientIdScheme.X509_SAN_DNS
         parsed.responseType shouldBe "vp_token"
         parsed.nonce shouldBe "nonce"
@@ -287,7 +287,7 @@ class OidcSiopInteropTest : FreeSpec({
             payload = AuthenticationRequestParameters(
                 nonce = "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ==",
                 state = "ef391e30-bacc-4441-af5d-7f42fb682e02",
-                responseUri = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
+                responseUrl = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
                 clientId = "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02",
             ).serialize().encodeToByteArray(),
             addX5c = false
@@ -302,8 +302,8 @@ class OidcSiopInteropTest : FreeSpec({
         val parsed = wallet.parseAuthenticationRequestParameters(input).getOrThrow()
 
         parsed.parameters.state shouldBe "ef391e30-bacc-4441-af5d-7f42fb682e02"
-        parsed.parameters.responseUri shouldBe "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02"
-        parsed.parameters.clientId shouldBe parsed.parameters.responseUri
+        parsed.parameters.responseUrl shouldBe "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02"
+        parsed.parameters.clientId shouldBe parsed.parameters.responseUrl
     }
 
     "empty client_id" {

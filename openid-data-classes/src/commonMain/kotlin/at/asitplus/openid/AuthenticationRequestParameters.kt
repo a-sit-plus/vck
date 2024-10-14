@@ -37,7 +37,7 @@ data class AuthenticationRequestParameters(
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      */
     @SerialName("client_id")
-    override val clientId: String,
+    override val clientId: String? = null,
 
     /**
      * OIDC: REQUIRED. Redirection URI to which the response will be sent. This URI MUST exactly match one of the
@@ -218,7 +218,7 @@ data class AuthenticationRequestParameters(
      * `invalid_request` Authorization Response error.
      */
     @SerialName("response_uri")
-    override val responseUri: String? = null,
+    override val responseUrl: String? = null,
 
     /**
      * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`
@@ -368,7 +368,7 @@ data class AuthenticationRequestParameters(
         if (userHint != other.userHint) return false
         if (issuerState != other.issuerState) return false
         if (responseMode != other.responseMode) return false
-        if (responseUri != other.responseUri) return false
+        if (responseUrl != other.responseUrl) return false
         if (audience != other.audience) return false
         if (issuer != other.issuer) return false
         if (issuedAt != other.issuedAt) return false
@@ -413,7 +413,7 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (userHint?.hashCode() ?: 0)
         result = 31 * result + (issuerState?.hashCode() ?: 0)
         result = 31 * result + (responseMode?.hashCode() ?: 0)
-        result = 31 * result + (responseUri?.hashCode() ?: 0)
+        result = 31 * result + (responseUrl?.hashCode() ?: 0)
         result = 31 * result + (audience?.hashCode() ?: 0)
         result = 31 * result + (issuer?.hashCode() ?: 0)
         result = 31 * result + (issuedAt?.hashCode() ?: 0)
