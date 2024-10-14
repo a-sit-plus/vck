@@ -2,19 +2,16 @@
 
 package at.asitplus.dif.rqes
 
-import at.asitplus.dif.rqes.CollectionEntries.Document
-import at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries.CscDocumentDigest
-import at.asitplus.dif.rqes.Enums.OperationModeEnum
-import at.asitplus.dif.rqes.Enums.SignatureQualifierEnum
 import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
 import at.asitplus.dif.rqes.Serializer.SignatureRequestParameterSerializer
+import at.asitplus.dif.rqes.collection_entries.Document
+import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.CscDocumentDigest
+import at.asitplus.dif.rqes.enums.OperationModeEnum
+import at.asitplus.dif.rqes.enums.SignatureQualifierEnum
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.asn1.encoding.Asn1
-import io.github.aakira.napier.Napier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -119,62 +116,10 @@ data class SignHashParameters(
     ) : SignatureRequestParameters {
 
     @Transient
-    val signAlgorithm: SignatureAlgorithm? =
-        kotlin.runCatching {
-            X509SignatureAlgorithm.doDecode(Asn1.Sequence {
-                +signAlgoOid
-                +(signAlgoParams ?: Asn1.Null())
-            }).also {
-                require(it.digest != Digest.SHA1)
-            }.algorithm
-        }.getOrElse {
-            Napier.w { "Could not resolve $signAlgoOid" }
-            null
-        }
+    val signAlgorithm: SignatureAlgorithm? = getSignAlgorithm(signAlgoOid, signAlgoParams)
 
     @Transient
-    val hashAlgorithm: Digest = hashAlgorithmOid?.let {
-        Digest.entries.find { digest -> digest.oid == it }
-    } ?: when(signAlgorithm) {
-        //TODO change as soon as digest is a member of the interface
-        is SignatureAlgorithm.ECDSA -> signAlgorithm.digest
-        is SignatureAlgorithm.HMAC -> signAlgorithm.digest
-        is SignatureAlgorithm.RSA -> signAlgorithm.digest
-        null -> null
-    } ?: throw Exception("Unknown hashing algorithm in $hashAlgorithmOid and $signAlgoOid")
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as SignHashParameters
-        if (!hashes.contentEquals(other.hashes)) return false
-        if (credentialId != other.credentialId) return false
-        if (sad != other.sad) return false
-        if (operationMode != other.operationMode) return false
-        if (validityPeriod != other.validityPeriod) return false
-        if (responseUri != other.responseUri) return false
-        if (clientData != other.clientData) return false
-        if (hashAlgorithmOid != other.hashAlgorithmOid) return false
-        if (signAlgoOid != other.signAlgoOid) return false
-        if (signAlgoParams != other.signAlgoParams) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = hashes.contentHashCode()
-        result = 31 * result + credentialId.hashCode()
-        result = 31 * result + (sad?.hashCode() ?: 0)
-        result = 31 * result + operationMode.hashCode()
-        result = 31 * result + (validityPeriod ?: 0)
-        result = 31 * result + (responseUri?.hashCode() ?: 0)
-        result = 31 * result + (clientData?.hashCode() ?: 0)
-        result = 31 * result + (hashAlgorithmOid?.hashCode() ?: 0)
-        result = 31 * result + (signAlgoOid?.hashCode() ?: 0)
-        result = 31 * result + (signAlgoParams?.hashCode() ?: 0)
-        return result
-    }
+    val hashAlgorithm: Digest = getHashAlgorithm(hashAlgorithmOid, signAlgorithm)
 }
 
 @Serializable

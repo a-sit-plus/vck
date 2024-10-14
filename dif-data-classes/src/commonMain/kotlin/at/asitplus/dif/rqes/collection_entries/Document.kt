@@ -1,8 +1,8 @@
-package at.asitplus.dif.rqes.CollectionEntries
+package at.asitplus.dif.rqes.collection_entries
 
-import at.asitplus.dif.rqes.Enums.ConformanceLevelEnum
-import at.asitplus.dif.rqes.Enums.SignatureFormat
-import at.asitplus.dif.rqes.Enums.SignedEnvelopeProperty
+import at.asitplus.dif.rqes.enums.ConformanceLevelEnum
+import at.asitplus.dif.rqes.enums.SignatureFormat
+import at.asitplus.dif.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
@@ -71,17 +71,7 @@ data class Document(
 ) {
     @Transient
     val signAlgorithm: SignatureAlgorithm? =
-        kotlin.runCatching {
-            X509SignatureAlgorithm.doDecode(Asn1.Sequence {
-                +signAlgoOid
-                +(signAlgoParams ?: Asn1.Null())
-            }).also {
-                require(it.digest != Digest.SHA1)
-            }.algorithm
-        }.getOrElse {
-            Napier.w { "Could not resolve $signAlgoOid" }
-            null
-        }
+        getSignAlgorithm(signAlgoOid)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -95,6 +85,8 @@ data class Document(
         if (signAlgoOid != other.signAlgoOid) return false
         if (signAlgoParams != other.signAlgoParams) return false
         if (signedProps != other.signedProps) return false
+        if (signedEnvelopeProperty != other.signedEnvelopeProperty) return false
+        if (signAlgorithm != other.signAlgorithm) return false
 
         return true
     }
@@ -102,10 +94,13 @@ data class Document(
     override fun hashCode(): Int {
         var result = document.contentHashCode()
         result = 31 * result + signatureFormat.hashCode()
-        result = 31 * result + conformanceLevel.hashCode()
+        result = 31 * result + (conformanceLevel?.hashCode() ?: 0)
         result = 31 * result + signAlgoOid.hashCode()
         result = 31 * result + (signAlgoParams?.hashCode() ?: 0)
         result = 31 * result + (signedProps?.hashCode() ?: 0)
+        result = 31 * result + (signedEnvelopeProperty?.hashCode() ?: 0)
+        result = 31 * result + (signAlgorithm?.hashCode() ?: 0)
         return result
     }
+
 }

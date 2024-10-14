@@ -1,4 +1,4 @@
-package at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries
+package at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
@@ -30,7 +30,7 @@ data class RqesDocumentDigestEntry private constructor(
      * String containing the base64-encoded
      * octet-representation of applying
      * the algorithm from
-     * [hashAlgorithmOID] to the octet-
+     * [hashAlgorithmOid] to the octet-
      * representation of the document
      * to be signed (SD).
      */
@@ -46,7 +46,7 @@ data class RqesDocumentDigestEntry private constructor(
      */
     @SerialName("hashAlgorithmOID")
     @Serializable(ObjectIdSerializer::class)
-    val hashAlgorithmOID: ObjectIdentifier? = null,
+    val hashAlgorithmOid: ObjectIdentifier? = null,
 
     /**
      * D3.1: UC Specification WP3: OPTIONAL.
@@ -87,7 +87,7 @@ data class RqesDocumentDigestEntry private constructor(
      */
     @SerialName("dtbsrHashAlgorithmOID")
     @Serializable(ObjectIdSerializer::class)
-    val dtbsrHashAlgorithmOID: ObjectIdentifier? = null,
+    val dtbsrHashAlgorithmOid: ObjectIdentifier? = null,
 ) {
     /**
      * D3.1: UC Specification WP3:
@@ -102,8 +102,8 @@ data class RqesDocumentDigestEntry private constructor(
      */
     init {
         require(hash != null || dataToBeSignedRepresentation != null)
-        require(hashAlgorithmOID?.toString() iff hash?.toString())
-        require(dtbsrHashAlgorithmOID?.toString() iff dataToBeSignedRepresentation?.toString())
+        require(hashAlgorithmOid?.toString() iff hash?.toString())
+        require(dtbsrHashAlgorithmOid?.toString() iff dataToBeSignedRepresentation?.toString())
         require(documentLocationUri iff hash?.toString())
         require(documentLocationMethod?.toString() iff documentLocationUri)
     }
@@ -119,14 +119,14 @@ data class RqesDocumentDigestEntry private constructor(
             if (other.hash == null) return false
             if (!hash.contentEquals(other.hash)) return false
         } else if (other.hash != null) return false
-        if (hashAlgorithmOID != other.hashAlgorithmOID) return false
+        if (hashAlgorithmOid != other.hashAlgorithmOid) return false
         if (documentLocationUri != other.documentLocationUri) return false
         if (documentLocationMethod != other.documentLocationMethod) return false
         if (dataToBeSignedRepresentation != null) {
             if (other.dataToBeSignedRepresentation == null) return false
             if (!dataToBeSignedRepresentation.contentEquals(other.dataToBeSignedRepresentation)) return false
         } else if (other.dataToBeSignedRepresentation != null) return false
-        if (dtbsrHashAlgorithmOID != other.dtbsrHashAlgorithmOID) return false
+        if (dtbsrHashAlgorithmOid != other.dtbsrHashAlgorithmOid) return false
 
         return true
     }
@@ -134,11 +134,11 @@ data class RqesDocumentDigestEntry private constructor(
     override fun hashCode(): Int {
         var result = label.hashCode()
         result = 31 * result + (hash?.contentHashCode() ?: 0)
-        result = 31 * result + (hashAlgorithmOID?.hashCode() ?: 0)
+        result = 31 * result + (hashAlgorithmOid?.hashCode() ?: 0)
         result = 31 * result + (documentLocationUri?.hashCode() ?: 0)
         result = 31 * result + (documentLocationMethod?.hashCode() ?: 0)
         result = 31 * result + (dataToBeSignedRepresentation?.contentHashCode() ?: 0)
-        result = 31 * result + (dtbsrHashAlgorithmOID?.hashCode() ?: 0)
+        result = 31 * result + (dtbsrHashAlgorithmOid?.hashCode() ?: 0)
         return result
     }
 
@@ -172,11 +172,11 @@ data class RqesDocumentDigestEntry private constructor(
                 RqesDocumentDigestEntry(
                     label = label,
                     hash = hash,
-                    hashAlgorithmOID = hashAlgorithmOID,
+                    hashAlgorithmOid = hashAlgorithmOID,
                     documentLocationUri = documentLocationUri,
                     documentLocationMethod = documentLocationMethod,
                     dataToBeSignedRepresentation = dtbsr,
-                    dtbsrHashAlgorithmOID = dtbsrHashAlgorithmOID,
+                    dtbsrHashAlgorithmOid = dtbsrHashAlgorithmOID,
                 )
             }.wrap()
 

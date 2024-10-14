@@ -1,12 +1,14 @@
-package at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries
+package at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries
 
-import at.asitplus.dif.rqes.Enums.ConformanceLevelEnum
-import at.asitplus.dif.rqes.Enums.SignatureFormat
-import at.asitplus.dif.rqes.Enums.SignedEnvelopeProperty
+import at.asitplus.dif.rqes.enums.ConformanceLevelEnum
+import at.asitplus.dif.rqes.enums.SignatureFormat
+import at.asitplus.dif.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.dif.rqes.Hashes
 import at.asitplus.dif.rqes.Serializer.Asn1EncodableBase64Serializer
+import at.asitplus.dif.rqes.collection_entries.getSignAlgorithm
 import at.asitplus.dif.rqes.contentEquals
 import at.asitplus.dif.rqes.contentHashCode
+import at.asitplus.dif.rqes.getSignAlgorithm
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
@@ -89,29 +91,10 @@ data class CscDocumentDigest(
 
     @Transient
     val signAlgorithm: SignatureAlgorithm? =
-        kotlin.runCatching {
-            X509SignatureAlgorithm.doDecode(Asn1.Sequence {
-                +signAlgoOid
-                +(signAlgoParams ?: Asn1.Null())
-            }).also {
-                require(it.digest != Digest.SHA1)
-            }.algorithm
-        }.getOrElse {
-            Napier.w { "Could not resolve $signAlgoOid" }
-            null
-        }
+        getSignAlgorithm(signAlgoOid, signAlgoParams)
 
     @Transient
-    val hashAlgorithm: Digest = hashAlgorithmOid?.let {
-        Digest.entries.find { digest -> digest.oid == it }
-    } ?: when(signAlgorithm) {
-        //TODO change as soon as digest is a member of the interface
-        is SignatureAlgorithm.ECDSA -> signAlgorithm.digest
-        is SignatureAlgorithm.HMAC -> signAlgorithm.digest
-        is SignatureAlgorithm.RSA -> signAlgorithm.digest
-        null -> null
-    } ?: throw Exception("Unknown hashing algorithm in $hashAlgorithmOid and $signAlgoOid")
-
+    val hashAlgorithm: Digest = getHashAlgorithm()
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false

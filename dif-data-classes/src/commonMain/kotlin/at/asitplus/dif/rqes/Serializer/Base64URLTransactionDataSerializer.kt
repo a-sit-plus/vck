@@ -1,7 +1,7 @@
 package at.asitplus.dif.rqes.Serializer
 
 import at.asitplus.dif.jsonSerializer
-import at.asitplus.dif.rqes.CollectionEntries.TransactionData
+import at.asitplus.dif.rqes.collection_entries.TransactionData
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString

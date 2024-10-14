@@ -1,4 +1,4 @@
-package at.asitplus.dif.rqes.CollectionEntries.DocumentDigestEntries
+package at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries
 
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
