@@ -121,21 +121,22 @@ object OpenIdConstants {
         }
 
         /**
-         *  This value represents the RFC6749 default behavior, i.e., the Client Identifier needs to be known to the
-         *  Wallet in advance of the Authorization Request. The Verifier metadata is obtained using RFC7591 or
-         *  through out-of-band mechanisms.
+         * This value represents the RFC6749 default behavior, i.e., the Client Identifier needs to be known to the
+         * Wallet in advance of the Authorization Request. The Verifier metadata is obtained using RFC7591 or through
+         * out-of-band mechanisms.
          */
         @Serializable(with = Serializer::class)
-        object PRE_REGISTERED : ClientIdScheme(STRING_PRE_REGISTERED)
+        object PreRegistered : ClientIdScheme(STRING_PRE_REGISTERED)
 
         /**
-         * This value indicates that the Verifier's redirect URI is also the value of the Client Identifier.
-         * In this case, the Authorization Request MUST NOT be signed, the Verifier MAY omit the `redirect_uri`
-         * Authorization Request parameter, and all Verifier metadata parameters MUST be passed using the
-         * `client_metadata` or `client_metadata_uri` parameter.
+         * This value indicates that the Verifier's Redirect URI (or Response URI when Response Mode `direct_post` is
+         * used) is also the value of the Client Identifier. The Authorization Request MUST NOT be signed.
+         * The Verifier MAY omit the `redirect_uri` Authorization Request parameter (or `response_uri` when Response
+         * Mode `direct_post` is used). All Verifier metadata parameters MUST be passed using the `client_metadata`
+         * parameter.
          */
         @Serializable(with = Serializer::class)
-        object REDIRECT_URI : ClientIdScheme(STRING_REDIRECT_URI)
+        object RedirectUri : ClientIdScheme(STRING_REDIRECT_URI)
 
         /**
          * When the Client Identifier Scheme is x509_san_dns, the Client Identifier MUST be a DNS name and match a
@@ -152,24 +153,21 @@ object OpenIdConstants {
          * Client Identifier.
          */
         @Serializable(with = Serializer::class)
-        object X509_SAN_DNS : ClientIdScheme(STRING_X509_SAN_DNS)
+        object X509SanDns : ClientIdScheme(STRING_X509_SAN_DNS)
 
         /**
-         * When the Client Identifier Scheme is x509_san_uri, the Client Identifier MUST be a URI name and match a
-         * `uniformResourceIdentifier` Subject Alternative Name (SAN) [RFC5280](https://www.rfc-editor.org/info/rfc5280) entry in the leaf
-         * certificate passed with the request. The request MUST be signed with the private key corresponding to the
-         * public key in the leaf X.509 certificate of the certificate chain added to the request in the `x5c` JOSE
-         * header [RFC7515](https://www.rfc-editor.org/info/rfc7515) of the signed request object.
-         *
-         * The Wallet MUST validate the signature and the trust chain of the X.509 certificate.
-         * All Verifier metadata other than the public key MUST be obtained from the `client_metadata` parameter.
-         * If the Wallet can establish trust in the Client Identifier authenticated through the certificate, e.g.
-         * because the Client Identifier is contained in a list of trusted Client Identifiers, it may allow the client
-         * to freely choose the `redirect_uri` value. If not, the FQDN of the `redirect_uri` value MUST match the
-         * Client Identifier.
+         * When the Client Identifier Scheme is `x509_san_uri`, the Client Identifier MUST be a URI and match a
+         * `uniformResourceIdentifier` Subject Alternative Name (SAN) RFC5280 entry in the leaf certificate passed with
+         * the request. The request MUST be signed with the private key corresponding to the public key in the leaf
+         * X.509 certificate of the certificate chain added to the request in the `x5c` JOSE header RFC7515 of the
+         * signed request object. The Wallet MUST validate the signature and the trust chain of the X.509 certificate.
+         * All Verifier metadata other than the public key MUST be obtained from the `client_metadata` parameter. If
+         * the Wallet can establish trust in the Client Identifier authenticated through the certificate, e.g. because
+         * the Client Identifier is contained in a list of trusted Client Identifiers, it may allow the client to
+         * freely choose the `redirect_uri` value. If not, the `redirect_uri` value MUST match the Client Identifier.
          */
         @Serializable(with = Serializer::class)
-        object X509_SAN_URI : ClientIdScheme(STRING_X509_SAN_URI)
+        object X509SanUri : ClientIdScheme(STRING_X509_SAN_URI)
 
         /**
          * This value indicates that the Client Identifier is an Entity Identifier defined in OpenID Connect Federation.
@@ -180,7 +178,7 @@ object OpenIdConstants {
          * Identifier scheme is used.
          */
         @Serializable(with = Serializer::class)
-        object ENTITY_ID : ClientIdScheme(STRING_ENTITY_ID)
+        object EntityId : ClientIdScheme(STRING_ENTITY_ID)
 
         /**
          * This value indicates that the Client Identifier is a DID defined in DID-Core. The request MUST be signed
@@ -192,43 +190,43 @@ object OpenIdConstants {
          * or the `client_metadata_uri` parameter.
          */
         @Serializable(with = Serializer::class)
-        object DID : ClientIdScheme(STRING_DID)
+        object Did : ClientIdScheme(STRING_DID)
 
         /**
-         * This scheme allows the Verifier to authenticate using a JWT that is bound to a certain public key. When the
-         * scheme is `verifier_attestation`, the Client Identifier MUST equal the `sub` claim value in the Verifier
-         * attestation JWT. The request MUST be signed with the private key corresponding to the public key in the `cnf`
-         * claim in the Verifier attestation JWT. This serves as proof of possession of this key. The Verifier
-         * attestation JWT MUST be added to the `jwt` JOSE Header of the request object. The Wallet MUST validate the
-         * signature on the Verifier attestation JWT. The `iss` claim value of the Verifier Attestation JWT MUST
-         * identify a party the Wallet trusts for issuing Verifier Attestation JWTs. If the Wallet cannot establish
-         * trust, it MUST refuse the request. If the issuer of the Verifier Attestation JWT adds a `redirect_uris` claim
-         * to the attestation, the Wallet MUST ensure the `redirect_uri` request parameter value exactly matches one of
-         * the `redirect_uris` claim entries. All Verifier metadata other than the public key MUST be obtained from the
-         * `client_metadata` or the `client_metadata_uri parameter`.
+         * This Client Identifier Scheme allows the Verifier to authenticate using a JWT that is bound to a certain
+         * public key. When the Client Identifier Scheme is `verifier_attestation`, the Client Identifier MUST equal
+         * the `sub` claim value in the Verifier attestation JWT. The request MUST be signed with the private key
+         * corresponding to the public key in the `cnf` claim in the Verifier attestation JWT. This serves as proof of
+         * possession of this key. The Verifier attestation JWT MUST be added to the `jwt` JOSE Header of the request
+         * object. The Wallet MUST validate the signature on the Verifier attestation JWT. The `iss` claim value of the
+         * Verifier Attestation JWT MUST identify a party the Wallet trusts for issuing Verifier Attestation JWTs.
+         * If the Wallet cannot establish trust, it MUST refuse the request. If the issuer of the Verifier Attestation
+         * JWT adds a `redirect_uris` claim to the attestation, the Wallet MUST ensure the `redirect_uri` request
+         * parameter value exactly matches one of the `redirect_uris` claim entries. All Verifier metadata other than
+         * the public key MUST be obtained from the `client_metadata` parameter.
          */
         @Serializable(with = Serializer::class)
-        object VERIFIER_ATTESTATION : ClientIdScheme(STRING_VERIFIER_ATTESTATION)
+        object VerifierAttestation : ClientIdScheme(STRING_VERIFIER_ATTESTATION)
 
         /**
          * Any not natively supported client id scheme, so it can still be parsed
          */
         @Serializable(with = Serializer::class)
-        class OTHER(stringRepresentation: String) : ClientIdScheme(stringRepresentation)
+        class Other(stringRepresentation: String) : ClientIdScheme(stringRepresentation)
 
         object Serializer : KSerializer<ClientIdScheme> {
             override val descriptor = PrimitiveSerialDescriptor("ClientIdScheme", PrimitiveKind.STRING)
 
             override fun deserialize(decoder: Decoder): ClientIdScheme {
                 return when (val string = decoder.decodeString()) {
-                    STRING_PRE_REGISTERED -> PRE_REGISTERED
-                    STRING_REDIRECT_URI -> REDIRECT_URI
-                    STRING_X509_SAN_DNS -> X509_SAN_DNS
-                    STRING_X509_SAN_URI -> X509_SAN_URI
-                    STRING_ENTITY_ID -> ENTITY_ID
-                    STRING_DID -> DID
-                    STRING_VERIFIER_ATTESTATION -> VERIFIER_ATTESTATION
-                    else -> OTHER(string)
+                    STRING_PRE_REGISTERED -> PreRegistered
+                    STRING_REDIRECT_URI -> RedirectUri
+                    STRING_X509_SAN_DNS -> X509SanDns
+                    STRING_X509_SAN_URI -> X509SanUri
+                    STRING_ENTITY_ID -> EntityId
+                    STRING_DID -> Did
+                    STRING_VERIFIER_ATTESTATION -> VerifierAttestation
+                    else -> Other(string)
                 }
             }
 

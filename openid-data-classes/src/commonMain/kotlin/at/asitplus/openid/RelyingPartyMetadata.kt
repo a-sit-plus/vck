@@ -121,7 +121,7 @@ data class RelyingPartyMetadata(
      * If omitted, the default value is `pre-registered`.
      */
     @SerialName("client_id_scheme")
-    val clientIdScheme: OpenIdConstants.ClientIdScheme? = OpenIdConstants.ClientIdScheme.PRE_REGISTERED,
+    val clientIdScheme: OpenIdConstants.ClientIdScheme? = OpenIdConstants.ClientIdScheme.PreRegistered,
 ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)
