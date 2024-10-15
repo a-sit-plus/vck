@@ -16,10 +16,9 @@ import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-@Suppress("unused")
 class OidcSiopIsoProtocolTest : FreeSpec({
 
-    lateinit var relyingPartyUrl: String
+    lateinit var clientId: String
     lateinit var walletUrl: String
 
     lateinit var holderKeyMaterial: KeyMaterial
@@ -33,7 +32,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
-        relyingPartyUrl = "https://example.com/rp/${uuid4()}"
+        clientId = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
 
@@ -67,7 +66,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     "test with Fragment for mDL" {
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
             verifierSiop,
@@ -91,7 +90,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     "test with Fragment for custom attributes" {
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
             verifierSiop,
@@ -116,7 +115,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
             verifierSiop,
@@ -143,7 +142,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val requestOptions = OidcSiopVerifier.RequestOptions(
             credentials = setOf(
@@ -177,7 +176,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     "Selective Disclosure with mDL JSON Path syntax" {
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
             verifierSiop,

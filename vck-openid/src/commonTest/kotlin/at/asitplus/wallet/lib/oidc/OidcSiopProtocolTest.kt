@@ -29,10 +29,9 @@ import io.ktor.http.*
 import kotlinx.datetime.Clock
 import kotlin.time.Duration.Companion.seconds
 
-@Suppress("unused")
 class OidcSiopProtocolTest : FreeSpec({
 
-    lateinit var relyingPartyUrl: String
+    lateinit var clientId: String
     lateinit var walletUrl: String
 
     lateinit var holderKeyMaterial: KeyMaterial
@@ -46,8 +45,7 @@ class OidcSiopProtocolTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
-        val rpUUID = uuid4()
-        relyingPartyUrl = "https://example.com/rp/$rpUUID"
+        clientId = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
 
@@ -66,7 +64,7 @@ class OidcSiopProtocolTest : FreeSpec({
         )
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
     }
 
@@ -78,7 +76,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
         authnResponse.url.shouldNotContain("?")
         authnResponse.url.shouldContain("#")
-        authnResponse.url.shouldStartWith(relyingPartyUrl)
+        authnResponse.url.shouldStartWith(clientId)
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
@@ -90,7 +88,7 @@ class OidcSiopProtocolTest : FreeSpec({
     "wrong client nonce in id_token should lead to error" {
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
             nonceService = object : NonceService {
                 override suspend fun provideNonce() = uuid4().toString()
                 override suspend fun verifyNonce(it: String) = false
@@ -114,7 +112,7 @@ class OidcSiopProtocolTest : FreeSpec({
     "wrong client nonce in vp_token should lead to error" {
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
             stateToNonceStore = object : MapStore<String, String> {
                 override suspend fun put(key: String, value: String) {}
                 override suspend fun get(key: String): String? = null
@@ -147,7 +145,7 @@ class OidcSiopProtocolTest : FreeSpec({
             .getOrThrow()
         val authnRequest: AuthenticationRequestParameters =
             Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
-        authnRequest.clientId shouldBe relyingPartyUrl
+        authnRequest.clientId shouldBe clientId
         val jar = authnRequest.request
         jar.shouldNotBeNull()
         DefaultVerifierJwsService().verifyJwsObject(JwsSigned.deserialize(jar).getOrThrow()).shouldBeTrue()
@@ -165,13 +163,13 @@ class OidcSiopProtocolTest : FreeSpec({
             requestOptions = RequestOptions(
                 credentials = setOf(OidcSiopVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
-                responseUrl = relyingPartyUrl,
+                responseUrl = clientId,
             )
         )
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
-        authnResponse.url.shouldBe(relyingPartyUrl)
+        authnResponse.url.shouldBe(clientId)
 
         val result =
             verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
@@ -185,13 +183,13 @@ class OidcSiopProtocolTest : FreeSpec({
             requestOptions = RequestOptions(
                 credentials = setOf(OidcSiopVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
-                responseUrl = relyingPartyUrl,
+                responseUrl = clientId,
             )
         )
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
-        authnResponse.url.shouldBe(relyingPartyUrl)
+        authnResponse.url.shouldBe(clientId)
         authnResponse.params.shouldHaveSize(2)
         val jarmResponse = authnResponse.params.entries.first { it.key == "response" }.value
         DefaultVerifierJwsService().verifyJwsObject(JwsSigned.deserialize(jarmResponse).getOrThrow()).shouldBeTrue()
@@ -218,7 +216,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
         authnResponse.url.shouldContain("?")
         authnResponse.url.shouldNotContain("#")
-        authnResponse.url.shouldStartWith(relyingPartyUrl)
+        authnResponse.url.shouldStartWith(clientId)
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
@@ -283,11 +281,10 @@ class OidcSiopProtocolTest : FreeSpec({
 
     "test with request object and Attestation JWT" {
         val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithoutCert())
-        val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyMaterial)
+        val attestationJwt = buildAttestationJwt(sprsCryptoService, clientId, verifierKeyMaterial)
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.VerifierAttestation(attestationJwt),
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.VerifierAttestation(attestationJwt, clientId),
         )
         val authnRequestWithRequestObject = verifierSiop.createAuthnRequestUrlWithRequestObject(
             walletUrl = walletUrl,
@@ -310,12 +307,11 @@ class OidcSiopProtocolTest : FreeSpec({
     }
     "test with request object and invalid Attestation JWT" {
         val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithoutCert())
-        val attestationJwt = buildAttestationJwt(sprsCryptoService, relyingPartyUrl, verifierKeyMaterial)
+        val attestationJwt = buildAttestationJwt(sprsCryptoService, clientId, verifierKeyMaterial)
 
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.VerifierAttestation(attestationJwt)
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.VerifierAttestation(attestationJwt, clientId)
         )
         val authnRequestWithRequestObject = verifierSiop.createAuthnRequestUrlWithRequestObject(
             walletUrl = walletUrl,
@@ -370,7 +366,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
         val requestUrl = "https://www.example.com/request/${uuid4()}"
         val authRequestUrlWithRequestUri = URLBuilder(walletUrl).apply {
-            parameters.append("client_id", relyingPartyUrl)
+            parameters.append("client_id", clientId)
             parameters.append("request_uri", requestUrl)
         }.buildString()
 
@@ -399,7 +395,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
         val requestUrl = "https://www.example.com/request/${uuid4()}"
         val authRequestUrlWithRequestUri = URLBuilder(walletUrl).apply {
-            parameters.append("client_id", relyingPartyUrl)
+            parameters.append("client_id", clientId)
             parameters.append("request_uri", requestUrl)
         }.buildString()
 
@@ -427,7 +423,7 @@ private fun requestOptionsAtomicAttribute() = RequestOptions(
 
 private suspend fun buildAttestationJwt(
     sprsCryptoService: DefaultCryptoService,
-    relyingPartyUrl: String,
+    clientId: String,
     verifierKeyMaterial: KeyMaterial
 ): JwsSigned = DefaultJwsService(sprsCryptoService).createSignedJws(
     header = JwsHeader(
@@ -435,7 +431,7 @@ private suspend fun buildAttestationJwt(
     ),
     payload = JsonWebToken(
         issuer = "sprs", // allows Wallet to determine the issuer's key
-        subject = relyingPartyUrl,
+        subject = clientId,
         issuedAt = Clock.System.now(),
         expiration = Clock.System.now().plus(10.seconds),
         notBefore = Clock.System.now(),

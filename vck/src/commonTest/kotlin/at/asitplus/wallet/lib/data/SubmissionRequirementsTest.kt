@@ -5,7 +5,6 @@ import at.asitplus.dif.SubmissionRequirementRuleEnum
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 
-@Suppress("unused")
 class SubmissionRequirementsTest : FreeSpec({
     "all" - {
         "from" - {

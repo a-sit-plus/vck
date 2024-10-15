@@ -12,7 +12,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
 
-    lateinit var relyingPartyUrl: String
+    lateinit var clientId: String
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
@@ -25,7 +25,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
-        relyingPartyUrl = "https://example.com/rp/${uuid4()}"
+        clientId = "https://example.com/rp/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderSiop = OidcSiopWallet(
@@ -34,7 +34,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
         )
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
     }
 

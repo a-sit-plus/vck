@@ -28,6 +28,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
+        val clientId = "example.com"
         val extensions = listOf(X509CertificateExtension(
             KnownOIDs.subjectAltName_2_5_29_17,
             critical = false,
@@ -35,7 +36,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                 Asn1.Sequence {
                     +Asn1Primitive(
                         SubjectAltNameImplicitTags.dNSName,
-                        Asn1String.UTF8("example.com").encodeToTlv().content
+                        Asn1String.UTF8(clientId).encodeToTlv().content
                     )
                 }
             ))))
@@ -58,7 +59,10 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         )
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!)),
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(
+                listOf(verifierKeyMaterial.getCertificate()!!),
+                clientId
+            ),
         )
     }
 

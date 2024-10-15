@@ -6,6 +6,7 @@ Release 5.1.0:
  - Refactor `issueCredential` of `Issuer` to directly get the credential-to-be-issued
  - Replace `buildIssuerCredentialDataProviderOverride` in `CredentialIssuer` with `credentialProvider` to extract user information into a credential
  - Remove `dataProvider` from `IssuerAgent`s constructor, as it is not needed with the new issuing interface anyway
+ - Replace `relyingPartyUrl` with `clientIdScheme` on `OidcSiopVerifier`s constructor, to clarify use of `client_id` in requests
 
 Release 5.0.1:
  - Update JsonPath4K to 2.4.0

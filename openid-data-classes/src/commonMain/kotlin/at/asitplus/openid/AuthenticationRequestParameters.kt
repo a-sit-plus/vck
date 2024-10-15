@@ -33,7 +33,7 @@ data class AuthenticationRequestParameters(
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      */
     @SerialName("client_id")
-    val clientId: String? = null,
+    val clientId: String,
 
     /**
      * OIDC: REQUIRED. Redirection URI to which the response will be sent. This URI MUST exactly match one of the

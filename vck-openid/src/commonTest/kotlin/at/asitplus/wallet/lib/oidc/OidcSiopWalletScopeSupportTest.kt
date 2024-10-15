@@ -19,7 +19,6 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-@Suppress("unused")
 class OidcSiopWalletScopeSupportTest : FreeSpec({
     "specified well known scopes" - {
         // no scopes with a mapping to a presentation definition are known yet
@@ -59,7 +58,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             ),
         )::get
 
-        lateinit var relyingPartyUrl: String
+        lateinit var clientId: String
 
         lateinit var holderKeyMaterial: KeyMaterial
         lateinit var verifierKeyMaterial: KeyMaterial
@@ -73,7 +72,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         beforeEach {
             holderKeyMaterial = EphemeralKeyWithoutCert()
             verifierKeyMaterial = EphemeralKeyWithoutCert()
-            relyingPartyUrl = "https://example.com/rp/${uuid4()}"
+            clientId = "https://example.com/rp/${uuid4()}"
             holderAgent = HolderAgent(holderKeyMaterial)
             verifierAgent = VerifierAgent(verifierKeyMaterial)
 
@@ -84,7 +83,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             )
             verifierSiop = OidcSiopVerifier(
                 keyMaterial = verifierKeyMaterial,
-                relyingPartyUrl = relyingPartyUrl,
+                clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId)
             )
         }
 

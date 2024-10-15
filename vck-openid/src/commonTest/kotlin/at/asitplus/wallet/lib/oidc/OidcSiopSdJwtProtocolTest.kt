@@ -15,7 +15,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OidcSiopSdJwtProtocolTest : FreeSpec({
 
-    lateinit var relyingPartyUrl: String
+    lateinit var clientId: String
     lateinit var walletUrl: String
 
     lateinit var holderKeyMaterial: KeyMaterial
@@ -30,7 +30,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
-        relyingPartyUrl = "https://example.com/rp/${uuid4()}"
+        clientId = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
         verifierAgent = VerifierAgent(verifierKeyMaterial)
@@ -50,7 +50,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         )
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId)
         )
     }
 
@@ -58,7 +58,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         val requestedClaim = CLAIM_GIVEN_NAME
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId)
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,

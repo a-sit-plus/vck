@@ -283,7 +283,8 @@ class OidcSiopInteropTest : FreeSpec({
     }
 
     "Request in request URI" {
-        val input = "mdoc-openid4vp://?request_uri=https%3A%2F%2Fexample.com%2Fd15b5b6f-7821-4031-9a18-ebe491b720a6"
+        val input = "mdoc-openid4vp://?client_id=https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02" +
+                "&request_uri=https%3A%2F%2Fexample.com%2Fd15b5b6f-7821-4031-9a18-ebe491b720a6"
         val jws = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())).createSignedJwsAddingParams(
             payload = AuthenticationRequestParameters(
                 nonce = "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ==",
@@ -307,13 +308,6 @@ class OidcSiopInteropTest : FreeSpec({
         parsed.parameters.clientId shouldBe parsed.parameters.responseUrl
     }
 
-    "empty client_id" {
-        val input = "mdoc-openid4vp://?response_type=vp_token&client_id=&response_mode=direct_post.jwt"
-
-        Url(input).parameters.flattenEntries().toMap()
-            .decodeFromUrlQuery<AuthenticationRequestParameters>().shouldNotBeNull()
-    }
-
     "process with cross-device flow with request_uri and x509_san_dns" {
         val extensions = listOf(X509CertificateExtension(
             KnownOIDs.subjectAltName_2_5_29_17,
@@ -329,8 +323,10 @@ class OidcSiopInteropTest : FreeSpec({
         verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = "https://example.com/rp",
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!)),
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(
+                listOf(verifierKeyMaterial.getCertificate()!!),
+                "example.com"
+            ),
         )
         val nonce = uuid4().toString()
         val requestUrl = "https://example.com/request/$nonce"
