@@ -56,7 +56,7 @@ kotlin {
 
 exportIosFramework(
     "VckAriesKmm",
-    transitiveExports = false,
+    transitiveExports = true,
     project(":vck")
 )
 

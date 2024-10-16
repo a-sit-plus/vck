@@ -2,10 +2,15 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.signum.indispensable.getJcaPublicKey
 import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.supreme.HazardousMaterials
+import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
+import java.security.Security
 import javax.crypto.Cipher
+import javax.crypto.KeyAgreement
 import javax.crypto.Mac
-import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: KeyMaterial) {
@@ -18,18 +23,13 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
         algorithm: JweEncryption
     ): KmmResult<AuthenticatedCiphertext> = runCatching {
         val jcaCiphertext = Cipher.getInstance(algorithm.jcaName).also {
+            it.init(
+                Cipher.ENCRYPT_MODE,
+                SecretKeySpec(key, algorithm.jcaKeySpecName),
+                IvParameterSpec(iv)
+            )
             if (algorithm.isAuthenticatedEncryption) {
-                it.init(
-                    Cipher.ENCRYPT_MODE,
-                    SecretKeySpec(key, algorithm.jcaKeySpecName),
-                    GCMParameterSpec(algorithm.ivLengthBits, iv)
-                )
                 it.updateAAD(aad)
-            } else {
-                it.init(
-                    Cipher.ENCRYPT_MODE,
-                    SecretKeySpec(key, algorithm.jcaKeySpecName),
-                )
             }
         }.doFinal(input)
         if (algorithm.isAuthenticatedEncryption) {
@@ -41,7 +41,6 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
         }
     }.wrap()
 
-
     actual open suspend fun decrypt(
         key: ByteArray,
         iv: ByteArray,
@@ -50,34 +49,43 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
         authTag: ByteArray,
         algorithm: JweEncryption
     ): KmmResult<ByteArray> = runCatching {
+        val wholeInput = input + if (algorithm.isAuthenticatedEncryption) authTag else byteArrayOf()
         Cipher.getInstance(algorithm.jcaName).also {
+            it.init(
+                Cipher.DECRYPT_MODE,
+                SecretKeySpec(key, algorithm.jcaKeySpecName),
+                IvParameterSpec(iv)
+            )
             if (algorithm.isAuthenticatedEncryption) {
-                it.init(
-                    Cipher.DECRYPT_MODE,
-                    SecretKeySpec(key, algorithm.jcaKeySpecName),
-                    GCMParameterSpec(algorithm.ivLengthBits, iv)
-                )
                 it.updateAAD(aad)
-            } else {
-                it.init(
-                    Cipher.DECRYPT_MODE,
-                    SecretKeySpec(key, algorithm.jcaKeySpecName),
-                )
             }
-        }.doFinal(input + authTag)
+        }.doFinal(wholeInput)
     }.wrap()
 
     actual open fun performKeyAgreement(
         ephemeralKey: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
-    ): KmmResult<ByteArray> {
-        return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
-    }
+    ): KmmResult<ByteArray> = runCatching {
+        val jvmKey = recipientKey.toCryptoPublicKey().getOrThrow().getJcaPublicKey().getOrThrow()
+        KeyAgreement.getInstance(algorithm.jcaName).also {
+            @OptIn(HazardousMaterials::class)
+            it.init(ephemeralKey.key.jcaPrivateKey)
+            it.doPhase(jvmKey, true)
+        }.generateSecret()
+    }.wrap()
 
-    actual open fun performKeyAgreement(ephemeralKey: JsonWebKey, algorithm: JweAlgorithm): KmmResult<ByteArray> {
-        return KmmResult.success("sharedSecret-${algorithm.identifier}".encodeToByteArray())
-    }
+    actual open fun performKeyAgreement(
+        ephemeralKey: JsonWebKey,
+        algorithm: JweAlgorithm
+    ): KmmResult<ByteArray> = runCatching {
+        val publicKey = ephemeralKey.toCryptoPublicKey().getOrThrow().getJcaPublicKey().getOrThrow()
+        KeyAgreement.getInstance(algorithm.jcaName).also {
+            @OptIn(HazardousMaterials::class)
+            it.init(keyMaterial.getUnderLyingSigner().jcaPrivateKey)
+            it.doPhase(publicKey, true)
+        }.generateSecret()
+    }.wrap()
 
     actual open fun hmac(
         key: ByteArray,

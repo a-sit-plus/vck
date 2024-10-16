@@ -4,11 +4,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.data.IsoDocumentParsed
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
 
@@ -53,7 +49,7 @@ interface Verifier {
             val isRevoked: Boolean
         ) : VerifyPresentationResult()
 
-        data class SuccessIso(val document: IsoDocumentParsed) : VerifyPresentationResult()
+        data class SuccessIso(val documents: Collection<IsoDocumentParsed>) : VerifyPresentationResult()
         data class InvalidStructure(val input: String) : VerifyPresentationResult()
         data class NotVerified(val input: String, val challenge: String) : VerifyPresentationResult()
     }

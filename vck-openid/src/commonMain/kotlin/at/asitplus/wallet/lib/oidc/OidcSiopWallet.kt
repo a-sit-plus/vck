@@ -12,6 +12,7 @@ import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -26,7 +27,6 @@ import at.asitplus.wallet.lib.oidc.helper.PresentationFactory
 import at.asitplus.wallet.lib.oidc.helpers.AuthorizationResponsePreparationState
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonPrimitive
@@ -285,9 +285,8 @@ class OidcSiopWallet(
     private fun Holder.CreatePresentationResult.toJsonPrimitive() = when (this) {
         is Holder.CreatePresentationResult.Signed -> JsonPrimitive(jws)
         is Holder.CreatePresentationResult.SdJwt -> JsonPrimitive(sdJwt)
-        is Holder.CreatePresentationResult.Document -> JsonPrimitive(
-            document.serialize().encodeToString(Base16(strict = true))
-        )
+        is Holder.CreatePresentationResult.DeviceResponse ->
+            JsonPrimitive(deviceResponse.serialize().encodeToString(Base64UrlStrict))
     }
 
     private fun List<JsonPrimitive>.singleOrArray() = if (size == 1) {
