@@ -19,7 +19,7 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.toDefaultSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
+import at.asitplus.openid.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock

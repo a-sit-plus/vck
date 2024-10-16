@@ -4,7 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.ConstraintFilter
-import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.InputDescriptorInterface
 import at.asitplus.dif.RequirementEnum
 import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NodeList
@@ -18,7 +18,7 @@ import kotlinx.serialization.json.*
 class InputEvaluator {
     // filter by constraints
     fun evaluateConstraintFieldMatches(
-        inputDescriptor: InputDescriptor,
+        inputDescriptor: InputDescriptorInterface,
         credential: JsonElement,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
     ): KmmResult<Map<ConstraintField, NodeList>> = runCatching {

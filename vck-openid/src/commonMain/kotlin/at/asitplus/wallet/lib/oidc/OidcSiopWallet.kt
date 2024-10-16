@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequestParametersFrom
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.IdTokenType
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata

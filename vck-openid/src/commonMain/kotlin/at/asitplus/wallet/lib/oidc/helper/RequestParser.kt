@@ -10,12 +10,12 @@ import at.asitplus.openid.RequestParametersSerializer
 import at.asitplus.openid.SignatureRequestParameters
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
+import at.asitplus.openid.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
-import at.asitplus.wallet.lib.oidc.RequestParametersFrom
-import at.asitplus.wallet.lib.oidc.SignatureRequestParametersFrom
+import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.SignatureRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.jsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
