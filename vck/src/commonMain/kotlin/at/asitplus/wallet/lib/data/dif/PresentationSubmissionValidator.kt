@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.data.dif
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.InputDescriptorInterface
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.dif.SubmissionRequirement
 import kotlinx.serialization.Serializable
@@ -12,7 +12,7 @@ sealed class PresentationSubmissionValidator {
     companion object {
         fun createInstance(
             submissionRequirements: Collection<SubmissionRequirement>?,
-            inputDescriptors: Collection<InputDescriptor>,
+            inputDescriptors: Collection<InputDescriptorInterface>,
         ): KmmResult<PresentationSubmissionValidator> = catching {
             val verifier = submissionRequirements?.let { _ ->
                 SubmissionRequirementsValidator(
@@ -80,7 +80,7 @@ sealed class PresentationSubmissionValidator {
         }
     }
 
-    class MissingInputDescriptorGroupException(inputDescriptor: InputDescriptor) : Exception(
+    class MissingInputDescriptorGroupException(inputDescriptor: InputDescriptorInterface) : Exception(
         "Input descriptor is missing field `group` and is therefore not eligible for use with submission requirements: $inputDescriptor"
     )
 }

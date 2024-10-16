@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.oidc.helper
 
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
+import at.asitplus.openid.AuthenticationRequestParametersFrom
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN

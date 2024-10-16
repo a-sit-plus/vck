@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.dif.rqes.CSCSignatureRequestParameters
-import at.asitplus.dif.rqes.enums.SignatureFormat
-import at.asitplus.dif.rqes.RqesConstants
-import at.asitplus.dif.rqes.SignDocParameters
-import at.asitplus.dif.rqes.SignHashParameters
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.SignatureRequestParameters
+import at.asitplus.rqes.CSCSignatureRequestParameters
+import at.asitplus.rqes.RqesConstants
+import at.asitplus.rqes.SignDocParameters
+import at.asitplus.rqes.SignHashParameters
+import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import com.benasher44.uuid.uuid4

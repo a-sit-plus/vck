@@ -6,7 +6,7 @@ import at.asitplus.openid.OpenIdConstants.ResponseMode.*
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
+import at.asitplus.openid.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.AuthenticationResponse
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception

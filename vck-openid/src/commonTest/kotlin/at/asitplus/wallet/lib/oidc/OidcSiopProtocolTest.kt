@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequestParametersFrom
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN

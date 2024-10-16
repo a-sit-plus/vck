@@ -32,6 +32,8 @@ kotlin {
         commonMain {
             dependencies {
                 api(project(":dif-data-classes"))
+                api(project(":rqes-data-classes"))
+                implementation(project.ktor("http"))
                 implementation(project.napier())
                 api(serialization("json"))
                 api(serialization("cbor"))
