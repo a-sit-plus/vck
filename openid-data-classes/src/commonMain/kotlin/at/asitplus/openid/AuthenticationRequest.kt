@@ -1,15 +1,12 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.openid
 
 
 import at.asitplus.catching
-import at.asitplus.dif.rqes.serializers.UrlSerializer
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.JwsSignedSerializer
+import at.asitplus.rqes.serializers.UrlSerializer
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-
 
 @Serializable
 sealed class AuthenticationRequestParametersFrom : RequestParametersFrom {

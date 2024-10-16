@@ -1,8 +1,4 @@
-import at.asitplus.gradle.exportIosFramework
-import at.asitplus.gradle.ktor
-import at.asitplus.gradle.napier
-import at.asitplus.gradle.setupAndroid
-import at.asitplus.gradle.setupDokka
+import at.asitplus.gradle.*
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
@@ -20,14 +16,18 @@ group = "at.asitplus.wallet"
 version = artifactVersion
 
 
+setupAndroid()
+
 kotlin {
 
     jvm()
+
     androidTarget {
         publishLibraryVariants("release")
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(test)
     }
+
     iosArm64()
     iosSimulatorArm64()
     iosX64()
@@ -35,27 +35,38 @@ kotlin {
 
         commonMain {
             dependencies {
-                implementation(project.napier())
-                implementation(project.ktor("http"))
-                api("com.benasher44:uuid:${VcLibVersions.uuid}")
-                api("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}")
-                api("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
-                api("at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}")
+                api(project(":vck-openid"))
+                api(project(":openid-data-classes"))
+                commonImplementationDependencies()
+            }
+        }
+
+        commonTest {
+            dependencies {
+                implementation("at.asitplus.wallet:eupidcredential:${VcLibVersions.eupidcredential}")
+                implementation("at.asitplus.wallet:mobiledrivinglicence:${VcLibVersions.mdl}")
+            }
+        }
+
+        jvmMain {
+            dependencies {
+                implementation(signum.bcpkix.jdk18on)
+            }
+        }
+
+        jvmTest {
+            dependencies {
+                implementation(signum.jose)
+                implementation("org.json:json:${VcLibVersions.Jvm.json}")
             }
         }
     }
 }
 
-
-setupAndroid()
-
 exportIosFramework(
-    "RqesDataClasses",
-    transitiveExports = true,
-    "at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}",
-    "at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}",
-    "at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}",
-    "com.benasher44:uuid:${VcLibVersions.uuid}"
+    "VckRqesKmm",
+    transitiveExports = false,
+    project(":vck")
 )
 
 val javadocJar = setupDokka(
@@ -68,8 +79,8 @@ publishing {
         withType<MavenPublication> {
             if (this.name != "relocation") artifact(javadocJar)
             pom {
-                name.set("RQES Data Classes")
-                description.set("Kotlin Multiplatform data classes for RQES")
+                name.set("VC-K RQES")
+                description.set("Kotlin Multiplatform library implementing the W3C VC Data Model, with RQES protocol implementations")
                 url.set("https://github.com/a-sit-plus/vck")
                 licenses {
                     license {
@@ -96,6 +107,23 @@ publishing {
                 }
             }
         }
+        //REMOVE ME AFTER REBRANDED ARTIFACT HAS BEEN PUBLISHED
+        create<MavenPublication>("relocation") {
+            pom {
+                // Old artifact coordinates
+                artifactId = "vclib-rqes"
+                version = artifactVersion
+
+                distributionManagement {
+                    relocation {
+                        // New artifact coordinates
+                        artifactId = "vck-rqes"
+                        version = artifactVersion
+                        message = " artifactId have been changed"
+                    }
+                }
+            }
+        }
     }
     repositories {
         mavenLocal {
@@ -108,8 +136,6 @@ publishing {
         }
     }
 }
-
-
 
 repositories {
     maven(url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))

@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidvci
+package at.asitplus.wallet.lib
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.SignatureRequestParameters
@@ -32,7 +32,10 @@ class RqesWalletService(
      * TODO: could also use [Document] instead of [CscDocumentDigest], also [credential_id] instead of [SAD]
      * TODO implement [CredentialInfo] dataclass + hand over here
      */
-    suspend fun createSignDocRequestParameters(rqesRequest: SignatureRequestParameters, sad: String): CSCSignatureRequestParameters =
+    suspend fun createSignDocRequestParameters(
+        rqesRequest: SignatureRequestParameters,
+        sad: String,
+    ): CSCSignatureRequestParameters =
         SignDocParameters(
             sad = sad,
             signatureQualifier = rqesRequest.signatureQualifier,

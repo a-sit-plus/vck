@@ -4,16 +4,6 @@ import com.benasher44.uuid.uuid4
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-@Serializable(with = InputDescriptorSerializer::class)
-sealed interface InputDescriptor {
-    val id: String
-    val group: String?
-    val name: String?
-    val purpose: String?
-    val format: FormatHolder?
-    val constraints: Constraint?
-}
-
 /**
  * Data class for
  * [DIF Presentation Exchange v2.1.1](https://identity.foundation/presentation-exchange/spec/v2.1.1/#term:presentation-definition)
@@ -32,7 +22,7 @@ data class DifInputDescriptor(
     override val format: FormatHolder? = null,
     @SerialName("constraints")
     override val constraints: Constraint? = null,
-) : InputDescriptor {
+) : InputDescriptorInterface() {
     constructor(name: String, constraints: Constraint? = null) : this(
         id = uuid4().toString(),
         name = name,

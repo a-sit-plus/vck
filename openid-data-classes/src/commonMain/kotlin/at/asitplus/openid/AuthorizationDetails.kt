@@ -1,8 +1,8 @@
 package at.asitplus.openid
 
-import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.OAuthDocumentDigest
-import at.asitplus.dif.rqes.collection_entries.DocumentLocation
-import at.asitplus.dif.rqes.enums.SignatureQualifierEnum
+import at.asitplus.rqes.collection_entries.DocumentLocation
+import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
+import at.asitplus.rqes.enums.SignatureQualifierEnum
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName

@@ -19,7 +19,7 @@ data class PresentationDefinition(
     @SerialName("purpose")
     val purpose: String? = null,
     @SerialName("input_descriptors")
-    val inputDescriptors: Collection<InputDescriptor>,
+    val inputDescriptors: Collection<InputDescriptorInterface>,
     @Deprecated(message = "Removed in DIF Presentation Exchange 2.0.0", ReplaceWith("inputDescriptors.format"))
     @SerialName("format")
     val formats: FormatHolder? = null,
@@ -28,7 +28,7 @@ data class PresentationDefinition(
 ) {
     @Deprecated(message = "Removed in DIF Presentation Exchange 2.0.0")
     constructor(
-        inputDescriptors: Collection<InputDescriptor>,
+        inputDescriptors: Collection<InputDescriptorInterface>,
         formats: FormatHolder
     ) : this(id = uuid4().toString(), inputDescriptors = inputDescriptors, formats = formats)
 

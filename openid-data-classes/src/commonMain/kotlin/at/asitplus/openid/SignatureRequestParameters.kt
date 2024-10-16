@@ -1,13 +1,13 @@
 package at.asitplus.openid
 
-import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.CscDocumentDigest
-import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.OAuthDocumentDigest
-import at.asitplus.dif.rqes.collection_entries.DocumentLocation
-import at.asitplus.dif.rqes.enums.ConformanceLevelEnum
-import at.asitplus.dif.rqes.enums.SignatureFormat
-import at.asitplus.dif.rqes.enums.SignatureQualifierEnum
-import at.asitplus.dif.rqes.enums.SignedEnvelopeProperty
-import at.asitplus.dif.rqes.getHashAlgorithm
+import at.asitplus.rqes.collection_entries.CscDocumentDigest
+import at.asitplus.rqes.collection_entries.DocumentLocation
+import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
+import at.asitplus.rqes.enums.ConformanceLevelEnum
+import at.asitplus.rqes.enums.SignatureFormat
+import at.asitplus.rqes.enums.SignatureQualifierEnum
+import at.asitplus.rqes.enums.SignedEnvelopeProperty
+import at.asitplus.rqes.getHashAlgorithm
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element

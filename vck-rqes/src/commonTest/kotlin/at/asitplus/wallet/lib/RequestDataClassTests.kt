@@ -1,6 +1,9 @@
-package at.asitplus.rqes
+package at.asitplus.wallet.lib
 
-import at.asitplus.dif.jsonSerializer
+import at.asitplus.rqes.CSCSignatureRequestParameters
+import at.asitplus.rqes.SignDocParameters
+import at.asitplus.rqes.SignHashParameters
+import at.asitplus.rqes.jsonSerializer
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64Strict
 import io.github.aakira.napier.Napier
