@@ -23,7 +23,7 @@ internal fun getSignAlgorithm(signAlgoOid: ObjectIdentifier, signAlgoParams: Asn
     }
 
 @Throws(Exception::class)
-internal fun getHashAlgorithm(hashAlgorithmOid: ObjectIdentifier?, signatureAlgorithm: SignatureAlgorithm?) =
+fun getHashAlgorithm(hashAlgorithmOid: ObjectIdentifier?, signatureAlgorithm: SignatureAlgorithm? = null) =
     hashAlgorithmOid?.let {
         Digest.entries.find { digest -> digest.oid == it }
     } ?: when(signatureAlgorithm) {
@@ -32,4 +32,4 @@ internal fun getHashAlgorithm(hashAlgorithmOid: ObjectIdentifier?, signatureAlgo
         is SignatureAlgorithm.HMAC -> signatureAlgorithm.digest
         is SignatureAlgorithm.RSA -> signatureAlgorithm.digest
         null -> null
-    } ?: throw Exception("Unknown hashing algorithm")
+    } ?: throw Exception("Unknown hashing algorithm defined with oid $hashAlgorithmOid or signature algorithm $signatureAlgorithm")

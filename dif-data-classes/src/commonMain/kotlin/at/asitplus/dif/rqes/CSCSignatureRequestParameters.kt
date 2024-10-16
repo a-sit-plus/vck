@@ -1,9 +1,7 @@
-@file:UseSerializers(SignatureRequestParameterSerializer::class)
-
 package at.asitplus.dif.rqes
 
 import at.asitplus.dif.rqes.serializers.Asn1EncodableBase64Serializer
-import at.asitplus.dif.rqes.serializers.SignatureRequestParameterSerializer
+import at.asitplus.dif.rqes.serializers.CSCSignatureRequestParameterSerializer
 import at.asitplus.dif.rqes.collection_entries.Document
 import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.CscDocumentDigest
 import at.asitplus.dif.rqes.enums.OperationModeEnum
@@ -15,10 +13,9 @@ import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlinx.serialization.UseSerializers
 
-@Serializable(with = SignatureRequestParameterSerializer::class)
-sealed interface SignatureRequestParameters {
+@Serializable(with = CSCSignatureRequestParameterSerializer::class)
+sealed interface CSCSignatureRequestParameters {
     /**
      * The credentialID as defined in the Input parameter table in `/credentials/info`
      */
@@ -113,7 +110,7 @@ data class SignHashParameters(
     @Serializable(with = Asn1EncodableBase64Serializer::class)
     val signAlgoParams: Asn1Element? = null,
 
-    ) : SignatureRequestParameters {
+    ) : CSCSignatureRequestParameters {
 
     @Transient
     val signAlgorithm: SignatureAlgorithm? = getSignAlgorithm(signAlgoOid, signAlgoParams)
@@ -201,7 +198,7 @@ data class SignDocParameters(
     @SerialName("returnValidationInformation")
     val returnValidationInformation: Boolean = false,
 
-    ) : SignatureRequestParameters {
+) : CSCSignatureRequestParameters {
     init {
         require(credentialId != null || signatureQualifier != null) { "Either credentialId or signatureQualifier must not be null (both can be present)" }
         require(documentDigests != null || documents != null) { "Either documentDigests or documents must not be null (both can be present)" }
