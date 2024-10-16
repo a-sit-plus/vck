@@ -1,6 +1,7 @@
 package at.asitplus.rqes.collection_entries
 
 import at.asitplus.rqes.Method
+import at.asitplus.rqes.serializers.UrlSerializer
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -11,7 +12,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DocumentLocation(
     @SerialName("uri")
-    val uri: String,
+    @Serializable(UrlSerializer::class)
+    val uri: Url,
     @SerialName("method")
     val method: Method,
 )

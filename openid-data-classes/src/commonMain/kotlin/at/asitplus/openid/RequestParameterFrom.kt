@@ -1,7 +1,5 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.openid
 
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersSerializer
 import kotlinx.serialization.Serializable
 
 @Serializable

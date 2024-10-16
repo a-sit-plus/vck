@@ -2,8 +2,8 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.rqes.enums.SignatureQualifierEnum
-import at.asitplus.dif.rqes.serializers.HashesSerializer
+import at.asitplus.rqes.enums.SignatureQualifierEnum
+import at.asitplus.rqes.serializers.HashesSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -339,7 +339,7 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("clientData")
     val clientData: String? = null,
-): RequestParameters {
+) : RequestParameters {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

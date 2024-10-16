@@ -16,14 +16,18 @@ group = "at.asitplus.wallet"
 version = artifactVersion
 
 
+setupAndroid()
+
 kotlin {
 
     jvm()
+
     androidTarget {
         publishLibraryVariants("release")
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(test)
     }
+
     iosArm64()
     iosSimulatorArm64()
     iosX64()
@@ -31,48 +35,38 @@ kotlin {
 
         commonMain {
             dependencies {
-                api(project(":dif-data-classes"))
-                api(project(":rqes-data-classes"))
-                implementation(project.ktor("http"))
-                implementation(project.napier())
-                api(serialization("json"))
-                api(serialization("cbor"))
-                api(datetime())
-                api("com.ionspin.kotlin:bignum:${signumVersionCatalog.findVersion("bignum").get()}")
-                api(kmmresult())
-                api("at.asitplus.signum:indispensable:${VcLibVersions.signum}")
-                api("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}")
-                api("at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}")
-                api("at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}")
-                api("io.matthewnelson.encoding:core:${AspVersions.versions["encoding"]}")
-                api("io.matthewnelson.encoding:base16:${AspVersions.versions["encoding"]}")
-                api("io.matthewnelson.encoding:base64:${AspVersions.versions["encoding"]}")
+                api(project(":vck-openid"))
+                api(project(":openid-data-classes"))
+                commonImplementationDependencies()
             }
         }
 
         commonTest {
             dependencies {
+                implementation("at.asitplus.wallet:eupidcredential:${VcLibVersions.eupidcredential}")
+                implementation("at.asitplus.wallet:mobiledrivinglicence:${VcLibVersions.mdl}")
             }
         }
 
         jvmMain {
             dependencies {
+                implementation(signum.bcpkix.jdk18on)
             }
         }
 
         jvmTest {
             dependencies {
+                implementation(signum.jose)
+                implementation("org.json:json:${VcLibVersions.Jvm.json}")
             }
         }
     }
 }
 
-setupAndroid()
-
 exportIosFramework(
-    "OpenIdDataClasses",
-    transitiveExports = true,
-    project(":dif-data-classes")
+    "VckRqesKmm",
+    transitiveExports = false,
+    project(":vck")
 )
 
 val javadocJar = setupDokka(
@@ -85,8 +79,8 @@ publishing {
         withType<MavenPublication> {
             if (this.name != "relocation") artifact(javadocJar)
             pom {
-                name.set("OpenID Data Classes")
-                description.set("Kotlin Multiplatform data classes for OpenId")
+                name.set("VC-K RQES")
+                description.set("Kotlin Multiplatform library implementing the W3C VC Data Model, with RQES protocol implementations")
                 url.set("https://github.com/a-sit-plus/vck")
                 licenses {
                     license {
@@ -110,6 +104,23 @@ publishing {
                     connection.set("scm:git:git@github.com:a-sit-plus/vck.git")
                     developerConnection.set("scm:git:git@github.com:a-sit-plus/vck.git")
                     url.set("https://github.com/a-sit-plus/vck")
+                }
+            }
+        }
+        //REMOVE ME AFTER REBRANDED ARTIFACT HAS BEEN PUBLISHED
+        create<MavenPublication>("relocation") {
+            pom {
+                // Old artifact coordinates
+                artifactId = "vclib-rqes"
+                version = artifactVersion
+
+                distributionManagement {
+                    relocation {
+                        // New artifact coordinates
+                        artifactId = "vck-rqes"
+                        version = artifactVersion
+                        message = " artifactId have been changed"
+                    }
                 }
             }
         }

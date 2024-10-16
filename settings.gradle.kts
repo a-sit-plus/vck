@@ -27,12 +27,13 @@ if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
 } else logger.lifecycle("Excluding Signum from this build")
 
 rootProject.name = "vc-k"
-include(":rqes-data-classes")
 include(":dif-data-classes")
 include(":openid-data-classes")
+include(":rqes-data-classes")
 include(":vck")
 include(":vck-aries")
 include(":vck-openid")
+include(":vck-rqes")
 include(":mobiledrivinglicence")
 
 dependencyResolutionManagement {

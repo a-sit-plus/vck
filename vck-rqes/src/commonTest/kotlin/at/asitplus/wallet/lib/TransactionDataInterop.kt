@@ -1,9 +1,10 @@
-package at.asitplus.rqes
+package at.asitplus.wallet.lib
 
-import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.InputDescriptorInterface
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.jsonSerializer
+import at.asitplus.dif.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.TransactionData
+import at.asitplus.rqes.jsonSerializer
 import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -80,7 +81,7 @@ class TransactionDataInterop : FreeSpec({
             transactionData = listOf(transactionDataTest)
         )
         val serialized = jsonSerializer.encodeToString(test)
-        val deserialized = jsonSerializer.decodeFromString<InputDescriptor>(serialized)
+        val deserialized = jsonSerializer.decodeFromString<InputDescriptorInterface>(serialized)
         deserialized shouldBe test
     }
 
