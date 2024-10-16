@@ -1,7 +1,6 @@
-package at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries
+package at.asitplus.rqes.collection_entries.DocumentDigestEntries
 
 import at.asitplus.dif.rqes.Hashes
-import at.asitplus.dif.rqes.serializers.Asn1EncodableBase64Serializer
 import at.asitplus.dif.rqes.contentEquals
 import at.asitplus.dif.rqes.contentHashCode
 import at.asitplus.dif.rqes.enums.ConformanceLevelEnum
@@ -66,7 +65,7 @@ data class CscDocumentDigest(
      * the signature algorithm - Necessary for RSASSA-PSS for example
      */
     @SerialName("signAlgoParams")
-    @Serializable(with = Asn1EncodableBase64Serializer::class)
+    @Serializable(with = at.asitplus.rqes.serializers.Asn1EncodableBase64Serializer::class)
     val signAlgoParams: Asn1Element? = null,
 
     /**

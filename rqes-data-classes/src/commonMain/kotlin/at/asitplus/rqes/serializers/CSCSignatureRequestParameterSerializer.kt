@@ -1,4 +1,4 @@
-package at.asitplus.dif.rqes.serializers
+package at.asitplus.rqes.serializers
 
 import at.asitplus.dif.rqes.CSCSignatureRequestParameters
 import at.asitplus.dif.rqes.SignDocParameters

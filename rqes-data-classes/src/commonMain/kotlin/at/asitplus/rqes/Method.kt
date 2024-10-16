@@ -1,4 +1,4 @@
-package at.asitplus.dif.rqes
+package at.asitplus.rqes
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

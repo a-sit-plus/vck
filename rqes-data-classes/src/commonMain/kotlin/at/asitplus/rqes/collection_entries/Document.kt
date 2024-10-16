@@ -1,9 +1,8 @@
-package at.asitplus.dif.rqes.collection_entries
+package at.asitplus.rqes.collection_entries
 
 import at.asitplus.dif.rqes.enums.ConformanceLevelEnum
 import at.asitplus.dif.rqes.enums.SignatureFormat
 import at.asitplus.dif.rqes.enums.SignedEnvelopeProperty
-import at.asitplus.dif.rqes.serializers.Asn1EncodableBase64Serializer
 import at.asitplus.dif.rqes.getSignAlgorithm
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
@@ -49,7 +48,7 @@ data class Document(
      * The Base64-encoded DER-encoded ASN.1 signature parameters
      */
     @SerialName("signAlgoParams")
-    @Serializable(Asn1EncodableBase64Serializer::class)
+    @Serializable(at.asitplus.rqes.serializers.Asn1EncodableBase64Serializer::class)
     val signAlgoParams: Asn1Element? = null,
 
     /**
@@ -74,7 +73,7 @@ data class Document(
         if (this === other) return true
         if (other == null || this::class != other::class) return false
 
-        other as Document
+        other as at.asitplus.rqes.collection_entries.Document
 
         if (!document.contentEquals(other.document)) return false
         if (signatureFormat != other.signatureFormat) return false

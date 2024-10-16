@@ -1,4 +1,4 @@
-package at.asitplus.dif.rqes.serializers
+package at.asitplus.rqes.serializers
 
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import kotlinx.serialization.KSerializer

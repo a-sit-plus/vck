@@ -1,4 +1,4 @@
-package at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries
+package at.asitplus.rqes.collection_entries.DocumentDigestEntries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
