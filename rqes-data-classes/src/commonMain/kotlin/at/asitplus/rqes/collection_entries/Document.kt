@@ -22,6 +22,7 @@ import kotlinx.serialization.json.JsonObject
 @Serializable
 data class Document(
     /**
+     * TODO
      * base64-encoded document content to be signed, testcases weird so for now string
      */
     @SerialName("document")
@@ -50,7 +51,7 @@ data class Document(
      * The Base64-encoded DER-encoded ASN.1 signature parameters
      */
     @SerialName("signAlgoParams")
-    @Serializable(Asn1EncodableBase64Serializer::class)
+    @Serializable(at.asitplus.rqes.serializers.Asn1EncodableBase64Serializer::class)
     val signAlgoParams: Asn1Element? = null,
 
     /**
@@ -75,7 +76,7 @@ data class Document(
         if (this === other) return true
         if (other == null || this::class != other::class) return false
 
-        other as Document
+        other as at.asitplus.rqes.collection_entries.Document
 
         if (!document.contentEquals(other.document)) return false
         if (signatureFormat != other.signatureFormat) return false

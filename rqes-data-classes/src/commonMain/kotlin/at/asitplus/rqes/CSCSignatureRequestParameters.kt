@@ -1,11 +1,9 @@
-package at.asitplus.dif.rqes
+package at.asitplus.rqes
 
-import at.asitplus.dif.rqes.serializers.Asn1EncodableBase64Serializer
-import at.asitplus.dif.rqes.serializers.CSCSignatureRequestParameterSerializer
-import at.asitplus.dif.rqes.collection_entries.Document
-import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.CscDocumentDigest
-import at.asitplus.dif.rqes.enums.OperationModeEnum
-import at.asitplus.dif.rqes.enums.SignatureQualifierEnum
+import at.asitplus.rqes.collection_entries.DocumentDigestEntries.CscDocumentDigest
+import at.asitplus.rqes.enums.OperationModeEnum
+import at.asitplus.rqes.enums.SignatureQualifierEnum
+import at.asitplus.rqes.serializers.CSCSignatureRequestParameterSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
@@ -108,7 +106,7 @@ data class SignHashParameters(
      * the signature algorithm - Necessary for RSASSA-PSS for example
      */
     @SerialName("signAlgoParams")
-    @Serializable(with = Asn1EncodableBase64Serializer::class)
+    @Serializable(with = at.asitplus.rqes.serializers.Asn1EncodableBase64Serializer::class)
     val signAlgoParams: Asn1Element? = null,
 
     ) : CSCSignatureRequestParameters {
@@ -189,7 +187,7 @@ data class SignDocParameters(
     val documentDigests: Collection<CscDocumentDigest>? = null,
 
     @SerialName("documents")
-    val documents: Collection<Document>? = null,
+    val documents: Collection<at.asitplus.rqes.collection_entries.Document>? = null,
 
     /**
      * This parameter SHALL be set to “true” to request the service to return the
@@ -199,7 +197,7 @@ data class SignDocParameters(
     @SerialName("returnValidationInformation")
     val returnValidationInformation: Boolean = false,
 
-) : CSCSignatureRequestParameters {
+    ) : CSCSignatureRequestParameters {
     init {
         require(credentialId != null || signatureQualifier != null) { "Either credentialId or signatureQualifier must not be null (both can be present)" }
         require(documentDigests != null || documents != null) { "Either documentDigests or documents must not be null (both can be present)" }
