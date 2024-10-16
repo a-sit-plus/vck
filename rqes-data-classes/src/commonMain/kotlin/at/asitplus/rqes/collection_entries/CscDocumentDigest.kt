@@ -1,13 +1,13 @@
-package at.asitplus.rqes.collection_entries.DocumentDigestEntries
+package at.asitplus.rqes.collection_entries
 
-import at.asitplus.dif.rqes.Hashes
-import at.asitplus.dif.rqes.contentEquals
-import at.asitplus.dif.rqes.contentHashCode
-import at.asitplus.dif.rqes.enums.ConformanceLevelEnum
-import at.asitplus.dif.rqes.enums.SignatureFormat
-import at.asitplus.dif.rqes.enums.SignedEnvelopeProperty
-import at.asitplus.dif.rqes.getHashAlgorithm
-import at.asitplus.dif.rqes.getSignAlgorithm
+import at.asitplus.rqes.Hashes
+import at.asitplus.rqes.contentEquals
+import at.asitplus.rqes.contentHashCode
+import at.asitplus.rqes.enums.ConformanceLevelEnum
+import at.asitplus.rqes.enums.SignatureFormat
+import at.asitplus.rqes.enums.SignedEnvelopeProperty
+import at.asitplus.rqes.getHashAlgorithm
+import at.asitplus.rqes.getSignAlgorithm
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element

@@ -1,9 +1,9 @@
-package at.asitplus.dif.rqes.collection_entries
+package at.asitplus.rqes.collection_entries
 
-import at.asitplus.dif.rqes.enums.ConformanceLevelEnum
-import at.asitplus.dif.rqes.enums.SignatureFormat
-import at.asitplus.dif.rqes.enums.SignedEnvelopeProperty
-import at.asitplus.dif.rqes.getSignAlgorithm
+import at.asitplus.rqes.enums.ConformanceLevelEnum
+import at.asitplus.rqes.enums.SignatureFormat
+import at.asitplus.rqes.enums.SignedEnvelopeProperty
+import at.asitplus.rqes.getSignAlgorithm
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.dif.rqes.serializers.Asn1EncodableBase64Serializer
 import at.asitplus.dif.rqes.getSignAlgorithm

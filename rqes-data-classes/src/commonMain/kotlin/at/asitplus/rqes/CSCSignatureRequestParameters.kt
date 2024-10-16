@@ -1,6 +1,6 @@
 package at.asitplus.rqes
 
-import at.asitplus.rqes.collection_entries.DocumentDigestEntries.CscDocumentDigest
+import at.asitplus.rqes.collection_entries.CscDocumentDigest
 import at.asitplus.rqes.enums.OperationModeEnum
 import at.asitplus.rqes.enums.SignatureQualifierEnum
 import at.asitplus.rqes.serializers.CSCSignatureRequestParameterSerializer

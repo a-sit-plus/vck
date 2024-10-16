@@ -2,8 +2,7 @@ package at.asitplus.rqes.collection_entries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.RqesDocumentDigestEntry
-import at.asitplus.dif.rqes.enums.SignatureQualifierEnum
+import at.asitplus.rqes.enums.SignatureQualifierEnum
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
