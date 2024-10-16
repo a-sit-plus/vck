@@ -1,8 +1,10 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.github.aakira.napier.Napier
@@ -35,21 +37,36 @@ class VerifierAgent private constructor(
     /**
      * Verifies a presentation of some credentials that a holder issued with that [challenge] we sent before.
      */
-    override fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
-        val sdJwtSigned = runCatching { SdJwtSigned.parse(it) }.getOrNull()
+    override fun verifyPresentation(input: String, challenge: String): Verifier.VerifyPresentationResult {
+        val sdJwtSigned = runCatching { SdJwtSigned.parse(input) }.getOrNull()
         if (sdJwtSigned != null) {
-            return validator.verifyVpSdJwt(it, challenge, keyMaterial.publicKey)
+            return validator.verifyVpSdJwt(input, challenge, keyMaterial.publicKey)
         }
-        val jwsSigned = JwsSigned.deserialize(it).getOrNull()
+        val jwsSigned = JwsSigned.deserialize(input).getOrNull()
         if (jwsSigned != null) {
-            return validator.verifyVpJws(it, challenge, keyMaterial.publicKey)
+            return validator.verifyVpJws(input, challenge, keyMaterial.publicKey)
         }
-        val document = it.decodeToByteArrayOrNull(Base16(strict = true))
+        val document = input.decodeToByteArrayOrNull(Base16(false))
             ?.let { bytes -> Document.deserialize(bytes).getOrNull() }
         if (document != null) {
-            return validator.verifyDocument(document, challenge)
+            val verifiedDocument = runCatching {
+                validator.verifyDocument(document, challenge)
+            }.getOrElse {
+                return Verifier.VerifyPresentationResult.InvalidStructure(input)
+            }
+            return Verifier.VerifyPresentationResult.SuccessIso(listOf(verifiedDocument))
         }
-        return Verifier.VerifyPresentationResult.InvalidStructure(it)
+        val deviceResponse = input.decodeToByteArrayOrNull(Base64UrlStrict)
+            ?.let { bytes -> DeviceResponse.deserialize(bytes).getOrNull() }
+        if (deviceResponse != null) {
+            val result = runCatching {
+                validator.verifyDeviceResponse(deviceResponse, challenge)
+            }.getOrElse {
+                return Verifier.VerifyPresentationResult.InvalidStructure(input)
+            }
+            return result
+        }
+        return Verifier.VerifyPresentationResult.InvalidStructure(input)
             .also { Napier.w("Could not verify presentation, unknown format: $it") }
     }
 

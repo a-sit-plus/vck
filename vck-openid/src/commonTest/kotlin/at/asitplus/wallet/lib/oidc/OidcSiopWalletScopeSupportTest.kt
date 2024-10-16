@@ -157,7 +157,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
 
             val result = verifierSiop.validateAuthnResponse(authnResponse.url)
             result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
-            result.document.validItems.shouldNotBeEmpty()
+            result.documents.first().validItems.shouldNotBeEmpty()
         }
     }
 })

@@ -55,7 +55,7 @@ class VerifiablePresentationFactory(
         challenge: String,
         credential: SubjectCredentialStore.StoreEntry.Iso,
         requestedClaims: Collection<NormalizedJsonPath>
-    ): Holder.CreatePresentationResult.Document {
+    ): Holder.CreatePresentationResult.DeviceResponse {
         val deviceSignature = coseService.createSignedCose(
             payload = challenge.encodeToByteArray(), addKeyId = false
         ).getOrElse {
@@ -99,20 +99,25 @@ class VerifiablePresentationFactory(
                     ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
             }
         }
-
-        return Holder.CreatePresentationResult.Document(
-            Document(
-                docType = credential.scheme.isoDocType!!,
-                issuerSigned = IssuerSigned.fromIssuerSignedItems(
-                    namespacedItems = disclosedItems,
-                    issuerAuth = credential.issuerSigned.issuerAuth
-                ),
-                deviceSigned = DeviceSigned(
-                    namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf())),
-                    deviceAuth = DeviceAuth(
-                        deviceSignature = deviceSignature
+        return Holder.CreatePresentationResult.DeviceResponse(
+            DeviceResponse(
+                version = "1.0",
+                documents = arrayOf(
+                    Document(
+                        docType = credential.scheme.isoDocType!!,
+                        issuerSigned = IssuerSigned.fromIssuerSignedItems(
+                            namespacedItems = disclosedItems,
+                            issuerAuth = credential.issuerSigned.issuerAuth
+                        ),
+                        deviceSigned = DeviceSigned(
+                            namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf())),
+                            deviceAuth = DeviceAuth(
+                                deviceSignature = deviceSignature
+                            )
+                        )
                     )
-                )
+                ),
+                status = 0U,
             )
         )
     }

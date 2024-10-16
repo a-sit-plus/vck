@@ -481,7 +481,7 @@ class OidcSiopVerifier private constructor(
         /**
          * Successfully decoded and validated the response from the Wallet (ISO credential)
          */
-        data class SuccessIso(val document: IsoDocumentParsed, val state: String?) :
+        data class SuccessIso(val documents: Collection<IsoDocumentParsed>, val state: String?) :
             AuthnResponseResult()
     }
 
@@ -656,7 +656,7 @@ class OidcSiopVerifier private constructor(
                 .also { Napier.i("VP success: $this") }
 
         is Verifier.VerifyPresentationResult.SuccessIso ->
-            AuthnResponseResult.SuccessIso(document, state)
+            AuthnResponseResult.SuccessIso(documents, state)
                 .also { Napier.i("VP success: $this") }
 
         is Verifier.VerifyPresentationResult.SuccessSdJwt ->

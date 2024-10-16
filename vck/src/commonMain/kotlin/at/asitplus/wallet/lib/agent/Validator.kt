@@ -241,12 +241,31 @@ class Validator(
     }
 
     /**
+     * Validates an ISO device response, equivalent of a Verifiable Presentation
+     */
+    @Throws(IllegalArgumentException::class)
+    fun verifyDeviceResponse(deviceResponse: DeviceResponse, challenge: String): Verifier.VerifyPresentationResult {
+        if (deviceResponse.status != 0U) {
+            throw IllegalArgumentException("status")
+                .also { Napier.w("Status invalid: ${deviceResponse.status}") }
+        }
+        if (deviceResponse.documents == null) {
+            throw IllegalArgumentException("documents")
+                .also { Napier.w("No documents: $deviceResponse") }
+        }
+        return Verifier.VerifyPresentationResult.SuccessIso(
+            documents = deviceResponse.documents.map { verifyDocument(it, challenge) }
+        )
+    }
+
+    /**
      * Validates an ISO document, equivalent of a Verifiable Presentation
      */
-    fun verifyDocument(doc: Document, challenge: String): Verifier.VerifyPresentationResult {
+    @Throws(IllegalArgumentException::class)
+    fun verifyDocument(doc: Document, challenge: String): IsoDocumentParsed {
         val docSerialized = doc.serialize().encodeToString(Base16(strict = true))
         if (doc.errors != null) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
+            throw IllegalArgumentException("errors")
                 .also { Napier.w("Document has errors: ${doc.errors}") }
         }
         val issuerSigned = doc.issuerSigned
@@ -254,36 +273,36 @@ class Validator(
 
         val issuerKey = issuerAuth.unprotectedHeader?.certificateChain?.let {
             X509Certificate.decodeFromDerOrNull(it)?.publicKey?.toCoseKey()?.getOrNull()
-        } ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
+        } ?: throw IllegalArgumentException("issuerKey")
             .also { Napier.w("Got no issuer key in $issuerAuth") }
 
         if (verifierCoseService.verifyCose(issuerAuth, issuerKey).isFailure) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
+            throw IllegalArgumentException("issuerAuth")
                 .also { Napier.w("IssuerAuth not verified: $issuerAuth") }
         }
 
         val mso = issuerSigned.getIssuerAuthPayloadAsMso().getOrNull()
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
+            ?: throw IllegalArgumentException("mso")
                 .also { Napier.w("MSO is null: ${issuerAuth.payload?.encodeToString(Base16(strict = true))}") }
         if (mso.docType != doc.docType) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
+            throw IllegalArgumentException("mso.docType")
                 .also { Napier.w("Invalid MSO docType '${mso.docType}' does not match Doc docType '${doc.docType}") }
         }
         val walletKey = mso.deviceKeyInfo.deviceKey
         val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
+            ?: throw IllegalArgumentException("deviceSignature")
                 .also { Napier.w("DeviceSignature is null: ${doc.deviceSigned.deviceAuth}") }
 
         if (verifierCoseService.verifyCose(deviceSignature, walletKey).isFailure) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
+            throw IllegalArgumentException("deviceSignature")
                 .also { Napier.w("DeviceSignature not verified") }
         }
 
         val deviceSignaturePayload = deviceSignature.payload
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
+            ?: throw IllegalArgumentException("challenge")
                 .also { Napier.w("DeviceSignature does not contain challenge") }
         if (!deviceSignaturePayload.contentEquals(challenge.encodeToByteArray())) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(docSerialized)
+            throw IllegalArgumentException("challenge")
                 .also { Napier.w("DeviceSignature does not contain correct challenge") }
         }
 
@@ -298,9 +317,7 @@ class Validator(
                 }
             }
         }
-        return Verifier.VerifyPresentationResult.SuccessIso(
-            IsoDocumentParsed(mso = mso, validItems = validItems, invalidItems = invalidItems)
-        )
+        return IsoDocumentParsed(mso = mso, validItems = validItems, invalidItems = invalidItems)
     }
 
     /**

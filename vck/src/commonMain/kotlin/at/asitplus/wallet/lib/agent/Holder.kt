@@ -1,15 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
+import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.dif.ConstraintField
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.PresentationSubmission
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import kotlinx.serialization.Serializable
 
@@ -189,9 +185,9 @@ interface Holder {
         data class SdJwt(val sdJwt: String) : CreatePresentationResult()
 
         /**
-         * [document] contains a valid ISO 18013 [Document] with [IssuerSigned] and [DeviceSigned] structures
+         * [deviceResponse] contains a valid ISO 18013 [DeviceResponse] with [Document] and [DeviceSigned] structures
          */
-        data class Document(val document: at.asitplus.wallet.lib.iso.Document) :
+        data class DeviceResponse(val deviceResponse: at.asitplus.wallet.lib.iso.DeviceResponse) :
             CreatePresentationResult()
     }
 
