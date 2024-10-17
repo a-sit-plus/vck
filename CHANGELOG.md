@@ -2,6 +2,9 @@
 
 Release 5.1.0:
  - tbd
+ - New Class `SignatureRequestFrom` to handle signature requests by reference
+ - Rename `AuthenticationRequestParser` to `RequestParser`
+   - `RequestParser` can now handle `SignatureRequestFrom`
 
 Release 5.0.1:
  - Update JsonPath4K to 2.4.0

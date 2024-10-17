@@ -1,15 +1,14 @@
-@file:UseSerializers(UrlSerializer::class)
-
-package at.asitplus.dif.rqes
+package at.asitplus.dif.rqes.collection_entries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.RqesDocumentDigestEntry
+import at.asitplus.dif.rqes.enums.SignatureQualifierEnum
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.UseSerializers
 
 
 /**
@@ -17,7 +16,7 @@ import kotlinx.serialization.UseSerializers
  * leveraging upcoming changes to [OpenID4VP](https://github.com/openid/OpenID4VP/pull/197)
  */
 @Serializable
-sealed class TransactionDataEntry {
+sealed class TransactionData {
 
     /**
      * D3.1: UC Specification WP3:
@@ -33,7 +32,7 @@ sealed class TransactionDataEntry {
          * to denote a Qualified Electronic Signature according to eIDAS.
          */
         @SerialName("signatureQualifier")
-        val signatureQualifier: String? = null,
+        val signatureQualifier: SignatureQualifierEnum? = null,
 
         /**
          * CSC: OPTIONAL.
@@ -48,12 +47,12 @@ sealed class TransactionDataEntry {
          * document to be signed (SD). This
          * applies for both cases, where a
          * document is signed, or a digest is
-         * signed. Every entry is [DocumentDigestEntry]
+         * signed. Every entry is [RqesDocumentDigestEntry]
          *
          * !!! Currently not compatible with the CSC definition of documentDigests
          */
         @SerialName("documentDigests")
-        val documentDigests: List<DocumentDigestEntry>,
+        val documentDigests: List<RqesDocumentDigestEntry>,
 
         /**
          * D3.1: UC Specification WP3: OPTIONAL.
@@ -64,7 +63,7 @@ sealed class TransactionDataEntry {
          */
         @SerialName("processID")
         val processID: String? = null,
-    ) : TransactionDataEntry() {
+    ) : TransactionData() {
 
         /**
          * D3.1: UC Specification WP3:
@@ -80,11 +79,11 @@ sealed class TransactionDataEntry {
              * Safe way to construct the object as init throws
              */
             fun create(
-                signatureQualifier: String?,
+                signatureQualifier: SignatureQualifierEnum?,
                 credentialId: String?,
-                documentDigest: List<DocumentDigestEntry>,
+                documentDigest: List<RqesDocumentDigestEntry>,
                 processID: String?,
-            ): KmmResult<TransactionDataEntry> =
+            ): KmmResult<TransactionData> =
                 runCatching {
                     QesAuthorization(
                         signatureQualifier = signatureQualifier,
@@ -124,7 +123,7 @@ sealed class TransactionDataEntry {
          * String containing the base64-encoded
          * octet-representation of applying the
          * algorithm from
-         * [qcHashAlgorithmOID] to the octet-
+         * [qcHashAlgorithmOid] to the octet-
          * representation of the document
          * referenced by [qcTermsConditionsUri]
          */
@@ -141,8 +140,8 @@ sealed class TransactionDataEntry {
          */
         @SerialName("QC_hashAlgorithmOID")
         @Serializable(ObjectIdSerializer::class)
-        val qcHashAlgorithmOID: ObjectIdentifier,
-    ) : TransactionDataEntry() {
+        val qcHashAlgorithmOid: ObjectIdentifier,
+    ) : TransactionData() {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other == null || this::class != other::class) return false
@@ -151,7 +150,7 @@ sealed class TransactionDataEntry {
 
             if (qcTermsConditionsUri != other.qcTermsConditionsUri) return false
             if (!qcHash.contentEquals(other.qcHash)) return false
-            if (qcHashAlgorithmOID != other.qcHashAlgorithmOID) return false
+            if (qcHashAlgorithmOid != other.qcHashAlgorithmOid) return false
 
             return true
         }
@@ -159,7 +158,7 @@ sealed class TransactionDataEntry {
         override fun hashCode(): Int {
             var result = qcTermsConditionsUri.hashCode()
             result = 31 * result + qcHash.contentHashCode()
-            result = 31 * result + qcHashAlgorithmOID.hashCode()
+            result = 31 * result + qcHashAlgorithmOid.hashCode()
             return result
         }
     }

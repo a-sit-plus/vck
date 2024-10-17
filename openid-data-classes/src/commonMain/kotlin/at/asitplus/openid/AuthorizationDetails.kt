@@ -1,6 +1,8 @@
 package at.asitplus.openid
 
-import at.asitplus.dif.rqes.DocumentLocationEntry
+import at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries.OAuthDocumentDigest
+import at.asitplus.dif.rqes.collection_entries.DocumentLocation
+import at.asitplus.dif.rqes.enums.SignatureQualifierEnum
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
@@ -79,6 +81,7 @@ sealed class AuthorizationDetails {
          * Credential Configuration in the [IssuerMetadata.supportedCredentialConfigurations]. The Wallet MUST use these
          * identifiers together with an Access Token in subsequent Credential Requests.
          */
+        // TODO is required in OID4VCI!
         @SerialName("credential_identifiers")
         val credentialIdentifiers: Set<String>? = null,
     ) : AuthorizationDetails()
@@ -101,14 +104,14 @@ sealed class AuthorizationDetails {
          * signature to be created
          */
         @SerialName("signatureQualifier")
-        val signatureQualifier: String? = null,
+        val signatureQualifier: SignatureQualifierEnum? = null,
 
         /**
          * CSC: An array composed of entries for every document to be signed. This applies for
          * array both cases, where are document is signed or a digest is signed
          */
         @SerialName("documentDigests")
-        val documentDigestsCSC: Collection<DocumentDigestCSCEntry>,
+        val documentDigests: Collection<OAuthDocumentDigest>,
 
         /**
          * CSC: String containing the OID of the hash algorithm used to generate the hashes
@@ -116,7 +119,7 @@ sealed class AuthorizationDetails {
          */
         @SerialName("hashAlgorithmOID")
         @Serializable(ObjectIdSerializer::class)
-        val hashAlgorithmOID: ObjectIdentifier,
+        val hashAlgorithmOid: ObjectIdentifier,
 
         /**
          * CSC: An array of strings designating the locations of
@@ -134,7 +137,7 @@ sealed class AuthorizationDetails {
          * in the Wallet-centric model)
          */
         @SerialName("documentLocations")
-        val documentLocations: Collection<DocumentLocationEntry>,
+        val documentLocations: Collection<DocumentLocation>,
     ) : AuthorizationDetails()
 
     companion object {
