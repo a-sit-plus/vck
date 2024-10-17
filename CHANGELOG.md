@@ -1,10 +1,8 @@
 # Changelog
 
-Release 5.1.0:
+Release 5.0.1:
  - Update JsonPath4K to 2.4.0
  - Fix XCF export with transitive dependencies
-
-Release 5.0.1:
  - Fix verifiable presentation of ISO credentials to contain `DeviceResponse` instead of a `Document`
  - Data classes for verification result of ISO structures now may contain more than one document
 

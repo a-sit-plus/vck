@@ -32,11 +32,11 @@ data class PresentationDefinition(
         formats: FormatHolder
     ) : this(id = uuid4().toString(), inputDescriptors = inputDescriptors, formats = formats)
 
-    fun serialize() = vckJsonSerializer.encodeToString(this)
+    fun serialize() = jsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            vckJsonSerializer.decodeFromString<PresentationDefinition>(it)
+            jsonSerializer.decodeFromString<PresentationDefinition>(it)
         }.wrap()
     }
 }
