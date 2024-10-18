@@ -1,7 +1,10 @@
 # Changelog
 
 Release 5.1.0:
- - OID4VCI: `WalletService` supports building multiple authorization details to request a token for more than one credential
+ - OID4VCI:
+   - `WalletService` supports building multiple authorization details to request a token for more than one credential
+   - Remove `buildAuthorizationDetails(RequestOptions)` for `WalletService`, please migrate to `buildScope(RequestOptions)`
+   - Note that multiple `scope` values may be joined with a whitespace ` `
 
 Release 5.0.1:
  - Update JsonPath4K to 2.4.0

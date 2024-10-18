@@ -153,6 +153,8 @@ class SimpleAuthorizationService(
 
         TokenResponseParameters(
             accessToken = tokenService.provideNonce().also {
+                // TODO Also store the scope values or authorization details associated with that access token,
+                // so it can be verified when issuing a credential
                 accessTokenToUserInfoStore.put(it, userInfo)
             },
             tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
