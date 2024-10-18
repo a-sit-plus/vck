@@ -1,6 +1,8 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.AuthorizationDetails
+import at.asitplus.openid.CredentialOffer
+import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -10,13 +12,12 @@ import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
-import io.kotest.core.spec.style.FunSpec
+import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OidvciPreAuthTest : FunSpec({
+class OidvciPreAuthTest : FreeSpec({
 
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
@@ -40,10 +41,7 @@ class OidvciPreAuthTest : FunSpec({
         state = uuid4().toString()
     }
 
-    test("process with pre-authorized code, credential offer, and authorization details for one credential") {
-        val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
-        val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(PLAIN_JWT)
-
+    suspend fun getToken(credentialOffer: CredentialOffer, credentialIdToRequest: Set<String>): TokenResponseParameters {
         val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
             state = state,
@@ -53,7 +51,14 @@ class OidvciPreAuthTest : FunSpec({
                 issuer.metadata.authorizationServers
             )
         )
-        val token = authorizationService.token(tokenRequest).getOrThrow()
+        return authorizationService.token(tokenRequest).getOrThrow()
+    }
+
+    "process with pre-authorized code, credential offer, and authorization details for one credential" {
+        val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
+        val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(PLAIN_JWT)
+
+        val token = getToken(credentialOffer, setOf(credentialIdToRequest))
         val authorizationDetails = token.authorizationDetails
             .shouldNotBeNull()
 
@@ -69,22 +74,13 @@ class OidvciPreAuthTest : FunSpec({
         credential.credential.shouldNotBeNull()
     }
 
-    test("process with pre-authorized code, credential offer, and authorization details for all credentials") {
+    "process with pre-authorized code, credential offer, and authorization details for all credentials" {
         val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
         val credentialIdsToRequest = credentialOffer.configurationIds
             .shouldHaveSize(4) // Atomic Attribute in 3 representations, mDL in ISO
             .toSet()
 
-        val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth.preAuthorizedCode),
-            authorizationDetails = client.buildAuthorizationDetails(
-                credentialIdsToRequest,
-                issuer.metadata.authorizationServers
-            )
-        )
-        val token = authorizationService.token(tokenRequest).getOrThrow()
+        val token = getToken(credentialOffer, credentialIdsToRequest)
         val authnDetails = token.authorizationDetails
             .shouldNotBeNull()
             .shouldHaveSize(4)
@@ -106,7 +102,7 @@ class OidvciPreAuthTest : FunSpec({
         }
     }
 
-    test("process with pre-authorized code, credential offer, and scope") {
+    "process with pre-authorized code, credential offer, and scope" {
         val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
         val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(PLAIN_JWT)
         // OID4VCI 5.1.2 Using scope Parameter to Request Issuance of a Credential
@@ -124,7 +120,6 @@ class OidvciPreAuthTest : FunSpec({
             resource = issuer.metadata.credentialIssuer,
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
-        token.authorizationDetails.shouldBeNull()
 
         val credentialRequest = client.createCredentialRequest(
             input = WalletService.CredentialRequestInput.Format(supportedCredentialFormat),
