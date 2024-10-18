@@ -134,29 +134,49 @@ class WalletService(
     /**
      * Build authorization details for use in [OAuth2Client.createAuthRequest].
      *
-     *
-     * @param credentialConfigurationId which credential (the key) from
-     * [IssuerMetadata.supportedCredentialConfigurations] to request
+     * @param credentialConfigurationId which credentials to request, i.e.
+     * one of the keys from [IssuerMetadata.supportedCredentialConfigurations],
+     * or from [CredentialOffer.configurationIds]
      * @param authorizationServers from [IssuerMetadata.authorizationServers]
      */
-    suspend fun buildAuthorizationDetails(
+    fun buildAuthorizationDetails(
         credentialConfigurationId: String,
         authorizationServers: Set<String>? = null,
-    ) = setOf(
+    ) = buildAuthorizationDetails(setOf(credentialConfigurationId), authorizationServers)
+
+    /**
+     * Build authorization details for use in [OAuth2Client.createAuthRequest].
+     *
+     * @param credentialConfigurationIds which credentials to request, i.e.
+     * filtered keys from [IssuerMetadata.supportedCredentialConfigurations],
+     * or from [CredentialOffer.configurationIds]
+     * @param authorizationServers from [IssuerMetadata.authorizationServers]
+     */
+    fun buildAuthorizationDetails(
+        credentialConfigurationIds: Set<String>,
+        authorizationServers: Set<String>? = null,
+    ) = credentialConfigurationIds.map {
         AuthorizationDetails.OpenIdCredential(
-            credentialConfigurationId = credentialConfigurationId,
+            credentialConfigurationId = it,
             locations = authorizationServers,
             // TODO Test in real-world settings, is this correct?
-            credentialIdentifiers = setOf(credentialConfigurationId)
+            credentialIdentifiers = setOf(it)
         )
-    )
+    }.toSet()
 
     /**
      * Build authorization details for use in [OAuth2Client.createAuthRequest].
      */
-    suspend fun buildAuthorizationDetails(
+    fun buildAuthorizationDetails(
         requestOptions: RequestOptions
     ) = setOfNotNull(requestOptions.toAuthnDetails())
+
+    /**
+     * Build authorization details for use in [OAuth2Client.createAuthRequest].
+     */
+    fun buildAuthorizationDetails(
+        requestOptions: Collection<RequestOptions>
+    ) = requestOptions.mapNotNull { it.toAuthnDetails() }.toSet()
 
     sealed class CredentialRequestInput {
         /**

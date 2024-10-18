@@ -1,7 +1,7 @@
 # Changelog
 
 Release 5.1.0:
- - tbd
+ - OID4VCI: `WalletService` supports building multiple authorization details to request a token for more than one credential
 
 Release 5.0.1:
  - Update JsonPath4K to 2.4.0
