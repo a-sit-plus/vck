@@ -9,6 +9,7 @@ Release 5.1.0:
  - Replace `relyingPartyUrl` with `clientIdScheme` on `OidcSiopVerifier`s constructor, to clarify use of `client_id` in requests
  - Rename objects in `OpenIdConstants.ProofType`, `OpenIdConstants.CliendIdScheme` and `OpenIdConstants.ResponseMode`
  - In all OpenID data classes, serialize strings only, and parse them to crypto data classes (from signum) in a separate property (this increases interop, as we can deserialize unsupported algorithms too)
+ - OID4VCI: `WalletService` supports building multiple authorization details to request a token for more than one credential
 
 Release 5.0.1:
  - Update JsonPath4K to 2.4.0

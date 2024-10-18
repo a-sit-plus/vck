@@ -106,12 +106,10 @@ class CredentialIssuer(
         credentialIssuer = publicContext,
         configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
         grants = CredentialOfferGrants(
-            preAuthorizedCode = authorizationService.providePreAuthorizedCode(user)?.let {
-                CredentialOfferGrantsPreAuthCode(
-                    preAuthorizedCode = it,
-                    authorizationServer = authorizationService.publicContext
-                )
-            }
+            preAuthorizedCode = CredentialOfferGrantsPreAuthCode(
+                preAuthorizedCode = authorizationService.providePreAuthorizedCode(user),
+                authorizationServer = authorizationService.publicContext
+            )
         )
     )
 
