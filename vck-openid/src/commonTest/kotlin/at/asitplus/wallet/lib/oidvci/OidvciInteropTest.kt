@@ -8,12 +8,13 @@ import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
+import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FunSpec
@@ -30,6 +31,8 @@ class OidvciInteropTest : FunSpec({
 
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
+    lateinit var client: WalletService
+    lateinit var state: String
 
     beforeEach {
         authorizationService = SimpleAuthorizationService(
@@ -44,6 +47,8 @@ class OidvciInteropTest : FunSpec({
             credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
             credentialProvider = DummyOAuth2IssuerCredentialDataProvider
         )
+        client = WalletService()
+        state = uuid4().toString()
     }
 
     test("Parse EUDIW URL") {
@@ -544,11 +549,9 @@ class OidvciInteropTest : FunSpec({
     }
 
     test("process with pre-authorized code, credential offer, and authorization details for one credential") {
-        val client = WalletService()
         val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
         val credentialIssuerMetadata = issuer.metadata
         val credentialIdToRequest = credentialOffer.configurationIds.first()
-        val state = uuid4().toString()
 
         val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
@@ -560,8 +563,10 @@ class OidvciInteropTest : FunSpec({
             )
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
-        token.authorizationDetails.shouldNotBeNull()
-        val first = token.authorizationDetails!!.first().shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
+        val authorizationDetails = token.authorizationDetails
+            .shouldNotBeNull()
+
+        val first = authorizationDetails.first().shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
         val credentialRequest = client.createCredentialRequest(
             input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialConfigurationId!!),
             clientNonce = token.clientNonce,
@@ -574,12 +579,10 @@ class OidvciInteropTest : FunSpec({
     }
 
     test("process with pre-authorized code, credential offer, and authorization details for all credentials") {
-        val client = WalletService()
         val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
         val credentialIdsToRequest = credentialOffer.configurationIds
             .shouldHaveSize(4) // Atomic Attribute in 3 representations, mDL in ISO
             .toSet()
-        val state = uuid4().toString()
 
         val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
@@ -613,12 +616,7 @@ class OidvciInteropTest : FunSpec({
     }
 
     test("process with authorization code flow and request options") {
-        val client = WalletService()
-        val state = uuid4().toString()
-        val requestOptions = WalletService.RequestOptions(
-            credentialScheme = AtomicAttribute2023,
-            representation = CredentialRepresentation.PLAIN_JWT,
-        )
+        val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
         val scope = client.buildScope(requestOptions, issuer.metadata)
         val authnRequest = client.oauth2Client.createAuthRequest(
             state = state,
@@ -650,11 +648,9 @@ class OidvciInteropTest : FunSpec({
     }
 
     test("process with authorization code flow and request options for multiple credentials") {
-        val client = WalletService()
-        val state = uuid4().toString()
         val requestOptions = setOf(
-            WalletService.RequestOptions(AtomicAttribute2023, CredentialRepresentation.SD_JWT),
-            WalletService.RequestOptions(AtomicAttribute2023, CredentialRepresentation.ISO_MDOC),
+            RequestOptions(AtomicAttribute2023, SD_JWT),
+            RequestOptions(AtomicAttribute2023, ISO_MDOC),
         ).associateBy {
             client.buildScope(it, issuer.metadata)!!
         }
@@ -690,7 +686,6 @@ class OidvciInteropTest : FunSpec({
     }
 
     test("process with pre-authorized code, credential offer, and scope") {
-        val client = WalletService()
         val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
         val credentialIdToRequest = credentialOffer.configurationIds.first()
         // OID4VCI 5.1.2 Using scope Parameter to Request Issuance of a Credential
@@ -698,7 +693,6 @@ class OidvciInteropTest : FunSpec({
             .shouldNotBeNull()
         val scope = supportedCredentialFormat.scope
             .shouldNotBeNull()
-        val state = uuid4().toString()
 
         val preAuth = credentialOffer.grants?.preAuthorizedCode
             .shouldNotBeNull()

@@ -2,11 +2,10 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.data.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -16,6 +15,7 @@ import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
+import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
@@ -33,56 +33,48 @@ class OidvciProcessTest : FunSpec({
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
     lateinit var client: WalletService
+    lateinit var state: String
 
     beforeEach {
         authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(
                 DummyOAuth2DataProvider,
-                setOf(ConstantIndex.AtomicAttribute2023)
+                setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)
             ),
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
-            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
+            credentialSchemes = setOf(AtomicAttribute2023),
             credentialProvider = DummyOAuth2IssuerCredentialDataProvider,
         )
-        client = WalletService(
-            clientId = "https://wallet.a-sit.at/app",
-            redirectUrl = "https://wallet.a-sit.at/callback",
-            keyMaterial = EphemeralKeyWithSelfSignedCert()
-        )
+        client = WalletService()
+        state = uuid4().toString()
     }
 
     test("process with W3C VC JWT") {
-        val requestOptions = WalletService.RequestOptions(
-            ConstantIndex.AtomicAttribute2023,
-            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
-        )
-        val credential = runProcess(authorizationService, issuer, client, requestOptions)
+        val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
+        val credential = runProcess(authorizationService, issuer, client, requestOptions, state)
         credential.format shouldBe CredentialFormatEnum.JWT_VC
         val serializedCredential = credential.credential.shouldNotBeNull()
 
         val jws = JwsSigned.deserialize(serializedCredential).getOrThrow()
-        val vcJws = VerifiableCredentialJws.deserialize(jws.payload.decodeToString()).getOrThrow()
-        vcJws.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
+        VerifiableCredentialJws.deserialize(jws.payload.decodeToString())
+            .getOrThrow().vc.credentialSubject.shouldBeInstanceOf<at.asitplus.wallet.lib.data.AtomicAttribute2023>()
     }
 
     test("process with W3C VC JWT, proof over different keys") {
-        val requestOptions = WalletService.RequestOptions(
-            ConstantIndex.AtomicAttribute2023,
-            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
-        )
+        val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
         val scope = client.buildScope(requestOptions, issuer.metadata)
         val authnRequest = client.oauth2Client.createAuthRequest(
-            state = requestOptions.state,
+            state = state,
             scope = scope,
             resource = issuer.metadata.credentialIssuer,
         )
         val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
         val code = authnResponse.params.code.shouldNotBeNull()
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = requestOptions.state,
+            state = state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
             scope = scope,
             resource = issuer.metadata.credentialIssuer,
@@ -101,7 +93,7 @@ class OidvciProcessTest : FunSpec({
         val credentialRequest = CredentialRequestParameters(
             format = CredentialFormatEnum.JWT_VC,
             credentialDefinition = SupportedCredentialFormatDefinition(
-                types = setOf(VERIFIABLE_CREDENTIAL, ConstantIndex.AtomicAttribute2023.vcType),
+                types = setOf(VERIFIABLE_CREDENTIAL, AtomicAttribute2023.vcType),
             ),
             proofs = CredentialRequestProofContainer(
                 proofType = OpenIdConstants.ProofType.JWT,
@@ -109,9 +101,8 @@ class OidvciProcessTest : FunSpec({
             )
         )
 
-        val credential = issuer.credential(token.accessToken, credentialRequest)
-        credential.isFailure shouldBe true
-        credential.exceptionOrNull().shouldBeInstanceOf<OAuth2Exception>()
+        issuer.credential(token.accessToken, credentialRequest)
+            .exceptionOrNull().shouldBeInstanceOf<OAuth2Exception>()
     }
 
     test("process with W3C VC JWT, authorizationService with defect mapstore") {
@@ -119,21 +110,18 @@ class OidvciProcessTest : FunSpec({
             codeToUserInfoStore = defectMapStore(),
             strategy = CredentialAuthorizationServiceStrategy(
                 DummyOAuth2DataProvider,
-                setOf(ConstantIndex.AtomicAttribute2023)
+                setOf(AtomicAttribute2023)
             ),
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
-            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023),
+            credentialSchemes = setOf(AtomicAttribute2023),
             credentialProvider = DummyOAuth2IssuerCredentialDataProvider
         )
-        val requestOptions = WalletService.RequestOptions(
-            ConstantIndex.AtomicAttribute2023,
-            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
-        )
+        val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
 
-        shouldThrow<OAuth2Exception> { runProcess(authorizationService, issuer, client, requestOptions) }
+        shouldThrow<OAuth2Exception> { runProcess(authorizationService, issuer, client, requestOptions, state) }
     }
 
     test("process with W3C VC SD-JWT") {
@@ -141,10 +129,11 @@ class OidvciProcessTest : FunSpec({
             authorizationService,
             issuer,
             client,
-            WalletService.RequestOptions(
-                ConstantIndex.AtomicAttribute2023,
-                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-            )
+            RequestOptions(
+                AtomicAttribute2023,
+                representation = SD_JWT,
+            ),
+            state
         )
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential.shouldNotBeNull()
@@ -152,13 +141,13 @@ class OidvciProcessTest : FunSpec({
         val jws = JwsSigned.deserialize(serializedCredential.substringBefore("~")).getOrThrow()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString()).getOrThrow()
 
-        sdJwt.disclosureDigests.shouldNotBeNull()
-        sdJwt.disclosureDigests!!.size shouldBeGreaterThan 1
+        sdJwt.disclosureDigests
+            .shouldNotBeNull()
+            .size shouldBeGreaterThan 1
     }
 
     test("process with W3C VC SD-JWT, credential offer, pre-authn") {
         val offer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
-        val state = uuid4().toString()
         val credentialIdToRequest = "AtomicAttribute2023#vc+sd-jwt"
         val preAuth = offer.grants!!.preAuthorizedCode!!
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
@@ -186,8 +175,9 @@ class OidvciProcessTest : FunSpec({
         val jws = JwsSigned.deserialize(serializedCredential.substringBefore("~")).getOrThrow()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString()).getOrThrow()
 
-        sdJwt.disclosureDigests.shouldNotBeNull()
-        sdJwt.disclosureDigests!!.size shouldBeGreaterThan 1
+        sdJwt.disclosureDigests
+            .shouldNotBeNull()
+            .size shouldBeGreaterThan 1
     }
 
     test("process with W3C VC SD-JWT one requested claim") {
@@ -195,11 +185,12 @@ class OidvciProcessTest : FunSpec({
             authorizationService,
             issuer,
             client,
-            WalletService.RequestOptions(
-                ConstantIndex.AtomicAttribute2023,
-                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+            RequestOptions(
+                AtomicAttribute2023,
+                representation = SD_JWT,
                 requestedAttributes = setOf(CLAIM_FAMILY_NAME)
-            )
+            ),
+            state
         )
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential.shouldNotBeNull()
@@ -207,8 +198,9 @@ class OidvciProcessTest : FunSpec({
         val jws = JwsSigned.deserialize(serializedCredential.substringBeforeLast("~")).getOrThrow()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString()).getOrThrow()
 
-        sdJwt.disclosureDigests.shouldNotBeNull()
-        sdJwt.disclosureDigests!!.size shouldBe 1
+        sdJwt.disclosureDigests
+            .shouldNotBeNull()
+            .size shouldBe 1
     }
 
     test("process with ISO mobile driving licence") {
@@ -216,10 +208,11 @@ class OidvciProcessTest : FunSpec({
             authorizationService,
             issuer,
             client,
-            WalletService.RequestOptions(
+            RequestOptions(
                 MobileDrivingLicenceScheme,
-                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-            )
+                representation = ISO_MDOC,
+            ),
+            state
         )
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC
         val serializedCredential = credential.credential.shouldNotBeNull()
@@ -238,11 +231,12 @@ class OidvciProcessTest : FunSpec({
             authorizationService,
             issuer,
             client,
-            WalletService.RequestOptions(
+            RequestOptions(
                 credentialScheme = MobileDrivingLicenceScheme,
-                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                representation = ISO_MDOC,
                 requestedAttributes = setOf(MobileDrivingLicenceDataElements.DOCUMENT_NUMBER)
-            )
+            ),
+            state
         )
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC
         val serializedCredential = credential.credential.shouldNotBeNull()
@@ -261,17 +255,17 @@ class OidvciProcessTest : FunSpec({
             authorizationService,
             issuer,
             client,
-            WalletService.RequestOptions(
-                ConstantIndex.AtomicAttribute2023,
-                representation = ConstantIndex.CredentialRepresentation.ISO_MDOC
-            )
+            RequestOptions(
+                AtomicAttribute2023,
+                representation = ISO_MDOC
+            ),
+            state
         )
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC
         val serializedCredential = credential.credential.shouldNotBeNull()
 
-        val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64())).getOrThrow()
-        val numberOfClaims = issuerSigned.namespaces?.values?.firstOrNull()?.entries?.size.shouldNotBeNull()
-        numberOfClaims shouldBeGreaterThan 1
+        IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64())).getOrThrow()
+            .namespaces?.values?.firstOrNull()?.entries?.size.shouldNotBeNull() shouldBeGreaterThan 1
     }
 
 })
@@ -286,16 +280,17 @@ private suspend fun runProcess(
     authorizationService: SimpleAuthorizationService,
     issuer: CredentialIssuer,
     client: WalletService,
-    requestOptions: WalletService.RequestOptions,
+    requestOptions: RequestOptions,
+    state: String
 ): CredentialResponseParameters {
     val scope = client.buildScope(requestOptions, issuer.metadata)
     val authnRequest = client.oauth2Client.createAuthRequest(
-        state = requestOptions.state,
+        state = state,
         scope = scope,
         resource = issuer.metadata.credentialIssuer
     )
     val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
-    authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+        .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
     val code = authnResponse.params.code.shouldNotBeNull()
     val tokenRequest = client.oauth2Client.createTokenRequestParameters(
         state = requestOptions.state,
