@@ -28,7 +28,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
-class OidvciProcessTest : FunSpec({
+class OidvciCodeFlowTest : FunSpec({
 
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
@@ -54,7 +54,7 @@ class OidvciProcessTest : FunSpec({
 
     test("process with W3C VC JWT") {
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-        val credential = runProcess(authorizationService, issuer, client, requestOptions, state)
+        val credential = runProcessWithCode(authorizationService, issuer, client, requestOptions, state)
         credential.format shouldBe CredentialFormatEnum.JWT_VC
         val serializedCredential = credential.credential.shouldNotBeNull()
 
@@ -121,11 +121,11 @@ class OidvciProcessTest : FunSpec({
         )
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
 
-        shouldThrow<OAuth2Exception> { runProcess(authorizationService, issuer, client, requestOptions, state) }
+        shouldThrow<OAuth2Exception> { runProcessWithCode(authorizationService, issuer, client, requestOptions, state) }
     }
 
     test("process with W3C VC SD-JWT") {
-        val credential = runProcess(
+        val credential = runProcessWithCode(
             authorizationService,
             issuer,
             client,
@@ -148,7 +148,7 @@ class OidvciProcessTest : FunSpec({
 
     test("process with W3C VC SD-JWT, credential offer, pre-authn") {
         val offer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
-        val credentialIdToRequest = "AtomicAttribute2023#vc+sd-jwt"
+        val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
         val preAuth = offer.grants!!.preAuthorizedCode!!
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
             state = state,
@@ -181,7 +181,7 @@ class OidvciProcessTest : FunSpec({
     }
 
     test("process with W3C VC SD-JWT one requested claim") {
-        val credential = runProcess(
+        val credential = runProcessWithCode(
             authorizationService,
             issuer,
             client,
@@ -204,7 +204,7 @@ class OidvciProcessTest : FunSpec({
     }
 
     test("process with ISO mobile driving licence") {
-        val credential = runProcess(
+        val credential = runProcessWithCode(
             authorizationService,
             issuer,
             client,
@@ -227,7 +227,7 @@ class OidvciProcessTest : FunSpec({
     }
 
     test("process with ISO mobile driving licence one requested claim") {
-        val credential = runProcess(
+        val credential = runProcessWithCode(
             authorizationService,
             issuer,
             client,
@@ -251,7 +251,7 @@ class OidvciProcessTest : FunSpec({
     }
 
     test("process with ISO atomic attributes") {
-        val credential = runProcess(
+        val credential = runProcessWithCode(
             authorizationService,
             issuer,
             client,
@@ -276,7 +276,7 @@ private fun defectMapStore() = object : MapStore<String, OidcUserInfoExtended> {
     override suspend fun remove(key: String): OidcUserInfoExtended? = null
 }
 
-private suspend fun runProcess(
+private suspend fun runProcessWithCode(
     authorizationService: SimpleAuthorizationService,
     issuer: CredentialIssuer,
     client: WalletService,
@@ -291,9 +291,10 @@ private suspend fun runProcess(
     )
     val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
         .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-    val code = authnResponse.params.code.shouldNotBeNull()
+    val code = authnResponse.params.code
+        .shouldNotBeNull()
     val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-        state = requestOptions.state,
+        state = state,
         authorization = OAuth2Client.AuthorizationForToken.Code(code),
         scope = scope,
         resource = issuer.metadata.credentialIssuer
