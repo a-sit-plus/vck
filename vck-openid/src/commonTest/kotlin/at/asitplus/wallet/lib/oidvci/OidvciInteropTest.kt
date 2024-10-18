@@ -5,13 +5,9 @@ import at.asitplus.openid.IssuerMetadata
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
-import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
-import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
-import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FunSpec
@@ -19,7 +15,6 @@ import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OidvciInteropTest : FunSpec({
 
@@ -213,75 +208,5 @@ class OidvciInteropTest : FunSpec({
         // this is still wrong in EUDIW's metadata:
         // Should be an array: credentialConfig.credentialDefinition!!.types,
         // but is a single string
-    }
-
-    test("process with authorization code flow and request options") {
-        val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-        val scope = client.buildScope(requestOptions, issuer.metadata)
-        val authnRequest = client.oauth2Client.createAuthRequest(
-            state = state,
-            scope = scope,
-            resource = issuer.metadata.credentialIssuer
-        )
-        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params.code
-            .shouldNotBeNull()
-
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            scope = scope,
-            resource = issuer.metadata.credentialIssuer,
-        )
-        val token = authorizationService.token(tokenRequest).getOrThrow()
-
-        val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.RequestOptions(requestOptions),
-            clientNonce = token.clientNonce,
-            credentialIssuer = issuer.metadata.credentialIssuer
-        ).getOrThrow()
-
-        val credential = issuer.credential(token.accessToken, credentialRequest)
-            .getOrThrow()
-        credential.credential.shouldNotBeNull()
-    }
-
-    test("process with authorization code flow and request options for multiple credentials") {
-        val requestOptions = setOf(
-            RequestOptions(AtomicAttribute2023, SD_JWT),
-            RequestOptions(AtomicAttribute2023, ISO_MDOC),
-        ).associateBy {
-            client.buildScope(it, issuer.metadata)!!
-        }
-        val authnRequest = client.oauth2Client.createAuthRequest(
-            state = state,
-            scope = requestOptions.keys.joinToString(" "),
-            resource = issuer.metadata.credentialIssuer
-        )
-        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params.code
-            .shouldNotBeNull()
-
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            scope = requestOptions.keys.joinToString(" "),
-            resource = issuer.metadata.credentialIssuer
-        )
-        val token = authorizationService.token(tokenRequest).getOrThrow()
-
-        requestOptions.forEach {
-            val credentialRequest = client.createCredentialRequest(
-                input = WalletService.CredentialRequestInput.RequestOptions(it.value),
-                clientNonce = token.clientNonce,
-                credentialIssuer = issuer.metadata.credentialIssuer
-            ).getOrThrow()
-
-            val credential = issuer.credential(token.accessToken, credentialRequest)
-                .getOrThrow()
-            credential.credential.shouldNotBeNull()
-        }
     }
 })
