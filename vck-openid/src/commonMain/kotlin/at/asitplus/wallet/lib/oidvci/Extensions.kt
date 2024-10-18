@@ -9,14 +9,15 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.AttributeIndex
-import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsIso
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
-fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<SignatureAlgorithm>? = null)
+fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<SignatureAlgorithm>? = null)
         : Map<String, SupportedCredentialFormat> {
     val iso = if (supportsIso) {
         isoNamespace!! to SupportedCredentialFormat.forIsoMdoc(
@@ -61,12 +62,17 @@ fun ConstantIndex.CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms:
     return listOfNotNull(iso, jwtVc, sdJwt).toMap()
 }
 
-fun ConstantIndex.CredentialScheme.toCredentialIdentifier() =
-    listOfNotNull(
-        if (supportsIso) isoNamespace!! else null,
-        if (supportsVcJwt) encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC) else null,
-        if (supportsSdJwt) encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT) else null
-    )
+fun CredentialScheme.toCredentialIdentifier() = listOfNotNull(
+    if (supportsIso) isoNamespace!! else null,
+    if (supportsVcJwt) encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC) else null,
+    if (supportsSdJwt) encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT) else null
+)
+
+fun CredentialScheme.toCredentialIdentifier(rep: CredentialRepresentation) = when (rep) {
+    CredentialRepresentation.PLAIN_JWT -> encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC)
+    CredentialRepresentation.SD_JWT -> encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT)
+    CredentialRepresentation.ISO_MDOC -> isoNamespace!!
+}
 
 /**
  * Reverse functionality of [decodeFromCredentialIdentifier],
@@ -83,7 +89,7 @@ private fun encodeToCredentialIdentifier(type: String, format: CredentialFormatE
  * e.g. from `AtomicAttribute2023#jwt_vc_json` to
  * [at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023] and [CredentialFormatEnum.JWT_VC]
  */
-fun decodeFromCredentialIdentifier(input: String): Pair<ConstantIndex.CredentialScheme, CredentialFormatEnum>? {
+fun decodeFromCredentialIdentifier(input: String): Pair<CredentialScheme, CredentialFormatEnum>? {
     if (input.contains("#")) {
         val vcTypeOrSdJwtType = input.substringBeforeLast("#")
         val credentialScheme = AttributeIndex.resolveSdJwtAttributeType(vcTypeOrSdJwtType)
@@ -99,9 +105,9 @@ fun decodeFromCredentialIdentifier(input: String): Pair<ConstantIndex.Credential
 }
 
 fun CredentialFormatEnum.toRepresentation() = when (this) {
-    CredentialFormatEnum.VC_SD_JWT -> ConstantIndex.CredentialRepresentation.SD_JWT
-    CredentialFormatEnum.MSO_MDOC -> ConstantIndex.CredentialRepresentation.ISO_MDOC
-    else -> ConstantIndex.CredentialRepresentation.PLAIN_JWT
+    CredentialFormatEnum.VC_SD_JWT -> CredentialRepresentation.SD_JWT
+    CredentialFormatEnum.MSO_MDOC -> CredentialRepresentation.ISO_MDOC
+    else -> CredentialRepresentation.PLAIN_JWT
 }
 
 fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {

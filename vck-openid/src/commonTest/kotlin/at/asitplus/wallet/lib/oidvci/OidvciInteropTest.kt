@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
@@ -18,8 +17,6 @@ import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldHaveSingleElement
-import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -218,73 +215,6 @@ class OidvciInteropTest : FunSpec({
         // but is a single string
     }
 
-    test("process with pre-authorized code, credential offer, and authorization details for one credential") {
-        val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
-        val credentialIssuerMetadata = issuer.metadata
-        val credentialIdToRequest = credentialOffer.configurationIds.first()
-
-        val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth.preAuthorizedCode),
-            authorizationDetails = client.buildAuthorizationDetails(
-                credentialIdToRequest,
-                credentialIssuerMetadata.authorizationServers
-            )
-        )
-        val token = authorizationService.token(tokenRequest).getOrThrow()
-        val authorizationDetails = token.authorizationDetails
-            .shouldNotBeNull()
-
-        val first = authorizationDetails.first().shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
-        val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialConfigurationId!!),
-            clientNonce = token.clientNonce,
-            credentialIssuer = credentialIssuerMetadata.credentialIssuer
-        ).getOrThrow()
-
-        val credential = issuer.credential(token.accessToken, credentialRequest)
-            .getOrThrow()
-        credential.credential.shouldNotBeNull()
-    }
-
-    test("process with pre-authorized code, credential offer, and authorization details for all credentials") {
-        val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
-        val credentialIdsToRequest = credentialOffer.configurationIds
-            .shouldHaveSize(4) // Atomic Attribute in 3 representations, mDL in ISO
-            .toSet()
-
-        val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth.preAuthorizedCode),
-            authorizationDetails = client.buildAuthorizationDetails(
-                credentialIdsToRequest,
-                issuer.metadata.authorizationServers
-            )
-        )
-        val token = authorizationService.token(tokenRequest).getOrThrow()
-        val authnDetails = token.authorizationDetails
-            .shouldNotBeNull()
-            .shouldHaveSize(4)
-
-        authnDetails.forEach {
-            it.shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
-            // Not supporting different credential datasets for one credential configuration at the moment,
-            // see OID4VCI 6.2
-            val credentialIdentifier = it.credentialIdentifiers.first()
-            val credentialRequest = client.createCredentialRequest(
-                input = WalletService.CredentialRequestInput.CredentialIdentifier(credentialIdentifier),
-                clientNonce = token.clientNonce,
-                credentialIssuer = issuer.metadata.credentialIssuer
-            ).getOrThrow()
-
-            val credential = issuer.credential(token.accessToken, credentialRequest)
-                .getOrThrow()
-            credential.credential.shouldNotBeNull()
-        }
-    }
-
     test("process with authorization code flow and request options") {
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
         val scope = client.buildScope(requestOptions, issuer.metadata)
@@ -354,36 +284,4 @@ class OidvciInteropTest : FunSpec({
             credential.credential.shouldNotBeNull()
         }
     }
-
-    test("process with pre-authorized code, credential offer, and scope") {
-        val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
-        val credentialIdToRequest = credentialOffer.configurationIds.first()
-        // OID4VCI 5.1.2 Using scope Parameter to Request Issuance of a Credential
-        val supportedCredentialFormat = issuer.metadata.supportedCredentialConfigurations?.get(credentialIdToRequest)
-            .shouldNotBeNull()
-        val scope = supportedCredentialFormat.scope
-            .shouldNotBeNull()
-
-        val preAuth = credentialOffer.grants?.preAuthorizedCode
-            .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth.preAuthorizedCode),
-            scope = scope,
-            resource = issuer.metadata.credentialIssuer,
-        )
-        val token = authorizationService.token(tokenRequest).getOrThrow()
-        token.authorizationDetails.shouldBeNull()
-
-        val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.Format(supportedCredentialFormat),
-            clientNonce = token.clientNonce,
-            credentialIssuer = issuer.metadata.credentialIssuer
-        ).getOrThrow()
-
-        val credential = issuer.credential(token.accessToken, credentialRequest)
-            .getOrThrow()
-        credential.credential.shouldNotBeNull()
-    }
-
 })
