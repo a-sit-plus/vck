@@ -73,16 +73,19 @@ class OidvciProcessTest : FunSpec({
             ConstantIndex.AtomicAttribute2023,
             representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT
         )
+        val scope = client.buildScope(requestOptions, issuer.metadata)
         val authnRequest = client.oauth2Client.createAuthRequest(
-            requestOptions.state,
-            client.buildAuthorizationDetails(requestOptions),
+            state = requestOptions.state,
+            scope = scope,
+            resource = issuer.metadata.credentialIssuer,
         )
         val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
         val code = authnResponse.params.code.shouldNotBeNull()
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
             state = requestOptions.state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            authorizationDetails = client.buildAuthorizationDetails(requestOptions)
+            scope = scope,
+            resource = issuer.metadata.credentialIssuer,
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
         val proof = client.createCredentialRequestProof(
@@ -161,15 +164,17 @@ class OidvciProcessTest : FunSpec({
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth.preAuthorizedCode),
-            authorizationDetails = setOf(
-                AuthorizationDetails.OpenIdCredential(credentialConfigurationId = credentialIdToRequest)
-            )
+            authorizationDetails = client.buildAuthorizationDetails(credentialIdToRequest)
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
-        token.authorizationDetails.shouldNotBeNull()
-        val first = token.authorizationDetails!!.first().shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
+        val authorizationDetails = token.authorizationDetails
+            .shouldNotBeNull()
+        val first = authorizationDetails.first().shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
+        // Not supporting different credential datasets for one credential configuration at the moment,
+        // see OID4VCI 6.2
+        val credentialIdentifier = first.credentialIdentifiers.first()
         val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialConfigurationId!!),
+            input = WalletService.CredentialRequestInput.CredentialIdentifier(credentialIdentifier),
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer
         ).getOrThrow()
@@ -283,9 +288,11 @@ private suspend fun runProcess(
     client: WalletService,
     requestOptions: WalletService.RequestOptions,
 ): CredentialResponseParameters {
+    val scope = client.buildScope(requestOptions, issuer.metadata)
     val authnRequest = client.oauth2Client.createAuthRequest(
-        requestOptions.state,
-        client.buildAuthorizationDetails(requestOptions),
+        state = requestOptions.state,
+        scope = scope,
+        resource = issuer.metadata.credentialIssuer
     )
     val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
     authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -293,7 +300,8 @@ private suspend fun runProcess(
     val tokenRequest = client.oauth2Client.createTokenRequestParameters(
         state = requestOptions.state,
         authorization = OAuth2Client.AuthorizationForToken.Code(code),
-        authorizationDetails = client.buildAuthorizationDetails(requestOptions)
+        scope = scope,
+        resource = issuer.metadata.credentialIssuer
     )
     val token = authorizationService.token(tokenRequest).getOrThrow()
     val credentialRequest = client.createCredentialRequest(

@@ -24,7 +24,8 @@ class SerializationTest : FunSpec({
                 format = CredentialFormatEnum.JWT_VC,
                 credentialDefinition = SupportedCredentialFormatDefinition(
                     types = setOf(VERIFIABLE_CREDENTIAL, randomString()),
-                )
+                ),
+                credentialIdentifiers = setOf(randomString()),
             )
         ),
         redirectUrl = randomString(),

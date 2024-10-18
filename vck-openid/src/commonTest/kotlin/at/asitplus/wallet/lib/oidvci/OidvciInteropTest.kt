@@ -597,8 +597,11 @@ class OidvciInteropTest : FunSpec({
 
         authnDetails.forEach {
             it.shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
+            // Not supporting different credential datasets for one credential configuration at the moment,
+            // see OID4VCI 6.2
+            val credentialIdentifier = it.credentialIdentifiers.first()
             val credentialRequest = client.createCredentialRequest(
-                input = WalletService.CredentialRequestInput.CredentialIdentifier(it.credentialConfigurationId!!),
+                input = WalletService.CredentialRequestInput.CredentialIdentifier(credentialIdentifier),
                 clientNonce = token.clientNonce,
                 credentialIssuer = issuer.metadata.credentialIssuer
             ).getOrThrow()
@@ -616,10 +619,10 @@ class OidvciInteropTest : FunSpec({
             credentialScheme = AtomicAttribute2023,
             representation = CredentialRepresentation.PLAIN_JWT,
         )
-        val authorizationDetails = client.buildAuthorizationDetails(requestOptions)
+        val scope = client.buildScope(requestOptions, issuer.metadata)
         val authnRequest = client.oauth2Client.createAuthRequest(
             state = state,
-            authorizationDetails = authorizationDetails,
+            scope = scope,
             resource = issuer.metadata.credentialIssuer
         )
         val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
@@ -630,10 +633,11 @@ class OidvciInteropTest : FunSpec({
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            authorizationDetails = authorizationDetails
+            scope = scope,
+            resource = issuer.metadata.credentialIssuer,
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
-        token.authorizationDetails.shouldNotBeNull()
+
         val credentialRequest = client.createCredentialRequest(
             input = WalletService.CredentialRequestInput.RequestOptions(requestOptions),
             clientNonce = token.clientNonce,
@@ -651,11 +655,12 @@ class OidvciInteropTest : FunSpec({
         val requestOptions = setOf(
             WalletService.RequestOptions(AtomicAttribute2023, CredentialRepresentation.SD_JWT),
             WalletService.RequestOptions(AtomicAttribute2023, CredentialRepresentation.ISO_MDOC),
-        )
-        val authorizationDetails = client.buildAuthorizationDetails(requestOptions)
+        ).associateBy {
+            client.buildScope(it, issuer.metadata)!!
+        }
         val authnRequest = client.oauth2Client.createAuthRequest(
             state = state,
-            authorizationDetails = authorizationDetails,
+            scope = requestOptions.keys.joinToString(" "),
             resource = issuer.metadata.credentialIssuer
         )
         val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
@@ -666,13 +671,14 @@ class OidvciInteropTest : FunSpec({
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            authorizationDetails = authorizationDetails
+            scope = requestOptions.keys.joinToString(" "),
+            resource = issuer.metadata.credentialIssuer
         )
         val token = authorizationService.token(tokenRequest).getOrThrow()
 
         requestOptions.forEach {
             val credentialRequest = client.createCredentialRequest(
-                input = WalletService.CredentialRequestInput.RequestOptions(it),
+                input = WalletService.CredentialRequestInput.RequestOptions(it.value),
                 clientNonce = token.clientNonce,
                 credentialIssuer = issuer.metadata.credentialIssuer
             ).getOrThrow()
