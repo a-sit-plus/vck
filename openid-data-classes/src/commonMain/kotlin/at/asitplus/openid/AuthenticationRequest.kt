@@ -2,7 +2,6 @@ package at.asitplus.openid
 
 
 import at.asitplus.catching
-import at.asitplus.rqes.serializers.UrlSerializer
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

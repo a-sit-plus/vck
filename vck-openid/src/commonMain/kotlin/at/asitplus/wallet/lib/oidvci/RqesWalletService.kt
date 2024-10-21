@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.SignatureRequestParameters
+import at.asitplus.rqes.SignatureRequestParameters
 import at.asitplus.rqes.CSCSignatureRequestParameters
 import at.asitplus.rqes.RqesConstants
 import at.asitplus.rqes.SignDocParameters

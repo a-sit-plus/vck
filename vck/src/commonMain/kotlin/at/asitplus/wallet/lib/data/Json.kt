@@ -1,20 +1,26 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.wallet.lib.JsonValueEncoder
-import at.asitplus.wallet.lib.data.JsonCredentialSerializer.serializersModules
+import io.github.aakira.napier.Napier
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
+import kotlin.reflect.KClass
 
-internal object JsonCredentialSerializer {
+class JsonSerializerModulesCollector<T : Any>(
+    val clazz: KClass<T>,
+) {
+    init {
+        JsonSerializersModuleSet.add(this)
+    }
 
-    val serializersModules = mutableMapOf<ConstantIndex.CredentialScheme, SerializersModule>()
-    val jsonElementEncoder = mutableSetOf<JsonValueEncoder>()
+    val serializersModules = mutableMapOf<KClass<out T>, SerializersModule>()
+    private val jsonElementEncoder = mutableSetOf<JsonValueEncoder>()
 
-    fun registerSerializersModule(scheme: ConstantIndex.CredentialScheme, module: SerializersModule) {
-        serializersModules[scheme] = module
+    fun registerSerializersModule(target: KClass<out T>, module: SerializersModule) {
+        serializersModules[target] = module
     }
 
     fun register(function: JsonValueEncoder) {
@@ -25,6 +31,13 @@ internal object JsonCredentialSerializer {
         jsonElementEncoder.firstNotNullOfOrNull { it.invoke(value) }
 
 }
+
+internal val JsonCredentialSerializer = JsonSerializerModulesCollector(ConstantIndex.CredentialScheme::class)
+
+/**
+ * Used to find instances of [JsonSerializerModulesCollector] at runtime
+ */
+internal val JsonSerializersModuleSet = mutableSetOf<JsonSerializerModulesCollector<*>>()
 
 val vckJsonSerializer by lazy {
     Json {
@@ -37,9 +50,11 @@ val vckJsonSerializer by lazy {
                 subclass(AtomicAttribute2023::class)
                 subclass(RevocationListSubject::class)
             }
-            serializersModules.forEach {
-                include(it.value)
-            }
+            JsonSerializersModuleSet.forEach {
+                it.serializersModules.forEach {
+                    include(it.value)
+                }
+            }.also { Napier.d("Registered SerializersModules: ${JsonSerializersModuleSet.map { it.clazz }}") }
         }
     }
 }

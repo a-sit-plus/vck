@@ -1,5 +1,9 @@
-package at.asitplus.openid
+package at.asitplus.rqes
 
+import CscAuthorizationDetails
+import at.asitplus.openid.AuthorizationDetails
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.RequestParameters
 import at.asitplus.rqes.collection_entries.CscDocumentDigest
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
@@ -7,7 +11,6 @@ import at.asitplus.rqes.enums.ConformanceLevelEnum
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignatureQualifierEnum
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
-import at.asitplus.rqes.getHashAlgorithm
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
@@ -18,8 +21,6 @@ import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
 
 /**
- * TODO: Find new home (different subfolder most likely)
- *
  * In the Wallet centric model this is the request
  * coming from the Driving application to the wallet which starts
  * the process
@@ -40,13 +41,13 @@ data class SignatureRequestParameters(
      * Optional when JAR (RFC9101) is used.
      */
     @SerialName("response_type")
-    override val responseType: String,
+    val responseType: String,
 
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      */
     @SerialName("client_id")
-    override val clientId: String,
+    val clientId: String,
 
     /**
      * OID4VP: OPTIONAL. A string identifying the scheme of the value in the `client_id` Authorization Request parameter
@@ -59,7 +60,7 @@ data class SignatureRequestParameters(
      * scheme.
      */
     @SerialName("client_id_scheme")
-    override val clientIdScheme: OpenIdConstants.ClientIdScheme? = null,
+    val clientIdScheme: OpenIdConstants.ClientIdScheme? = null,
 
     /**
      * OAuth 2.0 Responses: OPTIONAL. Informs the Authorization Server of the mechanism to be used for returning
@@ -68,7 +69,7 @@ data class SignatureRequestParameters(
      * SHOULD be direct post
      */
     @SerialName("response_mode")
-    override val responseMode: OpenIdConstants.ResponseMode? = null,
+    val responseMode: OpenIdConstants.ResponseMode? = null,
 
     /**
      * OID4VP: OPTIONAL. The Response URI to which the Wallet MUST send the Authorization Response using an HTTPS POST
@@ -79,7 +80,7 @@ data class SignatureRequestParameters(
      * `invalid_request` Authorization Response error.
      */
     @SerialName("response_uri")
-    override val responseUrl: String? = null,
+    val responseUrl: String? = null,
 
     /**
      * OIDC: OPTIONAL. String value used to associate a Client session with an ID Token, and to mitigate replay attacks.
@@ -87,7 +88,7 @@ data class SignatureRequestParameters(
      * be present in the nonce values used to prevent attackers from guessing values.
      */
     @SerialName("nonce")
-    override val nonce: String,
+    val nonce: String,
 
     /**
      * OIDC: RECOMMENDED. Opaque value used to maintain state between the request and the callback. Typically,
@@ -95,7 +96,7 @@ data class SignatureRequestParameters(
      * parameter with a browser cookie.
      */
     @SerialName("state")
-    override val state: String? = null,
+    val state: String? = null,
 
     /**
      * UC5 Draft REQUIRED.
@@ -144,7 +145,7 @@ data class SignatureRequestParameters(
     val hashAlgorithm: Digest = getHashAlgorithm(hashAlgorithmOid)
 
     fun toAuthorizationDetails(): AuthorizationDetails =
-        AuthorizationDetails.CSCCredential(
+        CscAuthorizationDetails(
             credentialID = this.clientId,
             signatureQualifier = this.signatureQualifier,
             hashAlgorithmOid = this.hashAlgorithmOid,

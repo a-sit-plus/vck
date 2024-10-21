@@ -184,7 +184,7 @@ class WalletService(
     sealed class CredentialRequestInput {
         /**
          * @param id from the token response, see [TokenResponseParameters.authorizationDetails]
-         * and [AuthorizationDetails.OpenIdCredential.credentialConfigurationId]
+         * and [AuthorizationDetails.OpenIdAuthorizationDetails.credentialConfigurationId]
          */
         data class CredentialIdentifier(val id: String) : CredentialRequestInput()
         data class RequestOptions(val requestOptions: WalletService.RequestOptions) : CredentialRequestInput()

@@ -37,6 +37,7 @@ kotlin {
             dependencies {
                 api(project(":vck-openid"))
                 api(project(":openid-data-classes"))
+                api(project(":rqes-data-classes"))
                 commonImplementationDependencies()
             }
         }

@@ -14,7 +14,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
-
+    Initializer.initRqesModule()
     val cscTestVectorSignHash1 = """
     {
         "credentialID":"GX0112348",

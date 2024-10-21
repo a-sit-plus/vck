@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.openid.SignatureRequestParametersFrom
+import at.asitplus.rqes.SignatureRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.helper.RequestParser
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe

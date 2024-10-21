@@ -2,12 +2,12 @@ package at.asitplus.dif
 
 import kotlinx.serialization.Serializable
 
-@Serializable(with = InputDescriptorSerializer::class)
-sealed class InputDescriptorInterface {
-    abstract val id: String
-    abstract val group: String?
-    abstract val name: String?
-    abstract val purpose: String?
-    abstract val format: FormatHolder?
-    abstract val constraints: Constraint?
+//@Serializable(with = InputDescriptorSerializer::class)
+interface InputDescriptorInterface {
+    val id: String
+    val group: String?
+    val name: String?
+    val purpose: String?
+    val format: FormatHolder?
+    val constraints: Constraint?
 }

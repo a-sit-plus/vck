@@ -1,19 +1,21 @@
-package at.asitplus.wallet.lib.oidc.helper
+package at.asitplus.wallet.lib
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationRequestParametersFrom
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.RequestParametersSerializer
+import at.asitplus.rqes.SignatureRequestParameters
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.openid.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
+import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.rqes.SignatureRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.jsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -22,7 +24,6 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
 
 class RequestParser(
     /**
@@ -34,7 +35,7 @@ class RequestParser(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction,
     /**
      * Need to verify the request object serialized as a JWS,
-     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
+     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PRE_REGISTERED]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
 ) {
@@ -59,36 +60,32 @@ class RequestParser(
             ?: kotlin.runCatching { // maybe it's in the URL parameters
                 Url(input).let {
                     val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
-                    when (val result = json.decodeFromJsonElement<RequestParameters>(params)) {
+                    when (val result = json.decodeFromJsonElement(RequestParametersSerializer, params)) {
                         is AuthenticationRequestParameters ->
                             AuthenticationRequestParametersFrom.Uri(it, result)
 
-//                        is SignatureRequestParameters ->
-//                            SignatureRequestParametersFrom.Uri(it, result)
-                        else -> TODO()
+                        is SignatureRequestParameters ->
+                            SignatureRequestParametersFrom.Uri(it, result)
                     }
                 }
-//                }
             }.onFailure { it.printStackTrace() }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
-                when (val params = jsonSerializer.decodeFromString<RequestParameters>(input)) {
+                when (val params = jsonSerializer.decodeFromString(RequestParametersSerializer, input)) {
                     is AuthenticationRequestParameters ->
                         AuthenticationRequestParametersFrom.Json(input, params)
 
-//                    is SignatureRequestParameters ->
-//                        SignatureRequestParametersFrom.Json(input, params)
-                    else -> TODO()
+                    is SignatureRequestParameters ->
+                        SignatureRequestParametersFrom.Json(input, params)
                 }
             }.getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("Could not parse authentication request: $input") }
 
         val extractedParams =
-            (parsedParams.parameters as? AuthenticationRequestParameters)?.let {
-                extractRequestObject(it)
-            } ?: parsedParams
-                .also { Napier.i("Parsed authentication request: $it") }
-        extractedParams
+            (parsedParams.parameters as? AuthenticationRequestParameters)?.let { extractRequestObject(it) }
+                ?: parsedParams
+
+        extractedParams.also { Napier.i("Parsed authentication request: $it") }
     }
 
     private suspend fun extractRequestObject(params: AuthenticationRequestParameters): RequestParametersFrom? =
@@ -102,7 +99,8 @@ class RequestParser(
     private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom? {
         return JwsSigned.deserialize(requestObject).getOrNull()?.let { jws ->
             val params = kotlin.runCatching {
-                jsonSerializer.decodeFromString<RequestParameters>(
+                jsonSerializer.decodeFromString(
+                    RequestParametersSerializer,
                     jws.payload.decodeToString()
                 )
             }.getOrElse {
@@ -114,10 +112,8 @@ class RequestParser(
                     is AuthenticationRequestParameters ->
                         AuthenticationRequestParametersFrom.JwsSigned(jws, params)
 
-//                    is SignatureRequestParameters ->
-//                        SignatureRequestParametersFrom.JwsSigned(jws, params)
-
-                    else -> TODO()
+                    is SignatureRequestParameters ->
+                        SignatureRequestParametersFrom.JwsSigned(jws, params)
                 }
             } else null
                 .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }

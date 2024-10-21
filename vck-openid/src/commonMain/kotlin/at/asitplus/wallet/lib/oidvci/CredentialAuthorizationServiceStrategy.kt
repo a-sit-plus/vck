@@ -28,7 +28,7 @@ class CredentialAuthorizationServiceStrategy(
 
     override fun filterAuthorizationDetails(authorizationDetails: Set<AuthorizationDetails>) =
         authorizationDetails
-            .filterIsInstance<AuthorizationDetails.OpenIdCredential>()
+            .filterIsInstance<AuthorizationDetails.OpenIdAuthorizationDetails>()
             .filter { authnDetails ->
                 authnDetails.credentialConfigurationId?.let {
                     supportedCredentialSchemes.containsKey(it)

@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib
 
 import at.asitplus.dif.InputDescriptorInterface
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.QesInputDescriptor
+import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.TransactionData
 import at.asitplus.rqes.jsonSerializer
 import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
@@ -27,6 +27,8 @@ import kotlinx.serialization.json.encodeToJsonElement
  * Test vectors taken from "Transaction Data entries as defined in D3.1: UC Specification WP3"
  */
 class TransactionDataInterop : FreeSpec({
+    Initializer.initRqesModule()
+
     val presentationDefinitionAsJsonString = """
         {
             "id": "d76c51b7-ea90-49bb-8368-6b3d194fc131",
