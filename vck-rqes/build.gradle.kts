@@ -40,26 +40,6 @@ kotlin {
                 commonImplementationDependencies()
             }
         }
-
-        commonTest {
-            dependencies {
-                implementation("at.asitplus.wallet:eupidcredential:${VcLibVersions.eupidcredential}")
-                implementation("at.asitplus.wallet:mobiledrivinglicence:${VcLibVersions.mdl}")
-            }
-        }
-
-        jvmMain {
-            dependencies {
-                implementation(signum.bcpkix.jdk18on)
-            }
-        }
-
-        jvmTest {
-            dependencies {
-                implementation(signum.jose)
-                implementation("org.json:json:${VcLibVersions.Jvm.json}")
-            }
-        }
     }
 }
 
