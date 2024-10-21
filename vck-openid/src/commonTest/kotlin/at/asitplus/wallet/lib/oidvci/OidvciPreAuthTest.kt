@@ -41,7 +41,10 @@ class OidvciPreAuthTest : FreeSpec({
         state = uuid4().toString()
     }
 
-    suspend fun getToken(credentialOffer: CredentialOffer, credentialIdToRequest: Set<String>): TokenResponseParameters {
+    suspend fun getToken(
+        credentialOffer: CredentialOffer,
+        credentialIdToRequest: Set<String>
+    ): TokenResponseParameters {
         val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
             state = state,
@@ -88,7 +91,7 @@ class OidvciPreAuthTest : FreeSpec({
         authnDetails.forEach {
             it.shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
             // Not supporting different credential datasets for one credential configuration at the moment,
-            // see OID4VCI 6.2
+            // so we'll just use the credential identifier, see OID4VCI 6.2
             val credentialIdentifier = it.credentialIdentifiers.first()
             val credentialRequest = client.createCredentialRequest(
                 input = WalletService.CredentialRequestInput.CredentialIdentifier(credentialIdentifier),

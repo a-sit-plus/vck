@@ -160,7 +160,7 @@ class WalletService(
             credentialConfigurationId = it,
             locations = authorizationServers,
             // Not supporting different credential datasets for one credential configuration at the moment,
-            // see OID4VCI 6.2
+            // so we'll just use the `credentialConfigurationId`, see OID4VCI 6.2
             credentialIdentifiers = setOf(it)
         )
     }.toSet()
