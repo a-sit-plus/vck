@@ -61,7 +61,7 @@ class SerializationTest : FunSpec({
             types = setOf(randomString(), randomString()),
         ),
         proof = CredentialRequestProof(
-            proofType = OpenIdConstants.ProofType.OTHER(randomString()),
+            proofType = OpenIdConstants.ProofType.Other(randomString()),
             jwt = randomString()
         )
     )

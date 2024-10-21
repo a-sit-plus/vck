@@ -76,7 +76,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                         listOf(CLAIM_GIVEN_NAME)
                     )
                 ),
-                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
+                responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = "https://example.com/response",
             )
         ).getOrThrow()

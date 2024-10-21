@@ -78,7 +78,7 @@ object OpenIdConstants {
          * Any proof type not natively supported by this library
          */
         @Serializable(with = Serializer::class)
-        class OTHER(stringRepresentation: String) : ProofType(stringRepresentation)
+        class Other(stringRepresentation: String) : ProofType(stringRepresentation)
 
         object Serializer : KSerializer<ProofType> {
             override val descriptor: SerialDescriptor =
@@ -88,7 +88,7 @@ object OpenIdConstants {
                 return when (val str = decoder.decodeString()) {
                     STRING_JWT -> JWT
                     STRING_CWT -> CWT
-                    else -> OTHER(str)
+                    else -> Other(str)
                 }
             }
 
@@ -263,7 +263,7 @@ object OpenIdConstants {
          * with a redirect URI to the Wallet.
          */
         @Serializable(with = Serializer::class)
-        object DIRECT_POST : ResponseMode(STRING_DIRECT_POST)
+        object DirectPost : ResponseMode(STRING_DIRECT_POST)
 
         /**
          * OID4VP: The Response Mode `direct_post.jwt` causes the Wallet to send the Authorization Response using an
@@ -272,37 +272,37 @@ object OpenIdConstants {
          * using the `application/x-www-form-urlencoded` content type.
          */
         @Serializable(with = Serializer::class)
-        object DIRECT_POST_JWT : ResponseMode(STRING_DIRECT_POST_JWT)
+        object DirectPostJwt : ResponseMode(STRING_DIRECT_POST_JWT)
 
         /**
          * OAuth 2.0: In this mode, Authorization Response parameters are encoded in the query string added to the
          * `redirect_uri` when redirecting back to the Client.
          */
         @Serializable(with = Serializer::class)
-        object QUERY : ResponseMode(STRING_QUERY)
+        object Query : ResponseMode(STRING_QUERY)
 
         /**
          * OAuth 2.0: In this mode, Authorization Response parameters are encoded in the fragment added to the
          * `redirect_uri` when redirecting back to the Client.
          */
         @Serializable(with = Serializer::class)
-        object FRAGMENT : ResponseMode(STRING_FRAGMENT)
+        object Fragment : ResponseMode(STRING_FRAGMENT)
 
         /**
          * Any not natively supported Client ID Scheme, so it can still be parsed
          */
         @Serializable(with = Serializer::class)
-        class OTHER(stringRepresentation: String) : ResponseMode(stringRepresentation)
+        class Other(stringRepresentation: String) : ResponseMode(stringRepresentation)
 
         object Serializer : KSerializer<ResponseMode> {
             override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("ResponseMode", PrimitiveKind.STRING)
             override fun deserialize(decoder: Decoder): ResponseMode {
                 return when (val string = decoder.decodeString()) {
-                    STRING_DIRECT_POST -> DIRECT_POST
-                    STRING_DIRECT_POST_JWT -> DIRECT_POST_JWT
-                    STRING_QUERY -> QUERY
-                    STRING_FRAGMENT -> FRAGMENT
-                    else -> OTHER(string)
+                    STRING_DIRECT_POST -> DirectPost
+                    STRING_DIRECT_POST_JWT -> DirectPostJwt
+                    STRING_QUERY -> Query
+                    STRING_FRAGMENT -> Fragment
+                    else -> Other(string)
                 }
             }
 

@@ -217,14 +217,14 @@ class OidcSiopVerifier private constructor(
         val credentials: Set<RequestOptionsCredential>,
         /**
          * Response mode to request, see [OpenIdConstants.ResponseMode],
-         * by default [OpenIdConstants.ResponseMode.FRAGMENT].
+         * by default [OpenIdConstants.ResponseMode.Fragment].
          * Setting this to any other value may require setting [responseUrl] too.
          */
-        val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.FRAGMENT,
+        val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
         /**
          * Response URL to set in the [AuthenticationRequestParameters.responseUrl],
-         * required if [responseMode] is set to [OpenIdConstants.ResponseMode.DIRECT_POST] or
-         * [OpenIdConstants.ResponseMode.DIRECT_POST_JWT].
+         * required if [responseMode] is set to [OpenIdConstants.ResponseMode.DirectPost] or
+         * [OpenIdConstants.ResponseMode.DirectPostJwt].
          */
         val responseUrl: String? = null,
         /**
@@ -394,8 +394,8 @@ class OidcSiopVerifier private constructor(
             ).joinToString(" ")
 
     private val RequestOptions.isAnyDirectPost
-        get() = (responseMode == OpenIdConstants.ResponseMode.DIRECT_POST) ||
-                (responseMode == OpenIdConstants.ResponseMode.DIRECT_POST_JWT)
+        get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
+                (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
 
     //TODO extend for InputDescriptor interface in case QES
     private fun RequestOptionsCredential.toInputDescriptor() = DifInputDescriptor(

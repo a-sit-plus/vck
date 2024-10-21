@@ -19,7 +19,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMIL
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidvci.decode
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -27,8 +26,6 @@ import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.*
-import io.ktor.util.*
 import kotlinx.datetime.Instant
 
 /**
@@ -252,7 +249,7 @@ class OidcSiopInteropTest : FreeSpec({
         parsed.responseType shouldBe "vp_token"
         parsed.nonce shouldBe "nonce"
         parsed.clientId shouldBe "verifier-backend.eudiw.dev"
-        parsed.responseMode shouldBe OpenIdConstants.ResponseMode.DIRECT_POST_JWT
+        parsed.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPostJwt
         parsed.audience shouldBe "https://self-issued.me/v2"
         parsed.scope shouldBe ""
         val pd = parsed.presentationDefinition
@@ -334,7 +331,7 @@ class OidcSiopInteropTest : FreeSpec({
             walletUrl = "https://wallet.a-sit.at/mobile",
             requestUrl = requestUrl,
             requestOptions = OidcSiopVerifier.RequestOptions(
-                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
+                responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://example.com/response",
                 credentials = setOf(
                     OidcSiopVerifier.RequestOptionsCredential(

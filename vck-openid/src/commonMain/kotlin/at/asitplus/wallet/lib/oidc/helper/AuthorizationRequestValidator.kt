@@ -4,8 +4,8 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
-import at.asitplus.openid.OpenIdConstants.ResponseMode.DIRECT_POST
-import at.asitplus.openid.OpenIdConstants.ResponseMode.DIRECT_POST_JWT
+import at.asitplus.openid.OpenIdConstants.ResponseMode.DirectPost
+import at.asitplus.openid.OpenIdConstants.ResponseMode.DirectPostJwt
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
@@ -119,7 +119,7 @@ internal class AuthorizationRequestValidator {
     }
 
     private fun OpenIdConstants.ResponseMode?.isAnyDirectPost() =
-        (this == DIRECT_POST) || (this == DIRECT_POST_JWT)
+        (this == DirectPost) || (this == DirectPostJwt)
 
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyResponseModeDirectPost() {

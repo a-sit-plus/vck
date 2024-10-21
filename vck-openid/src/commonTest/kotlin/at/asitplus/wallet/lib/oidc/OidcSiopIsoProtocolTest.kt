@@ -150,7 +150,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
                     MobileDrivingLicenceScheme, ConstantIndex.CredentialRepresentation.ISO_MDOC, listOf(requestedClaim)
                 )
             ),
-            responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
+            responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
             responseUrl = "https://example.com/response",
             encryption = true
         )

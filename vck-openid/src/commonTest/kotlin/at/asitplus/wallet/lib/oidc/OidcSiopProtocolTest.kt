@@ -162,7 +162,7 @@ class OidcSiopProtocolTest : FreeSpec({
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
                 credentials = setOf(OidcSiopVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
-                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
+                responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = clientId,
             )
         )
@@ -182,7 +182,7 @@ class OidcSiopProtocolTest : FreeSpec({
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
                 credentials = setOf(OidcSiopVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
-                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
+                responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = clientId,
             )
         )
@@ -206,7 +206,7 @@ class OidcSiopProtocolTest : FreeSpec({
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
                 credentials = setOf(OidcSiopVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
-                responseMode = OpenIdConstants.ResponseMode.QUERY,
+                responseMode = OpenIdConstants.ResponseMode.Query,
                 state = expectedState
             )
         )
