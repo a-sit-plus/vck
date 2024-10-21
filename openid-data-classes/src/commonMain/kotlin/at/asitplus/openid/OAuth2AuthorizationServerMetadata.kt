@@ -6,6 +6,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.encodeToString
 
 /**
@@ -175,7 +176,7 @@ data class OAuth2AuthorizationServerMetadata(
      * Valid values include `RS256`, `ES256`, `ES256K`, and `EdDSA`.
      */
     @SerialName("id_token_signing_alg_values_supported")
-    val idTokenSigningAlgorithmsSupported: Set<JwsAlgorithm>? = null,
+    val idTokenSigningAlgorithmsSupportedStrings: Set<String>? = null,
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array containing a list of the JWS signing algorithms (alg values) supported by the
@@ -183,7 +184,7 @@ data class OAuth2AuthorizationServerMetadata(
      * Valid values include `none`, `RS256`, `ES256`, `ES256K`, and `EdDSA`.
      */
     @SerialName("request_object_signing_alg_values_supported")
-    val requestObjectSigningAlgorithmsSupported: Set<JwsAlgorithm>? = null,
+    val requestObjectSigningAlgorithmsSupportedStrings: Set<String>? = null,
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array of strings representing URI scheme identifiers and optionally method names of
@@ -231,7 +232,7 @@ data class OAuth2AuthorizationServerMetadata(
      * by the authorization server for DPoP proof JWTs.
      */
     @SerialName("dpop_signing_alg_values_supported")
-    val dpopSigningAlgValuesSupported: Set<JsonWebAlgorithm>? = null,
+    val dpopSigningAlgValuesSupportedStrings: Set<String>? = null,
 
     /**
      * OPTIONAL.  URL of a page containing human-readable information
@@ -367,4 +368,30 @@ data class OAuth2AuthorizationServerMetadata(
         fun deserialize(input: String): KmmResult<OAuth2AuthorizationServerMetadata> =
             catching { jsonSerializer.decodeFromString<OAuth2AuthorizationServerMetadata>(input) }
     }
+
+    /**
+     * OIDC Discovery: REQUIRED. A JSON array containing a list of the JWS signing algorithms (`alg` values) supported
+     * by the OP for the ID Token to encode the Claims in a JWT (RFC7519).
+     * Valid values include `RS256`, `ES256`, `ES256K`, and `EdDSA`.
+     */
+    @Transient
+    val idTokenSigningAlgorithmsSupported: Set<JwsAlgorithm>? = idTokenSigningAlgorithmsSupportedStrings
+        ?.mapNotNull { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
+
+    /**
+     * OIDC SIOPv2: REQUIRED. A JSON array containing a list of the JWS signing algorithms (alg values) supported by the
+     * OP for Request Objects, which are described in Section 6.1 of OpenID.Core.
+     * Valid values include `none`, `RS256`, `ES256`, `ES256K`, and `EdDSA`.
+     */
+    @Transient
+    val requestObjectSigningAlgorithmsSupported: Set<JwsAlgorithm>? = requestObjectSigningAlgorithmsSupportedStrings
+        ?.mapNotNull { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
+
+    /**
+     * RFC 9449: A JSON array containing a list of the JWS alg values (from the `IANA.JOSE.ALGS` registry) supported
+     * by the authorization server for DPoP proof JWTs.
+     */
+    @Transient
+    val dpopSigningAlgValuesSupported: Set<JsonWebAlgorithm>? = dpopSigningAlgValuesSupportedStrings
+        ?.mapNotNull { s -> JsonWebAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
 }

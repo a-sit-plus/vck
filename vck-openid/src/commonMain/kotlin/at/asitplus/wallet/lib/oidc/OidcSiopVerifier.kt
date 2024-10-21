@@ -175,8 +175,8 @@ class OidcSiopVerifier private constructor(
      */
     val metadataWithEncryption by lazy {
         metadata.copy(
-            authorizationEncryptedResponseAlg = jwsService.encryptionAlgorithm,
-            authorizationEncryptedResponseEncoding = jwsService.encryptionEncoding
+            authorizationEncryptedResponseAlgString = jwsService.encryptionAlgorithm.identifier,
+            authorizationEncryptedResponseEncodingString = jwsService.encryptionEncoding.text
         )
     }
 
