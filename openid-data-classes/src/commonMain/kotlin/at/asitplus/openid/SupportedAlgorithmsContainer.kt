@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 @Serializable
 data class SupportedAlgorithmsContainer(
@@ -13,7 +14,7 @@ data class SupportedAlgorithmsContainer(
      * context-specific, e.g. `EdDSA` and `ES256`.
      */
     @SerialName("alg_values_supported")
-    val supportedAlgorithms: Set<JsonWebAlgorithm>,
+    val supportedAlgorithmsStrings: Set<String>,
 
     /**
      * OID4VCI: REQUIRED. Array containing a list of the JWE (RFC7516) encryption algorithms (enc values) (RFC7518)
@@ -21,7 +22,7 @@ data class SupportedAlgorithmsContainer(
      * in a JWT (RFC7519).
      */
     @SerialName("enc_values_supported")
-    val supportedEncryptionAlgorithms: Set<JweAlgorithm>? = null,
+    val supportedEncryptionAlgorithmsStrings: Set<String>? = null,
 
     /**
      * OID4VCI: REQUIRED. Boolean value specifying whether the Credential Issuer requires the additional encryption
@@ -31,4 +32,23 @@ data class SupportedAlgorithmsContainer(
      */
     @SerialName("encryption_required")
     val encryptionRequired: Boolean? = null,
-)
+) {
+
+    /**
+     * OID4VP: An object where the value is an array of case sensitive strings that identify the cryptographic suites
+     * that are supported. Parties will need to agree upon the meanings of the values used, which may be
+     * context-specific, e.g. `EdDSA` and `ES256`.
+     */
+    @Transient
+    val supportedAlgorithms: Set<JsonWebAlgorithm> = supportedAlgorithmsStrings
+        .mapNotNull { s -> JsonWebAlgorithm.entries.firstOrNull { it.identifier == s } }.toSet()
+
+    /**
+     * OID4VCI: REQUIRED. Array containing a list of the JWE (RFC7516) encryption algorithms (enc values) (RFC7518)
+     * supported by the Credential and Batch Credential Endpoint to encode the Credential or Batch Credential Response
+     * in a JWT (RFC7519).
+     */
+    @Transient
+    val supportedEncryptionAlgorithms: Set<JweAlgorithm>? = supportedEncryptionAlgorithmsStrings
+        ?.mapNotNull { s -> JweAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
+}

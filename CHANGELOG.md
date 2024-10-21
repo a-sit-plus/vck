@@ -8,6 +8,7 @@ Release 5.1.0:
  - Remove `dataProvider` from `IssuerAgent`s constructor, as it is not needed with the new issuing interface anyway
  - Replace `relyingPartyUrl` with `clientIdScheme` on `OidcSiopVerifier`s constructor, to clarify use of `client_id` in requests
  - Rename objects in `OpenIdConstants.ProofType`, `OpenIdConstants.CliendIdScheme` and `OpenIdConstants.ResponseMode`
+ - In all OpenID data classes, serialize strings only, and parse them to crypto data classes (from signum) in a separate property (this increases interop, as we can deserialize unsupported algorithms too)
 
 Release 5.0.1:
  - Update JsonPath4K to 2.4.0
