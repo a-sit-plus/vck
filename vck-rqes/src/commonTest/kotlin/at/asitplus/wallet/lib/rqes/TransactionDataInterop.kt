@@ -1,10 +1,10 @@
-package at.asitplus.wallet.lib
+package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.dif.InputDescriptorInterface
+import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.QesInputDescriptor
+import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.TransactionData
-import at.asitplus.rqes.jsonSerializer
+import at.asitplus.rqes.rdcJsonSerializer
 import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -27,6 +27,7 @@ import kotlinx.serialization.json.encodeToJsonElement
  * Test vectors taken from "Transaction Data entries as defined in D3.1: UC Specification WP3"
  */
 class TransactionDataInterop : FreeSpec({
+
     val presentationDefinitionAsJsonString = """
         {
             "id": "d76c51b7-ea90-49bb-8368-6b3d194fc131",
@@ -70,8 +71,8 @@ class TransactionDataInterop : FreeSpec({
     )
 
     "Serialization is stable" {
-        val encoded = jsonSerializer.encodeToString<TransactionData>(transactionDataTest)
-        val decoded = jsonSerializer.decodeFromString<TransactionData>(encoded)
+        val encoded = rdcJsonSerializer.encodeToString<TransactionData>(transactionDataTest)
+        val decoded = rdcJsonSerializer.decodeFromString<TransactionData>(encoded)
         decoded shouldBe transactionDataTest
     }
 
@@ -80,8 +81,8 @@ class TransactionDataInterop : FreeSpec({
             id = "123",
             transactionData = listOf(transactionDataTest)
         )
-        val serialized = jsonSerializer.encodeToString(test)
-        val deserialized = jsonSerializer.decodeFromString<InputDescriptorInterface>(serialized)
+        val serialized = rdcJsonSerializer.encodeToString(test)
+        val deserialized = rdcJsonSerializer.decodeFromString<InputDescriptor>(serialized)
         deserialized shouldBe test
     }
 
@@ -89,16 +90,16 @@ class TransactionDataInterop : FreeSpec({
         val testVector =
             "ewogICJ0eXBlIjogInFlc19hdXRob3JpemF0aW9uIiwKICAic2lnbmF0dXJlUXVhbGlmaWVyIjogImV1X2VpZGFzX3FlcyIsCiAgImNyZWRlbnRpYWxJRCI6ICJvRW92QzJFSEZpRUZyRHBVeDhtUjBvN3llR0hrMmg3NGIzWHl3a05nQkdvPSIsCiAgImRvY3VtZW50RGlnZXN0cyI6IFsKICAgIHsKICAgICAgImxhYmVsIjogIkV4YW1wbGUgQ29udHJhY3QiLAogICAgICAiaGFzaCI6ICJzVE9nd09tKzQ3NGdGajBxMHgxaVNOc3BLcWJjc2U0SWVpcWxEZy9IV3VJPSIsCiAgICAgICJoYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiLAogICAgICAiZG9jdW1lbnRMb2NhdGlvbl91cmkiOiAiaHR0cHM6Ly9wcm90ZWN0ZWQucnAuZXhhbXBsZS9jb250cmFjdC0wMS5wZGY_dG9rZW49SFM5bmFKS1d3cDkwMWhCY0szNDhJVUhpdUg4Mzc0IiwKICAgICAgImRvY3VtZW50TG9jYXRpb25fbWV0aG9kIjogewogICAgICAgICJtZXRob2QiOiB7CiAgICAgICAgICAidHlwZSI6ICJwdWJsaWMiCiAgICAgICAgfQogICAgICB9LAogICAgICAiZHRic3IiOiAiVllEbDRvVGVKNVRtSVBDWEtkVFgxTVNXUkxJOUNLWWN5TVJ6NnhsYUdnIiwKICAgICAgImR0YnNySGFzaEFsZ29yaXRobU9JRCI6ICIyLjE2Ljg0MC4xLjEwMS4zLjQuMi4xIgogICAgfQogIF0sCiAgInByb2Nlc3NJRCI6ICJlT1o2VXdYeWVGTEs5OERvNTF4MzNmbXV2NE9xQXo1WmM0bHNoS050RWdRPSIKfQ"
         val transactionData = runCatching {
-            jsonSerializer.decodeFromString(
+            rdcJsonSerializer.decodeFromString(
                 Base64URLTransactionDataSerializer,
-                jsonSerializer.encodeToString(testVector)
+                rdcJsonSerializer.encodeToString(testVector)
             )
         }.getOrNull()
         transactionData shouldNotBe null
-        val expected = jsonSerializer.decodeFromString<JsonElement>(
+        val expected = rdcJsonSerializer.decodeFromString<JsonElement>(
             testVector.decodeToByteArray(Base64UrlStrict).decodeToString()
         ).canonicalize() as JsonObject
-        val actual = jsonSerializer.encodeToJsonElement(transactionData).canonicalize() as JsonObject
+        val actual = rdcJsonSerializer.encodeToJsonElement(transactionData).canonicalize() as JsonObject
 
         //Manual comparison of every member to deal with Base64 encoding below
         actual["credentialID"] shouldBe expected["credentialID"]
@@ -114,12 +115,12 @@ class TransactionDataInterop : FreeSpec({
 
         //In order to deal with padding we deserialize and compare the bytearrays
         actualDocumentDigest["dtbsr"]?.let {
-            jsonSerializer.decodeFromJsonElement(
+            rdcJsonSerializer.decodeFromJsonElement(
                 ByteArrayBase64Serializer,
                 it
             )
         } shouldBe expectedDocumentDigest["dtbsr"]?.let {
-            jsonSerializer.decodeFromJsonElement(
+            rdcJsonSerializer.decodeFromJsonElement(
                 ByteArrayBase64Serializer,
                 it
             )
@@ -127,12 +128,12 @@ class TransactionDataInterop : FreeSpec({
         actualDocumentDigest["dtbsrHashAlgorithmOID"] shouldBe expectedDocumentDigest["dtbsrHashAlgorithmOID"]
         //In order to deal with padding we deserialize and compare the bytearrays
         actualDocumentDigest["hash"]?.let {
-            jsonSerializer.decodeFromJsonElement(
+            rdcJsonSerializer.decodeFromJsonElement(
                 ByteArrayBase64Serializer,
                 it
             )
         } shouldBe expectedDocumentDigest["hash"]?.let {
-            jsonSerializer.decodeFromJsonElement(
+            rdcJsonSerializer.decodeFromJsonElement(
                 ByteArrayBase64Serializer,
                 it
             )
@@ -145,22 +146,22 @@ class TransactionDataInterop : FreeSpec({
         val testVector =
             "ewogICJ0eXBlIjogInFjZXJ0X2NyZWF0aW9uX2FjY2VwdGFuY2UiLAogICJRQ190ZXJtc19jb25kaXRpb25zX3VyaSI6ICJodHRwczovL2V4YW1wbGUuY29tL3RvcyIsCiAgIlFDX2hhc2giOiAia1hBZ3dEY2RBZTNvYnhwbzhVb0RrQytEK2I3T0NyRG84SU9HWmpTWDgvTT0iLAogICJRQ19oYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiCn0="
         val transactionData = runCatching {
-            jsonSerializer.decodeFromString(
+            rdcJsonSerializer.decodeFromString(
                 Base64URLTransactionDataSerializer,
-                jsonSerializer.encodeToString(testVector)
+                rdcJsonSerializer.encodeToString(testVector)
             )
         }.getOrNull()
         transactionData shouldNotBe null
-        val expected = jsonSerializer.decodeFromString<JsonElement>(
+        val expected = rdcJsonSerializer.decodeFromString<JsonElement>(
             testVector.decodeToByteArray(Base64UrlStrict).decodeToString()
         ).canonicalize()
-        val actual = jsonSerializer.encodeToJsonElement(transactionData).canonicalize()
+        val actual = rdcJsonSerializer.encodeToJsonElement(transactionData).canonicalize()
         actual shouldBe expected
     }
 
     "The presentation Definition can be parsed" {
         val presentationDefinition =
-            runCatching { jsonSerializer.decodeFromString<PresentationDefinition>(presentationDefinitionAsJsonString) }.getOrNull()
+            runCatching { rdcJsonSerializer.decodeFromString<PresentationDefinition>(presentationDefinitionAsJsonString) }.getOrNull()
         Napier.d(presentationDefinition.toString())
         presentationDefinition shouldNotBe null
         (presentationDefinition?.inputDescriptors?.first() as QesInputDescriptor).transactionData shouldNotBe null
@@ -173,9 +174,9 @@ class TransactionDataInterop : FreeSpec({
 fun JsonElement.canonicalize(): JsonElement =
     when (this) {
         is JsonObject -> JsonObject(this.entries.sortedBy { it.key }
-            .sortedBy { jsonSerializer.encodeToString(it.value) }.associate { it.key to it.value.canonicalize() })
+            .sortedBy { rdcJsonSerializer.encodeToString(it.value) }.associate { it.key to it.value.canonicalize() })
 
-        is JsonArray -> JsonArray(this.map { it.canonicalize() }.sortedBy { jsonSerializer.encodeToString(it) })
+        is JsonArray -> JsonArray(this.map { it.canonicalize() }.sortedBy { rdcJsonSerializer.encodeToString(it) })
         is JsonPrimitive -> this
         JsonNull -> this
     }

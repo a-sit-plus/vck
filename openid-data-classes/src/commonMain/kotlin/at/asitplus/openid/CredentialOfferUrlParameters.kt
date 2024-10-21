@@ -28,10 +28,10 @@ data class CredentialOfferUrlParameters(
     @SerialName("credential_offer_uri")
     val credentialOfferUrl: String? = null,
 ) {
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(input: String): KmmResult<CredentialOfferUrlParameters> =
-            runCatching { jsonSerializer.decodeFromString<CredentialOfferUrlParameters>(input) }.wrap()
+            runCatching { odcJsonSerializer.decodeFromString<CredentialOfferUrlParameters>(input) }.wrap()
     }
 }

@@ -5,10 +5,15 @@ import kotlinx.serialization.Serializable
 
 typealias Hashes = List<@Serializable(ByteArrayBase64Serializer::class) ByteArray>
 
-fun Hashes.contentEquals(other: List<ByteArray>): Boolean {
-    if (size != other.size) return false
-    this.forEachIndexed {i, entry -> if (!entry.contentEquals(other[i])) return false }
-    return true
+fun Hashes?.contentEquals(other: Hashes?): Boolean {
+    return when (this) {
+        null -> other == null
+        else -> other?.let {
+            if (size != other.size) return false
+            this.forEachIndexed { i, entry -> if (!entry.contentEquals(other[i])) return false }
+            true
+        } ?: false
+    }
 }
 
-fun Hashes.contentHashCode(): Int = this.sumOf {  31 * it.contentHashCode() }
+fun Hashes.contentHashCode(): Int = this.sumOf { 31 * it.contentHashCode() }

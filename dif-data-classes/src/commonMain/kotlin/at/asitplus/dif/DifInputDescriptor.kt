@@ -22,7 +22,7 @@ data class DifInputDescriptor(
     override val format: FormatHolder? = null,
     @SerialName("constraints")
     override val constraints: Constraint? = null,
-) : InputDescriptorInterface() {
+) : InputDescriptor {
     constructor(name: String, constraints: Constraint? = null) : this(
         id = uuid4().toString(),
         name = name,

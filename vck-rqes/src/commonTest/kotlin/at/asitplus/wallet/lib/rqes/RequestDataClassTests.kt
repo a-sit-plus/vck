@@ -1,9 +1,9 @@
-package at.asitplus.wallet.lib
+package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.rqes.CSCSignatureRequestParameters
+import at.asitplus.rqes.CscSignatureRequestParameters
 import at.asitplus.rqes.SignDocParameters
 import at.asitplus.rqes.SignHashParameters
-import at.asitplus.rqes.jsonSerializer
+import at.asitplus.rqes.rdcJsonSerializer
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64Strict
 import io.github.aakira.napier.Napier
@@ -157,10 +157,10 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             )
         dummyEntries.forEachIndexed { i, dummyEntry ->
             "Entry ${i + 1}" {
-                val serialized = jsonSerializer.encodeToString(CSCSignatureRequestParameters.serializer(), dummyEntry)
+                val serialized = rdcJsonSerializer.encodeToString(CscSignatureRequestParameters.serializer(), dummyEntry)
                     .also { Napier.d("serialized ${dummyEntry::class}: $it") }
                 val deserialized =
-                    jsonSerializer.decodeFromString(CSCSignatureRequestParameters.serializer(), serialized)
+                    rdcJsonSerializer.decodeFromString(CscSignatureRequestParameters.serializer(), serialized)
 
                 deserialized shouldBe dummyEntry
             }
@@ -178,16 +178,16 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             cscTestVectorSignDoc3
         ).forEachIndexed { i, vec ->
             "Testvector ${i + 1}" - {
-                val expected = jsonSerializer.decodeFromString<JsonObject>(vec)
-                val actual = jsonSerializer.decodeFromString(CSCSignatureRequestParameters.serializer(), vec)
+                val expected = rdcJsonSerializer.decodeFromString<JsonObject>(vec)
+                val actual = rdcJsonSerializer.decodeFromString(CscSignatureRequestParameters.serializer(), vec)
                 val sanitycheck =
-                    jsonSerializer.decodeFromJsonElement(CSCSignatureRequestParameters.serializer(), expected)
+                    rdcJsonSerializer.decodeFromJsonElement(CscSignatureRequestParameters.serializer(), expected)
                 "sanitycheck" {
                     actual shouldBe sanitycheck
                 }
 
                 "actual test".config(enabled = true) {
-                    val test1 = jsonSerializer.encodeToJsonElement(actual).canonicalize()
+                    val test1 = rdcJsonSerializer.encodeToJsonElement(actual).canonicalize()
                     val test2 = expected.canonicalize()
                     test1 shouldBe test2
 //                    jsonSerializer.encodeToJsonElement(actual).canonicalize() shouldBe expected.canonicalize()

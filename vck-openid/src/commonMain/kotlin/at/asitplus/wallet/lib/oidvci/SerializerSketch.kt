@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.ktor.http.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
@@ -63,7 +64,6 @@ inline fun <reified T> T.encodeToParameters(): Parameters =
         key to if (value is JsonPrimitive) value.content else json.encodeToString(value)
     }
 
-@OptIn(ExperimentalSerializationApi::class)
 val json by lazy {
     Json {
         prettyPrint = false
@@ -71,5 +71,6 @@ val json by lazy {
         explicitNulls = false
         ignoreUnknownKeys = true
         isLenient = true
+        serializersModule = vckJsonSerializer.serializersModule
     }
 }

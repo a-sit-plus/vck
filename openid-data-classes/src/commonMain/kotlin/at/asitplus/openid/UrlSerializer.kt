@@ -1,4 +1,4 @@
-package at.asitplus.rqes.serializers
+package at.asitplus.openid
 
 import io.ktor.http.*
 import kotlinx.serialization.KSerializer

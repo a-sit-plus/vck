@@ -1,7 +1,9 @@
-package at.asitplus.openid
+package at.asitplus.rqes
 
 import at.asitplus.catching
-import at.asitplus.rqes.serializers.UrlSerializer
+import at.asitplus.openid.JwsSignedSerializer
+import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.UrlSerializer
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -10,11 +12,11 @@ import kotlinx.serialization.encodeToString
 
 @Serializable
 sealed class SignatureRequestParametersFrom : RequestParametersFrom {
-    fun serialize(): String = jsonSerializer.encodeToString(this)
+    fun serialize(): String = rdcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(input: String) =
-            catching { jsonSerializer.decodeFromString<SignatureRequestParameters>(input) }
+            catching { rdcJsonSerializer.decodeFromString<SignatureRequestParameters>(input) }
     }
 
     abstract override val parameters: SignatureRequestParameters

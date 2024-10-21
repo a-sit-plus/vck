@@ -37,6 +37,7 @@ kotlin {
             dependencies {
                 api(project(":vck-openid"))
                 api(project(":openid-data-classes"))
+                api(project(":rqes-data-classes"))
                 commonImplementationDependencies()
             }
         }
@@ -84,23 +85,6 @@ publishing {
                     connection.set("scm:git:git@github.com:a-sit-plus/vck.git")
                     developerConnection.set("scm:git:git@github.com:a-sit-plus/vck.git")
                     url.set("https://github.com/a-sit-plus/vck")
-                }
-            }
-        }
-        //REMOVE ME AFTER REBRANDED ARTIFACT HAS BEEN PUBLISHED
-        create<MavenPublication>("relocation") {
-            pom {
-                // Old artifact coordinates
-                artifactId = "vclib-rqes"
-                version = artifactVersion
-
-                distributionManagement {
-                    relocation {
-                        // New artifact coordinates
-                        artifactId = "vck-rqes"
-                        version = artifactVersion
-                        message = " artifactId have been changed"
-                    }
                 }
             }
         }

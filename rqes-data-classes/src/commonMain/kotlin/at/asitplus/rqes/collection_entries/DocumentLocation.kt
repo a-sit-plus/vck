@@ -1,7 +1,7 @@
 package at.asitplus.rqes.collection_entries
 
 import at.asitplus.rqes.Method
-import at.asitplus.rqes.serializers.UrlSerializer
+import at.asitplus.openid.UrlSerializer
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

@@ -4,9 +4,6 @@ import at.asitplus.rqes.enums.ConformanceLevelEnum
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.rqes.getSignAlgorithm
-import at.asitplus.signum.indispensable.Digest
-import at.asitplus.dif.rqes.serializers.Asn1EncodableBase64Serializer
-import at.asitplus.dif.rqes.getSignAlgorithm
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
@@ -76,7 +73,7 @@ data class Document(
         if (this === other) return true
         if (other == null || this::class != other::class) return false
 
-        other as at.asitplus.rqes.collection_entries.Document
+        other as Document
 
         if (!document.contentEquals(other.document)) return false
         if (signatureFormat != other.signatureFormat) return false

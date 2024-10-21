@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidc.helper
+package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
@@ -9,6 +9,8 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.rqes.SignatureRequestParameters
+import at.asitplus.rqes.SignatureRequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
@@ -24,7 +26,7 @@ import io.ktor.util.*
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
-open class RequestParser(
+class RequestParser(
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
      * or the request itself as `request_uri`, or `presentation_definition_uri`.
@@ -34,10 +36,20 @@ open class RequestParser(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction,
     /**
      * Need to verify the request object serialized as a JWS,
-     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
+     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PRE_REGISTERED]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
 ) {
+    companion object {
+        fun createWithDefaults(
+            remoteResourceRetriever: RemoteResourceRetrieverFunction? = null,
+            requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
+        ) = RequestParser(
+            remoteResourceRetriever = remoteResourceRetriever ?: { null },
+            requestObjectJwsVerifier = requestObjectJwsVerifier ?: RequestObjectJwsVerifier { _, _ -> true },
+        )
+    }
+
     /**
      * Pass in the URL sent by the Verifier (containing the [RequestParameters] as query parameters),
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
@@ -49,22 +61,36 @@ open class RequestParser(
             ?: kotlin.runCatching { // maybe it's in the URL parameters
                 Url(input).let {
                     val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
-                    matchRequestParameterCases(it, json.decodeFromJsonElement<RequestParameters>(params))
+                    when (val result = json.decodeFromJsonElement<RequestParameters>(params)) {
+                        is AuthenticationRequestParameters ->
+                            AuthenticationRequestParametersFrom.Uri(it, result)
+
+                        is SignatureRequestParameters ->
+                            SignatureRequestParametersFrom.Uri(it, result)
+
+                        else -> TODO()
+                    }
                 }
             }.onFailure { it.printStackTrace() }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
-                val params = jsonSerializer.decodeFromString<RequestParameters>(input)
-                matchRequestParameterCases(input, params)
+                when (val params = jsonSerializer.decodeFromString<RequestParameters>(input)) {
+                    is AuthenticationRequestParameters ->
+                        AuthenticationRequestParametersFrom.Json(input, params)
+
+                    is SignatureRequestParameters ->
+                        SignatureRequestParametersFrom.Json(input, params)
+
+                    else -> TODO()
+                }
             }.getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("Could not parse authentication request: $input") }
 
         val extractedParams =
-            (parsedParams.parameters as? AuthenticationRequestParameters)?.let {
-                extractRequestObject(it)
-            } ?: parsedParams
-                .also { Napier.i("Parsed authentication request: $it") }
-        extractedParams
+            (parsedParams.parameters as? AuthenticationRequestParameters)?.let { extractRequestObject(it) }
+                ?: parsedParams
+
+        extractedParams.also { Napier.i("Parsed authentication request: $it") }
     }
 
     private suspend fun extractRequestObject(params: AuthenticationRequestParameters): RequestParametersFrom? =
@@ -86,32 +112,18 @@ open class RequestParser(
                     .apply { Napier.w("parseRequestObjectJws: Deserialization failed", it) }
             }
             if (requestObjectJwsVerifier.invoke(jws, params)) {
-                matchRequestParameterCases(jws, params)
+                when (params) {
+                    is AuthenticationRequestParameters ->
+                        AuthenticationRequestParametersFrom.JwsSigned(jws, params)
+
+                    is SignatureRequestParameters ->
+                        SignatureRequestParametersFrom.JwsSigned(jws, params)
+
+                    else -> TODO()
+                }
             } else null
                 .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
         }
     }
 
-    open fun <T> matchRequestParameterCases(input: T, params: RequestParameters): RequestParametersFrom =
-        when (params) {
-            is AuthenticationRequestParameters ->
-                when (input) {
-                    is Url -> AuthenticationRequestParametersFrom.Uri(input, params)
-                    is JwsSigned -> AuthenticationRequestParametersFrom.JwsSigned(input, params)
-                    is String -> AuthenticationRequestParametersFrom.Json(input, params)
-                    else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
-                }
-
-            else -> TODO()
-        }
-
-    companion object {
-        fun createWithDefaults(
-            remoteResourceRetriever: RemoteResourceRetrieverFunction? = null,
-            requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
-        ) = RequestParser(
-            remoteResourceRetriever = remoteResourceRetriever ?: { null },
-            requestObjectJwsVerifier = requestObjectJwsVerifier ?: RequestObjectJwsVerifier { _, _ -> true },
-        )
-    }
 }
