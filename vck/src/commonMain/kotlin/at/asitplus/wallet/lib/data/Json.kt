@@ -12,10 +12,6 @@ import kotlin.reflect.KClass
 class JsonSerializerModulesCollector<T : Any>(
     val clazz: KClass<T>,
 ) {
-    init {
-        JsonSerializersModuleSet.add(this)
-    }
-
     val serializersModules = mutableMapOf<KClass<out T>, SerializersModule>()
     private val jsonElementEncoder = mutableSetOf<JsonValueEncoder>()
 
@@ -37,7 +33,8 @@ internal val JsonCredentialSerializer = JsonSerializerModulesCollector(ConstantI
 /**
  * Used to find instances of [JsonSerializerModulesCollector] at runtime
  */
-internal val JsonSerializersModuleSet = mutableSetOf<JsonSerializerModulesCollector<*>>()
+val JsonSerializersModuleSet = mutableSetOf<JsonSerializerModulesCollector<*>>(JsonCredentialSerializer)
+
 
 val vckJsonSerializer by lazy {
     Json {
