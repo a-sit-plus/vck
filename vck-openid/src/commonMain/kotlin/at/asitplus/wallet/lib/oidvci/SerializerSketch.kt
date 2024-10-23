@@ -1,5 +1,11 @@
 package at.asitplus.wallet.lib.oidvci
 
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.CredentialSubject
+import at.asitplus.wallet.lib.data.JsonSerializersModuleSet
+import at.asitplus.wallet.lib.data.RevocationListSubject
+import at.asitplus.wallet.lib.data.vckJsonSerializer
+import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
@@ -11,6 +17,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonUnquotedLiteral
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
+import kotlinx.serialization.modules.subclass
 
 typealias Parameters = Map<String, String>
 
@@ -63,7 +72,6 @@ inline fun <reified T> T.encodeToParameters(): Parameters =
         key to if (value is JsonPrimitive) value.content else json.encodeToString(value)
     }
 
-@OptIn(ExperimentalSerializationApi::class)
 val json by lazy {
     Json {
         prettyPrint = false
@@ -71,5 +79,6 @@ val json by lazy {
         explicitNulls = false
         ignoreUnknownKeys = true
         isLenient = true
+        serializersModule = vckJsonSerializer.serializersModule
     }
 }

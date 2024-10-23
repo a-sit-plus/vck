@@ -88,23 +88,6 @@ publishing {
                 }
             }
         }
-        //REMOVE ME AFTER REBRANDED ARTIFACT HAS BEEN PUBLISHED
-        create<MavenPublication>("relocation") {
-            pom {
-                // Old artifact coordinates
-                artifactId = "vclib-rqes"
-                version = artifactVersion
-
-                distributionManagement {
-                    relocation {
-                        // New artifact coordinates
-                        artifactId = "vck-rqes"
-                        version = artifactVersion
-                        message = " artifactId have been changed"
-                    }
-                }
-            }
-        }
     }
     repositories {
         mavenLocal {

@@ -4,6 +4,7 @@ import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
+import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.oidc.jsonSerializer
 import io.kotest.core.spec.style.FunSpec
@@ -14,8 +15,9 @@ import kotlinx.serialization.encodeToString
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
-class SerializationTest : FunSpec({
 
+class SerializationTest : FunSpec({
+    initOpenIdModule()
     fun createAuthorizationRequest() = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         clientId = randomString(),
