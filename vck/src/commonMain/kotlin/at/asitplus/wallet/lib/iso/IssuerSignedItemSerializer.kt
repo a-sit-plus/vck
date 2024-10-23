@@ -82,15 +82,16 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
         is ByteArray -> ByteArraySerializer()
         is Any -> CborCredentialSerializer.lookupSerializer(namespace, elementIdentifier)
             ?: error("serializer not found for $elementIdentifier, with value $elementValue")
+
         else -> error("serializer not found for $elementIdentifier, with value $elementValue")
     }
 
 
     override fun deserialize(decoder: Decoder): IssuerSignedItem {
         var digestId = 0U
-        lateinit var random: ByteArray
-        lateinit var elementIdentifier: String
-        lateinit var elementValue: Any
+        var random: ByteArray? = null
+        var elementIdentifier: String? = null
+        var elementValue: Any? = null
         decoder.decodeStructure(descriptor) {
             while (true) {
                 val name = decodeStringElement(descriptor, 0)
@@ -100,32 +101,48 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
                     PROP_DIGEST_ID -> digestId = decodeLongElement(descriptor, index).toUInt()
                     PROP_RANDOM -> random = decodeSerializableElement(descriptor, index, ByteArraySerializer())
                     PROP_ELEMENT_ID -> elementIdentifier = decodeStringElement(descriptor, index)
+                    // TODO How can we decode the elementValue, if the elementIdentifier is not yet known?
+                    // this may be the case when the "elementValue" comes before "elementIdentifier" in the serialized byte array
                     PROP_ELEMENT_VALUE -> elementValue = decodeAnything(index, elementIdentifier)
                 }
-                if (index == 3) break
+                if (random != null && elementIdentifier != null && elementValue != null) break
             }
         }
         return IssuerSignedItem(
             digestId = digestId,
-            random = random,
-            elementIdentifier = elementIdentifier,
-            elementValue = elementValue
+            random = random!!,
+            elementIdentifier = elementIdentifier!!,
+            elementValue = reDecodeValue(elementIdentifier, elementValue),
         )
     }
 
-    private fun CompositeDecoder.decodeAnything(index: Int, elementIdentifier: String): Any {
+    private fun reDecodeValue(elementIdentifier: String?, elementValue: Any?): Any {
+        // TODO This is a real hacky solution, and obviously doesn't cover all cases
+        val value = CborCredentialSerializer.lookupSerializer(namespace, elementIdentifier!!)?.let {
+            if (it.descriptor == LocalDate.serializer().descriptor) {
+                LocalDate.parse(elementValue!!.toString())
+            } else {
+                elementValue!!
+            }
+        } ?: elementValue!!
+        return value
+    }
+
+    private fun CompositeDecoder.decodeAnything(index: Int, elementIdentifier: String?): Any {
         if (namespace.isBlank()) Napier.w { "This decoder is not namespace-aware! Unspeakable things may happen…" }
 
         // Tags are not read out here but skipped because `decodeElementIndex` is never called, so we cannot
         // discriminate technically, this should be a good thing though, because otherwise we'd consume more from the
         // input
-        runCatching {
-            CborCredentialSerializer.decode(descriptor, index, this, elementIdentifier, namespace)
-                ?.let { return it }
-                ?: Napier.w {
-                    "Could not find a registered decoder for namespace $namespace and elementIdentifier" +
-                            " $elementIdentifier. Falling back to defaults"
-                }
+        if (elementIdentifier != null) {
+            runCatching {
+                CborCredentialSerializer.decode(descriptor, index, this, elementIdentifier, namespace)
+                    ?.let { return it }
+                    ?: Napier.w {
+                        "Could not find a registered decoder for namespace $namespace and elementIdentifier" +
+                                " $elementIdentifier. Falling back to defaults"
+                    }
+            }
         }
 
         // These are the ones that map to different CBOR data types, the rest don't, so if it is not registered, we'll
