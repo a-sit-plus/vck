@@ -156,7 +156,7 @@ class WalletService(
         credentialConfigurationIds: Set<String>,
         authorizationServers: Set<String>? = null,
     ) = credentialConfigurationIds.map {
-        AuthorizationDetails.OpenIdCredential(
+        OpenIdAuthorizationDetails(
             credentialConfigurationId = it,
             locations = authorizationServers,
             // Not supporting different credential datasets for one credential configuration at the moment,

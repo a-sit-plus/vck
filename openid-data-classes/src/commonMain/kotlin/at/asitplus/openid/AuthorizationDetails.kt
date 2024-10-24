@@ -74,7 +74,6 @@ data class OpenIdAuthorizationDetails(
      * Credential Configuration in the [IssuerMetadata.supportedCredentialConfigurations]. The Wallet MUST use these
      * identifiers together with an Access Token in subsequent Credential Requests.
      */
-    // TODO is required in OID4VCI!
     @SerialName("credential_identifiers")
-    val credentialIdentifiers: Set<String>? = null,
+    val credentialIdentifiers: Set<String>,
 ) : AuthorizationDetails
