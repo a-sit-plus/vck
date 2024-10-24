@@ -37,17 +37,9 @@ open class RequestParser(
      * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
-) {
-    companion object {
-        fun createWithDefaults(
-            remoteResourceRetriever: RemoteResourceRetrieverFunction? = null,
-            requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
-        ) = RequestParser(
-            remoteResourceRetriever = remoteResourceRetriever ?: { null },
-            requestObjectJwsVerifier = requestObjectJwsVerifier ?: RequestObjectJwsVerifier { _, _ -> true },
-        )
-    }
 
+//    private val matchingFun: (T,RequestParameters) -> RequestParametersFrom
+) {
     /**
      * Pass in the URL sent by the Verifier (containing the [RequestParameters] as query parameters),
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
@@ -103,8 +95,8 @@ open class RequestParser(
         }
     }
 
-    open fun <T> matchRequestParameterCases(input: T, params: RequestParameters): RequestParametersFrom {
-        return when (params) {
+    open fun <T> matchRequestParameterCases(input: T, params: RequestParameters): RequestParametersFrom =
+        when (params) {
             is AuthenticationRequestParameters ->
                 when (input) {
                     is Url -> AuthenticationRequestParametersFrom.Uri(input, params)
@@ -115,5 +107,14 @@ open class RequestParser(
 
             else -> TODO()
         }
+
+    companion object {
+        fun createWithDefaults(
+            remoteResourceRetriever: RemoteResourceRetrieverFunction? = null,
+            requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
+        ) = RequestParser(
+            remoteResourceRetriever = remoteResourceRetriever ?: { null },
+            requestObjectJwsVerifier = requestObjectJwsVerifier ?: RequestObjectJwsVerifier { _, _ -> true },
+        )
     }
 }

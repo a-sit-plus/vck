@@ -20,8 +20,8 @@ class ExtendedRequestParser(
     remoteResourceRetriever: RemoteResourceRetrieverFunction,
     requestObjectJwsVerifier: RequestObjectJwsVerifier,
 ) : RequestParser(remoteResourceRetriever, requestObjectJwsVerifier) {
-    override fun <T> matchRequestParameterCases(input: T, params: RequestParameters): RequestParametersFrom {
-        return when (params) {
+    override fun <T> matchRequestParameterCases(input: T, params: RequestParameters): RequestParametersFrom =
+        when (params) {
             is AuthenticationRequestParameters ->
                 when (input) {
                     is Url -> AuthenticationRequestParametersFrom.Uri(input, params)
@@ -29,6 +29,7 @@ class ExtendedRequestParser(
                     is String -> AuthenticationRequestParametersFrom.Json(input, params)
                     else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
                 }
+
             is SignatureRequestParameters ->
                 when (input) {
                     is Url -> SignatureRequestParametersFrom.Uri(input, params)
@@ -39,13 +40,12 @@ class ExtendedRequestParser(
 
             else -> TODO()
         }
-    }
 
     companion object {
         fun createWithDefaults(
             remoteResourceRetriever: RemoteResourceRetrieverFunction? = null,
             requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
-        ) = RequestParser(
+        ) = ExtendedRequestParser(
             remoteResourceRetriever = remoteResourceRetriever ?: { null },
             requestObjectJwsVerifier = requestObjectJwsVerifier ?: RequestObjectJwsVerifier { _, _ -> true },
         )
