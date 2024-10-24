@@ -16,7 +16,7 @@ Release 5.1.0:
    - Note that multiple `scope` values may be joined with a whitespace ` `
  - SD-JWT:
    - Pass around decoded data with `SdJwtSigned` in several result classes like `VerifyPresentationResult.SuccessSdJwt`
-   - Rename `disclosures` to `reconstructed` in several result classes like `AuthnResponseResult.SuccessSdJwt`
+   - Rename `disclosures` to `reconstructedJsonObject` in several result classes like `AuthnResponseResult.SuccessSdJwt`
    - Correctly implement confirmation claim in `VerifiableCredentialSdJwt`, migrating from `JsonWebKey` to `ConfirmationClaim`
    - Change type of `claimValue` in `SelectiveDisclosureItem` from `JsonPrimitive` to `JsonElement` to be able to process nested disclosures
 

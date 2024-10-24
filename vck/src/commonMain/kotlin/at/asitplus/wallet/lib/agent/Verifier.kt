@@ -5,8 +5,8 @@ import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.jws.ReconstructedSdJwtClaims
 import at.asitplus.wallet.lib.jws.SdJwtSigned
+import kotlinx.serialization.json.JsonObject
 
 
 /**
@@ -48,7 +48,7 @@ interface Verifier {
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
             @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
             val sdJwt: VerifiableCredentialSdJwt,
-            val reconstructed: ReconstructedSdJwtClaims,
+            val reconstructedJsonObject: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
             val isRevoked: Boolean
         ) : VerifyPresentationResult()
@@ -65,7 +65,7 @@ interface Verifier {
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
             @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
             val sdJwt: VerifiableCredentialSdJwt,
-            val reconstructed: ReconstructedSdJwtClaims,
+            val reconstructedJsonObject: JsonObject,
             /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
             val disclosures: Map<String, SelectiveDisclosureItem>,
             val isRevoked: Boolean,

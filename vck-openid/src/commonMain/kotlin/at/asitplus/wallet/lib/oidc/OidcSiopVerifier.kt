@@ -29,6 +29,7 @@ import io.ktor.http.*
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.DurationUnit
@@ -504,7 +505,7 @@ class OidcSiopVerifier private constructor(
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
             @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
             val sdJwt: VerifiableCredentialSdJwt,
-            val reconstructed: ReconstructedSdJwtClaims,
+            val reconstructed: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
             val state: String?,
         ) : AuthnResponseResult()
@@ -695,7 +696,7 @@ class OidcSiopVerifier private constructor(
                 sdJwtSigned,
                 verifiableCredentialSdJwt,
                 sdJwt,
-                reconstructed,
+                reconstructedJsonObject,
                 disclosures,
                 state
             ).also { Napier.i("VP success: $this") }

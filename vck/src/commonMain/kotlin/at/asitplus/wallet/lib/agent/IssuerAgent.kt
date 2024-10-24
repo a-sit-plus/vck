@@ -185,7 +185,7 @@ class IssuerAgent(
             Napier.w("Could not wrap credential in SD-JWT", it)
             throw RuntimeException("Signing failed", it)
         }
-        val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~")
+        val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
         return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme)
     }
 

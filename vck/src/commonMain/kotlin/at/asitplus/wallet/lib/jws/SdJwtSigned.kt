@@ -1,12 +1,15 @@
 package at.asitplus.wallet.lib.jws
 
 import at.asitplus.KmmResult
+import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Representation of a signed SD-JWT,
@@ -43,6 +46,9 @@ data class SdJwtSigned(
 
     fun getPayloadAsVerifiableCredentialSdJwt(): KmmResult<VerifiableCredentialSdJwt> =
         VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
+
+    fun getPayloadAsJsonObject(): KmmResult<JsonObject> =
+        runCatching { vckJsonSerializer.decodeFromString<JsonObject>(jws.payload.decodeToString()) }.wrap()
 
     companion object {
         fun parse(input: String): SdJwtSigned? {

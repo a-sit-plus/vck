@@ -87,5 +87,6 @@ private fun Any.toJsonElement(): JsonElement = when (this) {
     is UInt -> JsonPrimitive(this)
     is ULong -> JsonPrimitive(this)
     is Collection<*> -> JsonArray(mapNotNull { it?.toJsonElement() }.toList())
+    is JsonElement -> this
     else -> JsonPrimitive(toString())
 }

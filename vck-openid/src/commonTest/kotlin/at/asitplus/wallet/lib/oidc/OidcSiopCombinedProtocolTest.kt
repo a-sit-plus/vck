@@ -242,17 +242,15 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         groupedResult.validationResults.size shouldBe 2
         groupedResult.validationResults.forEach { result ->
             result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-            result.reconstructed.claims.shouldNotBeEmpty()
+            result.reconstructed.entries.shouldNotBeEmpty()
             when (result.verifiableCredentialSdJwt.verifiableCredentialType) {
                 EuPidScheme.sdJwtType -> {
-                    result.reconstructed.claims.firstOrNull { it.claimName == EuPidScheme.Attributes.FAMILY_NAME }
-                        .shouldNotBeNull()
-                    result.reconstructed.claims.firstOrNull { it.claimName == EuPidScheme.Attributes.GIVEN_NAME }
-                        .shouldNotBeNull()
+                    result.reconstructed[EuPidScheme.Attributes.FAMILY_NAME].shouldNotBeNull()
+                    result.reconstructed[EuPidScheme.Attributes.GIVEN_NAME].shouldNotBeNull()
                 }
 
                 ConstantIndex.AtomicAttribute2023.sdJwtType -> {
-                    result.reconstructed.claims.firstOrNull { it.claimName == CLAIM_DATE_OF_BIRTH }.shouldNotBeNull()
+                    result.reconstructed[CLAIM_DATE_OF_BIRTH].shouldNotBeNull()
                 }
 
                 else -> {

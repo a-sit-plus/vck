@@ -19,7 +19,6 @@ import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.ReconstructedSdJwtClaims
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import io.github.aakira.napier.Napier
@@ -27,6 +26,7 @@ import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.json.*
 
 
 /**
@@ -39,6 +39,7 @@ class Validator(
     private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
     private val parser: Parser = Parser(),
     private val zlibService: ZlibService = DefaultZlibService(),
+    private val trustAllSignatures: Boolean = false // TODO
 ) {
 
     constructor(
@@ -256,7 +257,7 @@ class Validator(
             sdJwtSigned = sdJwtResult.sdJwtSigned,
             verifiableCredentialSdJwt = sdJwtResult.verifiableCredentialSdJwt,
             sdJwt = sdJwtResult.sdJwt,
-            reconstructed = sdJwtResult.reconstructed,
+            reconstructedJsonObject = sdJwtResult.reconstructedJsonObject,
             disclosures = sdJwtResult.disclosures.values,
             isRevoked = sdJwtResult.isRevoked,
         )
@@ -410,7 +411,7 @@ class Validator(
         val sdJwtSigned = SdJwtSigned.parse(input)
             ?: return Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.w("verifySdJwt: Could not parse SD-JWT from $input") }
-        if (!verifierJwsService.verifyJwsObject(sdJwtSigned.jws))
+        if (!verifierJwsService.verifyJwsObject(sdJwtSigned.jws) && !trustAllSignatures)
             return Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.w("verifySdJwt: Signature invalid") }
         val sdJwt = sdJwtSigned.getPayloadAsVerifiableCredentialSdJwt().getOrElse { ex ->
@@ -425,7 +426,14 @@ class Validator(
         val isRevoked = checkRevocationStatus(sdJwt) == RevocationStatus.REVOKED
         if (isRevoked)
             Napier.d("verifySdJwt: revoked")
+        val issuerSigned = sdJwtSigned.getPayloadAsJsonObject().getOrElse { ex ->
+            return Verifier.VerifyCredentialResult.InvalidStructure(input)
+                .also { Napier.w("verifySdJwt: Could not parse payload", ex) }
+        }
 
+        val reconstructedJsonObject = reconstructJson(issuerSigned, sdJwtSigned.rawDisclosures)
+
+        // TODO Does not contain everything that's really correct (i.e. nested ones!)
         /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
         val validDisclosures: Map<String, SelectiveDisclosureItem> = sdJwtSigned.rawDisclosures.filter {
             // it's important to read again from source string to prevent different formats in serialization
@@ -443,7 +451,6 @@ class Validator(
                 return Verifier.VerifyCredentialResult.InvalidStructure(input)
             }
         }
-        val reconstructed = ReconstructedSdJwtClaims(validDisclosures.values)
         val kid = sdJwtSigned.jws.header.keyId
         return when (parser.parseSdJwt(input, sdJwt, kid)) {
             is Parser.ParseVcResult.SuccessSdJwt -> {
@@ -451,7 +458,7 @@ class Validator(
                     sdJwtSigned = sdJwtSigned,
                     verifiableCredentialSdJwt = sdJwt,
                     sdJwt = sdJwt,
-                    reconstructed = reconstructed,
+                    reconstructedJsonObject = reconstructedJsonObject,
                     disclosures = validDisclosures,
                     isRevoked = isRevoked
                 ).also { Napier.d("verifySdJwt: Valid") }
@@ -461,6 +468,50 @@ class Validator(
                 .also { Napier.d("verifySdJwt: Invalid structure from Parser") }
         }
     }
+
+    private fun reconstructJson(
+        input: JsonObject,
+        disclosures: List<String>
+    ): JsonObject = buildJsonObject {
+        input.forEach { inputElement ->
+            inputElement.asSdArray()?.forEach { sdEntry ->
+                disclosures.matchDisclosureHash(sdEntry)?.let { match ->
+                    match.toSdItem()?.let { sdItem ->
+                        when (val element = sdItem.claimValue) {
+                            is JsonObject -> putIfNotEmpty(sdItem.claimName, reconstructJson(element, disclosures))
+                            else -> put(sdItem.claimName, element)
+                        }
+                    }
+                }
+            } ?: run {
+                runCatching { inputElement.value.jsonObject }.getOrNull()?.let { nested ->
+                    putIfNotEmpty(inputElement.key, reconstructJson(nested, disclosures))
+                }
+            }
+        }
+    }
+
+    private fun Map.Entry<String, JsonElement>.asSdArray(): List<JsonPrimitive>? =
+        if (key == "_sd") {
+            kotlin.runCatching { value.jsonArray }.getOrNull()
+                ?.mapNotNull { runCatching { it.jsonPrimitive }.getOrNull() }
+        } else {
+            null
+        }
+
+    private fun JsonObjectBuilder.putIfNotEmpty(key: String, it: JsonObject) {
+        if (!it.isEmpty()) put(key, it)
+    }
+
+    private fun List<String>.matchDisclosureHash(sdEntry: JsonPrimitive) =
+        firstOrNull { it.hashDisclosure() == sdEntry.content }
+
+    private fun String.toSdItem() =
+        SelectiveDisclosureItem.deserialize(decodeToByteArray(Base64UrlStrict).decodeToString()).getOrNull()
+
+    private fun JsonObject.getSdArray(): List<JsonPrimitive>? =
+        runCatching { this["_sd"]?.jsonArray }.getOrNull()
+            ?.mapNotNull { runCatching { it.jsonPrimitive }.getOrNull() }
 
     /**
      * Validates the content of a [IssuerSigned] object.
