@@ -1,9 +1,18 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.CredentialRequestParameters
+import at.asitplus.openid.CredentialRequestProof
+import at.asitplus.openid.CredentialResponseParameters
+import at.asitplus.openid.OpenIdAuthorizationDetails
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
+import at.asitplus.openid.SupportedCredentialFormatDefinition
+import at.asitplus.openid.TokenRequestParameters
+import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.oidc.jsonSerializer
@@ -17,7 +26,7 @@ import kotlin.time.Duration.Companion.seconds
 
 
 class SerializationTest : FunSpec({
-    initOpenIdModule()
+    beforeSpec { initOpenIdModule() }
     fun createAuthorizationRequest() = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         clientId = randomString(),

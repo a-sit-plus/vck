@@ -1,7 +1,7 @@
 package at.asitplus.rqes.serializers
 
 import at.asitplus.rqes.collection_entries.TransactionData
-import at.asitplus.rqes.jsonSerializer
+import at.asitplus.rqes.rdcJsonSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -25,11 +25,11 @@ object Base64URLTransactionDataSerializer : KSerializer<TransactionData> {
     override fun deserialize(decoder: Decoder): TransactionData {
         val jsonString = decoder.decodeString()
         val base64URLString = jsonString.decodeToByteArray(Base64UrlStrict).decodeToString()
-        return jsonSerializer.decodeFromString<TransactionData>(base64URLString)
+        return rdcJsonSerializer.decodeFromString<TransactionData>(base64URLString)
     }
 
     override fun serialize(encoder: Encoder, value: TransactionData) {
-        val jsonString = jsonSerializer.encodeToString<TransactionData>(value)
+        val jsonString = rdcJsonSerializer.encodeToString<TransactionData>(value)
         val base64URLString = jsonString.encodeToByteArray().encodeToString(Base64UrlStrict)
         encoder.encodeString(base64URLString)
     }

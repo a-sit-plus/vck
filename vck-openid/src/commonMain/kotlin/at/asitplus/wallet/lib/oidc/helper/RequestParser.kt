@@ -123,5 +123,4 @@ class RequestParser(
                 .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
         }
     }
-
 }

@@ -85,11 +85,11 @@ data class CredentialRequestParameters(
     val proofs: CredentialRequestProofContainer? = null,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(input: String): KmmResult<CredentialRequestParameters> =
-            runCatching { jsonSerializer.decodeFromString<CredentialRequestParameters>(input) }.wrap()
+            runCatching { odcJsonSerializer.decodeFromString<CredentialRequestParameters>(input) }.wrap()
     }
 
 }

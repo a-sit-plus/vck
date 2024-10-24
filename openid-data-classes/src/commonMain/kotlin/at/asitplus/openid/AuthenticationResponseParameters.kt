@@ -93,11 +93,11 @@ data class AuthenticationResponseParameters(
     val response: String? = null,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<AuthenticationResponseParameters>(it)
+            odcJsonSerializer.decodeFromString<AuthenticationResponseParameters>(it)
         }.wrap()
     }
 }

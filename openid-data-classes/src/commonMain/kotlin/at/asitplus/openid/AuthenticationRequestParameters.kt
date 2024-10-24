@@ -260,11 +260,11 @@ data class AuthenticationRequestParameters(
     val codeChallengeMethod: String? = null,
 ) : RequestParameters {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<AuthenticationRequestParameters>(it)
+            odcJsonSerializer.decodeFromString<AuthenticationRequestParameters>(it)
         }.wrap()
     }
 }

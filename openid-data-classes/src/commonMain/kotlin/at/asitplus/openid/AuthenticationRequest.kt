@@ -10,11 +10,11 @@ import kotlinx.serialization.encodeToString
 @Serializable
 sealed class AuthenticationRequestParametersFrom : RequestParametersFrom {
 
-    fun serialize(): String = jsonSerializer.encodeToString(this)
+    fun serialize(): String = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(input: String) =
-            catching { jsonSerializer.decodeFromString<AuthenticationRequestParametersFrom>(input) }
+            catching { odcJsonSerializer.decodeFromString<AuthenticationRequestParametersFrom>(input) }
     }
 
     abstract override val parameters: AuthenticationRequestParameters

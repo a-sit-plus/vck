@@ -37,7 +37,7 @@ object LibraryInitializer {
         serializersModule: SerializersModule? = null
     ) {
         AttributeIndex.registerAttributeType(credentialScheme)
-        serializersModule?.let { JsonCredentialSerializer.registerSerializersModule(credentialScheme::class, it) }
+        serializersModule?.let { JsonCredentialSerializer.registerSerializersModule(credentialScheme, it) }
     }
 
     /**
