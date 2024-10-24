@@ -7,7 +7,6 @@ import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
-import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
@@ -35,19 +34,17 @@ import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
-class DummyCredentialDataProvider(
-    private val clock: Clock = Clock.System,
-) : IssuerCredentialDataProvider {
+object DummyCredentialDataProvider {
 
     private val defaultLifetime = 1.minutes
 
-    override fun getCredential(
+    fun getCredential(
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>?,
+        claimNames: Collection<String>? = null,
     ): KmmResult<CredentialToBeIssued> = catching {
-        val issuance = clock.now()
+        val issuance = Clock.System.now()
         val expiration = issuance + defaultLifetime
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
             val subjectId = subjectPublicKey.didEncoded

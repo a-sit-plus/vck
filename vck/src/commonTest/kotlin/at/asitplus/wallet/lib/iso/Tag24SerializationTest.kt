@@ -83,7 +83,7 @@ class Tag24SerializationTest : FreeSpec({
     "IssuerSigned from IssuerAgent" {
         val holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
         val issuedCredential = IssuerAgent().issueCredential(
-            DummyCredentialDataProvider().getCredential(
+            DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.ISO_MDOC

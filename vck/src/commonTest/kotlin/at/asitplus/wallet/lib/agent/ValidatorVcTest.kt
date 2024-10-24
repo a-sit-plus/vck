@@ -29,7 +29,6 @@ class ValidatorVcTest : FreeSpec() {
     private lateinit var verifier: Verifier
     private lateinit var verifierKeyMaterial: KeyMaterial
 
-    private val dataProvider: IssuerCredentialDataProvider = DummyCredentialDataProvider()
     private val revocationListUrl: String = "https://wallet.a-sit.at/backend/credentials/status/1"
 
     init {
@@ -44,7 +43,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "credentials are valid for" {
             val credential = issuer.issueCredential(
-                dataProvider.getCredential(
+                DummyCredentialDataProvider.getCredential(
                     verifierKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -57,7 +56,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "revoked credentials are not valid" {
             val credential = issuer.issueCredential(
-                dataProvider.getCredential(
+                DummyCredentialDataProvider.getCredential(
                     verifierKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -82,7 +81,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "wrong subject keyId is not be valid" {
             val credential = issuer.issueCredential(
-                dataProvider.getCredential(
+                DummyCredentialDataProvider.getCredential(
                     EphemeralKeyWithoutCert().publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -96,7 +95,7 @@ class ValidatorVcTest : FreeSpec() {
 
         "credential with invalid JWS format is not valid" {
             val credential = issuer.issueCredential(
-                dataProvider.getCredential(
+                DummyCredentialDataProvider.getCredential(
                     verifierKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -109,7 +108,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Manually created and valid credential is valid" - {
-            dataProvider.getCredential(
+            DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -124,7 +123,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Wrong key ends in wrong signature is not valid" - {
-            dataProvider.getCredential(
+            DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -140,7 +139,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid sub in credential is not valid" - {
-            dataProvider.getCredential(
+            DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -156,7 +155,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid issuer in credential is not valid" - {
-            dataProvider.getCredential(
+            DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -171,7 +170,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid jwtId in credential is not valid" - {
-            dataProvider.getCredential(
+            DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -187,7 +186,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid expiration in credential is not valid" - {
-            dataProvider.getCredential(
+            DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -212,7 +211,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "No expiration date is valid" - {
-            dataProvider.getCredential(
+            DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -227,7 +226,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid jws-expiration in credential is not valid" - {
-            dataProvider.getCredential(
+            DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -243,7 +242,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Expiration not matching in credential is not valid" - {
-            dataProvider.getCredential(
+            DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -259,7 +258,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid NotBefore in credential is not valid" - {
-            dataProvider.getCredential(
+            DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -275,7 +274,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Invalid issuance date in credential is not valid" - {
-            dataProvider.getCredential(
+            DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -291,7 +290,7 @@ class ValidatorVcTest : FreeSpec() {
         }
 
         "Issuance date and not before not matching is not valid" - {
-            dataProvider.getCredential(
+            DummyCredentialDataProvider.getCredential(
                 verifierKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT

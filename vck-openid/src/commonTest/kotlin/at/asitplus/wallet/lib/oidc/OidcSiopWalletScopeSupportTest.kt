@@ -90,7 +90,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         "get empty scope works even without available credentials" {
             holderAgent.storeCredential(
                 IssuerAgent(EphemeralKeyWithSelfSignedCert()).issueCredential(
-                    DummyCredentialDataProvider().getCredential(
+                    DummyCredentialDataProvider.getCredential(
                         holderKeyMaterial.publicKey,
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.ISO_MDOC,
@@ -131,7 +131,7 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         "get MdocMdlWithGivenName scope with available credentials succeeds" {
             holderAgent.storeCredential(
                 IssuerAgent(EphemeralKeyWithSelfSignedCert()).issueCredential(
-                    DummyCredentialDataProvider().getCredential(
+                    DummyCredentialDataProvider.getCredential(
                         holderKeyMaterial.publicKey,
                         MobileDrivingLicenceScheme,
                         ConstantIndex.CredentialRepresentation.ISO_MDOC,

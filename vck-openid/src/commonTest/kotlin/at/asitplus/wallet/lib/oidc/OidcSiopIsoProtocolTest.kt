@@ -39,7 +39,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         val issuerAgent = IssuerAgent(EphemeralKeyWithSelfSignedCert())
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     MobileDrivingLicenceScheme,
                     ConstantIndex.CredentialRepresentation.ISO_MDOC,
@@ -48,7 +48,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         )
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.ISO_MDOC,

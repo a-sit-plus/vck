@@ -45,7 +45,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
         holderAgent.storeCredential(
             IssuerAgent().issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.SD_JWT,

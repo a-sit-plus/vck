@@ -37,7 +37,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
 
         holderAgent.storeCredential(
             IssuerAgent().issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
