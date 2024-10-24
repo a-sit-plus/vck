@@ -1,20 +1,18 @@
-@file:UseSerializers(UrlSerializer::class)
-
-package at.asitplus.dif.rqes
+package at.asitplus.dif.rqes.collection_entries.DocumentDigestEntries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.dif.rqes.Method
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.UseSerializers
 
 @ConsistentCopyVisibility
 @Serializable
-data class DocumentDigestEntry private constructor(
+data class RqesDocumentDigestEntry private constructor(
     /**
      * D3.1: UC Specification WP3: REQUIRED.
      * String containing a human-readable
@@ -32,7 +30,7 @@ data class DocumentDigestEntry private constructor(
      * String containing the base64-encoded
      * octet-representation of applying
      * the algorithm from
-     * [hashAlgorithmOID] to the octet-
+     * [hashAlgorithmOid] to the octet-
      * representation of the document
      * to be signed (SD).
      */
@@ -48,7 +46,7 @@ data class DocumentDigestEntry private constructor(
      */
     @SerialName("hashAlgorithmOID")
     @Serializable(ObjectIdSerializer::class)
-    val hashAlgorithmOID: ObjectIdentifier? = null,
+    val hashAlgorithmOid: ObjectIdentifier? = null,
 
     /**
      * D3.1: UC Specification WP3: OPTIONAL.
@@ -58,7 +56,7 @@ data class DocumentDigestEntry private constructor(
      * of the designated document.
      */
     @SerialName("documentLocation_uri")
-    val documentLocationUri: Url? = null,
+    val documentLocationUri: String? = null,
 
     /**
      * D3.1: UC Specification WP3: OPTIONAL.
@@ -89,7 +87,7 @@ data class DocumentDigestEntry private constructor(
      */
     @SerialName("dtbsrHashAlgorithmOID")
     @Serializable(ObjectIdSerializer::class)
-    val dtbsrHashAlgorithmOID: ObjectIdentifier? = null,
+    val dtbsrHashAlgorithmOid: ObjectIdentifier? = null,
 ) {
     /**
      * D3.1: UC Specification WP3:
@@ -104,31 +102,31 @@ data class DocumentDigestEntry private constructor(
      */
     init {
         require(hash != null || dataToBeSignedRepresentation != null)
-        require(hashAlgorithmOID?.toString() iff hash?.toString())
-        require(dtbsrHashAlgorithmOID?.toString() iff dataToBeSignedRepresentation?.toString())
-        require(documentLocationUri?.toString() iff hash?.toString())
-        require(documentLocationMethod?.toString() iff documentLocationUri?.toString())
+        require(hashAlgorithmOid?.toString() iff hash?.toString())
+        require(dtbsrHashAlgorithmOid?.toString() iff dataToBeSignedRepresentation?.toString())
+        require(documentLocationUri iff hash?.toString())
+        require(documentLocationMethod?.toString() iff documentLocationUri)
     }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
 
-        other as DocumentDigestEntry
+        other as RqesDocumentDigestEntry
 
         if (label != other.label) return false
         if (hash != null) {
             if (other.hash == null) return false
             if (!hash.contentEquals(other.hash)) return false
         } else if (other.hash != null) return false
-        if (hashAlgorithmOID != other.hashAlgorithmOID) return false
+        if (hashAlgorithmOid != other.hashAlgorithmOid) return false
         if (documentLocationUri != other.documentLocationUri) return false
         if (documentLocationMethod != other.documentLocationMethod) return false
         if (dataToBeSignedRepresentation != null) {
             if (other.dataToBeSignedRepresentation == null) return false
             if (!dataToBeSignedRepresentation.contentEquals(other.dataToBeSignedRepresentation)) return false
         } else if (other.dataToBeSignedRepresentation != null) return false
-        if (dtbsrHashAlgorithmOID != other.dtbsrHashAlgorithmOID) return false
+        if (dtbsrHashAlgorithmOid != other.dtbsrHashAlgorithmOid) return false
 
         return true
     }
@@ -136,11 +134,11 @@ data class DocumentDigestEntry private constructor(
     override fun hashCode(): Int {
         var result = label.hashCode()
         result = 31 * result + (hash?.contentHashCode() ?: 0)
-        result = 31 * result + (hashAlgorithmOID?.hashCode() ?: 0)
+        result = 31 * result + (hashAlgorithmOid?.hashCode() ?: 0)
         result = 31 * result + (documentLocationUri?.hashCode() ?: 0)
         result = 31 * result + (documentLocationMethod?.hashCode() ?: 0)
         result = 31 * result + (dataToBeSignedRepresentation?.contentHashCode() ?: 0)
-        result = 31 * result + (dtbsrHashAlgorithmOID?.hashCode() ?: 0)
+        result = 31 * result + (dtbsrHashAlgorithmOid?.hashCode() ?: 0)
         return result
     }
 
@@ -153,7 +151,7 @@ data class DocumentDigestEntry private constructor(
     @ConsistentCopyVisibility
     @Serializable
     @SerialName("documentLocation_method")
-    data class DocumentLocationMethod private constructor(
+    data class DocumentLocationMethod constructor(
         val method: Method,
     )
 
@@ -165,20 +163,20 @@ data class DocumentDigestEntry private constructor(
             label: String,
             hash: ByteArray?,
             hashAlgorithmOID: ObjectIdentifier?,
-            documentLocationUri: Url?,
+            documentLocationUri: String?,
             documentLocationMethod: DocumentLocationMethod?,
             dtbsr: ByteArray?,
             dtbsrHashAlgorithmOID: ObjectIdentifier?,
-        ): KmmResult<DocumentDigestEntry> =
+        ): KmmResult<RqesDocumentDigestEntry> =
             kotlin.runCatching {
-                DocumentDigestEntry(
+                RqesDocumentDigestEntry(
                     label = label,
                     hash = hash,
-                    hashAlgorithmOID = hashAlgorithmOID,
+                    hashAlgorithmOid = hashAlgorithmOID,
                     documentLocationUri = documentLocationUri,
                     documentLocationMethod = documentLocationMethod,
                     dataToBeSignedRepresentation = dtbsr,
-                    dtbsrHashAlgorithmOID = dtbsrHashAlgorithmOID,
+                    dtbsrHashAlgorithmOid = dtbsrHashAlgorithmOID,
                 )
             }.wrap()
 
@@ -188,5 +186,5 @@ data class DocumentDigestEntry private constructor(
 /**
  * Checks that either both strings are present or null
  */
-private infix fun String?.iff(other: String?): Boolean =
+internal infix fun String?.iff(other: String?): Boolean =
     (this != null && other != null) or (this == null && other == null)

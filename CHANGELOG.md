@@ -1,5 +1,10 @@
 # Changelog
 
+tbd
+- New Class `SignatureRequestFrom` to handle signature requests by reference
+- Rename `AuthenticationRequestParser` to `RequestParser`
+    - `RequestParser` can now handle `SignatureRequestFrom`
+
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact
  - Add `credentialScheme` and `subjectPublicKey` to internal `CredentialToBeIssued`
