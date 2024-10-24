@@ -9,7 +9,9 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Encodes [SelectiveDisclosureItem] as needed by SD-JWT spec,
@@ -19,7 +21,7 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 object SelectiveDisclosureItemSerializer : KSerializer<SelectiveDisclosureItem> {
 
-    private val listSerializer = ListSerializer(JsonPrimitive.serializer())
+    private val listSerializer = ListSerializer(JsonElement.serializer())
 
     override val descriptor: SerialDescriptor = listSerializer.descriptor
 
@@ -39,8 +41,8 @@ object SelectiveDisclosureItemSerializer : KSerializer<SelectiveDisclosureItem> 
         if (items.count() != 3) throw IllegalArgumentException()
         val (firstElement, secondElement, thirdElement) = items
         return SelectiveDisclosureItem(
-            salt = firstElement.content.decodeToByteArray(Base64UrlStrict),
-            claimName = secondElement.content,
+            salt = firstElement.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict),
+            claimName = secondElement.jsonPrimitive.content,
             claimValue = thirdElement
         )
     }

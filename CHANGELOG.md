@@ -18,6 +18,7 @@ Release 5.1.0:
    - Pass around decoded data with `SdJwtSigned` in several result classes like `VerifyPresentationResult.SuccessSdJwt`
    - Rename `disclosures` to `reconstructed` in several result classes like `AuthnResponseResult.SuccessSdJwt`
    - Correctly implement confirmation claim in `VerifiableCredentialSdJwt`, migrating from `JsonWebKey` to `ConfirmationClaim`
+   - Change type of `claimValue` in `SelectiveDisclosureItem` from `JsonPrimitive` to `JsonElement` to be able to process nested disclosures
 
 Release 5.0.1:
  - Update JsonPath4K to 2.4.0

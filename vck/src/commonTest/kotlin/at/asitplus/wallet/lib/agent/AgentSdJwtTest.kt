@@ -24,6 +24,7 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.jsonPrimitive
 
 class AgentSdJwtTest : FreeSpec({
 
@@ -69,9 +70,9 @@ class AgentSdJwtTest : FreeSpec({
         verified.reconstructed.claims shouldHaveSize 2
 
         verified.reconstructed.claims.first { it.claimName == CLAIM_GIVEN_NAME }
-            .claimValue.content shouldBe "Susanne"
+            .claimValue.jsonPrimitive.content shouldBe "Susanne"
         verified.reconstructed.claims.first { it.claimName == CLAIM_DATE_OF_BIRTH }
-            .claimValue.content shouldBe "1990-01-01"
+            .claimValue.jsonPrimitive.content shouldBe "1990-01-01"
         verified.isRevoked shouldBe false
     }
 

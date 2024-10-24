@@ -9,6 +9,8 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
@@ -18,11 +20,11 @@ import kotlinx.serialization.json.JsonPrimitive
 data class SelectiveDisclosureItem(
     val salt: ByteArray,
     val claimName: String,
-    val claimValue: JsonPrimitive,
+    val claimValue: JsonElement,
 ) {
 
     constructor(salt: ByteArray, claimName: String, claimValue: Any)
-            : this(salt, claimName, claimValue.toJsonPrimitive())
+            : this(salt, claimName, claimValue.toJsonElement())
 
     fun serialize() = vckJsonSerializer.encodeToString(this)
 
@@ -73,7 +75,8 @@ data class SelectiveDisclosureItem(
     }
 
 }
-private fun Any.toJsonPrimitive() =  when (this) {
+
+private fun Any.toJsonElement(): JsonElement = when (this) {
     is Boolean -> JsonPrimitive(this)
     is Number -> JsonPrimitive(this)
     is String -> JsonPrimitive(this)
@@ -83,5 +86,6 @@ private fun Any.toJsonPrimitive() =  when (this) {
     is UShort -> JsonPrimitive(this)
     is UInt -> JsonPrimitive(this)
     is ULong -> JsonPrimitive(this)
+    is Collection<*> -> JsonArray(mapNotNull { it?.toJsonElement() }.toList())
     else -> JsonPrimitive(toString())
 }
