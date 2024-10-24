@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.jsonpath.JsonPath
+import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
@@ -10,7 +11,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
 class CredentialJsonInteropTest : FreeSpec({
-
+    initOpenIdModule()
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var issuerAgent: Issuer
     lateinit var subjectCredentialStore: SubjectCredentialStore

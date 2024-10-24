@@ -110,14 +110,14 @@ data class SupportedCredentialFormat private constructor(
     val isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>?
         get() = claims?.let {
             runCatching {
-                jsonSerializer.decodeFromJsonElement<Map<String, Map<String, RequestedCredentialClaimSpecification>>>(it)
+                odcJsonSerializer.decodeFromJsonElement<Map<String, Map<String, RequestedCredentialClaimSpecification>>>(it)
             }.getOrNull()
         }
 
     val sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>?
         get() = claims?.let {
             runCatching {
-                jsonSerializer.decodeFromJsonElement<Map<String, RequestedCredentialClaimSpecification>>(it)
+                odcJsonSerializer.decodeFromJsonElement<Map<String, RequestedCredentialClaimSpecification>>(it)
             }.getOrNull()
         }
 
@@ -142,7 +142,7 @@ data class SupportedCredentialFormat private constructor(
             supportedProofTypes = supportedProofTypes,
             credentialDefinition = credentialDefinition,
             docType = docType,
-            claims = jsonSerializer.encodeToJsonElement(isoClaims),
+            claims = odcJsonSerializer.encodeToJsonElement(isoClaims),
             order = order,
             display = display
         )
@@ -166,7 +166,7 @@ data class SupportedCredentialFormat private constructor(
             supportedProofTypes = supportedProofTypes,
             credentialDefinition = credentialDefinition,
             sdJwtVcType = sdJwtVcType,
-            claims = jsonSerializer.encodeToJsonElement(sdJwtClaims),
+            claims = odcJsonSerializer.encodeToJsonElement(sdJwtClaims),
             order = order,
             display = display
         )

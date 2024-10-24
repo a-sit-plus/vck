@@ -111,10 +111,10 @@ data class IssuerMetadata(
     @SerialName("credential_configurations_supported")
     val supportedCredentialConfigurations: Map<String, SupportedCredentialFormat>? = null,
 ) {
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(input: String): KmmResult<IssuerMetadata> =
-            runCatching { jsonSerializer.decodeFromString<IssuerMetadata>(input) }.wrap()
+            runCatching { odcJsonSerializer.decodeFromString<IssuerMetadata>(input) }.wrap()
     }
 }

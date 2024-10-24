@@ -156,7 +156,7 @@ class WalletService(
         credentialConfigurationIds: Set<String>,
         authorizationServers: Set<String>? = null,
     ) = credentialConfigurationIds.map {
-        AuthorizationDetails.OpenIdCredential(
+        OpenIdAuthorizationDetails(
             credentialConfigurationId = it,
             locations = authorizationServers,
             // Not supporting different credential datasets for one credential configuration at the moment,
@@ -184,7 +184,7 @@ class WalletService(
     sealed class CredentialRequestInput {
         /**
          * @param id from the token response, see [TokenResponseParameters.authorizationDetails]
-         * and [AuthorizationDetails.OpenIdCredential.credentialConfigurationId]
+         * and [OpenIdcredentialConfigurationId]
          */
         data class CredentialIdentifier(val id: String) : CredentialRequestInput()
         data class RequestOptions(val requestOptions: WalletService.RequestOptions) : CredentialRequestInput()

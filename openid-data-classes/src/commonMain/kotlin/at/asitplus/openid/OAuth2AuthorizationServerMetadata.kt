@@ -362,11 +362,11 @@ data class OAuth2AuthorizationServerMetadata(
     @SerialName("code_challenge_methods_supported")
     val codeChallengeMethodsSupported: Set<String>? = null,
 ) {
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(input: String): KmmResult<OAuth2AuthorizationServerMetadata> =
-            catching { jsonSerializer.decodeFromString<OAuth2AuthorizationServerMetadata>(input) }
+            catching { odcJsonSerializer.decodeFromString<OAuth2AuthorizationServerMetadata>(input) }
     }
 
     /**

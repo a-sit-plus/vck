@@ -8,6 +8,7 @@ import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -18,7 +19,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OidcSiopX509SanDnsTest : FreeSpec({
-
+    initOpenIdModule()
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
 

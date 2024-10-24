@@ -28,7 +28,7 @@ data class AuthnRequestSingleClaim(
     val values: Array<String>? = null,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -55,7 +55,7 @@ data class AuthnRequestSingleClaim(
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<AuthnRequestSingleClaim>(it)
+            odcJsonSerializer.decodeFromString<AuthnRequestSingleClaim>(it)
         }.wrap()
     }
 

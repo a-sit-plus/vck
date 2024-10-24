@@ -84,11 +84,11 @@ data class IdToken(
     val subjectJwk: JsonWebKey? = null,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<IdToken>(it)
+            odcJsonSerializer.decodeFromString<IdToken>(it)
         }.wrap()
     }
 

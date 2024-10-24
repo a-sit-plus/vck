@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidc
 
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import kotlinx.serialization.json.Json
 
 val jsonSerializer by lazy {
@@ -8,5 +9,6 @@ val jsonSerializer by lazy {
         encodeDefaults = false
         classDiscriminator = "type"
         ignoreUnknownKeys = true
+        serializersModule = vckJsonSerializer.serializersModule
     }
 }

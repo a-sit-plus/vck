@@ -8,6 +8,7 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 
+
 internal object JsonCredentialSerializer {
 
     val serializersModules = mutableMapOf<ConstantIndex.CredentialScheme, SerializersModule>()
@@ -26,6 +27,8 @@ internal object JsonCredentialSerializer {
 
 }
 
+var serializerModuleCollection = SerializersModule {}
+
 val vckJsonSerializer by lazy {
     Json {
         prettyPrint = false
@@ -40,7 +43,7 @@ val vckJsonSerializer by lazy {
             serializersModules.forEach {
                 include(it.value)
             }
+            include(serializerModuleCollection)
         }
     }
 }
-

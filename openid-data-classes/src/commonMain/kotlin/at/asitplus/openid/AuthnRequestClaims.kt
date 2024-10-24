@@ -26,11 +26,11 @@ data class AuthnRequestClaims(
     val userInfoMap: Map<String, AuthnRequestSingleClaim?>? = null,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<AuthnRequestClaims>(it)
+            odcJsonSerializer.decodeFromString<AuthnRequestClaims>(it)
         }.wrap()
     }
 

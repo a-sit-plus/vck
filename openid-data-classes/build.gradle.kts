@@ -32,6 +32,7 @@ kotlin {
         commonMain {
             dependencies {
                 api(project(":dif-data-classes"))
+                implementation(project.ktor("http"))
                 implementation(project.napier())
                 api("at.asitplus.signum:indispensable:${VcLibVersions.signum}")
                 api("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}")

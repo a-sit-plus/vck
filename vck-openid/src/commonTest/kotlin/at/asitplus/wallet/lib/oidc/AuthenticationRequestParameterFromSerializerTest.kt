@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.VerifierAgent

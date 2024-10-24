@@ -125,11 +125,11 @@ data class RelyingPartyMetadata(
     val clientIdScheme: OpenIdConstants.ClientIdScheme? = OpenIdConstants.ClientIdScheme.PreRegistered,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<RelyingPartyMetadata>(it)
+            odcJsonSerializer.decodeFromString<RelyingPartyMetadata>(it)
         }.wrap()
     }
 

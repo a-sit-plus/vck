@@ -36,13 +36,13 @@ data class CredentialOffer(
     @SerialName("grants")
     val grants: CredentialOfferGrants? = null,
 ) {
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(input: String): KmmResult<CredentialOffer> =
-            runCatching { jsonSerializer.decodeFromString<CredentialOffer>(input) }.wrap()
+            runCatching { odcJsonSerializer.decodeFromString<CredentialOffer>(input) }.wrap()
 
         fun deserialize(input: JsonElement): KmmResult<CredentialOffer> =
-            runCatching { jsonSerializer.decodeFromJsonElement<CredentialOffer>(input) }.wrap()
+            runCatching { odcJsonSerializer.decodeFromJsonElement<CredentialOffer>(input) }.wrap()
     }
 }

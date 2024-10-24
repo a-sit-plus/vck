@@ -94,10 +94,10 @@ data class TokenRequestParameters(
     val clientData: String? = null,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(input: String): KmmResult<TokenRequestParameters> =
-            runCatching { jsonSerializer.decodeFromString<TokenRequestParameters>(input) }.wrap()
+            runCatching { odcJsonSerializer.decodeFromString<TokenRequestParameters>(input) }.wrap()
     }
 }
