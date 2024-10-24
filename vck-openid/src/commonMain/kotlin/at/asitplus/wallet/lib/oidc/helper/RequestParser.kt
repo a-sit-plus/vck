@@ -24,7 +24,7 @@ import io.ktor.util.*
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
-class RequestParser(
+open class RequestParser(
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
      * or the request itself as `request_uri`, or `presentation_definition_uri`.
@@ -59,26 +59,13 @@ class RequestParser(
             ?: kotlin.runCatching { // maybe it's in the URL parameters
                 Url(input).let {
                     val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
-                    when (val result = json.decodeFromJsonElement<RequestParameters>(params)) {
-                        is AuthenticationRequestParameters ->
-                            AuthenticationRequestParametersFrom.Uri(it, result)
-
-//                        is SignatureRequestParameters ->
-//                            SignatureRequestParametersFrom.Uri(it, result)
-                        else -> TODO()
-                    }
+                    matchRequestParameterCases(it, json.decodeFromJsonElement<RequestParameters>(params))
                 }
 //                }
             }.onFailure { it.printStackTrace() }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
-                when (val params = jsonSerializer.decodeFromString<RequestParameters>(input)) {
-                    is AuthenticationRequestParameters ->
-                        AuthenticationRequestParametersFrom.Json(input, params)
-
-//                    is SignatureRequestParameters ->
-//                        SignatureRequestParametersFrom.Json(input, params)
-                    else -> TODO()
-                }
+                val params = jsonSerializer.decodeFromString<RequestParameters>(input)
+                matchRequestParameterCases(input, params)
             }.getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("Could not parse authentication request: $input") }
@@ -110,17 +97,23 @@ class RequestParser(
                     .apply { Napier.w("parseRequestObjectJws: Deserialization failed", it) }
             }
             if (requestObjectJwsVerifier.invoke(jws, params)) {
-                when (params) {
-                    is AuthenticationRequestParameters ->
-                        AuthenticationRequestParametersFrom.JwsSigned(jws, params)
-
-//                    is SignatureRequestParameters ->
-//                        SignatureRequestParametersFrom.JwsSigned(jws, params)
-
-                    else -> TODO()
-                }
+                matchRequestParameterCases(jws, params)
             } else null
                 .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
+        }
+    }
+
+    open fun <T> matchRequestParameterCases(input: T, params: RequestParameters): RequestParametersFrom {
+        return when (params) {
+            is AuthenticationRequestParameters ->
+                when (input) {
+                    is Url -> AuthenticationRequestParametersFrom.Uri(input, params)
+                    is JwsSigned -> AuthenticationRequestParametersFrom.JwsSigned(input, params)
+                    is String -> AuthenticationRequestParametersFrom.Json(input, params)
+                    else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
+                }
+
+            else -> TODO()
         }
     }
 }
