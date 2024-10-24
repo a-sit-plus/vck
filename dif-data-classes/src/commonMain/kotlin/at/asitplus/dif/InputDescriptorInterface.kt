@@ -1,8 +1,5 @@
 package at.asitplus.dif
 
-import kotlinx.serialization.Serializable
-
-//@Serializable(with = InputDescriptorSerializer::class)
 interface InputDescriptorInterface {
     val id: String
     val group: String?
