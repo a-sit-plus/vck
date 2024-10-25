@@ -14,12 +14,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 
 
-//TODO Rework comments to fit CSC use-case
 /**
  * Contents of an OIDC Authentication Request.
  *
- * Usually, these parameters are appended to the Authorization Endpoint URL of the OpenId Provider (maybe the
- * Wallet App in case of SIOPv2, or the Credential Issuer for OID4VCI).
+ * Usually, these parameters are appended to the Authorization Endpoint URL of the OpenId Provider (the Credential Issuer for OID4VCI).
  */
 @Serializable
 data class CscAuthenticationRequestParameters(

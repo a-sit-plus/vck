@@ -76,7 +76,7 @@ class OidcSiopWallet(
      */
     private val scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever,
     /**
-     * TODO
+     * Used to resolve [RequestParameters] by reference and also matches them to the correct [RequestParametersFrom]
      */
     private val requestParser: RequestParser
 ) {
