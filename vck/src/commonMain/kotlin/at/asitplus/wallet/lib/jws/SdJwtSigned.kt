@@ -1,14 +1,12 @@
 package at.asitplus.wallet.lib.jws
 
 import at.asitplus.KmmResult
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
 /**
  * Representation of a signed SD-JWT,
@@ -19,9 +17,8 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
  */
 data class SdJwtSigned(
     val jws: JwsSigned,
-    val disclosures: Map<String, SelectiveDisclosureItem>,
-    val keyBindingJws: JwsSigned? = null,
     val rawDisclosures: List<String>,
+    val keyBindingJws: JwsSigned? = null,
 ) {
 
     override fun equals(other: Any?): Boolean {
@@ -31,18 +28,16 @@ data class SdJwtSigned(
         other as SdJwtSigned
 
         if (jws != other.jws) return false
-        if (disclosures != other.disclosures) return false
-        if (keyBindingJws != other.keyBindingJws) return false
         if (rawDisclosures != other.rawDisclosures) return false
+        if (keyBindingJws != other.keyBindingJws) return false
 
         return true
     }
 
     override fun hashCode(): Int {
         var result = jws.hashCode()
-        result = 31 * result + disclosures.hashCode()
-        result = 31 * result + (keyBindingJws?.hashCode() ?: 0)
         result = 31 * result + rawDisclosures.hashCode()
+        result = 31 * result + (keyBindingJws?.hashCode() ?: 0)
         return result
     }
 
@@ -62,17 +57,9 @@ data class SdJwtSigned(
             val rawDisclosures = stringListWithoutJws
                 .filterNot { it.contains(".") }
                 .filterNot { it.isEmpty() }
-            val disclosures = stringListWithoutJws.take(rawDisclosures.count())
-                .associateWith {
-                    val decoded = it.decodeToByteArray(Base64UrlStrict).decodeToString()
-                    SelectiveDisclosureItem.deserialize(decoded).getOrElse { ex ->
-                        Napier.w("Could not parse SD Item: $it", ex)
-                        return null
-                    }
-                }
             val keyBindingString = stringList.drop(1 + rawDisclosures.size).firstOrNull()
             val keyBindingJws = keyBindingString?.let { JwsSigned.deserialize(it).getOrNull() }
-            return SdJwtSigned(jws, disclosures, keyBindingJws, rawDisclosures)
+            return SdJwtSigned(jws, rawDisclosures, keyBindingJws)
         }
 
         fun serializePresentation(

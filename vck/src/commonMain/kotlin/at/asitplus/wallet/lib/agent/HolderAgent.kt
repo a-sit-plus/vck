@@ -85,7 +85,7 @@ class HolderAgent(
                 subjectCredentialStore.storeCredential(
                     sdJwt.verifiableCredentialSdJwt,
                     credential.vcSdJwt,
-                    sdJwt.sdJwtSigned.disclosures,
+                    sdJwt.disclosures,
                     credential.scheme,
                 ).toStoredCredential()
             }

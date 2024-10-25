@@ -6,6 +6,7 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.io.Base64Strict
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.BitSet
 import at.asitplus.signum.indispensable.io.toBitSet
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -23,6 +24,7 @@ import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
@@ -189,6 +191,13 @@ class Validator(
         return Verifier.VerifyPresentationResult.Success(vp)
     }
 
+    /**
+     * Validates the content of a SD-JWT presentation, expected to contain a [VerifiableCredentialSdJwt],
+     * as well as some disclosures and a key binding JWT at the end.
+     *
+     * @param input SD-JWT in compact representation, i.e. `$jws~$disclosure1~$disclosure2...~$keyBinding`
+     * @param publicKey Local key of the verifier, to verify audience of key binding JWS
+     */
     fun verifyVpSdJwt(
         input: String,
         challenge: String,
@@ -217,15 +226,15 @@ class Validator(
         if (sdJwtResult.verifiableCredentialSdJwt.confirmationKey != null) {
             jwsKeyBindingParsed.header.jsonWebKey?.let {
                 if (!sdJwtResult.verifiableCredentialSdJwt.confirmationKey.equalsCryptographically(it)) {
+                    Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject")
                     return Verifier.VerifyPresentationResult.InvalidStructure(input)
-                        .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject") }
                 }
             } ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not exist") }
 
         } else if (jwsKeyBindingParsed.header.keyId != sdJwtResult.verifiableCredentialSdJwt.subject) {
+            Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject")
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
-                .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject") }
         }
         val hashInput = input.substringBeforeLast("~") + "~"
         if (!keyBinding.sdHash.contentEquals(hashInput.encodeToByteArray().sha256()))
@@ -407,16 +416,25 @@ class Validator(
         val isRevoked = checkRevocationStatus(sdJwt) == RevocationStatus.REVOKED
         if (isRevoked)
             Napier.d("verifySdJwt: revoked")
-        // it's important to read again from source string to prevent different formats in serialization
-        // TODO Pull in parsing into here
-        val disclosureInputs = sdJwtSigned.rawDisclosures.map { it.hashDisclosure() }
-        disclosureInputs.forEach { discInput ->
-            if (sdJwt.disclosureDigests?.contains(discInput) != true) {
+
+        /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
+        val validDisclosures: Map<String, SelectiveDisclosureItem> = sdJwtSigned.rawDisclosures.filter {
+            // it's important to read again from source string to prevent different formats in serialization
+            val hashed = it.hashDisclosure()
+            if (sdJwt.disclosureDigests?.contains(hashed) != true) {
+                Napier.w("verifySdJwt: Digest of disclosure not contained in SD-JWT: $hashed")
+                false
+            } else true
+        }.associateWith {
+            runCatching {
+                val decoded = it.decodeToByteArray(Base64UrlStrict).decodeToString()
+                SelectiveDisclosureItem.deserialize(decoded).getOrThrow()
+            }.getOrElse { ex ->
+                Napier.w("verifySdJwt: Could not parse SD Item: $it", ex)
                 return Verifier.VerifyCredentialResult.InvalidStructure(input)
-                    .also { Napier.w("verifySdJwt: Digest of disclosure not contained in SD-JWT: $discInput") }
             }
         }
-        val reconstructed = ReconstructedSdJwtClaims(sdJwtSigned.disclosures.values)
+        val reconstructed = ReconstructedSdJwtClaims(validDisclosures.values)
         val kid = sdJwtSigned.jws.header.keyId
         return when (parser.parseSdJwt(input, sdJwt, kid)) {
             is Parser.ParseVcResult.SuccessSdJwt -> {
@@ -425,7 +443,7 @@ class Validator(
                     verifiableCredentialSdJwt = sdJwt,
                     sdJwt = sdJwt,
                     reconstructed = reconstructed,
-                    disclosures = sdJwtSigned.disclosures,
+                    disclosures = validDisclosures,
                     isRevoked = isRevoked
                 ).also { Napier.d("verifySdJwt: Valid") }
             }
