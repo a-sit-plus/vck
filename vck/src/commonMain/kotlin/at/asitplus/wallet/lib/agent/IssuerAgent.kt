@@ -6,6 +6,7 @@ import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.io.BitSet
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.DefaultZlibService
@@ -24,6 +25,7 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
@@ -168,6 +170,7 @@ class IssuerAgent(
             .map { it.toDisclosure() }
         val disclosureDigests = disclosures
             .map { it.hashDisclosure() }
+        val cnf = ConfirmationClaim(jsonWebKey = credential.subjectPublicKey.toJsonWebKey())
         val jwsPayload = VerifiableCredentialSdJwt(
             subject = subjectId,
             notBefore = issuanceDate,
@@ -178,7 +181,7 @@ class IssuerAgent(
             disclosureDigests = disclosureDigests,
             verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
             selectiveDisclosureAlgorithm = "sha-256",
-            confirmationKey = credential.subjectPublicKey.toJsonWebKey(),
+            cnfElement = vckJsonSerializer.encodeToJsonElement(cnf),
             credentialStatus = credentialStatus,
         ).serialize().encodeToByteArray()
         val jws = jwsService.createSignedJwt(JwsContentTypeConstants.SD_JWT, jwsPayload).getOrElse {

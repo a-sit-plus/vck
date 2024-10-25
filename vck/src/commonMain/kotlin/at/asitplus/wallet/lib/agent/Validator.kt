@@ -223,15 +223,24 @@ class Validator(
         if (!publicKey.matchesIdentifier(keyBinding.audience))
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Audience not correct: ${keyBinding.audience}") }
-        if (sdJwtResult.verifiableCredentialSdJwt.confirmationKey != null) {
+        @Suppress("DEPRECATION")
+        if (sdJwtResult.verifiableCredentialSdJwt.confirmationClaim != null) {
+            // TODO More general way to verify confirmation claim needed, as it may be a kid, jku, ...
             jwsKeyBindingParsed.header.jsonWebKey?.let {
-                if (!sdJwtResult.verifiableCredentialSdJwt.confirmationKey.equalsCryptographically(it)) {
+                if (sdJwtResult.verifiableCredentialSdJwt.confirmationClaim?.jsonWebKey?.equalsCryptographically(it) != true) {
                     Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject")
                     return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 }
             } ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not exist") }
-
+        } else if (sdJwtResult.verifiableCredentialSdJwt.confirmationKey != null) {
+            jwsKeyBindingParsed.header.jsonWebKey?.let {
+                if (sdJwtResult.verifiableCredentialSdJwt.confirmationKey?.equalsCryptographically(it) != true) {
+                    Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject")
+                    return Verifier.VerifyPresentationResult.InvalidStructure(input)
+                }
+            } ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
+                .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not exist") }
         } else if (jwsKeyBindingParsed.header.keyId != sdJwtResult.verifiableCredentialSdJwt.subject) {
             Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject")
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
