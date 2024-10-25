@@ -20,6 +20,7 @@ import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -165,11 +166,7 @@ class IssuerAgent(
         ) ?: throw IllegalArgumentException("No statusListIndex from issuerCredentialStore")
 
         val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
-        val disclosures = credential.claims
-            .map { SelectiveDisclosureItem(Random.nextBytes(32), it.name, it.value) }
-            .map { it.toDisclosure() }
-        val disclosureDigests = disclosures
-            .map { it.hashDisclosure() }
+        val (disclosures, disclosureDigests) = credential.toDisclosuresAndDigests()
         val cnf = ConfirmationClaim(jsonWebKey = credential.subjectPublicKey.toJsonWebKey())
         val jwsPayload = VerifiableCredentialSdJwt(
             subject = subjectId,
@@ -190,6 +187,21 @@ class IssuerAgent(
         }
         val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~")
         return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme)
+    }
+
+    data class DisclosuresAndDigests(
+        val disclosures: Collection<String>,
+        val digests: Collection<String>,
+    )
+
+    private fun CredentialToBeIssued.VcSd.toDisclosuresAndDigests(): DisclosuresAndDigests {
+        val disclosures = claims
+            .map { SelectiveDisclosureItem(Random.nextBytes(32), it.name, it.value) }
+            .map { it.toDisclosure() }
+        // may also include decoy digests
+        val disclosureDigests = disclosures
+            .map { it.hashDisclosure() }
+        return DisclosuresAndDigests(disclosures, disclosureDigests)
     }
 
     /**
