@@ -37,8 +37,6 @@ open class RequestParser(
      * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
-
-//    private val matchingFun: (T,RequestParameters) -> RequestParametersFrom
 ) {
     /**
      * Pass in the URL sent by the Verifier (containing the [RequestParameters] as query parameters),
@@ -53,7 +51,6 @@ open class RequestParser(
                     val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
                     matchRequestParameterCases(it, json.decodeFromJsonElement<RequestParameters>(params))
                 }
-//                }
             }.onFailure { it.printStackTrace() }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
                 val params = jsonSerializer.decodeFromString<RequestParameters>(input)

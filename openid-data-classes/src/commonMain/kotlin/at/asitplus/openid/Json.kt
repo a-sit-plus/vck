@@ -2,11 +2,10 @@ package at.asitplus.openid
 
 
 import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.InputDescriptorInterface
+import at.asitplus.dif.InputDescriptor
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.overwriteWith
 import kotlinx.serialization.modules.polymorphic
 
 private val requestParametersModule = SerializersModule {
@@ -48,20 +47,20 @@ private val authorizationDetailsModule = SerializersModule {
 }
 
 private val inputDescriptorModule = SerializersModule {
-    polymorphic(InputDescriptorInterface::class) {
+    polymorphic(InputDescriptor::class) {
         subclass(DifInputDescriptor::class, DifInputDescriptor.serializer())
     }
     polymorphicDefaultSerializer(
-        InputDescriptorInterface::class,
+        InputDescriptor::class,
         defaultSerializerProvider = {
             when (it) {
-                is DifInputDescriptor -> DifInputDescriptor.serializer() as SerializationStrategy<InputDescriptorInterface>
+                is DifInputDescriptor -> DifInputDescriptor.serializer() as SerializationStrategy<InputDescriptor>
                 else -> throw Exception("Serializer for ${it::class} unknown")
             }
         },
     )
     polymorphicDefaultDeserializer(
-        InputDescriptorInterface::class,
+        InputDescriptor::class,
         defaultDeserializerProvider = { DifInputDescriptor.serializer() },
     )
 }

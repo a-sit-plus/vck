@@ -1,21 +1,12 @@
-package at.asitplus.wallet.lib
+package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthorizationDetails
-import at.asitplus.openid.CscAuthenticationRequestParameters
-import at.asitplus.openid.IssuerMetadata
-import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
-import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.rqes.SignatureRequestParameters
-import at.asitplus.rqes.CSCSignatureRequestParameters
-import at.asitplus.rqes.RqesConstants
+import at.asitplus.rqes.CscSignatureRequestParameters
 import at.asitplus.rqes.SignDocParameters
 import at.asitplus.rqes.SignHashParameters
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
-import com.benasher44.uuid.uuid4
 
 class RqesWalletService(
     private val clientId: String = "https://wallet.a-sit.at/app",
@@ -42,7 +33,7 @@ class RqesWalletService(
     suspend fun createSignDocRequestParameters(
         rqesRequest: SignatureRequestParameters,
         sad: String,
-    ): CSCSignatureRequestParameters =
+    ): CscSignatureRequestParameters =
         SignDocParameters(
             sad = sad,
             signatureQualifier = rqesRequest.signatureQualifier,
@@ -61,7 +52,7 @@ class RqesWalletService(
         rqesRequest: SignatureRequestParameters,
         credentialId: String,
         sad: String,
-    ): CSCSignatureRequestParameters = SignHashParameters(
+    ): CscSignatureRequestParameters = SignHashParameters(
         credentialId = credentialId,
         sad = sad,
         hashes = rqesRequest.documentDigests.map { it.hash },

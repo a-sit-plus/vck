@@ -1,6 +1,6 @@
-package at.asitplus.wallet.lib
+package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.rqes.CSCSignatureRequestParameters
+import at.asitplus.rqes.CscSignatureRequestParameters
 import at.asitplus.rqes.SignDocParameters
 import at.asitplus.rqes.SignHashParameters
 import at.asitplus.rqes.rdcJsonSerializer
@@ -14,7 +14,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
-    Initializer.initRqesModule()
+
     val cscTestVectorSignHash1 = """
     {
         "credentialID":"GX0112348",
@@ -157,10 +157,10 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             )
         dummyEntries.forEachIndexed { i, dummyEntry ->
             "Entry ${i + 1}" {
-                val serialized = rdcJsonSerializer.encodeToString(CSCSignatureRequestParameters.serializer(), dummyEntry)
+                val serialized = rdcJsonSerializer.encodeToString(CscSignatureRequestParameters.serializer(), dummyEntry)
                     .also { Napier.d("serialized ${dummyEntry::class}: $it") }
                 val deserialized =
-                    rdcJsonSerializer.decodeFromString(CSCSignatureRequestParameters.serializer(), serialized)
+                    rdcJsonSerializer.decodeFromString(CscSignatureRequestParameters.serializer(), serialized)
 
                 deserialized shouldBe dummyEntry
             }
@@ -179,9 +179,9 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         ).forEachIndexed { i, vec ->
             "Testvector ${i + 1}" - {
                 val expected = rdcJsonSerializer.decodeFromString<JsonObject>(vec)
-                val actual = rdcJsonSerializer.decodeFromString(CSCSignatureRequestParameters.serializer(), vec)
+                val actual = rdcJsonSerializer.decodeFromString(CscSignatureRequestParameters.serializer(), vec)
                 val sanitycheck =
-                    rdcJsonSerializer.decodeFromJsonElement(CSCSignatureRequestParameters.serializer(), expected)
+                    rdcJsonSerializer.decodeFromJsonElement(CscSignatureRequestParameters.serializer(), expected)
                 "sanitycheck" {
                     actual shouldBe sanitycheck
                 }

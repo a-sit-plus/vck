@@ -6,8 +6,15 @@ import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
-import at.asitplus.wallet.lib.Initializer.initOpenIdModule
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
@@ -21,7 +28,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OidcSiopWalletScopeSupportTest : FreeSpec({
-    initOpenIdModule()
+
     "specified well known scopes" - {
         // no scopes with a mapping to a presentation definition are known yet
         val wellKnownScopePresentationDefinitionRetriever =

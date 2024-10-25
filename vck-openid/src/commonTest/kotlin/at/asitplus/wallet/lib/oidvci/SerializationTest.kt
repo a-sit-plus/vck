@@ -13,7 +13,6 @@ import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
 import at.asitplus.openid.SupportedCredentialFormatDefinition
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.openid.TokenResponseParameters
-import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.oidc.jsonSerializer
 import io.kotest.core.spec.style.FunSpec
@@ -26,7 +25,7 @@ import kotlin.time.Duration.Companion.seconds
 
 
 class SerializationTest : FunSpec({
-    beforeSpec { initOpenIdModule() }
+
     fun createAuthorizationRequest() = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         clientId = randomString(),

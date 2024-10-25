@@ -1,6 +1,6 @@
 package at.asitplus.dif
 
-interface InputDescriptorInterface {
+interface InputDescriptor {
     val id: String
     val group: String?
     val name: String?

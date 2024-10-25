@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib
+package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.rqes.rdcJsonSerializer
 import at.asitplus.wallet.lib.data.serializerModuleCollection

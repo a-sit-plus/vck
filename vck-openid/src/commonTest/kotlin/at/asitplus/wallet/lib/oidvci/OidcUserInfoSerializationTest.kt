@@ -1,14 +1,12 @@
 package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonPrimitive
 
 class OidcUserInfoSerializationTest : FunSpec({
-    initOpenIdModule()
     test("Basic") {
         val input = """
         {
@@ -46,7 +44,7 @@ class OidcUserInfoSerializationTest : FunSpec({
 })
 
 private fun assertKeyHasValue(deserialized: OidcUserInfoExtended, key: String, value: String) {
-    deserialized.jsonObject [key].apply {
+    deserialized.jsonObject[key].apply {
         shouldBeInstanceOf<JsonPrimitive>()
         content shouldBe value
     }

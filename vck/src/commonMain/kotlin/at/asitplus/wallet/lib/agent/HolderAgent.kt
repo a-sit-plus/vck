@@ -228,7 +228,7 @@ class HolderAgent(
 
 
     override suspend fun matchInputDescriptorsAgainstCredentialStore(
-        inputDescriptors: Collection<InputDescriptorInterface>,
+        inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
     ) = runCatching {
@@ -242,7 +242,7 @@ class HolderAgent(
     }.wrap()
 
     private fun findInputDescriptorMatches(
-        inputDescriptors: Collection<InputDescriptorInterface>,
+        inputDescriptors: Collection<InputDescriptor>,
         credentials: Collection<SubjectCredentialStore.StoreEntry>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
@@ -264,7 +264,7 @@ class HolderAgent(
     }
 
     override fun evaluateInputDescriptorAgainstCredential(
-        inputDescriptor: InputDescriptorInterface,
+        inputDescriptor: InputDescriptor,
         credential: SubjectCredentialStore.StoreEntry,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,

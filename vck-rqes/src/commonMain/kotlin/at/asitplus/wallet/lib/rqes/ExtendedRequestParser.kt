@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib
+package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationRequestParametersFrom

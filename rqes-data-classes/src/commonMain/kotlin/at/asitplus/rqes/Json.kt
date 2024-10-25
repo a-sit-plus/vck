@@ -2,7 +2,7 @@ package at.asitplus.rqes
 
 import CscAuthorizationDetails
 import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.InputDescriptorInterface
+import at.asitplus.dif.InputDescriptor
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CscAuthenticationRequestParameters
@@ -13,20 +13,19 @@ import at.asitplus.rqes.serializers.InputDescriptorSerializer
 import at.asitplus.rqes.serializers.RequestParametersSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.overwriteWith
 import kotlinx.serialization.modules.polymorphic
 
 private val inputDescriptorModule = SerializersModule {
-    polymorphic(InputDescriptorInterface::class) {
+    polymorphic(InputDescriptor::class) {
         subclass(DifInputDescriptor::class, DifInputDescriptor.serializer())
         subclass(QesInputDescriptor::class, QesInputDescriptor.serializer())
     }
     polymorphicDefaultSerializer(
-        InputDescriptorInterface::class,
+        InputDescriptor::class,
         defaultSerializerProvider = { InputDescriptorSerializer },
     )
     polymorphicDefaultDeserializer(
-        InputDescriptorInterface::class,
+        InputDescriptor::class,
         defaultDeserializerProvider = { InputDescriptorSerializer }
     )
 }

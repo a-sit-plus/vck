@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
@@ -20,7 +19,7 @@ class OAuth2ClientTest : FunSpec({
 
     lateinit var server: SimpleAuthorizationService
     lateinit var client: OAuth2Client
-    initOpenIdModule()
+
     beforeEach {
         client = OAuth2Client()
         server = SimpleAuthorizationService(

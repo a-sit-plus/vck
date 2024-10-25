@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
-import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.maps.shouldNotBeEmpty
@@ -11,7 +10,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 
 class DeserializationTest : FunSpec({
-    initOpenIdModule()
+
     test("OID4VCI  A.1.1. VC Signed as a JWT, Not Using JSON-LD ") {
         val input = """
         {

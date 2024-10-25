@@ -151,7 +151,7 @@ interface Holder {
      *  authorization rules on attribute credentials that are to be disclosed.
      */
     suspend fun matchInputDescriptorsAgainstCredentialStore(
-        inputDescriptors: Collection<InputDescriptorInterface>,
+        inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
     ): KmmResult<Map<String, InputDescriptorMatches>>
@@ -166,7 +166,7 @@ interface Holder {
      * @return for each constraint field a set of matching nodes or null,
      */
     fun evaluateInputDescriptorAgainstCredential(
-        inputDescriptor: InputDescriptorInterface,
+        inputDescriptor: InputDescriptor,
         credential: SubjectCredentialStore.StoreEntry,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
