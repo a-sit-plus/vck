@@ -6,9 +6,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldHaveSingleElement
-import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -80,9 +78,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
         result.verifiableCredentialSdJwt.shouldNotBeNull()
-        result.validatedItems.shouldNotBeEmpty()
-        result.validatedItems.shouldBeSingleton()
-        result.validatedItems.shouldHaveSingleElement { it.claimName == requestedClaim }
+        result.reconstructed.claims.shouldHaveSingleElement { it.claimName == requestedClaim }
     }
 
 })

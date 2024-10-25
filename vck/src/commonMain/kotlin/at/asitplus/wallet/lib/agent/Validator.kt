@@ -18,6 +18,7 @@ import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.ReconstructedSdJwtClaims
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import io.github.aakira.napier.Napier
@@ -237,6 +238,7 @@ class Validator(
             sdJwtSigned = sdJwtResult.sdJwtSigned,
             verifiableCredentialSdJwt = sdJwtResult.verifiableCredentialSdJwt,
             sdJwt = sdJwtResult.sdJwt,
+            reconstructed = sdJwtResult.reconstructed,
             disclosures = sdJwtResult.disclosures.values,
             isRevoked = sdJwtResult.isRevoked,
         )
@@ -406,6 +408,7 @@ class Validator(
         if (isRevoked)
             Napier.d("verifySdJwt: revoked")
         // it's important to read again from source string to prevent different formats in serialization
+        // TODO Pull in parsing into here
         val disclosureInputs = sdJwtSigned.rawDisclosures.map { it.hashDisclosure() }
         disclosureInputs.forEach { discInput ->
             if (sdJwt.disclosureDigests?.contains(discInput) != true) {
@@ -413,16 +416,19 @@ class Validator(
                     .also { Napier.w("verifySdJwt: Digest of disclosure not contained in SD-JWT: $discInput") }
             }
         }
+        val reconstructed = ReconstructedSdJwtClaims(sdJwtSigned.disclosures.values)
         val kid = sdJwtSigned.jws.header.keyId
         return when (parser.parseSdJwt(input, sdJwt, kid)) {
-            is Parser.ParseVcResult.SuccessSdJwt ->
+            is Parser.ParseVcResult.SuccessSdJwt -> {
                 Verifier.VerifyCredentialResult.SuccessSdJwt(
                     sdJwtSigned = sdJwtSigned,
                     verifiableCredentialSdJwt = sdJwt,
                     sdJwt = sdJwt,
+                    reconstructed = reconstructed,
                     disclosures = sdJwtSigned.disclosures,
                     isRevoked = isRevoked
                 ).also { Napier.d("verifySdJwt: Valid") }
+            }
 
             else -> Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.d("verifySdJwt: Invalid structure from Parser") }

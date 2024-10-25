@@ -16,7 +16,7 @@ Release 5.1.0:
    - Note that multiple `scope` values may be joined with a whitespace ` `
  - SD-JWT:
    - Pass around decoded data with `SdJwtSigned` in several result classes like `VerifyPresentationResult.SuccessSdJwt`
-   - Rename `disclosures` to `validatedItems` in several result classes like `AuthnResponseResult.SuccessSdJwt`
+   - Rename `disclosures` to `reconstructed` in several result classes like `AuthnResponseResult.SuccessSdJwt`
 
 Release 5.0.1:
  - Update JsonPath4K to 2.4.0

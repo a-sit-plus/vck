@@ -504,6 +504,7 @@ class OidcSiopVerifier private constructor(
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
             @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
             val sdJwt: VerifiableCredentialSdJwt,
+            val reconstructed: ReconstructedSdJwtClaims,
             val disclosures: Collection<SelectiveDisclosureItem>,
             val state: String?,
         ) : AuthnResponseResult()
@@ -694,6 +695,7 @@ class OidcSiopVerifier private constructor(
                 sdJwtSigned,
                 verifiableCredentialSdJwt,
                 sdJwt,
+                reconstructed,
                 disclosures,
                 state
             ).also { Napier.i("VP success: $this") }

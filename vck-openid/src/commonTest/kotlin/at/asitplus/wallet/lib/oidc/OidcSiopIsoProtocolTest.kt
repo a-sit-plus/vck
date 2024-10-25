@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -112,7 +113,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     }
 
     "Selective Disclosure with mDL" {
-        val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
+        val requestedClaim = FAMILY_NAME
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
@@ -132,14 +133,13 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             holderSiop,
         )
 
-        document.validItems.shouldNotBeEmpty()
         document.validItems.shouldBeSingleton()
         document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
         document.invalidItems.shouldBeEmpty()
     }
 
     "Selective Disclosure with mDL and encryption" {
-        val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
+        val requestedClaim = FAMILY_NAME
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
@@ -167,7 +167,6 @@ class OidcSiopIsoProtocolTest : FreeSpec({
 
         val document = result.documents.first()
 
-        document.validItems.shouldNotBeEmpty()
         document.validItems.shouldBeSingleton()
         document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
         document.invalidItems.shouldBeEmpty()
@@ -186,16 +185,15 @@ class OidcSiopIsoProtocolTest : FreeSpec({
                     OidcSiopVerifier.RequestOptionsCredential(
                         MobileDrivingLicenceScheme,
                         ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        listOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
+                        listOf(FAMILY_NAME)
                     )
                 )
             ),
             holderSiop,
         )
 
-        document.validItems.shouldNotBeEmpty()
         document.validItems.shouldBeSingleton()
-        document.validItems.shouldHaveSingleElement { it.elementIdentifier == MobileDrivingLicenceDataElements.FAMILY_NAME }
+        document.validItems.shouldHaveSingleElement { it.elementIdentifier == FAMILY_NAME }
         document.invalidItems.shouldBeEmpty()
     }
 

@@ -5,6 +5,7 @@ import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.jws.ReconstructedSdJwtClaims
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 
 
@@ -47,6 +48,7 @@ interface Verifier {
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
             @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
             val sdJwt: VerifiableCredentialSdJwt,
+            val reconstructed: ReconstructedSdJwtClaims,
             val disclosures: Collection<SelectiveDisclosureItem>,
             val isRevoked: Boolean
         ) : VerifyPresentationResult()
@@ -63,6 +65,7 @@ interface Verifier {
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
             @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
             val sdJwt: VerifiableCredentialSdJwt,
+            val reconstructed: ReconstructedSdJwtClaims,
             /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
             val disclosures: Map<String, SelectiveDisclosureItem>,
             val isRevoked: Boolean,
