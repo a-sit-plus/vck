@@ -86,7 +86,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
 
         val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-        result.disclosures.shouldNotBeEmpty()
+        result.validatedItems.shouldNotBeEmpty()
 
     }
 })

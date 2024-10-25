@@ -79,10 +79,10 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-        result.sdJwt.shouldNotBeNull()
-        result.disclosures.shouldNotBeEmpty()
-        result.disclosures.shouldBeSingleton()
-        result.disclosures.shouldHaveSingleElement { it.claimName == requestedClaim }
+        result.verifiableCredentialSdJwt.shouldNotBeNull()
+        result.validatedItems.shouldNotBeEmpty()
+        result.validatedItems.shouldBeSingleton()
+        result.validatedItems.shouldHaveSingleElement { it.claimName == requestedClaim }
     }
 
 })

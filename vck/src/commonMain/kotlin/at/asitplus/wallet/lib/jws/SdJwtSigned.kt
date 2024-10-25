@@ -1,17 +1,19 @@
 package at.asitplus.wallet.lib.jws
 
+import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
 /**
- * Representation of a signed SD-JWT (payload of [jws] is [at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt]),
- * as issued by an [at.asitplus.wallet.lib.agent.Issuer] or an [at.asitplus.wallet.lib.agent.Holder],
- * i.e. consisting of an JWS (with header, payload and signature)
+ * Representation of a signed SD-JWT,
+ * as issued by an [at.asitplus.wallet.lib.agent.Issuer] or presented by an [at.asitplus.wallet.lib.agent.Holder], i.e.
+ * consisting of an JWS (with header, payload is [at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt] and signature)
  * and several disclosures ([SelectiveDisclosureItem]) separated by a `~`,
  * possibly ending with a [keyBindingJws], that is a JWS with payload [KeyBindingJws].
  */
@@ -44,6 +46,8 @@ data class SdJwtSigned(
         return result
     }
 
+    fun getPayloadAsVerifiableCredentialSdJwt(): KmmResult<VerifiableCredentialSdJwt> =
+        VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
 
     companion object {
         fun parse(input: String): SdJwtSigned? {

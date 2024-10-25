@@ -137,7 +137,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
                 val result = verifierSiop.validateAuthnResponse(authnResponse.url)
                     .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-                result.sdJwt.type?.shouldContain(ConstantIndex.AtomicAttribute2023.vcType)
+                result.verifiableCredentialSdJwt.type?.shouldContain(ConstantIndex.AtomicAttribute2023.vcType)
             }
         }
 
@@ -242,21 +242,21 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         groupedResult.validationResults.size shouldBe 2
         groupedResult.validationResults.forEach { result ->
             result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-            result.disclosures.shouldNotBeEmpty()
-            when (result.sdJwt.verifiableCredentialType) {
+            result.validatedItems.shouldNotBeEmpty()
+            when (result.verifiableCredentialSdJwt.verifiableCredentialType) {
                 EuPidScheme.sdJwtType -> {
-                    result.disclosures.firstOrNull { it.claimName == EuPidScheme.Attributes.FAMILY_NAME }
+                    result.validatedItems.firstOrNull { it.claimName == EuPidScheme.Attributes.FAMILY_NAME }
                         .shouldNotBeNull()
-                    result.disclosures.firstOrNull { it.claimName == EuPidScheme.Attributes.GIVEN_NAME }
+                    result.validatedItems.firstOrNull { it.claimName == EuPidScheme.Attributes.GIVEN_NAME }
                         .shouldNotBeNull()
                 }
 
                 ConstantIndex.AtomicAttribute2023.sdJwtType -> {
-                    result.disclosures.firstOrNull() { it.claimName == CLAIM_DATE_OF_BIRTH }.shouldNotBeNull()
+                    result.validatedItems.firstOrNull { it.claimName == CLAIM_DATE_OF_BIRTH }.shouldNotBeNull()
                 }
 
                 else -> {
-                    fail("Unexpected SD-JWT type: ${result.sdJwt.verifiableCredentialType}")
+                    fail("Unexpected SD-JWT type: ${result.verifiableCredentialSdJwt.verifiableCredentialType}")
                 }
             }
         }

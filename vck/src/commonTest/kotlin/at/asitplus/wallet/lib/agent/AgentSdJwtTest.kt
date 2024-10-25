@@ -65,10 +65,10 @@ class AgentSdJwtTest : FreeSpec({
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-        verified.disclosures shouldHaveSize 2
+        verified.validatedItems shouldHaveSize 2
 
-        verified.disclosures.first { it.claimName == CLAIM_GIVEN_NAME }.claimValue.content shouldBe "Susanne"
-        verified.disclosures.first { it.claimName == CLAIM_DATE_OF_BIRTH }.claimValue.content shouldBe "1990-01-01"
+        verified.validatedItems.first { it.claimName == CLAIM_GIVEN_NAME }.claimValue.content shouldBe "Susanne"
+        verified.validatedItems.first { it.claimName == CLAIM_DATE_OF_BIRTH }.claimValue.content shouldBe "1990-01-01"
         verified.isRevoked shouldBe false
     }
 
@@ -84,8 +84,8 @@ class AgentSdJwtTest : FreeSpec({
         ).sdJwt
         val verified = verifier.verifyPresentation(sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-        verified.disclosures shouldHaveSize 1
-        verified.disclosures.forAll { it.claimName shouldBe CLAIM_GIVEN_NAME }
+        verified.validatedItems shouldHaveSize 1
+        verified.validatedItems.forAll { it.claimName shouldBe CLAIM_GIVEN_NAME }
         verified.isRevoked shouldBe false
     }
 

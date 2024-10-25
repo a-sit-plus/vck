@@ -1,11 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 
 
 /**
@@ -43,9 +43,11 @@ interface Verifier {
     sealed class VerifyPresentationResult {
         data class Success(val vp: VerifiablePresentationParsed) : VerifyPresentationResult()
         data class SuccessSdJwt(
-            val jwsSigned: JwsSigned,
+            val sdJwtSigned: SdJwtSigned,
+            val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
+            @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
             val sdJwt: VerifiableCredentialSdJwt,
-            val disclosures: List<SelectiveDisclosureItem>,
+            val disclosures: Collection<SelectiveDisclosureItem>,
             val isRevoked: Boolean
         ) : VerifyPresentationResult()
 
@@ -57,16 +59,12 @@ interface Verifier {
     sealed class VerifyCredentialResult {
         data class SuccessJwt(val jws: VerifiableCredentialJws) : VerifyCredentialResult()
         data class SuccessSdJwt(
-            /**
-             * Extracted JWS from the input (containing also the disclosures)
-             */
-            val jwsSigned: JwsSigned,
+            val sdJwtSigned: SdJwtSigned,
+            val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
+            @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
             val sdJwt: VerifiableCredentialSdJwt,
-            val keyBindingJws: JwsSigned?,
-            /**
-             * Map of original serialized disclosure item to parsed item
-             */
-            val disclosures: Map<String, SelectiveDisclosureItem?>,
+            /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
+            val disclosures: Map<String, SelectiveDisclosureItem>,
             val isRevoked: Boolean,
         ) : VerifyCredentialResult()
 
@@ -94,4 +92,4 @@ fun CryptoPublicKey.matchesIdentifier(input: String): Boolean {
     return false
 }
 
-class VerificationError(message: String?): Throwable(message)
+class VerificationError(message: String?) : Throwable(message)

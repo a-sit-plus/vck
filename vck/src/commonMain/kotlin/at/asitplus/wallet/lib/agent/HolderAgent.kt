@@ -83,9 +83,9 @@ class HolderAgent(
                     throw VerificationError(sdJwt.toString())
                 }
                 subjectCredentialStore.storeCredential(
-                    sdJwt.sdJwt,
+                    sdJwt.verifiableCredentialSdJwt,
                     credential.vcSdJwt,
-                    sdJwt.disclosures,
+                    sdJwt.sdJwtSigned.disclosures,
                     credential.scheme,
                 ).toStoredCredential()
             }
