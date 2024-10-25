@@ -1,9 +1,21 @@
 # Changelog
 
 tbd
-- New Class `SignatureRequestFrom` to handle signature requests by reference
-- Rename `AuthenticationRequestParser` to `RequestParser`
-    - `RequestParser` can now handle `SignatureRequestFrom`
+- New `Initializer` object in `vck-openid` which needs to be called at the start of the project if artifact is used
+- New artifacts `rqes-data-classes` and `vck-rqes` which allow handling of remote signature requests as described by the draft of POTENTIAL use-case 5 which is based on the CSC API v2.0.0.2
+- To use `vck-rqes` the new `Initializer` object in `vck-rqes` which needs to be called at the start of the project if artifact is used
+  - It fully overrides and replaces the effect of the initializer in `vck-openid`
+- Change class `InputDescriptor` to `DifInputDescriptor` which now implements new interface `InputDescriptor`
+- New class `QesInputDescriptor` implements `InputDescriptor`
+- Refactor sealed class `AuthorizationDetails` to interface
+  - Refactor subclass `OpenIdCredential` to class `OpenIdAuthorizationDetails` which implements `AuthrorizationDetails`
+  - Refactor subclass `CSCCredential` to class `CscAuthorizationDetails` which implements `AuthorizationDetails`
+- New Interface `RequestParameters`
+- Remove RQES components from `AuthenticationRequestParameters`
+- New class `CscAuthenticationRequestParameters` which now holds the RQES components
+- New class `SignatureRequestParameters` and `SignatureRequestParametersFrom`
+- Refactor `AuthenticationRequestParser` to open class `RequestParser`
+- New class `ExtendedRequestParser` used to also parse `SignatureRequestParametersFrom`
 
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact

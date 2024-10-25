@@ -3,7 +3,7 @@ package at.asitplus.rqes
 import at.asitplus.rqes.collection_entries.CscDocumentDigest
 import at.asitplus.rqes.enums.OperationModeEnum
 import at.asitplus.rqes.enums.SignatureQualifierEnum
-import at.asitplus.rqes.serializers.CSCSignatureRequestParameterSerializer
+import at.asitplus.rqes.serializers.CscSignatureRequestParameterSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
@@ -12,7 +12,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
-@Serializable(with = CSCSignatureRequestParameterSerializer::class)
+@Serializable(with = CscSignatureRequestParameterSerializer::class)
 sealed interface CscSignatureRequestParameters {
     /**
      * The credentialID as defined in the Input parameter table in `/credentials/info`

@@ -7,7 +7,7 @@ import kotlinx.serialization.json.JsonContentPolymorphicSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 
-object CSCSignatureRequestParameterSerializer :
+object CscSignatureRequestParameterSerializer :
     JsonContentPolymorphicSerializer<CscSignatureRequestParameters>(CscSignatureRequestParameters::class) {
     override fun selectDeserializer(element: JsonElement) = when {
         "hashes" in element.jsonObject -> SignHashParameters.serializer()
