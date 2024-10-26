@@ -1,16 +1,17 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 class SdJwtVerificationTest : FreeSpec({
 
     "Deserialize objects in disclosures" {
+        // https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-13.html#name-sd-jwt-based-verifiable-cre
+        //  A.3. SD-JWT-based Verifiable Credentials (SD-JWT VC)
         val input = """
             eyJhbGciOiAiRVMyNTYiLCAidHlwIjogInZjK3NkLWp3dCJ9.eyJfc2QiOiBbIjBIWm1
             uU0lQejMzN2tTV2U3QzM0bC0tODhnekppLWVCSjJWel9ISndBVGciLCAiOVpicGxDN1R
@@ -69,11 +70,54 @@ class SdJwtVerificationTest : FreeSpec({
         val sdJwtValidator = SdJwtValidator(sdJwtSigned)
         val reconstructed = sdJwtValidator.reconstructedJsonObject.shouldNotBeNull()
         sdJwtValidator.validDisclosures.shouldNotBeEmpty()
-        println(sdJwtValidator.reconstructedJsonObject)
-        println(sdJwtValidator.validDisclosures)
 
-        reconstructed["address"]?.jsonObject?.get("postal_code")?.jsonPrimitive?.content shouldBe "51147"
-
+        val expected = """
+            {
+              "given_name": "Erika",
+              "family_name": "Mustermann",
+              "birthdate": "1963-08-12",
+              "source_document_type": "id_card",
+              "address": {
+                "street_address": "Heidestraße 17",
+                "locality": "Köln",
+                "postal_code": "51147",
+                "country": "DE"
+              },
+              "nationalities": [
+                "DE"
+              ],
+              "gender": "female",
+              "birth_family_name": "Gabler",
+              "place_of_birth": {
+                "locality": "Berlin",
+                "country": "DE"
+              },
+              "also_known_as": "Schwester Agnes",
+              "age_equal_or_over": {
+                "12": true,
+                "14": true,
+                "16": true,
+                "18": true,
+                "21": true,
+                "65": false
+              },
+            
+              "iss": "https://issuer.example.com",
+              "iat": 1683000000,
+              "exp": 1883000000,
+              "vct": "https://bmi.bund.example/credential/pid/1.0",
+              "_sd_alg": "sha-256",
+              "cnf": { 
+                "jwk": { 
+                    "kty": "EC",
+                    "crv": "P-256",
+                    "x": "TCAER19Zvu3OHF4j4W4vfSVoHIP1ILilDls7vCeGemc",
+                    "y": "ZxjiWWbZMQGHVWKVQ4hbSIirsVfuecCE6t4jT9F2HZQ"
+                }
+              }
+            }
+        """.trimIndent()
+        reconstructed shouldBe vckJsonSerializer.parseToJsonElement(expected)
     }
 
 })

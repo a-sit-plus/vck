@@ -26,12 +26,14 @@ class SdJwtValidator {
 
     private fun JsonObject.reconstructValues(): JsonObject = buildJsonObject {
         forEach { element ->
-            element.toSdArray()?.forEach { sdEntry ->
-                sdEntry.toValidatedItem()?.let { processSdItem(it) }
-            } ?: run {
-                element.toJsonObject()?.let {
-                    putIfNotEmpty(element.key, it.reconstructValues())
-                }
+            val sdArray = element.toSdArray()
+            val jsonObject = element.toJsonObject()
+            if (sdArray != null) {
+                sdArray.forEach { sdEntry -> sdEntry.toValidatedItem()?.let { processSdItem(it) } }
+            } else if (jsonObject != null) {
+                putIfNotEmpty(element.key, jsonObject.reconstructValues())
+            } else {
+                put(element.key, element.value)
             }
         }
     }

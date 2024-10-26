@@ -18,9 +18,7 @@ import at.asitplus.wallet.lib.jws.SdJwtSigned
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.collections.shouldContain
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.datetime.Clock
@@ -67,7 +65,6 @@ class AgentSdJwtTest : FreeSpec({
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-        verified.reconstructedJsonObject.entries shouldHaveSize 2
 
         verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
         verified.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
@@ -86,7 +83,7 @@ class AgentSdJwtTest : FreeSpec({
         ).sdJwt
         val verified = verifier.verifyPresentation(sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-        verified.reconstructedJsonObject.entries.shouldBeSingleton()
+
         verified.reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
         verified.isRevoked shouldBe false
     }
