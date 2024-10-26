@@ -1,7 +1,10 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 class SdJwtVerificationTest : FreeSpec({
 
@@ -60,12 +63,13 @@ class SdJwtVerificationTest : FreeSpec({
             ~WyJlSzVvNXBIZmd1cFBwbHRqMXFoQUp3IiwgIjY1IiwgZmFsc2Vd~
         """.trimIndent().replace("\n", "").replace(" ", "")
 
-        val verified = Validator(trustAllSignatures = true).verifySdJwt(input, null)
-            .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessSdJwt>()
+        val sdJwtSigned = SdJwtSigned.parse(input)!!
+        val reconstructed = SdJwtValidator(sdJwtSigned.rawDisclosures)
+            .reconstructJson(sdJwtSigned.getPayloadAsJsonObject().getOrThrow())
 
-        verified.reconstructedJsonObject["address"]?.jsonObject?.get("postal_code")?.jsonPrimitive?.content shouldBe "51147"
+        reconstructed["address"]?.jsonObject?.get("postal_code")?.jsonPrimitive?.content shouldBe "51147"
 
-        println(verified)
+        println(reconstructed)
     }
 
 })
