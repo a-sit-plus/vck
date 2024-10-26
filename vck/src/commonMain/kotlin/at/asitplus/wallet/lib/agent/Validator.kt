@@ -6,7 +6,6 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.io.Base64Strict
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.BitSet
 import at.asitplus.signum.indispensable.io.toBitSet
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -16,16 +15,15 @@ import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.data.*
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.json.buildJsonObject
 
 
 /**
@@ -429,27 +427,12 @@ class Validator(
                 .also { Napier.w("verifySdJwt: Could not parse payload", ex) }
         }
 
-        val reconstructedJsonObject = SdJwtValidator(sdJwtSigned.rawDisclosures)
-            .reconstructJson(issuerSigned)
+        val sdJwtValidator = SdJwtValidator(sdJwtSigned)
+        val reconstructedJsonObject = sdJwtValidator.reconstructedJsonObject
+            ?: buildJsonObject { }
 
-        // TODO Does not contain everything that's really correct (i.e. nested ones!)
         /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
-        val validDisclosures: Map<String, SelectiveDisclosureItem> = sdJwtSigned.rawDisclosures.filter {
-            // it's important to read again from source string to prevent different formats in serialization
-            val hashed = it.hashDisclosure()
-            if (sdJwt.disclosureDigests?.contains(hashed) != true) {
-                Napier.w("verifySdJwt: Digest of disclosure not contained in SD-JWT: $hashed")
-                false
-            } else true
-        }.associateWith {
-            runCatching {
-                val decoded = it.decodeToByteArray(Base64UrlStrict).decodeToString()
-                SelectiveDisclosureItem.deserialize(decoded).getOrThrow()
-            }.getOrElse { ex ->
-                Napier.w("verifySdJwt: Could not parse SD Item: $it", ex)
-                return Verifier.VerifyCredentialResult.InvalidStructure(input)
-            }
-        }
+        val validDisclosures: Map<String, SelectiveDisclosureItem> = sdJwtValidator.validDisclosures
         val kid = sdJwtSigned.jws.header.keyId
         return when (parser.parseSdJwt(input, sdJwt, kid)) {
             is Parser.ParseVcResult.SuccessSdJwt -> {

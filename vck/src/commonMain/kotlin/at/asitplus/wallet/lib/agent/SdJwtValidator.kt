@@ -3,43 +3,55 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.json.*
 
-class SdJwtValidator(
-    private val disclosures: List<String>
-) {
+class SdJwtValidator {
 
-    fun reconstructJson(
-        input: JsonObject,
-    ): JsonObject = buildJsonObject {
-        input.forEach { inputElement ->
-            inputElement.toSdArray()?.forEach { sdEntry ->
-                sdEntry.toValidatedItem()?.let { sdItem ->
-                    processSdItem(sdItem)
-                }
+    private val disclosures: Collection<String>
+    private val valid = mutableMapOf<String, SelectiveDisclosureItem>()
+
+    /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
+    val validDisclosures: Map<String, SelectiveDisclosureItem>
+
+    /** JSON Object with claim values reconstructed from disclosures */
+    val reconstructedJsonObject: JsonObject?
+
+    constructor(sdJwtSigned: SdJwtSigned) {
+        disclosures = sdJwtSigned.rawDisclosures
+        reconstructedJsonObject = sdJwtSigned.getPayloadAsJsonObject().getOrNull()?.reconstructValues()
+        validDisclosures = valid.toMap()
+    }
+
+    private fun JsonObject.reconstructValues(): JsonObject = buildJsonObject {
+        forEach { element ->
+            element.toSdArray()?.forEach { sdEntry ->
+                sdEntry.toValidatedItem()?.let { processSdItem(it) }
             } ?: run {
-                inputElement.toJsonObject()?.let { nested ->
-                    putIfNotEmpty(inputElement.key, reconstructJson(nested))
+                element.toJsonObject()?.let {
+                    putIfNotEmpty(element.key, it.reconstructValues())
                 }
             }
         }
     }
 
-    private fun JsonObjectBuilder.processSdItem(
-        sdItem: SelectiveDisclosureItem,
-    ) {
-        when (val element = sdItem.claimValue) {
-            is JsonObject -> putIfNotEmpty(sdItem.claimName, reconstructJson(element))
-            else -> put(sdItem.claimName, element)
+    private fun JsonObjectBuilder.processSdItem(sdItem: Pair<String, SelectiveDisclosureItem>) {
+        with(sdItem.second) {
+            when (val element = claimValue) {
+                is JsonObject -> putIfNotEmpty(claimName, element.reconstructValues())
+                else -> put(claimName, element)
+            }
+            valid[sdItem.first] = this
         }
     }
 
     private fun Map.Entry<String, JsonElement>.toJsonObject() =
         runCatching { value.jsonObject }.getOrNull()
 
-    private fun JsonPrimitive.toValidatedItem(): SelectiveDisclosureItem? =
-        disclosures.matchDisclosureHash(this)?.toSdItem()
+    private fun JsonPrimitive.toValidatedItem(): Pair<String, SelectiveDisclosureItem>? =
+        disclosures.firstOrNull { it.hashDisclosure() == this.content }
+            ?.let { hash -> hash.toSdItem()?.let { hash to it } }
 
     private fun Map.Entry<String, JsonElement>.toSdArray(): List<JsonPrimitive>? =
         if (key == "_sd") {
@@ -52,9 +64,6 @@ class SdJwtValidator(
     private fun JsonObjectBuilder.putIfNotEmpty(key: String, it: JsonObject) {
         if (!it.isEmpty()) put(key, it)
     }
-
-    private fun List<String>.matchDisclosureHash(sdEntry: JsonPrimitive) =
-        firstOrNull { it.hashDisclosure() == sdEntry.content }
 
     private fun String.toSdItem() =
         SelectiveDisclosureItem.deserialize(decodeToByteArray(Base64UrlStrict).decodeToString()).getOrNull()
