@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
@@ -13,6 +14,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
@@ -135,6 +137,34 @@ class SdJwtSerializationTest : FreeSpec({
 
         val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
         deserialized shouldBe item
+    }
+
+    "Serialize array entry, without claim name" {
+        val salt = Random.nextBytes(32)
+        val name = null
+        val value = Random.nextBytes(16).encodeToString(Base64())
+        val item = SelectiveDisclosureItem(salt, name, value)
+
+        val serialized = item.serialize()
+
+        serialized shouldContain "["
+        serialized shouldContain """"${salt.encodeToString(Base64UrlStrict)}""""
+        serialized shouldNotContain """"$name""""
+        serialized shouldContain """"$value""""
+        serialized shouldContain "]"
+
+        val deserialized = SelectiveDisclosureItem.deserialize(serialized).getOrThrow()
+        deserialized shouldBe item
+    }
+
+    "Deserialize array from spec" {
+        val input = "WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIkZSIl0"
+
+        val decoded = input.decodeToByteArray(Base64()).decodeToString()
+        val deserialized = SelectiveDisclosureItem.deserialize(decoded).getOrThrow()
+        deserialized.claimName.shouldBeNull()
+        deserialized.claimValue.jsonPrimitive.content shouldBe "FR"
+        deserialized.salt shouldBe "lklxF5jMYlGTPUovMNIvCA".decodeToByteArray(Base64UrlStrict)
     }
 
     "Deserialize nested from spec" {

@@ -19,11 +19,11 @@ import kotlinx.serialization.json.JsonPrimitive
 @Serializable(with = SelectiveDisclosureItemSerializer::class)
 data class SelectiveDisclosureItem(
     val salt: ByteArray,
-    val claimName: String,
+    val claimName: String?,
     val claimValue: JsonElement,
 ) {
 
-    constructor(salt: ByteArray, claimName: String, claimValue: Any)
+    constructor(salt: ByteArray, claimName: String?, claimValue: Any)
             : this(salt, claimName, claimValue.toJsonElement())
 
     fun serialize() = vckJsonSerializer.encodeToString(this)

@@ -11,6 +11,7 @@ class SdJwtValidator {
 
     private val disclosures: Collection<String>
     private val valid = mutableMapOf<String, SelectiveDisclosureItem>()
+    private val filteredClaims = listOf("_sd_alg", "...")
 
     /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
     val validDisclosures: Map<String, SelectiveDisclosureItem>
@@ -27,29 +28,58 @@ class SdJwtValidator {
     private fun JsonObject.reconstructValues(): JsonObject = buildJsonObject {
         forEach { element ->
             val sdArray = element.toSdArray()
-            val jsonObject = element.toJsonObject()
+            val jsonObject = element.value as? JsonObject
+            val jsonArray = element.value as? JsonArray
             if (sdArray != null) {
                 sdArray.forEach { sdEntry -> sdEntry.toValidatedItem()?.let { processSdItem(it) } }
             } else if (jsonObject != null) {
                 putIfNotEmpty(element.key, jsonObject.reconstructValues())
+            } else if (jsonArray != null) {
+                putIfNotEmpty(element.key, reconstructJsonArray(jsonArray))
             } else {
-                put(element.key, element.value)
+                if (element.key !in filteredClaims) {
+                    put(element.key, element.value)
+                }
             }
+        }
+    }
+
+    private fun reconstructJsonArray(jsonArray: JsonArray) = buildJsonArray {
+        jsonArray.forEach { entry ->
+            if (entry is JsonObject) {
+                entry.asArrayDisclosure()?.let {
+                    it.toValidatedItem()?.let { processSdItem(it) }
+                } ?: addIfNotEmpty(entry.reconstructValues())
+            } else {
+                add(entry)
+            }
+        }
+    }
+
+    private fun JsonObject.asArrayDisclosure() =
+        if (this.size == 1 && this.containsKey("...") && this["..."] is JsonPrimitive)
+            this["..."] as JsonPrimitive
+        else null
+
+    private fun JsonArrayBuilder.processSdItem(sdItem: Pair<String, SelectiveDisclosureItem>) {
+        with(sdItem.second) {
+            when (claimValue) {
+                is JsonObject -> add(claimValue.reconstructValues())
+                else -> add(claimValue)
+            }
+            valid[sdItem.first] = this
         }
     }
 
     private fun JsonObjectBuilder.processSdItem(sdItem: Pair<String, SelectiveDisclosureItem>) {
         with(sdItem.second) {
             when (val element = claimValue) {
-                is JsonObject -> putIfNotEmpty(claimName, element.reconstructValues())
-                else -> put(claimName, element)
+                is JsonObject -> claimName?.let { putIfNotEmpty(it, element.reconstructValues()) }
+                else -> claimName?.let { put(it, element) }
             }
             valid[sdItem.first] = this
         }
     }
-
-    private fun Map.Entry<String, JsonElement>.toJsonObject() =
-        runCatching { value.jsonObject }.getOrNull()
 
     private fun JsonPrimitive.toValidatedItem(): Pair<String, SelectiveDisclosureItem>? =
         disclosures.firstOrNull { it.hashDisclosure() == this.content }
@@ -67,11 +97,15 @@ class SdJwtValidator {
         if (!it.isEmpty()) put(key, it)
     }
 
+    private fun JsonObjectBuilder.putIfNotEmpty(key: String, it: JsonArray) {
+        if (!it.isEmpty()) put(key, it)
+    }
+
+    private fun JsonArrayBuilder.addIfNotEmpty(it: JsonObject) {
+        if (!it.isEmpty()) add(it)
+    }
+
     private fun String.toSdItem() =
         SelectiveDisclosureItem.deserialize(decodeToByteArray(Base64UrlStrict).decodeToString()).getOrNull()
-
-    private fun JsonObject.getSdArray(): List<JsonPrimitive>? =
-        runCatching { this["_sd"]?.jsonArray }.getOrNull()
-            ?.mapNotNull { runCatching { it.jsonPrimitive }.getOrNull() }
 
 }

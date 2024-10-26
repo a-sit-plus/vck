@@ -30,8 +30,8 @@ object CredentialToJsonConverter {
                 }.filterNotNull().toMap()
                 buildJsonObject {
                     put("vct", JsonPrimitive(credential.scheme.sdJwtType ?: credential.scheme.vcType))
-                    pairs.forEach {
-                        put(it.key, it.value)
+                    pairs.forEach { pair ->
+                        pair.key?.let { put(it, pair.value) }
                     }
                 }
             }
