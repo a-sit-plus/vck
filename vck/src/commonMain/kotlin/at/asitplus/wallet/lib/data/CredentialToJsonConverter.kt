@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.signum.indispensable.io.Base64Strict
+import at.asitplus.wallet.lib.agent.SdJwtValidator
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.*
@@ -25,12 +27,18 @@ object CredentialToJsonConverter {
             }
 
             is SubjectCredentialStore.StoreEntry.SdJwt -> {
-                val pairs = credential.disclosures.map { entry ->
+                val reconstructed = SdJwtSigned.parse(credential.vcSerialized)
+                    ?.let { SdJwtValidator(it).reconstructedJsonObject }
+                val simpleDisclosureMap = credential.disclosures.map { entry ->
                     entry.value?.let { it.claimName to it.claimValue }
                 }.filterNotNull().toMap()
+
+
                 buildJsonObject {
                     put("vct", JsonPrimitive(credential.scheme.sdJwtType ?: credential.scheme.vcType))
-                    pairs.forEach { pair ->
+                    reconstructed?.forEach {
+                        put(it.key, it.value)
+                    } ?: simpleDisclosureMap.forEach { pair ->
                         pair.key?.let { put(it, pair.value) }
                     }
                 }

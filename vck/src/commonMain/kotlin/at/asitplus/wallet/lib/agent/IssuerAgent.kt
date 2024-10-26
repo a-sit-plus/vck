@@ -20,13 +20,13 @@ import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.SdJwtSigned
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
@@ -166,21 +166,30 @@ class IssuerAgent(
         ) ?: throw IllegalArgumentException("No statusListIndex from issuerCredentialStore")
 
         val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
-        val (disclosures, disclosureDigests) = credential.toDisclosuresAndDigests()
+        val (sdJwt, disclosures) = credential.claims.toJsonObject()
         val cnf = ConfirmationClaim(jsonWebKey = credential.subjectPublicKey.toJsonWebKey())
-        val jwsPayload = VerifiableCredentialSdJwt(
+        val vcSdJwt = VerifiableCredentialSdJwt(
             subject = subjectId,
             notBefore = issuanceDate,
             issuer = keyMaterial.identifier,
             expiration = expirationDate,
             issuedAt = issuanceDate,
             jwtId = vcId,
-            disclosureDigests = disclosureDigests,
             verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
             selectiveDisclosureAlgorithm = "sha-256",
             cnfElement = vckJsonSerializer.encodeToJsonElement(cnf),
             credentialStatus = credentialStatus,
-        ).serialize().encodeToByteArray()
+        )
+        val vcSdJwtObject = vckJsonSerializer.encodeToJsonElement(vcSdJwt).jsonObject
+        val entireObject = buildJsonObject {
+            vcSdJwtObject.forEach {
+                put(it.key, it.value)
+            }
+            sdJwt.forEach {
+                put(it.key, it.value)
+            }
+        }
+        val jwsPayload = vckJsonSerializer.encodeToString(entireObject).encodeToByteArray()
         val jws = jwsService.createSignedJwt(JwsContentTypeConstants.SD_JWT, jwsPayload).getOrElse {
             Napier.w("Could not wrap credential in SD-JWT", it)
             throw RuntimeException("Signing failed", it)
@@ -189,20 +198,35 @@ class IssuerAgent(
         return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme)
     }
 
-    data class DisclosuresAndDigests(
-        val disclosures: Collection<String>,
-        val digests: Collection<String>,
-    )
+    private fun Collection<ClaimToBeIssued>.toJsonObject(): Pair<JsonObject, Collection<String>> =
+        mutableListOf<String>().let { disclosures ->
+            buildJsonObject {
+                with(partition { it.value is Collection<*> && it.value.first() is ClaimToBeIssued }) {
+                    val objectClaimDigests = first.map { claim ->
+                        claim.value as Collection<*>
+                        (claim.value.filterIsInstance<ClaimToBeIssued>()).toJsonObject().let {
+                            disclosures.addAll(it.second)
+                            put(claim.name, it.first)
+                            claim.toSdItem(it.first).toDisclosure()
+                                .also { disclosures.add(it) }
+                                .hashDisclosure()
+                        }
+                    }
+                    val singleClaimsDigests = second.map { claim ->
+                        claim.toSdItem().toDisclosure()
+                            .also { disclosures.add(it) }
+                            .hashDisclosure()
+                    }
+                    putJsonArray("_sd") { addAll(objectClaimDigests + singleClaimsDigests) }
+                }
+            } to disclosures
+        }
 
-    private fun CredentialToBeIssued.VcSd.toDisclosuresAndDigests(): DisclosuresAndDigests {
-        val disclosures = claims
-            .map { SelectiveDisclosureItem(Random.nextBytes(32), it.name, it.value) }
-            .map { it.toDisclosure() }
-        // may also include decoy digests
-        val disclosureDigests = disclosures
-            .map { it.hashDisclosure() }
-        return DisclosuresAndDigests(disclosures, disclosureDigests)
-    }
+    private fun ClaimToBeIssued.toSdItem(claimValue: JsonObject) =
+        SelectiveDisclosureItem(Random.nextBytes(32), name, claimValue)
+
+    private fun ClaimToBeIssued.toSdItem() =
+        SelectiveDisclosureItem(Random.nextBytes(32), name, value)
 
     /**
      * Wraps the revocation information from [issuerCredentialStore] into a VC,

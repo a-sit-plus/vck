@@ -29,4 +29,5 @@ sealed class CredentialToBeIssued {
     ) : CredentialToBeIssued()
 }
 
+// TODO Add option to NOT make it selective disclosable?
 data class ClaimToBeIssued(val name: String, val value: Any)

@@ -128,20 +128,15 @@ class VerifiablePresentationFactory(
         validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
         requestedClaims: Collection<NormalizedJsonPath>,
     ): Holder.CreatePresentationResult.SdJwt {
-        val filteredDisclosures = requestedClaims.mapNotNull { claimPath ->
-            // TODO: unsure how to deal with attributes with a depth of more than 1 (if they even should be supported)
-            //  revealing the whole attribute for now, which is as fine grained as SdJwt can do anyway
-            claimPath.segments.firstOrNull()?.let {
-                when (it) {
-                    is NormalizedJsonPathSegment.NameSegment -> it.memberName
-                    is NormalizedJsonPathSegment.IndexSegment -> null // can't disclose index
-                }
-            }
-        }.let { requestedRootAttributes ->
-            validSdJwtCredential.disclosures.filter {
-                it.discloseItem(requestedRootAttributes)
-            }.keys
-        }
+        // TODO That's not entirely correct, as we would need to verify the nested digests too!
+        // e.g. "address.region" -> "address" needs to contain hash of "region" in the "_sd" array in claimValue
+        val filteredDisclosures = requestedClaims
+            .flatMap { it.segments }
+            .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
+            .mapNotNull { claim ->
+                validSdJwtCredential.disclosures.entries.firstOrNull { it.value?.claimName == claim.memberName }?.key
+            }.toSet()
+
         val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
         val keyBinding = createKeyBindingJws(audienceId, challenge, issuerJwtPlusDisclosures)
         val jwsFromIssuer = JwsSigned.deserialize(validSdJwtCredential.vcSerialized.substringBefore("~")).getOrElse {
