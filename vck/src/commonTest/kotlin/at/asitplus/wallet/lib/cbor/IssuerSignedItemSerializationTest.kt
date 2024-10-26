@@ -21,15 +21,16 @@ class IssuerSignedItemSerializationTest : FreeSpec({
 
     "serialization with String" {
         val namespace = uuid4().toString()
+        val elementIdentifier = uuid4().toString()
         val item = IssuerSignedItem(
             digestId = Random.nextUInt(),
             random = Random.nextBytes(16),
-            elementIdentifier = uuid4().toString(),
+            elementIdentifier = elementIdentifier,
             elementValue = uuid4().toString(),
         )
         val serialized = item.serialize(namespace)
         serialized.encodeToString(Base16(true)).shouldNotContain("D903EC")
-        val parsed = IssuerSignedItem.deserialize(serialized, "").getOrThrow()
+        val parsed = IssuerSignedItem.deserialize(serialized, "", elementIdentifier).getOrThrow()
 
         parsed shouldBe item
     }

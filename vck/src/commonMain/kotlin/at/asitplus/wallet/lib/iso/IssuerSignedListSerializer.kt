@@ -1,15 +1,21 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.wallet.lib.iso.IssuerSignedItem.Companion.PROP_ELEMENT_ID
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.ValueTags
+import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
 import kotlinx.serialization.encoding.*
+import net.orandja.obor.codec.Cbor
+import net.orandja.obor.data.CborMap
+import net.orandja.obor.data.CborObject
+import net.orandja.obor.data.CborText
 
 /**
  * Serializes [IssuerSignedList.entries] as an "inline list",
@@ -73,8 +79,13 @@ open class IssuerSignedListSerializer(private val namespace: String) : KSerializ
                     break
                 }
                 val readBytes = decoder.decodeSerializableValue(ByteArraySerializer())
-                val issuerSignedItem = IssuerSignedItem.deserialize(readBytes, namespace).getOrThrow()
-                entries += ByteStringWrapper(issuerSignedItem, readBytes)
+                val item = Cbor.decodeFromByteArray<CborObject>(readBytes) as CborMap
+
+                val elementID =
+                    (item.first { (it.key as CborText).value == PROP_ELEMENT_ID }.value as CborText).value
+                entries += ByteStringWrapper(
+                    IssuerSignedItem.deserialize(item.cbor, namespace, elementID).getOrThrow(), item.cbor
+                )
             }
         }
         return IssuerSignedList(entries)

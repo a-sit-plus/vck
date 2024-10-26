@@ -15,8 +15,9 @@ import kotlinx.serialization.cbor.ValueTags
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.*
+import net.orandja.obor.codec.CborDecoderException
 
-open class IssuerSignedItemSerializer(private val namespace: String) : KSerializer<IssuerSignedItem> {
+open class IssuerSignedItemSerializer(private val namespace: String, private val elementIdentifier: String) : KSerializer<IssuerSignedItem> {
 
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("IssuerSignedItem") {
         element(PROP_DIGEST_ID, Long.serializer().descriptor)
@@ -90,7 +91,6 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
     override fun deserialize(decoder: Decoder): IssuerSignedItem {
         var digestId = 0U
         var random: ByteArray? = null
-        var elementIdentifier: String? = null
         var elementValue: Any? = null
         decoder.decodeStructure(descriptor) {
             while (true) {
@@ -100,12 +100,12 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
                 when (name) {
                     PROP_DIGEST_ID -> digestId = decodeLongElement(descriptor, index).toUInt()
                     PROP_RANDOM -> random = decodeSerializableElement(descriptor, index, ByteArraySerializer())
-                    PROP_ELEMENT_ID -> elementIdentifier = decodeStringElement(descriptor, index)
+                    PROP_ELEMENT_ID -> if(elementIdentifier != decodeStringElement(descriptor, index)) throw IllegalArgumentException("Element identifier mismatch")
                     // TODO How can we decode the elementValue, if the elementIdentifier is not yet known?
                     // this may be the case when the "elementValue" comes before "elementIdentifier" in the serialized byte array
                     PROP_ELEMENT_VALUE -> elementValue = decodeAnything(index, elementIdentifier)
                 }
-                if (random != null && elementIdentifier != null && elementValue != null) break
+                if (random != null && elementValue != null) break
             }
         }
         return IssuerSignedItem(
