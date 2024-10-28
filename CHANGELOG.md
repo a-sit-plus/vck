@@ -15,6 +15,7 @@ Release 5.1.0:
    - Remove `buildAuthorizationDetails(RequestOptions)` for `WalletService`, please migrate to `buildScope(RequestOptions)`
    - Note that multiple `scope` values may be joined with a whitespace ` `
  - SD-JWT:
+   - Add implementation of JWT VC issuer metadata, see `JwtVcIssuerMetadata`
    - Pass around decoded data with `SdJwtSigned` in several result classes like `VerifyPresentationResult.SuccessSdJwt`
    - Rename `disclosures` to `reconstructedJsonObject` in several result classes like `AuthnResponseResult.SuccessSdJwt`
    - Correctly implement confirmation claim in `VerifiableCredentialSdJwt`, migrating from `JsonWebKey` to `ConfirmationClaim`

@@ -12,7 +12,10 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * SD-JWT representation of a [VerifiableCredential].
- * According to "SD-JWT-based Verifiable Credentials (SD-JWT VC), Draft 03"
+ * According to
+ * [SD-JWT-based Verifiable Credentials (SD-JWT VC), Draft 05](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html)
+ * and
+ * [Selective Disclosure for JWTs (SD-JWT), Draft 13](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-13.html)
  */
 @Serializable
 data class VerifiableCredentialSdJwt(
@@ -77,6 +80,12 @@ data class VerifiableCredentialSdJwt(
     // TODO Implement correct draft: draft-ietf-oauth-status-list-05
     val credentialStatus: CredentialStatus? = null,
 
+    /**
+     * The claim `_sd_alg` indicates the hash algorithm used by the Issuer to generate the digests as described in
+     * Section 4.2. When used, this claim MUST appear at the top level of the SD-JWT payload. It MUST NOT be used in
+     * any object nested within the payload. If the `_sd_alg` claim is not present at the top level, a default value of
+     * `sha-256` MUST be used.
+     */
     @SerialName("_sd_alg")
     val selectiveDisclosureAlgorithm: String? = null,
 
