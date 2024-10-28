@@ -1,17 +1,12 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.KmmResult
-import at.asitplus.catching
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
@@ -20,6 +15,7 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Duration.Companion.minutes
+
 
 class AgentComplexSdJwtTest : FreeSpec({
 
@@ -41,68 +37,141 @@ class AgentComplexSdJwtTest : FreeSpec({
         challenge = uuid4().toString()
     }
 
-    "simple walk-through success" {
-        holder.storeCredential(
-            issuer.issueCredential(
-                getCredential(holderKeyMaterial.publicKey, AtomicAttribute2023, SD_JWT).getOrThrow()
-            ).getOrThrow().toStoreCredentialInput()
+    "with flat address" {
+        listOf(
+            ClaimToBeIssued(
+                CLAIM_ADDRESS, listOf(
+                    ClaimToBeIssued(CLAIM_ADDRESS_REGION, "Vienna", selectivelyDisclosable = false),
+                    ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT", selectivelyDisclosable = false)
+                )
+            ),
+        ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
+
+        val presentationDefinition = buildPresentationDefinition(
+            "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
+            "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
         )
 
-        val presentationParameters = holder.createPresentation(
-            challenge = challenge,
-            audienceId = verifier.keyMaterial.identifier,
-            presentationDefinition = buildPresentationDefinition(
-                "$['$CLAIM_GIVEN_NAME']",
-                "$['$CLAIM_FAMILY_NAME']",
-                "$['address']['region']",
-                "$.address.country",
-            )
-        ).getOrThrow()
-
-        val vp = presentationParameters.presentationResults.firstOrNull()
+        val vp = createPresentation(holder, challenge, verifier, presentationDefinition)
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
+        verified.disclosures.size shouldBe 1 // for address only
+
+        verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+            ?.jsonPrimitive?.content shouldBe "Vienna"
+        verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+            ?.jsonPrimitive?.content shouldBe "AT"
+    }
+
+    "with claims in address selectively disclosable, but address not" {
+        listOf(
+            ClaimToBeIssued(
+                CLAIM_ADDRESS, listOf(
+                    ClaimToBeIssued(CLAIM_ADDRESS_REGION, "Vienna"),
+                    ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT")
+                ), selectivelyDisclosable = false
+            ),
+        ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
+
+        val presentationDefinition = buildPresentationDefinition(
+            "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
+            "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
+        )
+
+        val vp = createPresentation(holder, challenge, verifier, presentationDefinition)
+            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+
+        verified.disclosures.size shouldBe 2 // for region, country
+
+        verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+            ?.jsonPrimitive?.content shouldBe "Vienna"
+        verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+            ?.jsonPrimitive?.content shouldBe "AT"
+    }
+
+    "with claims in address recursively selectively disclosable" {
+        listOf(
+            ClaimToBeIssued(
+                CLAIM_ADDRESS,
+                listOf(
+                    ClaimToBeIssued(CLAIM_ADDRESS_REGION, "Vienna"),
+                    ClaimToBeIssued(CLAIM_ADDRESS_COUNTRY, "AT")
+                ),
+            ),
+        ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
+
+        val presentationDefinition = buildPresentationDefinition(
+            "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
+            "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
+        )
+
+        val vp = createPresentation(holder, challenge, verifier, presentationDefinition)
+            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+
+        verified.disclosures.size shouldBe 3 // for address, region, country
+
+        verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+            ?.jsonPrimitive?.content shouldBe "Vienna"
+        verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+            ?.jsonPrimitive?.content shouldBe "AT"
+    }
+
+    "simple walk-through success" {
+        listOf(
+            ClaimToBeIssued(CLAIM_GIVEN_NAME, "Susanne"),
+            ClaimToBeIssued(CLAIM_FAMILY_NAME, "Meier"),
+            ClaimToBeIssued(CLAIM_ALWAYS_VISIBLE, "anything", selectivelyDisclosable = false)
+        ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
+
+        val presentationDefinition = buildPresentationDefinition(
+            "$['$CLAIM_GIVEN_NAME']",
+            "$['$CLAIM_FAMILY_NAME']",
+            "$.$CLAIM_ALWAYS_VISIBLE"
+        )
+
+        val vp = createPresentation(holder, challenge, verifier, presentationDefinition)
+            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+
+        verified.disclosures.size shouldBe 2 // claim_given_name, claim_family_name
+
         verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]
             ?.jsonPrimitive?.content shouldBe "Susanne"
         verified.reconstructedJsonObject[CLAIM_FAMILY_NAME]
             ?.jsonPrimitive?.content shouldBe "Meier"
-        verified.reconstructedJsonObject["address"]?.jsonObject?.get("region")
-            ?.jsonPrimitive?.content shouldBe "Vienna"
-        verified.reconstructedJsonObject["address"]?.jsonObject?.get("country")
-            ?.jsonPrimitive?.content shouldBe "AT"
-        verified.isRevoked shouldBe false
+        verified.reconstructedJsonObject[CLAIM_ALWAYS_VISIBLE]
+            ?.jsonPrimitive?.content shouldBe "anything"
     }
 
 })
 
-private fun getCredential(
-    subjectPublicKey: CryptoPublicKey,
-    credentialScheme: ConstantIndex.CredentialScheme,
-    representation: ConstantIndex.CredentialRepresentation,
-): KmmResult<CredentialToBeIssued> = catching {
-    val claims = listOf(
-        ClaimToBeIssued(CLAIM_GIVEN_NAME, "Susanne"),
-        ClaimToBeIssued(CLAIM_FAMILY_NAME, "Meier"),
-        ClaimToBeIssued(
-            "address", listOf(
-                ClaimToBeIssued("region", "Vienna"),
-                ClaimToBeIssued("country", "AT")
+private suspend fun issueAndStoreCredential(
+    holder: Holder,
+    issuer: Issuer,
+    claims: List<ClaimToBeIssued>,
+    holderKeyMaterial: KeyMaterial
+) {
+    holder.storeCredential(
+        issuer.issueCredential(
+            CredentialToBeIssued.VcSd(
+                claims = claims,
+                expiration = Clock.System.now() + 1.minutes,
+                scheme = AtomicAttribute2023,
+                subjectPublicKey = holderKeyMaterial.publicKey,
             )
-        )
+        ).getOrThrow().toStoreCredentialInput()
     )
-    when (representation) {
-        ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
-            claims = claims,
-            expiration = Clock.System.now() + 1.minutes,
-            scheme = credentialScheme,
-            subjectPublicKey = subjectPublicKey,
-        )
-
-        else -> throw IllegalArgumentException(representation.toString())
-    }
 }
 
 private fun buildPresentationDefinition(vararg attributeName: String) = PresentationDefinition(
@@ -116,3 +185,20 @@ private fun buildPresentationDefinition(vararg attributeName: String) = Presenta
         )
     )
 )
+
+private suspend fun createPresentation(
+    holder: Holder,
+    challenge: String,
+    verifier: Verifier,
+    presentationDefinition: PresentationDefinition
+) = holder.createPresentation(
+    challenge = challenge,
+    audienceId = verifier.keyMaterial.identifier,
+    presentationDefinition = presentationDefinition
+).getOrThrow().presentationResults.firstOrNull()
+
+
+private const val CLAIM_ALWAYS_VISIBLE = "alwaysVisible"
+private const val CLAIM_ADDRESS = "address"
+private const val CLAIM_ADDRESS_REGION = "region"
+private const val CLAIM_ADDRESS_COUNTRY = "country"

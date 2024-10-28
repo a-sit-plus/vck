@@ -27,8 +27,9 @@ object CredentialToJsonConverter {
             }
 
             is SubjectCredentialStore.StoreEntry.SdJwt -> {
-                val reconstructed = SdJwtSigned.parse(credential.vcSerialized)
-                    ?.let { SdJwtValidator(it).reconstructedJsonObject }
+                val sdJwtSigned = SdJwtSigned.parse(credential.vcSerialized)
+                val payloadVc = sdJwtSigned?.getPayloadAsJsonObject()?.getOrNull()
+                val reconstructed = sdJwtSigned?.let { SdJwtValidator(it).reconstructedJsonObject }
                 val simpleDisclosureMap = credential.disclosures.map { entry ->
                     entry.value?.let { it.claimName to it.claimValue }
                 }.filterNotNull().toMap()
@@ -36,6 +37,7 @@ object CredentialToJsonConverter {
 
                 buildJsonObject {
                     put("vct", JsonPrimitive(credential.scheme.sdJwtType ?: credential.scheme.vcType))
+                    payloadVc?.forEach { put(it.key, it.value) }
                     reconstructed?.forEach {
                         put(it.key, it.value)
                     } ?: simpleDisclosureMap.forEach { pair ->
@@ -61,6 +63,7 @@ object CredentialToJsonConverter {
         }
     }
 
+    // TODO Merge with that one function in [SelectiveDisclosureItem]?
     private fun Any.toJsonElement(): JsonElement = when (this) {
         is Boolean -> JsonPrimitive(this)
         is String -> JsonPrimitive(this)

@@ -20,6 +20,7 @@ Release 5.1.0:
    - Correctly implement confirmation claim in `VerifiableCredentialSdJwt`, migrating from `JsonWebKey` to `ConfirmationClaim`
    - Change type of `claimValue` in `SelectiveDisclosureItem` from `JsonPrimitive` to `JsonElement` to be able to process nested disclosures
    - Implement deserialization of complex objects, including array claims
+   - Add option to issue nested disclosures, by using `ClaimToBeIssued` recursively, see documentation there
 
 Release 5.0.1:
  - Update JsonPath4K to 2.4.0

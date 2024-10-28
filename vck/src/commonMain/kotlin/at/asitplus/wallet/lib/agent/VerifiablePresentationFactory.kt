@@ -128,8 +128,6 @@ class VerifiablePresentationFactory(
         validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
         requestedClaims: Collection<NormalizedJsonPath>,
     ): Holder.CreatePresentationResult.SdJwt {
-        // TODO That's not entirely correct, as we would need to verify the nested digests too!
-        // e.g. "address.region" -> "address" needs to contain hash of "region" in the "_sd" array in claimValue
         val filteredDisclosures = requestedClaims
             .flatMap { it.segments }
             .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()

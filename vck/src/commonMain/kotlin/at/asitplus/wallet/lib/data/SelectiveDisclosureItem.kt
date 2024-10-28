@@ -76,6 +76,7 @@ data class SelectiveDisclosureItem(
 
 }
 
+// TODO Merge with that one function in [CredentialToJsonConverter]?
 private fun Any.toJsonElement(): JsonElement = when (this) {
     is Boolean -> JsonPrimitive(this)
     is Number -> JsonPrimitive(this)

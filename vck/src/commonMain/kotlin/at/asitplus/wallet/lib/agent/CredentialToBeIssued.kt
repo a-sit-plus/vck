@@ -29,5 +29,9 @@ sealed class CredentialToBeIssued {
     ) : CredentialToBeIssued()
 }
 
-// TODO Add option to NOT make it selective disclosable?
-data class ClaimToBeIssued(val name: String, val value: Any)
+/**
+ * Represents a claim that shall be issued to the holder,
+ * i.e. serialized into the appropriate credential format.
+ * To issue nested structures in SD-JWT, pass a Collection of [ClaimToBeIssued] in [value].
+ */
+data class ClaimToBeIssued(val name: String, val value: Any, val selectivelyDisclosable: Boolean = true)

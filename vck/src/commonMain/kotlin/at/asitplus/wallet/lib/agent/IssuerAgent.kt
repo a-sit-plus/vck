@@ -5,6 +5,7 @@ import at.asitplus.catching
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.io.Base64Strict
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.BitSet
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -25,6 +26,7 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.random.Random
@@ -166,7 +168,7 @@ class IssuerAgent(
         ) ?: throw IllegalArgumentException("No statusListIndex from issuerCredentialStore")
 
         val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
-        val (sdJwt, disclosures) = credential.claims.toJsonObject()
+        val (sdJwt, disclosures) = credential.claims.toSdJsonObject()
         val cnf = ConfirmationClaim(jsonWebKey = credential.subjectPublicKey.toJsonWebKey())
         val vcSdJwt = VerifiableCredentialSdJwt(
             subject = subjectId,
@@ -195,32 +197,63 @@ class IssuerAgent(
             throw RuntimeException("Signing failed", it)
         }
         val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
+        Napier.i("issueVcSd: $vcInSdJwt")
         return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme)
     }
 
-    private fun Collection<ClaimToBeIssued>.toJsonObject(): Pair<JsonObject, Collection<String>> =
+    private fun Collection<ClaimToBeIssued>.toSdJsonObject(): Pair<JsonObject, Collection<String>> =
         mutableListOf<String>().let { disclosures ->
             buildJsonObject {
                 with(partition { it.value is Collection<*> && it.value.first() is ClaimToBeIssued }) {
-                    val objectClaimDigests = first.map { claim ->
+                    val objectClaimDigests = first.mapNotNull { claim ->
                         claim.value as Collection<*>
-                        (claim.value.filterIsInstance<ClaimToBeIssued>()).toJsonObject().let {
-                            disclosures.addAll(it.second)
-                            put(claim.name, it.first)
-                            claim.toSdItem(it.first).toDisclosure()
-                                .also { disclosures.add(it) }
-                                .hashDisclosure()
+                        (claim.value.filterIsInstance<ClaimToBeIssued>()).toSdJsonObject().let {
+                            if (claim.selectivelyDisclosable) {
+                                disclosures.addAll(it.second)
+                                put(claim.name, it.first)
+                                claim.toSdItem(it.first).toDisclosure()
+                                    .also { disclosures.add(it) }
+                                    .hashDisclosure()
+                            } else {
+                                disclosures.addAll(it.second)
+                                put(claim.name, it.first)
+                                null
+                            }
                         }
                     }
-                    val singleClaimsDigests = second.map { claim ->
-                        claim.toSdItem().toDisclosure()
-                            .also { disclosures.add(it) }
-                            .hashDisclosure()
+                    val singleClaimsDigests = second.mapNotNull { claim ->
+                        if (claim.selectivelyDisclosable) {
+                            claim.toSdItem().toDisclosure()
+                                .also { disclosures.add(it) }
+                                .hashDisclosure()
+                        } else {
+                            put(claim.name, claim.value.toJsonElement())
+                            null
+                        }
                     }
-                    putJsonArray("_sd") { addAll(objectClaimDigests + singleClaimsDigests) }
+                    (objectClaimDigests + singleClaimsDigests).let { digests ->
+                        if (digests.isNotEmpty())
+                            putJsonArray("_sd") { addAll(digests) }
+                    }
                 }
             } to disclosures
         }
+
+    // TODO Merge with function in [CredentialToJsonConverter] or [SelectiveDisclosureItem]?
+    private fun Any.toJsonElement(): JsonElement = when (this) {
+        is Boolean -> JsonPrimitive(this)
+        is Number -> JsonPrimitive(this)
+        is String -> JsonPrimitive(this)
+        is ByteArray -> JsonPrimitive(encodeToString(Base64UrlStrict))
+        is LocalDate -> JsonPrimitive(this.toString())
+        is UByte -> JsonPrimitive(this)
+        is UShort -> JsonPrimitive(this)
+        is UInt -> JsonPrimitive(this)
+        is ULong -> JsonPrimitive(this)
+        is Collection<*> -> JsonArray(mapNotNull { it?.toJsonElement() }.toList())
+        is JsonElement -> this
+        else -> JsonPrimitive(toString())
+    }
 
     private fun ClaimToBeIssued.toSdItem(claimValue: JsonObject) =
         SelectiveDisclosureItem(Random.nextBytes(32), name, claimValue)
