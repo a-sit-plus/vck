@@ -61,9 +61,6 @@ data class VerifiableCredentialSdJwt(
     @SerialName("_sd")
     val disclosureDigests: Collection<String>? = null,
 
-    @SerialName("type")
-    val type: Collection<String>? = null,
-
     /**
      * REQUIRED. This specification defines the JWT claim `vct` (for verifiable credential type).
      * The vct value MUST be a case-sensitive StringOrURI (see RFC7519) value serving as an identifier for the type

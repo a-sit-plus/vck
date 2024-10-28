@@ -12,7 +12,6 @@ import com.benasher44.uuid.uuid4
 import io.kotest.assertions.fail
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -137,7 +136,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
                 val result = verifierSiop.validateAuthnResponse(authnResponse.url)
                     .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-                result.verifiableCredentialSdJwt.type?.shouldContain(ConstantIndex.AtomicAttribute2023.vcType)
+                result.verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
             }
         }
 
