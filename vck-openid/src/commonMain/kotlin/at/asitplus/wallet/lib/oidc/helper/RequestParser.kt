@@ -21,8 +21,8 @@ import at.asitplus.wallet.lib.oidvci.json
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
+import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
 
 open class RequestParser(
     /**
@@ -49,11 +49,14 @@ open class RequestParser(
             ?: kotlin.runCatching { // maybe it's in the URL parameters
                 Url(input).let {
                     val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
-                    matchRequestParameterCases(it, json.decodeFromJsonElement<RequestParameters>(params))
+                    matchRequestParameterCases(
+                        it,
+                        json.decodeFromJsonElement(PolymorphicSerializer(RequestParameters::class), params)
+                    )
                 }
             }.onFailure { it.printStackTrace() }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
-                val params = jsonSerializer.decodeFromString<RequestParameters>(input)
+                val params = jsonSerializer.decodeFromString(PolymorphicSerializer(RequestParameters::class), input)
                 matchRequestParameterCases(input, params)
             }.getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
@@ -78,7 +81,8 @@ open class RequestParser(
     private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom? {
         return JwsSigned.deserialize(requestObject).getOrNull()?.let { jws ->
             val params = kotlin.runCatching {
-                jsonSerializer.decodeFromString<RequestParameters>(
+                jsonSerializer.decodeFromString(
+                    PolymorphicSerializer(RequestParameters::class),
                     jws.payload.decodeToString()
                 )
             }.getOrElse {
