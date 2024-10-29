@@ -11,11 +11,10 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
+import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.*
-import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -27,8 +26,9 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
-import kotlin.random.Random
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 
@@ -199,50 +199,6 @@ class IssuerAgent(
         Napier.i("issueVcSd: $vcInSdJwt")
         return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme)
     }
-
-    private fun Collection<ClaimToBeIssued>.toSdJsonObject(): Pair<JsonObject, Collection<String>> =
-        mutableListOf<String>().let { disclosures ->
-            buildJsonObject {
-                with(partition { it.value is Collection<*> && it.value.first() is ClaimToBeIssued }) {
-                    val objectClaimDigests = first.mapNotNull { claim ->
-                        claim.value as Collection<*>
-                        (claim.value.filterIsInstance<ClaimToBeIssued>()).toSdJsonObject().let {
-                            if (claim.selectivelyDisclosable) {
-                                disclosures.addAll(it.second)
-                                put(claim.name, it.first)
-                                claim.toSdItem(it.first).toDisclosure()
-                                    .also { disclosures.add(it) }
-                                    .hashDisclosure()
-                            } else {
-                                disclosures.addAll(it.second)
-                                put(claim.name, it.first)
-                                null
-                            }
-                        }
-                    }
-                    val singleClaimsDigests = second.mapNotNull { claim ->
-                        if (claim.selectivelyDisclosable) {
-                            claim.toSdItem().toDisclosure()
-                                .also { disclosures.add(it) }
-                                .hashDisclosure()
-                        } else {
-                            put(claim.name, claim.value.toJsonElement())
-                            null
-                        }
-                    }
-                    (objectClaimDigests + singleClaimsDigests).let { digests ->
-                        if (digests.isNotEmpty())
-                            putJsonArray("_sd") { addAll(digests) }
-                    }
-                }
-            } to disclosures
-        }
-
-    private fun ClaimToBeIssued.toSdItem(claimValue: JsonObject) =
-        SelectiveDisclosureItem(Random.nextBytes(32), name, claimValue)
-
-    private fun ClaimToBeIssued.toSdItem() =
-        SelectiveDisclosureItem(Random.nextBytes(32), name, value)
 
     /**
      * Wraps the revocation information from [issuerCredentialStore] into a VC,
