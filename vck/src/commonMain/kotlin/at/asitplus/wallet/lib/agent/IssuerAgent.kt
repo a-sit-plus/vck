@@ -52,6 +52,7 @@ class IssuerAgent(
     constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
+        validator: Validator = Validator(),
     ) : this(
         validator = Validator(),
         issuerCredentialStore = issuerCredentialStore,
