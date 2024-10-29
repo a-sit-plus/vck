@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.signum.indispensable.io.Base64Strict
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.agent.SdJwtValidator
 import at.asitplus.wallet.lib.agent.SubjectCredentialStore
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -61,13 +61,23 @@ object CredentialToJsonConverter {
         }
     }
 
-    // TODO Merge with that one function in [SelectiveDisclosureItem]?
-    private fun Any.toJsonElement(): JsonElement = when (this) {
+    /**
+     * Converts any value to a [JsonElement], to be used when serializing values into JSON structures.
+     */
+    fun Any.toJsonElement(): JsonElement = when (this) {
         is Boolean -> JsonPrimitive(this)
+        is Number -> JsonPrimitive(this)
         is String -> JsonPrimitive(this)
-        is ByteArray -> JsonPrimitive(encodeToString(Base64Strict))
+        is ByteArray -> JsonPrimitive(encodeToString(Base64UrlStrict))
         is LocalDate -> JsonPrimitive(this.toString())
-        is Array<*> -> buildJsonArray { filterNotNull().forEach { add(it.toJsonElement()) } }
-        else -> JsonCredentialSerializer.encode(this) ?: JsonNull
+        is UByte -> JsonPrimitive(this)
+        is UShort -> JsonPrimitive(this)
+        is UInt -> JsonPrimitive(this)
+        is ULong -> JsonPrimitive(this)
+        is Collection<*> -> JsonArray(mapNotNull { it?.toJsonElement() }.toList())
+        is Array<*> -> JsonArray(mapNotNull { it?.toJsonElement() }.toList())
+        is JsonElement -> this
+        else -> JsonCredentialSerializer.encode(this) ?: JsonPrimitive(toString())
     }
 }
+

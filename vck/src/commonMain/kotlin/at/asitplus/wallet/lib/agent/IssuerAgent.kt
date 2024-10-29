@@ -5,7 +5,6 @@ import at.asitplus.catching
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.io.Base64Strict
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.BitSet
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -15,6 +14,7 @@ import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
 import at.asitplus.wallet.lib.iso.*
@@ -26,7 +26,6 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.random.Random
@@ -238,22 +237,6 @@ class IssuerAgent(
                 }
             } to disclosures
         }
-
-    // TODO Merge with function in [CredentialToJsonConverter] or [SelectiveDisclosureItem]?
-    private fun Any.toJsonElement(): JsonElement = when (this) {
-        is Boolean -> JsonPrimitive(this)
-        is Number -> JsonPrimitive(this)
-        is String -> JsonPrimitive(this)
-        is ByteArray -> JsonPrimitive(encodeToString(Base64UrlStrict))
-        is LocalDate -> JsonPrimitive(this.toString())
-        is UByte -> JsonPrimitive(this)
-        is UShort -> JsonPrimitive(this)
-        is UInt -> JsonPrimitive(this)
-        is ULong -> JsonPrimitive(this)
-        is Collection<*> -> JsonArray(mapNotNull { it?.toJsonElement() }.toList())
-        is JsonElement -> this
-        else -> JsonPrimitive(toString())
-    }
 
     private fun ClaimToBeIssued.toSdItem(claimValue: JsonObject) =
         SelectiveDisclosureItem(Random.nextBytes(32), name, claimValue)
