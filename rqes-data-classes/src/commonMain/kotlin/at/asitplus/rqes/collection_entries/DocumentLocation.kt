@@ -12,8 +12,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DocumentLocation(
     @SerialName("uri")
-    @Serializable(UrlSerializer::class)
-    val uri: Url,
+    val uri: String,
     @SerialName("method")
     val method: Method,
 )

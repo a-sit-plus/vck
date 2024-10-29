@@ -21,8 +21,8 @@ import at.asitplus.wallet.lib.oidvci.json
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
+import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
 
 open class RequestParser(
     /**
@@ -31,12 +31,12 @@ open class RequestParser(
      * Implementations need to fetch the url passed in, and return either the body, if there is one,
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
-    private val remoteResourceRetriever: RemoteResourceRetrieverFunction,
+    private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /**
      * Need to verify the request object serialized as a JWS,
      * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
      */
-    private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
+    private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true },
 ) {
     /**
      * Pass in the URL sent by the Verifier (containing the [RequestParameters] as query parameters),
@@ -49,11 +49,14 @@ open class RequestParser(
             ?: kotlin.runCatching { // maybe it's in the URL parameters
                 Url(input).let {
                     val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
-                    matchRequestParameterCases(it, json.decodeFromJsonElement<RequestParameters>(params))
+                    matchRequestParameterCases(
+                        it,
+                        json.decodeFromJsonElement(PolymorphicSerializer(RequestParameters::class), params)
+                    )
                 }
             }.onFailure { it.printStackTrace() }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
-                val params = jsonSerializer.decodeFromString<RequestParameters>(input)
+                val params = jsonSerializer.decodeFromString(PolymorphicSerializer(RequestParameters::class), input)
                 matchRequestParameterCases(input, params)
             }.getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
@@ -78,7 +81,8 @@ open class RequestParser(
     private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom? {
         return JwsSigned.deserialize(requestObject).getOrNull()?.let { jws ->
             val params = kotlin.runCatching {
-                jsonSerializer.decodeFromString<RequestParameters>(
+                jsonSerializer.decodeFromString(
+                    PolymorphicSerializer(RequestParameters::class),
                     jws.payload.decodeToString()
                 )
             }.getOrElse {
@@ -102,16 +106,6 @@ open class RequestParser(
                     else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
                 }
 
-            else -> TODO()
+            else -> throw NotImplementedError("matchRequestParameterCases: ${params::class.simpleName} not implemented")
         }
-
-    companion object {
-        fun createWithDefaults(
-            remoteResourceRetriever: RemoteResourceRetrieverFunction? = null,
-            requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
-        ) = RequestParser(
-            remoteResourceRetriever = remoteResourceRetriever ?: { null },
-            requestObjectJwsVerifier = requestObjectJwsVerifier ?: RequestObjectJwsVerifier { _, _ -> true },
-        )
-    }
 }
