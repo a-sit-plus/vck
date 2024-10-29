@@ -15,6 +15,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -82,7 +83,7 @@ class TransactionDataInterop : FreeSpec({
             transactionData = listOf(transactionDataTest)
         )
         val serialized = rdcJsonSerializer.encodeToString(test)
-        val deserialized = rdcJsonSerializer.decodeFromString<InputDescriptor>(serialized)
+        val deserialized = rdcJsonSerializer.decodeFromString(PolymorphicSerializer(InputDescriptor::class), serialized)
         deserialized shouldBe test
     }
 
