@@ -13,23 +13,6 @@ class RqesWalletService(
     private val redirectUrl: String = "$clientId/callback",
     private val oauth2Client: OAuth2Client = OAuth2Client(clientId = clientId, redirectUrl = redirectUrl),
 ) {
-
-    //TODO see below
-//    suspend fun createOAuth2AuthenticationRequest(
-//        rqesRequest: SignatureRequestParameters,
-//        credentialId: ByteArray,
-//    ): AuthenticationRequestParameters =
-//        oauth2Client.createAuthRequest(
-//            state = uuid4().toString(),
-//            authorizationDetails = setOf(rqesRequest.toAuthorizationDetails()),
-//            scope = RqesConstants.SCOPE,
-//            credentialId = credentialId,
-//        )
-
-    /**
-     * TODO: could also use [Document] instead of [CscDocumentDigest], also [credential_id] instead of [SAD]
-     * TODO implement [CredentialInfo] dataclass + hand over here
-     */
     suspend fun createSignDocRequestParameters(
         rqesRequest: SignatureRequestParameters,
         sad: String,
@@ -43,11 +26,9 @@ class RqesWalletService(
                     signAlgorithm = X509SignatureAlgorithm.ES256,
                 )
             ),
-            responseUri = this.redirectUrl, //TODO double check
+            responseUri = this.redirectUrl,
         )
 
-
-    //TODO implement [CredentialInfo] dataclass + hand over here
     suspend fun createSignHashRequestParameters(
         rqesRequest: SignatureRequestParameters,
         credentialId: String,
@@ -60,24 +41,3 @@ class RqesWalletService(
     )
 
 }
-
-//TODO find way to incorperate this
-//suspend fun OAuth2Client.createCscAuthnRequest(
-//    state: String,
-//    authorizationDetails: Set<AuthorizationDetails>? = null,
-//    scope: String? = null,
-//    requestUri: String? = null,
-//    credentialId: ByteArray? = null,
-//) = CscAuthenticationRequestParameters(
-//    responseType = GRANT_TYPE_CODE,
-//    state = state,
-//    clientId = clientId,
-//    authorizationDetails = authorizationDetails,
-//    scope = scope,
-//    redirectUrl = redirectUrl,
-//    codeChallenge = generateCodeVerifier(state),
-//    codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
-//    requestUri = requestUri,
-//    credentialID = credentialId
-//)
-
