@@ -80,9 +80,8 @@ open class IssuerSignedListSerializer(private val namespace: String) : KSerializ
                 }
                 val readBytes = decoder.decodeSerializableValue(ByteArraySerializer())
                 val item = Cbor.decodeFromByteArray<CborObject>(readBytes) as CborMap
-
-                val elementID =
-                    (item.first { (it.key as CborText).value == PROP_ELEMENT_ID }.value as CborText).value
+                val elementIdItem = item.first { (it.key as CborText).value == PROP_ELEMENT_ID }
+                val elementID = (elementIdItem.value as CborText).value
                 entries += ByteStringWrapper(
                     IssuerSignedItem.deserialize(item.cbor, namespace, elementID).getOrThrow(), item.cbor
                 )

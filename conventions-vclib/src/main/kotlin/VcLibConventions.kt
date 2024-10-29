@@ -50,7 +50,6 @@ inline fun KotlinDependencyHandler.commonImplementationDependencies() {
     implementation(project.ktor("http"))
     implementation(project.napier())
     implementation(project.ktor("utils"))
-    //project.AspVersions.versions["obor"] = VcLibVersions.obor
     implementation("net.orandja.obor:obor:${VcLibVersions.obor}")
 }
 
