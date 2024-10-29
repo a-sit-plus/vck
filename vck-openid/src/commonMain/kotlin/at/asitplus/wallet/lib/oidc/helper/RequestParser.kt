@@ -106,7 +106,7 @@ open class RequestParser(
                     else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
                 }
 
-            else -> TODO()
+            else -> throw NotImplementedError("matchRequestParameterCases: ${params::class.simpleName} not implemented")
         }
 
     companion object {
