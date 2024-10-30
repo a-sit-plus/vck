@@ -3,7 +3,9 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -45,7 +47,7 @@ class VerifierAgent private constructor(
         if (sdJwtSigned != null) {
             return validator.verifyVpSdJwt(input, challenge, keyMaterial.publicKey)
         }
-        val jwsSigned = JwsSigned.deserialize(input).getOrNull()
+        val jwsSigned = JwsSigned.deserialize<VerifiablePresentationJws>(input, vckJsonSerializer).getOrNull()
         if (jwsSigned != null) {
             return validator.verifyVpJws(input, challenge, keyMaterial.publicKey)
         }

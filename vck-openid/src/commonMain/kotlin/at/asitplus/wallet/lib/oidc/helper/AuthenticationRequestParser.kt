@@ -8,6 +8,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
@@ -38,7 +39,7 @@ internal class AuthenticationRequestParser(
             requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
         ) = AuthenticationRequestParser(
             remoteResourceRetriever = remoteResourceRetriever ?: { null },
-            requestObjectJwsVerifier = requestObjectJwsVerifier ?: RequestObjectJwsVerifier { _, _ -> true },
+            requestObjectJwsVerifier = requestObjectJwsVerifier ?: RequestObjectJwsVerifier { _ -> true },
         )
     }
 
@@ -47,27 +48,28 @@ internal class AuthenticationRequestParser(
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParametersFrom> = catching {
-        // maybe it is a request JWS
-        val parsedParams = kotlin.run { parseRequestObjectJws(input) }
-            ?: kotlin.runCatching { // maybe it's in the URL parameters
-                Url(input).let {
-                    val params = it.parameters.flattenEntries().toMap()
-                        .decodeFromUrlQuery<AuthenticationRequestParameters>()
-                    AuthenticationRequestParametersFrom.Uri(it, params)
-                }
-            }.onFailure { it.printStackTrace() }.getOrNull()
-            ?: catching {  // maybe it is already a JSON string
-                val params = AuthenticationRequestParameters.deserialize(input).getOrThrow()
-                AuthenticationRequestParametersFrom.Json(input, params)
-            }.getOrNull()
-            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-                .also { Napier.w("Could not parse authentication request: $input") }
+    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParametersFrom> =
+        catching {
+            // maybe it is a request JWS
+            val parsedParams = kotlin.run { parseRequestObjectJws(input) }
+                ?: kotlin.runCatching { // maybe it's in the URL parameters
+                    Url(input).let {
+                        val params = it.parameters.flattenEntries().toMap()
+                            .decodeFromUrlQuery<AuthenticationRequestParameters>()
+                        AuthenticationRequestParametersFrom.Uri(it, params)
+                    }
+                }.onFailure { it.printStackTrace() }.getOrNull()
+                ?: catching {  // maybe it is already a JSON string
+                    val params = AuthenticationRequestParameters.deserialize(input).getOrThrow()
+                    AuthenticationRequestParametersFrom.Json(input, params)
+                }.getOrNull()
+                ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+                    .also { Napier.w("Could not parse authentication request: $input") }
 
-        val extractedParams = parsedParams.let { extractRequestObject(it.parameters) ?: it }
-            .also { Napier.i("Parsed authentication request: $it") }
-        extractedParams
-    }
+            val extractedParams = parsedParams.let { extractRequestObject(it.parameters) ?: it }
+                .also { Napier.i("Parsed authentication request: $it") }
+            extractedParams
+        }
 
     private suspend fun extractRequestObject(params: AuthenticationRequestParameters): AuthenticationRequestParametersFrom? =
         params.request?.let { requestObject ->
@@ -77,17 +79,13 @@ internal class AuthenticationRequestParser(
                 ?.let { parseAuthenticationRequestParameters(it).getOrNull() }
         }
 
-    private fun parseRequestObjectJws(requestObject: String): AuthenticationRequestParametersFrom.JwsSigned? {
-        return JwsSigned.deserialize(requestObject).getOrNull()?.let { jws ->
-            val params = AuthenticationRequestParameters.deserialize(jws.payload.decodeToString()).getOrElse {
-                return null
-                    .apply { Napier.w("parseRequestObjectJws: Deserialization failed", it) }
+    private fun parseRequestObjectJws(requestObject: String): AuthenticationRequestParametersFrom.JwsSigned? =
+        JwsSigned.deserialize<AuthenticationRequestParameters>(requestObject, vckJsonSerializer).getOrNull()
+            ?.let { jws ->
+                if (requestObjectJwsVerifier.invoke(jws))
+                    AuthenticationRequestParametersFrom.JwsSigned(jws, jws.payload)
+                else null
+                    .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
             }
-            if (requestObjectJwsVerifier.invoke(jws, params))
-                AuthenticationRequestParametersFrom.JwsSigned(jws, params)
-            else null
-                .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
-        }
-    }
 
 }

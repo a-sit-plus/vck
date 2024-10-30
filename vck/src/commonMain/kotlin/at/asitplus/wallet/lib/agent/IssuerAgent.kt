@@ -25,7 +25,7 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
@@ -191,11 +191,11 @@ class IssuerAgent(
                 put(it.key, it.value)
             }
         }
-        val jwsPayload = vckJsonSerializer.encodeToString(entireObject).encodeToByteArray()
-        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.SD_JWT, jwsPayload).getOrElse {
-            Napier.w("Could not wrap credential in SD-JWT", it)
-            throw RuntimeException("Signing failed", it)
-        }
+        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.SD_JWT, entireObject, JsonObject.serializer())
+            .getOrElse {
+                Napier.w("Could not wrap credential in SD-JWT", it)
+                throw RuntimeException("Signing failed", it)
+            }
         val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
         Napier.i("issueVcSd: $vcInSdJwt")
         return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme)
@@ -272,13 +272,12 @@ class IssuerAgent(
         return list
     }
 
-    private suspend fun wrapVcInJws(vc: VerifiableCredential): String? {
-        val jwsPayload = vc.toJws().serialize().encodeToByteArray()
-        return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrElse {
-            Napier.w("Could not wrapVcInJws", it)
-            return null
-        }.serialize()
-    }
+    private suspend fun wrapVcInJws(vc: VerifiableCredential): String? =
+        jwsService.createSignedJwt(JwsContentTypeConstants.JWT, vc.toJws(), VerifiableCredentialJws.serializer())
+            .getOrElse {
+                Napier.w("Could not wrapVcInJws", it)
+                return null
+            }.serialize()
 
     private fun getRevocationListUrlFor(timePeriod: Int) =
         revocationListBaseUrl.let { it + (if (!it.endsWith('/')) "/" else "") + timePeriod }

@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
 import kotlin.time.DurationUnit
@@ -36,15 +37,11 @@ class Parser(
      */
     fun parseVpJws(input: String, challenge: String, publicKey: CryptoPublicKey): ParseVpResult {
         Napier.d("Parsing VP $input")
-        val jws = JwsSigned.deserialize(input).getOrNull() ?: return ParseVpResult.InvalidStructure(input)
-            .also { Napier.w("Could not parse JWS") }
-        val payload = jws.payload.decodeToString()
+        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(input, vckJsonSerializer).getOrNull()
+            ?: return ParseVpResult.InvalidStructure(input)
+                .also { Napier.w("Could not parse JWS") }
         val kid = jws.header.keyId
-        val vpJws = VerifiablePresentationJws.deserialize(payload).getOrElse { ex ->
-            return ParseVpResult.InvalidStructure(input)
-                .also { Napier.w("Could not parse payload", ex) }
-        }
-        return parseVpJws(input, vpJws, kid, challenge, publicKey)
+        return parseVpJws(input, jws.payload, kid, challenge, publicKey)
     }
 
     fun parseVpJws(

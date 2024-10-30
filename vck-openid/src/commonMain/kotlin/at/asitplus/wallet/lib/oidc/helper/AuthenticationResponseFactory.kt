@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.oidc.helper
 
+import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ResponseMode.*
@@ -124,7 +125,9 @@ internal class AuthenticationResponseFactory(
             }
         } else {
             jwsService.createSignedJwsAddingParams(
-                payload = response.params.serialize().encodeToByteArray(), addX5c = false
+                payload = response.params,
+                serializer = AuthenticationResponseParameters.serializer(),
+                addX5c = false
             ).map { it.serialize() }.getOrElse {
                 Napier.w("buildJarm error", it)
                 throw OAuth2Exception(Errors.INVALID_REQUEST)

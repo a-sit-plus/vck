@@ -27,7 +27,6 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlinx.datetime.Clock
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -75,12 +74,9 @@ class OidcSiopVerifier private constructor(
          * the public key MUST be obtained from the `client_metadata` parameter.
          */
         data class VerifierAttestation(
-            val attestationJwt: JwsSigned,
+            val attestationJwt: JwsSigned<JsonWebToken>,
             override val clientId: String
-        ) : ClientIdScheme(
-            VerifierAttestation,
-            JsonWebToken.deserialize(attestationJwt.payload.decodeToString()).getOrThrow().subject!!
-        )
+        ) : ClientIdScheme(VerifierAttestation, attestationJwt.payload.subject!!)
 
         /**
          * When the Client Identifier Scheme is x509_san_dns, the Client Identifier MUST be a DNS name and match a
@@ -202,11 +198,13 @@ class OidcSiopVerifier private constructor(
      * Creates a JWS containing signed [RelyingPartyMetadata],
      * to be served under a `client_metadata_uri` at the Verifier.
      */
-    suspend fun createSignedMetadata(): KmmResult<JwsSigned> = jwsService.createSignedJwsAddingParams(
-        payload = metadata.serialize().encodeToByteArray(),
-        addKeyId = true,
-        addX5c = false
-    )
+    suspend fun createSignedMetadata(): KmmResult<JwsSigned<RelyingPartyMetadata>> =
+        jwsService.createSignedJwsAddingParams(
+            payload = metadata,
+            serializer = RelyingPartyMetadata.serializer(),
+            addKeyId = true,
+            addX5c = false
+        )
 
     data class RequestOptions(
         /**
@@ -331,11 +329,8 @@ class OidcSiopVerifier private constructor(
      */
     suspend fun createAuthnRequestAsSignedRequestObject(
         requestOptions: RequestOptions,
-    ): KmmResult<JwsSigned> = catching {
+    ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
         val requestObject = createAuthnRequest(requestOptions)
-        val requestObjectSerialized = jsonSerializer.encodeToString(
-            requestObject.copy(audience = "https://self-issued.me/v2", issuer = "https://self-issued.me/v2")
-        )
         val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
         val certificateChain = (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain
         jwsService.createSignedJwsAddingParams(
@@ -344,7 +339,8 @@ class OidcSiopVerifier private constructor(
                 attestationJwt = attestationJwt,
                 certificateChain = certificateChain,
             ),
-            payload = requestObjectSerialized.encodeToByteArray(),
+            payload = requestObject.copy(audience = "https://self-issued.me/v2", issuer = "https://self-issued.me/v2"),
+            serializer = AuthenticationRequestParameters.serializer(),
             addJsonWebKey = certificateChain == null,
         ).getOrThrow()
     }
@@ -553,13 +549,12 @@ class OidcSiopVerifier private constructor(
             ?: return AuthnResponseResult.ValidationError("state", params.state)
                 .also { Napier.w("Invalid state: ${params.state}") }
         params.response?.let { response ->
-            JwsSigned.deserialize(response).getOrNull()?.let { jarmResponse ->
+            JwsSigned.deserialize<AuthenticationResponseParameters>(response, vckJsonSerializer).getOrNull()?.let { jarmResponse ->
                 if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
                     return AuthnResponseResult.ValidationError("response", state)
                         .also { Napier.w { "JWS of response not verified: ${params.response}" } }
                 }
-                AuthenticationResponseParameters.deserialize(jarmResponse.payload.decodeToString())
-                    .getOrNull()?.let { return validateAuthnResponse(it) }
+                return validateAuthnResponse(jarmResponse.payload)
             }
             JweEncrypted.deserialize(response).getOrNull()?.let { jarmResponse ->
                 jwsService.decryptJweObject(jarmResponse, response).getOrNull()?.let { decrypted ->
@@ -621,13 +616,13 @@ class OidcSiopVerifier private constructor(
 
     @Throws(IllegalArgumentException::class, CancellationException::class)
     private suspend fun extractValidatedIdToken(idTokenJws: String): IdToken {
-        val jwsSigned = JwsSigned.deserialize(idTokenJws).getOrNull()
+        val jwsSigned = JwsSigned.deserialize<IdToken>(idTokenJws, vckJsonSerializer).getOrNull()
             ?: throw IllegalArgumentException("idToken")
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
         if (!verifierJwsService.verifyJwsObject(jwsSigned))
             throw IllegalArgumentException("idToken")
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
-        val idToken = IdToken.deserialize(jwsSigned.payload.decodeToString()).getOrThrow()
+        val idToken = jwsSigned.payload
         if (idToken.issuer != idToken.subject)
             throw IllegalArgumentException("idToken.iss")
                 .also { Napier.d("Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}") }

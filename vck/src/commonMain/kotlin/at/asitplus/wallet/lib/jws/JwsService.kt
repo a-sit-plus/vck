@@ -17,8 +17,10 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyHolder
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
+import kotlinx.serialization.SerializationStrategy
 import kotlin.random.Random
 
 
@@ -42,26 +44,32 @@ interface JwsService {
      */
     val encryptionEncoding: JweEncryption
 
-    suspend fun createSignedJwt(
+    suspend fun <T : Any> createSignedJwt(
         type: String,
-        payload: ByteArray,
+        payload: T,
+        serializer: SerializationStrategy<T>,
         contentType: String? = null
-    ): KmmResult<JwsSigned>
+    ): KmmResult<JwsSigned<T>>
 
-    suspend fun createSignedJws(header: JwsHeader, payload: ByteArray): KmmResult<JwsSigned>
+    suspend fun <T : Any> createSignedJws(
+        header: JwsHeader,
+        payload: T,
+        serializer: SerializationStrategy<T>,
+    ): KmmResult<JwsSigned<T>>
 
     /**
      * Appends correct values for  [JwsHeader.algorithm],
      * [JweHeader.keyId] (if `addKeyId` is `true`),
      * and [JwsHeader.jsonWebKey] (if `addJsonWebKey` is `true`).
      */
-    suspend fun createSignedJwsAddingParams(
+    suspend fun <T : Any> createSignedJwsAddingParams(
         header: JwsHeader? = null,
-        payload: ByteArray,
+        payload: T,
+        serializer: SerializationStrategy<T>,
         addKeyId: Boolean = true,
         addJsonWebKey: Boolean = true,
         addX5c: Boolean = false
-    ): KmmResult<JwsSigned>
+    ): KmmResult<JwsSigned<T>>
 
     suspend fun encryptJweObject(
         header: JweHeader? = null,
@@ -91,11 +99,11 @@ interface VerifierJwsService {
 
     val supportedAlgorithms: List<JwsAlgorithm>
 
-    fun verifyJwsObject(jwsObject: JwsSigned): Boolean
+    fun verifyJwsObject(jwsObject: JwsSigned<*>): Boolean
 
-    fun verifyJws(jwsObject: JwsSigned, signer: JsonWebKey): Boolean
+    fun verifyJws(jwsObject: JwsSigned<*>, signer: JsonWebKey): Boolean
 
-    fun verifyConfirmationClaim(cnf: ConfirmationClaim, jwsSigned: JwsSigned): Boolean
+    fun verifyConfirmationClaim(cnf: ConfirmationClaim, jwsSigned: JwsSigned<*>): Boolean
 
 }
 
@@ -110,46 +118,51 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     // TODO: Get from crypto service
     override val encryptionEncoding: JweEncryption = JweEncryption.A256GCM
 
-    override suspend fun createSignedJwt(
+    override suspend fun <T : Any> createSignedJwt(
         type: String,
-        payload: ByteArray,
+        payload: T,
+        serializer: SerializationStrategy<T>,
         contentType: String?
-    ): KmmResult<JwsSigned> = createSignedJws(
+    ): KmmResult<JwsSigned<T>> = createSignedJws(
         JwsHeader(
             algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
             keyId = cryptoService.keyMaterial.publicKey.didEncoded,
             type = type,
             contentType = contentType
-        ), payload
+        ),
+        payload,
+        serializer,
     )
 
-    override suspend fun createSignedJws(header: JwsHeader, payload: ByteArray) = catching {
-        if (header.algorithm != cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm()
-                .getOrThrow()
+    override suspend fun <T : Any> createSignedJws(
+        header: JwsHeader,
+        payload: T,
+        serializer: SerializationStrategy<T>,
+    ) = catching {
+        if (header.algorithm != cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
             || header.jsonWebKey?.let { it != cryptoService.keyMaterial.jsonWebKey } == true
         ) {
             throw IllegalArgumentException("Algorithm or JSON Web Key not matching to cryptoService")
         }
 
-        val plainSignatureInput = prepareJwsSignatureInput(header, payload)
+        val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
         val signature = cryptoService.sign(plainSignatureInput.encodeToByteArray()).asKmmResult().getOrThrow()
         JwsSigned(header, payload, signature, plainSignatureInput)
     }
 
-    override suspend fun createSignedJwsAddingParams(
+    override suspend fun <T : Any> createSignedJwsAddingParams(
         header: JwsHeader?,
-        payload: ByteArray,
+        payload: T,
+        serializer: SerializationStrategy<T>,
         addKeyId: Boolean,
         addJsonWebKey: Boolean,
         addX5c: Boolean
-    ): KmmResult<JwsSigned> = catching {
+    ): KmmResult<JwsSigned<T>> = catching {
         var copy = header?.copy(
             algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
+        ) ?: JwsHeader(
+            algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
         )
-            ?: JwsHeader(
-                algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm()
-                    .getOrThrow()
-            )
         if (addKeyId)
             copy = copy.copy(keyId = cryptoService.keyMaterial.jsonWebKey.keyId)
         if (addJsonWebKey)
@@ -157,7 +170,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         // Null pointer is a controlled error case inside the catching block
         if (addX5c)
             copy = copy.copy(certificateChain = listOf(cryptoService.keyMaterial.getCertificate()!!))
-        createSignedJws(copy, payload).getOrThrow()
+        createSignedJws(copy, payload, serializer).getOrThrow()
     }
 
     override suspend fun decryptJweObject(
@@ -323,7 +336,7 @@ typealias JwkSetRetrieverFunction = (String) -> JsonWebKeySet?
 /**
  * Clients get the parsed [JwsSigned] and need to provide a set of keys, which will be used for verification one-by-one.
  */
-typealias PublicKeyLookup = (JwsSigned) -> Set<JsonWebKey>?
+typealias PublicKeyLookup = (JwsSigned<*>) -> Set<JsonWebKey>?
 
 class DefaultVerifierJwsService(
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
@@ -343,7 +356,7 @@ class DefaultVerifierJwsService(
      * Verifies the signature of [jwsObject], by extracting the public key from [JwsHeader.publicKey],
      * or by using [jwkSetRetriever] if [JwsHeader.jsonWebKeySetUrl] is set.
      */
-    override fun verifyJwsObject(jwsObject: JwsSigned): Boolean =
+    override fun verifyJwsObject(jwsObject: JwsSigned<*>): Boolean =
         jwsObject.loadPublicKeys().any { verify(jwsObject, it) }
 
     /**
@@ -358,7 +371,7 @@ class DefaultVerifierJwsService(
     /**
      * Verifiers the signature of [jwsObject] by using [signer].
      */
-    override fun verifyJws(jwsObject: JwsSigned, signer: JsonWebKey): Boolean {
+    override fun verifyJws(jwsObject: JwsSigned<*>, signer: JsonWebKey): Boolean {
         val publicKey = signer.toCryptoPublicKey().getOrNull()
             ?: return false
                 .also { Napier.w("Could not convert signer to public key: $signer") }
@@ -370,7 +383,7 @@ class DefaultVerifierJwsService(
      * by evaluating its header values (see [JwsHeader.jsonWebKey], [JwsHeader.jsonWebKeySetUrl])
      * as well as out-of-band transmitted keys from [publicKeyLookup].
      */
-    fun JwsSigned.loadPublicKeys(): Set<CryptoPublicKey> =
+    fun JwsSigned<*>.loadPublicKeys(): Set<CryptoPublicKey> =
         header.publicKey?.let { setOf(it) }
             ?: header.jsonWebKeySetUrl?.let {
                 retrieveJwkFromKeySetUrl(it, header.keyId)?.let { setOf(it) }
@@ -381,7 +394,7 @@ class DefaultVerifierJwsService(
     /**
      * Verifies that the confirmation in [cnf] matches the key from [jwsSigned]
      */
-    override fun verifyConfirmationClaim(cnf: ConfirmationClaim, jwsSigned: JwsSigned): Boolean {
+    override fun verifyConfirmationClaim(cnf: ConfirmationClaim, jwsSigned: JwsSigned<*>): Boolean {
         val jwsPublicKeys = jwsSigned.loadPublicKeys()
         return if (cnf.jsonWebKey != null) {
             jwsPublicKeys.any { it.equalsCryptographically(cnf.jsonWebKey!!) }
@@ -401,7 +414,7 @@ class DefaultVerifierJwsService(
         }
     }
 
-    private fun verify(jwsObject: JwsSigned, publicKey: CryptoPublicKey): Boolean = catching {
+    private fun verify(jwsObject: JwsSigned<*>, publicKey: CryptoPublicKey): Boolean = catching {
         cryptoService.verify(
             input = jwsObject.plainSignatureInput.encodeToByteArray(),
             signature = jwsObject.signature,

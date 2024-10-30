@@ -73,7 +73,7 @@ internal class PresentationFactory(
         clock: Clock,
         agentPublicKey: CryptoPublicKey,
         request: AuthenticationRequestParametersFrom,
-    ): KmmResult<JwsSigned?> = catching {
+    ): KmmResult<JwsSigned<IdToken>?> = catching {
         if (request.parameters.responseType?.contains(ID_TOKEN) != true) {
             return@catching null
         }
@@ -94,8 +94,11 @@ internal class PresentationFactory(
             expiration = now + 60.seconds,
             nonce = nonce,
         )
-        val jwsPayload = idToken.serialize().encodeToByteArray()
-        jwsService.createSignedJwsAddingParams(payload = jwsPayload, addX5c = false).getOrElse {
+        jwsService.createSignedJwsAddingParams(
+            payload = idToken,
+            serializer = IdToken.serializer(),
+            addX5c = false
+        ).getOrElse {
             Napier.w("Could not sign id_token", it)
             throw OAuth2Exception(Errors.USER_CANCELLED)
         }
