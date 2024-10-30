@@ -21,7 +21,7 @@ data class IssuerSignedItem(
     val elementValue: Any,
 ) {
 
-    fun serialize(namespace: String) = vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace), this)
+    fun serialize(namespace: String) = vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -61,8 +61,8 @@ data class IssuerSignedItem(
     }
 
     companion object {
-        fun deserialize(it: ByteArray, namespace: String) = kotlin.runCatching {
-            vckCborSerializer.decodeFromByteArray(IssuerSignedItemSerializer(namespace), it)
+        fun deserialize(it: ByteArray, namespace: String, elementIdentifier: String) = kotlin.runCatching {
+            vckCborSerializer.decodeFromByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), it)
         }.wrap()
 
         internal const val PROP_DIGEST_ID = "digestID"

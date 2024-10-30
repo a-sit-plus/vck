@@ -14,6 +14,7 @@ Release 5.1.0:
    - `WalletService` supports building multiple authorization details to request a token for more than one credential
    - Remove `buildAuthorizationDetails(RequestOptions)` for `WalletService`, please migrate to `buildScope(RequestOptions)`
    - Note that multiple `scope` values may be joined with a whitespace ` `
+ - ISO: Fix deserializing issuer signed items when element identifiers are read after the element values
 
 Release 5.0.1:
  - Update JsonPath4K to 2.4.0

@@ -12,6 +12,7 @@ object VcLibVersions {
     val signum get() = versionOf("signum")
     val supreme get() = versionOf("supreme")
     val jsonpath get() = versionOf("jsonpath")
+    val obor get() = versionOf("obor")
     val eupidcredential get() = versionOf("eupid")
     val mdl get() = versionOf("mdl")
 

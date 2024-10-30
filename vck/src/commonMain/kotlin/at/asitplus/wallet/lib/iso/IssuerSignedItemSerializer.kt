@@ -16,7 +16,8 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.*
 
-open class IssuerSignedItemSerializer(private val namespace: String) : KSerializer<IssuerSignedItem> {
+open class IssuerSignedItemSerializer(private val namespace: String, private val elementIdentifier: String) :
+    KSerializer<IssuerSignedItem> {
 
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("IssuerSignedItem") {
         element(PROP_DIGEST_ID, Long.serializer().descriptor)
@@ -35,17 +36,12 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
     }
 
     private fun CompositeEncoder.encodeAnything(value: IssuerSignedItem, index: Int) {
-        val elementValueSerializer =
-            buildElementValueSerializer(namespace, value.elementValue, value.elementIdentifier)
+        val elementValueSerializer = buildElementValueSerializer(namespace, value.elementValue, value.elementIdentifier)
         val descriptor = buildClassSerialDescriptor("IssuerSignedItem") {
             element(PROP_DIGEST_ID, Long.serializer().descriptor)
             element(PROP_RANDOM, ByteArraySerializer().descriptor)
             element(PROP_ELEMENT_ID, String.serializer().descriptor)
-            element(
-                elementName = PROP_ELEMENT_VALUE,
-                descriptor = elementValueSerializer.descriptor,
-                annotations = value.elementValue.annotations()
-            )
+            element(PROP_ELEMENT_VALUE, elementValueSerializer.descriptor, value.elementValue.annotations())
         }
 
         when (val it = value.elementValue) {
@@ -82,15 +78,15 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
         is ByteArray -> ByteArraySerializer()
         is Any -> CborCredentialSerializer.lookupSerializer(namespace, elementIdentifier)
             ?: error("serializer not found for $elementIdentifier, with value $elementValue")
+
         else -> error("serializer not found for $elementIdentifier, with value $elementValue")
     }
 
 
     override fun deserialize(decoder: Decoder): IssuerSignedItem {
         var digestId = 0U
-        lateinit var random: ByteArray
-        lateinit var elementIdentifier: String
-        lateinit var elementValue: Any
+        var random: ByteArray? = null
+        var elementValue: Any? = null
         decoder.decodeStructure(descriptor) {
             while (true) {
                 val name = decodeStringElement(descriptor, 0)
@@ -99,33 +95,35 @@ open class IssuerSignedItemSerializer(private val namespace: String) : KSerializ
                 when (name) {
                     PROP_DIGEST_ID -> digestId = decodeLongElement(descriptor, index).toUInt()
                     PROP_RANDOM -> random = decodeSerializableElement(descriptor, index, ByteArraySerializer())
-                    PROP_ELEMENT_ID -> elementIdentifier = decodeStringElement(descriptor, index)
+                    PROP_ELEMENT_ID -> if (elementIdentifier != decodeStringElement(descriptor, index))
+                        throw IllegalArgumentException("Element identifier mismatch")
+
                     PROP_ELEMENT_VALUE -> elementValue = decodeAnything(index, elementIdentifier)
                 }
-                if (index == 3) break
+                if (random != null && elementValue != null) break
             }
         }
         return IssuerSignedItem(
             digestId = digestId,
-            random = random,
+            random = random!!,
             elementIdentifier = elementIdentifier,
-            elementValue = elementValue
+            elementValue = elementValue!!,
         )
     }
 
-    private fun CompositeDecoder.decodeAnything(index: Int, elementIdentifier: String): Any {
-        if (namespace.isBlank()) Napier.w { "This decoder is not namespace-aware! Unspeakable things may happen…" }
+    private fun CompositeDecoder.decodeAnything(index: Int, elementIdentifier: String?): Any {
+        if (namespace.isBlank())
+            Napier.w("This decoder is not namespace-aware! Unspeakable things may happen…")
 
         // Tags are not read out here but skipped because `decodeElementIndex` is never called, so we cannot
         // discriminate technically, this should be a good thing though, because otherwise we'd consume more from the
         // input
-        runCatching {
+        elementIdentifier?.let {
             CborCredentialSerializer.decode(descriptor, index, this, elementIdentifier, namespace)
                 ?.let { return it }
-                ?: Napier.w {
-                    "Could not find a registered decoder for namespace $namespace and elementIdentifier" +
-                            " $elementIdentifier. Falling back to defaults"
-                }
+                ?: Napier.v(
+                    "Falling back to defaults for namespace $namespace and elementIdentifier $elementIdentifier"
+                )
         }
 
         // These are the ones that map to different CBOR data types, the rest don't, so if it is not registered, we'll
