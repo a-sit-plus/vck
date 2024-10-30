@@ -29,19 +29,17 @@ class HolderAgent(
     private val jwsService: JwsService,
     private val coseService: CoseService,
     override val keyPair: KeyMaterial,
-    private val verifiablePresentationFactory: VerifiablePresentationFactory = VerifiablePresentationFactory(
-        jwsService = jwsService,
-        coseService = coseService,
-        identifier = keyPair.identifier,
-    ),
+    private val verifiablePresentationFactory: VerifiablePresentationFactory =
+        VerifiablePresentationFactory(jwsService, coseService, keyPair.identifier),
     private val difInputEvaluator: InputEvaluator = InputEvaluator(),
 ) : Holder {
 
     constructor(
         keyMaterial: KeyMaterial,
-        subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore()
+        subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
+        validator: Validator = Validator(),
     ) : this(
-        validator = Validator(),
+        validator = validator,
         subjectCredentialStore = subjectCredentialStore,
         jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
         coseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
@@ -83,7 +81,7 @@ class HolderAgent(
                     throw VerificationError(sdJwt.toString())
                 }
                 subjectCredentialStore.storeCredential(
-                    sdJwt.sdJwt,
+                    sdJwt.verifiableCredentialSdJwt,
                     credential.vcSdJwt,
                     sdJwt.disclosures,
                     credential.scheme,

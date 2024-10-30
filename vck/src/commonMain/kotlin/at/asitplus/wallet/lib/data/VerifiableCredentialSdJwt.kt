@@ -1,15 +1,21 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * SD-JWT representation of a [VerifiableCredential].
- * According to "SD-JWT-based Verifiable Credentials (SD-JWT VC), Draft 03"
+ * According to
+ * [SD-JWT-based Verifiable Credentials (SD-JWT VC), Draft 05](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html)
+ * and
+ * [Selective Disclosure for JWTs (SD-JWT), Draft 13](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-13.html)
  */
 @Serializable
 data class VerifiableCredentialSdJwt(
@@ -58,9 +64,6 @@ data class VerifiableCredentialSdJwt(
     @SerialName("_sd")
     val disclosureDigests: Collection<String>? = null,
 
-    @SerialName("type")
-    val type: Collection<String>? = null,
-
     /**
      * REQUIRED. This specification defines the JWT claim `vct` (for verifiable credential type).
      * The vct value MUST be a case-sensitive StringOrURI (see RFC7519) value serving as an identifier for the type
@@ -74,9 +77,15 @@ data class VerifiableCredentialSdJwt(
      * See (I-D.looker-oauth-jwt-cwt-status-list) for more information.
      */
     @SerialName("status")
-    // TODO Implement correct draft
+    // TODO Implement correct draft: draft-ietf-oauth-status-list-05
     val credentialStatus: CredentialStatus? = null,
 
+    /**
+     * The claim `_sd_alg` indicates the hash algorithm used by the Issuer to generate the digests as described in
+     * Section 4.2. When used, this claim MUST appear at the top level of the SD-JWT payload. It MUST NOT be used in
+     * any object nested within the payload. If the `_sd_alg` claim is not present at the top level, a default value of
+     * `sha-256` MUST be used.
+     */
     @SerialName("_sd_alg")
     val selectiveDisclosureAlgorithm: String? = null,
 
@@ -88,8 +97,20 @@ data class VerifiableCredentialSdJwt(
      * the key identified in this claim.
      */
     @SerialName("cnf")
-    val confirmationKey: JsonWebKey? = null,
+    // Should be [ConfirmationClaim], but was [JsonWebKey] in our previous implementation...
+    val cnfElement: JsonElement? = null,
 ) {
+
+    @Deprecated("Use confirmationClaim", replaceWith = ReplaceWith("confirmationClaim.jsonWebKey"))
+    val confirmationKey: JsonWebKey?
+        get() = cnfElement?.let {
+            runCatching { vckJsonSerializer.decodeFromJsonElement<JsonWebKey>(it) }.getOrNull()
+        }
+
+    val confirmationClaim: ConfirmationClaim?
+        get() = cnfElement?.let {
+            runCatching { vckJsonSerializer.decodeFromJsonElement<ConfirmationClaim>(it) }.getOrNull()
+        }
 
     fun serialize() = vckJsonSerializer.encodeToString(this)
 

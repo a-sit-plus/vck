@@ -101,6 +101,26 @@ class JwsServiceTest : FreeSpec({
         verifierJwsService.verifyJwsObject(signed) shouldBe false
     }
 
+    "signed object without public key in header can not be verified" {
+        val payload = randomPayload.encodeToByteArray()
+        val header = JwsHeader(algorithm = JwsAlgorithm.ES256)
+        val signed = jwsService.createSignedJws(header, payload).getOrThrow()
+
+        verifierJwsService = DefaultVerifierJwsService()
+        verifierJwsService.verifyJwsObject(signed) shouldBe false
+    }
+
+    "signed object without public key in header, but retrieved out-of-band can be verified" {
+        val payload = randomPayload.encodeToByteArray()
+        val header = JwsHeader(algorithm = JwsAlgorithm.ES256)
+        val signed = jwsService.createSignedJws(header, payload).getOrThrow()
+        val validKey = cryptoService.keyMaterial.jsonWebKey
+
+        val publicKeyLookup: PublicKeyLookup = { setOf(validKey) }
+        verifierJwsService = DefaultVerifierJwsService(publicKeyLookup = publicKeyLookup)
+        verifierJwsService.verifyJwsObject(signed) shouldBe true
+    }
+
     "encrypted object can be decrypted" {
         val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
         val encrypted = jwsService.encryptJweObject(

@@ -316,6 +316,11 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
  */
 typealias JwkSetRetrieverFunction = (String) -> JsonWebKeySet?
 
+/**
+ * Clients get the parsed [JwsSigned] and need to provide a set of keys, which will be used for verification one-by-one.
+ */
+typealias PublicKeyLookup = (JwsSigned) -> Set<JsonWebKey>?
+
 class DefaultVerifierJwsService(
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
     /**
@@ -323,6 +328,8 @@ class DefaultVerifierJwsService(
      * the `jku`.
      */
     private val jwkSetRetriever: JwkSetRetrieverFunction = { null },
+    /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
+    private val publicKeyLookup: PublicKeyLookup = { null },
 ) : VerifierJwsService {
 
     override val supportedAlgorithms: List<JwsAlgorithm> =
@@ -336,14 +343,17 @@ class DefaultVerifierJwsService(
         val header = jwsObject.header
         val publicKey = header.publicKey
             ?: header.jsonWebKeySetUrl?.let { jku -> retrieveJwkFromKeySetUrl(jku, header) }
-            ?: return false
-                .also { Napier.w("Could not extract PublicKey from header: $header") }
-        return verify(jwsObject, publicKey)
+        return if (publicKey != null) {
+            verify(jwsObject, publicKey)
+        } else publicKeyLookup(jwsObject)?.let { jwks ->
+            jwks.mapNotNull { jwk -> jwk.toCryptoPublicKey().getOrNull() }
+                .any { pubKey -> verify(jwsObject, pubKey) }
+        } ?: false
+            .also { Napier.w("Could not extract PublicKey from header: $header") }
     }
 
     private fun retrieveJwkFromKeySetUrl(jku: String, header: JwsHeader) =
-        jwkSetRetriever(jku)?.keys?.firstOrNull { it.keyId == header.keyId }?.toCryptoPublicKey()
-            ?.getOrNull()
+        jwkSetRetriever(jku)?.keys?.firstOrNull { it.keyId == header.keyId }?.toCryptoPublicKey()?.getOrNull()
 
     /**
      * Verifiers the signature of [jwsObject] by using [signer].

@@ -21,10 +21,7 @@ import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
-import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.VerifierJwsService
+import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -32,6 +29,7 @@ import io.ktor.http.*
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.DurationUnit
@@ -503,9 +501,12 @@ class OidcSiopVerifier private constructor(
          * Successfully decoded and validated the response from the Wallet (W3C credential in SD-JWT)
          */
         data class SuccessSdJwt(
-            val jwsSigned: JwsSigned,
+            val sdJwtSigned: SdJwtSigned,
+            val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
+            @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
             val sdJwt: VerifiableCredentialSdJwt,
-            val disclosures: List<SelectiveDisclosureItem>,
+            val reconstructed: JsonObject,
+            val disclosures: Collection<SelectiveDisclosureItem>,
             val state: String?,
         ) : AuthnResponseResult()
 
@@ -672,6 +673,7 @@ class OidcSiopVerifier private constructor(
         else -> throw IllegalArgumentException()
     }
 
+    @Suppress("DEPRECATION")
     private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
         is Verifier.VerifyPresentationResult.InvalidStructure ->
             AuthnResponseResult.Error("parse vp failed", state)
@@ -690,8 +692,14 @@ class OidcSiopVerifier private constructor(
                 .also { Napier.i("VP success: $this") }
 
         is Verifier.VerifyPresentationResult.SuccessSdJwt ->
-            AuthnResponseResult.SuccessSdJwt(jwsSigned, sdJwt, disclosures, state)
-                .also { Napier.i("VP success: $this") }
+            AuthnResponseResult.SuccessSdJwt(
+                sdJwtSigned,
+                verifiableCredentialSdJwt,
+                sdJwt,
+                reconstructedJsonObject,
+                disclosures,
+                state
+            ).also { Napier.i("VP success: $this") }
     }
 
 }

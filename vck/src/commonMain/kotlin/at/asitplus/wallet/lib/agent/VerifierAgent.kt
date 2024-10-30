@@ -20,12 +20,15 @@ class VerifierAgent private constructor(
     override val keyMaterial: KeyMaterial,
 ) : Verifier {
 
-    constructor(keyPairAdapter: KeyMaterial) : this(
-        validator = Validator(),
+    constructor(
+        keyPairAdapter: KeyMaterial,
+        validator: Validator = Validator()
+    ) : this(
+        validator = validator,
         keyMaterial = keyPairAdapter,
     )
 
-    constructor(): this(
+    constructor() : this(
         validator = Validator(),
         keyMaterial = EphemeralKeyWithoutCert(),
     )
