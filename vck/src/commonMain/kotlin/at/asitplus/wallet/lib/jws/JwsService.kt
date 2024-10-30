@@ -353,7 +353,9 @@ class DefaultVerifierJwsService(
     }
 
     private fun retrieveJwkFromKeySetUrl(jku: String, header: JwsHeader) =
-        jwkSetRetriever(jku)?.keys?.firstOrNull { it.keyId == header.keyId }?.toCryptoPublicKey()?.getOrNull()
+        jwkSetRetriever(jku)?.keys
+            ?.firstOrNull { it.keyId == header.keyId }
+            ?.toCryptoPublicKey()?.getOrNull()
 
     /**
      * Verifiers the signature of [jwsObject] by using [signer].

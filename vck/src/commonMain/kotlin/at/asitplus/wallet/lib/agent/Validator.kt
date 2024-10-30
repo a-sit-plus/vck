@@ -8,6 +8,8 @@ import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.io.BitSet
 import at.asitplus.signum.indispensable.io.toBitSet
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.DefaultZlibService
@@ -206,12 +208,16 @@ class Validator(
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Could not verify SD-JWT: $sdJwtResult") }
         }
-        val jwsKeyBindingParsed = sdJwtResult.sdJwtSigned.keyBindingJws
+        val keyBindingSigned = sdJwtResult.sdJwtSigned.keyBindingJws
             ?: return Verifier.VerifyPresentationResult.NotVerified(input, challenge)
                 .also { Napier.w("verifyVpSdJwt: No key binding JWT") }
-        val keyBinding = KeyBindingJws.deserialize(jwsKeyBindingParsed.payload.decodeToString()).getOrElse { ex ->
+        if (!verifierJwsService.verifyJwsObject(keyBindingSigned)) {
             return Verifier.VerifyPresentationResult.NotVerified(input, challenge)
-                .also { Napier.w("verifyVpSdJwt: No key binding JWT", ex) }
+                .also { Napier.w("verifyVpSdJwt: Key binding JWT not verified") }
+        }
+        val keyBinding = KeyBindingJws.deserialize(keyBindingSigned.payload.decodeToString()).getOrElse { ex ->
+            return Verifier.VerifyPresentationResult.NotVerified(input, challenge)
+                .also { Napier.w("verifyVpSdJwt: Key binding JWT doesn't contain valid payload", ex) }
         }
 
         if (keyBinding.challenge != challenge)
@@ -220,28 +226,12 @@ class Validator(
         if (!publicKey.matchesIdentifier(keyBinding.audience))
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Audience not correct: ${keyBinding.audience}") }
-        @Suppress("DEPRECATION")
-        if (sdJwtResult.verifiableCredentialSdJwt.confirmationClaim != null) {
-            // TODO More general way to verify confirmation claim needed, as it may be a kid, jku, ...
-            jwsKeyBindingParsed.header.jsonWebKey?.let {
-                if (sdJwtResult.verifiableCredentialSdJwt.confirmationClaim?.jsonWebKey?.equalsCryptographically(it) != true) {
-                    Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject")
-                    return Verifier.VerifyPresentationResult.InvalidStructure(input)
-                }
-            } ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
-                .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not exist") }
-        } else if (sdJwtResult.verifiableCredentialSdJwt.confirmationKey != null) {
-            jwsKeyBindingParsed.header.jsonWebKey?.let {
-                if (sdJwtResult.verifiableCredentialSdJwt.confirmationKey?.equalsCryptographically(it) != true) {
-                    Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject")
-                    return Verifier.VerifyPresentationResult.InvalidStructure(input)
-                }
-            } ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
-                .also { Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not exist") }
-        } else if (jwsKeyBindingParsed.header.keyId != sdJwtResult.verifiableCredentialSdJwt.subject) {
-            Napier.w("verifyVpSdJwt: Key Binding $jwsKeyBindingParsed does not prove possession of subject")
+        val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt
+        if (!vcSdJwt.verifyKeyBinding(keyBindingSigned.header)) {
+            Napier.w("verifyVpSdJwt: Key Binding $keyBindingSigned does not prove possession of subject")
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
         }
+
         val hashInput = input.substringBeforeLast("~") + "~"
         if (!keyBinding.sdHash.contentEquals(hashInput.encodeToByteArray().sha256()))
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
@@ -251,7 +241,7 @@ class Validator(
         @Suppress("DEPRECATION")
         return Verifier.VerifyPresentationResult.SuccessSdJwt(
             sdJwtSigned = sdJwtResult.sdJwtSigned,
-            verifiableCredentialSdJwt = sdJwtResult.verifiableCredentialSdJwt,
+            verifiableCredentialSdJwt = vcSdJwt,
             sdJwt = sdJwtResult.sdJwt,
             reconstructedJsonObject = sdJwtResult.reconstructedJsonObject,
             disclosures = sdJwtResult.disclosures.values,
@@ -475,3 +465,23 @@ class Validator(
     }
 
 }
+
+@Suppress("DEPRECATION")
+private fun VerifiableCredentialSdJwt.verifyKeyBinding(jwsHeader: JwsHeader): Boolean =
+    if (confirmationClaim != null) {
+        confirmationClaim!!.matches(jwsHeader)
+    } else if (confirmationKey != null) { // "old" method before vck 5.1.0
+        jwsHeader.jsonWebKey?.let {
+            confirmationKey!!.equalsCryptographically(it)
+        } ?: false
+    } else if (subject != jwsHeader.keyId) {
+        false
+    } else {
+        false
+    }
+
+// TODO More general way to verify confirmation claim needed, as it may be a kid, jku, ...
+fun ConfirmationClaim.matches(header: JwsHeader): Boolean =
+    header.jsonWebKey?.let {
+        this.jsonWebKey?.equalsCryptographically(it)
+    } ?: false
