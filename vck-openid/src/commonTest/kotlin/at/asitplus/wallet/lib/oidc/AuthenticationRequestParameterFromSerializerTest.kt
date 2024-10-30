@@ -14,7 +14,7 @@ import io.ktor.http.*
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
-    val relyingPartyUrl = "https://example.com/rp/${uuid4()}"
+    val clientId = "https://example.com/rp/${uuid4()}"
     val walletUrl = "https://example.com/wallet/${uuid4()}"
 
     val holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -25,7 +25,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
     val verifierSiop = OidcSiopVerifier(
         verifier = VerifierAgent(EphemeralKeyWithoutCert()),
-        relyingPartyUrl = relyingPartyUrl,
+        clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
     )
 
     val representations = listOf(
@@ -73,7 +73,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             ).getOrThrow()
             val interim1: AuthenticationRequestParameters =
                 Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
-            interim1.clientId shouldBe relyingPartyUrl
+            interim1.clientId shouldBe clientId
 
             val interim2 = interim1.request ?: throw Exception("Authn request is null")
             val params = oidcSiopWallet.parseAuthenticationRequestParameters(interim2).getOrThrow()

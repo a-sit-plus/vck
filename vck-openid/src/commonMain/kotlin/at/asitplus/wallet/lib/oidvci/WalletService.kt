@@ -134,29 +134,52 @@ class WalletService(
     /**
      * Build authorization details for use in [OAuth2Client.createAuthRequest].
      *
-     *
-     * @param credentialConfigurationId which credential (the key) from
-     * [IssuerMetadata.supportedCredentialConfigurations] to request
+     * @param credentialConfigurationId which credentials to request, i.e.
+     * one of the keys from [IssuerMetadata.supportedCredentialConfigurations],
+     * or from [CredentialOffer.configurationIds]
      * @param authorizationServers from [IssuerMetadata.authorizationServers]
      */
-    suspend fun buildAuthorizationDetails(
+    fun buildAuthorizationDetails(
         credentialConfigurationId: String,
         authorizationServers: Set<String>? = null,
-    ) = setOf(
-        AuthorizationDetails.OpenIdCredential(
-            credentialConfigurationId = credentialConfigurationId,
-            locations = authorizationServers,
-            // TODO Test in real-world settings, is this correct?
-            credentialIdentifiers = setOf(credentialConfigurationId)
-        )
-    )
+    ) = buildAuthorizationDetails(setOf(credentialConfigurationId), authorizationServers)
 
     /**
      * Build authorization details for use in [OAuth2Client.createAuthRequest].
+     *
+     * @param credentialConfigurationIds which credentials to request, i.e.
+     * filtered keys from [IssuerMetadata.supportedCredentialConfigurations],
+     * or from [CredentialOffer.configurationIds]
+     * @param authorizationServers from [IssuerMetadata.authorizationServers]
      */
-    suspend fun buildAuthorizationDetails(
-        requestOptions: RequestOptions
-    ) = setOfNotNull(requestOptions.toAuthnDetails())
+    fun buildAuthorizationDetails(
+        credentialConfigurationIds: Set<String>,
+        authorizationServers: Set<String>? = null,
+    ) = credentialConfigurationIds.map {
+        AuthorizationDetails.OpenIdCredential(
+            credentialConfigurationId = it,
+            locations = authorizationServers,
+            // Not supporting different credential datasets for one credential configuration at the moment,
+            // so we'll just use the `credentialConfigurationId`, see OID4VCI 6.2
+            credentialIdentifiers = setOf(it)
+        )
+    }.toSet()
+
+    /**
+     * Build `scope` value for use in [OAuth2Client.createAuthRequest] and [OAuth2Client.createTokenRequestParameters].
+     */
+    fun buildScope(
+        requestOptions: RequestOptions,
+        metadata: IssuerMetadata
+    ) = metadata.supportedCredentialConfigurations?.values?.filter {
+        it.format.toRepresentation() == requestOptions.representation
+    }?.firstOrNull {
+        when (requestOptions.representation) {
+            PLAIN_JWT -> it.credentialDefinition?.types?.contains(requestOptions.credentialScheme.vcType!!) == true
+            SD_JWT -> it.sdJwtVcType == requestOptions.credentialScheme.sdJwtType!!
+            ISO_MDOC -> it.docType == requestOptions.credentialScheme.isoDocType!!
+        }
+    }?.scope
 
     sealed class CredentialRequestInput {
         /**
@@ -248,48 +271,6 @@ class WalletService(
             addX5c = false,
         ).getOrThrow().serialize()
     )
-
-    private fun RequestOptions.toAuthnDetails() =
-        representation.toAuthorizationDetails(credentialScheme, requestedAttributes)
-
-    private fun CredentialRepresentation.toAuthorizationDetails(
-        scheme: ConstantIndex.CredentialScheme,
-        requestedAttributes: Set<String>?,
-    ) = when (this) {
-        PLAIN_JWT -> scheme.toJwtAuthn(toFormat())
-        SD_JWT -> scheme.toSdJwtAuthn(toFormat(), requestedAttributes)
-        ISO_MDOC -> scheme.toIsoAuthn(toFormat(), requestedAttributes)
-    }
-
-    private fun ConstantIndex.CredentialScheme.toJwtAuthn(
-        format: CredentialFormatEnum,
-    ) = if (supportsVcJwt)
-        AuthorizationDetails.OpenIdCredential(
-            format = format,
-            credentialDefinition = SupportedCredentialFormatDefinition(
-                types = setOf(VERIFIABLE_CREDENTIAL, vcType!!),
-            ),
-        ) else null
-
-    private fun ConstantIndex.CredentialScheme.toSdJwtAuthn(
-        format: CredentialFormatEnum,
-        requestedAttributes: Set<String>?,
-    ) = if (supportsSdJwt)
-        AuthorizationDetails.OpenIdCredential(
-            format = format,
-            sdJwtVcType = sdJwtType!!,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtType!!),
-        ) else null
-
-    private fun ConstantIndex.CredentialScheme.toIsoAuthn(
-        format: CredentialFormatEnum,
-        requestedAttributes: Set<String>?,
-    ) = if (supportsIso)
-        AuthorizationDetails.OpenIdCredential(
-            format = format,
-            docType = isoDocType,
-            claims = requestedAttributes?.toRequestedClaimsIso(isoNamespace!!)
-        ) else null
 
     private fun ConstantIndex.CredentialScheme.toCredentialRequestParameters(
         credentialRepresentation: CredentialRepresentation,

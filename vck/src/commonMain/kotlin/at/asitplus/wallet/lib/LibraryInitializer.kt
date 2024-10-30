@@ -2,10 +2,8 @@
 
 package at.asitplus.wallet.lib
 
-import at.asitplus.wallet.lib.data.AriesGoalCodeParser
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.JsonCredentialSerializer
 import at.asitplus.wallet.lib.iso.CborCredentialSerializer
 import kotlinx.serialization.KSerializer
@@ -39,8 +37,6 @@ object LibraryInitializer {
         serializersModule: SerializersModule? = null
     ) {
         AttributeIndex.registerAttributeType(credentialScheme)
-        if (credentialScheme.supportsVcJwt)
-            AriesGoalCodeParser.registerGoalCode(credentialScheme)
         serializersModule?.let { JsonCredentialSerializer.registerSerializersModule(credentialScheme, it) }
     }
 
@@ -105,11 +101,10 @@ object LibraryInitializer {
  * ```
  * when (it) {
  *     is DrivingPrivilege -> vckJsonSerializer.encodeToJsonElement(it)
- *     is LocalDate -> vckJsonSerializer.encodeToJsonElement(it)
- *     is UInt -> vckJsonSerializer.encodeToJsonElement(it)
  *     else -> null
  * }
  * ```
+ * Credential libraries need to implement only for custom types, as platform types are covered by this library.
  */
 typealias JsonValueEncoder
         = (value: Any) -> JsonElement?

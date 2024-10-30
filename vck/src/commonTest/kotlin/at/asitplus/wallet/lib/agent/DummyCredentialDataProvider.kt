@@ -15,19 +15,17 @@ import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
-class DummyCredentialDataProvider(
-    private val clock: Clock = Clock.System,
-) : IssuerCredentialDataProvider {
+object DummyCredentialDataProvider {
 
     private val defaultLifetime = 1.minutes
 
-    override fun getCredential(
+    fun getCredential(
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>?
+        claimNames: Collection<String>? = null,
     ): KmmResult<CredentialToBeIssued> = catching {
-        val expiration = clock.now() + defaultLifetime
+        val expiration = Clock.System.now() + defaultLifetime
         val claims = claimNames?.map {
             ClaimToBeIssued(it, "${it}_DUMMY_VALUE")
         } ?: listOf(
@@ -41,11 +39,15 @@ class DummyCredentialDataProvider(
             ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
                 claims = claims,
                 expiration = expiration,
+                scheme = credentialScheme,
+                subjectPublicKey = subjectPublicKey,
             )
 
             ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                 subject = AtomicAttribute2023(subjectId, CLAIM_GIVEN_NAME, "Susanne"),
                 expiration = expiration,
+                scheme = credentialScheme,
+                subjectPublicKey = subjectPublicKey,
             )
 
             ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -53,6 +55,8 @@ class DummyCredentialDataProvider(
                     issuerSignedItem(claim.name, claim.value, index.toUInt())
                 },
                 expiration = expiration,
+                scheme = credentialScheme,
+                subjectPublicKey = subjectPublicKey,
             )
         }
     }

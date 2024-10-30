@@ -1,13 +1,14 @@
 package at.asitplus.openid
 
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.dif.FormatHolder
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
-import at.asitplus.dif.FormatHolder
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.encodeToString
 
 @Serializable
@@ -56,7 +57,7 @@ data class RelyingPartyMetadata(
      * element from OpenID Connect Discovery 1.0.
      */
     @SerialName("id_token_signed_response_alg")
-    val idTokenSignedResponseAlg: JwsAlgorithm? = null,
+    val idTokenSignedResponseAlgString: String? = null,
 
     /**
      * OID JARM: JWS (RFC7515) `alg` algorithm JWA (RFC7518). REQUIRED for signing authorization responses.
@@ -64,7 +65,7 @@ data class RelyingPartyMetadata(
      * The algorithm `none` is not allowed. The default, if omitted, is RS256.
      */
     @SerialName("authorization_signed_response_alg")
-    val authorizationSignedResponseAlg: JwsAlgorithm? = null,
+    val authorizationSignedResponseAlgString: String? = null,
 
     /**
      * OID JARM: JWE (RFC7516) `alg` algorithm JWA (RFC7518). REQUIRED for encrypting authorization responses.
@@ -72,7 +73,7 @@ data class RelyingPartyMetadata(
      * a Nested JWT, as defined in JWT (RFC7519). The default, if omitted, is that no encryption is performed.
      */
     @SerialName("authorization_encrypted_response_alg")
-    val authorizationEncryptedResponseAlg: JweAlgorithm? = null,
+    val authorizationEncryptedResponseAlgString: String? = null,
 
     /**
      * OID JARM: JWE (RFC7516) `enc` algorithm JWA (RFC7518). REQUIRED for encrypting authorization responses.
@@ -81,7 +82,7 @@ data class RelyingPartyMetadata(
      * provided.
      */
     @SerialName("authorization_encrypted_response_enc")
-    val authorizationEncryptedResponseEncoding: JweEncryption? = null,
+    val authorizationEncryptedResponseEncodingString: String? = null,
 
     /**
      * OIDC Registration: OPTIONAL. JWE alg algorithm REQUIRED for encrypting the ID Token issued to this Client.
@@ -89,7 +90,7 @@ data class RelyingPartyMetadata(
      * The default, if omitted, is that no encryption is performed.
      */
     @SerialName("id_token_encrypted_response_alg")
-    val idTokenEncryptedResponseAlg: JweAlgorithm? = null,
+    val idTokenEncryptedResponseAlgString: String? = null,
 
     /**
      * OIDC Registration: OPTIONAL. JWE enc algorithm REQUIRED for encrypting the ID Token issued to this Client.
@@ -97,7 +98,7 @@ data class RelyingPartyMetadata(
      * When [idTokenEncryptedResponseEncoding] is included, [idTokenEncryptedResponseAlg] MUST also be provided.
      */
     @SerialName("id_token_encrypted_response_enc")
-    val idTokenEncryptedResponseEncoding: JweEncryption? = null,
+    val idTokenEncryptedResponseEncodingString: String? = null,
 
     /**
      * OIDC SIOPv2: REQUIRED. A JSON array of strings representing URI scheme identifiers and optionally method names of
@@ -121,7 +122,7 @@ data class RelyingPartyMetadata(
      * If omitted, the default value is `pre-registered`.
      */
     @SerialName("client_id_scheme")
-    val clientIdScheme: OpenIdConstants.ClientIdScheme? = OpenIdConstants.ClientIdScheme.PRE_REGISTERED,
+    val clientIdScheme: OpenIdConstants.ClientIdScheme? = OpenIdConstants.ClientIdScheme.PreRegistered,
 ) {
 
     fun serialize() = jsonSerializer.encodeToString(this)
@@ -131,4 +132,63 @@ data class RelyingPartyMetadata(
             jsonSerializer.decodeFromString<RelyingPartyMetadata>(it)
         }.wrap()
     }
+
+    /**
+     * OID JARM: JWE (RFC7516) `alg` algorithm JWA (RFC7518). REQUIRED for encrypting authorization responses.
+     * If both signing and encryption are requested, the response will be signed then encrypted, with the result being
+     * a Nested JWT, as defined in JWT (RFC7519). The default, if omitted, is that no encryption is performed.
+     */
+    @Transient
+    val authorizationEncryptedResponseAlg: JweAlgorithm? = authorizationEncryptedResponseAlgString
+        ?.let { s -> JweAlgorithm.entries.firstOrNull { it.identifier == s } }
+
+    /**
+     * OIDC Registration: OPTIONAL. JWE alg algorithm REQUIRED for encrypting the ID Token issued to this Client.
+     * If this is requested, the response will be signed then encrypted, with the result being a Nested JWT.
+     * The default, if omitted, is that no encryption is performed.
+     */
+    @Transient
+    val idTokenEncryptedResponseAlg: JweAlgorithm? = idTokenEncryptedResponseAlgString
+        ?.let { s -> JweAlgorithm.entries.firstOrNull { it.identifier == s } }
+
+    /**
+     * OIDC Registration: OPTIONAL. JWS alg algorithm REQUIRED for signing the ID Token issued to this Client.
+     * The value none MUST NOT be used as the ID Token alg value unless the Client uses only Response Types that return
+     * no ID Token from the Authorization Endpoint (such as when only using the Authorization Code Flow).
+     * The default, if omitted, is RS256.
+     * The public key for validating the signature is provided by retrieving the JWK Set referenced by the `jwks_uri`
+     * element from OpenID Connect Discovery 1.0.
+     */
+    @Transient
+    val idTokenSignedResponseAlg: JwsAlgorithm? = idTokenSignedResponseAlgString
+        ?.let { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }
+
+    /**
+     * OID JARM: JWS (RFC7515) `alg` algorithm JWA (RFC7518). REQUIRED for signing authorization responses.
+     * If this is specified, the response will be signed using JWS and the configured algorithm.
+     * The algorithm `none` is not allowed. The default, if omitted, is RS256.
+     */
+    @Transient
+    val authorizationSignedResponseAlg: JwsAlgorithm? = authorizationSignedResponseAlgString
+        ?.let { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }
+
+    /**
+     * OID JARM: JWE (RFC7516) `enc` algorithm JWA (RFC7518). REQUIRED for encrypting authorization responses.
+     * If [authorizationEncryptedResponseAlg] is specified, the default for this value is A128CBC-HS256.
+     * When [authorizationEncryptedResponseEncoding] is included, [authorizationEncryptedResponseAlg] MUST also be
+     * provided.
+     */
+    @Transient
+    val authorizationEncryptedResponseEncoding: JweEncryption? = authorizationEncryptedResponseEncodingString
+        ?.let { s -> JweEncryption.entries.firstOrNull { it.text == s } }
+
+    /**
+     * OIDC Registration: OPTIONAL. JWE enc algorithm REQUIRED for encrypting the ID Token issued to this Client.
+     * If [idTokenEncryptedResponseAlg] is specified, the default value is A128CBC-HS256.
+     * When [idTokenEncryptedResponseEncoding] is included, [idTokenEncryptedResponseAlg] MUST also be provided.
+     */
+    @Transient
+    val idTokenEncryptedResponseEncoding: JweEncryption? = idTokenEncryptedResponseEncodingString
+        ?.let { s -> JweEncryption.entries.firstOrNull { it.text == s } }
 }
+

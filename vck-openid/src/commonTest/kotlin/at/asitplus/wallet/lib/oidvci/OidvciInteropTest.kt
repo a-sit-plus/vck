@@ -1,44 +1,46 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
-import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidc.DummyOAuth2IssuerCredentialDataProvider
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainAll
 import io.kotest.matchers.collections.shouldHaveSingleElement
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OidvciInteropTest : FunSpec({
 
     lateinit var authorizationService: SimpleAuthorizationService
     lateinit var issuer: CredentialIssuer
+    lateinit var client: WalletService
+    lateinit var state: String
 
     beforeEach {
         authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(
                 DummyOAuth2DataProvider,
-                setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme)
+                setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)
             ),
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
-            credentialSchemes = setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme),
-            buildIssuerCredentialDataProviderOverride = ::DummyOAuth2IssuerCredentialDataProvider
+            credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
+            credentialProvider = DummyOAuth2IssuerCredentialDataProvider
         )
+        client = WalletService()
+        state = uuid4().toString()
     }
 
     test("Parse EUDIW URL") {
@@ -211,103 +213,331 @@ class OidvciInteropTest : FunSpec({
         // but is a single string
     }
 
-    test("process with pre-authorized code, credential offer, and authorization details") {
-        val client = WalletService()
-        val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
-        val credentialIssuerMetadata = issuer.metadata
-        val credentialIdToRequest = credentialOffer.configurationIds.first()
-        val state = uuid4().toString()
+    test("parse EUDIW metadata") {
+        val input = """
+        {
+            "issuer": "https://auth.eudiw.dev/realms/pid-issuer-realm",
+            "authorization_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/auth",
+            "token_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/token",
+            "introspection_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/token/introspect",
+            "userinfo_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/userinfo",
+            "end_session_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/logout",
+            "frontchannel_logout_session_supported": true,
+            "frontchannel_logout_supported": true,
+            "jwks_uri": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/certs",
+            "check_session_iframe": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/login-status-iframe.html",
+            "grant_types_supported": [
+                "authorization_code",
+                "implicit",
+                "refresh_token",
+                "password",
+                "client_credentials",
+                "urn:openid:params:grant-type:ciba",
+                "urn:ietf:params:oauth:grant-type:device_code"
+            ],
+            "acr_values_supported": [
+                "0",
+                "1"
+            ],
+            "response_types_supported": [
+                "code",
+                "none",
+                "id_token",
+                "token",
+                "id_token token",
+                "code id_token",
+                "code token",
+                "code id_token token"
+            ],
+            "subject_types_supported": [
+                "public",
+                "pairwise"
+            ],
+            "id_token_signing_alg_values_supported": [
+                "PS384",
+                "RS384",
+                "EdDSA",
+                "ES384",
+                "HS256",
+                "HS512",
+                "ES256",
+                "RS256",
+                "HS384",
+                "ES512",
+                "PS256",
+                "PS512",
+                "RS512"
+            ],
+            "id_token_encryption_alg_values_supported": [
+                "RSA-OAEP",
+                "RSA-OAEP-256",
+                "RSA1_5"
+            ],
+            "id_token_encryption_enc_values_supported": [
+                "A256GCM",
+                "A192GCM",
+                "A128GCM",
+                "A128CBC-HS256",
+                "A192CBC-HS384",
+                "A256CBC-HS512"
+            ],
+            "userinfo_signing_alg_values_supported": [
+                "PS384",
+                "RS384",
+                "EdDSA",
+                "ES384",
+                "HS256",
+                "HS512",
+                "ES256",
+                "RS256",
+                "HS384",
+                "ES512",
+                "PS256",
+                "PS512",
+                "RS512",
+                "none"
+            ],
+            "userinfo_encryption_alg_values_supported": [
+                "RSA-OAEP",
+                "RSA-OAEP-256",
+                "RSA1_5"
+            ],
+            "userinfo_encryption_enc_values_supported": [
+                "A256GCM",
+                "A192GCM",
+                "A128GCM",
+                "A128CBC-HS256",
+                "A192CBC-HS384",
+                "A256CBC-HS512"
+            ],
+            "request_object_signing_alg_values_supported": [
+                "PS384",
+                "RS384",
+                "EdDSA",
+                "ES384",
+                "HS256",
+                "HS512",
+                "ES256",
+                "RS256",
+                "HS384",
+                "ES512",
+                "PS256",
+                "PS512",
+                "RS512",
+                "none"
+            ],
+            "request_object_encryption_alg_values_supported": [
+                "RSA-OAEP",
+                "RSA-OAEP-256",
+                "RSA1_5"
+            ],
+            "request_object_encryption_enc_values_supported": [
+                "A256GCM",
+                "A192GCM",
+                "A128GCM",
+                "A128CBC-HS256",
+                "A192CBC-HS384",
+                "A256CBC-HS512"
+            ],
+            "response_modes_supported": [
+                "query",
+                "fragment",
+                "form_post",
+                "query.jwt",
+                "fragment.jwt",
+                "form_post.jwt",
+                "jwt"
+            ],
+            "registration_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/clients-registrations/openid-connect",
+            "token_endpoint_auth_methods_supported": [
+                "private_key_jwt",
+                "client_secret_basic",
+                "client_secret_post",
+                "tls_client_auth",
+                "client_secret_jwt"
+            ],
+            "token_endpoint_auth_signing_alg_values_supported": [
+                "PS384",
+                "RS384",
+                "EdDSA",
+                "ES384",
+                "HS256",
+                "HS512",
+                "ES256",
+                "RS256",
+                "HS384",
+                "ES512",
+                "PS256",
+                "PS512",
+                "RS512"
+            ],
+            "introspection_endpoint_auth_methods_supported": [
+                "private_key_jwt",
+                "client_secret_basic",
+                "client_secret_post",
+                "tls_client_auth",
+                "client_secret_jwt"
+            ],
+            "introspection_endpoint_auth_signing_alg_values_supported": [
+                "PS384",
+                "RS384",
+                "EdDSA",
+                "ES384",
+                "HS256",
+                "HS512",
+                "ES256",
+                "RS256",
+                "HS384",
+                "ES512",
+                "PS256",
+                "PS512",
+                "RS512"
+            ],
+            "authorization_signing_alg_values_supported": [
+                "PS384",
+                "RS384",
+                "EdDSA",
+                "ES384",
+                "HS256",
+                "HS512",
+                "ES256",
+                "RS256",
+                "HS384",
+                "ES512",
+                "PS256",
+                "PS512",
+                "RS512"
+            ],
+            "authorization_encryption_alg_values_supported": [
+                "RSA-OAEP",
+                "RSA-OAEP-256",
+                "RSA1_5"
+            ],
+            "authorization_encryption_enc_values_supported": [
+                "A256GCM",
+                "A192GCM",
+                "A128GCM",
+                "A128CBC-HS256",
+                "A192CBC-HS384",
+                "A256CBC-HS512"
+            ],
+            "claims_supported": [
+                "aud",
+                "sub",
+                "iss",
+                "auth_time",
+                "name",
+                "given_name",
+                "family_name",
+                "preferred_username",
+                "email",
+                "acr"
+            ],
+            "claim_types_supported": [
+                "normal"
+            ],
+            "claims_parameter_supported": true,
+            "scopes_supported": [
+                "openid",
+                "offline_access",
+                "eu.europa.ec.eudi.pid_vc_sd_jwt",
+                "web-origins",
+                "eu.europa.ec.eudi.pid_mso_mdoc",
+                "roles",
+                "org.iso.18013.5.1.mDL"
+            ],
+            "request_parameter_supported": true,
+            "request_uri_parameter_supported": true,
+            "require_request_uri_registration": true,
+            "code_challenge_methods_supported": [
+                "plain",
+                "S256"
+            ],
+            "tls_client_certificate_bound_access_tokens": true,
+            "dpop_signing_alg_values_supported": [
+                "PS384",
+                "ES384",
+                "RS384",
+                "ES256",
+                "RS256",
+                "ES512",
+                "PS256",
+                "PS512",
+                "RS512"
+            ],
+            "revocation_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/revoke",
+            "revocation_endpoint_auth_methods_supported": [
+                "private_key_jwt",
+                "client_secret_basic",
+                "client_secret_post",
+                "tls_client_auth",
+                "client_secret_jwt"
+            ],
+            "revocation_endpoint_auth_signing_alg_values_supported": [
+                "PS384",
+                "RS384",
+                "EdDSA",
+                "ES384",
+                "HS256",
+                "HS512",
+                "ES256",
+                "RS256",
+                "HS384",
+                "ES512",
+                "PS256",
+                "PS512",
+                "RS512"
+            ],
+            "backchannel_logout_supported": true,
+            "backchannel_logout_session_supported": true,
+            "device_authorization_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/auth/device",
+            "backchannel_token_delivery_modes_supported": [
+                "poll",
+                "ping"
+            ],
+            "backchannel_authentication_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/ext/ciba/auth",
+            "backchannel_authentication_request_signing_alg_values_supported": [
+                "PS384",
+                "RS384",
+                "EdDSA",
+                "ES384",
+                "ES256",
+                "RS256",
+                "ES512",
+                "PS256",
+                "PS512",
+                "RS512"
+            ],
+            "require_pushed_authorization_requests": false,
+            "pushed_authorization_request_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/ext/par/request",
+            "mtls_endpoint_aliases": {
+                "token_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/token",
+                "revocation_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/revoke",
+                "introspection_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/token/introspect",
+                "device_authorization_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/auth/device",
+                "registration_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/clients-registrations/openid-connect",
+                "userinfo_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/userinfo",
+                "pushed_authorization_request_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/ext/par/request",
+                "backchannel_authentication_endpoint": "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/ext/ciba/auth"
+            },
+            "authorization_response_iss_parameter_supported": true
+        }    
+        """.trimIndent()
 
-        val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth.preAuthorizedCode),
-            authorizationDetails = client.buildAuthorizationDetails(
-                credentialIdToRequest,
-                credentialIssuerMetadata.authorizationServers
-            )
+        val parsed = OAuth2AuthorizationServerMetadata.deserialize(input).getOrThrow()
+
+        parsed.issuer shouldBe "https://auth.eudiw.dev/realms/pid-issuer-realm"
+        parsed.authorizationEndpoint shouldBe "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/auth"
+        parsed.jsonWebKeySetUrl shouldBe "https://auth.eudiw.dev/realms/pid-issuer-realm/protocol/openid-connect/certs"
+        parsed.grantTypesSupported.shouldNotBeNull() shouldContainAll listOf("authorization_code")
+        parsed.idTokenSigningAlgorithmsSupported.shouldNotBeNull() shouldContain JwsAlgorithm.ES256
+        parsed.responseModesSupported.shouldNotBeNull() shouldContainAll listOf(
+            "query", "fragment", "form_post", "fragment.jwt", "form_post.jwt", "jwt"
         )
-        val token = authorizationService.token(tokenRequest).getOrThrow()
-        token.authorizationDetails.shouldNotBeNull()
-        val first = token.authorizationDetails!!.first().shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
-        val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialConfigurationId!!),
-            clientNonce = token.clientNonce,
-            credentialIssuer = credentialIssuerMetadata.credentialIssuer
-        ).getOrThrow()
-
-        val credential = issuer.credential(token.accessToken, credentialRequest)
-            .getOrThrow()
-        credential.credential.shouldNotBeNull()
-    }
-
-    test("process with authorization code flow and request options") {
-        val client = WalletService()
-        val state = uuid4().toString()
-        val requestOptions = WalletService.RequestOptions(
-            credentialScheme = ConstantIndex.AtomicAttribute2023,
-            representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+        parsed.scopesSupported.shouldNotBeNull() shouldContainAll listOf(
+            "openid", "eu.europa.ec.eudi.pid_vc_sd_jwt", "eu.europa.ec.eudi.pid_mso_mdoc", "org.iso.18013.5.1.mDL"
         )
-        val authorizationDetails = client.buildAuthorizationDetails(requestOptions)
-        val authnRequest = client.oauth2Client.createAuthRequest(
-            state = state,
-            authorizationDetails = authorizationDetails,
-            resource = issuer.metadata.credentialIssuer
-        )
-        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
-        val code = authnResponse.params.code
-            .shouldNotBeNull()
-
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            authorizationDetails = authorizationDetails
-        )
-        val token = authorizationService.token(tokenRequest).getOrThrow()
-        token.authorizationDetails.shouldNotBeNull()
-        val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.RequestOptions(requestOptions),
-            clientNonce = token.clientNonce,
-            credentialIssuer = issuer.metadata.credentialIssuer
-        ).getOrThrow()
-
-        val credential = issuer.credential(token.accessToken, credentialRequest)
-            .getOrThrow()
-        credential.credential.shouldNotBeNull()
-    }
-
-    test("process with pre-authorized code, credential offer, and scope") {
-        val client = WalletService()
-        val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
-        val credentialIdToRequest = credentialOffer.configurationIds.first()
-        // OID4VCI 5.1.2 Using scope Parameter to Request Issuance of a Credential
-        val supportedCredentialFormat = issuer.metadata.supportedCredentialConfigurations?.get(credentialIdToRequest)
-            .shouldNotBeNull()
-        val scope = supportedCredentialFormat.scope
-            .shouldNotBeNull()
-        val state = uuid4().toString()
-
-        val preAuth = credentialOffer.grants?.preAuthorizedCode
-            .shouldNotBeNull()
-        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth.preAuthorizedCode),
-            scope = scope,
-            resource = issuer.metadata.credentialIssuer,
-        )
-        val token = authorizationService.token(tokenRequest).getOrThrow()
-        token.authorizationDetails.shouldBeNull()
-
-        val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.Format(supportedCredentialFormat),
-            clientNonce = token.clientNonce,
-            credentialIssuer = issuer.metadata.credentialIssuer
-        ).getOrThrow()
-
-        val credential = issuer.credential(token.accessToken, credentialRequest)
-            .getOrThrow()
-        credential.credential.shouldNotBeNull()
+        parsed.dpopSigningAlgValuesSupported.shouldNotBeNull() shouldContain JwsAlgorithm.ES256
     }
 
 })

@@ -18,11 +18,11 @@ import at.asitplus.wallet.lib.jws.SdJwtSigned
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.inspectors.forAll
-import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.jsonPrimitive
 
 class AgentSdJwtTest : FreeSpec({
 
@@ -37,20 +37,18 @@ class AgentSdJwtTest : FreeSpec({
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
-        issuer = IssuerAgent(
-            EphemeralKeyWithoutCert(),
-            issuerCredentialStore,
-            DummyCredentialDataProvider(),
-        )
+        issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore)
         holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
         verifier = VerifierAgent()
         challenge = uuid4().toString()
         holder.storeCredential(
             issuer.issueCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
     }
@@ -67,10 +65,9 @@ class AgentSdJwtTest : FreeSpec({
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-        verified.disclosures shouldHaveSize 2
 
-        verified.disclosures.first { it.claimName == CLAIM_GIVEN_NAME }.claimValue.content shouldBe "Susanne"
-        verified.disclosures.first { it.claimName == CLAIM_DATE_OF_BIRTH }.claimValue.content shouldBe "1990-01-01"
+        verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
+        verified.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
         verified.isRevoked shouldBe false
     }
 
@@ -86,8 +83,8 @@ class AgentSdJwtTest : FreeSpec({
         ).sdJwt
         val verified = verifier.verifyPresentation(sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-        verified.disclosures shouldHaveSize 1
-        verified.disclosures.forAll { it.claimName shouldBe CLAIM_GIVEN_NAME }
+
+        verified.reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
         verified.isRevoked shouldBe false
     }
 
@@ -158,14 +155,15 @@ private fun buildPresentationDefinition(vararg attributeName: String) = Presenta
 )
 
 suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {
-    val issuer = IssuerAgent(EphemeralKeyWithoutCert(), DummyCredentialDataProvider())
     val holderKeyMaterial = EphemeralKeyWithoutCert()
     val holder = HolderAgent(holderKeyMaterial)
     holder.storeCredential(
-        issuer.issueCredential(
-            holderKeyMaterial.publicKey,
-            ConstantIndex.AtomicAttribute2023,
-            ConstantIndex.CredentialRepresentation.SD_JWT,
+        IssuerAgent().issueCredential(
+            DummyCredentialDataProvider.getCredential(
+                holderKeyMaterial.publicKey,
+                ConstantIndex.AtomicAttribute2023,
+                ConstantIndex.CredentialRepresentation.SD_JWT,
+            ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
     )
     val presentationResult = holder.createPresentation(

@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -16,10 +17,9 @@ import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-@Suppress("unused")
 class OidcSiopIsoProtocolTest : FreeSpec({
 
-    lateinit var relyingPartyUrl: String
+    lateinit var clientId: String
     lateinit var walletUrl: String
 
     lateinit var holderKeyMaterial: KeyMaterial
@@ -33,26 +33,27 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
-        relyingPartyUrl = "https://example.com/rp/${uuid4()}"
+        clientId = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
 
-        val issuerAgent = IssuerAgent(
-            EphemeralKeyWithSelfSignedCert(),
-            DummyCredentialDataProvider(),
-        )
+        val issuerAgent = IssuerAgent(EphemeralKeyWithSelfSignedCert())
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                holderKeyMaterial.publicKey,
-                MobileDrivingLicenceScheme,
-                ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    MobileDrivingLicenceScheme,
+                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
 
@@ -66,7 +67,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     "test with Fragment for mDL" {
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
             verifierSiop,
@@ -90,7 +91,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     "test with Fragment for custom attributes" {
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
             verifierSiop,
@@ -112,10 +113,10 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     }
 
     "Selective Disclosure with mDL" {
-        val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
+        val requestedClaim = FAMILY_NAME
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
             verifierSiop,
@@ -132,17 +133,16 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             holderSiop,
         )
 
-        document.validItems.shouldNotBeEmpty()
         document.validItems.shouldBeSingleton()
         document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
         document.invalidItems.shouldBeEmpty()
     }
 
     "Selective Disclosure with mDL and encryption" {
-        val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
+        val requestedClaim = FAMILY_NAME
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val requestOptions = OidcSiopVerifier.RequestOptions(
             credentials = setOf(
@@ -150,7 +150,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
                     MobileDrivingLicenceScheme, ConstantIndex.CredentialRepresentation.ISO_MDOC, listOf(requestedClaim)
                 )
             ),
-            responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
+            responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
             responseUrl = "https://example.com/response",
             encryption = true
         )
@@ -167,7 +167,6 @@ class OidcSiopIsoProtocolTest : FreeSpec({
 
         val document = result.documents.first()
 
-        document.validItems.shouldNotBeEmpty()
         document.validItems.shouldBeSingleton()
         document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
         document.invalidItems.shouldBeEmpty()
@@ -176,7 +175,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     "Selective Disclosure with mDL JSON Path syntax" {
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
             verifierSiop,
@@ -186,16 +185,15 @@ class OidcSiopIsoProtocolTest : FreeSpec({
                     OidcSiopVerifier.RequestOptionsCredential(
                         MobileDrivingLicenceScheme,
                         ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        listOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
+                        listOf(FAMILY_NAME)
                     )
                 )
             ),
             holderSiop,
         )
 
-        document.validItems.shouldNotBeEmpty()
         document.validItems.shouldBeSingleton()
-        document.validItems.shouldHaveSingleElement { it.elementIdentifier == MobileDrivingLicenceDataElements.FAMILY_NAME }
+        document.validItems.shouldHaveSingleElement { it.elementIdentifier == FAMILY_NAME }
         document.invalidItems.shouldBeEmpty()
     }
 

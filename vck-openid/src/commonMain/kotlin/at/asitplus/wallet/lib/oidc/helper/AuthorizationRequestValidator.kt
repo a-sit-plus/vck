@@ -1,17 +1,17 @@
 package at.asitplus.wallet.lib.oidc.helper
 
-import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
-import at.asitplus.openid.OpenIdConstants.ResponseMode.DIRECT_POST
-import at.asitplus.openid.OpenIdConstants.ResponseMode.DIRECT_POST_JWT
+import at.asitplus.openid.OpenIdConstants.ResponseMode.DirectPost
+import at.asitplus.openid.OpenIdConstants.ResponseMode.DirectPostJwt
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.signum.indispensable.pki.leaf
+import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
-import io.ktor.http.Url
+import io.ktor.http.*
 
 internal class AuthorizationRequestValidator {
     @Throws(OAuth2Exception::class)
@@ -28,7 +28,7 @@ internal class AuthorizationRequestValidator {
 
 
         val clientIdScheme = request.parameters.clientIdScheme
-        if (clientIdScheme == OpenIdConstants.ClientIdScheme.REDIRECT_URI) {
+        if (clientIdScheme == OpenIdConstants.ClientIdScheme.RedirectUri) {
             request.parameters.verifyClientMetadata()
         }
         if (request.parameters.responseMode.isAnyDirectPost()) {
@@ -43,7 +43,6 @@ internal class AuthorizationRequestValidator {
         }
     }
 
-
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyRedirectUrl() {
         if (redirectUrl != null) {
@@ -55,7 +54,7 @@ internal class AuthorizationRequestValidator {
     }
 
     private fun OpenIdConstants.ClientIdScheme?.isAnyX509() =
-        (this == OpenIdConstants.ClientIdScheme.X509_SAN_DNS) || (this == OpenIdConstants.ClientIdScheme.X509_SAN_URI)
+        (this == OpenIdConstants.ClientIdScheme.X509SanDns) || (this == OpenIdConstants.ClientIdScheme.X509SanUri)
 
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyClientMetadata() {
@@ -82,7 +81,7 @@ internal class AuthorizationRequestValidator {
             Napier.w("$prefix, but no extensions were found in the leaf certificate")
             throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
-        if (clientIdScheme == OpenIdConstants.ClientIdScheme.X509_SAN_DNS) {
+        if (clientIdScheme == OpenIdConstants.ClientIdScheme.X509SanDns) {
             val dnsNames = leaf.tbsCertificate.subjectAlternativeNames?.dnsNames ?: run {
                 Napier.w("$prefix, but no dnsNames were found in the leaf certificate")
                 throw OAuth2Exception(Errors.INVALID_REQUEST)
@@ -120,7 +119,7 @@ internal class AuthorizationRequestValidator {
     }
 
     private fun OpenIdConstants.ResponseMode?.isAnyDirectPost() =
-        (this == DIRECT_POST) || (this == DIRECT_POST_JWT)
+        (this == DirectPost) || (this == DirectPostJwt)
 
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyResponseModeDirectPost() {

@@ -80,7 +80,7 @@ sealed class AuthorizationDetails {
          * identifiers together with an Access Token in subsequent Credential Requests.
          */
         @SerialName("credential_identifiers")
-        val credentialIdentifiers: Set<String>? = null,
+        val credentialIdentifiers: Set<String>? = null
     ) : AuthorizationDetails()
 
     /**

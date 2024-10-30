@@ -12,7 +12,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
 
-    lateinit var relyingPartyUrl: String
+    lateinit var clientId: String
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
@@ -25,7 +25,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
-        relyingPartyUrl = "https://example.com/rp/${uuid4()}"
+        clientId = "https://example.com/rp/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderSiop = OidcSiopWallet(
@@ -34,7 +34,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
         )
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
     }
 
@@ -206,13 +206,12 @@ private suspend fun Holder.storeSdJwtCredential(
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
-        IssuerAgent(
-            EphemeralKeyWithoutCert(),
-            DummyCredentialDataProvider(),
-        ).issueCredential(
-            holderKeyMaterial.publicKey,
-            credentialScheme,
-            ConstantIndex.CredentialRepresentation.SD_JWT,
+        IssuerAgent().issueCredential(
+            DummyCredentialDataProvider.getCredential(
+                holderKeyMaterial.publicKey,
+                credentialScheme,
+                ConstantIndex.CredentialRepresentation.SD_JWT,
+            ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
     )
 }
@@ -221,12 +220,11 @@ private suspend fun Holder.storeIsoCredential(
     holderKeyMaterial: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) = storeCredential(
-    IssuerAgent(
-        EphemeralKeyWithSelfSignedCert(),
-        DummyCredentialDataProvider(),
-    ).issueCredential(
-        holderKeyMaterial.publicKey,
-        credentialScheme,
-        ConstantIndex.CredentialRepresentation.ISO_MDOC,
+    IssuerAgent(EphemeralKeyWithSelfSignedCert()).issueCredential(
+        DummyCredentialDataProvider.getCredential(
+            holderKeyMaterial.publicKey,
+            credentialScheme,
+            ConstantIndex.CredentialRepresentation.ISO_MDOC,
+        ).getOrThrow()
     ).getOrThrow().toStoreCredentialInput()
 )

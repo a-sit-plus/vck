@@ -26,11 +26,11 @@ internal class AuthenticationResponseFactory(
         request: AuthenticationRequestParametersFrom,
         response: AuthenticationResponse,
     ) = when (request.parameters.responseMode) {
-        DIRECT_POST -> authnResponseDirectPost(request, response)
-        DIRECT_POST_JWT -> authnResponseDirectPostJwt(request, response)
-        QUERY -> authnResponseQuery(request, response)
-        FRAGMENT, null -> authnResponseFragment(request, response)
-        is OTHER -> TODO()
+        DirectPost -> authnResponseDirectPost(request, response)
+        DirectPostJwt -> authnResponseDirectPostJwt(request, response)
+        Query -> authnResponseQuery(request, response)
+        Fragment, null -> authnResponseFragment(request, response)
+        is Other -> TODO()
     }
 
     /**

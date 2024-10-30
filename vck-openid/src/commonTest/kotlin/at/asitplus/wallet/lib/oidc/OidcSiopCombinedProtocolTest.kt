@@ -12,7 +12,6 @@ import com.benasher44.uuid.uuid4
 import io.kotest.assertions.fail
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -20,7 +19,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OidcSiopCombinedProtocolTest : FreeSpec({
 
-    lateinit var relyingPartyUrl: String
+    lateinit var clientId: String
 
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
@@ -33,7 +32,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
-        relyingPartyUrl = "https://example.com/rp/${uuid4()}"
+        clientId = "https://example.com/rp/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
 
         holderSiop = OidcSiopWallet(
@@ -42,7 +41,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         )
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
         )
     }
 
@@ -137,7 +136,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
                 val result = verifierSiop.validateAuthnResponse(authnResponse.url)
                     .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-                result.sdJwt.type?.shouldContain(ConstantIndex.AtomicAttribute2023.vcType)
+                result.verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
             }
         }
 
@@ -242,17 +241,19 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         groupedResult.validationResults.size shouldBe 2
         groupedResult.validationResults.forEach { result ->
             result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-            result.disclosures.shouldNotBeEmpty()
-            when (result.sdJwt.verifiableCredentialType) {
+            result.reconstructed.entries.shouldNotBeEmpty()
+            when (result.verifiableCredentialSdJwt.verifiableCredentialType) {
                 EuPidScheme.sdJwtType -> {
-                    result.disclosures.firstOrNull { it.claimName == EuPidScheme.Attributes.FAMILY_NAME }.shouldNotBeNull()
-                    result.disclosures.firstOrNull { it.claimName == EuPidScheme.Attributes.GIVEN_NAME }.shouldNotBeNull()
+                    result.reconstructed[EuPidScheme.Attributes.FAMILY_NAME].shouldNotBeNull()
+                    result.reconstructed[EuPidScheme.Attributes.GIVEN_NAME].shouldNotBeNull()
                 }
+
                 ConstantIndex.AtomicAttribute2023.sdJwtType -> {
-                    result.disclosures.firstOrNull() { it.claimName == CLAIM_DATE_OF_BIRTH }.shouldNotBeNull()
+                    result.reconstructed[CLAIM_DATE_OF_BIRTH].shouldNotBeNull()
                 }
+
                 else -> {
-                    fail("Unexpected SD-JWT type: ${result.sdJwt.verifiableCredentialType}")
+                    fail("Unexpected SD-JWT type: ${result.verifiableCredentialSdJwt.verifiableCredentialType}")
                 }
             }
         }
@@ -264,13 +265,12 @@ private suspend fun Holder.storeJwtCredential(
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
-        IssuerAgent(
-            EphemeralKeyWithoutCert(),
-            DummyCredentialDataProvider(),
-        ).issueCredential(
-            holderKeyMaterial.publicKey,
-            credentialScheme,
-            CredentialRepresentation.PLAIN_JWT,
+        IssuerAgent().issueCredential(
+            DummyCredentialDataProvider.getCredential(
+                holderKeyMaterial.publicKey,
+                credentialScheme,
+                CredentialRepresentation.PLAIN_JWT,
+            ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
     )
 }
@@ -280,13 +280,12 @@ private suspend fun Holder.storeSdJwtCredential(
     credentialScheme: ConstantIndex.CredentialScheme,
 ) {
     storeCredential(
-        IssuerAgent(
-            EphemeralKeyWithoutCert(),
-            DummyCredentialDataProvider(),
-        ).issueCredential(
-            holderKeyMaterial.publicKey,
-            credentialScheme,
-            CredentialRepresentation.SD_JWT,
+        IssuerAgent().issueCredential(
+            DummyCredentialDataProvider.getCredential(
+                holderKeyMaterial.publicKey,
+                credentialScheme,
+                CredentialRepresentation.SD_JWT,
+            ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
     )
 }
@@ -295,12 +294,11 @@ private suspend fun Holder.storeIsoCredential(
     holderKeyMaterial: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
 ) = storeCredential(
-    IssuerAgent(
-        EphemeralKeyWithSelfSignedCert(),
-        DummyCredentialDataProvider(),
-    ).issueCredential(
-        holderKeyMaterial.publicKey,
-        credentialScheme,
-        CredentialRepresentation.ISO_MDOC,
+    IssuerAgent(EphemeralKeyWithSelfSignedCert()).issueCredential(
+        DummyCredentialDataProvider.getCredential(
+            holderKeyMaterial.publicKey,
+            credentialScheme,
+            CredentialRepresentation.ISO_MDOC,
+        ).getOrThrow()
     ).getOrThrow().toStoreCredentialInput()
 )

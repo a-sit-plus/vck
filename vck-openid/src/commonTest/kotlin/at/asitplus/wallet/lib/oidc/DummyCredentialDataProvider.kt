@@ -7,7 +7,6 @@ import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
-import at.asitplus.wallet.lib.agent.IssuerCredentialDataProvider
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
@@ -35,19 +34,17 @@ import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
-class DummyCredentialDataProvider(
-    private val clock: Clock = Clock.System,
-) : IssuerCredentialDataProvider {
+object DummyCredentialDataProvider {
 
     private val defaultLifetime = 1.minutes
 
-    override fun getCredential(
+    fun getCredential(
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>?
+        claimNames: Collection<String>? = null,
     ): KmmResult<CredentialToBeIssued> = catching {
-        val issuance = clock.now()
+        val issuance = Clock.System.now()
         val expiration = issuance + defaultLifetime
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
             val subjectId = subjectPublicKey.didEncoded
@@ -61,11 +58,15 @@ class DummyCredentialDataProvider(
                 ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
                     claims = claims,
                     expiration = expiration,
+                    scheme = credentialScheme,
+                    subjectPublicKey = subjectPublicKey,
                 )
 
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
                     subject = AtomicAttribute2023(subjectId, CLAIM_GIVEN_NAME, "Susanne"),
                     expiration = expiration,
+                    scheme = credentialScheme,
+                    subjectPublicKey = subjectPublicKey,
                 )
 
                 ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -73,6 +74,8 @@ class DummyCredentialDataProvider(
                         issuerSignedItem(claim.name, claim.value, index.toUInt())
                     },
                     expiration = expiration,
+                    scheme = credentialScheme,
+                    subjectPublicKey = subjectPublicKey,
                 )
             }
         } else if (credentialScheme == MobileDrivingLicenceScheme) {
@@ -113,6 +116,8 @@ class DummyCredentialDataProvider(
             CredentialToBeIssued.Iso(
                 issuerSignedItems = issuerSignedItems,
                 expiration = expiration,
+                scheme = credentialScheme,
+                subjectPublicKey = subjectPublicKey,
             )
         } else if (credentialScheme == EuPidScheme) {
             val subjectId = subjectPublicKey.didEncoded
@@ -136,11 +141,13 @@ class DummyCredentialDataProvider(
                 ConstantIndex.CredentialRepresentation.SD_JWT ->
                     CredentialToBeIssued.VcSd(
                         claims = claims,
-                        expiration = expiration
+                        expiration = expiration,
+                        scheme = credentialScheme,
+                        subjectPublicKey = subjectPublicKey,
                     )
 
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                    EuPidCredential(
+                    subject = EuPidCredential(
                         id = subjectId,
                         familyName = familyName,
                         givenName = givenName,
@@ -151,7 +158,9 @@ class DummyCredentialDataProvider(
                         issuingCountry = issuingCountry,
                         issuingAuthority = issuingCountry,
                     ),
-                    expiration,
+                    expiration = expiration,
+                    scheme = credentialScheme,
+                    subjectPublicKey = subjectPublicKey,
                 )
 
                 ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
@@ -159,6 +168,8 @@ class DummyCredentialDataProvider(
                         issuerSignedItem(claim.name, claim.value, index.toUInt())
                     },
                     expiration = expiration,
+                    scheme = credentialScheme,
+                    subjectPublicKey = subjectPublicKey,
                 )
             }
         } else {

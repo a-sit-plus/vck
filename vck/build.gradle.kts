@@ -57,7 +57,6 @@ kotlin {
             dependencies {
                 implementation(signum.jose)
                 implementation(kotlin("reflect"))
-                implementation("io.arrow-kt:arrow-core-jvm:1.2.4") //to make arrow's nonFatalOrThrow work in tests
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
                 implementation("com.authlete:cbor:${VcLibVersions.Jvm.`authlete-cbor`}")
             }

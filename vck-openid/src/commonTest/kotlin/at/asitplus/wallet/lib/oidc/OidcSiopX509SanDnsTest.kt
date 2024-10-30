@@ -14,7 +14,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OidcSiopX509SanDnsTest : FreeSpec({
@@ -28,6 +28,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
     lateinit var verifierSiop: OidcSiopVerifier
 
     beforeEach {
+        val clientId = "example.com"
         val extensions = listOf(X509CertificateExtension(
             KnownOIDs.subjectAltName_2_5_29_17,
             critical = false,
@@ -35,7 +36,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                 Asn1.Sequence {
                     +Asn1Primitive(
                         SubjectAltNameImplicitTags.dNSName,
-                        Asn1String.UTF8("example.com").encodeToTlv().content
+                        Asn1String.UTF8(clientId).encodeToTlv().content
                     )
                 }
             ))))
@@ -43,13 +44,12 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
         holderAgent = HolderAgent(holderKeyMaterial)
         holderAgent.storeCredential(
-            IssuerAgent(
-                EphemeralKeyWithoutCert(),
-                DummyCredentialDataProvider(),
-            ).issueCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
+            IssuerAgent().issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
 
@@ -59,7 +59,10 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         )
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!)),
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(
+                listOf(verifierKeyMaterial.getCertificate()!!),
+                clientId
+            ),
         )
     }
 
@@ -73,7 +76,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
                         listOf(CLAIM_GIVEN_NAME)
                     )
                 ),
-                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST_JWT,
+                responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = "https://example.com/response",
             )
         ).getOrThrow()
@@ -83,7 +86,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
 
         val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-        result.disclosures.shouldNotBeEmpty()
+        result.reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
 
     }
 })

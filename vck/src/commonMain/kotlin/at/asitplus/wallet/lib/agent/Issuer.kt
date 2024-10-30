@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.iso.IssuerSigned
@@ -57,21 +56,10 @@ interface Issuer {
     val cryptoAlgorithms: Set<SignatureAlgorithm>
 
     /**
-     * Issues credentials for some [credentialScheme] to the subject specified with its public
-     * key in [subjectPublicKey] in the format specified by [representation].
-     * Callers may optionally define some attribute names from [ConstantIndex.CredentialScheme.claimNames] in
-     * [claimNames] to request only some claims (if supported by the representation).
-     *
-     * @param dataProviderOverride Set this parameter to override the default [IssuerCredentialDataProvider] for this
-     *                             issuing process
+     * Wraps the credential-to-be-issued in [credential] into a single instance of [IssuedCredential],
+     * according to the representation, i.e. it essentially signs the credential with the issuer key.
      */
-    suspend fun issueCredential(
-        subjectPublicKey: CryptoPublicKey,
-        credentialScheme: ConstantIndex.CredentialScheme,
-        representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>? = null,
-        dataProviderOverride: IssuerCredentialDataProvider? = null,
-    ): KmmResult<IssuedCredential>
+    suspend fun issueCredential(credential: CredentialToBeIssued): KmmResult<IssuedCredential>
 
     /**
      * Wraps the revocation information into a VC,

@@ -6,16 +6,13 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.collections.shouldBeSingleton
-import io.kotest.matchers.collections.shouldHaveSingleElement
-import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OidcSiopSdJwtProtocolTest : FreeSpec({
 
-    lateinit var relyingPartyUrl: String
+    lateinit var clientId: String
     lateinit var walletUrl: String
 
     lateinit var holderKeyMaterial: KeyMaterial
@@ -30,19 +27,18 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithoutCert()
-        relyingPartyUrl = "https://example.com/rp/${uuid4()}"
+        clientId = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
         verifierAgent = VerifierAgent(verifierKeyMaterial)
 
         holderAgent.storeCredential(
-            IssuerAgent(
-                EphemeralKeyWithoutCert(),
-                DummyCredentialDataProvider(),
-            ).issueCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
+            IssuerAgent().issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
 
@@ -51,7 +47,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         )
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId)
         )
     }
 
@@ -59,7 +55,7 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         val requestedClaim = CLAIM_GIVEN_NAME
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = relyingPartyUrl,
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId)
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
@@ -80,10 +76,8 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-        result.sdJwt.shouldNotBeNull()
-        result.disclosures.shouldNotBeEmpty()
-        result.disclosures.shouldBeSingleton()
-        result.disclosures.shouldHaveSingleElement { it.claimName == requestedClaim }
+        result.verifiableCredentialSdJwt.shouldNotBeNull()
+        result.reconstructed[requestedClaim].shouldNotBeNull()
     }
 
 })

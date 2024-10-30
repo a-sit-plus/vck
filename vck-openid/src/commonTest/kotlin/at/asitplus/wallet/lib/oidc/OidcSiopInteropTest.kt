@@ -19,7 +19,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMIL
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidvci.decode
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeSingleton
@@ -27,8 +26,6 @@ import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.*
-import io.ktor.util.*
 import kotlinx.datetime.Instant
 
 /**
@@ -46,24 +43,25 @@ class OidcSiopInteropTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holderAgent = HolderAgent(holderKeyMaterial)
-        val issuerAgent = IssuerAgent(
-            EphemeralKeyWithoutCert(),
-            DummyCredentialDataProvider(),
-        )
+        val issuerAgent = IssuerAgent()
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                holderKeyMaterial.publicKey,
-                EuPidScheme,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
-                EuPidScheme.requiredClaimNames
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    EuPidScheme,
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                    EuPidScheme.requiredClaimNames
+                ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
-                listOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                    listOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
+                ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
         holderSiop = OidcSiopWallet(holderKeyMaterial, holderAgent)
@@ -247,11 +245,11 @@ class OidcSiopInteropTest : FreeSpec({
         parsed.shouldNotBeNull()
 
         parsed.responseUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/direct_post"
-        parsed.clientIdScheme shouldBe OpenIdConstants.ClientIdScheme.X509_SAN_DNS
+        parsed.clientIdScheme shouldBe OpenIdConstants.ClientIdScheme.X509SanDns
         parsed.responseType shouldBe "vp_token"
         parsed.nonce shouldBe "nonce"
         parsed.clientId shouldBe "verifier-backend.eudiw.dev"
-        parsed.responseMode shouldBe OpenIdConstants.ResponseMode.DIRECT_POST_JWT
+        parsed.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPostJwt
         parsed.audience shouldBe "https://self-issued.me/v2"
         parsed.scope shouldBe ""
         val pd = parsed.presentationDefinition
@@ -282,7 +280,8 @@ class OidcSiopInteropTest : FreeSpec({
     }
 
     "Request in request URI" {
-        val input = "mdoc-openid4vp://?request_uri=https%3A%2F%2Fexample.com%2Fd15b5b6f-7821-4031-9a18-ebe491b720a6"
+        val input = "mdoc-openid4vp://?client_id=https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02" +
+                "&request_uri=https%3A%2F%2Fexample.com%2Fd15b5b6f-7821-4031-9a18-ebe491b720a6"
         val jws = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert())).createSignedJwsAddingParams(
             payload = AuthenticationRequestParameters(
                 nonce = "RjEQKQeG8OUaKT4ij84E8mCvry6pVSgDyqRBMW5eBTPItP4DIfbKaT6M6v6q2Dvv8fN7Im7Ifa6GI2j6dHsJaQ==",
@@ -306,13 +305,6 @@ class OidcSiopInteropTest : FreeSpec({
         parsed.parameters.clientId shouldBe parsed.parameters.responseUrl
     }
 
-    "empty client_id" {
-        val input = "mdoc-openid4vp://?response_type=vp_token&client_id=&response_mode=direct_post.jwt"
-
-        Url(input).parameters.flattenEntries().toMap()
-            .decodeFromUrlQuery<AuthenticationRequestParameters>().shouldNotBeNull()
-    }
-
     "process with cross-device flow with request_uri and x509_san_dns" {
         val extensions = listOf(X509CertificateExtension(
             KnownOIDs.subjectAltName_2_5_29_17,
@@ -328,8 +320,10 @@ class OidcSiopInteropTest : FreeSpec({
         verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
-            relyingPartyUrl = "https://example.com/rp",
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!)),
+            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(
+                listOf(verifierKeyMaterial.getCertificate()!!),
+                "example.com"
+            ),
         )
         val nonce = uuid4().toString()
         val requestUrl = "https://example.com/request/$nonce"
@@ -337,7 +331,7 @@ class OidcSiopInteropTest : FreeSpec({
             walletUrl = "https://wallet.a-sit.at/mobile",
             requestUrl = requestUrl,
             requestOptions = OidcSiopVerifier.RequestOptions(
-                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
+                responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://example.com/response",
                 credentials = setOf(
                     OidcSiopVerifier.RequestOptionsCredential(

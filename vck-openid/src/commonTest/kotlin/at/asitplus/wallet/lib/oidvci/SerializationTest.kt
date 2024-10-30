@@ -24,7 +24,8 @@ class SerializationTest : FunSpec({
                 format = CredentialFormatEnum.JWT_VC,
                 credentialDefinition = SupportedCredentialFormatDefinition(
                     types = setOf(VERIFIABLE_CREDENTIAL, randomString()),
-                )
+                ),
+                credentialIdentifiers = setOf(randomString()),
             )
         ),
         redirectUrl = randomString(),
@@ -61,7 +62,7 @@ class SerializationTest : FunSpec({
             types = setOf(randomString(), randomString()),
         ),
         proof = CredentialRequestProof(
-            proofType = OpenIdConstants.ProofType.OTHER(randomString()),
+            proofType = OpenIdConstants.ProofType.Other(randomString()),
             jwt = randomString()
         )
     )

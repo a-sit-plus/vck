@@ -55,7 +55,7 @@ class OidcSiopWallet(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction,
     /**
      * Need to verify the request object serialized as a JWS,
-     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PRE_REGISTERED]).
+     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
     /**
@@ -79,7 +79,7 @@ class OidcSiopWallet(
         remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
         /**
          * Need to verify the request object serialized as a JWS,
-         * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PRE_REGISTERED]).
+         * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
          */
         requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true },
         /**
@@ -105,8 +105,8 @@ class OidcSiopWallet(
             responseTypesSupported = setOf(ID_TOKEN),
             scopesSupported = setOf(SCOPE_OPENID),
             subjectTypesSupported = setOf("pairwise", "public"),
-            idTokenSigningAlgorithmsSupported = setOf(jwsService.algorithm),
-            requestObjectSigningAlgorithmsSupported = setOf(jwsService.algorithm),
+            idTokenSigningAlgorithmsSupportedStrings = setOf(jwsService.algorithm.identifier),
+            requestObjectSigningAlgorithmsSupportedStrings = setOf(jwsService.algorithm.identifier),
             subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY, BINDING_METHOD_JWK),
             idTokenTypesSupported = setOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,

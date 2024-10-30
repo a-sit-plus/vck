@@ -20,15 +20,17 @@ class CredentialJsonInteropTest : FreeSpec({
         holderKeyMaterial = EphemeralKeyWithoutCert()
         subjectCredentialStore = InMemorySubjectCredentialStore()
         holderAgent = HolderAgent(holderKeyMaterial, subjectCredentialStore)
-        issuerAgent = IssuerAgent(EphemeralKeyWithSelfSignedCert(), DummyCredentialDataProvider())
+        issuerAgent = IssuerAgent(EphemeralKeyWithSelfSignedCert())
     }
 
     "Plain jwt credential path resolving" {
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.PLAIN_JWT
+                ).getOrThrow(),
             ).getOrThrow().toStoreCredentialInput()
         )
 
@@ -46,10 +48,12 @@ class CredentialJsonInteropTest : FreeSpec({
     "SD jwt credential path resolving" {
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
-                ConstantIndex.AtomicAttribute2023.claimNames
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                    ConstantIndex.AtomicAttribute2023.claimNames
+                ).getOrThrow(),
             ).getOrThrow().toStoreCredentialInput()
         )
 
@@ -63,10 +67,12 @@ class CredentialJsonInteropTest : FreeSpec({
     "ISO credential path resolving" {
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                holderKeyMaterial.publicKey,
-                ConstantIndex.AtomicAttribute2023,
-                ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                ConstantIndex.AtomicAttribute2023.claimNames
+                DummyCredentialDataProvider.getCredential(
+                    holderKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    ConstantIndex.AtomicAttribute2023.claimNames
+                ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
 
