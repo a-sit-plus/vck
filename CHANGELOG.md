@@ -1,7 +1,7 @@
 # Changelog
 
 Release 5.2.0:
- - tbd
+ - SD-JWT: Validate confirmation claims correctly
 
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact

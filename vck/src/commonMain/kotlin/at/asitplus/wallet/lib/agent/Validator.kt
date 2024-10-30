@@ -8,7 +8,6 @@ import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.io.BitSet
 import at.asitplus.signum.indispensable.io.toBitSet
-import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -227,7 +226,7 @@ class Validator(
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("verifyVpSdJwt: Audience not correct: ${keyBinding.audience}") }
         val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt
-        if (!vcSdJwt.verifyKeyBinding(keyBindingSigned.header)) {
+        if (!vcSdJwt.verifyKeyBinding(keyBindingSigned.header, keyBindingSigned)) {
             Napier.w("verifyVpSdJwt: Key Binding $keyBindingSigned does not prove possession of subject")
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
         }
@@ -248,6 +247,20 @@ class Validator(
             isRevoked = sdJwtResult.isRevoked,
         )
     }
+
+    @Suppress("DEPRECATION")
+    private fun VerifiableCredentialSdJwt.verifyKeyBinding(jwsHeader: JwsHeader, keyBindingSigned: JwsSigned): Boolean =
+        if (confirmationClaim != null) {
+            verifierJwsService.verifyConfirmationClaim(this.confirmationClaim!!, keyBindingSigned)
+        } else if (confirmationKey != null) { // "old" method before vck 5.1.0
+            jwsHeader.jsonWebKey?.let {
+                confirmationKey!!.equalsCryptographically(it)
+            } ?: false
+        } else if (subject != jwsHeader.keyId) {
+            false
+        } else {
+            false
+        }
 
     /**
      * Validates an ISO device response, equivalent of a Verifiable Presentation
@@ -465,23 +478,3 @@ class Validator(
     }
 
 }
-
-@Suppress("DEPRECATION")
-private fun VerifiableCredentialSdJwt.verifyKeyBinding(jwsHeader: JwsHeader): Boolean =
-    if (confirmationClaim != null) {
-        confirmationClaim!!.matches(jwsHeader)
-    } else if (confirmationKey != null) { // "old" method before vck 5.1.0
-        jwsHeader.jsonWebKey?.let {
-            confirmationKey!!.equalsCryptographically(it)
-        } ?: false
-    } else if (subject != jwsHeader.keyId) {
-        false
-    } else {
-        false
-    }
-
-// TODO More general way to verify confirmation claim needed, as it may be a kid, jku, ...
-fun ConfirmationClaim.matches(header: JwsHeader): Boolean =
-    header.jsonWebKey?.let {
-        this.jsonWebKey?.equalsCryptographically(it)
-    } ?: false
