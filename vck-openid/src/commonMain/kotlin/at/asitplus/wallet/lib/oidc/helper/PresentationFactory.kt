@@ -167,13 +167,13 @@ internal class PresentationFactory(
 
     private fun FormatHolder.isMissingFormatSupport(claimFormatEnum: ClaimFormatEnum) =
         when (claimFormatEnum) {
-            ClaimFormatEnum.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm.identifier) }
+            ClaimFormatEnum.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm) }
                 ?: false
 
-            ClaimFormatEnum.JWT_SD -> jwtSd?.algorithms?.let { !it.contains(jwsService.algorithm.identifier) }
+            ClaimFormatEnum.JWT_SD -> jwtSd?.algorithms?.let { !it.contains(jwsService.algorithm) }
                 ?: false
 
-            ClaimFormatEnum.MSO_MDOC -> msoMdoc?.algorithms?.let { !it.contains(jwsService.algorithm.identifier) }
+            ClaimFormatEnum.MSO_MDOC -> msoMdoc?.algorithms?.let { !it.contains(jwsService.algorithm) }
                 ?: false
 
             else -> false

@@ -151,7 +151,7 @@ class OidcSiopVerifier private constructor(
     )
 
     private val containerJwt =
-        FormatContainerJwt(algorithms = verifierJwsService.supportedAlgorithms.map { it.identifier })
+        FormatContainerJwt(algorithmStrings = verifierJwsService.supportedAlgorithms.map { it.identifier })
 
     val metadata by lazy {
         RelyingPartyMetadata(
