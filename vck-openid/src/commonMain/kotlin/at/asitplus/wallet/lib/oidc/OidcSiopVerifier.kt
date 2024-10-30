@@ -549,17 +549,18 @@ class OidcSiopVerifier private constructor(
             ?: return AuthnResponseResult.ValidationError("state", params.state)
                 .also { Napier.w("Invalid state: ${params.state}") }
         params.response?.let { response ->
-            JwsSigned.deserialize<AuthenticationResponseParameters>(response, vckJsonSerializer).getOrNull()?.let { jarmResponse ->
-                if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
-                    return AuthnResponseResult.ValidationError("response", state)
-                        .also { Napier.w { "JWS of response not verified: ${params.response}" } }
+            JwsSigned.deserialize<AuthenticationResponseParameters>(response, vckJsonSerializer).getOrNull()
+                ?.let { jarmResponse ->
+                    if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
+                        return AuthnResponseResult.ValidationError("response", state)
+                            .also { Napier.w { "JWS of response not verified: ${params.response}" } }
+                    }
+                    return validateAuthnResponse(jarmResponse.payload)
                 }
-                return validateAuthnResponse(jarmResponse.payload)
-            }
             JweEncrypted.deserialize(response).getOrNull()?.let { jarmResponse ->
-                jwsService.decryptJweObject(jarmResponse, response).getOrNull()?.let { decrypted ->
-                    AuthenticationResponseParameters.deserialize(decrypted.payload.decodeToString())
-                        .getOrNull()?.let { return validateAuthnResponse(it) }
+                jwsService.decryptJweObject(jarmResponse, response, AuthenticationResponseParameters.serializer())
+                    .getOrNull()?.let { decrypted ->
+                    return validateAuthnResponse(decrypted.payload)
                 }
             }
         }
