@@ -103,7 +103,7 @@ class OidcSiopWallet(
          * See [ScopePresentationDefinitionRetriever] for implementation instructions.
          */
         scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever = { null },
-        requestParser: RequestParser = RequestParser.createWithDefaults(
+        requestParser: RequestParser = RequestParser(
             remoteResourceRetriever = remoteResourceRetriever,
             requestObjectJwsVerifier = requestObjectJwsVerifier,
         ),
