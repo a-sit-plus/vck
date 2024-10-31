@@ -22,11 +22,11 @@ class OAuth2Client(
      * Used to create [AuthenticationRequestParameters], [TokenRequestParameters] and [CredentialRequestProof],
      * typically a URI.
      */
-    private val clientId: String = "https://wallet.a-sit.at/app",
+    val clientId: String = "https://wallet.a-sit.at/app",
     /**
      * Used to create [AuthenticationRequestParameters] and [TokenRequestParameters].
      */
-    private val redirectUrl: String = "$clientId/callback",
+    val redirectUrl: String = "$clientId/callback",
     /**
      * Used to store the code, associated to the state, to first send [AuthenticationRequestParameters.codeChallenge],
      * and then [TokenRequestParameters.codeVerifier], see [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636).
@@ -73,7 +73,7 @@ class OAuth2Client(
     )
 
     @OptIn(ExperimentalStdlibApi::class)
-    private suspend fun generateCodeVerifier(state: String): String {
+    suspend fun generateCodeVerifier(state: String): String {
         val codeVerifier = Random.nextBytes(32).toHexString(HexFormat.Default)
         stateToCodeStore.put(state, codeVerifier)
         return codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)

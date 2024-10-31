@@ -10,7 +10,7 @@ import io.github.aakira.napier.Napier
 
 
 internal fun getSignAlgorithm(signAlgoOid: ObjectIdentifier, signAlgoParams: Asn1Element?): SignatureAlgorithm? =
-    kotlin.runCatching {
+    runCatching {
         X509SignatureAlgorithm.doDecode(Asn1.Sequence {
             +signAlgoOid
             +(signAlgoParams ?: Asn1.Null())
@@ -27,7 +27,6 @@ fun getHashAlgorithm(hashAlgorithmOid: ObjectIdentifier?, signatureAlgorithm: Si
     hashAlgorithmOid?.let {
         Digest.entries.find { digest -> digest.oid == it }
     } ?: when(signatureAlgorithm) {
-        //TODO change as soon as digest is a member of the interface
         is SignatureAlgorithm.ECDSA -> signatureAlgorithm.digest
         is SignatureAlgorithm.HMAC -> signatureAlgorithm.digest
         is SignatureAlgorithm.RSA -> signatureAlgorithm.digest

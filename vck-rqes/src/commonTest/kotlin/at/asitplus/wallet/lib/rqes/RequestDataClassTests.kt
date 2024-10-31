@@ -3,7 +3,13 @@ package at.asitplus.wallet.lib.rqes
 import at.asitplus.rqes.CscSignatureRequestParameters
 import at.asitplus.rqes.SignDocParameters
 import at.asitplus.rqes.SignHashParameters
+import at.asitplus.rqes.collection_entries.CscDocumentDigest
+import at.asitplus.rqes.collection_entries.Document
+import at.asitplus.rqes.enums.ConformanceLevelEnum
+import at.asitplus.rqes.enums.SignatureFormat
+import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.rqes.rdcJsonSerializer
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.io.Base64Strict
 import io.github.aakira.napier.Napier
@@ -15,7 +21,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
-    val cscTestVectorSignHash1 = """
+    val adaptedCscTestVectorSignHash1 = """
     {
         "credentialID":"GX0112348",
         "SAD":"_TiHRG-bAH3XlFQZ3ndFhkXf9P24/CKN69L8gdSYp5_pw",
@@ -28,7 +34,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         "clientData":"12345678"
     }""".trimIndent()
 
-    val cscTestVectorSignHash2 = """
+    val adaptedCscTestVectorSignHash2 = """
     {
         "credentialID":"GX0112348",
         "SAD":"_TiHRG-bAH3XlFQZ3ndFhkXf9P24/CKN69L8gdSYp5_pw",
@@ -42,7 +48,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         "clientData":"12345678"
     }""".trimIndent()
 
-    val cscTestVectorSignHash3 = """
+    val adaptedCscTestVectorSignHash3 = """
     {
         "credentialID":"GX0112348",
         "hashes":[
@@ -55,7 +61,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         "clientData":"12345678"
     }""".trimIndent()
 
-    val cscTestVectorSignDoc1 = """
+    val adaptedCscTestVectorSignDoc1 = """
     {
         "credentialID": "GX0112348",
         "SAD": "_TiHRG-bAH3XlFQZ3ndFhkXf9P24/CKN69L8gdSYp5_pw",
@@ -78,29 +84,29 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         "clientData": "12345678"
     }""".trimIndent()
 
-    val cscTestVectorSignDoc2 = """
+    val adaptedCscTestVectorSignDoc2 = """
     {
         "credentialID": "GX0112348",
         "SAD": "_TiHRG-bAH3XlFQZ3ndFhkXf9P24/CKN69L8gdSYp5_pw",
         "documents": [
             {
-                "document": "Q2VydGlmaWNhdGVTZXJpYWxOdW1iZ…KzBTWWVJWWZZVXptU3V5MVU9DQo=",
+                "document": "UTJWeWRHbG1hV05oZEdWVFpYSnBZV3hPZFcxaVrigKZLekJUV1dWSldXWlpWWHB0VTNWNU1WVTlEUW89",
                 "signature_format": "P",
                 "conformance_level": "AdES-B-T",
-                "signAlgo": "1.2.840.113549.1.1.1"
+                "signAlgo": "1.2.840.113549.1.1.11"
             },
             {
-                "document": "Q2VydGlmaWNhdGVTZXJpYWxOdW1iZXI7U3… emNNbUNiL1cyQT09DQo=",
+                "document": "UTJWeWRHbG1hV05oZEdWVFpYSnBZV3hPZFcxaVrigKZLekJUV1dWSldXWlpWWHB0VTNWNU1WVTlEUW89",
                 "signature_format": "C",
                 "conformance_level": "AdES-B-B",
                 "signed_envelope_property": "Attached",
-                "signAlgo": "1.2.840.113549.1.1.1"
+                "signAlgo": "1.2.840.113549.1.1.11"
             }
         ],
         "clientData": "12345678"
     }""".trimIndent()
 
-    val cscTestVectorSignDoc3 = """
+    val adaptedCscTestVectorSignDoc3 = """
     {
         "credentialID": "GX0112348",
         "SAD": "_TiHRG-bAH3XlFQZ3ndFhkXf9P24/CKN69L8gdSYp5_pw",
@@ -122,17 +128,17 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         ],
         "documents": [
             {
-                "document": "Q2VydGlmaWNhdGVTZXJpYWxOdW1iZ…KzBTWWVJWWZZVXptU3V5MVU9DQo=",
+                "document": "UTJWeWRHbG1hV05oZEdWVFpYSnBZV3hPZFcxaVrigKZLekJUV1dWSldXWlpWWHB0VTNWNU1WVTlEUW89",
                 "signature_format": "P",
                 "conformance_level": "AdES-B-T",
-                "signAlgo": "1.2.840.113549.1.1.1"
+                "signAlgo": "1.2.840.113549.1.1.11"
             },
             {
-                "document": "Q2VydGlmaWNhdGVTZXJpYWxOdW1iZXI7U3… emNNbUNiL1cyQT09DQo=",
+                "document": "UTJWeWRHbG1hV05oZEdWVFpYSnBZV3hPZFcxaVrigKZLekJUV1dWSldXWlpWWHB0VTNWNU1WVTlEUW89",
                 "signature_format": "C",
                 "conformance_level": "AdES-B-B",
                 "signed_envelope_property": "Attached",
-                "signAlgo": "1.2.840.113549.1.1.1"
+                "signAlgo": "1.2.840.113549.1.1.11"
             }
         ],
         "clientData": "12345678"
@@ -148,11 +154,51 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 ),
                 SignDocParameters(
                     credentialId = "1234",
-                    documents = listOf() //TODO add documents
+                    documents = listOf(
+                        Document(
+                            document = "1234".decodeToByteArray(Base64Strict),
+                            signatureFormat = SignatureFormat.JADES,
+                            conformanceLevel = ConformanceLevelEnum.ADESBLTA,
+                            signAlgoOid = X509SignatureAlgorithm.ES256.oid,
+                            signAlgoParams = null,
+                            signedProps = null,
+                            signedEnvelopeProperty = null
+                        ),
+                        Document(
+                            document = "1234".decodeToByteArray(Base64Strict),
+                            signatureFormat = SignatureFormat.CADES,
+                            conformanceLevel = ConformanceLevelEnum.ADEST,
+                            signAlgoOid = X509SignatureAlgorithm.RS256.oid,
+                            signAlgoParams = null,
+                            signedProps = null,
+                            signedEnvelopeProperty = SignedEnvelopeProperty.PARALLEL
+                        ),
+                    )
                 ),
                 SignDocParameters(
                     credentialId = "1234",
-                    documentDigests = listOf() //TODO add documentdigest
+                    documentDigests = listOf(
+                        CscDocumentDigest(
+                            hashes = listOf("1234".decodeToByteArray(Base64Strict)),
+                            hashAlgorithmOid = Digest.SHA256.oid,
+                            signatureFormat = SignatureFormat.XADES,
+                            conformanceLevel = ConformanceLevelEnum.ADESB,
+                            signAlgoOid = X509SignatureAlgorithm.ES384.oid,
+                            signAlgoParams = null,
+                            signedProps = null,
+                            signedEnvelopeProperty = SignedEnvelopeProperty.ENVELOPING
+                        ),
+                        CscDocumentDigest(
+                            hashes = listOf("1234".decodeToByteArray(Base64Strict)),
+                            hashAlgorithmOid = null,
+                            signatureFormat = SignatureFormat.PADES,
+                            conformanceLevel = ConformanceLevelEnum.ADESTLT,
+                            signAlgoOid = X509SignatureAlgorithm.RS512.oid,
+                            signAlgoParams = null,
+                            signedProps = null,
+                            signedEnvelopeProperty = SignedEnvelopeProperty.ENVELOPING
+                        )
+                    )
                 )
             )
         dummyEntries.forEachIndexed { i, dummyEntry ->
@@ -168,14 +214,14 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
     }
 
     //TODO fix asn1 parsing
-    "CSC Test vectors".config(enabled = false) - {
+    "CSC Test vectors" - {
         listOf(
-            cscTestVectorSignHash1,
-            cscTestVectorSignHash2,
-            cscTestVectorSignHash3,
-            cscTestVectorSignDoc1,
-            cscTestVectorSignDoc2,
-            cscTestVectorSignDoc3
+            adaptedCscTestVectorSignHash1,
+            adaptedCscTestVectorSignHash2,
+            adaptedCscTestVectorSignHash3,
+            adaptedCscTestVectorSignDoc1,
+            adaptedCscTestVectorSignDoc2,
+            adaptedCscTestVectorSignDoc3
         ).forEachIndexed { i, vec ->
             "Testvector ${i + 1}" - {
                 val expected = rdcJsonSerializer.decodeFromString<JsonObject>(vec)
