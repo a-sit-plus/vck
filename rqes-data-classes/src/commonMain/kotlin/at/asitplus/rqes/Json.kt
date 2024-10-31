@@ -56,14 +56,6 @@ private val authorizationDetailsModule = SerializersModule {
         subclass(CscAuthorizationDetails::class, CscAuthorizationDetails.serializer())
         subclass(OpenIdAuthorizationDetails::class, OpenIdAuthorizationDetails.serializer())
     }
-//    polymorphicDefaultSerializer(
-//        AuthorizationDetails::class,
-//        defaultSerializerProvider = { AuthorizationDetailsSerializer },
-//    )
-//    polymorphicDefaultDeserializer(
-//        AuthorizationDetails::class,
-//        defaultDeserializerProvider = { AuthorizationDetailsSerializer }
-//    )
 }
 
 /**

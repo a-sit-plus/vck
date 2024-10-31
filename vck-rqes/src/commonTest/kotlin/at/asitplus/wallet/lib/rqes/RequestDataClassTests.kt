@@ -93,14 +93,14 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 "document": "UTJWeWRHbG1hV05oZEdWVFpYSnBZV3hPZFcxaVrigKZLekJUV1dWSldXWlpWWHB0VTNWNU1WVTlEUW89",
                 "signature_format": "P",
                 "conformance_level": "AdES-B-T",
-                "signAlgo": "1.2.840.113549.1.1.11"
+                "signAlgo": "1.2.840.113549.1.1.1"
             },
             {
                 "document": "UTJWeWRHbG1hV05oZEdWVFpYSnBZV3hPZFcxaVrigKZLekJUV1dWSldXWlpWWHB0VTNWNU1WVTlEUW89",
                 "signature_format": "C",
                 "conformance_level": "AdES-B-B",
                 "signed_envelope_property": "Attached",
-                "signAlgo": "1.2.840.113549.1.1.11"
+                "signAlgo": "1.2.840.113549.1.1.1"
             }
         ],
         "clientData": "12345678"
@@ -131,14 +131,14 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 "document": "UTJWeWRHbG1hV05oZEdWVFpYSnBZV3hPZFcxaVrigKZLekJUV1dWSldXWlpWWHB0VTNWNU1WVTlEUW89",
                 "signature_format": "P",
                 "conformance_level": "AdES-B-T",
-                "signAlgo": "1.2.840.113549.1.1.11"
+                "signAlgo": "1.2.840.113549.1.1.1"
             },
             {
                 "document": "UTJWeWRHbG1hV05oZEdWVFpYSnBZV3hPZFcxaVrigKZLekJUV1dWSldXWlpWWHB0VTNWNU1WVTlEUW89",
                 "signature_format": "C",
                 "conformance_level": "AdES-B-B",
                 "signed_envelope_property": "Attached",
-                "signAlgo": "1.2.840.113549.1.1.11"
+                "signAlgo": "1.2.840.113549.1.1.1"
             }
         ],
         "clientData": "12345678"
