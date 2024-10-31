@@ -35,10 +35,10 @@ data class JwtVcIssuerMetadata(
     @SerialName("jwks_uri")
     val jsonWebKeySetUrl: String? = null,
 ) {
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(input: String): KmmResult<JwtVcIssuerMetadata> =
-            runCatching { jsonSerializer.decodeFromString<JwtVcIssuerMetadata>(input) }.wrap()
+            runCatching { odcJsonSerializer.decodeFromString<JwtVcIssuerMetadata>(input) }.wrap()
     }
 }
