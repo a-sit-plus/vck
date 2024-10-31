@@ -2,10 +2,12 @@ package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationRequestParametersFrom
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.rqes.SignatureRequestParameters
 import at.asitplus.rqes.SignatureRequestParametersFrom
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
@@ -17,8 +19,18 @@ import io.ktor.http.*
  * we know that we need to handle Rqes Requests
  */
 class ExtendedRequestParser(
-    remoteResourceRetriever: RemoteResourceRetrieverFunction,
-    requestObjectJwsVerifier: RequestObjectJwsVerifier,
+    /**
+     * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
+     * or the request itself as `request_uri`, or `presentation_definition_uri`.
+     * Implementations need to fetch the url passed in, and return either the body, if there is one,
+     * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
+     */
+    remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
+    /**
+     * Need to verify the request object serialized as a JWS,
+     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
+     */
+    requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true },
 ) : RequestParser(remoteResourceRetriever, requestObjectJwsVerifier) {
     override fun <T> matchRequestParameterCases(input: T, params: RequestParameters): RequestParametersFrom =
         when (params) {
@@ -38,16 +50,6 @@ class ExtendedRequestParser(
                     else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
                 }
 
-            else -> TODO()
+            else -> throw NotImplementedError("matchRequestParameterCases: ${params::class.simpleName} not implemented")
         }
-
-    companion object {
-        fun createWithDefaults(
-            remoteResourceRetriever: RemoteResourceRetrieverFunction? = null,
-            requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
-        ) = ExtendedRequestParser(
-            remoteResourceRetriever = remoteResourceRetriever ?: { null },
-            requestObjectJwsVerifier = requestObjectJwsVerifier ?: RequestObjectJwsVerifier { _, _ -> true },
-        )
-    }
 }

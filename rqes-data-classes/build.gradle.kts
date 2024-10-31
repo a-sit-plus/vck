@@ -90,6 +90,11 @@ publishing {
                         name.set("Christian Kollmann")
                         email.set("christian.kollmann@a-sit.at")
                     }
+                    developer {
+                        id.set("n0900")
+                        name.set("Simon Mueller")
+                        email.set("simon.mueller@a-sit.at")
+                    }
                 }
                 scm {
                     connection.set("scm:git:git@github.com:a-sit-plus/vck.git")

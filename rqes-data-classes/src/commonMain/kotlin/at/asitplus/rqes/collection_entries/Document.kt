@@ -4,6 +4,7 @@ import at.asitplus.rqes.enums.ConformanceLevelEnum
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.rqes.getSignAlgorithm
+import at.asitplus.rqes.serializers.Asn1EncodableBase64Serializer
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
@@ -48,7 +49,7 @@ data class Document(
      * The Base64-encoded DER-encoded ASN.1 signature parameters
      */
     @SerialName("signAlgoParams")
-    @Serializable(at.asitplus.rqes.serializers.Asn1EncodableBase64Serializer::class)
+    @Serializable(Asn1EncodableBase64Serializer::class)
     val signAlgoParams: Asn1Element? = null,
 
     /**

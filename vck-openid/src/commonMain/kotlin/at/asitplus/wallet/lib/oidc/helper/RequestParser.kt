@@ -31,12 +31,12 @@ open class RequestParser(
      * Implementations need to fetch the url passed in, and return either the body, if there is one,
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
-    private val remoteResourceRetriever: RemoteResourceRetrieverFunction,
+    private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /**
      * Need to verify the request object serialized as a JWS,
      * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
      */
-    private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
+    private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true },
 ) {
     /**
      * Pass in the URL sent by the Verifier (containing the [RequestParameters] as query parameters),
@@ -108,14 +108,4 @@ open class RequestParser(
 
             else -> throw NotImplementedError("matchRequestParameterCases: ${params::class.simpleName} not implemented")
         }
-
-    companion object {
-        fun createWithDefaults(
-            remoteResourceRetriever: RemoteResourceRetrieverFunction? = null,
-            requestObjectJwsVerifier: RequestObjectJwsVerifier? = null,
-        ) = RequestParser(
-            remoteResourceRetriever = remoteResourceRetriever ?: { null },
-            requestObjectJwsVerifier = requestObjectJwsVerifier ?: RequestObjectJwsVerifier { _, _ -> true },
-        )
-    }
 }

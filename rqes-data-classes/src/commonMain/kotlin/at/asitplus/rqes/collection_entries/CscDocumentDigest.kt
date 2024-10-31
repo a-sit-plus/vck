@@ -8,6 +8,7 @@ import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.rqes.getHashAlgorithm
 import at.asitplus.rqes.getSignAlgorithm
+import at.asitplus.rqes.serializers.Asn1EncodableBase64Serializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
@@ -64,7 +65,7 @@ data class CscDocumentDigest(
      * the signature algorithm - Necessary for RSASSA-PSS for example
      */
     @SerialName("signAlgoParams")
-    @Serializable(with = at.asitplus.rqes.serializers.Asn1EncodableBase64Serializer::class)
+    @Serializable(with = Asn1EncodableBase64Serializer::class)
     val signAlgoParams: Asn1Element? = null,
 
     /**
