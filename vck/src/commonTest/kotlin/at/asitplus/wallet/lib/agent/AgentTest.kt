@@ -40,7 +40,7 @@ class AgentTest : FreeSpec({
     "simple walk-through success" {
         holder.storeCredential(
             issuer.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -64,7 +64,7 @@ class AgentTest : FreeSpec({
     "wrong keyId in presentation leads to InvalidStructure" {
         holder.storeCredential(
             issuer.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -87,7 +87,7 @@ class AgentTest : FreeSpec({
 
     "revoked credentials must not be validated" {
         val credentials = issuer.issueCredential(
-            DummyCredentialDataProvider().getCredential(
+            DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -109,7 +109,7 @@ class AgentTest : FreeSpec({
 
         "when setting a revocation list before storing credentials" {
             val credentials = issuer.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -128,7 +128,7 @@ class AgentTest : FreeSpec({
 
         "and when setting a revocation list after storing credentials" {
             val credentials = issuer.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -163,7 +163,7 @@ class AgentTest : FreeSpec({
 
         "when they are valid" - {
             val credentials = issuer.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -198,7 +198,7 @@ class AgentTest : FreeSpec({
 
         "when the issuer has revoked them" {
             val credentials = issuer.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -233,7 +233,7 @@ class AgentTest : FreeSpec({
 
     "valid presentation is valid" {
         val credentials = issuer.issueCredential(
-            DummyCredentialDataProvider().getCredential(
+            DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -258,7 +258,7 @@ class AgentTest : FreeSpec({
 
     "valid presentation is valid -- some other attributes revoked" {
         val credentials = issuer.issueCredential(
-            DummyCredentialDataProvider().getCredential(
+            DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,
@@ -276,7 +276,7 @@ class AgentTest : FreeSpec({
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
 
         val credentialsToRevoke = issuer.issueCredential(
-            DummyCredentialDataProvider().getCredential(
+            DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 ConstantIndex.AtomicAttribute2023,
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT,

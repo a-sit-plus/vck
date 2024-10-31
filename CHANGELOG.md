@@ -17,19 +17,33 @@ tbd
 - Refactor `AuthenticationRequestParser` to open class `RequestParser`
 - New class `ExtendedRequestParser` used to also parse `SignatureRequestParametersFrom`
 
+Release 5.2.0:
+ - SD-JWT: Validate confirmation claims correctly
+
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact
  - Add `credentialScheme` and `subjectPublicKey` to internal `CredentialToBeIssued`
  - Refactor `issueCredential` of `Issuer` to directly get the credential-to-be-issued
+ - Remove now useless interface `IssuerCredentialDataProvider`
  - Replace `buildIssuerCredentialDataProviderOverride` in `CredentialIssuer` with `credentialProvider` to extract user information into a credential
  - Remove `dataProvider` from `IssuerAgent`s constructor, as it is not needed with the new issuing interface anyway
  - Replace `relyingPartyUrl` with `clientIdScheme` on `OidcSiopVerifier`s constructor, to clarify use of `client_id` in requests
  - Rename objects in `OpenIdConstants.ProofType`, `OpenIdConstants.CliendIdScheme` and `OpenIdConstants.ResponseMode`
  - In all OpenID data classes, serialize strings only, and parse them to crypto data classes (from signum) in a separate property (this increases interop, as we can deserialize unsupported algorithms too)
+ - Add `publicKeyLookup` function to `DefaultVerifierJwsService` to provide valid keys for JWS objects out-of-band (e.g. when they're not included in the header of the JWS)
  - OID4VCI:
    - `WalletService` supports building multiple authorization details to request a token for more than one credential
    - Remove `buildAuthorizationDetails(RequestOptions)` for `WalletService`, please migrate to `buildScope(RequestOptions)`
    - Note that multiple `scope` values may be joined with a whitespace ` `
+ - ISO: Fix deserializing issuer signed items when element identifiers are read after the element values
+ - SD-JWT:
+   - Add implementation of JWT VC issuer metadata, see `JwtVcIssuerMetadata`
+   - Pass around decoded data with `SdJwtSigned` in several result classes like `VerifyPresentationResult.SuccessSdJwt`
+   - Rename `disclosures` to `reconstructedJsonObject` in several result classes like `AuthnResponseResult.SuccessSdJwt`
+   - Correctly implement confirmation claim in `VerifiableCredentialSdJwt`, migrating from `JsonWebKey` to `ConfirmationClaim`
+   - Change type of `claimValue` in `SelectiveDisclosureItem` from `JsonPrimitive` to `JsonElement` to be able to process nested disclosures
+   - Implement deserialization of complex objects, including array claims
+   - Add option to issue nested disclosures, by using `ClaimToBeIssued` recursively, see documentation there
 
 Release 5.0.1:
  - Update JsonPath4K to 2.4.0

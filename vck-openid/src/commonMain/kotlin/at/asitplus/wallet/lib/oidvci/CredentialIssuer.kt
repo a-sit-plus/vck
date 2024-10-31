@@ -11,6 +11,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CborWebToken
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -59,6 +60,7 @@ class CredentialIssuer(
 ) {
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`
+     * (see [OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER])
      */
     val metadata: IssuerMetadata by lazy {
         IssuerMetadata(
@@ -70,6 +72,17 @@ class CredentialIssuer(
                 .flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).entries }
                 .associate { it.key to it.value },
             batchCredentialIssuance = BatchCredentialIssuanceMetadata(1)
+        )
+    }
+
+    /**
+     * Serve this result JSON-serialized under `/.well-known/jwt-vc-issuer`
+     * (see [OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA])
+     */
+    val jwtVcMetadata: JwtVcIssuerMetadata by lazy {
+        JwtVcIssuerMetadata(
+            issuer = publicContext,
+            jsonWebKeySet = JsonWebKeySet(setOf(issuer.keyMaterial.jsonWebKey))
         )
     }
 

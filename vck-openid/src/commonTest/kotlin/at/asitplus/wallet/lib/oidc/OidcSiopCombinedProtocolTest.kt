@@ -12,7 +12,6 @@ import com.benasher44.uuid.uuid4
 import io.kotest.assertions.fail
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -137,7 +136,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
 
                 val result = verifierSiop.validateAuthnResponse(authnResponse.url)
                     .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-                result.sdJwt.type?.shouldContain(ConstantIndex.AtomicAttribute2023.vcType)
+                result.verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
             }
         }
 
@@ -242,21 +241,19 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         groupedResult.validationResults.size shouldBe 2
         groupedResult.validationResults.forEach { result ->
             result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-            result.disclosures.shouldNotBeEmpty()
-            when (result.sdJwt.verifiableCredentialType) {
+            result.reconstructed.entries.shouldNotBeEmpty()
+            when (result.verifiableCredentialSdJwt.verifiableCredentialType) {
                 EuPidScheme.sdJwtType -> {
-                    result.disclosures.firstOrNull { it.claimName == EuPidScheme.Attributes.FAMILY_NAME }
-                        .shouldNotBeNull()
-                    result.disclosures.firstOrNull { it.claimName == EuPidScheme.Attributes.GIVEN_NAME }
-                        .shouldNotBeNull()
+                    result.reconstructed[EuPidScheme.Attributes.FAMILY_NAME].shouldNotBeNull()
+                    result.reconstructed[EuPidScheme.Attributes.GIVEN_NAME].shouldNotBeNull()
                 }
 
                 ConstantIndex.AtomicAttribute2023.sdJwtType -> {
-                    result.disclosures.firstOrNull() { it.claimName == CLAIM_DATE_OF_BIRTH }.shouldNotBeNull()
+                    result.reconstructed[CLAIM_DATE_OF_BIRTH].shouldNotBeNull()
                 }
 
                 else -> {
-                    fail("Unexpected SD-JWT type: ${result.sdJwt.verifiableCredentialType}")
+                    fail("Unexpected SD-JWT type: ${result.verifiableCredentialSdJwt.verifiableCredentialType}")
                 }
             }
         }
@@ -269,7 +266,7 @@ private suspend fun Holder.storeJwtCredential(
 ) {
     storeCredential(
         IssuerAgent().issueCredential(
-            DummyCredentialDataProvider().getCredential(
+            DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 credentialScheme,
                 CredentialRepresentation.PLAIN_JWT,
@@ -284,7 +281,7 @@ private suspend fun Holder.storeSdJwtCredential(
 ) {
     storeCredential(
         IssuerAgent().issueCredential(
-            DummyCredentialDataProvider().getCredential(
+            DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 credentialScheme,
                 CredentialRepresentation.SD_JWT,
@@ -298,7 +295,7 @@ private suspend fun Holder.storeIsoCredential(
     credentialScheme: ConstantIndex.CredentialScheme,
 ) = storeCredential(
     IssuerAgent(EphemeralKeyWithSelfSignedCert()).issueCredential(
-        DummyCredentialDataProvider().getCredential(
+        DummyCredentialDataProvider.getCredential(
             holderKeyMaterial.publicKey,
             credentialScheme,
             CredentialRepresentation.ISO_MDOC,

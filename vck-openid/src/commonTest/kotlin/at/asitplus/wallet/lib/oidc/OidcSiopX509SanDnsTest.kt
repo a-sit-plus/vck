@@ -20,7 +20,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 class OidcSiopX509SanDnsTest : FreeSpec({
@@ -50,7 +50,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         holderAgent = HolderAgent(holderKeyMaterial)
         holderAgent.storeCredential(
             IssuerAgent().issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
@@ -91,7 +91,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
 
         val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-        result.disclosures.shouldNotBeEmpty()
+        result.reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
 
     }
 })

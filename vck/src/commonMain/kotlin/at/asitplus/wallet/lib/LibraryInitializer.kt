@@ -101,11 +101,10 @@ object LibraryInitializer {
  * ```
  * when (it) {
  *     is DrivingPrivilege -> vckJsonSerializer.encodeToJsonElement(it)
- *     is LocalDate -> vckJsonSerializer.encodeToJsonElement(it)
- *     is UInt -> vckJsonSerializer.encodeToJsonElement(it)
  *     else -> null
  * }
  * ```
+ * Credential libraries need to implement only for custom types, as platform types are covered by this library.
  */
 typealias JsonValueEncoder
         = (value: Any) -> JsonElement?
