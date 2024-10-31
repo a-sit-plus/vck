@@ -101,10 +101,10 @@ data class TokenResponseParameters(
     val credentialId: String? = null,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(input: String): KmmResult<TokenResponseParameters> =
-            runCatching { jsonSerializer.decodeFromString<TokenResponseParameters>(input) }.wrap()
+            runCatching { odcJsonSerializer.decodeFromString<TokenResponseParameters>(input) }.wrap()
     }
 }

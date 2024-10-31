@@ -60,6 +60,10 @@ Other libraries implementing credential schemes may call `LibraryInitializer.reg
 
 For the OpenID protocol family, issuing is implemented using [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), see `WalletService` and `CredentialIssuer`.  Presentation of credentials is implemented using [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), supporting [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), see `OidcSiopVerifier` and `OidcSiopWallet`.
 
+## Usage
+The library is made up of three artifact which build on each other.
+- In order to use `vck-openid` please call `Initializer.initOpenIdModule()` at the start of your project.
+- In order to use `vck-rqes` please call `Initializer.initRqesModule()` at the start of your project. This initializer fully overrides `Initializer.initOpenIdModule()` which does not need to be called if `vck-rqes` is used.
 
 ## Limitations
 

@@ -8,7 +8,6 @@ import kotlinx.serialization.SerialName
 import kotlin.random.Random
 
 class EqualityTests : FreeSpec({
-
     lateinit var jwk1: JsonWebKey
     lateinit var jwk2: JsonWebKey
 

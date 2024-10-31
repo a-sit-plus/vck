@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationRequestParametersFrom
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.IdTokenType
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
@@ -74,6 +75,10 @@ class OidcSiopWallet(
      * See [ScopePresentationDefinitionRetriever] for implementation instructions.
      */
     private val scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever,
+    /**
+     * Used to resolve [RequestParameters] by reference and also matches them to the correct [RequestParametersFrom]
+     */
+    private val requestParser: RequestParser
 ) {
     constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
@@ -98,6 +103,10 @@ class OidcSiopWallet(
          * See [ScopePresentationDefinitionRetriever] for implementation instructions.
          */
         scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever = { null },
+        requestParser: RequestParser = RequestParser(
+            remoteResourceRetriever = remoteResourceRetriever,
+            requestObjectJwsVerifier = requestObjectJwsVerifier,
+        ),
     ) : this(
         holder = holder,
         agentPublicKey = keyMaterial.publicKey,
@@ -107,6 +116,7 @@ class OidcSiopWallet(
         remoteResourceRetriever = remoteResourceRetriever,
         requestObjectJwsVerifier = requestObjectJwsVerifier,
         scopePresentationDefinitionRetriever = scopePresentationDefinitionRetriever,
+        requestParser = requestParser,
     )
 
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
@@ -140,10 +150,7 @@ class OidcSiopWallet(
      * [AuthenticationResponseResult].
      */
     suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParametersFrom> =
-        RequestParser.createWithDefaults(
-            remoteResourceRetriever = remoteResourceRetriever,
-            requestObjectJwsVerifier = requestObjectJwsVerifier,
-        ).parseRequestParameters(input).transform { KmmResult(it as AuthenticationRequestParametersFrom) }
+        requestParser.parseRequestParameters(input).transform { KmmResult(it as AuthenticationRequestParametersFrom) }
 
     /**
      * Pass in the deserialized [AuthenticationRequestParameters], which were either encoded as query params,

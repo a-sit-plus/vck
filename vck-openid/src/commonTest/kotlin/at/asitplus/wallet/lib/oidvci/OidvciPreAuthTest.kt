@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CredentialOffer
+import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
@@ -65,7 +66,7 @@ class OidvciPreAuthTest : FreeSpec({
         val authorizationDetails = token.authorizationDetails
             .shouldNotBeNull()
 
-        val first = authorizationDetails.first().shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
+        val first = authorizationDetails.first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
         val credentialRequest = client.createCredentialRequest(
             input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialConfigurationId!!),
             clientNonce = token.clientNonce,
@@ -89,7 +90,7 @@ class OidvciPreAuthTest : FreeSpec({
             .shouldHaveSize(4)
 
         authnDetails.forEach {
-            it.shouldBeInstanceOf<AuthorizationDetails.OpenIdCredential>()
+            it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
             // Not supporting different credential datasets for one credential configuration at the moment,
             // so we'll just use the credential identifier, see OID4VCI 6.2
             val credentialIdentifier = it.credentialIdentifiers.first()
