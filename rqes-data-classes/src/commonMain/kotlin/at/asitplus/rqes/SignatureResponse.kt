@@ -14,7 +14,7 @@ sealed class SignatureResponse {
         val signatures: List<String>?,
         @SerialName("responseID")
         val responseId: String?,
-    ): SignatureResponse()
+    ) : SignatureResponse()
 
     @Serializable
     data class SignDocResponse(
@@ -25,6 +25,6 @@ sealed class SignatureResponse {
         @SerialName("responseID")
         val responseId: String?,
         @SerialName("validationInfo")
-        val validationInfo: JsonObject?
-    )
+        val validationInfo: JsonObject?,
+    ) : SignatureResponse()
 }
