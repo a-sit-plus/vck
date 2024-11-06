@@ -16,6 +16,7 @@ sealed class SignatureResponse {
         val responseId: String?,
     ): SignatureResponse()
 
+    @Serializable
     data class SignDocResponse(
         @SerialName("DocumentWithSignature")
         val documentWithSignature: List<String>?,
