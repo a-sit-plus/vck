@@ -150,7 +150,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         }
 
         val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
-        val signature = cryptoService.sign(plainSignatureInput.encodeToByteArray()).asKmmResult().getOrThrow()
+        val signature = cryptoService.sign(plainSignatureInput).asKmmResult().getOrThrow()
         JwsSigned(header, payload, signature, plainSignatureInput)
     }
 
@@ -426,7 +426,7 @@ class DefaultVerifierJwsService(
 
     private fun verify(jwsObject: JwsSigned<*>, publicKey: CryptoPublicKey): Boolean = catching {
         cryptoService.verify(
-            input = jwsObject.plainSignatureInput.encodeToByteArray(),
+            input = jwsObject.plainSignatureInput,
             signature = jwsObject.signature,
             algorithm = jwsObject.header.algorithm.toX509SignatureAlgorithm().getOrThrow(),
             publicKey = publicKey,
