@@ -13,7 +13,6 @@ import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.ECDHDecrypter
@@ -22,7 +21,8 @@ import com.nimbusds.jose.jwk.JWK
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 
@@ -51,32 +51,31 @@ class JweServiceJvmTest : FreeSpec({
         val keyPairAdapter = EphemeralKeyWithoutCert(ephemeralKey)
         val cryptoService = DefaultCryptoService(keyPairAdapter)
         val jwsService = DefaultJwsService(cryptoService)
-        val randomPayload = uuid4().toString()
+        val randomPayload = JsonPrimitive(uuid4().toString())
 
         config.encryption.forEach { encryptionMethod ->
             "${config.curve}, ${encryptionMethod}:" - {
                 "Encrypted object from ext. library can be decrypted with int. library" {
-                    val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
                     val libJweHeader =
                         JWEHeader.Builder(JWEAlgorithm(jweAlgorithm.identifier), encryptionMethod.joseAlgorithm)
                             .type(JOSEObjectType(JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON))
                             .jwk(JWK.parse(cryptoService.keyMaterial.jsonWebKey.serialize()))
                             .contentType(JwsContentTypeConstants.DIDCOMM_PLAIN_JSON)
                             .build()
-                    val libJweObject = JWEObject(libJweHeader, Payload(stringPayload))
+                    val libJweObject = JWEObject(libJweHeader, Payload(randomPayload.content))
                         .apply { encrypt(jvmEncrypter) }
                     val encryptedJwe = libJweObject.serialize()
 
                     val parsedJwe = JweEncrypted.deserialize(encryptedJwe).getOrThrow()
-                    val result = jwsService.decryptJweObject(parsedJwe, encryptedJwe).getOrThrow()
-                    result.payload.decodeToString() shouldBe stringPayload
+                    val result = jwsService.decryptJweObject(parsedJwe, encryptedJwe, JsonPrimitive.serializer()).getOrThrow()
+                    result.payload.content shouldBe randomPayload.content
                 }
 
                 "Encrypted object from int. library can be decrypted with ext. library" {
-                    val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
                     val encrypted = jwsService.encryptJweObject(
                         JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
-                        stringPayload.encodeToByteArray(),
+                        randomPayload,
+                        JsonElement.serializer(),
                         cryptoService.keyMaterial.jsonWebKey,
                         JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
                         jweAlgorithm,
@@ -86,7 +85,7 @@ class JweServiceJvmTest : FreeSpec({
                     val parsed = JWEObject.parse(encrypted).shouldNotBeNull()
 
                     parsed.decrypt(jvmDecrypter)
-                    parsed.payload.toString() shouldBe stringPayload
+                    parsed.payload.toBytes().decodeToString() shouldBe "\"${randomPayload.content}\""
                 }
             }
         }

@@ -8,14 +8,14 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-object JwsSignedSerializer : KSerializer<JwsSigned> {
+object JwsSignedSerializer : KSerializer<JwsSigned<*>> {
 
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("JwsSignedSerializer", PrimitiveKind.STRING)
 
-    override fun deserialize(decoder: Decoder): JwsSigned = JwsSigned.deserialize(decoder.decodeString()).getOrThrow()
+    override fun deserialize(decoder: Decoder): JwsSigned<*> = JwsSigned.deserialize(decoder.decodeString()).getOrThrow()
 
-    override fun serialize(encoder: Encoder, value: JwsSigned) {
+    override fun serialize(encoder: Encoder, value: JwsSigned<*>) {
         encoder.encodeString(value.serialize())
     }
 }

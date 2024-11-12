@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -189,7 +190,8 @@ private suspend fun createSdJwtPresentation(
         .filter { it.value!!.claimName == claimName }.keys
     val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
     val keyBinding = createKeyBindingJws(jwsService, audienceId, challenge, issuerJwtPlusDisclosures)
-    val jwsFromIssuer = JwsSigned.deserialize(validSdJwtCredential.vcSerialized.substringBefore("~")).getOrElse {
+    val sdJwtSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
+    val jwsFromIssuer = JwsSigned.deserialize<VerifiableCredentialSdJwt>(sdJwtSerialized).getOrElse {
         Napier.w("Could not re-create JWS from stored SD-JWT", it)
         throw PresentationException(it)
     }
@@ -202,7 +204,7 @@ private suspend fun createKeyBindingJws(
     audienceId: String,
     challenge: String,
     issuerJwtPlusDisclosures: String,
-): JwsSigned = jwsService.createSignedJwsAddingParams(
+): JwsSigned<KeyBindingJws> = jwsService.createSignedJwsAddingParams(
     header = JwsHeader(
         type = JwsContentTypeConstants.KB_JWT,
         algorithm = jwsService.algorithm,
@@ -213,7 +215,8 @@ private suspend fun createKeyBindingJws(
         audience = audienceId,
         challenge = challenge,
         sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
-    ).serialize().encodeToByteArray(),
+    ),
+    serializer = KeyBindingJws.serializer(),
     addKeyId = false,
     addJsonWebKey = true,
     addX5c = true,

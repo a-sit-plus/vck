@@ -37,7 +37,7 @@ class ExtendedRequestParser(
             is AuthenticationRequestParameters ->
                 when (input) {
                     is Url -> AuthenticationRequestParametersFrom.Uri(input, params)
-                    is JwsSigned -> AuthenticationRequestParametersFrom.JwsSigned(input, params)
+                    is JwsSigned<*> -> AuthenticationRequestParametersFrom.JwsSigned(input as JwsSigned<ByteArray>, params)
                     is String -> AuthenticationRequestParametersFrom.Json(input, params)
                     else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
                 }
@@ -45,7 +45,7 @@ class ExtendedRequestParser(
             is SignatureRequestParameters ->
                 when (input) {
                     is Url -> SignatureRequestParametersFrom.Uri(input, params)
-                    is JwsSigned -> SignatureRequestParametersFrom.JwsSigned(input, params)
+                    is JwsSigned<*> -> SignatureRequestParametersFrom.JwsSigned(input as JwsSigned<ByteArray>, params)
                     is String -> SignatureRequestParametersFrom.Json(input, params)
                     else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
                 }

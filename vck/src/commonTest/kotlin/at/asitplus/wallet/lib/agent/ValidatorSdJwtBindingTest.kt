@@ -18,7 +18,7 @@ class ValidatorSdJwtBindingTest : FreeSpec({
     "with jwk" {
         val claim = ConfirmationClaim(jsonWebKey = key.jsonWebKey)
         val header = JwsHeader(algorithm = JwsAlgorithm.ES256, jsonWebKey = key.jsonWebKey)
-        val jws = JwsSigned(header, byteArrayOf(), CryptoSignature.RSAorHMAC(byteArrayOf()), "")
+        val jws = JwsSigned(header, byteArrayOf(), CryptoSignature.RSAorHMAC(byteArrayOf()), byteArrayOf())
 
         DefaultVerifierJwsService().verifyConfirmationClaim(claim, jws) shouldBe true
     }
@@ -30,7 +30,7 @@ class ValidatorSdJwtBindingTest : FreeSpec({
         val randomSecondKey = EphemeralKeyWithoutCert().jsonWebKey.copy(keyId = uuid4().toString())
         val keySet = JsonWebKeySet(listOf(key.jsonWebKey.copy(keyId = kid), randomSecondKey))
         val header = JwsHeader(algorithm = JwsAlgorithm.ES256, jsonWebKeySetUrl = jku, keyId = kid)
-        val jws = JwsSigned(header, byteArrayOf(), CryptoSignature.RSAorHMAC(byteArrayOf()), "")
+        val jws = JwsSigned(header, byteArrayOf(), CryptoSignature.RSAorHMAC(byteArrayOf()), byteArrayOf())
 
         DefaultVerifierJwsService(jwkSetRetriever = { keySet }).verifyConfirmationClaim(claim, jws) shouldBe true
     }
@@ -40,7 +40,7 @@ class ValidatorSdJwtBindingTest : FreeSpec({
         val claim = ConfirmationClaim(jsonWebKeySetUrl = jku)
         val keySet = JsonWebKeySet(listOf(key.jsonWebKey))
         val header = JwsHeader(algorithm = JwsAlgorithm.ES256, jsonWebKeySetUrl = jku)
-        val jws = JwsSigned(header, byteArrayOf(), CryptoSignature.RSAorHMAC(byteArrayOf()), "")
+        val jws = JwsSigned(header, byteArrayOf(), CryptoSignature.RSAorHMAC(byteArrayOf()), byteArrayOf())
 
         DefaultVerifierJwsService(jwkSetRetriever = { keySet }).verifyConfirmationClaim(claim, jws) shouldBe true
     }
@@ -48,7 +48,7 @@ class ValidatorSdJwtBindingTest : FreeSpec({
     "with jwkThumbprint" {
         val claim = ConfirmationClaim(jsonWebKeyThumbprint = key.jsonWebKey.jwkThumbprint)
         val header = JwsHeader(algorithm = JwsAlgorithm.ES256, jsonWebKey = key.jsonWebKey)
-        val jws = JwsSigned(header, byteArrayOf(), CryptoSignature.RSAorHMAC(byteArrayOf()), "")
+        val jws = JwsSigned(header, byteArrayOf(), CryptoSignature.RSAorHMAC(byteArrayOf()), byteArrayOf())
 
         DefaultVerifierJwsService().verifyConfirmationClaim(claim, jws) shouldBe true
     }

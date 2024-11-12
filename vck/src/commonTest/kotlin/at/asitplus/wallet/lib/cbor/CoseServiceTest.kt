@@ -34,7 +34,6 @@ class CoseServiceTest : FreeSpec({
             payload = randomPayload,
             addKeyId = true
         ).getOrThrow()
-        signed.shouldNotBeNull()
 
         signed.payload shouldBe randomPayload
         signed.signature.shouldNotBeNull()
@@ -52,7 +51,6 @@ class CoseServiceTest : FreeSpec({
             payload = null,
             addKeyId = true
         ).getOrThrow()
-        signed.shouldNotBeNull()
 
         signed.payload shouldBe null
         signed.signature.shouldNotBeNull()

@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.iso
 
-import arrow.core.fold
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
@@ -91,7 +90,7 @@ class Tag24SerializationTest : FreeSpec({
         ).getOrThrow().shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
         issuedCredential.issuerSigned.namespaces!!.shouldNotBeEmpty()
-        val numberOfClaims = issuedCredential.issuerSigned.namespaces!!.fold(0) { acc, entry ->
+        val numberOfClaims = issuedCredential.issuerSigned.namespaces!!.entries.fold(0) { acc, entry ->
             acc + entry.value.entries.size
         }
         val serialized = issuedCredential.issuerSigned.serialize().encodeToString(Base16(true))

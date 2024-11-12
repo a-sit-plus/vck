@@ -5,14 +5,14 @@ import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.encodeToString
+import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.builtins.serializer
 import kotlin.random.Random
 
 class JwsServiceTest : FreeSpec({
@@ -32,18 +32,20 @@ class JwsServiceTest : FreeSpec({
 
     "signed object with bytes can be verified" {
         val payload = randomPayload.encodeToByteArray()
-        val signed = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, payload).getOrThrow()
-        signed.shouldNotBeNull()
+        val signed =
+            jwsService.createSignedJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow()
+
         val result = verifierJwsService.verifyJwsObject(signed)
         result shouldBe true
     }
 
     "Object can be reconstructed" {
         val payload = randomPayload.encodeToByteArray()
-        val signed = jwsService.createSignedJwt(JwsContentTypeConstants.JWT, payload).getOrThrow().serialize()
-        signed.shouldNotBeNull()
+        val signed =
+            jwsService.createSignedJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow()
+                .serialize()
 
-        val parsed = JwsSigned.deserialize(signed).getOrThrow()
+        val parsed = JwsSigned.deserialize<ByteArray>(signed).getOrThrow()
         parsed.serialize() shouldBe signed
         parsed.payload shouldBe payload
 
@@ -52,37 +54,37 @@ class JwsServiceTest : FreeSpec({
     }
 
     "signed object can be verified" {
-        val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
         val signed =
-            jwsService.createSignedJwt(JwsContentTypeConstants.JWT, stringPayload.encodeToByteArray()).getOrThrow()
-        signed.shouldNotBeNull()
+            jwsService.createSignedJwt(JwsContentTypeConstants.JWT, randomPayload, String.serializer()).getOrThrow()
+
         val result = verifierJwsService.verifyJwsObject(signed)
         result shouldBe true
     }
 
     "signed object with automatically added params can be verified" {
-        val payload = randomPayload.encodeToByteArray()
-        val signed = jwsService.createSignedJwsAddingParams(payload = payload, addX5c = false).getOrThrow()
-        signed.shouldNotBeNull()
+        val signed = jwsService.createSignedJwsAddingParams(
+            payload = randomPayload,
+            serializer = String.serializer(),
+            addX5c = false
+        ).getOrThrow()
+
         val result = verifierJwsService.verifyJwsObject(signed)
         result shouldBe true
     }
 
     "signed object with jsonWebKey can be verified" {
-        val payload = randomPayload.encodeToByteArray()
         val header = JwsHeader(algorithm = JwsAlgorithm.ES256, jsonWebKey = cryptoService.keyMaterial.jsonWebKey)
-        val signed = jwsService.createSignedJws(header, payload).getOrThrow()
-        signed.shouldNotBeNull()
+        val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
+
         val result = verifierJwsService.verifyJwsObject(signed)
         result shouldBe true
     }
 
     "signed object with kid from jku can be verified" {
-        val payload = randomPayload.encodeToByteArray()
         val kid = Random.nextBytes(16).encodeToString(Base64())
         val jku = "https://example.com/" + Random.nextBytes(16).encodeToString(Base64UrlStrict)
         val header = JwsHeader(algorithm = JwsAlgorithm.ES256, keyId = kid, jsonWebKeySetUrl = jku)
-        val signed = jwsService.createSignedJws(header, payload).getOrThrow()
+        val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
         val validKey = cryptoService.keyMaterial.jsonWebKey.copy(keyId = kid)
         val jwkSetRetriever: JwkSetRetrieverFunction = { JsonWebKeySet(keys = listOf(validKey)) }
         verifierJwsService = DefaultVerifierJwsService(jwkSetRetriever = jwkSetRetriever)
@@ -90,11 +92,10 @@ class JwsServiceTest : FreeSpec({
     }
 
     "signed object with kid from jku, returning invalid key, can not be verified" {
-        val payload = randomPayload.encodeToByteArray()
         val kid = Random.nextBytes(16).encodeToString(Base64())
         val jku = "https://example.com/" + Random.nextBytes(16).encodeToString(Base64UrlStrict)
         val header = JwsHeader(algorithm = JwsAlgorithm.ES256, keyId = kid, jsonWebKeySetUrl = jku)
-        val signed = jwsService.createSignedJws(header, payload).getOrThrow()
+        val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
         val invalidKey = EphemeralKeyWithoutCert().jsonWebKey
         val jwkSetRetriever: JwkSetRetrieverFunction = { JsonWebKeySet(keys = listOf(invalidKey)) }
         verifierJwsService = DefaultVerifierJwsService(jwkSetRetriever = jwkSetRetriever)
@@ -102,18 +103,16 @@ class JwsServiceTest : FreeSpec({
     }
 
     "signed object without public key in header can not be verified" {
-        val payload = randomPayload.encodeToByteArray()
         val header = JwsHeader(algorithm = JwsAlgorithm.ES256)
-        val signed = jwsService.createSignedJws(header, payload).getOrThrow()
+        val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
 
         verifierJwsService = DefaultVerifierJwsService()
         verifierJwsService.verifyJwsObject(signed) shouldBe false
     }
 
     "signed object without public key in header, but retrieved out-of-band can be verified" {
-        val payload = randomPayload.encodeToByteArray()
         val header = JwsHeader(algorithm = JwsAlgorithm.ES256)
-        val signed = jwsService.createSignedJws(header, payload).getOrThrow()
+        val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
         val validKey = cryptoService.keyMaterial.jsonWebKey
 
         val publicKeyLookup: PublicKeyLookup = { setOf(validKey) }
@@ -122,10 +121,10 @@ class JwsServiceTest : FreeSpec({
     }
 
     "encrypted object can be decrypted" {
-        val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
         val encrypted = jwsService.encryptJweObject(
             JwsContentTypeConstants.DIDCOMM_ENCRYPTED_JSON,
-            stringPayload.encodeToByteArray(),
+            randomPayload,
+            String.serializer(),
             cryptoService.keyMaterial.jsonWebKey,
             JwsContentTypeConstants.DIDCOMM_PLAIN_JSON,
             JweAlgorithm.ECDH_ES,
@@ -134,7 +133,7 @@ class JwsServiceTest : FreeSpec({
         encrypted.shouldNotBeNull()
         val parsed = JweEncrypted.deserialize(encrypted).getOrThrow()
 
-        val result = jwsService.decryptJweObject(parsed, encrypted).getOrThrow()
-        result.payload.decodeToString() shouldBe stringPayload
+        val result = jwsService.decryptJweObject(parsed, encrypted, String.serializer()).getOrThrow()
+        result.payload shouldBe randomPayload
     }
 })

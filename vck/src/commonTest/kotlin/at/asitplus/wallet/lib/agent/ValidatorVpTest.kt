@@ -159,12 +159,12 @@ class ValidatorVpTest : FreeSpec({
             challenge = challenge,
             issuerId = holder.keyPair.identifier,
             audienceId = verifier.keyMaterial.identifier,
-        ).serialize()
-        val jwsPayload = vpSerialized.encodeToByteArray()
-        val vpJws =
-            holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrThrow()
-                .serialize()
-        vpJws.shouldNotBeNull()
+        )
+        val vpJws = holderJwsService.createSignedJwt(
+            JwsContentTypeConstants.JWT,
+            vpSerialized,
+            VerifiablePresentationJws.serializer()
+        ).getOrThrow().serialize()
 
         verifier.verifyPresentation(vpJws, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
@@ -182,12 +182,13 @@ class ValidatorVpTest : FreeSpec({
             issuer = verifier.keyMaterial.identifier,
             audience = verifier.keyMaterial.identifier,
             jwtId = vp.id,
-        ).serialize()
-        val jwsPayload = vpSerialized.encodeToByteArray()
-        val vpJws =
-            holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrThrow()
-                .serialize()
-        vpJws.shouldNotBeNull()
+        )
+        val vpJws = holderJwsService.createSignedJwt(
+            JwsContentTypeConstants.JWT,
+            vpSerialized,
+            VerifiablePresentationJws.serializer()
+        ).getOrThrow()
+            .serialize()
 
         verifier.verifyPresentation(vpJws, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
@@ -204,12 +205,13 @@ class ValidatorVpTest : FreeSpec({
             issuer = holder.keyPair.identifier,
             audience = verifier.keyMaterial.identifier,
             jwtId = "wrong_jwtId",
-        ).serialize()
-        val jwsPayload = vpSerialized.encodeToByteArray()
-        val vpJws =
-            holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrThrow()
-                .serialize()
-        vpJws.shouldNotBeNull()
+        )
+        val vpJws = holderJwsService.createSignedJwt(
+            JwsContentTypeConstants.JWT,
+            vpSerialized,
+            VerifiablePresentationJws.serializer()
+        ).getOrThrow()
+            .serialize()
 
         verifier.verifyPresentation(vpJws, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
@@ -229,12 +231,13 @@ class ValidatorVpTest : FreeSpec({
             challenge = challenge,
             issuerId = holder.keyPair.identifier,
             audienceId = verifier.keyMaterial.identifier,
-        ).serialize()
-        val jwsPayload = vpSerialized.encodeToByteArray()
-        val vpJws =
-            holderJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrThrow()
-                .serialize()
-        vpJws.shouldNotBeNull()
+        )
+        val vpJws = holderJwsService.createSignedJwt(
+            JwsContentTypeConstants.JWT,
+            vpSerialized,
+            VerifiablePresentationJws.serializer()
+        ).getOrThrow()
+            .serialize()
 
         verifier.verifyPresentation(vpJws, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
