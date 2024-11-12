@@ -3,7 +3,7 @@ package at.asitplus.rqes.collection_entries
 import at.asitplus.rqes.Hashes
 import at.asitplus.rqes.contentEquals
 import at.asitplus.rqes.contentHashCode
-import at.asitplus.rqes.enums.ConformanceLevelEnum
+import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.rqes.getHashAlgorithm
@@ -52,7 +52,7 @@ data class CscDocumentDigest(
      * Requested conformance level. If omitted its value is "AdES-B-B"
      */
     @SerialName("conformance_level")
-    val conformanceLevel: ConformanceLevelEnum? = null,
+    val conformanceLevel: ConformanceLevel? = null,
 
     /**
      * The OID of the algorithm to use for signing

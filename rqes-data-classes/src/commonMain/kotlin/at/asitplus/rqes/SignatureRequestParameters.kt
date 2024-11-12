@@ -7,9 +7,9 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.rqes.collection_entries.CscDocumentDigest
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
-import at.asitplus.rqes.enums.ConformanceLevelEnum
+import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
-import at.asitplus.rqes.enums.SignatureQualifierEnum
+import at.asitplus.rqes.enums.SignatureQualifier
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
@@ -104,7 +104,7 @@ data class SignatureRequestParameters(
      * signature to be created
      */
     @SerialName("signatureQualifier")
-    val signatureQualifier: SignatureQualifierEnum = SignatureQualifierEnum.EU_EIDAS_QES,
+    val signatureQualifier: SignatureQualifier = SignatureQualifier.EU_EIDAS_QES,
 
     /**
      * UC5 Draft REQUIRED.
@@ -158,14 +158,14 @@ data class SignatureRequestParameters(
         signAlgorithm: X509SignatureAlgorithm,
         signAlgoParam: Asn1Element? = null,
         signedProps: List<JsonObject>? = null,
-        conformanceLevelEnum: ConformanceLevelEnum? = ConformanceLevelEnum.ADESBB,
+        conformanceLevel: ConformanceLevel? = ConformanceLevel.ADESBB,
         signedEnvelopeProperty: SignedEnvelopeProperty? = SignedEnvelopeProperty.defaultProperty(signatureFormat),
     ): CscDocumentDigest =
         CscDocumentDigest(
             hashes = this.documentDigests.map { it.hash },
             hashAlgorithmOid = this.hashAlgorithmOid,
             signatureFormat = signatureFormat,
-            conformanceLevel = conformanceLevelEnum,
+            conformanceLevel = conformanceLevel,
             signAlgoOid = signAlgorithm.oid,
             signAlgoParams = signAlgoParam,
             signedProps = signedProps,

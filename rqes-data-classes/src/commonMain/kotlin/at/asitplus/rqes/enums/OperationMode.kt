@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
  */
 @Suppress("unused")
 @Serializable
-enum class OperationModeEnum {
+enum class OperationMode {
     /**
      * “A”: an asynchronous operation mode is requested.
      */

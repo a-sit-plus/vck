@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
  */
 @Suppress("unused")
 @Serializable
-enum class ConformanceLevelEnum {
+enum class ConformanceLevel {
 
     /**
      * “AdES-B” SHALL be used to request the creation
