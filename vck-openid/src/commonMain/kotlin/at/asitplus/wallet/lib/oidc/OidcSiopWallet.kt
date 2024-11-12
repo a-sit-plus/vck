@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationRequestParametersFrom
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.IdTokenType
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
@@ -18,6 +17,7 @@ import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersFromClass
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -78,7 +78,7 @@ class OidcSiopWallet(
     /**
      * Used to resolve [RequestParameters] by reference and also matches them to the correct [RequestParametersFrom]
      */
-    private val requestParser: RequestParser
+    private val requestParser: RequestParser,
 ) {
     constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
@@ -97,7 +97,7 @@ class OidcSiopWallet(
          * Need to verify the request object serialized as a JWS,
          * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
          */
-        requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _,_ -> true },
+        requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
         /**
          * Need to implement if the presentation definition needs to be derived from a scope value.
          * See [ScopePresentationDefinitionRetriever] for implementation instructions.
@@ -149,15 +149,18 @@ class OidcSiopWallet(
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<AuthenticationRequestParametersFrom> =
-        requestParser.parseRequestParameters(input).transform { KmmResult(it as AuthenticationRequestParametersFrom) }
-
+    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFromClass<AuthenticationRequestParameters>> {
+        val test = requestParser.parseRequestParameters(input)
+            .getOrThrow()
+        val test2 = catching { test as RequestParametersFromClass<AuthenticationRequestParameters> }
+        return test2
+    }
     /**
      * Pass in the deserialized [AuthenticationRequestParameters], which were either encoded as query params,
      * or JSON serialized as a JWT Request Object.
      */
     suspend fun createAuthnResponse(
-        request: AuthenticationRequestParametersFrom,
+        request: RequestParametersFromClass<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponseResult> =
         createAuthnResponseParams(request).map {
             AuthenticationResponseFactory(jwsService).createAuthenticationResponse(request, it)
@@ -167,7 +170,7 @@ class OidcSiopWallet(
      * Creates the authentication response from the RP's [params]
      */
     suspend fun createAuthnResponseParams(
-        params: AuthenticationRequestParametersFrom,
+        params: RequestParametersFromClass<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponse> = startAuthorizationResponsePreparation(params).map {
         finalizeAuthorizationResponseParameters(
             request = params,
@@ -189,7 +192,7 @@ class OidcSiopWallet(
      * Starts the authorization response building process from the RP's authentication request in [params]
      */
     suspend fun startAuthorizationResponsePreparation(
-        params: AuthenticationRequestParametersFrom,
+        params: RequestParametersFromClass<AuthenticationRequestParameters>,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         val clientMetadata = params.parameters.loadClientMetadata()
         val presentationDefinition = params.parameters.loadPresentationDefinition()
@@ -205,7 +208,7 @@ class OidcSiopWallet(
      * @param inputDescriptorSubmissions Map from input descriptor ids to [CredentialSubmission]
      */
     suspend fun finalizeAuthorizationResponse(
-        request: AuthenticationRequestParametersFrom,
+        request: RequestParametersFromClass<AuthenticationRequestParameters>,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponseResult> = finalizeAuthorizationResponseParameters(
@@ -228,11 +231,11 @@ class OidcSiopWallet(
      * @param inputDescriptorSubmissions Map from input descriptor ids to [CredentialSubmission]
      */
     suspend fun finalizeAuthorizationResponseParameters(
-        request: AuthenticationRequestParametersFrom,
+        request: RequestParametersFromClass<AuthenticationRequestParameters>,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponse> = preparationState.catching {
-        val certKey = (request as? AuthenticationRequestParametersFrom.JwsSigned)
+        val certKey = (request as? RequestParametersFromClass.JwsSigned<AuthenticationRequestParameters>)
             ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val audience = request.extractAudience(clientJsonWebKeySet)
@@ -266,7 +269,7 @@ class OidcSiopWallet(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParametersFrom.extractAudience(
+    private fun RequestParametersFromClass<AuthenticationRequestParameters>.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
     ) = clientJsonWebKeySet?.keys?.firstOrNull()
         ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }
@@ -330,7 +333,7 @@ typealias ScopePresentationDefinitionRetriever = suspend (String) -> Presentatio
  * Implementations need to verify the passed [JwsSigned] and return its result
  */
 fun interface RequestObjectJwsVerifier {
-    operator fun invoke(jws: JwsSigned<ByteArray>, request: RequestParameters): Boolean
+    operator fun invoke(jws: JwsSigned<RequestParameters>): Boolean
 }
 
 private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> {

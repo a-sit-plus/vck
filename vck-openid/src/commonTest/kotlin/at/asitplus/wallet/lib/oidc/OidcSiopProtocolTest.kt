@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationRequestParametersFrom
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersFromClass
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -234,7 +234,7 @@ class OidcSiopProtocolTest : FreeSpec({
         val parsedAuthnRequest: AuthenticationRequestParameters =
             authnRequestUrlParams.decodeFromUrlQuery()
         val authnResponse = holderSiop.createAuthnResponseParams(
-            AuthenticationRequestParametersFrom.Uri(
+            RequestParametersFromClass.Uri<AuthenticationRequestParameters>(
                 Url(authnRequestUrlParams),
                 parsedAuthnRequest
             )
@@ -407,7 +407,7 @@ class OidcSiopProtocolTest : FreeSpec({
             remoteResourceRetriever = {
                 if (it == requestUrl) jar.serialize() else null
             },
-            requestObjectJwsVerifier = { _,_ -> false }
+            requestObjectJwsVerifier = { _ -> false }
         )
 
         shouldThrow<OAuth2Exception> {
@@ -445,7 +445,7 @@ private suspend fun buildAttestationJwt(
 
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
     object : RequestObjectJwsVerifier {
-        override fun invoke(jws: JwsSigned<ByteArray>, request: RequestParameters): Boolean {
+        override fun invoke(jws: JwsSigned<RequestParameters>): Boolean {
             val attestationJwt = jws.header.attestationJwt?.let { JwsSigned.deserialize<JsonWebToken>(it).getOrThrow() }
                 ?: return false
             val verifierJwsService = DefaultVerifierJwsService()
