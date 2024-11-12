@@ -44,7 +44,13 @@ class Tag24SerializationTest : FreeSpec({
                 )
             ),
             deviceAuth = DeviceAuth(
-                deviceSignature = issuerAuth()
+                deviceSignature = CoseSigned<ByteArray>(
+                    protectedHeader = ByteStringWrapper(CoseHeader()),
+                    unprotectedHeader = null,
+                    payload = byteArrayOf(),
+                    rawSignature = byteArrayOf()
+                )
+
             )
         )
 
@@ -108,7 +114,7 @@ class Tag24SerializationTest : FreeSpec({
             validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
         )
         val serializedMso = mso.serializeForIssuerAuth()
-        val input = CoseSigned<ByteArray>(
+        val input = CoseSigned<ByteStringWrapper<MobileSecurityObject>>(
             protectedHeader = ByteStringWrapper(CoseHeader()),
             unprotectedHeader = null,
             payload = serializedMso,
@@ -129,7 +135,7 @@ class Tag24SerializationTest : FreeSpec({
 private fun deviceKeyInfo() =
     DeviceKeyInfo(CoseKey(CoseKeyType.EC2, keyParams = CoseKeyParams.EcYBoolParams(CoseEllipticCurve.P256)))
 
-private fun issuerAuth() = CoseSigned<ByteArray>(
+private fun issuerAuth() = CoseSigned<ByteStringWrapper<MobileSecurityObject>>(
     protectedHeader = ByteStringWrapper(CoseHeader()),
     unprotectedHeader = null,
     payload = byteArrayOf(),

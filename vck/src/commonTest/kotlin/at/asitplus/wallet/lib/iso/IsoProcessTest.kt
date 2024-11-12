@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -44,7 +45,7 @@ class Wallet {
     private val coseService = DefaultCoseService(cryptoService)
 
     val deviceKeyInfo = DeviceKeyInfo(cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow())
-    private var storedIssuerAuth: CoseSigned<ByteArray>? = null
+    private var storedIssuerAuth: CoseSigned<ByteStringWrapper<MobileSecurityObject>>? = null
     private var storedMdlItems: IssuerSignedList? = null
 
     fun storeMdl(deviceResponse: DeviceResponse) {
@@ -138,7 +139,8 @@ class Issuer {
                             ConstantIndex.AtomicAttribute2023.isoNamespace to issuerSigned
                         ),
                         issuerAuth = coseService.createSignedCose(
-                            payload = mso.serializeForIssuerAuth(),
+                            payload = ByteStringWrapper(mso),
+                            serializationStrategy = ByteStringWrapperSerializer(MobileSecurityObject.serializer()),
                             addKeyId = false,
                             addCertificate = true,
                         ).getOrThrow()

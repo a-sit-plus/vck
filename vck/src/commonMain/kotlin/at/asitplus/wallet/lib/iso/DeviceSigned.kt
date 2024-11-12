@@ -69,7 +69,7 @@ data class DeviceSigned(
          */
         fun fromDeviceSignedItems(
             namespacedItems: Map<String, List<DeviceSignedItem>>,
-            deviceAuth: CoseSigned,
+            deviceAuth: CoseSigned<ByteArray>,
         ): DeviceSigned = DeviceSigned(
             namespaces = ByteStringWrapper(DeviceNameSpaces( namespacedItems.map { (namespace, value) ->
                 namespace to DeviceSignedItemList(value)
