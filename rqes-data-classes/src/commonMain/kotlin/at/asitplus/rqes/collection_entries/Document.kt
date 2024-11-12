@@ -67,7 +67,7 @@ data class Document(
     val signedEnvelopeProperty: SignedEnvelopeProperty? = null,
 ) {
     @Transient
-    val signAlgorithm: SignatureAlgorithm? = getSignAlgorithm(signAlgoOid, signAlgoParams)
+    val signAlgorithm: SignatureAlgorithm? = signAlgoOid.getSignAlgorithm(signAlgoParams)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

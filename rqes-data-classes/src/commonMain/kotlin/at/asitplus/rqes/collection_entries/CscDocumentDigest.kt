@@ -85,10 +85,10 @@ data class CscDocumentDigest(
 ) {
     @Transient
     val signAlgorithm: SignatureAlgorithm? =
-        getSignAlgorithm(signAlgoOid, signAlgoParams)
+        signAlgoOid.getSignAlgorithm(signAlgoParams)
 
     @Transient
-    val hashAlgorithm: Digest = getHashAlgorithm(hashAlgorithmOid, signAlgorithm)
+    val hashAlgorithm: Digest = hashAlgorithmOid.getHashAlgorithm(signAlgorithm)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

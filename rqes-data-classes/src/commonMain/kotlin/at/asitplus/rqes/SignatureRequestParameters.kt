@@ -142,7 +142,7 @@ data class SignatureRequestParameters(
 ) : RequestParameters {
 
     @Transient
-    val hashAlgorithm: Digest = getHashAlgorithm(hashAlgorithmOid)
+    val hashAlgorithm: Digest = hashAlgorithmOid.getHashAlgorithm()
 
     fun toAuthorizationDetails(): AuthorizationDetails =
         CscAuthorizationDetails(
