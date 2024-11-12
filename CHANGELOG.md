@@ -13,9 +13,10 @@ tbd
 - New Interface `RequestParameters`
 - Remove RQES components from `AuthenticationRequestParameters`
 - New class `CscAuthenticationRequestParameters` which now holds the RQES components
-- New class `SignatureRequestParameters` and `SignatureRequestParametersFrom`
+- New class `SignatureRequestParameters`
+- Refactor `AuthenticationRequestParametersFrom` to generic sealed class `RequestParametersFrom`
 - Refactor `AuthenticationRequestParser` to open class `RequestParser`
-- New class `ExtendedRequestParser` used to also parse `SignatureRequestParametersFrom`
+
 
 Release 5.2.0:
  - SD-JWT: Validate confirmation claims correctly

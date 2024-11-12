@@ -1,46 +1,38 @@
 package at.asitplus.openid
 
-
-import at.asitplus.catching
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 
-@Serializable
-sealed class AuthenticationRequestParametersFrom : RequestParametersFrom {
 
-    fun serialize(): String = odcJsonSerializer.encodeToString(this)
+@Serializable(with = RequestParametersFromSerializer::class)
+sealed class RequestParametersFrom<S : RequestParameters> {
 
-    companion object {
-        fun deserialize(input: String) =
-            catching { odcJsonSerializer.decodeFromString<AuthenticationRequestParametersFrom>(input) }
-    }
-
-    abstract override val parameters: AuthenticationRequestParameters
+    abstract val parameters: S
 
     @Serializable
     @SerialName("JwsSigned")
-    data class JwsSigned(
+    data class JwsSigned<T : RequestParameters>(
         @Serializable(JwsSignedSerializer::class)
-        val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<ByteArray>,
-        override val parameters: AuthenticationRequestParameters,
-    ) : AuthenticationRequestParametersFrom()
+        val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>,
+        override val parameters: T,
+    ) : RequestParametersFrom<T>()
 
     @Serializable
     @SerialName("Uri")
-    data class Uri(
+    data class Uri<T : RequestParameters>(
         @Serializable(UrlSerializer::class)
         val url: Url,
-        override val parameters: AuthenticationRequestParameters,
-    ) : AuthenticationRequestParametersFrom()
+        override val parameters: T,
+    ) : RequestParametersFrom<T>()
 
     @Serializable
     @SerialName("Json")
-    data class Json(
+    data class Json<T : RequestParameters>(
         val jsonString: String,
-        override val parameters: AuthenticationRequestParameters,
-    ) : AuthenticationRequestParametersFrom()
+        override val parameters: T,
+    ) : RequestParametersFrom<T>()
+
 }
 
 

@@ -1,5 +1,5 @@
 package at.asitplus.openid
-
-interface RequestParametersFrom {
-    val parameters: RequestParameters
-}
+//
+//interface RequestParametersFrom <T:RequestParameters>{
+//    val parameters: T
+//}

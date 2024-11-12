@@ -8,6 +8,14 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
+/**
+ * Class that de-/serializes [JwsSigned] without respecting the generic type
+ *
+ * ONLY USE TO SERIALIZE!
+ * DO NOT USE TO DESERIALIZE!
+ *
+ * For more info on correct deserialization see [RequestParametersFromSerializer]
+ */
 object JwsSignedSerializer : KSerializer<JwsSigned<*>> {
 
     override val descriptor: SerialDescriptor =
