@@ -2,20 +2,15 @@ package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
-import at.asitplus.signum.indispensable.cosef.CoseHeader
-import at.asitplus.signum.indispensable.cosef.CoseKey
-import at.asitplus.signum.indispensable.cosef.CoseSignatureInput
-import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.*
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
+import at.asitplus.signum.supreme.asKmmResult
+import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.supreme.asKmmResult
-import at.asitplus.signum.supreme.sign.Verifier
 
 /**
  * Creates and parses COSE objects.
@@ -50,11 +45,6 @@ interface VerifierCoseService {
 
 }
 
-/**
- * Constant from RFC 9052 - CBOR Object Signing and Encryption (COSE)
- */
-private const val SIGNATURE1_STRING = "Signature1"
-
 class DefaultCoseService(private val cryptoService: CryptoService) : CoseService {
 
     override val algorithm: CoseAlgorithm = cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
@@ -68,22 +58,20 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
     ): KmmResult<CoseSigned> = catching {
         var copyProtectedHeader = protectedHeader?.copy(algorithm = algorithm)
             ?: CoseHeader(algorithm = algorithm)
-        if (addKeyId) copyProtectedHeader =
-            copyProtectedHeader.copy(kid = cryptoService.keyMaterial.publicKey.didEncoded.encodeToByteArray())
+        if (addKeyId) {
+            copyProtectedHeader = copyProtectedHeader
+                .copy(kid = cryptoService.keyMaterial.publicKey.didEncoded.encodeToByteArray())
+        }
 
-        val copyUnprotectedHeader = if (addCertificate && cryptoService.keyMaterial.getCertificate() != null) {
-            (unprotectedHeader
-                ?: CoseHeader()).copy(certificateChain = cryptoService.keyMaterial.getCertificate()!!.encodeToDer())
+        val certificate = cryptoService.keyMaterial.getCertificate()
+        val copyUnprotectedHeader = if (addCertificate && certificate != null) {
+            (unprotectedHeader ?: CoseHeader())
+                .copy(certificateChain = certificate.encodeToDer())
         } else {
             unprotectedHeader
         }
 
-        val signatureInput = CoseSignatureInput(
-            contextString = SIGNATURE1_STRING,
-            protectedHeader = ByteStringWrapper(copyProtectedHeader),
-            externalAad = byteArrayOf(),
-            payload = payload,
-        ).serialize()
+        val signatureInput = CoseSigned.prepareCoseSignatureInput(copyProtectedHeader, payload)
 
         val signature = cryptoService.sign(signatureInput).asKmmResult().getOrElse {
             Napier.w("No signature from native code", it)
@@ -91,10 +79,10 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         }
 
         CoseSigned(
-            ByteStringWrapper(copyProtectedHeader),
-            copyUnprotectedHeader,
-            payload,
-            signature
+            protectedHeader = ByteStringWrapper(value = copyProtectedHeader),
+            unprotectedHeader = copyUnprotectedHeader,
+            payload = payload,
+            signature = signature
         )
     }
 }
@@ -107,12 +95,7 @@ class DefaultVerifierCoseService(
      * Verifiers the signature of [coseSigned] by using [signer].
      */
     override fun verifyCose(coseSigned: CoseSigned, signer: CoseKey) = catching {
-        val signatureInput = CoseSignatureInput(
-            contextString = SIGNATURE1_STRING,
-            protectedHeader = ByteStringWrapper(coseSigned.protectedHeader.value),
-            externalAad = byteArrayOf(),
-            payload = coseSigned.payload,
-        ).serialize()
+        val signatureInput = CoseSigned.prepareCoseSignatureInput(coseSigned.protectedHeader.value, coseSigned.payload)
 
         val algorithm = coseSigned.protectedHeader.value.algorithm
             ?: throw IllegalArgumentException("Algorithm not specified")
