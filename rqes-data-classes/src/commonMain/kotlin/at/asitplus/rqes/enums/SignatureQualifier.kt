@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 @Suppress("unused")
 @Serializable
-enum class SignatureQualifierEnum {
+enum class SignatureQualifier {
 
     @SerialName("eu_eidas_qes")
     EU_EIDAS_QES,

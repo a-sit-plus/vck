@@ -5,7 +5,7 @@ import at.asitplus.rqes.SignDocParameters
 import at.asitplus.rqes.SignHashParameters
 import at.asitplus.rqes.collection_entries.CscDocumentDigest
 import at.asitplus.rqes.collection_entries.Document
-import at.asitplus.rqes.enums.ConformanceLevelEnum
+import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.rqes.rdcJsonSerializer
@@ -158,7 +158,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                         Document(
                             document = "1234".decodeToByteArray(Base64Strict),
                             signatureFormat = SignatureFormat.JADES,
-                            conformanceLevel = ConformanceLevelEnum.ADESBLTA,
+                            conformanceLevel = ConformanceLevel.ADESBLTA,
                             signAlgoOid = X509SignatureAlgorithm.ES256.oid,
                             signAlgoParams = null,
                             signedProps = null,
@@ -167,7 +167,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                         Document(
                             document = "1234".decodeToByteArray(Base64Strict),
                             signatureFormat = SignatureFormat.CADES,
-                            conformanceLevel = ConformanceLevelEnum.ADEST,
+                            conformanceLevel = ConformanceLevel.ADEST,
                             signAlgoOid = X509SignatureAlgorithm.RS256.oid,
                             signAlgoParams = null,
                             signedProps = null,
@@ -182,7 +182,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                             hashes = listOf("1234".decodeToByteArray(Base64Strict)),
                             hashAlgorithmOid = Digest.SHA256.oid,
                             signatureFormat = SignatureFormat.XADES,
-                            conformanceLevel = ConformanceLevelEnum.ADESB,
+                            conformanceLevel = ConformanceLevel.ADESB,
                             signAlgoOid = X509SignatureAlgorithm.ES384.oid,
                             signAlgoParams = null,
                             signedProps = null,
@@ -192,7 +192,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                             hashes = listOf("1234".decodeToByteArray(Base64Strict)),
                             hashAlgorithmOid = null,
                             signatureFormat = SignatureFormat.PADES,
-                            conformanceLevel = ConformanceLevelEnum.ADESTLT,
+                            conformanceLevel = ConformanceLevel.ADESTLT,
                             signAlgoOid = X509SignatureAlgorithm.RS512.oid,
                             signAlgoParams = null,
                             signedProps = null,

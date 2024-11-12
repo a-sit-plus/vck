@@ -23,7 +23,7 @@ internal fun getSignAlgorithm(signAlgoOid: ObjectIdentifier, signAlgoParams: Asn
     }
 
 @Throws(Exception::class)
-fun getHashAlgorithm(hashAlgorithmOid: ObjectIdentifier?, signatureAlgorithm: SignatureAlgorithm? = null) =
+internal fun getHashAlgorithm(hashAlgorithmOid: ObjectIdentifier?, signatureAlgorithm: SignatureAlgorithm? = null) =
     hashAlgorithmOid?.let {
         Digest.entries.find { digest -> digest.oid == it }
     } ?: when(signatureAlgorithm) {

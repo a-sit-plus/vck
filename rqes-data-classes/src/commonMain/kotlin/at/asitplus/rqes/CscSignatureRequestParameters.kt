@@ -1,8 +1,8 @@
 package at.asitplus.rqes
 
 import at.asitplus.rqes.collection_entries.CscDocumentDigest
-import at.asitplus.rqes.enums.OperationModeEnum
-import at.asitplus.rqes.enums.SignatureQualifierEnum
+import at.asitplus.rqes.enums.OperationMode
+import at.asitplus.rqes.enums.SignatureQualifier
 import at.asitplus.rqes.serializers.CscSignatureRequestParameterSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
@@ -34,7 +34,7 @@ sealed interface CscSignatureRequestParameters {
      * The default value is “S”, so if the parameter is omitted then the remote signing
      * server will manage the request in synchronous operation mode.
      */
-    val operationMode: OperationModeEnum?
+    val operationMode: OperationMode?
 
     /**
      * Maximum period of time, expressed in milliseconds, until which the server
@@ -68,7 +68,7 @@ data class SignHashParameters(
     override val sad: String? = null,
 
     @SerialName("operationMode")
-    override val operationMode: OperationModeEnum = OperationModeEnum.SYNCHRONOUS,
+    override val operationMode: OperationMode = OperationMode.SYNCHRONOUS,
 
     @SerialName("validity_period")
     override val validityPeriod: Int? = null,
@@ -164,7 +164,7 @@ data class SignDocParameters(
     override val sad: String? = null,
 
     @SerialName("operationMode")
-    override val operationMode: OperationModeEnum = OperationModeEnum.SYNCHRONOUS,
+    override val operationMode: OperationMode = OperationMode.SYNCHRONOUS,
 
     @SerialName("validity_period")
     override val validityPeriod: Int? = null,
@@ -180,7 +180,7 @@ data class SignDocParameters(
      * a Qualified Electronic Signature according to eIDAS
      */
     @SerialName("signatureQualifier")
-    val signatureQualifier: SignatureQualifierEnum? = null,
+    val signatureQualifier: SignatureQualifier? = null,
 
     @SerialName("documentDigests")
     val documentDigests: Collection<CscDocumentDigest>? = null,

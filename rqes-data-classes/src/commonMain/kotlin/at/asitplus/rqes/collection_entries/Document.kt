@@ -1,6 +1,6 @@
 package at.asitplus.rqes.collection_entries
 
-import at.asitplus.rqes.enums.ConformanceLevelEnum
+import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.rqes.getSignAlgorithm
@@ -36,7 +36,7 @@ data class Document(
      * Requested conformance level. If omitted its value is "Ades-B-B"
      */
     @SerialName("conformance_level")
-    val conformanceLevel: ConformanceLevelEnum? = null,
+    val conformanceLevel: ConformanceLevel? = null,
 
     /**
      * The OID of the algorithm to use for signing

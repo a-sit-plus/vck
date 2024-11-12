@@ -15,7 +15,6 @@ data class CredentialRequestParameters(
      * specific parameters such as those defined in Appendix A MUST NOT be present
      */
     @SerialName("credential_identifier")
-    // TODO Update
     val credentialIdentifier: String? = null,
 
     /**

@@ -4,7 +4,7 @@ import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.rqes.Hashes
 import at.asitplus.rqes.contentEquals
 import at.asitplus.rqes.contentHashCode
-import at.asitplus.rqes.enums.SignatureQualifierEnum
+import at.asitplus.rqes.enums.SignatureQualifier
 import at.asitplus.rqes.serializers.HashesSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
@@ -122,7 +122,7 @@ data class CscAuthenticationRequestParameters(
      * signature to be created
      */
     @SerialName("signatureQualifier")
-    val signatureQualifier: SignatureQualifierEnum? = null,
+    val signatureQualifier: SignatureQualifier? = null,
 
     /**
      * CSC: Required-"credential"
