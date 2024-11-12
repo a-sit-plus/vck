@@ -2,6 +2,7 @@
 
 Release 5.2.0:
  - SD-JWT: Validate confirmation claims correctly
+ - Adapt to changes in `signum`, i.e. the classes `JwsSigned` and `JweDecrypted` are now typed to their payload
 
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact
