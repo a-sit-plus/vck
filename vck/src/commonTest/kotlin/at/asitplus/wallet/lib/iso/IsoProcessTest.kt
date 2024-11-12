@@ -44,7 +44,7 @@ class Wallet {
     private val coseService = DefaultCoseService(cryptoService)
 
     val deviceKeyInfo = DeviceKeyInfo(cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow())
-    private var storedIssuerAuth: CoseSigned? = null
+    private var storedIssuerAuth: CoseSigned<ByteArray>? = null
     private var storedMdlItems: IssuerSignedList? = null
 
     fun storeMdl(deviceResponse: DeviceResponse) {

@@ -36,12 +36,12 @@ interface CoseService {
         payload: ByteArray? = null,
         addKeyId: Boolean = true,
         addCertificate: Boolean = false,
-    ): KmmResult<CoseSigned>
+    ): KmmResult<CoseSigned<ByteArray>>
 }
 
 interface VerifierCoseService {
 
-    fun verifyCose(coseSigned: CoseSigned, signer: CoseKey): KmmResult<Verifier.Success>
+    fun verifyCose(coseSigned: CoseSigned<ByteArray>, signer: CoseKey): KmmResult<Verifier.Success>
 
 }
 
@@ -55,7 +55,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         payload: ByteArray?,
         addKeyId: Boolean,
         addCertificate: Boolean,
-    ): KmmResult<CoseSigned> = catching {
+    ): KmmResult<CoseSigned<ByteArray>> = catching {
         var copyProtectedHeader = protectedHeader?.copy(algorithm = algorithm)
             ?: CoseHeader(algorithm = algorithm)
         if (addKeyId) {
@@ -94,7 +94,7 @@ class DefaultVerifierCoseService(
     /**
      * Verifiers the signature of [coseSigned] by using [signer].
      */
-    override fun verifyCose(coseSigned: CoseSigned, signer: CoseKey) = catching {
+    override fun verifyCose(coseSigned: CoseSigned<ByteArray>, signer: CoseKey) = catching {
         val signatureInput = CoseSigned.prepareCoseSignatureInput(coseSigned.protectedHeader.value, coseSigned.payload)
 
         val algorithm = coseSigned.protectedHeader.value.algorithm

@@ -16,7 +16,7 @@ data class DocRequest(
     @ValueTags(24U)
     val itemsRequest: ByteStringWrapper<ItemsRequest>,
     @SerialName("readerAuth")
-    val readerAuth: CoseSigned? = null,
+    val readerAuth: CoseSigned<ByteArray>? = null,
 ) {
     override fun toString(): String {
         return "DocRequest(itemsRequest=${itemsRequest.value}, readerAuth=$readerAuth)"

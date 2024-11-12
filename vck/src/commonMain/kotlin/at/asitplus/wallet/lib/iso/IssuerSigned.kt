@@ -14,7 +14,7 @@ data class IssuerSigned private constructor(
     @Serializable(with = NamespacedIssuerSignedListSerializer::class)
     val namespaces: Map<String, @Contextual IssuerSignedList>? = null,
     @SerialName("issuerAuth")
-    val issuerAuth: CoseSigned,
+    val issuerAuth: CoseSigned<ByteArray>,
 ) {
     fun getIssuerAuthPayloadAsMso() = catching {
         MobileSecurityObject.deserializeFromIssuerAuth(issuerAuth.payload!!).getOrThrow()
@@ -58,7 +58,7 @@ data class IssuerSigned private constructor(
          */
         fun fromIssuerSignedItems(
             namespacedItems: Map<String, List<IssuerSignedItem>>,
-            issuerAuth: CoseSigned,
+            issuerAuth: CoseSigned<ByteArray>,
         ): IssuerSigned = IssuerSigned(
             namespaces = namespacedItems.map { (namespace, value) ->
                 namespace to IssuerSignedList.fromIssuerSignedItems(value, namespace)
