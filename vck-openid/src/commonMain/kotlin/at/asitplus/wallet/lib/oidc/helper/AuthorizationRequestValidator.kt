@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.oidc.helper
 
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationRequestParametersFrom
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
 import at.asitplus.openid.OpenIdConstants.ResponseMode.DirectPost
 import at.asitplus.openid.OpenIdConstants.ResponseMode.DirectPostJwt
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
@@ -15,7 +15,7 @@ import io.ktor.http.*
 
 internal class AuthorizationRequestValidator {
     @Throws(OAuth2Exception::class)
-    fun validateAuthorizationRequest(request: AuthenticationRequestParametersFrom) {
+    fun validateAuthorizationRequest(request: RequestParametersFrom<AuthenticationRequestParameters>) {
         request.parameters.responseType?.let {
             if (!it.contains(ID_TOKEN) && !it.contains(VP_TOKEN)) {
                 Napier.w("createAuthnResponse: Unknown response_type $it")
@@ -65,11 +65,11 @@ internal class AuthorizationRequestValidator {
     }
 
     @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParametersFrom.verifyClientIdSchemeX509() {
+    private fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemeX509() {
         val clientIdScheme = parameters.clientIdScheme
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
         val prefix = "client_id_scheme is $clientIdScheme"
-        if (this !is AuthenticationRequestParametersFrom.JwsSigned
+        if (this !is RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>
             || jwsSigned.header.certificateChain == null || jwsSigned.header.certificateChain?.isEmpty() == true
         ) {
             Napier.w("$prefix, but metadata is not set and no x5c certificate chain is present")
