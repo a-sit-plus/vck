@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.catching
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import kotlinx.serialization.*
@@ -17,9 +16,6 @@ data class IssuerSigned private constructor(
     @SerialName("issuerAuth")
     val issuerAuth: CoseSigned<ByteStringWrapper<MobileSecurityObject>>,
 ) {
-    fun getIssuerAuthPayloadAsMso() = catching {
-        MobileSecurityObject.deserializeFromIssuerAuth(issuerAuth.payload!!).getOrThrow()
-    }
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
 

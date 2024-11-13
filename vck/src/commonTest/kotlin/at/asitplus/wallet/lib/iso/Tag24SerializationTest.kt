@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.iso
 
+import at.asitplus.catching
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Issuer
@@ -131,6 +133,35 @@ class Tag24SerializationTest : FreeSpec({
 
 
 })
+
+/**
+ * Ensures serialization of this structure in [IssuerSigned.issuerAuth]:
+ * ```
+ * IssuerAuth = COSE_Sign1     ; The payload is MobileSecurityObjectBytes
+ * MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
+ * ```
+ *
+ * See ISO/IEC 18013-5:2021, 9.1.2.4 Signing method and structure for MSO
+ */
+fun MobileSecurityObject.serializeForIssuerAuth() = vckCborSerializer.encodeToByteArray(
+    ByteStringWrapperSerializer(MobileSecurityObject.serializer()), ByteStringWrapper(this)
+).wrapInCborTag(24)
+
+/**
+ * Deserializes the structure from the [IssuerSigned.issuerAuth] is deserialized:
+ * ```
+ * IssuerAuth = COSE_Sign1     ; The payload is MobileSecurityObjectBytes
+ * MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
+ * ```
+ *
+ * See ISO/IEC 18013-5:2021, 9.1.2.4 Signing method and structure for MSO
+ */
+private fun MobileSecurityObject.Companion.deserializeFromIssuerAuth(it: ByteArray) = catching {
+    vckCborSerializer.decodeFromByteArray(
+        ByteStringWrapperSerializer(serializer()),
+        it.stripCborTag(24)
+    ).value
+}
 
 private fun deviceKeyInfo() =
     DeviceKeyInfo(CoseKey(CoseKeyType.EC2, keyParams = CoseKeyParams.EcYBoolParams(CoseEllipticCurve.P256)))

@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
@@ -132,7 +133,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         }
         val signatureInput = CoseSigned.prepareCoseSignatureInput(copyProtectedHeader, rawPayload)
 
-        val signature = cryptoService.sign(signatureInput).asKmmResult().getOrElse {
+        val signature: CryptoSignature.RawByteEncodable = cryptoService.sign(signatureInput).asKmmResult().getOrElse {
             Napier.w("No signature from native code", it)
             throw it
         }
