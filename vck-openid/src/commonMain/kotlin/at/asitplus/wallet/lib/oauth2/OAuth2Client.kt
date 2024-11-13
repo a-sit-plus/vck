@@ -6,9 +6,10 @@ import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidvci.*
-import io.ktor.util.*
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import at.asitplus.wallet.lib.oidvci.DefaultMapStore
+import at.asitplus.wallet.lib.oidvci.MapStore
+import at.asitplus.wallet.lib.oidvci.WalletService
+import at.asitplus.wallet.lib.oidvci.buildDPoPHeader
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 
@@ -54,12 +55,14 @@ class OAuth2Client(
      * @param authorizationDetails from RFC 9396 OAuth 2.0 Rich Authorization Requests
      * @param resource from RFC 8707 Resource Indicators for OAuth 2.0, in OID4VCI flows the value
      * of [IssuerMetadata.credentialIssuer]
+     * @param issuerState for OID4VCI flows the value from [CredentialOfferGrantsAuthCode.issuerState]
      */
     suspend fun createAuthRequest(
         state: String,
         authorizationDetails: Set<AuthorizationDetails>? = null,
         scope: String? = null,
-        resource: String? = null
+        resource: String? = null,
+        issuerState: String? = null,
     ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         state = state,
@@ -67,6 +70,7 @@ class OAuth2Client(
         authorizationDetails = authorizationDetails,
         scope = scope,
         resource = resource,
+        issuerState = issuerState,
         redirectUrl = redirectUrl,
         codeChallenge = generateCodeVerifier(state),
         codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256

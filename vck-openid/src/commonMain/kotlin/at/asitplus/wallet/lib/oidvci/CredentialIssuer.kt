@@ -92,7 +92,7 @@ class CredentialIssuer(
      * Offer all [credentialSchemes] to clients.
      *
      * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
-     * i.e. by displaying a QR Code that can be scanned with wallet appps.
+     * i.e. by displaying a QR Code that can be scanned with wallet apps.
      */
     suspend fun credentialOfferWithAuthorizationCode(): CredentialOffer = CredentialOffer(
         credentialIssuer = publicContext,
