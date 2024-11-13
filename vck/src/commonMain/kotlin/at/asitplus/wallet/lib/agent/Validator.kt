@@ -138,23 +138,26 @@ class Validator(
      * @param challenge Nonce that the verifier has sent to the holder
      * @param publicKey Local key of the verifier
      */
+    @Throws(IllegalArgumentException::class)
     fun verifyVpJws(
         input: String,
         challenge: String,
         publicKey: CryptoPublicKey
     ): Verifier.VerifyPresentationResult {
         Napier.d("Verifying VP $input")
-        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(input, vckJsonSerializer).getOrNull()
-            ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
-                .also { Napier.w("VP: Could not parse JWS") }
-        if (!verifierJwsService.verifyJwsObject(jws))
-            return Verifier.VerifyPresentationResult.InvalidStructure(input)
-                .also { Napier.w("VP: Signature invalid") }
+        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(input, vckJsonSerializer).getOrElse {
+            Napier.w("VP: Could not parse JWS", it)
+            throw IllegalArgumentException(it)
+        }
+        if (!verifierJwsService.verifyJwsObject(jws)) {
+            Napier.w("VP: Signature invalid")
+            throw IllegalArgumentException("signature")
+        }
         val kid = jws.header.keyId
         val parsedVp = parser.parseVpJws(input, jws.payload, kid, challenge, publicKey)
         if (parsedVp !is Parser.ParseVpResult.Success) {
-            return Verifier.VerifyPresentationResult.InvalidStructure(input)
-                .also { Napier.d("VP: Could not parse content") }
+            Napier.d("VP: Could not parse content")
+            throw IllegalArgumentException("vp.content")
         }
         val parsedVcList = parsedVp.jws.vp.verifiableCredential
             .map { verifyVcJws(it, null) }
