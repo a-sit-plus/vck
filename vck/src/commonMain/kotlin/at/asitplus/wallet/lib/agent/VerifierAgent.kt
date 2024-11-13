@@ -49,7 +49,12 @@ class VerifierAgent private constructor(
         }
         val jwsSigned = JwsSigned.deserialize<VerifiablePresentationJws>(input, vckJsonSerializer).getOrNull()
         if (jwsSigned != null) {
-            return validator.verifyVpJws(input, challenge, keyMaterial.publicKey)
+            val result = runCatching {
+                validator.verifyVpJws(input, challenge, keyMaterial.publicKey)
+            }.getOrElse {
+                Verifier.VerifyPresentationResult.InvalidStructure(input)
+            }
+            return result
         }
         val document = input.decodeToByteArrayOrNull(Base16(false))
             ?.let { bytes -> Document.deserialize(bytes).getOrNull() }
