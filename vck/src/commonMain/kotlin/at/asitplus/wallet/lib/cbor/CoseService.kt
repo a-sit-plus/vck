@@ -6,6 +6,7 @@ import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.sign.Verifier
@@ -75,34 +76,14 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         addKeyId: Boolean,
         addCertificate: Boolean,
     ): KmmResult<CoseSigned<ByteArray>> = catching {
-        var copyProtectedHeader = protectedHeader?.copy(algorithm = algorithm)
-            ?: CoseHeader(algorithm = algorithm)
-        if (addKeyId) {
-            copyProtectedHeader = copyProtectedHeader
-                .copy(kid = cryptoService.keyMaterial.publicKey.didEncoded.encodeToByteArray())
+        protectedHeader.withAlgorithmAndKeyId(addKeyId).let { coseHeader ->
+            CoseSigned(
+                protectedHeader = coseHeader,
+                unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
+                payload = payload,
+                signature = calcSignature(coseHeader, payload)
+            )
         }
-
-        val certificate = cryptoService.keyMaterial.getCertificate()
-        val copyUnprotectedHeader = if (addCertificate && certificate != null) {
-            (unprotectedHeader ?: CoseHeader())
-                .copy(certificateChain = certificate.encodeToDer())
-        } else {
-            unprotectedHeader
-        }
-
-        val signatureInput = CoseSigned.prepareCoseSignatureInput(copyProtectedHeader, payload)
-
-        val signature = cryptoService.sign(signatureInput).asKmmResult().getOrElse {
-            Napier.w("No signature from native code", it)
-            throw it
-        }
-
-        CoseSigned(
-            protectedHeader = ByteStringWrapper(value = copyProtectedHeader),
-            unprotectedHeader = copyUnprotectedHeader,
-            payload = payload,
-            signature = signature
-        )
     }
 
     override suspend fun <P : Any> createSignedCose(
@@ -113,38 +94,55 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         addKeyId: Boolean,
         addCertificate: Boolean,
     ): KmmResult<CoseSigned<P>> = catching {
-        var copyProtectedHeader = protectedHeader?.copy(algorithm = algorithm)
-            ?: CoseHeader(algorithm = algorithm)
-        if (addKeyId) {
-            copyProtectedHeader = copyProtectedHeader
-                .copy(kid = cryptoService.keyMaterial.publicKey.didEncoded.encodeToByteArray())
+        protectedHeader.withAlgorithmAndKeyId(addKeyId).let { coseHeader ->
+            coseCompliantSerializer.encodeToByteArray(serializationStrategy, payload)
+                .let { if (payload is ByteStringWrapper<*>) it.wrapInCborTag(24) else it }
+                .let { rawPayload ->
+                    CoseSigned(
+                        protectedHeader = coseHeader,
+                        unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
+                        payload = rawPayload,
+                        signature = calcSignature(coseHeader, rawPayload)
+                    )
+                }
         }
 
-        val certificate = cryptoService.keyMaterial.getCertificate()
-        val copyUnprotectedHeader = if (addCertificate && certificate != null) {
-            (unprotectedHeader ?: CoseHeader())
-                .copy(certificateChain = certificate.encodeToDer())
-        } else {
-            unprotectedHeader
-        }
-
-        val rawPayload = coseCompliantSerializer.encodeToByteArray(serializationStrategy, payload).let {
-            if (payload is ByteStringWrapper<*>) it.wrapInCborTag(24) else it
-        }
-        val signatureInput = CoseSigned.prepareCoseSignatureInput(copyProtectedHeader, rawPayload)
-
-        val signature: CryptoSignature.RawByteEncodable = cryptoService.sign(signatureInput).asKmmResult().getOrElse {
-            Napier.w("No signature from native code", it)
-            throw it
-        }
-
-        CoseSigned(
-            protectedHeader = ByteStringWrapper(value = copyProtectedHeader),
-            unprotectedHeader = copyUnprotectedHeader,
-            payload = rawPayload,
-            signature = signature
-        )
     }
+
+    private suspend fun CoseHeader?.withCertificateIfExists(addCertificate: Boolean): CoseHeader? =
+        if (addCertificate) {
+            withCertificate(cryptoService.keyMaterial.getCertificate())
+        } else {
+            this
+        }
+
+    private fun CoseHeader?.withCertificate(certificate: X509Certificate?) =
+        (this ?: CoseHeader()).copy(certificateChain = certificate?.encodeToDer())
+
+    private fun CoseHeader?.withAlgorithmAndKeyId(addKeyId: Boolean): CoseHeader =
+        if (addKeyId) {
+            withAlgorithm(algorithm).withKeyId()
+        } else {
+            withAlgorithm(algorithm)
+        }
+
+    private fun CoseHeader.withKeyId(): CoseHeader =
+        copy(kid = cryptoService.keyMaterial.publicKey.didEncoded.encodeToByteArray())
+
+    private fun CoseHeader?.withAlgorithm(coseAlgorithm: CoseAlgorithm): CoseHeader =
+        this?.copy(algorithm = coseAlgorithm)
+            ?: CoseHeader(algorithm = coseAlgorithm)
+
+    private suspend fun calcSignature(
+        protectedHeader: CoseHeader,
+        payload: ByteArray?
+    ): CryptoSignature.RawByteEncodable =
+        cryptoService.sign(CoseSigned.prepareCoseSignatureInput(protectedHeader, payload))
+            .asKmmResult().getOrElse {
+                Napier.w("No signature from native code", it)
+                throw it
+            }
+
 }
 
 class DefaultVerifierCoseService(

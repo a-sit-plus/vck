@@ -2,7 +2,7 @@
 
 Release 5.2.0:
  - SD-JWT: Validate confirmation claims correctly
- - Adapt to changes in `signum`, i.e. the classes `JwsSigned` and `JweDecrypted` are now typed to their payload
+ - Adapt to changes in `signum`, i.e. the classes `JwsSigned`, `JweDecrypted`, `CoseSigned` are now typed to their payload
  - ISO credentials: Serialize and deserialize device signed items correctly (i.e. considering the namespace of the element)
 
 Release 5.1.0:
