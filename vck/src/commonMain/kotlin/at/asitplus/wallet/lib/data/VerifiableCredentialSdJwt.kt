@@ -2,13 +2,10 @@ package at.asitplus.wallet.lib.data
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
-import at.asitplus.signum.indispensable.josef.JsonWebKey
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * SD-JWT representation of a [VerifiableCredential].
@@ -97,20 +94,8 @@ data class VerifiableCredentialSdJwt(
      * the key identified in this claim.
      */
     @SerialName("cnf")
-    // Should be [ConfirmationClaim], but was [JsonWebKey] in our previous implementation...
-    val cnfElement: JsonElement? = null,
+    val confirmationClaim: ConfirmationClaim? = null,
 ) {
-
-    @Deprecated("Use confirmationClaim", replaceWith = ReplaceWith("confirmationClaim.jsonWebKey"))
-    val confirmationKey: JsonWebKey?
-        get() = cnfElement?.let {
-            runCatching { vckJsonSerializer.decodeFromJsonElement<JsonWebKey>(it) }.getOrNull()
-        }
-
-    val confirmationClaim: ConfirmationClaim?
-        get() = cnfElement?.let {
-            runCatching { vckJsonSerializer.decodeFromJsonElement<ConfirmationClaim>(it) }.getOrNull()
-        }
 
     fun serialize() = vckJsonSerializer.encodeToString(this)
 

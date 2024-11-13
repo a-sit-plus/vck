@@ -499,8 +499,6 @@ class OidcSiopVerifier private constructor(
         data class SuccessSdJwt(
             val sdJwtSigned: SdJwtSigned,
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
-            @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
-            val sdJwt: VerifiableCredentialSdJwt,
             val reconstructed: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
             val state: String?,
@@ -669,7 +667,6 @@ class OidcSiopVerifier private constructor(
         else -> throw IllegalArgumentException()
     }
 
-    @Suppress("DEPRECATION")
     private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
         is Verifier.VerifyPresentationResult.InvalidStructure ->
             AuthnResponseResult.Error("parse vp failed", state)
@@ -689,12 +686,11 @@ class OidcSiopVerifier private constructor(
 
         is Verifier.VerifyPresentationResult.SuccessSdJwt ->
             AuthnResponseResult.SuccessSdJwt(
-                sdJwtSigned,
-                verifiableCredentialSdJwt,
-                sdJwt,
-                reconstructedJsonObject,
-                disclosures,
-                state
+                sdJwtSigned = sdJwtSigned,
+                verifiableCredentialSdJwt = verifiableCredentialSdJwt,
+                reconstructed = reconstructedJsonObject,
+                disclosures = disclosures,
+                state = state
             ).also { Napier.i("VP success: $this") }
     }
 

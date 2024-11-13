@@ -6,7 +6,6 @@ import at.asitplus.signum.indispensable.asn1.toBitSet
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
-import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -224,32 +223,23 @@ class Validator(
                 .also { Napier.w("verifyVpSdJwt: Key Binding does not contain correct sd_hash") }
 
         Napier.d("verifyVpSdJwt: Valid")
-        @Suppress("DEPRECATION")
         return Verifier.VerifyPresentationResult.SuccessSdJwt(
             sdJwtSigned = sdJwtResult.sdJwtSigned,
             verifiableCredentialSdJwt = vcSdJwt,
-            sdJwt = sdJwtResult.sdJwt,
             reconstructedJsonObject = sdJwtResult.reconstructedJsonObject,
             disclosures = sdJwtResult.disclosures.values,
             isRevoked = sdJwtResult.isRevoked,
         )
     }
 
-    @Suppress("DEPRECATION")
     private fun VerifiableCredentialSdJwt.verifyKeyBinding(
         jwsHeader: JwsHeader,
         keyBindingSigned: JwsSigned<KeyBindingJws>
     ): Boolean =
         if (confirmationClaim != null) {
-            verifierJwsService.verifyConfirmationClaim(this.confirmationClaim!!, keyBindingSigned)
-        } else if (confirmationKey != null) { // "old" method before vck 5.1.0
-            jwsHeader.jsonWebKey?.let {
-                confirmationKey!!.equalsCryptographically(it)
-            } ?: false
-        } else if (subject != jwsHeader.keyId) {
-            false
+            verifierJwsService.verifyConfirmationClaim(this.confirmationClaim, keyBindingSigned)
         } else {
-            false
+            subject == jwsHeader.keyId
         }
 
     /**
@@ -428,7 +418,6 @@ class Validator(
                 Verifier.VerifyCredentialResult.SuccessSdJwt(
                     sdJwtSigned = sdJwtSigned,
                     verifiableCredentialSdJwt = sdJwt,
-                    sdJwt = sdJwt,
                     reconstructedJsonObject = reconstructedJsonObject,
                     disclosures = validDisclosures,
                     isRevoked = isRevoked
