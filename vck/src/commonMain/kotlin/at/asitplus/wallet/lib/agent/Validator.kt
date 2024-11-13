@@ -248,12 +248,12 @@ class Validator(
     @Throws(IllegalArgumentException::class)
     fun verifyDeviceResponse(deviceResponse: DeviceResponse, challenge: String): Verifier.VerifyPresentationResult {
         if (deviceResponse.status != 0U) {
+            Napier.w("Status invalid: ${deviceResponse.status}")
             throw IllegalArgumentException("status")
-                .also { Napier.w("Status invalid: ${deviceResponse.status}") }
         }
         if (deviceResponse.documents == null) {
+            Napier.w("No documents: $deviceResponse")
             throw IllegalArgumentException("documents")
-                .also { Napier.w("No documents: $deviceResponse") }
         }
         return Verifier.VerifyPresentationResult.SuccessIso(
             documents = deviceResponse.documents.map { verifyDocument(it, challenge) }
@@ -265,47 +265,49 @@ class Validator(
      */
     @Throws(IllegalArgumentException::class)
     fun verifyDocument(doc: Document, challenge: String): IsoDocumentParsed {
-        val docSerialized = doc.serialize().encodeToString(Base16(strict = true))
         if (doc.errors != null) {
+            Napier.w("Document has errors: ${doc.errors}")
             throw IllegalArgumentException("errors")
-                .also { Napier.w("Document has errors: ${doc.errors}") }
         }
         val issuerSigned = doc.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
 
         val issuerKey = issuerAuth.unprotectedHeader?.certificateChain?.let {
             X509Certificate.decodeFromDerOrNull(it)?.publicKey?.toCoseKey()?.getOrNull()
-        } ?: throw IllegalArgumentException("issuerKey")
-            .also { Napier.w("Got no issuer key in $issuerAuth") }
+        } ?: run {
+            Napier.w("Got no issuer key in $issuerAuth")
+            throw IllegalArgumentException("issuerKey")
+        }
 
         if (verifierCoseService.verifyCose(issuerAuth, issuerKey).isFailure) {
+            Napier.w("IssuerAuth not verified: $issuerAuth")
             throw IllegalArgumentException("issuerAuth")
-                .also { Napier.w("IssuerAuth not verified: $issuerAuth") }
         }
 
         val mso = issuerSigned.getIssuerAuthPayloadAsMso().getOrNull()
             ?: throw IllegalArgumentException("mso")
                 .also { Napier.w("MSO is null: ${issuerAuth.payload?.encodeToString(Base16(strict = true))}") }
         if (mso.docType != doc.docType) {
+            Napier.w("Invalid MSO docType '${mso.docType}' does not match Doc docType '${doc.docType}")
             throw IllegalArgumentException("mso.docType")
-                .also { Napier.w("Invalid MSO docType '${mso.docType}' does not match Doc docType '${doc.docType}") }
         }
         val walletKey = mso.deviceKeyInfo.deviceKey
-        val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature
-            ?: throw IllegalArgumentException("deviceSignature")
-                .also { Napier.w("DeviceSignature is null: ${doc.deviceSigned.deviceAuth}") }
+        val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature ?: run {
+            Napier.w("DeviceSignature is null: ${doc.deviceSigned.deviceAuth}")
+            throw IllegalArgumentException("deviceSignature")
+        }
 
         if (verifierCoseService.verifyCose(deviceSignature, walletKey).isFailure) {
+            Napier.w("DeviceSignature not verified")
             throw IllegalArgumentException("deviceSignature")
-                .also { Napier.w("DeviceSignature not verified") }
         }
 
         val deviceSignaturePayload = deviceSignature.payload
             ?: throw IllegalArgumentException("challenge")
                 .also { Napier.w("DeviceSignature does not contain challenge") }
         if (!deviceSignaturePayload.contentEquals(challenge.encodeToByteArray())) {
+            Napier.w("DeviceSignature does not contain correct challenge")
             throw IllegalArgumentException("challenge")
-                .also { Napier.w("DeviceSignature does not contain correct challenge") }
         }
 
         val validItems = mutableListOf<IssuerSignedItem>()
