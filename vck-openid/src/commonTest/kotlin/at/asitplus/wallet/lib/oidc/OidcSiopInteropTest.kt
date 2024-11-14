@@ -52,7 +52,7 @@ class OidcSiopInteropTest : FreeSpec({
         val issuerAgent = IssuerAgent()
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     EuPidScheme,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
@@ -62,7 +62,7 @@ class OidcSiopInteropTest : FreeSpec({
         )
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.SD_JWT,

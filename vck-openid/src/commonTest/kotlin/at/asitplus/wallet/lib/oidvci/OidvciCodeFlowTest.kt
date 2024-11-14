@@ -243,7 +243,7 @@ class OidvciCodeFlowTest : FreeSpec({
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential.shouldNotBeNull()
 
-        val jws = JwsSigned.deserialize(serializedCredential.substringBeforeLast("~")).getOrThrow()
+        val jws = JwsSigned.deserialize(serializedCredential.substringBefore("~")).getOrThrow()
         val sdJwt = VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString()).getOrThrow()
 
         sdJwt.disclosureDigests

@@ -6,14 +6,15 @@ import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.io.BitSet
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
+import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.*
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem.Companion.hashDisclosure
 import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_MIN_SIZE
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -24,7 +25,10 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlin.random.Random
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 
@@ -48,6 +52,7 @@ class IssuerAgent(
     constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
+        validator: Validator = Validator(),
     ) : this(
         validator = Validator(),
         issuerCredentialStore = issuerCredentialStore,
@@ -163,29 +168,36 @@ class IssuerAgent(
         ) ?: throw IllegalArgumentException("No statusListIndex from issuerCredentialStore")
 
         val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
-        val disclosures = credential.claims
-            .map { SelectiveDisclosureItem(Random.nextBytes(32), it.name, it.value) }
-            .map { it.toDisclosure() }
-        val disclosureDigests = disclosures
-            .map { it.hashDisclosure() }
-        val jwsPayload = VerifiableCredentialSdJwt(
+        val (sdJwt, disclosures) = credential.claims.toSdJsonObject()
+        val cnf = ConfirmationClaim(jsonWebKey = credential.subjectPublicKey.toJsonWebKey())
+        val vcSdJwt = VerifiableCredentialSdJwt(
             subject = subjectId,
             notBefore = issuanceDate,
             issuer = keyMaterial.identifier,
             expiration = expirationDate,
             issuedAt = issuanceDate,
             jwtId = vcId,
-            disclosureDigests = disclosureDigests,
             verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
             selectiveDisclosureAlgorithm = "sha-256",
-            confirmationKey = credential.subjectPublicKey.toJsonWebKey(),
+            cnfElement = vckJsonSerializer.encodeToJsonElement(cnf),
             credentialStatus = credentialStatus,
-        ).serialize().encodeToByteArray()
+        )
+        val vcSdJwtObject = vckJsonSerializer.encodeToJsonElement(vcSdJwt).jsonObject
+        val entireObject = buildJsonObject {
+            vcSdJwtObject.forEach {
+                put(it.key, it.value)
+            }
+            sdJwt.forEach {
+                put(it.key, it.value)
+            }
+        }
+        val jwsPayload = vckJsonSerializer.encodeToString(entireObject).encodeToByteArray()
         val jws = jwsService.createSignedJwt(JwsContentTypeConstants.SD_JWT, jwsPayload).getOrElse {
             Napier.w("Could not wrap credential in SD-JWT", it)
             throw RuntimeException("Signing failed", it)
         }
-        val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~")
+        val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
+        Napier.i("issueVcSd: $vcInSdJwt")
         return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme)
     }
 

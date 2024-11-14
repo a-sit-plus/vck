@@ -3,7 +3,11 @@ package at.asitplus.wallet.lib.iso
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.wallet.lib.iso.IssuerSignedItem.Companion.PROP_ELEMENT_ID
 import kotlinx.serialization.*
+import net.orandja.obor.codec.Cbor
+import net.orandja.obor.data.*
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
@@ -41,6 +45,7 @@ data class IssuerSigned private constructor(
         fun deserialize(it: ByteArray) = kotlin.runCatching {
             vckCborSerializer.decodeFromByteArray<IssuerSigned>(it)
         }.wrap()
+
 
         // Note: Can't be a secondary constructor, because it would have the same JVM signature as the primary one.
         /**

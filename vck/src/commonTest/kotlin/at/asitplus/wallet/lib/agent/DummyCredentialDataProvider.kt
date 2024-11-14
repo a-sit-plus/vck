@@ -15,19 +15,17 @@ import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
-class DummyCredentialDataProvider(
-    private val clock: Clock = Clock.System,
-) : IssuerCredentialDataProvider {
+object DummyCredentialDataProvider {
 
     private val defaultLifetime = 1.minutes
 
-    override fun getCredential(
+    fun getCredential(
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
-        claimNames: Collection<String>?
+        claimNames: Collection<String>? = null,
     ): KmmResult<CredentialToBeIssued> = catching {
-        val expiration = clock.now() + defaultLifetime
+        val expiration = Clock.System.now() + defaultLifetime
         val claims = claimNames?.map {
             ClaimToBeIssued(it, "${it}_DUMMY_VALUE")
         } ?: listOf(

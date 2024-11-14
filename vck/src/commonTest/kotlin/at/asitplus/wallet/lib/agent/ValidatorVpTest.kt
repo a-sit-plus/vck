@@ -47,7 +47,7 @@ class ValidatorVpTest : FreeSpec({
 
         holder.storeCredential(
             issuer.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,

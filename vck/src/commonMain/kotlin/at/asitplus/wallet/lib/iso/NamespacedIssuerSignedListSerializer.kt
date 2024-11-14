@@ -32,7 +32,6 @@ object NamespacedIssuerSignedListSerializer : KSerializer<Map<String, IssuerSign
             override fun serialize(encoder: Encoder, value: String) {
                 encoder.encodeString(value).also { key = value }
             }
-
         }
 
         inner class IssuerSignedListSerializer internal constructor() : KSerializer<IssuerSignedList> {
@@ -41,11 +40,9 @@ object NamespacedIssuerSignedListSerializer : KSerializer<Map<String, IssuerSign
             override fun deserialize(decoder: Decoder): IssuerSignedList =
                 decoder.decodeSerializableValue(IssuerSignedListSerializer(key))
 
-
             override fun serialize(encoder: Encoder, value: IssuerSignedList) {
                 encoder.encodeSerializableValue(IssuerSignedListSerializer(key), value)
             }
-
         }
     }
 
@@ -53,5 +50,4 @@ object NamespacedIssuerSignedListSerializer : KSerializer<Map<String, IssuerSign
         NamespacedMapEntryDeserializer().let {
             MapSerializer(it.namespaceSerializer, it.itemSerializer).serialize(encoder, value)
         }
-
 }

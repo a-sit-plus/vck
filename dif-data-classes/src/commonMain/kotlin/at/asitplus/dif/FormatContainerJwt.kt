@@ -1,7 +1,9 @@
 package at.asitplus.dif
 
+import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 /**
  * Data class for
@@ -9,7 +11,11 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class FormatContainerJwt(
-    // TODO make this a collection of Json Web Algorithms from kmp-crypto
     @SerialName("alg")
-    val algorithms: Collection<String>? = null,
-)
+    val algorithmStrings: Collection<String>? = null,
+) {
+    @Transient
+    val algorithms: Set<JsonWebAlgorithm>? = algorithmStrings
+        ?.mapNotNull { s -> JsonWebAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
+
+}

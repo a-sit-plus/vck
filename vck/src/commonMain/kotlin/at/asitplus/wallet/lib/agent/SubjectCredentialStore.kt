@@ -1,11 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
-import at.asitplus.wallet.lib.data.VerifiableCredential
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -33,7 +29,7 @@ interface SubjectCredentialStore {
      * Passed credentials have been validated before.
      *
      * @param vc Instance of [VerifiableCredentialSdJwt]
-     * @param vcSerialized Serialized form of [VerifiableCredential]
+     * @param vcSerialized Serialized form of [at.asitplus.wallet.lib.jws.SdJwtSigned]
      */
     suspend fun storeCredential(
         vc: VerifiableCredentialSdJwt,
@@ -80,9 +76,7 @@ interface SubjectCredentialStore {
             val vcSerialized: String,
             @SerialName("sd-jwt")
             val sdJwt: VerifiableCredentialSdJwt,
-            /**
-             * Map of original serialized disclosure item to parsed item
-             */
+            /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
             @SerialName("disclosures")
             val disclosures: Map<String, SelectiveDisclosureItem?>,
             @SerialName("scheme")

@@ -34,7 +34,7 @@ class CredentialJsonInteropTest : FreeSpec({
     "Plain jwt credential path resolving" {
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -56,7 +56,7 @@ class CredentialJsonInteropTest : FreeSpec({
     "SD jwt credential path resolving" {
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
@@ -75,7 +75,7 @@ class CredentialJsonInteropTest : FreeSpec({
     "ISO credential path resolving" {
         holderAgent.storeCredential(
             issuerAgent.issueCredential(
-                DummyCredentialDataProvider().getCredential(
+                DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.ISO_MDOC,

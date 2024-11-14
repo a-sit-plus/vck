@@ -6,6 +6,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo8Bytes
+import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
@@ -19,6 +20,7 @@ import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import kotlin.random.Random
+
 
 /**
  * Creates and parses JWS and JWE objects.
@@ -92,6 +94,8 @@ interface VerifierJwsService {
     fun verifyJwsObject(jwsObject: JwsSigned): Boolean
 
     fun verifyJws(jwsObject: JwsSigned, signer: JsonWebKey): Boolean
+
+    fun verifyConfirmationClaim(cnf: ConfirmationClaim, jwsSigned: JwsSigned): Boolean
 
 }
 
@@ -316,6 +320,11 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
  */
 typealias JwkSetRetrieverFunction = (String) -> JsonWebKeySet?
 
+/**
+ * Clients get the parsed [JwsSigned] and need to provide a set of keys, which will be used for verification one-by-one.
+ */
+typealias PublicKeyLookup = (JwsSigned) -> Set<JsonWebKey>?
+
 class DefaultVerifierJwsService(
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
     /**
@@ -323,6 +332,8 @@ class DefaultVerifierJwsService(
      * the `jku`.
      */
     private val jwkSetRetriever: JwkSetRetrieverFunction = { null },
+    /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
+    private val publicKeyLookup: PublicKeyLookup = { null },
 ) : VerifierJwsService {
 
     override val supportedAlgorithms: List<JwsAlgorithm> =
@@ -332,18 +343,17 @@ class DefaultVerifierJwsService(
      * Verifies the signature of [jwsObject], by extracting the public key from [JwsHeader.publicKey],
      * or by using [jwkSetRetriever] if [JwsHeader.jsonWebKeySetUrl] is set.
      */
-    override fun verifyJwsObject(jwsObject: JwsSigned): Boolean {
-        val header = jwsObject.header
-        val publicKey = header.publicKey
-            ?: header.jsonWebKeySetUrl?.let { jku -> retrieveJwkFromKeySetUrl(jku, header) }
-            ?: return false
-                .also { Napier.w("Could not extract PublicKey from header: $header") }
-        return verify(jwsObject, publicKey)
-    }
+    override fun verifyJwsObject(jwsObject: JwsSigned): Boolean =
+        jwsObject.loadPublicKeys().any { verify(jwsObject, it) }
 
-    private fun retrieveJwkFromKeySetUrl(jku: String, header: JwsHeader) =
-        jwkSetRetriever(jku)?.keys?.firstOrNull { it.keyId == header.keyId }?.toCryptoPublicKey()
-            ?.getOrNull()
+    /**
+     * Either take the single key from the JSON Web Key Set, or the one matching the keyId
+     */
+    private fun retrieveJwkFromKeySetUrl(jku: String, keyId: String?): CryptoPublicKey? =
+        jwkSetRetriever(jku)?.keys?.let { keys ->
+            (keys.firstOrNull { it.keyId == keyId } ?: keys.singleOrNull())
+                ?.toCryptoPublicKey()?.getOrNull()
+        }
 
     /**
      * Verifiers the signature of [jwsObject] by using [signer].
@@ -353,6 +363,42 @@ class DefaultVerifierJwsService(
             ?: return false
                 .also { Napier.w("Could not convert signer to public key: $signer") }
         return verify(jwsObject, publicKey)
+    }
+
+    /**
+     * Returns a list of public keys that may have been used to sign this [JwsSigned]
+     * by evaluating its header values (see [JwsHeader.jsonWebKey], [JwsHeader.jsonWebKeySetUrl])
+     * as well as out-of-band transmitted keys from [publicKeyLookup].
+     */
+    fun JwsSigned.loadPublicKeys(): Set<CryptoPublicKey> =
+        header.publicKey?.let { setOf(it) }
+            ?: header.jsonWebKeySetUrl?.let {
+                retrieveJwkFromKeySetUrl(it, header.keyId)?.let { setOf(it) }
+            } ?: publicKeyLookup(this)?.let { jwks ->
+                jwks.mapNotNull { jwk -> jwk.toCryptoPublicKey().getOrNull() }.toSet()
+            } ?: setOf()
+
+    /**
+     * Verifies that the confirmation in [cnf] matches the key from [jwsSigned]
+     */
+    override fun verifyConfirmationClaim(cnf: ConfirmationClaim, jwsSigned: JwsSigned): Boolean {
+        val jwsPublicKeys = jwsSigned.loadPublicKeys()
+        return if (cnf.jsonWebKey != null) {
+            jwsPublicKeys.any { it.equalsCryptographically(cnf.jsonWebKey!!) }
+        } else if (cnf.jsonWebKeyThumbprint != null) {
+            jwsPublicKeys.any {
+                it.toJsonWebKey().let {
+                    it.jwkThumbprint == cnf.jsonWebKeyThumbprint!!
+                            || it.jwkThumbprintWithoutPrefix == cnf.jsonWebKeyThumbprint!!
+                }
+            }
+        } else if (cnf.jsonWebKeySetUrl != null) {
+            retrieveJwkFromKeySetUrl(cnf.jsonWebKeySetUrl!!, cnf.keyId)?.let { cnfKey ->
+                jwsPublicKeys.any { it.equalsCryptographically(cnfKey) }
+            } ?: false
+        } else {
+            false
+        }
     }
 
     private fun verify(jwsObject: JwsSigned, publicKey: CryptoPublicKey): Boolean = catching {
@@ -396,5 +442,5 @@ private data class CompositeKey(
 }
 
 
-
-
+private val JsonWebKey.jwkThumbprintWithoutPrefix: String
+    get() = jwkThumbprint.replace("urn:ietf:params:oauth:jwk-thumbprint:sha256:", "")
