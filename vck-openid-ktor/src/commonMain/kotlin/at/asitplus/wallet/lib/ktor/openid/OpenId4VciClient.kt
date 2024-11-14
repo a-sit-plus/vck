@@ -51,7 +51,14 @@ class OpenId4VciClient(
      * ktor engine to use to make requests to issuing service
      */
     engine: HttpClientEngine,
+    /**
+     * Callers are advised to implement a persistent cookie storage,
+     * to keep the session at the issuing service alive after receiving the auth code
+     */
     cookiesStorage: CookiesStorage? = null,
+    /**
+     * Additional configuration for building the HTTP client, e.g. callers may enable logging
+     */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
     /**
      * Store context before jumping to an external browser with [openUrlExternally]

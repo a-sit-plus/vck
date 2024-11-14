@@ -40,6 +40,9 @@ class OpenId4VpWallet(
      * ktor engine to use to make requests to issuing service
      */
     engine: HttpClientEngine,
+    /**
+     * Additional configuration for building the HTTP client, e.g. callers may enable logging
+     */
     httpClientConfig: (HttpClientConfig<*>.() -> Unit)? = null,
     cryptoService: CryptoService,
     holderAgent: HolderAgent,
