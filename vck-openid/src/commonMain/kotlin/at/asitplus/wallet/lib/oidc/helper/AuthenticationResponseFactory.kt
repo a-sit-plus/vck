@@ -5,7 +5,7 @@ import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ResponseMode.*
 import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.openid.RequestParametersFromClass
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.AuthenticationResponse
@@ -24,7 +24,7 @@ internal class AuthenticationResponseFactory(
     val jwsService: JwsService,
 ) {
     internal suspend fun createAuthenticationResponse(
-        request: RequestParametersFromClass<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ) = when (request.parameters.responseMode) {
         DirectPost -> authnResponseDirectPost(request, response)
@@ -38,7 +38,7 @@ internal class AuthenticationResponseFactory(
      * Per OID4VP, the response may either be signed, or encrypted (never signed and encrypted!)
      */
     internal suspend fun authnResponseDirectPostJwt(
-        request: RequestParametersFromClass<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
@@ -53,7 +53,7 @@ internal class AuthenticationResponseFactory(
     }
 
     internal fun authnResponseDirectPost(
-        request: RequestParametersFromClass<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
@@ -63,7 +63,7 @@ internal class AuthenticationResponseFactory(
     }
 
     internal fun authnResponseQuery(
-        request: RequestParametersFromClass<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Redirect {
         val url = request.parameters.redirectUrl?.let { redirectUrl ->
@@ -81,7 +81,7 @@ internal class AuthenticationResponseFactory(
      * That's the default for `id_token` and `vp_token`
      */
     internal fun authnResponseFragment(
-        request: RequestParametersFromClass<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Redirect {
         val url = request.parameters.redirectUrl?.let { redirectUrl ->
@@ -94,7 +94,7 @@ internal class AuthenticationResponseFactory(
 
 
     private suspend fun buildJarm(
-        request: RequestParametersFromClass<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ) =
         if (response.clientMetadata != null && response.jsonWebKeys != null && response.clientMetadata.requestsEncryption()) {

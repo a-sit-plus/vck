@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.RequestParametersFromClass
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -13,7 +13,6 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
@@ -54,12 +53,12 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 requestOptions = reqOptions
             )
             val params = oidcSiopWallet.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
-                .shouldBeInstanceOf<RequestParametersFromClass.Uri<AuthenticationRequestParameters>>()
+                .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequestParameters>>()
 
 //            val serialized = params.serialize(vckJsonSerializer)
             val serialized = vckJsonSerializer.encodeToString(params)
 //            RequestParametersFromClass.deserialize<AuthenticationRequestParameters>(serialized).getOrThrow() shouldBe params
-            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFromClass<AuthenticationRequestParameters>>(serialized)
+            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
             deserialized shouldBe params
         }
 
@@ -70,7 +69,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 //            val serialized = params.serialize(vckJsonSerializer)
             val serialized = vckJsonSerializer.encodeToString(params)
 //            RequestParametersFromClass.deserialize<AuthenticationRequestParameters>(serialized).getOrThrow() shouldBe params
-            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFromClass<AuthenticationRequestParameters>>(serialized)
+            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
             deserialized shouldBe params
         }
 
@@ -89,7 +88,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 //            val serialized = params.serialize(vckJsonSerializer)
             val serialized = vckJsonSerializer.encodeToString(params)
 //            RequestParametersFromClass.deserialize<AuthenticationRequestParameters>(serialized).getOrThrow() shouldBe params
-            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFromClass<AuthenticationRequestParameters>>(serialized)
+            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
             deserialized shouldBe params
         }
     }

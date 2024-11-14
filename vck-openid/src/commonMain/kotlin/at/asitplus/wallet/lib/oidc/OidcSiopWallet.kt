@@ -17,7 +17,7 @@ import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFromClass
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -149,10 +149,10 @@ class OidcSiopWallet(
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFromClass<AuthenticationRequestParameters>> {
+    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> {
         val test = requestParser.parseRequestParameters(input)
             .getOrThrow()
-        val test2 = catching { test as RequestParametersFromClass<AuthenticationRequestParameters> }
+        val test2 = catching { test as RequestParametersFrom<AuthenticationRequestParameters> }
         return test2
     }
     /**
@@ -160,7 +160,7 @@ class OidcSiopWallet(
      * or JSON serialized as a JWT Request Object.
      */
     suspend fun createAuthnResponse(
-        request: RequestParametersFromClass<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponseResult> =
         createAuthnResponseParams(request).map {
             AuthenticationResponseFactory(jwsService).createAuthenticationResponse(request, it)
@@ -170,7 +170,7 @@ class OidcSiopWallet(
      * Creates the authentication response from the RP's [params]
      */
     suspend fun createAuthnResponseParams(
-        params: RequestParametersFromClass<AuthenticationRequestParameters>,
+        params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponse> = startAuthorizationResponsePreparation(params).map {
         finalizeAuthorizationResponseParameters(
             request = params,
@@ -192,7 +192,7 @@ class OidcSiopWallet(
      * Starts the authorization response building process from the RP's authentication request in [params]
      */
     suspend fun startAuthorizationResponsePreparation(
-        params: RequestParametersFromClass<AuthenticationRequestParameters>,
+        params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         val clientMetadata = params.parameters.loadClientMetadata()
         val presentationDefinition = params.parameters.loadPresentationDefinition()
@@ -208,7 +208,7 @@ class OidcSiopWallet(
      * @param inputDescriptorSubmissions Map from input descriptor ids to [CredentialSubmission]
      */
     suspend fun finalizeAuthorizationResponse(
-        request: RequestParametersFromClass<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponseResult> = finalizeAuthorizationResponseParameters(
@@ -231,11 +231,11 @@ class OidcSiopWallet(
      * @param inputDescriptorSubmissions Map from input descriptor ids to [CredentialSubmission]
      */
     suspend fun finalizeAuthorizationResponseParameters(
-        request: RequestParametersFromClass<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponse> = preparationState.catching {
-        val certKey = (request as? RequestParametersFromClass.JwsSigned<AuthenticationRequestParameters>)
+        val certKey = (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
             ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val audience = request.extractAudience(clientJsonWebKeySet)
@@ -269,7 +269,7 @@ class OidcSiopWallet(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun RequestParametersFromClass<AuthenticationRequestParameters>.extractAudience(
+    private fun RequestParametersFrom<AuthenticationRequestParameters>.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
     ) = clientJsonWebKeySet?.keys?.firstOrNull()
         ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }

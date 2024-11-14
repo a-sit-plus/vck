@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.openid.RequestParametersFromClass
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.rqes.SignatureRequestParameters
 import at.asitplus.wallet.lib.oidc.helper.RequestParser
 import io.kotest.core.spec.style.FreeSpec
@@ -14,6 +14,6 @@ class SignatureRequestParsingTests : FreeSpec({
     "can parse SignatureRequestParameter from signed JWT" {
         val parser = RequestParser()
         val res = parser.parseRequestParameters(jwt).getOrThrow()
-        res.shouldBeInstanceOf<RequestParametersFromClass.JwsSigned<SignatureRequestParameters>>()
+        res.shouldBeInstanceOf<RequestParametersFrom.JwsSigned<SignatureRequestParameters>>()
     }
 })

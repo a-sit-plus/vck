@@ -6,7 +6,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFromClass
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -234,7 +234,7 @@ class OidcSiopProtocolTest : FreeSpec({
         val parsedAuthnRequest: AuthenticationRequestParameters =
             authnRequestUrlParams.decodeFromUrlQuery()
         val authnResponse = holderSiop.createAuthnResponseParams(
-            RequestParametersFromClass.Uri<AuthenticationRequestParameters>(
+            RequestParametersFrom.Uri<AuthenticationRequestParameters>(
                 Url(authnRequestUrlParams),
                 parsedAuthnRequest
             )

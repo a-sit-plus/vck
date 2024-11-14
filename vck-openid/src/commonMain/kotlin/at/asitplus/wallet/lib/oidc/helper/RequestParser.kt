@@ -7,7 +7,7 @@ import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFromClass
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -24,7 +24,7 @@ import io.ktor.util.*
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.json.JsonObject
 
-open class RequestParser(
+class RequestParser(
     /**
      * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
      * or the request itself as `request_uri`, or `presentation_definition_uri`.
@@ -43,7 +43,7 @@ open class RequestParser(
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun parseRequestParameters(input: String): KmmResult<RequestParametersFromClass<*>> = catching {
+    suspend fun parseRequestParameters(input: String): KmmResult<RequestParametersFrom<*>> = catching {
         // maybe it is a request JWS
         val parsedParams = kotlin.run { parseRequestObjectJws(input) }
             ?: kotlin.runCatching { // maybe it's in the URL parameters
@@ -70,7 +70,7 @@ open class RequestParser(
         extractedParams
     }
 
-    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): RequestParametersFromClass<*>? =
+    private suspend fun extractRequestObject(params: AuthenticationRequestParameters): RequestParametersFrom<*>? =
         params.request?.let { requestObject ->
             parseRequestObjectJws(requestObject)
         } ?: params.requestUri?.let { uri ->
@@ -78,26 +78,27 @@ open class RequestParser(
                 ?.let { parseRequestParameters(it).getOrNull() }
         }
 
-    private fun parseRequestObjectJws(requestObject: String): RequestParametersFromClass<*>? {
-        return JwsSigned.deserialize<AuthenticationRequestParameters>(requestObject, vckJsonSerializer).getOrNull()?.let { jws ->
-            if (requestObjectJwsVerifier.invoke(jws)) {
-                RequestParametersFromClass.JwsSigned(jws, jws.payload)
-            } else null
-                .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
-        }
+    private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom<*>? {
+        return JwsSigned.deserialize<AuthenticationRequestParameters>(requestObject, vckJsonSerializer).getOrNull()
+            ?.let { jws ->
+                if (requestObjectJwsVerifier.invoke(jws)) {
+                    RequestParametersFrom.JwsSigned(jws, jws.payload)
+                } else null
+                    .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
+            }
     }
 
-    open fun <T> matchRequestParameterCases(input: T, params: RequestParameters): RequestParametersFromClass<*> =
+    private fun <T> matchRequestParameterCases(input: T, params: RequestParameters): RequestParametersFrom<*> =
         when (params) {
             is AuthenticationRequestParameters ->
                 when (input) {
-                    is Url -> RequestParametersFromClass.Uri(input, params)
-                    is JwsSigned<*> -> RequestParametersFromClass.JwsSigned(
+                    is Url -> RequestParametersFrom.Uri(input, params)
+                    is JwsSigned<*> -> RequestParametersFrom.JwsSigned(
                         input as JwsSigned<RequestParameters>,
                         params
                     )
 
-                    is String -> RequestParametersFromClass.Json(input, params)
+                    is String -> RequestParametersFrom.Json(input, params)
                     else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
                 }
 
