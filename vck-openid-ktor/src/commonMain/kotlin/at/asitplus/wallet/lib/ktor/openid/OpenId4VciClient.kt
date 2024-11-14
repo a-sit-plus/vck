@@ -450,47 +450,12 @@ class OpenId4VciClient(
         val authRequest =
             oid4vciService.oauth2Client.createAuthRequest(state, authorizationDetails, issuerState = issuerState)
         val authorizationUrl = if (pushedAuthorizationRequestEndpoint != null && push) {
-            val clientAttestationJwt = if (tokenAuthMethods?.contains("attest_jwt_client_auth") == true) {
-                jwsService.buildClientAttestationJwt(
-                    clientId = clientId,
-                    issuer = "https://example.com",
-                    lifetime = 60.minutes,
-                    clientKey = cryptoService.keyMaterial.jsonWebKey
-                )
-            } else null
-            val clientAttestationPoPJwt = if (tokenAuthMethods?.contains("attest_jwt_client_auth") == true) {
-                jwsService.buildClientAttestationPoPJwt(
-                    clientId = clientId,
-                    audience = credentialIssuer,
-                    lifetime = 10.minutes,
-                )
-            } else null
-            val response = client.submitForm(
-                url = pushedAuthorizationRequestEndpoint,
-                formParameters = parameters {
-                    authRequest.encodeToParameters().forEach { append(it.key, it.value) }
-                    append("prompt", "login")
-                }
-            ) {
-                headers {
-                    clientAttestationJwt?.let { append("OAuth-Client-Attestation", it.serialize()) }
-                    clientAttestationPoPJwt?.let { append("OAuth-Client-Attestation-PoP", it.serialize()) }
-                }
-            }.body<PushedAuthenticationResponseParameters>()
-            if (response.errorDescription != null) {
-                throw Exception(response.errorDescription)
-            }
-            if (response.error != null) {
-                throw Exception(response.error)
-            }
-            if (response.requestUri == null) {
-                throw Exception("No request_uri from PAR response at $pushedAuthorizationRequestEndpoint")
-            }
-
-            val authRequestAfterPar = AuthenticationRequestParameters(
-                clientId = clientId,
-                requestUri = response.requestUri,
-                state = state,
+            val authRequestAfterPar = pushAuthorizationRequest(
+                authRequest,
+                state,
+                pushedAuthorizationRequestEndpoint,
+                credentialIssuer,
+                tokenAuthMethods
             )
             URLBuilder(authorizationEndpointUrl).also { builder ->
                 authRequestAfterPar.encodeToParameters<AuthenticationRequestParameters>().forEach {
@@ -507,6 +472,57 @@ class OpenId4VciClient(
         }
         Napier.d("Provisioning starts by opening URL $authorizationUrl")
         openUrlExternally.invoke(authorizationUrl)
+    }
+
+    private suspend fun pushAuthorizationRequest(
+        authRequest: AuthenticationRequestParameters,
+        state: String,
+        pushedAuthorizationRequestEndpoint: String,
+        credentialIssuer: String,
+        tokenAuthMethods: Set<String>?
+    ): AuthenticationRequestParameters {
+        val clientAttestationJwt = if (tokenAuthMethods?.contains("attest_jwt_client_auth") == true) {
+            jwsService.buildClientAttestationJwt(
+                clientId = clientId,
+                issuer = "https://example.com",
+                lifetime = 60.minutes,
+                clientKey = cryptoService.keyMaterial.jsonWebKey
+            )
+        } else null
+        val clientAttestationPoPJwt = if (tokenAuthMethods?.contains("attest_jwt_client_auth") == true) {
+            jwsService.buildClientAttestationPoPJwt(
+                clientId = clientId,
+                audience = credentialIssuer,
+                lifetime = 10.minutes,
+            )
+        } else null
+        val response = client.submitForm(
+            url = pushedAuthorizationRequestEndpoint,
+            formParameters = parameters {
+                authRequest.encodeToParameters().forEach { append(it.key, it.value) }
+                append("prompt", "login")
+            }
+        ) {
+            headers {
+                clientAttestationJwt?.let { append("OAuth-Client-Attestation", it.serialize()) }
+                clientAttestationPoPJwt?.let { append("OAuth-Client-Attestation-PoP", it.serialize()) }
+            }
+        }.body<PushedAuthenticationResponseParameters>()
+        if (response.errorDescription != null) {
+            throw Exception(response.errorDescription)
+        }
+        if (response.error != null) {
+            throw Exception(response.error)
+        }
+        if (response.requestUri == null) {
+            throw Exception("No request_uri from PAR response at $pushedAuthorizationRequestEndpoint")
+        }
+
+        return AuthenticationRequestParameters(
+            clientId = clientId,
+            requestUri = response.requestUri,
+            state = state,
+        )
     }
 
 }
