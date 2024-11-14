@@ -32,6 +32,7 @@ Release 5.2.0:
  - Adapt to changes in `signum`, i.e. the classes `JwsSigned`, `JweDecrypted`, `CoseSigned` are now typed to their payload, leading to changes in `CoseService` and `JwsService` to add overloads for typed payloads, as well as members in data classes containing e.g. `JwsSigned<*>`
  - ISO credentials: Serialize and deserialize device signed items correctly (i.e. considering the namespace of the element)
  - Add `issuerState` to `OAuth2Client.createAuthRequest` for OID4VCI flows
+ - Add extension functions to `JwsService` to create JWTs for OAuth 2.0 Attestation-Based Client Authentication
 
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact
