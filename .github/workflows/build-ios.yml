@@ -28,6 +28,12 @@ jobs:
           name: VckOpenIdKmm-debug.xcframework
           path: |
             vck-openid/build/XCFrameworks/debug/
+      - name: Upload debug XCFramework vck-openid-ktor
+        uses: actions/upload-artifact@v3
+        with:
+          name: VckOpenIdKtorKmm-debug.xcframework
+          path: |
+            vck-openid-ktor/build/XCFrameworks/debug/
       - name: Upload release XCFramework vck
         uses: actions/upload-artifact@v3
         with:
@@ -40,3 +46,9 @@ jobs:
           name: VckOpenIdKmm-release.xcframework
           path: |
             vck-openid/build/XCFrameworks/release/
+      - name: Upload release XCFramework vck-openid-ktor
+        uses: actions/upload-artifact@v3
+        with:
+          name: VckOpenIdKtorKmm-release.xcframework
+          path: |
+            vck-openid-ktor/build/XCFrameworks/release/

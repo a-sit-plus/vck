@@ -33,7 +33,7 @@ include(":rqes-data-classes")
 include(":vck")
 include(":vck-openid")
 include(":vck-rqes")
-include(":mobiledrivinglicence")
+include(":vck-openid-ktor")
 
 dependencyResolutionManagement {
     repositories {

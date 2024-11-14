@@ -26,3 +26,9 @@ jobs:
           name: vck-openid
           path: |
             vck-openid/build/libs/*jar
+      - name: Upload jar vck-openid-ktor
+        uses: actions/upload-artifact@v3
+        with:
+          name: vck-openid-ktor
+          path: |
+            vck-openid-ktor/build/libs/*jar
