@@ -60,7 +60,7 @@ class OpenId4VpWallet(
         }
         httpClientConfig?.let { apply(it) }
     }
-    private val oidcSiopWallet = OidcSiopWallet(
+    val oidcSiopWallet = OidcSiopWallet(
         holder = holderAgent,
         agentPublicKey = cryptoService.keyMaterial.publicKey,
         jwsService = DefaultJwsService(cryptoService),

@@ -4,6 +4,9 @@ import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
+import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT
+import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT_LOGIN
+import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
@@ -36,8 +39,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration.Companion.minutes
-
-
 
 
 /**
@@ -105,7 +106,7 @@ class OpenId4VciClient(
             }
         }
     }
-    private val oid4vciService = WalletService(
+    val oid4vciService = WalletService(
         clientId = clientId,
         cryptoService = cryptoService,
         redirectUrl = redirectUrl
@@ -305,7 +306,7 @@ class OpenId4VciClient(
             credentialIssuer = credentialIssuer,
         ).getOrThrow()
 
-        val dpopHeader = if (tokenResponse.tokenType.lowercase() == "dpop")
+        val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))
             jwsService.buildDPoPHeader(url = credentialEndpointUrl, accessToken = tokenResponse.accessToken)
         else null
 
@@ -468,7 +469,7 @@ class OpenId4VciClient(
                 authRequest.encodeToParameters<AuthenticationRequestParameters>().forEach {
                     builder.parameters.append(it.key, it.value)
                 }
-                builder.parameters.append("prompt", "login")
+                builder.parameters.append(PARAMETER_PROMPT, PARAMETER_PROMPT_LOGIN)
             }.build().toString()
         }
         Napier.d("Provisioning starts by opening URL $authorizationUrl")
@@ -497,7 +498,7 @@ class OpenId4VciClient(
             url = url,
             formParameters = parameters {
                 authRequest.encodeToParameters().forEach { append(it.key, it.value) }
-                append("prompt", "login")
+                append(PARAMETER_PROMPT, PARAMETER_PROMPT_LOGIN)
             }
         ) {
             headers {

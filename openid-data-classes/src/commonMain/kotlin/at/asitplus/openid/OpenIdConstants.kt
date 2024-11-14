@@ -24,6 +24,8 @@ object OpenIdConstants {
 
     const val TOKEN_TYPE_BEARER = "bearer"
 
+    const val TOKEN_TYPE_DPOP = "dpop"
+
     const val URN_TYPE_JWK_THUMBPRINT = "urn:ietf:params:oauth:jwk-thumbprint"
 
     const val BINDING_METHOD_COSE_KEY = "cose_key"
@@ -52,6 +54,11 @@ object OpenIdConstants {
     const val PROOF_CWT_TYPE = "openid4vci-proof+cwt"
 
     const val AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH = "attest_jwt_client_auth"
+
+    const val PARAMETER_PROMPT = "prompt"
+
+    const val PARAMETER_PROMPT_LOGIN = "login"
+
 
     @Serializable(with = ProofType.Serializer::class)
     sealed class ProofType(val stringRepresentation: String) {
