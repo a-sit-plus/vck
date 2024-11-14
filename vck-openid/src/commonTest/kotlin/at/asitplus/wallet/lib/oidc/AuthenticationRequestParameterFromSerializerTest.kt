@@ -55,9 +55,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             val params = oidcSiopWallet.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequestParameters>>()
 
-//            val serialized = params.serialize(vckJsonSerializer)
             val serialized = vckJsonSerializer.encodeToString(params)
-//            RequestParametersFromClass.deserialize<AuthenticationRequestParameters>(serialized).getOrThrow() shouldBe params
             val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
             deserialized shouldBe params
         }
@@ -66,9 +64,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             val authnRequest = verifierSiop.createAuthnRequest(requestOptions = reqOptions).serialize()
             val params = oidcSiopWallet.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
 
-//            val serialized = params.serialize(vckJsonSerializer)
             val serialized = vckJsonSerializer.encodeToString(params)
-//            RequestParametersFromClass.deserialize<AuthenticationRequestParameters>(serialized).getOrThrow() shouldBe params
             val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
             deserialized shouldBe params
         }
@@ -85,9 +81,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             val interim2 = interim1.request ?: throw Exception("Authn request is null")
             val params = oidcSiopWallet.parseAuthenticationRequestParameters(interim2).getOrThrow()
 
-//            val serialized = params.serialize(vckJsonSerializer)
             val serialized = vckJsonSerializer.encodeToString(params)
-//            RequestParametersFromClass.deserialize<AuthenticationRequestParameters>(serialized).getOrThrow() shouldBe params
             val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
             deserialized shouldBe params
         }

@@ -149,12 +149,12 @@ class OidcSiopWallet(
      * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
-    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> {
-        val test = requestParser.parseRequestParameters(input)
-            .getOrThrow()
-        val test2 = catching { test as RequestParametersFrom<AuthenticationRequestParameters> }
-        return test2
-    }
+    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
+        catching {
+            requestParser.parseRequestParameters(input)
+                .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
+        }
+
     /**
      * Pass in the deserialized [AuthenticationRequestParameters], which were either encoded as query params,
      * or JSON serialized as a JWT Request Object.
