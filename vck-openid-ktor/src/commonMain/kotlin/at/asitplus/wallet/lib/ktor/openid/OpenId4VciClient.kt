@@ -36,6 +36,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration.Companion.minutes
 
+
+
 /**
  * Implements the client side of [OpenID for Verifiable Credential Issuance - draft 14](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html).
  *
@@ -279,9 +281,9 @@ class OpenId4VciClient(
             }
         ) {
             headers {
-                clientAttestationJwt?.let { append("OAuth-Client-Attestation", it) }
-                clientAttestationPoPJwt?.let { append("OAuth-Client-Attestation-PoP", it) }
-                dpopHeader?.let { append("DPoP", it) }
+                clientAttestationJwt?.let { append(HttpHeaders.OAuthClientAttestation, it) }
+                clientAttestationPoPJwt?.let { append(HttpHeaders.OAuthClientAttestationPop, it) }
+                dpopHeader?.let { append(HttpHeaders.DPoP, it) }
             }
         }.body<TokenResponseParameters>()
     }
@@ -309,7 +311,7 @@ class OpenId4VciClient(
             setBody(credentialRequest)
             headers {
                 append(HttpHeaders.Authorization, "${tokenResponse.tokenType} ${tokenResponse.accessToken}")
-                dpopHeader?.let { append("DPoP", it) }
+                dpopHeader?.let { append(HttpHeaders.DPoP, it) }
             }
         }.body()
 
@@ -495,8 +497,8 @@ class OpenId4VciClient(
             }
         ) {
             headers {
-                clientAttestationJwt?.let { append("OAuth-Client-Attestation", it) }
-                clientAttestationPoPJwt?.let { append("OAuth-Client-Attestation-PoP", it) }
+                clientAttestationJwt?.let { append(HttpHeaders.OAuthClientAttestation, it) }
+                clientAttestationPoPJwt?.let { append(HttpHeaders.OAuthClientAttestationPop, it) }
             }
         }.body<PushedAuthenticationResponseParameters>()
         if (response.errorDescription != null) {
@@ -540,3 +542,13 @@ data class CredentialIdentifierInfo(
     val attributes: Collection<String>,
     val supportedCredentialFormat: SupportedCredentialFormat,
 )
+
+
+private val HttpHeaders.OAuthClientAttestation: String
+    get() = "OAuth-Client-Attestation"
+
+private val HttpHeaders.OAuthClientAttestationPop: String
+    get() = "OAuth-Client-Attestation-PoP"
+
+private val HttpHeaders.DPoP: String
+    get() = "DPoP"
