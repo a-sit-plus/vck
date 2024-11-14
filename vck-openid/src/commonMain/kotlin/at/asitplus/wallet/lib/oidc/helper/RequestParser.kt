@@ -94,10 +94,7 @@ class RequestParser(
                 when (input) {
                     is Url -> RequestParametersFrom.Uri(input, params)
                     is JwsSigned<*> -> RequestParametersFrom.JwsSigned(
-                        input as JwsSigned<RequestParameters>,
-                        params
-                    )
-
+                        input as JwsSigned<RequestParameters>, params)
                     is String -> RequestParametersFrom.Json(input, params)
                     else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
                 }
