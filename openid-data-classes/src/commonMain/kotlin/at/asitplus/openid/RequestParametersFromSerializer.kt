@@ -64,25 +64,18 @@ class RequestParametersFromSerializer<T : RequestParameters>(
             JwsSignedElementName in element.jsonObject -> run {
                 val parameters =
                     decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject[ParametersElementName]!!)
-                val jwsSignedRaw = decoder.json.decodeFromJsonElement<String>(element.jsonObject[JwsSignedElementName]!!)
-                val jwsSignedFinal1 = JwsSigned.deserialize(jwsSignedRaw).getOrThrow()
-                val jws = JwsSigned<T>(
-                    jwsSignedFinal1.header,
-                    parameters,
-                    jwsSignedFinal1.signature,
-                    jwsSignedFinal1.plainSignatureInput
-                )
+                val jwsString = decoder.json.decodeFromJsonElement<String>(element.jsonObject[JwsSignedElementName]!!)
+                val jwsGeneric = JwsSigned.deserialize(jwsString).getOrThrow()
                 RequestParametersFrom.JwsSigned(
-                    jws,
-                    parameters,
+                    JwsSigned<T>(jwsGeneric.header, parameters, jwsGeneric.signature, jwsGeneric.plainSignatureInput),
+                    parameters
                 )
             }
 
-            UriElementName in element.jsonObject ->
-                RequestParametersFrom.Uri(
-                    decoder.json.decodeFromJsonElement(UrlSerializer, element.jsonObject[UriElementName]!!),
-                    decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject[ParametersElementName]!!)
-                )
+            UriElementName in element.jsonObject -> RequestParametersFrom.Uri(
+                decoder.json.decodeFromJsonElement(UrlSerializer, element.jsonObject[UriElementName]!!),
+                decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject[ParametersElementName]!!)
+            )
 
             else -> throw NotImplementedError("Unknown RequestParametersFrom subclass. Input: $element")
         }
