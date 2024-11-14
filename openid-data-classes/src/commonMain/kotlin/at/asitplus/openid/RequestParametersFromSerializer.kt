@@ -14,6 +14,15 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 
+private const val JwsSignedSerialName = "JwsSigned"
+private const val JsonSerialName = "Json"
+private const val UriSerialName = "Uri"
+
+private const val JwsSignedElementName = "jwsSigned"
+private const val JsonElementName = "jsonString"
+private const val UriElementName = "url"
+private const val ParametersElementName = "parameters"
+
 /**
  * In order to de-/serialize generic types we need a kind of factory approach
  * Because we deal with a sealed class we can use an intermediary jsonSerializer,
@@ -28,17 +37,17 @@ class RequestParametersFromSerializer<T : RequestParameters>(
     private val parameterSerializer: KSerializer<T>,
 ) : KSerializer<RequestParametersFrom<T>> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("RequestParametersFromClass") {
-        element("Json", buildClassSerialDescriptor("Json") {
-            element<String>("jsonString")
-            element("parameters", parameterSerializer.descriptor)
+        element(JsonSerialName, buildClassSerialDescriptor(JsonSerialName) {
+            element<String>(JsonElementName)
+            element(ParametersElementName, parameterSerializer.descriptor)
         })
-        element("JwsSigned", buildClassSerialDescriptor("JwsSigned") {
-            element("jwsSigned", JwsSignedSerializer.descriptor)
-            element("parameters", parameterSerializer.descriptor)
+        element(JwsSignedSerialName, buildClassSerialDescriptor(JwsSignedSerialName) {
+            element(JwsSignedElementName, JwsSignedSerializer.descriptor)
+            element(ParametersElementName, parameterSerializer.descriptor)
         })
-        element("Url", buildClassSerialDescriptor("Url") {
-            element("url", UrlSerializer.descriptor)
-            element("parameters", parameterSerializer.descriptor)
+        element(UriSerialName, buildClassSerialDescriptor(UriSerialName) {
+            element(UriElementName, UrlSerializer.descriptor)
+            element(ParametersElementName, parameterSerializer.descriptor)
         })
     }
 
@@ -47,15 +56,15 @@ class RequestParametersFromSerializer<T : RequestParameters>(
 
         val element = decoder.decodeJsonElement()
         return when {
-            "jsonString" in element.jsonObject -> RequestParametersFrom.Json(
-                decoder.json.decodeFromJsonElement<String>(element.jsonObject["jsonString"]!!),
-                decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject["parameters"]!!)
+            JsonElementName in element.jsonObject -> RequestParametersFrom.Json(
+                decoder.json.decodeFromJsonElement<String>(element.jsonObject[JsonElementName]!!),
+                decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject[ParametersElementName]!!)
             )
 
-            "jwsSigned" in element.jsonObject -> run {
+            JwsSignedElementName in element.jsonObject -> run {
                 val parameters =
-                    decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject["parameters"]!!)
-                val jwsSignedRaw = decoder.json.decodeFromJsonElement<String>(element.jsonObject["jwsSigned"]!!)
+                    decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject[ParametersElementName]!!)
+                val jwsSignedRaw = decoder.json.decodeFromJsonElement<String>(element.jsonObject[JwsSignedElementName]!!)
                 val jwsSignedFinal1 = JwsSigned.deserialize(jwsSignedRaw).getOrThrow()
                 val jws = JwsSigned<T>(
                     jwsSignedFinal1.header,
@@ -69,10 +78,10 @@ class RequestParametersFromSerializer<T : RequestParameters>(
                 )
             }
 
-            "url" in element.jsonObject ->
+            UriElementName in element.jsonObject ->
                 RequestParametersFrom.Uri(
-                    decoder.json.decodeFromJsonElement(UrlSerializer, element.jsonObject["url"]!!),
-                    decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject["parameters"]!!)
+                    decoder.json.decodeFromJsonElement(UrlSerializer, element.jsonObject[UriElementName]!!),
+                    decoder.json.decodeFromJsonElement(parameterSerializer, element.jsonObject[ParametersElementName]!!)
                 )
 
             else -> throw NotImplementedError("Unknown RequestParametersFrom subclass. Input: $element")
@@ -83,33 +92,18 @@ class RequestParametersFromSerializer<T : RequestParameters>(
         require(encoder is JsonEncoder) // this class can be decoded only by Json
         val element = when (value) {
             is RequestParametersFrom.Json -> buildJsonObject {
-                put("jsonString", encoder.json.encodeToJsonElement(value.jsonString))
-                put(
-                    "parameters", encoder.json.encodeToJsonElement(
-                        parameterSerializer,
-                        value.parameters
-                    )
-                )
+                put(JsonElementName, encoder.json.encodeToJsonElement(value.jsonString))
+                put(ParametersElementName, encoder.json.encodeToJsonElement(parameterSerializer, value.parameters))
             }
 
             is RequestParametersFrom.JwsSigned -> buildJsonObject {
-                put("jwsSigned", encoder.json.encodeToJsonElement(value.jwsSigned.serialize()))
-                put(
-                    "parameters", encoder.json.encodeToJsonElement(
-                        parameterSerializer,
-                        value.parameters
-                    )
-                )
+                put(JwsSignedElementName, encoder.json.encodeToJsonElement(value.jwsSigned.serialize()))
+                put(ParametersElementName, encoder.json.encodeToJsonElement(parameterSerializer, value.parameters))
             }
 
             is RequestParametersFrom.Uri -> buildJsonObject {
-                put("url", encoder.json.encodeToJsonElement(UrlSerializer, value.url))
-                put(
-                    "parameters", encoder.json.encodeToJsonElement(
-                        parameterSerializer,
-                        value.parameters
-                    )
-                )
+                put(UriElementName, encoder.json.encodeToJsonElement(UrlSerializer, value.url))
+                put(ParametersElementName, encoder.json.encodeToJsonElement(parameterSerializer, value.parameters))
             }
         }
         encoder.encodeJsonElement(element)
