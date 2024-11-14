@@ -34,9 +34,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -479,19 +476,26 @@ class OpenId4VciClient(
                     clientAttestationJwt?.let { append("OAuth-Client-Attestation", it.serialize()) }
                     clientAttestationPoPJwt?.let { append("OAuth-Client-Attestation-PoP", it.serialize()) }
                 }
-            }.body<JsonObject>()
+            }.body<PushedAuthenticationResponseParameters>()
+            if (response.errorDescription != null) {
+                throw Exception(response.errorDescription)
+            }
+            if (response.error != null) {
+                throw Exception(response.error)
+            }
+            if (response.requestUri == null) {
+                throw Exception("No request_uri from PAR response at $pushedAuthorizationRequestEndpoint")
+            }
 
-            // format is {"expires_in":3600,"request_uri":"urn:uuid:c330d8b1-6ecb-4437-8818-cbca64d2e710"}
-            (response["error_description"] as? JsonPrimitive?)?.contentOrNull
-                ?.let { throw Exception(it) }
-            (response["error"] as? JsonPrimitive?)?.contentOrNull
-                ?.let { throw Exception(it) }
-            val requestUri = (response["request_uri"] as? JsonPrimitive?)?.contentOrNull
-                ?: throw Exception("No request_uri from PAR response")
+            val authRequestAfterPar = AuthenticationRequestParameters(
+                clientId = clientId,
+                requestUri = response.requestUri,
+                state = state,
+            )
             URLBuilder(authorizationEndpointUrl).also { builder ->
-                builder.parameters.append("client_id", clientId)
-                builder.parameters.append("request_uri", requestUri)
-                builder.parameters.append("state", state)
+                authRequestAfterPar.encodeToParameters<AuthenticationRequestParameters>().forEach {
+                    builder.parameters.append(it.key, it.value)
+                }
             }.build().toString()
         } else {
             URLBuilder(authorizationEndpointUrl).also { builder ->
