@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
+import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -39,7 +40,13 @@ import kotlinx.serialization.json.contentOrNull
 import kotlin.time.Duration.Companion.minutes
 
 /**
- * Implements the client side of [OpenID for Verifiable Credential Issuance - draft 14](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
+ * Implements the client side of [OpenID for Verifiable Credential Issuance - draft 14](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html).
+ *
+ * Supported features:
+ *  * Pre-authorized grants
+ *  * Authentication code flows
+ *  * [OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://datatracker.ietf.org/doc/html/rfc9449)
+ *  * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
  */
 class OpenId4VciClient(
     /**
@@ -206,7 +213,8 @@ class OpenId4VciClient(
                 state = context.state,
                 authorization = AuthorizationForToken.Code(code),
                 scope = context.credential.supportedCredentialFormat.scope,
-            )
+            ),
+            dpopSigningAlgValuesSupported = context.oauthMetadata.dpopSigningAlgValuesSupported
         )
         Napier.i("Received token response $tokenResponse")
 
@@ -240,7 +248,8 @@ class OpenId4VciClient(
     private suspend fun postToken(
         tokenEndpointUrl: String,
         credentialIssuer: String,
-        tokenRequest: TokenRequestParameters
+        tokenRequest: TokenRequestParameters,
+        dpopSigningAlgValuesSupported: Set<JsonWebAlgorithm>?
     ): TokenResponseParameters {
         Napier.i("postToken: $tokenEndpointUrl with $tokenRequest")
         // TODO Decide when to set Attestation Header
@@ -257,19 +266,20 @@ class OpenId4VciClient(
             audience = credentialIssuer,
             lifetime = 10.minutes,
         )
-        // TODO Decide when to set DPoP header
-        val dpopHeader = jwsService.buildDPoPHeader(
-            url = tokenEndpointUrl,
-        )
+        val dpopHeader = if (dpopSigningAlgValuesSupported?.contains(jwsService.algorithm) == true) {
+            jwsService.buildDPoPHeader(url = tokenEndpointUrl)
+        } else null
         return client.submitForm(
             url = tokenEndpointUrl,
             formParameters = parameters {
                 tokenRequest.encodeToParameters<TokenRequestParameters>().forEach { append(it.key, it.value) }
             }
         ) {
-            headers["OAuth-Client-Attestation"] = clientAttestationJwt.serialize()
-            headers["OAuth-Client-Attestation-PoP"] = clientAttestationPoPJwt.serialize()
-            headers["DPoP"] = dpopHeader
+            headers {
+                append("OAuth-Client-Attestation", clientAttestationJwt.serialize())
+                append("OAuth-Client-Attestation-PoP", clientAttestationPoPJwt.serialize())
+                dpopHeader?.let { append("DPoP", it) }
+            }
         }.body<TokenResponseParameters>()
     }
 
@@ -287,16 +297,17 @@ class OpenId4VciClient(
             credentialIssuer = credentialIssuer,
         ).getOrThrow()
 
-        // TODO Decide when to set DPoP header
-        val dpopHeader = jwsService.buildDPoPHeader(
-            url = credentialEndpointUrl,
-            accessToken = tokenResponse.accessToken
-        )
+        val dpopHeader = if (tokenResponse.tokenType.lowercase() == "dpop")
+            jwsService.buildDPoPHeader(url = credentialEndpointUrl, accessToken = tokenResponse.accessToken)
+        else null
+
         val credentialResponse: CredentialResponseParameters = client.post(credentialEndpointUrl) {
             contentType(ContentType.Application.Json)
             setBody(credentialRequest)
-            headers["Authorization"] = "${tokenResponse.tokenType} ${tokenResponse.accessToken}"
-            headers["DPoP"] = dpopHeader
+            headers {
+                append(HttpHeaders.Authorization, "${tokenResponse.tokenType} ${tokenResponse.accessToken}")
+                dpopHeader?.let { append("DPoP", it) }
+            }
         }.body()
 
         val storeCredentialInput = credentialResponse.credential
@@ -353,7 +364,8 @@ class OpenId4VciClient(
                     state = state,
                     authorization = AuthorizationForToken.PreAuthCode(it.preAuthorizedCode, transactionCode),
                     authorizationDetails = authorizationDetails
-                )
+                ),
+                dpopSigningAlgValuesSupported = oauthMetadata.dpopSigningAlgValuesSupported
             )
             Napier.i("Received token response $tokenResponse")
 
