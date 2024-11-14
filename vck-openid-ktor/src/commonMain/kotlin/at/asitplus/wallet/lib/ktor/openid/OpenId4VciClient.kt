@@ -72,6 +72,12 @@ class OpenId4VciClient(
      * Load context after resuming with auth code in [resumeWithAuthCode]
      */
     private val loadProvisioningContext: suspend () -> ProvisioningContext?,
+    /**
+     * Callback to load the client attestation JWT, which may be needed as authentication at the AS,
+     * where the `clientId` must match [clientId] and the key attested in `cnf` must match [cryptoService]'s key, see
+     * [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-04.html)
+     */
+    private val loadClientAttestationJwt: suspend () -> String,
     private val cryptoService: CryptoService,
     private val holderAgent: HolderAgent,
     redirectUrl: String,
@@ -181,7 +187,7 @@ class OpenId4VciClient(
             ),
             authorizationEndpointUrl = oauthMetadata.authorizationEndpoint
                 ?: throw Exception("no authorizationEndpoint in $oauthMetadata"),
-            pushedAuthorizationRequestEndpoint = oauthMetadata.pushedAuthorizationRequestEndpoint,
+            parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint,
             credentialIssuer = credentialIssuer,
             push = oauthMetadata.requirePushedAuthorizationRequests ?: false,
             tokenAuthMethods = oauthMetadata.tokenEndPointAuthMethodsSupported
@@ -253,19 +259,14 @@ class OpenId4VciClient(
     ): TokenResponseParameters {
         Napier.i("postToken: $tokenEndpointUrl with $tokenRequest")
         val clientAttestationJwt = if (tokenAuthMethods?.contains("attest_jwt_client_auth") == true) {
-            jwsService.buildClientAttestationJwt(
-                clientId = clientId,
-                issuer = "https://example.com",
-                lifetime = 60.minutes,
-                clientKey = cryptoService.keyMaterial.jsonWebKey
-            )
+            loadClientAttestationJwt.invoke()
         } else null
         val clientAttestationPoPJwt = if (tokenAuthMethods?.contains("attest_jwt_client_auth") == true) {
             jwsService.buildClientAttestationPoPJwt(
                 clientId = clientId,
                 audience = credentialIssuer,
                 lifetime = 10.minutes,
-            )
+            ).serialize()
         } else null
 
         val dpopHeader = if (dpopSigningAlgValuesSupported?.contains(jwsService.algorithm) == true) {
@@ -278,8 +279,8 @@ class OpenId4VciClient(
             }
         ) {
             headers {
-                clientAttestationJwt?.let { append("OAuth-Client-Attestation", it.serialize()) }
-                clientAttestationPoPJwt?.let { append("OAuth-Client-Attestation-PoP", it.serialize()) }
+                clientAttestationJwt?.let { append("OAuth-Client-Attestation", it) }
+                clientAttestationPoPJwt?.let { append("OAuth-Client-Attestation-PoP", it) }
                 dpopHeader?.let { append("DPoP", it) }
             }
         }.body<TokenResponseParameters>()
@@ -403,7 +404,7 @@ class OpenId4VciClient(
                 ),
                 authorizationEndpointUrl = oauthMetadata.authorizationEndpoint
                     ?: throw Exception("no authorizationEndpoint in $oauthMetadata"),
-                pushedAuthorizationRequestEndpoint = oauthMetadata.pushedAuthorizationRequestEndpoint,
+                parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint,
                 credentialIssuer = credentialIssuer,
                 issuerState = it.issuerState,
                 push = oauthMetadata.requirePushedAuthorizationRequests ?: false,
@@ -441,7 +442,7 @@ class OpenId4VciClient(
         state: String,
         authorizationDetails: Set<OpenIdAuthorizationDetails>,
         authorizationEndpointUrl: String,
-        pushedAuthorizationRequestEndpoint: String?,
+        parEndpointUrl: String?,
         credentialIssuer: String,
         issuerState: String? = null,
         push: Boolean = false,
@@ -449,14 +450,9 @@ class OpenId4VciClient(
     ) {
         val authRequest =
             oid4vciService.oauth2Client.createAuthRequest(state, authorizationDetails, issuerState = issuerState)
-        val authorizationUrl = if (pushedAuthorizationRequestEndpoint != null && push) {
-            val authRequestAfterPar = pushAuthorizationRequest(
-                authRequest,
-                state,
-                pushedAuthorizationRequestEndpoint,
-                credentialIssuer,
-                tokenAuthMethods
-            )
+        val authorizationUrl = if (parEndpointUrl != null && push) {
+            val authRequestAfterPar =
+                pushAuthorizationRequest(authRequest, state, parEndpointUrl, credentialIssuer, tokenAuthMethods)
             URLBuilder(authorizationEndpointUrl).also { builder ->
                 authRequestAfterPar.encodeToParameters<AuthenticationRequestParameters>().forEach {
                     builder.parameters.append(it.key, it.value)
@@ -477,35 +473,30 @@ class OpenId4VciClient(
     private suspend fun pushAuthorizationRequest(
         authRequest: AuthenticationRequestParameters,
         state: String,
-        pushedAuthorizationRequestEndpoint: String,
+        url: String,
         credentialIssuer: String,
         tokenAuthMethods: Set<String>?
     ): AuthenticationRequestParameters {
         val clientAttestationJwt = if (tokenAuthMethods?.contains("attest_jwt_client_auth") == true) {
-            jwsService.buildClientAttestationJwt(
-                clientId = clientId,
-                issuer = "https://example.com",
-                lifetime = 60.minutes,
-                clientKey = cryptoService.keyMaterial.jsonWebKey
-            )
+            loadClientAttestationJwt.invoke()
         } else null
         val clientAttestationPoPJwt = if (tokenAuthMethods?.contains("attest_jwt_client_auth") == true) {
             jwsService.buildClientAttestationPoPJwt(
                 clientId = clientId,
                 audience = credentialIssuer,
                 lifetime = 10.minutes,
-            )
+            ).serialize()
         } else null
         val response = client.submitForm(
-            url = pushedAuthorizationRequestEndpoint,
+            url = url,
             formParameters = parameters {
                 authRequest.encodeToParameters().forEach { append(it.key, it.value) }
                 append("prompt", "login")
             }
         ) {
             headers {
-                clientAttestationJwt?.let { append("OAuth-Client-Attestation", it.serialize()) }
-                clientAttestationPoPJwt?.let { append("OAuth-Client-Attestation-PoP", it.serialize()) }
+                clientAttestationJwt?.let { append("OAuth-Client-Attestation", it) }
+                clientAttestationPoPJwt?.let { append("OAuth-Client-Attestation-PoP", it) }
             }
         }.body<PushedAuthenticationResponseParameters>()
         if (response.errorDescription != null) {
@@ -515,7 +506,7 @@ class OpenId4VciClient(
             throw Exception(response.error)
         }
         if (response.requestUri == null) {
-            throw Exception("No request_uri from PAR response at $pushedAuthorizationRequestEndpoint")
+            throw Exception("No request_uri from PAR response at $url")
         }
 
         return AuthenticationRequestParameters(
