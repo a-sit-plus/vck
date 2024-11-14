@@ -150,10 +150,7 @@ class OidcSiopWallet(
      * [AuthenticationResponseResult].
      */
     suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
-        catching {
-            requestParser.parseRequestParameters(input)
-                .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
-        }
+        catching { requestParser.parseRequestParameters(input).getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters> }
 
     /**
      * Pass in the deserialized [AuthenticationRequestParameters], which were either encoded as query params,
