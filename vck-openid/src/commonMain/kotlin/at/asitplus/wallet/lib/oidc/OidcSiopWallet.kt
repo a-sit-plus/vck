@@ -97,7 +97,7 @@ class OidcSiopWallet(
          * Need to verify the request object serialized as a JWS,
          * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
          */
-        requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true },
+        requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _,_ -> true },
         /**
          * Need to implement if the presentation definition needs to be derived from a scope value.
          * See [ScopePresentationDefinitionRetriever] for implementation instructions.
@@ -330,7 +330,7 @@ typealias ScopePresentationDefinitionRetriever = suspend (String) -> Presentatio
  * Implementations need to verify the passed [JwsSigned] and return its result
  */
 fun interface RequestObjectJwsVerifier {
-    operator fun invoke(jws: JwsSigned, request: RequestParameters): Boolean
+    operator fun invoke(jws: JwsSigned<ByteArray>, request: RequestParameters): Boolean
 }
 
 private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> {

@@ -20,6 +20,7 @@ import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -194,12 +195,10 @@ class CredentialIssuer(
     }
 
     private suspend fun String.validateJwtProof(): CryptoPublicKey {
-        val jwsSigned = JwsSigned.deserialize(this).getOrNull()
+        val jwsSigned = JwsSigned.deserialize<JsonWebToken>(this, vckJsonSerializer).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid proof: $this") }
-        val jwt = JsonWebToken.deserialize(jwsSigned.payload.decodeToString()).getOrNull()
-            ?: throw OAuth2Exception(Errors.INVALID_PROOF)
-                .also { Napier.w("client did provide invalid JWT in proof: $this") }
+        val jwt = jwsSigned.payload
         if (jwsSigned.header.type != PROOF_JWT_TYPE)
             throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid header type in JWT in proof: ${jwsSigned.header}") }

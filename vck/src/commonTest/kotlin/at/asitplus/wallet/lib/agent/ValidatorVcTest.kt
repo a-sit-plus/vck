@@ -352,25 +352,23 @@ class ValidatorVcTest : FreeSpec() {
         jwtId = jwtId
     )
 
-    private suspend fun signJws(vcJws: VerifiableCredentialJws): String {
-        val vcSerialized = vcJws.serialize()
-        val jwsPayload = vcSerialized.encodeToByteArray()
-        return issuerJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrThrow().serialize()
-    }
+    private suspend fun signJws(vcJws: VerifiableCredentialJws): String = issuerJwsService.createSignedJwt(
+        JwsContentTypeConstants.JWT,
+        vcJws,
+        VerifiableCredentialJws.serializer()
+    ).getOrThrow().serialize()
 
-    private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String? {
+    private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String {
         val jwsHeader = JwsHeader(
             algorithm = JwsAlgorithm.ES256,
             keyId = verifier.keyMaterial.identifier,
             type = JwsContentTypeConstants.JWT
         )
-        val jwsPayload = vcJws.serialize().encodeToByteArray()
-        val signatureInput =
-            jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
-                    "." + jwsPayload.encodeToString(Base64UrlStrict)
+        val signatureInput = jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
+                "." + vcJws.serialize().encodeToByteArray().encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
         val signature = DefaultCryptoService(issuerKeyMaterial).sign(signatureInputBytes).signature
-        return JwsSigned(jwsHeader, jwsPayload, signature, signatureInput).serialize()
+        return JwsSigned(jwsHeader, vcJws, signature, signatureInputBytes).serialize()
     }
 
 }

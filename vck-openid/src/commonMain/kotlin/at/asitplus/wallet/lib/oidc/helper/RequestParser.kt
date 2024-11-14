@@ -36,7 +36,7 @@ open class RequestParser(
      * Need to verify the request object serialized as a JWS,
      * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
      */
-    private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _ -> true },
+    private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _, _: Any -> true },
 ) {
     /**
      * Pass in the URL sent by the Verifier (containing the [RequestParameters] as query parameters),
@@ -101,7 +101,11 @@ open class RequestParser(
             is AuthenticationRequestParameters ->
                 when (input) {
                     is Url -> AuthenticationRequestParametersFrom.Uri(input, params)
-                    is JwsSigned -> AuthenticationRequestParametersFrom.JwsSigned(input, params)
+                    is JwsSigned<*> -> AuthenticationRequestParametersFrom.JwsSigned(
+                        input as JwsSigned<ByteArray>,
+                        params
+                    )
+
                     is String -> AuthenticationRequestParametersFrom.Json(input, params)
                     else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
                 }

@@ -23,7 +23,7 @@ sealed class AuthenticationRequestParametersFrom : RequestParametersFrom {
     @SerialName("JwsSigned")
     data class JwsSigned(
         @Serializable(JwsSignedSerializer::class)
-        val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned,
+        val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<ByteArray>,
         override val parameters: AuthenticationRequestParameters,
     ) : AuthenticationRequestParametersFrom()
 

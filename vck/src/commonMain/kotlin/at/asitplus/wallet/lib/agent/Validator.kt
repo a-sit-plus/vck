@@ -1,13 +1,13 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.asn1.BitSet
+import at.asitplus.signum.indispensable.asn1.toBitSet
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.io.Base64Strict
-import at.asitplus.signum.indispensable.io.BitSet
-import at.asitplus.signum.indispensable.io.toBitSet
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -60,19 +60,14 @@ class Validator(
      */
     fun setRevocationList(it: String): Boolean {
         Napier.d("setRevocationList: Loading $it")
-        val jws = JwsSigned.deserialize(it).getOrNull()
+        val jws = JwsSigned.deserialize<VerifiableCredentialJws>(it, vckJsonSerializer).getOrNull()
             ?: return false
                 .also { Napier.w("Revocation List: Could not parse JWS") }
         if (!verifierJwsService.verifyJwsObject(jws))
             return false
                 .also { Napier.w("Revocation List: Signature invalid") }
-        val payload = jws.payload.decodeToString()
         val kid = jws.header.keyId
-        val vcJws = VerifiableCredentialJws.deserialize(payload).getOrElse { ex ->
-            return false
-                .also { Napier.w("Revocation List: Could not parse payload", ex) }
-        }
-        val parsedVc = parser.parseVcJws(it, vcJws, kid)
+        val parsedVc = parser.parseVcJws(it, jws.payload, kid)
         if (parsedVc !is Parser.ParseVcResult.Success)
             return false
                 .also { Napier.d("Revocation List: Could not parse VC: $parsedVc") }
@@ -150,19 +145,14 @@ class Validator(
         publicKey: CryptoPublicKey
     ): Verifier.VerifyPresentationResult {
         Napier.d("Verifying VP $input")
-        val jws = JwsSigned.deserialize(input).getOrNull()
+        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(input, vckJsonSerializer).getOrNull()
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("VP: Could not parse JWS") }
         if (!verifierJwsService.verifyJwsObject(jws))
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("VP: Signature invalid") }
-        val payload = jws.payload.decodeToString()
         val kid = jws.header.keyId
-        val vpJws = VerifiablePresentationJws.deserialize(payload).getOrElse { ex ->
-            return Verifier.VerifyPresentationResult.InvalidStructure(input)
-                .also { Napier.w("VP: Could not parse payload", ex) }
-        }
-        val parsedVp = parser.parseVpJws(input, vpJws, kid, challenge, publicKey)
+        val parsedVp = parser.parseVpJws(input, jws.payload, kid, challenge, publicKey)
         if (parsedVp !is Parser.ParseVpResult.Success) {
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.d("VP: Could not parse content") }
@@ -214,10 +204,7 @@ class Validator(
             return Verifier.VerifyPresentationResult.NotVerified(input, challenge)
                 .also { Napier.w("verifyVpSdJwt: Key binding JWT not verified") }
         }
-        val keyBinding = KeyBindingJws.deserialize(keyBindingSigned.payload.decodeToString()).getOrElse { ex ->
-            return Verifier.VerifyPresentationResult.NotVerified(input, challenge)
-                .also { Napier.w("verifyVpSdJwt: Key binding JWT doesn't contain valid payload", ex) }
-        }
+        val keyBinding = keyBindingSigned.payload
 
         if (keyBinding.challenge != challenge)
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
@@ -249,7 +236,10 @@ class Validator(
     }
 
     @Suppress("DEPRECATION")
-    private fun VerifiableCredentialSdJwt.verifyKeyBinding(jwsHeader: JwsHeader, keyBindingSigned: JwsSigned): Boolean =
+    private fun VerifiableCredentialSdJwt.verifyKeyBinding(
+        jwsHeader: JwsHeader,
+        keyBindingSigned: JwsSigned<KeyBindingJws>
+    ): Boolean =
         if (confirmationClaim != null) {
             verifierJwsService.verifyConfirmationClaim(this.confirmationClaim!!, keyBindingSigned)
         } else if (confirmationKey != null) { // "old" method before vck 5.1.0
@@ -366,17 +356,13 @@ class Validator(
      */
     fun verifyVcJws(input: String, publicKey: CryptoPublicKey?): Verifier.VerifyCredentialResult {
         Napier.d("Verifying VC-JWS $input")
-        val jws = JwsSigned.deserialize(input).getOrNull()
+        val jws = JwsSigned.deserialize<VerifiableCredentialJws>(input, vckJsonSerializer).getOrNull()
             ?: return Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.w("VC: Could not parse JWS") }
         if (!verifierJwsService.verifyJwsObject(jws))
             return Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.w("VC: Signature invalid") }
-        val payload = jws.payload.decodeToString()
-        val vcJws = VerifiableCredentialJws.deserialize(payload).getOrElse { ex ->
-            return Verifier.VerifyCredentialResult.InvalidStructure(input)
-                .also { Napier.w("VC: Could not parse payload", ex) }
-        }
+        val vcJws = jws.payload
         publicKey?.let {
             if (!it.matchesIdentifier(vcJws.subject)) {
                 return Verifier.VerifyCredentialResult.InvalidStructure(input)

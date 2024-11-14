@@ -104,7 +104,6 @@ internal class AuthenticationResponseFactory(
                 runCatching { request.parameters.nonce?.decodeToByteArray(Base64()) }.getOrNull()
                     ?: runCatching { request.parameters.nonce?.encodeToByteArray() }.getOrNull()
                     ?: Random.Default.nextBytes(16)
-            val payload = response.params.serialize().encodeToByteArray()
             jwsService.encryptJweObject(
                 header = JweHeader(
                     algorithm = alg,
@@ -114,7 +113,8 @@ internal class AuthenticationResponseFactory(
                     agreementPartyUInfo = Random.nextBytes(16),
                     keyId = jwk.keyId,
                 ),
-                payload = payload,
+                payload = response.params,
+                serializer = AuthenticationResponseParameters.serializer(),
                 recipientKey = jwk,
                 jweAlgorithm = alg,
                 jweEncryption = enc,
@@ -124,7 +124,9 @@ internal class AuthenticationResponseFactory(
             }
         } else {
             jwsService.createSignedJwsAddingParams(
-                payload = response.params.serialize().encodeToByteArray(), addX5c = false
+                payload = response.params,
+                serializer = AuthenticationResponseParameters.serializer(),
+                addX5c = false
             ).map { it.serialize() }.getOrElse {
                 Napier.w("buildJarm error", it)
                 throw OAuth2Exception(Errors.INVALID_REQUEST)
