@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
+import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.Holder
@@ -35,6 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration.Companion.minutes
+
 
 
 
@@ -260,10 +262,11 @@ class OpenId4VciClient(
         tokenAuthMethods: Set<String>? = null
     ): TokenResponseParameters {
         Napier.i("postToken: $tokenEndpointUrl with $tokenRequest")
-        val clientAttestationJwt = if (tokenAuthMethods?.contains("attest_jwt_client_auth") == true) {
+        val shouldIncludeClientAttestation = tokenAuthMethods?.contains(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
+        val clientAttestationJwt = if (shouldIncludeClientAttestation) {
             loadClientAttestationJwt.invoke()
         } else null
-        val clientAttestationPoPJwt = if (tokenAuthMethods?.contains("attest_jwt_client_auth") == true) {
+        val clientAttestationPoPJwt = if (shouldIncludeClientAttestation) {
             jwsService.buildClientAttestationPoPJwt(
                 clientId = clientId,
                 audience = credentialIssuer,
@@ -479,10 +482,11 @@ class OpenId4VciClient(
         credentialIssuer: String,
         tokenAuthMethods: Set<String>?
     ): AuthenticationRequestParameters {
-        val clientAttestationJwt = if (tokenAuthMethods?.contains("attest_jwt_client_auth") == true) {
+        val shouldIncludeClientAttestation = tokenAuthMethods?.contains(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
+        val clientAttestationJwt = if (shouldIncludeClientAttestation) {
             loadClientAttestationJwt.invoke()
         } else null
-        val clientAttestationPoPJwt = if (tokenAuthMethods?.contains("attest_jwt_client_auth") == true) {
+        val clientAttestationPoPJwt = if (shouldIncludeClientAttestation) {
             jwsService.buildClientAttestationPoPJwt(
                 clientId = clientId,
                 audience = credentialIssuer,

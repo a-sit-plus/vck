@@ -51,6 +51,8 @@ object OpenIdConstants {
 
     const val PROOF_CWT_TYPE = "openid4vci-proof+cwt"
 
+    const val AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH = "attest_jwt_client_auth"
+
     @Serializable(with = ProofType.Serializer::class)
     sealed class ProofType(val stringRepresentation: String) {
         override fun toString(): String = this::class.simpleName + "(" + stringRepresentation + ")"
