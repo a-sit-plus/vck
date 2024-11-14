@@ -59,14 +59,12 @@ class OidcSiopWallet(
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
     /**
-     * Need to implement if the presentation definition needs to be derived from a scope value.
-     * See [ScopePresentationDefinitionRetriever] for implementation instructions.
-     */
-    private val scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever,
-    /**
      * Used to resolve [RequestParameters] by reference and also matches them to the correct [RequestParametersFrom]
      */
-    private val requestParser: RequestParser,
+    private val requestParser: RequestParser = RequestParser(
+        remoteResourceRetriever = remoteResourceRetriever,
+        requestObjectJwsVerifier = requestObjectJwsVerifier,
+    ),
 ) {
     constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
@@ -87,10 +85,8 @@ class OidcSiopWallet(
          */
         requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
         /**
-         * Need to implement if the presentation definition needs to be derived from a scope value.
-         * See [ScopePresentationDefinitionRetriever] for implementation instructions.
+         * Used to resolve [RequestParameters] by reference and also matches them to the correct [RequestParametersFrom]
          */
-        scopePresentationDefinitionRetriever: ScopePresentationDefinitionRetriever = { null },
         requestParser: RequestParser = RequestParser(
             remoteResourceRetriever = remoteResourceRetriever,
             requestObjectJwsVerifier = requestObjectJwsVerifier,
@@ -103,7 +99,6 @@ class OidcSiopWallet(
         clientId = clientId,
         remoteResourceRetriever = remoteResourceRetriever,
         requestObjectJwsVerifier = requestObjectJwsVerifier,
-        scopePresentationDefinitionRetriever = scopePresentationDefinitionRetriever,
         requestParser = requestParser,
     )
 
@@ -270,12 +265,10 @@ class OidcSiopWallet(
 
     private suspend fun AuthenticationRequestParameters.loadPresentationDefinition() =
         if (responseType?.contains(VP_TOKEN) == true) {
-            presentationDefinition ?: presentationDefinitionUrl?.let {
-                remoteResourceRetriever.invoke(it)
-            }?.let { PresentationDefinition.deserialize(it).getOrNull() } ?: scope?.split(" ")
-                ?.firstNotNullOfOrNull {
-                    scopePresentationDefinitionRetriever.invoke(it)
-                }
+            presentationDefinition
+                ?: presentationDefinitionUrl
+                    ?.let { remoteResourceRetriever.invoke(it) }
+                    ?.let { PresentationDefinition.deserialize(it).getOrNull() }
         } else null
 
     private suspend fun AuthenticationRequestParameters.loadClientMetadata() =
@@ -307,12 +300,6 @@ class OidcSiopWallet(
  * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
  */
 typealias RemoteResourceRetrieverFunction = suspend (String) -> String?
-
-/**
- * Implementations need to match a scope value to a [PresentationDefinition] if a related
- * presentation definition is known.
- */
-typealias ScopePresentationDefinitionRetriever = suspend (String) -> PresentationDefinition?
 
 /**
  * Implementations need to verify the passed [JwsSigned] and return its result

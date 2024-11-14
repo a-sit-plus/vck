@@ -1,9 +1,10 @@
 package at.asitplus.wallet.lib.ktor.openid
 
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.OidcSiopWallet
 import io.github.aakira.napier.Napier
@@ -66,11 +67,10 @@ class OpenId4VpWallet(
             }
         },
         requestObjectJwsVerifier = { _ -> true }, // unsure about this one?
-        scopePresentationDefinitionRetriever = { null }
     )
 
     @Throws(Throwable::class)
-    suspend fun startPresentation(request: AuthenticationRequestParametersFrom) {
+    suspend fun startPresentation(request: RequestParametersFrom<AuthenticationRequestParameters>) {
         Napier.i("startSiop: $request")
         oidcSiopWallet.createAuthnResponse(request).getOrThrow().let {
             when (it) {

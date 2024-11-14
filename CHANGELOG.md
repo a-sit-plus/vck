@@ -34,6 +34,7 @@ Release 5.2.0:
  - Add `issuerState` to `OAuth2Client.createAuthRequest` for OID4VCI flows
  - Add extension functions to `JwsService` to create JWTs for OAuth 2.0 Attestation-Based Client Authentication
  - New artefact `vck-openid-ktor` implements a ktor client for OpenID for Verifiable Credential Issuance and OpenID for Verifiable Presentations
+ - Remove `scopePresentationDefinitionRetriever` from `OidcSiopWallet` to keep implementation simple
 
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact
