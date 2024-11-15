@@ -5,7 +5,6 @@ import at.asitplus.signum.indispensable.asn1.BitSet
 import at.asitplus.signum.indispensable.asn1.toBitSet
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.io.Base64Strict
@@ -294,12 +293,10 @@ class Validator(
                 .also { Napier.w("IssuerAuth not verified: $issuerAuth") }
         }
 
-        val mso: MobileSecurityObject? =
-            issuerSigned.issuerAuth.getTypedPayload(ByteStringWrapperSerializer(MobileSecurityObject.serializer()))
-                .onFailure {
-                    throw IllegalArgumentException("mso", it)
-                    Napier.w("MSO could not be decoded", it)
-                }.getOrNull()?.value
+        val mso: MobileSecurityObject? = issuerSigned.issuerAuth.getTypedPayload(MobileSecurityObject.serializer()).onFailure {
+                throw IllegalArgumentException("mso", it)
+                Napier.w("MSO could not be decoded", it)
+            }.getOrNull()?.value
         if (mso == null) {
             Napier.w("MSO is null: ${issuerAuth.payload?.encodeToString(Base16(strict = true))}")
             throw IllegalArgumentException("mso")

@@ -15,7 +15,7 @@ import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import at.asitplus.wallet.lib.iso.wrapInCborTag
 import io.github.aakira.napier.Napier
-import kotlinx.serialization.SerializationStrategy
+import kotlinx.serialization.encodeToByteArray
 
 /**
  * Creates and parses COSE objects.
@@ -34,26 +34,10 @@ interface CoseService {
      * @param addKeyId whether to set [CoseHeader.kid] in [protectedHeader]
      * @param addCertificate whether to set [CoseHeader.certificateChain] in [unprotectedHeader]
      */
-    suspend fun createSignedCose(
-        protectedHeader: CoseHeader? = null,
-        unprotectedHeader: CoseHeader? = null,
-        payload: ByteArray? = null,
-        addKeyId: Boolean = true,
-        addCertificate: Boolean = false,
-    ): KmmResult<CoseSigned<ByteArray>>
-
-    /**
-     * Creates and signs a new [CoseSigned] object,
-     * appends correct value for [CoseHeader.algorithm] into [protectedHeader].
-     *
-     * @param addKeyId whether to set [CoseHeader.kid] in [protectedHeader]
-     * @param addCertificate whether to set [CoseHeader.certificateChain] in [unprotectedHeader]
-     */
     suspend fun <P : Any> createSignedCose(
         protectedHeader: CoseHeader? = null,
         unprotectedHeader: CoseHeader? = null,
-        payload: P,
-        serializationStrategy: SerializationStrategy<P>,
+        payload: P? = null,
         addKeyId: Boolean = true,
         addCertificate: Boolean = false,
     ): KmmResult<CoseSigned<P>>
@@ -69,34 +53,16 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
 
     override val algorithm: CoseAlgorithm = cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
 
-    override suspend fun createSignedCose(
-        protectedHeader: CoseHeader?,
-        unprotectedHeader: CoseHeader?,
-        payload: ByteArray?,
-        addKeyId: Boolean,
-        addCertificate: Boolean,
-    ): KmmResult<CoseSigned<ByteArray>> = catching {
-        protectedHeader.withAlgorithmAndKeyId(addKeyId).let { coseHeader ->
-            CoseSigned(
-                protectedHeader = coseHeader,
-                unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
-                payload = payload,
-                signature = calcSignature(coseHeader, payload)
-            )
-        }
-    }
-
     override suspend fun <P : Any> createSignedCose(
         protectedHeader: CoseHeader?,
         unprotectedHeader: CoseHeader?,
-        payload: P,
-        serializationStrategy: SerializationStrategy<P>,
+        payload: P?,
         addKeyId: Boolean,
         addCertificate: Boolean,
     ): KmmResult<CoseSigned<P>> = catching {
         protectedHeader.withAlgorithmAndKeyId(addKeyId).let { coseHeader ->
-            coseCompliantSerializer.encodeToByteArray(serializationStrategy, payload)
-                .let { if (payload is ByteStringWrapper<*>) it.wrapInCborTag(24) else it }
+            payload.asCosePayload()
+                .let { if (payload is ByteStringWrapper<*>) it?.wrapInCborTag(24) else it } // TODO Check
                 .let { rawPayload ->
                     CoseSigned(
                         protectedHeader = coseHeader,
@@ -106,7 +72,12 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
                     )
                 }
         }
+    }
 
+    private fun <P : Any> P?.asCosePayload() = when (this) {
+        is ByteArray -> this
+        is ByteStringWrapper<*> -> coseCompliantSerializer.encodeToByteArray(this)
+        else -> coseCompliantSerializer.encodeToByteArray(ByteStringWrapper(this))
     }
 
     private suspend fun CoseHeader?.withCertificateIfExists(addCertificate: Boolean): CoseHeader? =

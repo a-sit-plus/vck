@@ -4,8 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.BitSet
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
@@ -114,8 +112,7 @@ class IssuerAgent(
         val issuerSigned = IssuerSigned.fromIssuerSignedItems(
             namespacedItems = mapOf(credential.scheme.isoNamespace!! to credential.issuerSignedItems),
             issuerAuth = coseService.createSignedCose(
-                payload = ByteStringWrapper(mso),
-                serializationStrategy = ByteStringWrapperSerializer(MobileSecurityObject.serializer()),
+                payload = mso,
                 addKeyId = false,
                 addCertificate = true,
             ).getOrThrow(),

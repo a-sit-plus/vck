@@ -46,7 +46,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementValue = Random.nextBytes(32),
         )
         val protectedHeader = ByteStringWrapper(CoseHeader(), CoseHeader().serialize())
-        val issuerAuth = CoseSigned<ByteStringWrapper<MobileSecurityObject>>(protectedHeader, null, null, byteArrayOf())
+        val issuerAuth = CoseSigned<MobileSecurityObject>(protectedHeader, null, null, byteArrayOf())
         val doc = Document(
             docType = uuid4().toString(),
             issuerSigned = IssuerSigned.fromIssuerSignedItems(

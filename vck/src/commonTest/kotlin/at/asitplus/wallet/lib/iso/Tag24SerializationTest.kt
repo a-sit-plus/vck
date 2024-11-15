@@ -166,7 +166,7 @@ private fun MobileSecurityObject.Companion.deserializeFromIssuerAuth(it: ByteArr
 private fun deviceKeyInfo() =
     DeviceKeyInfo(CoseKey(CoseKeyType.EC2, keyParams = CoseKeyParams.EcYBoolParams(CoseEllipticCurve.P256)))
 
-private fun issuerAuth() = CoseSigned<ByteStringWrapper<MobileSecurityObject>>(
+private fun issuerAuth() = CoseSigned<MobileSecurityObject>(
     protectedHeader = ByteStringWrapper(CoseHeader()),
     unprotectedHeader = null,
     payload = byteArrayOf(),

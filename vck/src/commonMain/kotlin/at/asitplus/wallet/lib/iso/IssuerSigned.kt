@@ -2,7 +2,6 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import kotlinx.serialization.*
 
 /**
@@ -14,7 +13,7 @@ data class IssuerSigned private constructor(
     @Serializable(with = NamespacedIssuerSignedListSerializer::class)
     val namespaces: Map<String, @Contextual IssuerSignedList>? = null,
     @SerialName("issuerAuth")
-    val issuerAuth: CoseSigned<ByteStringWrapper<MobileSecurityObject>>,
+    val issuerAuth: CoseSigned<MobileSecurityObject>,
 ) {
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
@@ -55,7 +54,7 @@ data class IssuerSigned private constructor(
          */
         fun fromIssuerSignedItems(
             namespacedItems: Map<String, List<IssuerSignedItem>>,
-            issuerAuth: CoseSigned<ByteStringWrapper<MobileSecurityObject>>,
+            issuerAuth: CoseSigned<MobileSecurityObject>,
         ): IssuerSigned = IssuerSigned(
             namespaces = namespacedItems.map { (namespace, value) ->
                 namespace to IssuerSignedList.fromIssuerSignedItems(value, namespace)
