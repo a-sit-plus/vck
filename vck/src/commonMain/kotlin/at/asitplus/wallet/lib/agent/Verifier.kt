@@ -46,8 +46,6 @@ interface Verifier {
         data class SuccessSdJwt(
             val sdJwtSigned: SdJwtSigned,
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
-            @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
-            val sdJwt: VerifiableCredentialSdJwt,
             val reconstructedJsonObject: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
             val isRevoked: Boolean
@@ -63,8 +61,6 @@ interface Verifier {
         data class SuccessSdJwt(
             val sdJwtSigned: SdJwtSigned,
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
-            @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
-            val sdJwt: VerifiableCredentialSdJwt,
             val reconstructedJsonObject: JsonObject,
             /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
             val disclosures: Map<String, SelectiveDisclosureItem>,

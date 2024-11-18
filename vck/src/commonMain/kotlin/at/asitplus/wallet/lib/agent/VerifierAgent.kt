@@ -45,11 +45,19 @@ class VerifierAgent private constructor(
     override fun verifyPresentation(input: String, challenge: String): Verifier.VerifyPresentationResult {
         val sdJwtSigned = runCatching { SdJwtSigned.parse(input) }.getOrNull()
         if (sdJwtSigned != null) {
-            return validator.verifyVpSdJwt(input, challenge, keyMaterial.publicKey)
+            return runCatching {
+                validator.verifyVpSdJwt(input, challenge, keyMaterial.publicKey)
+            }.getOrElse {
+                Verifier.VerifyPresentationResult.InvalidStructure(input)
+            }
         }
         val jwsSigned = JwsSigned.deserialize<VerifiablePresentationJws>(input, vckJsonSerializer).getOrNull()
         if (jwsSigned != null) {
-            return validator.verifyVpJws(input, challenge, keyMaterial.publicKey)
+            return runCatching {
+                validator.verifyVpJws(input, challenge, keyMaterial.publicKey)
+            }.getOrElse {
+                Verifier.VerifyPresentationResult.InvalidStructure(input)
+            }
         }
         val document = input.decodeToByteArrayOrNull(Base16(false))
             ?.let { bytes -> Document.deserialize(bytes).getOrNull() }
