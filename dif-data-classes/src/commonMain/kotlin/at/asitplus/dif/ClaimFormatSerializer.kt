@@ -7,16 +7,16 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-object ClaimFormatEnumSerializer : KSerializer<ClaimFormatEnum> {
+object ClaimFormatSerializer : KSerializer<ClaimFormat> {
 
     override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("ClaimFormatEnumSerializer", PrimitiveKind.STRING)
+        PrimitiveSerialDescriptor("ClaimFormatSerializer", PrimitiveKind.STRING)
 
-    override fun serialize(encoder: Encoder, value: ClaimFormatEnum) {
+    override fun serialize(encoder: Encoder, value: ClaimFormat) {
         encoder.encodeString(value.text)
     }
 
-    override fun deserialize(decoder: Decoder): ClaimFormatEnum {
-        return ClaimFormatEnum.parse(decoder.decodeString()) ?: ClaimFormatEnum.NONE
+    override fun deserialize(decoder: Decoder): ClaimFormat {
+        return ClaimFormat.parse(decoder.decodeString()) ?: ClaimFormat.NONE
     }
 }

@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.oidc.helper
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.ClaimFormatEnum
+import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -168,15 +168,15 @@ internal class PresentationFactory(
             }
         }
 
-    private fun FormatHolder.isMissingFormatSupport(claimFormatEnum: ClaimFormatEnum) =
-        when (claimFormatEnum) {
-            ClaimFormatEnum.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm) }
+    private fun FormatHolder.isMissingFormatSupport(claimFormat: ClaimFormat) =
+        when (claimFormat) {
+            ClaimFormat.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm) }
                 ?: false
 
-            ClaimFormatEnum.JWT_SD -> jwtSd?.algorithms?.let { !it.contains(jwsService.algorithm) }
+            ClaimFormat.JWT_SD -> jwtSd?.algorithms?.let { !it.contains(jwsService.algorithm) }
                 ?: false
 
-            ClaimFormatEnum.MSO_MDOC -> msoMdoc?.algorithms?.let { !it.contains(jwsService.algorithm) }
+            ClaimFormat.MSO_MDOC -> msoMdoc?.algorithms?.let { !it.contains(jwsService.algorithm) }
                 ?: false
 
             else -> false

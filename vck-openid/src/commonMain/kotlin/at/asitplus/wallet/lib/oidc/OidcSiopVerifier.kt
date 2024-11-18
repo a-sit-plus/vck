@@ -659,9 +659,9 @@ class OidcSiopVerifier private constructor(
         relatedPresentation: JsonElement,
         challenge: String
     ) = when (descriptor.format) {
-        ClaimFormatEnum.JWT_SD,
-        ClaimFormatEnum.MSO_MDOC,
-        ClaimFormatEnum.JWT_VP -> when (relatedPresentation) {
+        ClaimFormat.JWT_SD,
+        ClaimFormat.MSO_MDOC,
+        ClaimFormat.JWT_VP -> when (relatedPresentation) {
             is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, challenge)
             else -> throw IllegalArgumentException()
         }

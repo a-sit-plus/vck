@@ -25,6 +25,7 @@ data class IssuerSigned private constructor(
     }
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is IssuerSigned) return false
@@ -68,6 +69,5 @@ data class IssuerSigned private constructor(
             }.toMap(),
             issuerAuth = issuerAuth,
         )
-
     }
 }
