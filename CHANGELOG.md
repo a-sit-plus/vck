@@ -1,6 +1,6 @@
 # Changelog
 
-tbd
+Release 5.2.0:
 - New `Initializer` object in `vck-openid` which needs to be called at the start of the project if artifact is used
 - New artifacts `rqes-data-classes` and `vck-rqes` which allow handling of remote signature requests as described by the draft of POTENTIAL use-case 5 which is based on the CSC API v2.0.0.2
 - To use `vck-rqes` the new `Initializer` object in `vck-rqes` which needs to be called at the start of the project if artifact is used
@@ -16,11 +16,8 @@ tbd
 - New class `SignatureRequestParameters`
 - Refactor `AuthenticationRequestParametersFrom` to generic sealed class `RequestParametersFrom`
 - Refactor `AuthenticationRequestParser` to open class `RequestParser`
-
-
-Release 5.2.0:
- - SD-JWT: Validate confirmation claims correctly
- - Adapt to changes in `signum`, i.e. the classes `JwsSigned` and `JweDecrypted` are now typed to their payload
+- SD-JWT: Validate confirmation claims correctly
+- Adapt to changes in `signum`, i.e. the classes `JwsSigned` and `JweDecrypted` are now typed to their payload
 
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact
