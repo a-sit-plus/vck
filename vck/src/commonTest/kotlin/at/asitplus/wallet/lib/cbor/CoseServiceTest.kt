@@ -3,6 +3,8 @@ package at.asitplus.wallet.lib.cbor
 import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
@@ -11,8 +13,11 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.encodeToByteArray
 import kotlin.random.Random
 
+@OptIn(ExperimentalSerializationApi::class)
 class CoseServiceTest : FreeSpec({
 
     lateinit var cryptoService: CryptoService
@@ -41,7 +46,8 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(signed.serialize()).getOrThrow()
 
         cryptoService.keyMaterial.publicKey.toCoseKey().getOrNull() shouldNotBe null
-        val result = verifierCoseService.verifyCose(parsed, cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow())
+        val result =
+            verifierCoseService.verifyCose(parsed, cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow())
         result.isSuccess shouldBe true
     }
 
@@ -58,7 +64,8 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(signed.serialize()).getOrThrow()
 
         cryptoService.keyMaterial.publicKey.toCoseKey().getOrNull() shouldNotBe null
-        val result = verifierCoseService.verifyCose(parsed, cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow())
+        val result =
+            verifierCoseService.verifyCose(parsed, cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow())
         result.isSuccess shouldBe true
     }
 

@@ -3,9 +3,13 @@ package at.asitplus.wallet.lib.cbor
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.cosef.*
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
@@ -13,6 +17,8 @@ import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
+import at.asitplus.wallet.lib.iso.DeviceSignedItem
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.wallet.lib.iso.wrapInCborTag
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.encodeToByteArray
@@ -34,7 +40,7 @@ interface CoseService {
      * @param addKeyId whether to set [CoseHeader.kid] in [protectedHeader]
      * @param addCertificate whether to set [CoseHeader.certificateChain] in [unprotectedHeader]
      */
-    suspend fun <P : Any> createSignedCose(
+    suspend fun <P : Any?> createSignedCose(
         protectedHeader: CoseHeader? = null,
         unprotectedHeader: CoseHeader? = null,
         payload: P? = null,
@@ -53,7 +59,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
 
     override val algorithm: CoseAlgorithm = cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
 
-    override suspend fun <P : Any> createSignedCose(
+    override suspend fun <P : Any?> createSignedCose(
         protectedHeader: CoseHeader?,
         unprotectedHeader: CoseHeader?,
         payload: P?,
@@ -61,8 +67,9 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         addCertificate: Boolean,
     ): KmmResult<CoseSigned<P>> = catching {
         protectedHeader.withAlgorithmAndKeyId(addKeyId).let { coseHeader ->
-            payload.asCosePayload()
-                .let { if (payload is ByteStringWrapper<*>) it?.wrapInCborTag(24) else it } // TODO Check
+            val cosePayload: ByteArray? = payload.asCosePayload()
+            cosePayload
+//                .let { if (payload is ByteStringWrapper<*>) it?.wrapInCborTag(24) else it } // TODO Check
                 .let { rawPayload ->
                     CoseSigned(
                         protectedHeader = coseHeader,
@@ -74,10 +81,12 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         }
     }
 
-    private fun <P : Any> P?.asCosePayload() = when (this) {
+    private fun <P : Any?> P.asCosePayload(): ByteArray? = when (this) {
         is ByteArray -> this
         is ByteStringWrapper<*> -> coseCompliantSerializer.encodeToByteArray(this)
-        else -> coseCompliantSerializer.encodeToByteArray(ByteStringWrapper(this))
+        is Nothing? -> null
+        is MobileSecurityObject -> coseCompliantSerializer.encodeToByteArray(ByteStringWrapper(this) as ByteStringWrapper<MobileSecurityObject>)
+        else -> throw NotImplementedError()
     }
 
     private suspend fun CoseHeader?.withCertificateIfExists(addCertificate: Boolean): CoseHeader? =
@@ -106,7 +115,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
 
     private suspend fun calcSignature(
         protectedHeader: CoseHeader,
-        payload: ByteArray?
+        payload: ByteArray?,
     ): CryptoSignature.RawByteEncodable =
         cryptoService.sign(CoseSigned.prepareCoseSignatureInput(protectedHeader, payload))
             .asKmmResult().getOrElse {
@@ -117,7 +126,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
 }
 
 class DefaultVerifierCoseService(
-    private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService()
+    private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
 ) : VerifierCoseService {
 
     /**
