@@ -78,6 +78,16 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         }
     }
 
+    /**
+     * + [ByteArray] is processed as it is
+     * + [ByteStringWrapper] is wrapped in Tag(24)
+     * + [MobileSecurityObject] is wrapped as [ByteStringWrapper] and wrapped in Tag(24)
+     * + null is processed as it is
+     *
+     * If other complex data classes need to be serialized other than [MobileSecurityObject]
+     * extend in the same fashion
+     */
+    @Throws(NotImplementedError::class)
     private fun <P : Any?> P.asCosePayload(): ByteArray? = when (this) {
         is ByteArray -> this
         is ByteStringWrapper<*> -> vckCborSerializer.encodeToByteArray(this).wrapInCborTag(24)
