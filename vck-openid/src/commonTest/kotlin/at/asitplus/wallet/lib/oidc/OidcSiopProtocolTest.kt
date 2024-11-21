@@ -5,10 +5,13 @@ import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
@@ -148,7 +151,7 @@ class OidcSiopProtocolTest : FreeSpec({
         authnRequest.clientId shouldBe clientId
         val jar = authnRequest.request
             .shouldNotBeNull()
-        val jwsObject = JwsSigned.deserialize<AuthenticationRequestParameters>(jar).getOrThrow()
+        val jwsObject = JwsSigned.deserialize<AuthenticationRequestParameters>(jar, vckJsonSerializer).getOrThrow()
         DefaultVerifierJwsService().verifyJwsObject(jwsObject).shouldBeTrue()
 
         val authnResponse = holderSiop.createAuthnResponse(jar).getOrThrow()
@@ -231,7 +234,7 @@ class OidcSiopProtocolTest : FreeSpec({
         val parsedAuthnRequest: AuthenticationRequestParameters =
             authnRequestUrlParams.decodeFromUrlQuery()
         val authnResponse = holderSiop.createAuthnResponseParams(
-            AuthenticationRequestParametersFrom.Uri(
+            RequestParametersFrom.Uri<AuthenticationRequestParameters>(
                 Url(authnRequestUrlParams),
                 parsedAuthnRequest
             )
@@ -442,7 +445,7 @@ private suspend fun buildAttestationJwt(
 
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
     object : RequestObjectJwsVerifier {
-        override fun invoke(jws: JwsSigned<AuthenticationRequestParameters>): Boolean {
+        override fun invoke(jws: JwsSigned<RequestParameters>): Boolean {
             val attestationJwt = jws.header.attestationJwt?.let { JwsSigned.deserialize<JsonWebToken>(it).getOrThrow() }
                 ?: return false
             val verifierJwsService = DefaultVerifierJwsService()

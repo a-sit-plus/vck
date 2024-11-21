@@ -7,6 +7,8 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.*
+import io.ktor.util.*
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 
@@ -20,11 +22,11 @@ class OAuth2Client(
      * Used to create [AuthenticationRequestParameters], [TokenRequestParameters] and [CredentialRequestProof],
      * typically a URI.
      */
-    private val clientId: String = "https://wallet.a-sit.at/app",
+    val clientId: String = "https://wallet.a-sit.at/app",
     /**
      * Used to create [AuthenticationRequestParameters] and [TokenRequestParameters].
      */
-    private val redirectUrl: String = "$clientId/callback",
+    val redirectUrl: String = "$clientId/callback",
     /**
      * Used to store the code, associated to the state, to first send [AuthenticationRequestParameters.codeChallenge],
      * and then [TokenRequestParameters.codeVerifier], see [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636).
@@ -57,7 +59,7 @@ class OAuth2Client(
         state: String,
         authorizationDetails: Set<AuthorizationDetails>? = null,
         scope: String? = null,
-        resource: String? = null,
+        resource: String? = null
     ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         state = state,
@@ -67,11 +69,11 @@ class OAuth2Client(
         resource = resource,
         redirectUrl = redirectUrl,
         codeChallenge = generateCodeVerifier(state),
-        codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
+        codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256
     )
 
     @OptIn(ExperimentalStdlibApi::class)
-    private suspend fun generateCodeVerifier(state: String): String {
+    suspend fun generateCodeVerifier(state: String): String {
         val codeVerifier = Random.nextBytes(32).toHexString(HexFormat.Default)
         stateToCodeStore.put(state, codeVerifier)
         return codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)

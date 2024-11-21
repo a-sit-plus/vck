@@ -1,16 +1,19 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import kotlinx.serialization.encodeToString
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
@@ -50,20 +53,20 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 requestOptions = reqOptions
             )
             val params = oidcSiopWallet.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
-                .shouldBeInstanceOf<AuthenticationRequestParametersFrom.Uri>()
+                .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequestParameters>>()
 
-            val serialized = params.serialize()
-
-            AuthenticationRequestParametersFrom.deserialize(serialized).getOrThrow() shouldBe params
+            val serialized = vckJsonSerializer.encodeToString(params)
+            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+            deserialized shouldBe params
         }
 
         "Json test $representation" {
             val authnRequest = verifierSiop.createAuthnRequest(requestOptions = reqOptions).serialize()
             val params = oidcSiopWallet.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
 
-            val serialized = params.serialize()
-
-            AuthenticationRequestParametersFrom.deserialize(serialized).getOrThrow() shouldBe params
+            val serialized = vckJsonSerializer.encodeToString(params)
+            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+            deserialized shouldBe params
         }
 
         "JwsSigned test $representation" {
@@ -78,9 +81,9 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             val interim2 = interim1.request ?: throw Exception("Authn request is null")
             val params = oidcSiopWallet.parseAuthenticationRequestParameters(interim2).getOrThrow()
 
-            val serialized = params.serialize()
-
-            AuthenticationRequestParametersFrom.deserialize(serialized).getOrThrow() shouldBe params
+            val serialized = vckJsonSerializer.encodeToString(params)
+            val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
+            deserialized shouldBe params
         }
     }
 })

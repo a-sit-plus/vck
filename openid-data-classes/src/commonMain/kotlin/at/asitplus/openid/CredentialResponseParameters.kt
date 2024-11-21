@@ -50,11 +50,11 @@ data class CredentialResponseParameters(
     val clientNonceExpiresIn: Duration? = null,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(input: String): KmmResult<CredentialResponseParameters> =
-            runCatching { jsonSerializer.decodeFromString<CredentialResponseParameters>(input) }.wrap()
+            runCatching { odcJsonSerializer.decodeFromString<CredentialResponseParameters>(input) }.wrap()
     }
 
 }

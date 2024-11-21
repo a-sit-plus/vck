@@ -9,7 +9,7 @@ import kotlinx.serialization.encodeToString
 @Serializable
 data class CredentialRequestParameters(
     /**
-     * OID4VCI: REQUIRED when an [AuthorizationDetails.OpenIdCredential] was returned from the
+     * OID4VCI: REQUIRED when an [AuthorizationDetails.OpenIdAuthorizationDetails] was returned from the
      * [TokenResponseParameters]. It MUST NOT be used otherwise. A string that identifies a Credential Dataset that is
      * requested for issuance. When this parameter is used, the [format] parameter and any other Credential format
      * specific parameters such as those defined in Appendix A MUST NOT be present
@@ -18,9 +18,9 @@ data class CredentialRequestParameters(
     val credentialIdentifier: String? = null,
 
     /**
-     * OID4VCI: REQUIRED if an [AuthorizationDetails.OpenIdCredential] was not returned from the
+     * OID4VCI: REQUIRED if an [AuthorizationDetails.OpenIdAuthorizationDetails] was not returned from the
      * [TokenResponseParameters] (e.g. when the credential was requested using a [AuthenticationRequestParameters.scope]
-     * or a pre-authorisation code was used that did not return an [AuthorizationDetails.OpenIdCredential]).
+     * or a pre-authorisation code was used that did not return an [AuthorizationDetails.OpenIdAuthorizationDetails]).
      * It MUST NOT be used otherwise. A string that determines the format of the Credential to be issued, which may
      * determine the type and any other information related to the Credential to be issued. Credential Format Profiles
      * consist of the Credential format specific parameters that are defined in Appendix A. When this parameter is used,
@@ -84,11 +84,11 @@ data class CredentialRequestParameters(
     val proofs: CredentialRequestProofContainer? = null,
 ) {
 
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(input: String): KmmResult<CredentialRequestParameters> =
-            runCatching { jsonSerializer.decodeFromString<CredentialRequestParameters>(input) }.wrap()
+            runCatching { odcJsonSerializer.decodeFromString<CredentialRequestParameters>(input) }.wrap()
     }
 
 }

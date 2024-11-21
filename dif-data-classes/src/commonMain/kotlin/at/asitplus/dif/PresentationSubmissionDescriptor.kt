@@ -12,7 +12,7 @@ data class PresentationSubmissionDescriptor(
     @SerialName("id")
     val id: String,
     @SerialName("format")
-    val format: ClaimFormatEnum,
+    val format: ClaimFormat,
     @SerialName("path")
     val path: String, // JSONPath
     @SerialName("path_nested")
