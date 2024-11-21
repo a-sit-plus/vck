@@ -8,7 +8,6 @@ import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
@@ -17,8 +16,8 @@ import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
-import at.asitplus.wallet.lib.iso.DeviceSignedItem
 import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.wallet.lib.iso.vckCborSerializer
 import at.asitplus.wallet.lib.iso.wrapInCborTag
 import io.github.aakira.napier.Napier
 import kotlinx.serialization.encodeToByteArray
@@ -68,24 +67,22 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
     ): KmmResult<CoseSigned<P>> = catching {
         protectedHeader.withAlgorithmAndKeyId(addKeyId).let { coseHeader ->
             val cosePayload: ByteArray? = payload.asCosePayload()
-            cosePayload
-//                .let { if (payload is ByteStringWrapper<*>) it?.wrapInCborTag(24) else it } // TODO Check
-                .let { rawPayload ->
-                    CoseSigned(
-                        protectedHeader = coseHeader,
-                        unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
-                        payload = rawPayload,
-                        signature = calcSignature(coseHeader, rawPayload)
-                    )
-                }
+            cosePayload.let { rawPayload ->
+                CoseSigned(
+                    protectedHeader = coseHeader,
+                    unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
+                    payload = rawPayload,
+                    signature = calcSignature(coseHeader, rawPayload)
+                )
+            }
         }
     }
 
     private fun <P : Any?> P.asCosePayload(): ByteArray? = when (this) {
         is ByteArray -> this
-        is ByteStringWrapper<*> -> coseCompliantSerializer.encodeToByteArray(this)
+        is ByteStringWrapper<*> -> vckCborSerializer.encodeToByteArray(this).wrapInCborTag(24)
+        is MobileSecurityObject -> vckCborSerializer.encodeToByteArray(ByteStringWrapper(this) as ByteStringWrapper<MobileSecurityObject>).wrapInCborTag(24)
         is Nothing? -> null
-        is MobileSecurityObject -> coseCompliantSerializer.encodeToByteArray(ByteStringWrapper(this) as ByteStringWrapper<MobileSecurityObject>)
         else -> throw NotImplementedError()
     }
 
