@@ -78,7 +78,8 @@ class CredentialIssuer(
 
     /**
      * Serve this result JSON-serialized under `/.well-known/jwt-vc-issuer`
-     * (see [OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA])
+     * (see [OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA]),
+     * so that verifiers can look up the keys used to sign credentials.
      */
     val jwtVcMetadata: JwtVcIssuerMetadata by lazy {
         JwtVcIssuerMetadata(

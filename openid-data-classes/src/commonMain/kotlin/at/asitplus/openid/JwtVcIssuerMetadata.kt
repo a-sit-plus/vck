@@ -11,7 +11,8 @@ import kotlinx.serialization.encodeToString
  * Metadata about the credential issuer in
  * [SD-JWT VC](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html)
  *
- * To be serialized into JSON and made available at `/.well-known/jwt-vc-issuer` at the credential issuer.
+ * To be serialized into JSON and made available at `/.well-known/jwt-vc-issuer` at the credential issuer
+ * (see [OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA]).
  */
 @Serializable
 data class JwtVcIssuerMetadata(

@@ -13,10 +13,7 @@ import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSiz
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
-import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
-import at.asitplus.wallet.lib.agent.EphemeralKeyHolder
-import at.asitplus.wallet.lib.agent.VerifierCryptoService
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
@@ -44,6 +41,11 @@ interface JwsService {
      * Encoding which can be used to encrypt JWE, that can be decrypted with [decryptJweObject].
      */
     val encryptionEncoding: JweEncryption
+
+    /**
+     * Key material used for signing
+     */
+    val keyMaterial: KeyMaterial
 
     suspend fun <T : Any> createSignedJwt(
         type: String,
@@ -115,6 +117,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
 
     override val algorithm: JwsAlgorithm =
         cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
+
+    override val keyMaterial: KeyMaterial = cryptoService.keyMaterial
 
     // TODO: Get from crypto service
     override val encryptionAlgorithm: JweAlgorithm = JweAlgorithm.ECDH_ES

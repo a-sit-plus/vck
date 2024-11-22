@@ -39,6 +39,8 @@ object OpenIdConstants {
 
     const val PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA = "/.well-known/jwt-vc-issuer"
 
+    const val PATH_WELL_KNOWN_JAR_ISSUER = "/.well-known/jar-issuer"
+
     const val SCOPE_OPENID = "openid"
 
     const val SCOPE_PROFILE = "profile"

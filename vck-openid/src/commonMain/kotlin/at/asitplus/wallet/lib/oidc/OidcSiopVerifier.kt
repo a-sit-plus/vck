@@ -149,6 +149,22 @@ class OidcSiopVerifier private constructor(
     private val containerJwt =
         FormatContainerJwt(algorithmStrings = verifierJwsService.supportedAlgorithms.map { it.identifier })
 
+
+    /**
+     * Serve this result JSON-serialized under `/.well-known/jar-issuer`
+     * (see [OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER]),
+     * so that SIOP Wallets can look up the keys used to sign request objects.
+     */
+    val jarMetadata: JwtVcIssuerMetadata by lazy {
+        JwtVcIssuerMetadata(
+            issuer = clientIdScheme.clientId,
+            jsonWebKeySet = JsonWebKeySet(setOf(jwsService.keyMaterial.jsonWebKey))
+        )
+    }
+
+    /**
+     * Creates the [RelyingPartyMetadata], without encryption (see [metadataWithEncryption])
+     */
     val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.clientId),
@@ -333,13 +349,15 @@ class OidcSiopVerifier private constructor(
         val requestObject = createAuthnRequest(requestOptions)
         val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
         val certificateChain = (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain
+        val issuer = (clientIdScheme as? ClientIdScheme.PreRegistered)?.clientId ?: "https://self-issued.me/v2"
         jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 algorithm = jwsService.algorithm,
                 attestationJwt = attestationJwt,
                 certificateChain = certificateChain,
+                type = JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST
             ),
-            payload = requestObject.copy(audience = "https://self-issued.me/v2", issuer = "https://self-issued.me/v2"),
+            payload = requestObject.copy(audience = "https://self-issued.me/v2", issuer = issuer),
             serializer = AuthenticationRequestParameters.serializer(),
             addJsonWebKey = certificateChain == null,
         ).getOrThrow()
