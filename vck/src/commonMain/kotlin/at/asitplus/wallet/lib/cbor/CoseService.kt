@@ -3,12 +3,8 @@ package at.asitplus.wallet.lib.cbor
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
-import at.asitplus.signum.indispensable.cosef.CoseHeader
-import at.asitplus.signum.indispensable.cosef.CoseKey
-import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
@@ -66,32 +62,38 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         addCertificate: Boolean,
     ): KmmResult<CoseSigned<P>> = catching {
         protectedHeader.withAlgorithmAndKeyId(addKeyId).let { coseHeader ->
-            val cosePayload: ByteArray? = payload.asCosePayload()
-            cosePayload.let { rawPayload ->
+            payload.asCosePayload().let { cosePayload ->
                 CoseSigned(
                     protectedHeader = coseHeader,
                     unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
-                    payload = rawPayload,
-                    signature = calcSignature(coseHeader, rawPayload)
+                    payload = cosePayload,
+                    signature = calcSignature(coseHeader, cosePayload)
                 )
             }
         }
     }
 
     /**
+     * Encodes [this] as payload for [createSignedCose], i.e. encodes it into a byte array.
      * + [ByteArray] is processed as it is
      * + [ByteStringWrapper] is wrapped in Tag(24)
      * + [MobileSecurityObject] is wrapped as [ByteStringWrapper] and wrapped in Tag(24)
      * + null is processed as it is
      *
-     * If other complex data classes need to be serialized other than [MobileSecurityObject]
-     * extend in the same fashion
+     * If other complex data classes need to be serialized (other than [MobileSecurityObject]),
+     * extend this method in the same fashion
      */
     @Throws(NotImplementedError::class)
     private fun <P : Any?> P.asCosePayload(): ByteArray? = when (this) {
         is ByteArray -> this
-        is ByteStringWrapper<*> -> vckCborSerializer.encodeToByteArray(this).wrapInCborTag(24)
-        is MobileSecurityObject -> vckCborSerializer.encodeToByteArray(ByteStringWrapper(this) as ByteStringWrapper<MobileSecurityObject>).wrapInCborTag(24)
+        is ByteStringWrapper<*> -> vckCborSerializer
+            .encodeToByteArray(this)
+            .wrapInCborTag(24)
+
+        is MobileSecurityObject -> vckCborSerializer
+            .encodeToByteArray(ByteStringWrapper(this) as ByteStringWrapper<MobileSecurityObject>)
+            .wrapInCborTag(24)
+
         is Nothing? -> null
         else -> throw NotImplementedError()
     }
