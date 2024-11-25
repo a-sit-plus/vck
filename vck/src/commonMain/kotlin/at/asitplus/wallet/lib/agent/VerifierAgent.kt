@@ -18,13 +18,12 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
  * An agent that only implements [Verifier], i.e. it can only verify credentials of other agents.
  */
 class VerifierAgent(
-    override val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val validator: Validator = Validator(),
     /**
      * The identifier of this verifier, that is expected to be the audience of verifiable presentations.
      * It may be a cryptographic identifier of the key, but can be anything, e.g. a URL.
      */
-    private val identifier: String = keyMaterial.identifier, // TODO Use instead of passing clientId
+    private val identifier: String = "TODO"
 ) : Verifier {
 
     override fun setRevocationList(it: String): Boolean {

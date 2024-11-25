@@ -42,14 +42,20 @@ import kotlin.time.toDuration
  *
  * This class creates the Authentication Request, [verifier] verifies the response. See [OidcSiopWallet] for the holder.
  */
-class OidcSiopVerifier private constructor(
-    private val verifier: Verifier,
-    private val jwsService: JwsService,
-    private val verifierJwsService: VerifierJwsService,
+class OidcSiopVerifier(
+    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    private val verifier: Verifier = VerifierAgent(),
+    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
     private val clientIdScheme: ClientIdScheme,
+    /**
+     * Used to store the nonce, associated to the state, to first send [AuthenticationRequestParameters.nonce],
+     * and then verify the challenge in the submitted verifiable presentation in
+     * [AuthenticationResponseParameters.vpToken].
+     */
     private val stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
     private val stateToResponseTypeStore: MapStore<String, String> = DefaultMapStore(),
 ) {
@@ -118,34 +124,6 @@ class OidcSiopVerifier private constructor(
         ) : ClientIdScheme(PreRegistered, clientId)
     }
 
-    constructor(
-        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-        verifier: Verifier = VerifierAgent(keyMaterial),
-        verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-        timeLeewaySeconds: Long = 300L,
-        clock: Clock = Clock.System,
-        nonceService: NonceService = DefaultNonceService(),
-        clientIdScheme: ClientIdScheme,
-        /**
-         * Used to store the nonce, associated to the state, to first send [AuthenticationRequestParameters.nonce],
-         * and then verify the challenge in the submitted verifiable presentation in
-         * [AuthenticationResponseParameters.vpToken].
-         */
-        stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
-        stateToResponseTypeStore: MapStore<String, String> = DefaultMapStore(),
-    ) : this(
-        verifier = verifier,
-        jwsService = jwsService,
-        verifierJwsService = verifierJwsService,
-        timeLeewaySeconds = timeLeewaySeconds,
-        clock = clock,
-        nonceService = nonceService,
-        clientIdScheme = clientIdScheme,
-        stateToNonceStore = stateToNonceStore,
-        stateToResponseTypeStore = stateToResponseTypeStore,
-    )
-
     private val containerJwt =
         FormatContainerJwt(algorithmStrings = verifierJwsService.supportedAlgorithms.map { it.identifier })
 
@@ -168,7 +146,7 @@ class OidcSiopVerifier private constructor(
     val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.clientId),
-            jsonWebKeySet = JsonWebKeySet(listOf(verifier.keyMaterial.publicKey.toJsonWebKey())),
+            jsonWebKeySet = JsonWebKeySet(listOf(keyMaterial.publicKey.toJsonWebKey())),
             subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY, BINDING_METHOD_JWK),
             vpFormats = FormatHolder(
                 msoMdoc = containerJwt,
@@ -576,8 +554,8 @@ class OidcSiopVerifier private constructor(
             JweEncrypted.deserialize(response).getOrNull()?.let { jarmResponse ->
                 jwsService.decryptJweObject(jarmResponse, response, AuthenticationResponseParameters.serializer())
                     .getOrNull()?.let { decrypted ->
-                    return validateAuthnResponse(decrypted.payload)
-                }
+                        return validateAuthnResponse(decrypted.payload)
+                    }
             }
         }
         val responseType = stateToResponseTypeStore.get(state)
@@ -678,7 +656,12 @@ class OidcSiopVerifier private constructor(
         ClaimFormat.JWT_SD,
         ClaimFormat.MSO_MDOC,
         ClaimFormat.JWT_VP -> when (relatedPresentation) {
-            is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, challenge, clientIdScheme.clientId)
+            is JsonPrimitive -> verifier.verifyPresentation(
+                relatedPresentation.content,
+                challenge,
+                clientIdScheme.clientId
+            )
+
             else -> throw IllegalArgumentException()
         }
 

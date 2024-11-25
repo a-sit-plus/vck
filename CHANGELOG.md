@@ -25,6 +25,8 @@ Release 5.2.0:
 - Do not expect the `audience` of a verifiable presentation to always incude the identifier of a key, but the identifier of the verifier (which may be anything)
 - Remove additional constructors of `VerifierAgent`
 - Remove function `verifyVcJws(it: String): VerifyCredentialResult` from `VerifierAgent`, was only forwarding call to `Validator` anyway
+- Remove `keyMaterial` from interface `Verifier`
+- Remove secondary constructor from `OidcSiopVerifier`
 
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact

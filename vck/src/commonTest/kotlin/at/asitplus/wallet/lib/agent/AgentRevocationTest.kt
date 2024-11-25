@@ -30,7 +30,7 @@ class AgentRevocationTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore)
         verifierKeyMaterial = EphemeralKeyWithoutCert()
-        verifier = VerifierAgent(verifierKeyMaterial)
+        verifier = VerifierAgent()
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
 

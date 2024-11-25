@@ -39,7 +39,7 @@ class ValidatorVcTest : FreeSpec() {
             issuer = IssuerAgent(issuerKeyMaterial, issuerCredentialStore)
             issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyMaterial))
             verifierKeyMaterial = EphemeralKeyWithoutCert()
-            verifier = VerifierAgent(verifierKeyMaterial)
+            verifier = VerifierAgent()
             validator = Validator()
         }
 

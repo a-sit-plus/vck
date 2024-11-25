@@ -34,7 +34,7 @@ class AgentTest : FreeSpec({
         issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore)
         holderKeyMaterial = EphemeralKeyWithoutCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
-        verifier = VerifierAgent(holderKeyMaterial)
+        verifier = VerifierAgent()
         challenge = uuid4().toString()
         validator = Validator()
     }

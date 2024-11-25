@@ -27,7 +27,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
     )
 
     val verifierSiop = OidcSiopVerifier(
-        verifier = VerifierAgent(EphemeralKeyWithoutCert()),
+        verifier = VerifierAgent(),
         clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
     )
 
