@@ -33,9 +33,10 @@ interface KeyMaterial : Signer {
 }
 
 abstract class KeyWithSelfSignedCert(
-    private val extensions: List<X509CertificateExtension>
+    private val extensions: List<X509CertificateExtension>,
+    val customKeyId: String? = null,
 ) : KeyMaterial {
-    override val identifier: String get() = publicKey.didEncoded
+    override val identifier: String get() = customKeyId ?: publicKey.didEncoded
     private val crtMut = Mutex()
     private var _certificate: X509Certificate? = null
 
@@ -62,8 +63,10 @@ class EphemeralKeyWithSelfSignedCert(
             curve = ECCurve.SECP_256_R_1
             digests = setOf(Digest.SHA256)
         }
-    }.getOrThrow(), extensions: List<X509CertificateExtension> = listOf()
-) : KeyWithSelfSignedCert(extensions), Signer by key.signer().getOrThrow() {
+    }.getOrThrow(),
+    extensions: List<X509CertificateExtension> = listOf(),
+    customKeyId: String? = null,
+) : KeyWithSelfSignedCert(extensions, customKeyId), Signer by key.signer().getOrThrow() {
     override fun getUnderLyingSigner(): Signer = key.signer().getOrThrow()
 }
 
@@ -102,8 +105,11 @@ open class DefaultEphemeralKeyHolder(val crv: ECCurve) : EphemeralKeyHolder {
 
 }
 
-abstract class SignerBasedKeyMaterial(val signer: Signer) : KeyMaterial, Signer by signer {
-    override val identifier = signer.publicKey.didEncoded
+abstract class SignerBasedKeyMaterial(
+    val signer: Signer,
+    val customKeyId: String? = null,
+) : KeyMaterial, Signer by signer {
+    override val identifier = customKeyId ?: signer.publicKey.didEncoded
 
     override fun getUnderLyingSigner() = signer
 }

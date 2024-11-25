@@ -134,7 +134,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): KmmResult<JwsSigned<T>> = createSignedJws(
         JwsHeader(
             algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-            keyId = cryptoService.keyMaterial.publicKey.didEncoded,
+            keyId = cryptoService.keyMaterial.identifier,
             type = type,
             contentType = contentType
         ),

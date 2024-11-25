@@ -2,20 +2,15 @@ package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
-import at.asitplus.signum.indispensable.cosef.CoseHeader
-import at.asitplus.signum.indispensable.cosef.CoseKey
-import at.asitplus.signum.indispensable.cosef.CoseSignatureInput
-import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.*
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
+import at.asitplus.signum.supreme.asKmmResult
+import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.signum.supreme.asKmmResult
-import at.asitplus.signum.supreme.sign.Verifier
 
 /**
  * Creates and parses COSE objects.
@@ -69,7 +64,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         var copyProtectedHeader = protectedHeader?.copy(algorithm = algorithm)
             ?: CoseHeader(algorithm = algorithm)
         if (addKeyId) copyProtectedHeader =
-            copyProtectedHeader.copy(kid = cryptoService.keyMaterial.publicKey.didEncoded.encodeToByteArray())
+            copyProtectedHeader.copy(kid = cryptoService.keyMaterial.identifier.encodeToByteArray())
 
         val copyUnprotectedHeader = if (addCertificate && cryptoService.keyMaterial.getCertificate() != null) {
             (unprotectedHeader

@@ -21,6 +21,7 @@ Release 5.2.0:
 - ISO credentials: Serialize and deserialize device signed items correctly (i.e. considering the namespace of the element)
 - Add constructor parameter `identifier` to `IssuerAgent`, to be used as the `issuer` property in issued credentials
 - Refactor extracting the audience of a verifiable presentation from an OpenID Authn Request (now uses the `client_id` or `audience` before extracting key identifiers)
+- Add `customKeyId` to `KeyMaterial` to not use the DID encoding as the identifier for keys
 
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact

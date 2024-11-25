@@ -82,12 +82,14 @@ fun CryptoPublicKey.matchesIdentifier(input: String): Boolean {
         return true
     if (didEncoded == input)
         return true
-    if (toJsonWebKey().keyId == input)
-        return true
-    if (toJsonWebKey().jwkThumbprint == input)
-        return true
-    if (toJsonWebKey().didEncoded == input)
-        return true
+    with(toJsonWebKey()) {
+        if (keyId == input)
+            return true
+        if (jwkThumbprint == input)
+            return true
+        if (didEncoded == input)
+            return true
+    }
     return false
 }
 
