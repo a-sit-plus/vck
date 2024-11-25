@@ -20,6 +20,7 @@ Release 5.2.0:
 - Adapt to changes in `signum`, i.e. the classes `JwsSigned` and `JweDecrypted` are now typed to their payload
 - ISO credentials: Serialize and deserialize device signed items correctly (i.e. considering the namespace of the element)
 - Add constructor parameter `identifier` to `IssuerAgent`, to be used as the `issuer` property in issued credentials
+- Refactor extracting the audience of a verifiable presentation from an OpenID Authn Request (now uses the `client_id` or `audience` before extracting key identifiers)
 
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact

@@ -54,7 +54,7 @@ abstract class KeyWithSelfSignedCert(
 }
 
 /**
- * Generate a new key pair adapter with a random key, e.g. used in tests
+ * Generate new key material with a random key, and a self-signed certificate, e.g. used in tests
  */
 class EphemeralKeyWithSelfSignedCert(
     val key: EphemeralKey = EphemeralKey {
@@ -68,7 +68,7 @@ class EphemeralKeyWithSelfSignedCert(
 }
 
 /**
- * Generate a new key pair adapter with a random key, e.g. used in tests
+ * Generate new key material with a random key, e.g. used in tests
  */
 class EphemeralKeyWithoutCert(
     val key: EphemeralKey = EphemeralKey {
@@ -76,9 +76,10 @@ class EphemeralKeyWithoutCert(
             curve = ECCurve.SECP_256_R_1
             digests = setOf(Digest.SHA256)
         }
-    }.getOrThrow()
+    }.getOrThrow(),
+    val customKeyId: String? = null,
 ) : KeyMaterial, Signer by key.signer().getOrThrow() {
-    override val identifier: String = publicKey.didEncoded
+    override val identifier: String = customKeyId ?: publicKey.didEncoded
     override fun getUnderLyingSigner(): Signer = key.signer().getOrThrow()
     override suspend fun getCertificate(): X509Certificate? = null
 }
@@ -101,7 +102,7 @@ open class DefaultEphemeralKeyHolder(val crv: ECCurve) : EphemeralKeyHolder {
 
 }
 
-abstract class SignerBasedKeyMaterial(val signer: Signer): KeyMaterial, Signer by signer{
+abstract class SignerBasedKeyMaterial(val signer: Signer) : KeyMaterial, Signer by signer {
     override val identifier = signer.publicKey.didEncoded
 
     override fun getUnderLyingSigner() = signer
