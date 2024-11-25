@@ -2,9 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.wallet.lib.iso.Document
@@ -74,20 +72,6 @@ class VerifierAgent(
         }
         return Verifier.VerifyPresentationResult.InvalidStructure(input)
             .also { Napier.w("Could not verify presentation, unknown format: $it") }
-    }
-
-    /**
-     * Verifies if a presentation contains all required [attributeNames].
-     */
-    override fun verifyPresentationContainsAttributes(
-        it: VerifiablePresentationParsed,
-        attributeNames: List<String>
-    ): Boolean {
-        val existingAttributeNames = it.verifiableCredentials
-            .map { it.vc.credentialSubject }
-            .filterIsInstance<AtomicAttribute2023>()
-            .map { it.name }
-        return attributeNames == existingAttributeNames
     }
 
 }

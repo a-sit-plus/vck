@@ -27,11 +27,6 @@ interface Verifier {
      */
     fun verifyPresentation(it: String, challenge: String): VerifyPresentationResult
 
-    /**
-     * Verifies if a presentation contains all required [attributeNames].
-     */
-    fun verifyPresentationContainsAttributes(it: VerifiablePresentationParsed, attributeNames: List<String>): Boolean
-
     sealed class VerifyPresentationResult {
         data class Success(val vp: VerifiablePresentationParsed) : VerifyPresentationResult()
         data class SuccessSdJwt(
