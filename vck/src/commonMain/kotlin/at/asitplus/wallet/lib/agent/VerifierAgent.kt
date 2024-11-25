@@ -42,11 +42,11 @@ class VerifierAgent private constructor(
     /**
      * Verifies a presentation of some credentials that a holder issued with that [challenge] we sent before.
      */
-    override fun verifyPresentation(input: String, challenge: String): Verifier.VerifyPresentationResult {
+    override fun verifyPresentation(input: String, challenge: String, clientId: String): Verifier.VerifyPresentationResult {
         val sdJwtSigned = runCatching { SdJwtSigned.parse(input) }.getOrNull()
         if (sdJwtSigned != null) {
             return runCatching {
-                validator.verifyVpSdJwt(input, challenge, keyMaterial.publicKey)
+                validator.verifyVpSdJwt(input, challenge, clientId)
             }.getOrElse {
                 Verifier.VerifyPresentationResult.InvalidStructure(input)
             }
@@ -54,7 +54,7 @@ class VerifierAgent private constructor(
         val jwsSigned = JwsSigned.deserialize<VerifiablePresentationJws>(input, vckJsonSerializer).getOrNull()
         if (jwsSigned != null) {
             return runCatching {
-                validator.verifyVpJws(input, challenge, keyMaterial.publicKey)
+                validator.verifyVpJws(input, challenge, clientId)
             }.getOrElse {
                 Verifier.VerifyPresentationResult.InvalidStructure(input)
             }

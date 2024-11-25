@@ -27,9 +27,11 @@ interface Verifier {
     fun setRevocationList(it: String): Boolean
 
     /**
-     * Verifies a presentation of some credentials that a holder issued with that [challenge] we sent before.
+     * Verifies a presentation of some credentials from a holder,
+     * that shall include the [challenge] (sent by this verifier),
+     * as well as the expected [clientId] (identifying this verifier).
      */
-    fun verifyPresentation(it: String, challenge: String): VerifyPresentationResult
+    fun verifyPresentation(it: String, challenge: String, clientId: String): VerifyPresentationResult
 
     /**
      * Verifies if a presentation contains all required [attributeNames].

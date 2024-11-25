@@ -48,16 +48,17 @@ class AgentTest : FreeSpec({
             ).getOrThrow().toStoreCredentialInput()
         )
 
+        val verifierId = verifier.keyMaterial.identifier
         val presentationParameters = holder.createPresentation(
-            challenge,
-            verifier.keyMaterial.identifier,
+            challenge = challenge,
+            audienceId = verifierId,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
-        val verified = verifier.verifyPresentation(vp.jws, challenge)
+        val verified = verifier.verifyPresentation(vp.jws, challenge, verifierId)
         verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
     }
 
@@ -81,7 +82,8 @@ class AgentTest : FreeSpec({
         val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
-        val result = verifier.verifyPresentation(vp.jws, challenge)
+        val verifierId = verifier.keyMaterial.identifier
+        val result = verifier.verifyPresentation(vp.jws, challenge, verifierId)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
     }
 
@@ -240,9 +242,10 @@ class AgentTest : FreeSpec({
             ).getOrThrow()
         ).getOrThrow()
         holder.storeCredential(credentials.toStoreCredentialInput())
+        val verifierId = verifier.keyMaterial.identifier
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.keyMaterial.identifier,
+            audienceId = verifierId,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -250,7 +253,7 @@ class AgentTest : FreeSpec({
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
 
-        val result = verifier.verifyPresentation(vp.jws, challenge)
+        val result = verifier.verifyPresentation(vp.jws, challenge, verifierId)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         result.vp.revokedVerifiableCredentials.shouldBeEmpty()
         result.vp.verifiableCredentials shouldHaveSize 1
@@ -265,9 +268,10 @@ class AgentTest : FreeSpec({
             ).getOrThrow()
         ).getOrThrow()
         holder.storeCredential(credentials.toStoreCredentialInput())
+        val verifierId = verifier.keyMaterial.identifier
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.keyMaterial.identifier,
+            audienceId = verifierId,
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -289,7 +293,7 @@ class AgentTest : FreeSpec({
         revocationList.shouldNotBeNull()
         verifier.setRevocationList(revocationList) shouldBe true
 
-        val result = verifier.verifyPresentation(vp.jws, challenge)
+        val result = verifier.verifyPresentation(vp.jws, challenge, verifierId)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
     }
 

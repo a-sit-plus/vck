@@ -55,16 +55,17 @@ class AgentSdJwtTest : FreeSpec({
     }
 
     "simple walk-through success" {
+        val verifierId = verifier.keyMaterial.identifier
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.keyMaterial.identifier,
+            audienceId = verifierId,
             presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME, CLAIM_DATE_OF_BIRTH)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
-        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge, verifierId)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
         verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
@@ -75,14 +76,15 @@ class AgentSdJwtTest : FreeSpec({
     "keyBindingJws contains more JWK attributes, still verifies" {
         val credential = holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>().first()
+        val verifierId = verifier.keyMaterial.identifier
         val sdJwt = createSdJwtPresentation(
             jwsService = DefaultJwsService(DefaultCryptoService(holderKeyMaterial)),
-            audienceId = verifier.keyMaterial.identifier,
+            audienceId = verifierId,
             challenge = challenge,
             validSdJwtCredential = credential,
             claimName = CLAIM_GIVEN_NAME
         ).sdJwt
-        val verified = verifier.verifyPresentation(sdJwt, challenge)
+        val verified = verifier.verifyPresentation(sdJwt, challenge, verifierId)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
         verified.reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
@@ -90,41 +92,44 @@ class AgentSdJwtTest : FreeSpec({
     }
 
     "wrong key binding jwt" {
+        val verifierId = verifier.keyMaterial.identifier
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.keyMaterial.identifier,
+            audienceId = verifierId,
             presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
         // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
-        val freshKbJwt = createFreshSdJwtKeyBinding(challenge, verifier.keyMaterial.identifier)
+        val freshKbJwt = createFreshSdJwtKeyBinding(challenge, verifierId)
         val malformedVpSdJwt = vp.sdJwt.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
 
-        verifier.verifyPresentation(malformedVpSdJwt, challenge)
+        verifier.verifyPresentation(malformedVpSdJwt, challenge, verifierId)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
     }
 
     "wrong challenge in key binding jwt" {
         val malformedChallenge = challenge.reversed()
+        val verifierId = verifier.keyMaterial.identifier
         val presentationParameters = holder.createPresentation(
             challenge = malformedChallenge,
-            audienceId = verifier.keyMaterial.identifier,
+            audienceId = verifierId,
             presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
-        verifier.verifyPresentation(vp.sdJwt, challenge)
+        verifier.verifyPresentation(vp.sdJwt, challenge, verifierId)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
     }
 
     "revoked sd jwt" {
+        val verifierId = verifier.keyMaterial.identifier
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
-            audienceId = verifier.keyMaterial.identifier,
+            audienceId = verifierId,
             presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
@@ -136,7 +141,7 @@ class AgentSdJwtTest : FreeSpec({
             .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
         issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
         verifier.setRevocationList(issuer.issueRevocationListCredential()!!) shouldBe true
-        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge, verifierId)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         verified.isRevoked shouldBe true
     }

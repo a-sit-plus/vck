@@ -140,13 +140,13 @@ class Validator(
      *
      * @param input JWS in compact representation
      * @param challenge Nonce that the verifier has sent to the holder
-     * @param publicKey Local key of the verifier
+     * @param clientId Identifier of the verifier (i.e. the audience of the presentation)
      */
     @Throws(IllegalArgumentException::class)
     fun verifyVpJws(
         input: String,
         challenge: String,
-        publicKey: CryptoPublicKey
+        clientId: String
     ): Verifier.VerifyPresentationResult {
         Napier.d("Verifying VP $input")
         val jws = JwsSigned.deserialize<VerifiablePresentationJws>(input, vckJsonSerializer).getOrElse {
@@ -157,8 +157,7 @@ class Validator(
             Napier.w("VP: Signature invalid")
             throw IllegalArgumentException("signature")
         }
-        val kid = jws.header.keyId
-        val parsedVp = parser.parseVpJws(input, jws.payload, kid, challenge, publicKey)
+        val parsedVp = parser.parseVpJws(input, jws.payload, challenge, clientId)
         if (parsedVp !is Parser.ParseVpResult.Success) {
             Napier.d("VP: Could not parse content")
             throw IllegalArgumentException("vp.content")
@@ -190,14 +189,14 @@ class Validator(
      * as well as some disclosures and a key binding JWT at the end.
      *
      * @param input SD-JWT in compact representation, i.e. `$jws~$disclosure1~$disclosure2...~$keyBinding`
-     * @param publicKey Local key of the verifier, to verify audience of key binding JWS
+     * @param clientId Identifier of the verifier, to verify audience of key binding JWS
      */
     fun verifyVpSdJwt(
         input: String,
         challenge: String,
-        publicKey: CryptoPublicKey
+        clientId: String
     ): Verifier.VerifyPresentationResult {
-        Napier.d("verifyVpSdJwt: '$input', '$challenge', '$publicKey'")
+        Napier.d("verifyVpSdJwt: '$input', '$challenge', '$clientId'")
         val sdJwtResult = verifySdJwt(input, null)
         if (sdJwtResult !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
             Napier.w("verifyVpSdJwt: Could not verify SD-JWT: $sdJwtResult")
@@ -214,11 +213,11 @@ class Validator(
         val keyBinding = keyBindingSigned.payload
 
         if (keyBinding.challenge != challenge) {
-            Napier.w("verifyVpSdJwt: Challenge not correct: ${keyBinding.challenge}")
+            Napier.w("verifyVpSdJwt: Challenge not correct: ${keyBinding.challenge}, expected $clientId")
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
         }
-        if (!publicKey.matchesIdentifier(keyBinding.audience)) {
-            Napier.w("verifyVpSdJwt: Audience not correct: ${keyBinding.audience}")
+        if (keyBinding.audience != clientId) {
+            Napier.w("verifyVpSdJwt: Audience not correct: ${keyBinding.audience}, expected $clientId")
             return Verifier.VerifyPresentationResult.InvalidStructure(input)
         }
         val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt

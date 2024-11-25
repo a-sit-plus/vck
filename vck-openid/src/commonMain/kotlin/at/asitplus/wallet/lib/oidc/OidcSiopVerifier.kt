@@ -678,7 +678,7 @@ class OidcSiopVerifier private constructor(
         ClaimFormat.JWT_SD,
         ClaimFormat.MSO_MDOC,
         ClaimFormat.JWT_VP -> when (relatedPresentation) {
-            is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, challenge)
+            is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, challenge, clientIdScheme.clientId)
             else -> throw IllegalArgumentException()
         }
 
