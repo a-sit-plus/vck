@@ -65,7 +65,6 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
         lateinit var verifierKeyMaterial: KeyMaterial
 
         lateinit var holderAgent: Holder
-        lateinit var verifierAgent: Verifier
 
         lateinit var holderSiop: OidcSiopWallet
         lateinit var verifierSiop: OidcSiopVerifier
@@ -75,7 +74,6 @@ class OidcSiopWalletScopeSupportTest : FreeSpec({
             verifierKeyMaterial = EphemeralKeyWithoutCert()
             clientId = "https://example.com/rp/${uuid4()}"
             holderAgent = HolderAgent(holderKeyMaterial)
-            verifierAgent = VerifierAgent()
 
             holderSiop = OidcSiopWallet(
                 keyMaterial = holderKeyMaterial,

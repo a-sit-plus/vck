@@ -43,14 +43,14 @@ import kotlin.time.toDuration
  * This class creates the Authentication Request, [verifier] verifies the response. See [OidcSiopWallet] for the holder.
  */
 class OidcSiopVerifier(
+    private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    private val verifier: Verifier = VerifierAgent(),
+    private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
-    private val clientIdScheme: ClientIdScheme,
     /**
      * Used to store the nonce, associated to the state, to first send [AuthenticationRequestParameters.nonce],
      * and then verify the challenge in the submitted verifiable presentation in
@@ -658,8 +658,7 @@ class OidcSiopVerifier(
         ClaimFormat.JWT_VP -> when (relatedPresentation) {
             is JsonPrimitive -> verifier.verifyPresentation(
                 relatedPresentation.content,
-                challenge,
-                clientIdScheme.clientId
+                challenge
             )
 
             else -> throw IllegalArgumentException()

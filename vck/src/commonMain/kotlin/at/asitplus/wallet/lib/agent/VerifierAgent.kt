@@ -18,12 +18,12 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
  * An agent that only implements [Verifier], i.e. it can only verify credentials of other agents.
  */
 class VerifierAgent(
-    private val validator: Validator = Validator(),
     /**
      * The identifier of this verifier, that is expected to be the audience of verifiable presentations.
      * It may be a cryptographic identifier of the key, but can be anything, e.g. a URL.
      */
-    private val identifier: String = "TODO"
+    private val identifier: String,
+    private val validator: Validator = Validator(),
 ) : Verifier {
 
     override fun setRevocationList(it: String): Boolean {
@@ -31,13 +31,15 @@ class VerifierAgent(
     }
 
     /**
-     * Verifies a presentation of some credentials that a holder issued with that [challenge] we sent before.
+     * Verifies a presentation of some credentials from a holder,
+     * that shall include the [challenge] (sent by this verifier),
+     * as well as the expected [identifier] (identifying this verifier).
      */
-    override fun verifyPresentation(input: String, challenge: String, clientId: String): Verifier.VerifyPresentationResult {
+    override fun verifyPresentation(input: String, challenge: String): Verifier.VerifyPresentationResult {
         val sdJwtSigned = runCatching { SdJwtSigned.parse(input) }.getOrNull()
         if (sdJwtSigned != null) {
             return runCatching {
-                validator.verifyVpSdJwt(input, challenge, clientId)
+                validator.verifyVpSdJwt(input, challenge, identifier)
             }.getOrElse {
                 Verifier.VerifyPresentationResult.InvalidStructure(input)
             }
@@ -45,7 +47,7 @@ class VerifierAgent(
         val jwsSigned = JwsSigned.deserialize<VerifiablePresentationJws>(input, vckJsonSerializer).getOrNull()
         if (jwsSigned != null) {
             return runCatching {
-                validator.verifyVpJws(input, challenge, clientId)
+                validator.verifyVpJws(input, challenge, identifier)
             }.getOrElse {
                 Verifier.VerifyPresentationResult.InvalidStructure(input)
             }

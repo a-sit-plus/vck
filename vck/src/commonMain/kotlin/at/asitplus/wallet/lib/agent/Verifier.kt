@@ -23,10 +23,9 @@ interface Verifier {
 
     /**
      * Verifies a presentation of some credentials from a holder,
-     * that shall include the [challenge] (sent by this verifier),
-     * as well as the expected [clientId] (identifying this verifier).
+     * that shall include the [challenge] (sent by this verifier).
      */
-    fun verifyPresentation(it: String, challenge: String, clientId: String): VerifyPresentationResult
+    fun verifyPresentation(it: String, challenge: String): VerifyPresentationResult
 
     /**
      * Verifies if a presentation contains all required [attributeNames].

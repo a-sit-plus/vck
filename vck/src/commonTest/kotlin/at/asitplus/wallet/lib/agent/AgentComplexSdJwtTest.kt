@@ -26,6 +26,7 @@ class AgentComplexSdJwtTest : FreeSpec({
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var challenge: String
+    lateinit var verifierId: String
 
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
@@ -33,7 +34,8 @@ class AgentComplexSdJwtTest : FreeSpec({
         issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore)
         holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
-        verifier = VerifierAgent()
+        verifierId = "urn:${uuid4()}"
+        verifier = VerifierAgent(identifier = verifierId)
         challenge = uuid4().toString()
     }
 
@@ -52,11 +54,10 @@ class AgentComplexSdJwtTest : FreeSpec({
             "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
         )
 
-        val verifierId = "urn:${uuid4()}"
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
-        val verified = verifier.verifyPresentation(vp.sdJwt, challenge, verifierId)
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
         verified.disclosures.size shouldBe 1 // for address only
@@ -82,11 +83,10 @@ class AgentComplexSdJwtTest : FreeSpec({
             "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
         )
 
-        val verifierId = "urn:${uuid4()}"
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
-        val verified = verifier.verifyPresentation(vp.sdJwt, challenge, verifierId)
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
         verified.disclosures.size shouldBe 2 // for region, country
@@ -113,11 +113,10 @@ class AgentComplexSdJwtTest : FreeSpec({
             "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
         )
 
-        val verifierId = "urn:${uuid4()}"
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
-        val verified = verifier.verifyPresentation(vp.sdJwt, challenge, verifierId)
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
         verified.disclosures.size shouldBe 3 // for address, region, country
@@ -141,11 +140,10 @@ class AgentComplexSdJwtTest : FreeSpec({
             "$.$CLAIM_ALWAYS_VISIBLE"
         )
 
-        val verifierId = "urn:${uuid4()}"
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
-        val verified = verifier.verifyPresentation(vp.sdJwt, challenge, verifierId)
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
         verified.disclosures.size shouldBe 2 // claim_given_name, claim_family_name

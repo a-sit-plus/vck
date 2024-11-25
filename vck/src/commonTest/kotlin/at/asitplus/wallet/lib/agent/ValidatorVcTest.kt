@@ -26,7 +26,6 @@ class ValidatorVcTest : FreeSpec() {
     private lateinit var issuerCredentialStore: IssuerCredentialStore
     private lateinit var issuerJwsService: JwsService
     private lateinit var issuerKeyMaterial: KeyMaterial
-    private lateinit var verifier: Verifier
     private lateinit var verifierKeyMaterial: KeyMaterial
     private lateinit var validator: Validator
 
@@ -39,7 +38,6 @@ class ValidatorVcTest : FreeSpec() {
             issuer = IssuerAgent(issuerKeyMaterial, issuerCredentialStore)
             issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyMaterial))
             verifierKeyMaterial = EphemeralKeyWithoutCert()
-            verifier = VerifierAgent()
             validator = Validator()
         }
 

@@ -4,7 +4,6 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
@@ -27,7 +26,6 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
     )
 
     val verifierSiop = OidcSiopVerifier(
-        verifier = VerifierAgent(),
         clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
     )
 
