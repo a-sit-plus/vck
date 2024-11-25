@@ -75,10 +75,7 @@ class Parser(
      *
      * @param it the JWS enclosing the VC, in compact representation
      */
-    fun parseVcJws(it: String, vcJws: VerifiableCredentialJws, kid: String? = null): ParseVcResult {
-        if (kid != null && vcJws.issuer != kid)
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.d("iss invalid") }
+    fun parseVcJws(it: String, vcJws: VerifiableCredentialJws): ParseVcResult {
         if (vcJws.issuer != vcJws.vc.issuer)
             return ParseVcResult.InvalidStructure(it)
                 .also { Napier.d("iss invalid") }
@@ -114,14 +111,11 @@ class Parser(
     }
 
     /**
-     * Parses a Verifiable Credential in SD-JWT format
+     * Parses a Verifiable Credential in SD-JWT format, and verifies its time validity.
      *
-     * @param it the JWS enclosing the VC, in compact representation
+     * @param it the JWS enclosing the SD-JWT, in compact representation
      */
-    fun parseSdJwt(it: String, sdJwt: VerifiableCredentialSdJwt, kid: String? = null): ParseVcResult {
-        if (kid != null && sdJwt.issuer != kid)
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.d("iss invalid") }
+    fun parseSdJwt(it: String, sdJwt: VerifiableCredentialSdJwt): ParseVcResult {
         if (sdJwt.expiration != null && sdJwt.expiration < (clock.now() - timeLeeway))
             return ParseVcResult.InvalidStructure(it)
                 .also { Napier.d("exp invalid") }

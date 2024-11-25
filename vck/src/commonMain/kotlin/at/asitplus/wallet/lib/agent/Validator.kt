@@ -68,8 +68,7 @@ class Validator(
             Napier.w("Revocation List: Signature invalid")
             return false
         }
-        val kid = jws.header.keyId
-        val parsedVc = parser.parseVcJws(it, jws.payload, kid)
+        val parsedVc = parser.parseVcJws(it, jws.payload)
         if (parsedVc !is Parser.ParseVcResult.Success) {
             Napier.d("Revocation List: Could not parse VC: $parsedVc")
             return false
@@ -387,8 +386,7 @@ class Validator(
             Napier.d("VC: revoked")
             return Verifier.VerifyCredentialResult.Revoked(input, vcJws)
         }
-        val kid = jws.header.keyId
-        return when (parser.parseVcJws(input, vcJws, kid)) {
+        return when (parser.parseVcJws(input, vcJws)) {
             is Parser.ParseVcResult.InvalidStructure -> Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.d("VC: Invalid structure from Parser") }
 
@@ -440,8 +438,7 @@ class Validator(
 
         /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
         val validDisclosures: Map<String, SelectiveDisclosureItem> = sdJwtValidator.validDisclosures
-        val kid = sdJwtSigned.jws.header.keyId
-        return when (parser.parseSdJwt(input, sdJwt, kid)) {
+        return when (parser.parseSdJwt(input, sdJwt)) {
             is Parser.ParseVcResult.SuccessSdJwt -> {
                 Verifier.VerifyCredentialResult.SuccessSdJwt(
                     sdJwtSigned = sdJwtSigned,
