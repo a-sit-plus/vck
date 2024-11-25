@@ -38,11 +38,6 @@ interface Verifier {
      */
     fun verifyPresentationContainsAttributes(it: VerifiablePresentationParsed, attributeNames: List<String>): Boolean
 
-    /**
-     * Parse a single VC, checks if subject matches
-     */
-    fun verifyVcJws(it: String): VerifyCredentialResult
-
     sealed class VerifyPresentationResult {
         data class Success(val vp: VerifiablePresentationParsed) : VerifyPresentationResult()
         data class SuccessSdJwt(

@@ -61,7 +61,7 @@ class AgentRevocationTest : FreeSpec({
         }
         result.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-        val vcJws = verifier.verifyVcJws(result.vcJws)
+        val vcJws = Validator().verifyVcJws(result.vcJws, verifierKeyMaterial.publicKey)
         vcJws.shouldBeInstanceOf<SuccessJwt>()
         val credentialStatus = vcJws.jws.vc.credentialStatus
         credentialStatus.shouldNotBeNull()

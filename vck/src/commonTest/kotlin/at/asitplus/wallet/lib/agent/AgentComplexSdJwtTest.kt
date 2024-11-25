@@ -52,7 +52,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
         )
 
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
@@ -82,7 +82,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
         )
 
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
@@ -113,7 +113,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
         )
 
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
@@ -141,7 +141,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             "$.$CLAIM_ALWAYS_VISIBLE"
         )
 
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 

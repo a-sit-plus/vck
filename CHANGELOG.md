@@ -23,6 +23,8 @@ Release 5.2.0:
 - Refactor extracting the audience of a verifiable presentation from an OpenID Authn Request (now uses the `client_id` or `audience` before extracting key identifiers)
 - Add `customKeyId` to `KeyMaterial` to not use the DID encoding as the identifier for keys
 - Do not expect the `audience` of a verifiable presentation to always incude the identifier of a key, but the identifier of the verifier (which may be anything)
+- Remove additional constructors of `VerifierAgent`
+- Remove function `verifyVcJws(it: String): VerifyCredentialResult` from `VerifierAgent`, was only forwarding call to `Validator` anyway
 
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact

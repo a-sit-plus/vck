@@ -17,23 +17,15 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 /**
  * An agent that only implements [Verifier], i.e. it can only verify credentials of other agents.
  */
-class VerifierAgent private constructor(
-    private val validator: Validator,
-    override val keyMaterial: KeyMaterial,
+class VerifierAgent(
+    override val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    private val validator: Validator = Validator(),
+    /**
+     * The identifier of this verifier, that is expected to be the audience of verifiable presentations.
+     * It may be a cryptographic identifier of the key, but can be anything, e.g. a URL.
+     */
+    private val identifier: String = keyMaterial.identifier, // TODO Use instead of passing clientId
 ) : Verifier {
-
-    constructor(
-        keyPairAdapter: KeyMaterial,
-        validator: Validator = Validator()
-    ) : this(
-        validator = validator,
-        keyMaterial = keyPairAdapter,
-    )
-
-    constructor() : this(
-        validator = Validator(),
-        keyMaterial = EphemeralKeyWithoutCert(),
-    )
 
     override fun setRevocationList(it: String): Boolean {
         return validator.setRevocationList(it)
@@ -95,10 +87,6 @@ class VerifierAgent private constructor(
             .filterIsInstance<AtomicAttribute2023>()
             .map { it.name }
         return attributeNames == existingAttributeNames
-    }
-
-    override fun verifyVcJws(it: String): Verifier.VerifyCredentialResult {
-        return validator.verifyVcJws(it, keyMaterial.publicKey)
     }
 
 }

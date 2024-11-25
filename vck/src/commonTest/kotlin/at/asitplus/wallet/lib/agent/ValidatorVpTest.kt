@@ -57,7 +57,7 @@ class ValidatorVpTest : FreeSpec({
     }
 
     "correct challenge in VP leads to Success" {
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifierId,
@@ -78,7 +78,7 @@ class ValidatorVpTest : FreeSpec({
             .filterIsInstance<Holder.StoredCredential.Vc>()
             .map { it.storeEntry.vcSerialized }
             .map { it.reversed() }
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val vp = holder.createVcPresentation(holderVcSerialized, challenge, verifierId).getOrNull()
         vp.shouldNotBeNull()
 
@@ -91,7 +91,7 @@ class ValidatorVpTest : FreeSpec({
     }
 
     "wrong challenge in VP leads to InvalidStructure" {
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val presentationParameters = holder.createPresentation(
             challenge = "challenge",
             audienceId = verifierId,
@@ -114,13 +114,13 @@ class ValidatorVpTest : FreeSpec({
         val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val result = verifier.verifyPresentation(vp.jws, challenge, verifierId)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
     }
 
     "valid parsed presentation should separate revoked and valid credentials" {
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val presentationResults = holder.createPresentation(
             challenge = challenge,
             audienceId = verifierId,
@@ -160,7 +160,7 @@ class ValidatorVpTest : FreeSpec({
         (validCredentials.isEmpty()) shouldBe false
 
         val vp = VerifiablePresentation(validCredentials)
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val vpSerialized = vp.toJws(
             challenge = challenge,
             issuerId = holder.keyPair.identifier,
@@ -181,7 +181,7 @@ class ValidatorVpTest : FreeSpec({
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
             .map { it.vcSerialized }
         val vp = VerifiablePresentation(credentials)
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val vpSerialized = VerifiablePresentationJws(
             vp = vp,
             challenge = challenge,
@@ -210,7 +210,7 @@ class ValidatorVpTest : FreeSpec({
             verifiableCredential = credentials
         )
 
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val vpSerialized = vp.toJws(
             challenge = challenge,
             issuerId = holder.keyPair.identifier,

@@ -55,7 +55,7 @@ class AgentSdJwtTest : FreeSpec({
     }
 
     "simple walk-through success" {
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifierId,
@@ -76,7 +76,7 @@ class AgentSdJwtTest : FreeSpec({
     "keyBindingJws contains more JWK attributes, still verifies" {
         val credential = holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>().first()
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val sdJwt = createSdJwtPresentation(
             jwsService = DefaultJwsService(DefaultCryptoService(holderKeyMaterial)),
             audienceId = verifierId,
@@ -92,7 +92,7 @@ class AgentSdJwtTest : FreeSpec({
     }
 
     "wrong key binding jwt" {
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifierId,
@@ -111,7 +111,7 @@ class AgentSdJwtTest : FreeSpec({
 
     "wrong challenge in key binding jwt" {
         val malformedChallenge = challenge.reversed()
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val presentationParameters = holder.createPresentation(
             challenge = malformedChallenge,
             audienceId = verifierId,
@@ -126,7 +126,7 @@ class AgentSdJwtTest : FreeSpec({
     }
 
     "revoked sd jwt" {
-        val verifierId = verifier.keyMaterial.identifier
+        val verifierId = "urn:${uuid4()}"
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifierId,

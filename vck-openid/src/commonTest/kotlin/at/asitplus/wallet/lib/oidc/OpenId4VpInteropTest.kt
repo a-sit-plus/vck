@@ -73,7 +73,6 @@ class OpenId4VpInteropTest : FreeSpec({
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
             verifier = VerifierAgent(
-                keyPairAdapter = verifierKeyMaterial,
                 validator = Validator(
                     verifierJwsService = DefaultVerifierJwsService(publicKeyLookup = {
                         setOf(
