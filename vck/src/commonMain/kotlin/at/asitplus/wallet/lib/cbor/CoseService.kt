@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
+import kotlinx.serialization.KSerializer
 
 /**
  * Creates and parses COSE objects.
@@ -30,10 +31,11 @@ interface CoseService {
      * @param addKeyId whether to set [CoseHeader.kid] in [protectedHeader]
      * @param addCertificate whether to set [CoseHeader.certificateChain] in [unprotectedHeader]
      */
-    suspend fun <P : Any?> createSignedCose(
+    suspend fun <P : Any> createSignedCose(
         protectedHeader: CoseHeader? = null,
         unprotectedHeader: CoseHeader? = null,
         payload: P? = null,
+        serializer: KSerializer<P>,
         addKeyId: Boolean = true,
         addCertificate: Boolean = false,
     ): KmmResult<CoseSigned<P>>
@@ -41,7 +43,11 @@ interface CoseService {
 
 interface VerifierCoseService {
 
-    fun verifyCose(coseSigned: CoseSigned<*>, signer: CoseKey): KmmResult<Verifier.Success>
+    fun <P : Any> verifyCose(
+        coseSigned: CoseSigned<P>,
+        signer: CoseKey,
+        serializer: KSerializer<P>
+    ): KmmResult<Verifier.Success>
 
 }
 
@@ -49,10 +55,11 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
 
     override val algorithm: CoseAlgorithm = cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
 
-    override suspend fun <P : Any?> createSignedCose(
+    override suspend fun <P : Any> createSignedCose(
         protectedHeader: CoseHeader?,
         unprotectedHeader: CoseHeader?,
         payload: P?,
+        serializer: KSerializer<P>,
         addKeyId: Boolean,
         addCertificate: Boolean,
     ): KmmResult<CoseSigned<P>> = catching {
@@ -61,7 +68,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
                 protectedHeader = coseHeader,
                 unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
                 payload = payload,
-                signature = calcSignature(coseHeader, payload)
+                signature = calcSignature(coseHeader, payload, serializer)
             )
         }
     }
@@ -90,11 +97,12 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         this?.copy(algorithm = coseAlgorithm)
             ?: CoseHeader(algorithm = coseAlgorithm)
 
-    private suspend fun <P: Any?> calcSignature(
+    private suspend fun <P : Any> calcSignature(
         protectedHeader: CoseHeader,
         payload: P?,
+        serializer: KSerializer<P>,
     ): CryptoSignature.RawByteEncodable =
-        cryptoService.sign(CoseSigned.prepareCoseSignatureInput(protectedHeader, payload))
+        cryptoService.sign(CoseSigned.prepareCoseSignatureInput<P>(protectedHeader, payload, serializer))
             .asKmmResult().getOrElse {
                 Napier.w("No signature from native code", it)
                 throw it
@@ -109,8 +117,13 @@ class DefaultVerifierCoseService(
     /**
      * Verifiers the signature of [coseSigned] by using [signer].
      */
-    override fun verifyCose(coseSigned: CoseSigned<*>, signer: CoseKey) = catching {
-        val signatureInput = CoseSigned.prepareCoseSignatureInput(coseSigned.protectedHeader.value, coseSigned.payload)
+    override fun <P : Any> verifyCose(
+        coseSigned: CoseSigned<P>,
+        signer: CoseKey,
+        serializer: KSerializer<P>
+    ) = catching {
+        val signatureInput =
+            CoseSigned.prepareCoseSignatureInput(coseSigned.protectedHeader.value, coseSigned.payload, serializer)
 
         val algorithm = coseSigned.protectedHeader.value.algorithm
             ?: throw IllegalArgumentException("Algorithm not specified")

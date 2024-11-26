@@ -24,6 +24,7 @@ import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.json.buildJsonObject
 
 
@@ -295,7 +296,7 @@ class Validator(
             throw IllegalArgumentException("issuerKey")
         }
 
-        if (verifierCoseService.verifyCose(issuerAuth, issuerKey).isFailure) {
+        if (verifierCoseService.verifyCose(issuerAuth, issuerKey, MobileSecurityObject.serializer()).isFailure) {
             Napier.w("IssuerAuth not verified: $issuerAuth")
             throw IllegalArgumentException("issuerAuth")
         }
@@ -311,13 +312,14 @@ class Validator(
             throw IllegalArgumentException("mso.docType")
         }
         val walletKey = mso.deviceKeyInfo.deviceKey
+
         val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature ?: run {
             Napier.w("DeviceSignature is null: ${doc.deviceSigned.deviceAuth}")
             throw IllegalArgumentException("deviceSignature")
         }
 
-        if (verifierCoseService.verifyCose(deviceSignature, walletKey).isFailure) {
-            Napier.w("DeviceSignature not verified")
+        if (verifierCoseService.verifyCose(deviceSignature, walletKey, ByteArraySerializer()).isFailure) {
+            Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}")
             throw IllegalArgumentException("deviceSignature")
         }
 
@@ -468,7 +470,7 @@ class Validator(
                 it.serialize().encodeToString(Base16(strict = true))
             )
         }
-        val result = verifierCoseService.verifyCose(it.issuerAuth, issuerKey)
+        val result = verifierCoseService.verifyCose(it.issuerAuth, issuerKey, MobileSecurityObject.serializer())
         if (result.isFailure) {
             Napier.w("ISO: Could not verify credential", result.exceptionOrNull())
             return Verifier.VerifyCredentialResult.InvalidStructure(

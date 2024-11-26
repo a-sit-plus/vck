@@ -119,6 +119,7 @@ class IssuerAgent(
             namespacedItems = mapOf(credential.scheme.isoNamespace!! to credential.issuerSignedItems),
             issuerAuth = coseService.createSignedCose(
                 payload = mso,
+                serializer = MobileSecurityObject.serializer(),
                 addKeyId = false,
                 addCertificate = true,
             ).getOrThrow(),

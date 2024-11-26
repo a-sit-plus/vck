@@ -87,10 +87,11 @@ class CoseServiceJvmTest : FreeSpec({
                 "Signed object from int. library can be verified with int. library" {
                     val signed = coseService.createSignedCose(
                         payload = randomPayload.encodeToByteArray(),
+                        serializer = ByteArraySerializer(),
                     ).getOrThrow()
 
                     withClue("$sigAlgo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
-                        verifierCoseService.verifyCose(signed, cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow())
+                        verifierCoseService.verifyCose(signed, cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow(), ByteArraySerializer())
                             .isSuccess shouldBe true
                     }
                 }
@@ -125,6 +126,7 @@ class CoseServiceJvmTest : FreeSpec({
                     val signed = coseService.createSignedCose(
                         protectedHeader = CoseHeader(algorithm = coseAlgorithm),
                         payload = randomPayload.encodeToByteArray(),
+                        serializer = ByteArraySerializer(),
                         addCertificate = false,
                         addKeyId = false,
                     ).getOrThrow()
@@ -133,7 +135,7 @@ class CoseServiceJvmTest : FreeSpec({
                     signedSerialized.length shouldBe extLibSerialized.length
 
                     withClue("$sigAlgo: Signature: $parsedSig") {
-                        verifierCoseService.verifyCose(coseSigned, coseKey).isSuccess shouldBe true
+                        verifierCoseService.verifyCose(coseSigned, coseKey, ByteArraySerializer()).isSuccess shouldBe true
                     }
                 }
 
@@ -141,6 +143,7 @@ class CoseServiceJvmTest : FreeSpec({
                     val coseSigned = coseService.createSignedCose(
                         protectedHeader = CoseHeader(algorithm = coseAlgorithm),
                         payload = randomPayload.encodeToByteArray(),
+                        serializer = ByteArraySerializer(),
                         addCertificate = false,
                         addKeyId = false,
                     ).getOrThrow()

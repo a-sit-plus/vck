@@ -33,23 +33,25 @@ class CoseServiceTest : FreeSpec({
     }
 
     "signed object with bytes can be verified" {
+        val parameterSerializer = ByteArraySerializer()
         val signed = coseService.createSignedCose(
             unprotectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
             payload = randomPayload,
+            serializer = parameterSerializer,
         ).getOrThrow()
 
         signed.payload shouldBe randomPayload
         signed.signature.shouldNotBeNull()
 
-        val parameterSerializer = ByteArraySerializer()
         val parsed = CoseSigned.deserialize(parameterSerializer, signed.serialize(parameterSerializer)).getOrThrow()
         parsed shouldBe signed
 
-        val result = verifierCoseService.verifyCose(parsed, coseKey)
+        val result = verifierCoseService.verifyCose(parsed, coseKey, parameterSerializer)
         result.isSuccess shouldBe true
     }
 
     "signed object with MSO payload can be verified" {
+        val parameterSerializer = MobileSecurityObject.serializer()
         val mso = MobileSecurityObject(
             version = "1.0",
             digestAlgorithm = "SHA-256",
@@ -68,33 +70,34 @@ class CoseServiceTest : FreeSpec({
         val signed = coseService.createSignedCose(
             protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
             payload = mso,
+            serializer = parameterSerializer
         ).getOrThrow()
 
         signed.payload shouldBe mso
         signed.signature.shouldNotBeNull()
 
-        val parameterSerializer = MobileSecurityObject.serializer()
         val parsed = CoseSigned.deserialize(parameterSerializer,signed.serialize(parameterSerializer)).getOrThrow()
         parsed shouldBe signed
 
-        val result = verifierCoseService.verifyCose(parsed, coseKey)
+        val result = verifierCoseService.verifyCose(parsed, coseKey, parameterSerializer)
         result.isSuccess shouldBe true
     }
 
     "signed object without payload can be verified" {
+        val parameterSerializer = NothingSerializer()
         val signed = coseService.createSignedCose(
             unprotectedHeader = null,
             payload = null,
+            serializer = parameterSerializer
         ).getOrThrow()
 
         signed.payload shouldBe null
         signed.signature.shouldNotBeNull()
 
-        val parameterSerializer = NothingSerializer()
         val parsed = CoseSigned.deserialize(parameterSerializer,signed.serialize(parameterSerializer)).getOrThrow()
         parsed shouldBe signed
 
-        val result = verifierCoseService.verifyCose(parsed, coseKey)
+        val result = verifierCoseService.verifyCose(parsed, coseKey, parameterSerializer)
         result.isSuccess shouldBe true
     }
 

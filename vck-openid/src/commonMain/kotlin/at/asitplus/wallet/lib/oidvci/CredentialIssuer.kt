@@ -24,6 +24,7 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlinx.serialization.builtins.ByteArraySerializer
 
 /**
  * Server implementation to issue credentials using OID4VCI.
@@ -98,8 +99,7 @@ class CredentialIssuer(
         credentialIssuer = publicContext,
         configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
         grants = CredentialOfferGrants(
-            authorizationCode =
-            CredentialOfferGrantsAuthCode(
+            authorizationCode = CredentialOfferGrantsAuthCode(
                 // TODO remember this state, for subsequent requests from the Wallet
                 issuerState = uuid4().toString(),
                 authorizationServer = authorizationService.publicContext
@@ -219,7 +219,7 @@ class CredentialIssuer(
      * Removed in OID4VCI Draft 14, kept here for a bit of backwards-compatibility
      */
     private suspend fun String.validateCwtProof(): CryptoPublicKey {
-        val coseSigned = CoseSigned.deserialize(decodeToByteArray(Base64UrlStrict)).getOrNull()
+        val coseSigned = CoseSigned.deserialize(ByteArraySerializer(), decodeToByteArray(Base64UrlStrict)).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid proof: $this") }
         val cwt = coseSigned.payload?.let { CborWebToken.deserialize(it).getOrNull() }
