@@ -1,20 +1,16 @@
 package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.signum.indispensable.cosef.*
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.iso.*
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.matthewnelson.encoding.base64.Base64
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.Serializable
+import kotlinx.datetime.Clock
 import kotlin.random.Random
 
-@OptIn(ExperimentalSerializationApi::class)
 class CoseServiceTest : FreeSpec({
 
     lateinit var cryptoService: CryptoService
@@ -47,14 +43,28 @@ class CoseServiceTest : FreeSpec({
         result.isSuccess shouldBe true
     }
 
-    "signed object with custom payload type can be verified" {
-        val randomPayload = StringContent(Random.nextBytes(32).encodeToString(Base64()))
+    "signed object with MSO payload can be verified" {
+        val mso = MobileSecurityObject(
+            version = "1.0",
+            digestAlgorithm = "SHA-256",
+            valueDigests = mapOf(
+                "foo" to ValueDigestList(listOf(ValueDigest(0U, byteArrayOf())))
+            ),
+            deviceKeyInfo = DeviceKeyInfo(
+                CoseKey(
+                    CoseKeyType.EC2,
+                    keyParams = CoseKeyParams.EcYBoolParams(CoseEllipticCurve.P256)
+                )
+            ),
+            docType = "docType",
+            validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
+        )
         val signed = coseService.createSignedCose(
             protectedHeader = CoseHeader(algorithm = CoseAlgorithm.ES256),
-            payload = ByteStringWrapper(randomPayload),
+            payload = mso,
         ).getOrThrow()
 
-        signed.payload shouldBe randomPayload
+        signed.getTypedPayload(MobileSecurityObject.serializer()).getOrThrow().shouldNotBeNull().value shouldBe mso
         signed.signature.shouldNotBeNull()
 
         val parsed = CoseSigned.deserialize(signed.serialize()).getOrThrow()
@@ -80,5 +90,3 @@ class CoseServiceTest : FreeSpec({
 
 })
 
-@Serializable
-data class StringContent(val content: String)
