@@ -48,8 +48,8 @@ class DeviceSignedItemSerializationTest : FreeSpec({
             value = Random.nextBytes(32),
         )
         val protectedHeader = ByteStringWrapper(CoseHeader(), CoseHeader().serialize())
-        val issuerAuth = CoseSigned(protectedHeader, null, null, byteArrayOf())
-        val deviceAuth = CoseSigned(protectedHeader, null, null, byteArrayOf())
+        val issuerAuth = CoseSigned<MobileSecurityObject>(protectedHeader, null, null, byteArrayOf())
+        val deviceAuth = CoseSigned<ByteArray>(protectedHeader, null, null, byteArrayOf())
 
         val doc = Document(
             docType = uuid4().toString(),

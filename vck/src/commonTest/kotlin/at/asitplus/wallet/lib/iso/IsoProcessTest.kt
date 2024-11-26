@@ -44,7 +44,7 @@ class Wallet {
     private val coseService = DefaultCoseService(cryptoService)
 
     val deviceKeyInfo = DeviceKeyInfo(cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow())
-    private var storedIssuerAuth: CoseSigned? = null
+    private var storedIssuerAuth: CoseSigned<MobileSecurityObject>? = null
     private var storedMdlItems: IssuerSignedList? = null
 
     fun storeMdl(deviceResponse: DeviceResponse) {
@@ -54,7 +54,10 @@ class Wallet {
         this.storedIssuerAuth = issuerAuth
 
         issuerAuth.payload.shouldNotBeNull()
-        val mso = document.issuerSigned.getIssuerAuthPayloadAsMso().getOrThrow()
+        val mso = document.issuerSigned.issuerAuth
+            .getTypedPayload(MobileSecurityObject.serializer())
+            .getOrThrow()?.value
+            .shouldNotBeNull()
 
         val mdlItems = document.issuerSigned.namespaces?.get(ConstantIndex.AtomicAttribute2023.isoNamespace)
             .shouldNotBeNull()
@@ -86,7 +89,7 @@ class Wallet {
                     deviceSigned = DeviceSigned(
                         namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf())),
                         deviceAuth = DeviceAuth(
-                            deviceSignature = coseService.createSignedCose(
+                            deviceSignature = coseService.createSignedCose<ByteArray>(
                                 payload = null,
                                 addKeyId = false
                             ).getOrThrow()
@@ -138,7 +141,7 @@ class Issuer {
                             ConstantIndex.AtomicAttribute2023.isoNamespace to issuerSigned
                         ),
                         issuerAuth = coseService.createSignedCose(
-                            payload = mso.serializeForIssuerAuth(),
+                            payload = mso,
                             addKeyId = false,
                             addCertificate = true,
                         ).getOrThrow()
@@ -177,7 +180,7 @@ class Verifier {
                         )
                     )
                 ),
-                readerAuth = coseService.createSignedCose(
+                readerAuth = coseService.createSignedCose<ByteArray>(
                     unprotectedHeader = CoseHeader(),
                     payload = null,
                     addKeyId = false,
@@ -195,7 +198,10 @@ class Verifier {
         val issuerAuth = issuerSigned.issuerAuth
         verifierCoseService.verifyCose(issuerAuth, issuerKey).isSuccess shouldBe true
         issuerAuth.payload.shouldNotBeNull()
-        val mso = issuerSigned.getIssuerAuthPayloadAsMso().getOrThrow()
+        val mso = issuerAuth
+            .getTypedPayload(MobileSecurityObject.serializer())
+            .getOrThrow()?.value
+            .shouldNotBeNull()
 
         mso.docType shouldBe ConstantIndex.AtomicAttribute2023.isoDocType
         val mdlItems = mso.valueDigests[ConstantIndex.AtomicAttribute2023.isoNamespace].shouldNotBeNull()

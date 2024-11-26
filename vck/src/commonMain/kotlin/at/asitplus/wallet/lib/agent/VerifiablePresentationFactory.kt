@@ -56,7 +56,8 @@ class VerifiablePresentationFactory(
         requestedClaims: Collection<NormalizedJsonPath>
     ): Holder.CreatePresentationResult.DeviceResponse {
         val deviceSignature = coseService.createSignedCose(
-            payload = challenge.encodeToByteArray(), addKeyId = false
+            payload = challenge.encodeToByteArray(),
+            addKeyId = false
         ).getOrElse {
             Napier.w("Could not create DeviceAuth for presentation", it)
             throw PresentationException(it)

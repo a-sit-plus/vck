@@ -118,7 +118,7 @@ class IssuerAgent(
         val issuerSigned = IssuerSigned.fromIssuerSignedItems(
             namespacedItems = mapOf(credential.scheme.isoNamespace!! to credential.issuerSignedItems),
             issuerAuth = coseService.createSignedCose(
-                payload = mso.serializeForIssuerAuth(),
+                payload = mso,
                 addKeyId = false,
                 addCertificate = true,
             ).getOrThrow(),

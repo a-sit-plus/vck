@@ -300,10 +300,15 @@ class Validator(
             throw IllegalArgumentException("issuerAuth")
         }
 
-        val mso = issuerSigned.getIssuerAuthPayloadAsMso().getOrElse {
-            Napier.w("MSO is null: ${issuerAuth.payload?.encodeToString(Base16(strict = true))}", it)
+        val mso: MobileSecurityObject? = issuerSigned.issuerAuth.getTypedPayload(MobileSecurityObject.serializer()).onFailure {
+                throw IllegalArgumentException("mso", it)
+                Napier.w("MSO could not be decoded", it)
+            }.getOrNull()?.value
+        if (mso == null) {
+            Napier.w("MSO is null: ${issuerAuth.payload?.encodeToString(Base16(strict = true))}")
             throw IllegalArgumentException("mso")
         }
+
         if (mso.docType != doc.docType) {
             Napier.w("Invalid MSO docType '${mso.docType}' does not match Doc docType '${doc.docType}")
             throw IllegalArgumentException("mso.docType")

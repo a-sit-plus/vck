@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DeviceAuth(
     @SerialName("deviceSignature")
-    val deviceSignature: CoseSigned? = null,
+    val deviceSignature: CoseSigned<ByteArray>? = null,
     @SerialName("deviceMac")
-    val deviceMac: CoseSigned? = null, // TODO is COSE_Mac0
+    val deviceMac: CoseSigned<ByteArray>? = null, // TODO is COSE_Mac0
 )
