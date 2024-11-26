@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.cosef.*
+import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
@@ -9,6 +10,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
+import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.maps.shouldNotBeEmpty
@@ -82,6 +84,7 @@ class Tag24SerializationTest : FreeSpec({
         )
 
         val serialized = vckCborSerializer.encodeToByteArray(input)
+            .also{println(it.encodeToString(Base16Strict))}
 
         serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         vckCborSerializer.decodeFromByteArray<IssuerSigned>(serialized) shouldBe input
@@ -98,11 +101,13 @@ class Tag24SerializationTest : FreeSpec({
         ).getOrThrow().shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
         issuedCredential.issuerSigned.namespaces!!.shouldNotBeEmpty()
-        val numberOfClaims = issuedCredential.issuerSigned.namespaces!!.entries.fold(0) { acc, entry ->
+        val numberOfClaims = issuedCredential.issuerSigned.namespaces.entries.fold(0) { acc, entry ->
             acc + entry.value.entries.size
         }
         val serialized = issuedCredential.issuerSigned.serialize().encodeToString(Base16(true))
-        "D818".toRegex().findAll(serialized).toList().shouldHaveSize(numberOfClaims + 1)
+        withClue(serialized) {
+            "D818".toRegex().findAll(serialized).toList().shouldHaveSize(numberOfClaims + 1)
+        }
         // add 1 for MSO in IssuerAuth
     }
 
@@ -116,10 +121,10 @@ class Tag24SerializationTest : FreeSpec({
             validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
         )
         val serializedMso = mso.serializeForIssuerAuth()
-        val input = CoseSigned<ByteStringWrapper<MobileSecurityObject>>(
+        val input = CoseSigned<MobileSecurityObject>(
             protectedHeader = ByteStringWrapper(CoseHeader()),
             unprotectedHeader = null,
-            payload = ByteStringWrapper(mso),
+            payload = mso,
             rawSignature = byteArrayOf()
         )
 
