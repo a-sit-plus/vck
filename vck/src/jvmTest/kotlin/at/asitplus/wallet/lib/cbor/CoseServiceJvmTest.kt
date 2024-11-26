@@ -7,7 +7,6 @@ import at.asitplus.signum.supreme.HazardousMaterials
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import com.authlete.cbor.CBORByteArray
 import com.authlete.cbor.CBORDecoder
@@ -21,6 +20,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.builtins.ByteArraySerializer
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 
@@ -110,7 +110,7 @@ class CoseServiceJvmTest : FreeSpec({
                     extLibVerifier.verify(extLibCoseSign1) shouldBe true
 
                     // Parsing to our structure verifying payload
-                    val coseSigned = CoseSigned.deserialize(extLibCoseSign1.encode()).getOrThrow()
+                    val coseSigned = CoseSigned.deserialize(ByteArraySerializer(), extLibCoseSign1.encode()).getOrThrow()
                     coseSigned.payload shouldBe randomPayload.encodeToByteArray()
                     val parsedDefLengthSignature = coseSigned.signature as CryptoSignature.EC.DefiniteLength
                     val parsedSig = parsedDefLengthSignature.rawByteArray.encodeToString(Base16())
@@ -128,11 +128,11 @@ class CoseServiceJvmTest : FreeSpec({
                         addCertificate = false,
                         addKeyId = false,
                     ).getOrThrow()
-                    val signedSerialized = signed.serialize().encodeToString(Base16())
+                    val signedSerialized = signed.serialize(ByteArraySerializer()).encodeToString(Base16())
                     val extLibSerialized = extLibCoseSign1.encode().encodeToString(Base16())
                     signedSerialized.length shouldBe extLibSerialized.length
 
-                    withClue("$sigAlgo: Signature: ${parsedSig}") {
+                    withClue("$sigAlgo: Signature: $parsedSig") {
                         verifierCoseService.verifyCose(coseSigned, coseKey).isSuccess shouldBe true
                     }
                 }
@@ -145,7 +145,7 @@ class CoseServiceJvmTest : FreeSpec({
                         addKeyId = false,
                     ).getOrThrow()
 
-                    val parsed = CBORDecoder(byteArrayOf(0xD2.toByte()) + coseSigned.serialize()).next()
+                    val parsed = CBORDecoder(byteArrayOf(0xD2.toByte()) + coseSigned.serialize(ByteArraySerializer())).next()
                         .shouldBeInstanceOf<CBORTaggedItem>()
                     val parsedCoseSign1 = parsed.tagContent
                         .shouldBeInstanceOf<COSESign1>()

@@ -119,7 +119,7 @@ class Tag24SerializationTest : FreeSpec({
         val input = CoseSigned<ByteStringWrapper<MobileSecurityObject>>(
             protectedHeader = ByteStringWrapper(CoseHeader()),
             unprotectedHeader = null,
-            payload = serializedMso,
+            payload = ByteStringWrapper(mso),
             rawSignature = byteArrayOf()
         )
 
@@ -169,7 +169,7 @@ private fun deviceKeyInfo() =
 private fun issuerAuth() = CoseSigned<MobileSecurityObject>(
     protectedHeader = ByteStringWrapper(CoseHeader()),
     unprotectedHeader = null,
-    payload = byteArrayOf(),
+    payload = null,
     rawSignature = byteArrayOf()
 )
 

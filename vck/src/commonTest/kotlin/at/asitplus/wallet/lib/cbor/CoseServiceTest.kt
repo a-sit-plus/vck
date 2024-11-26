@@ -9,8 +9,12 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import kotlinx.datetime.Clock
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.builtins.NothingSerializer
 import kotlin.random.Random
 
+@OptIn(ExperimentalSerializationApi::class)
 class CoseServiceTest : FreeSpec({
 
     lateinit var cryptoService: CryptoService
@@ -37,7 +41,9 @@ class CoseServiceTest : FreeSpec({
         signed.payload shouldBe randomPayload
         signed.signature.shouldNotBeNull()
 
-        val parsed = CoseSigned.deserialize(signed.serialize()).getOrThrow()
+        val parameterSerializer = ByteArraySerializer()
+        val parsed = CoseSigned.deserialize(parameterSerializer, signed.serialize(parameterSerializer)).getOrThrow()
+        parsed shouldBe signed
 
         val result = verifierCoseService.verifyCose(parsed, coseKey)
         result.isSuccess shouldBe true
@@ -64,10 +70,12 @@ class CoseServiceTest : FreeSpec({
             payload = mso,
         ).getOrThrow()
 
-        signed.getTypedPayload(MobileSecurityObject.serializer()).getOrThrow().shouldNotBeNull().value shouldBe mso
+        signed.payload shouldBe mso
         signed.signature.shouldNotBeNull()
 
-        val parsed = CoseSigned.deserialize(signed.serialize()).getOrThrow()
+        val parameterSerializer = MobileSecurityObject.serializer()
+        val parsed = CoseSigned.deserialize(parameterSerializer,signed.serialize(parameterSerializer)).getOrThrow()
+        parsed shouldBe signed
 
         val result = verifierCoseService.verifyCose(parsed, coseKey)
         result.isSuccess shouldBe true
@@ -82,7 +90,9 @@ class CoseServiceTest : FreeSpec({
         signed.payload shouldBe null
         signed.signature.shouldNotBeNull()
 
-        val parsed = CoseSigned.deserialize(signed.serialize()).getOrThrow()
+        val parameterSerializer = NothingSerializer()
+        val parsed = CoseSigned.deserialize(parameterSerializer,signed.serialize(parameterSerializer)).getOrThrow()
+        parsed shouldBe signed
 
         val result = verifierCoseService.verifyCose(parsed, coseKey)
         result.isSuccess shouldBe true

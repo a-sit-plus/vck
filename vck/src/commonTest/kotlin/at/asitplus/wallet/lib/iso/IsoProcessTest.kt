@@ -55,9 +55,7 @@ class Wallet {
 
         issuerAuth.payload.shouldNotBeNull()
         val mso = document.issuerSigned.issuerAuth
-            .getTypedPayload(MobileSecurityObject.serializer())
-            .getOrThrow()?.value
-            .shouldNotBeNull()
+            .payload.shouldNotBeNull()
 
         val mdlItems = document.issuerSigned.namespaces?.get(ConstantIndex.AtomicAttribute2023.isoNamespace)
             .shouldNotBeNull()
@@ -198,10 +196,7 @@ class Verifier {
         val issuerAuth = issuerSigned.issuerAuth
         verifierCoseService.verifyCose(issuerAuth, issuerKey).isSuccess shouldBe true
         issuerAuth.payload.shouldNotBeNull()
-        val mso = issuerAuth
-            .getTypedPayload(MobileSecurityObject.serializer())
-            .getOrThrow()?.value
-            .shouldNotBeNull()
+        val mso = issuerAuth.payload.shouldNotBeNull()
 
         mso.docType shouldBe ConstantIndex.AtomicAttribute2023.isoDocType
         val mdlItems = mso.valueDigests[ConstantIndex.AtomicAttribute2023.isoNamespace].shouldNotBeNull()

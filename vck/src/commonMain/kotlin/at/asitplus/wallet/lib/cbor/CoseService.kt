@@ -4,7 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.*
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
@@ -12,11 +11,7 @@ import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
-import at.asitplus.wallet.lib.iso.vckCborSerializer
-import at.asitplus.wallet.lib.iso.wrapInCborTag
 import io.github.aakira.napier.Napier
-import kotlinx.serialization.encodeToByteArray
 
 /**
  * Creates and parses COSE objects.
@@ -62,40 +57,13 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         addCertificate: Boolean,
     ): KmmResult<CoseSigned<P>> = catching {
         protectedHeader.withAlgorithmAndKeyId(addKeyId).let { coseHeader ->
-            payload.asCosePayload().let { cosePayload ->
-                CoseSigned(
-                    protectedHeader = coseHeader,
-                    unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
-                    payload = cosePayload,
-                    signature = calcSignature(coseHeader, cosePayload)
-                )
-            }
+            CoseSigned<P>(
+                protectedHeader = coseHeader,
+                unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
+                payload = payload,
+                signature = calcSignature(coseHeader, payload)
+            )
         }
-    }
-
-    /**
-     * Encodes [this] as payload for [createSignedCose], i.e. encodes it into a byte array.
-     * + [ByteArray] is processed as it is
-     * + [ByteStringWrapper] is wrapped in Tag(24)
-     * + [MobileSecurityObject] is wrapped as [ByteStringWrapper] and wrapped in Tag(24)
-     * + null is processed as it is
-     *
-     * If other complex data classes need to be serialized (other than [MobileSecurityObject]),
-     * extend this method in the same fashion
-     */
-    @Throws(NotImplementedError::class)
-    private fun <P : Any?> P.asCosePayload(): ByteArray? = when (this) {
-        is ByteArray -> this
-        is ByteStringWrapper<*> -> vckCborSerializer
-            .encodeToByteArray(this)
-            .wrapInCborTag(24)
-
-        is MobileSecurityObject -> vckCborSerializer
-            .encodeToByteArray(ByteStringWrapper(this) as ByteStringWrapper<MobileSecurityObject>)
-            .wrapInCborTag(24)
-
-        is Nothing? -> null
-        else -> throw NotImplementedError()
     }
 
     private suspend fun CoseHeader?.withCertificateIfExists(addCertificate: Boolean): CoseHeader? =
@@ -122,9 +90,9 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         this?.copy(algorithm = coseAlgorithm)
             ?: CoseHeader(algorithm = coseAlgorithm)
 
-    private suspend fun calcSignature(
+    private suspend fun <P: Any?> calcSignature(
         protectedHeader: CoseHeader,
-        payload: ByteArray?,
+        payload: P?,
     ): CryptoSignature.RawByteEncodable =
         cryptoService.sign(CoseSigned.prepareCoseSignatureInput(protectedHeader, payload))
             .asKmmResult().getOrElse {
