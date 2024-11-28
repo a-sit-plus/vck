@@ -4,13 +4,16 @@ import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -24,6 +27,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.random.Random
+
 
 class AgentSdJwtTest : FreeSpec({
 
@@ -37,13 +42,43 @@ class AgentSdJwtTest : FreeSpec({
     lateinit var verifierId: String
 
     beforeEach {
+        val validator = Validator(
+            resolveStatusListToken = {
+                if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                    JwsSigned.deserialize(
+                        StatusListTokenPayload.serializer(),
+                        issuer.issueStatusListJwt(),
+                    ).getOrThrow(),
+                    resolvedAt = Clock.System.now()
+                ) else {
+                    StatusListToken.StatusListCwt(
+                        CoseSigned.deserialize(
+                            StatusListTokenPayload.serializer(),
+                            issuer.issueStatusListCwt(),
+                        ).getOrThrow(),
+                        resolvedAt = Clock.System.now(),
+                    )
+                }
+            },
+        )
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
-        issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore)
+        issuer = IssuerAgent(
+            EphemeralKeyWithoutCert(),
+            issuerCredentialStore,
+            validator = validator,
+        )
         holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
-        holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
+        holder = HolderAgent(
+            holderKeyMaterial,
+            holderCredentialStore,
+            validator = validator,
+        )
         verifierId = "urn:${uuid4()}"
-        verifier = VerifierAgent(identifier = verifierId)
+        verifier = VerifierAgent(
+            identifier = verifierId,
+            validator = validator,
+        )
         challenge = uuid4().toString()
         holder.storeCredential(
             issuer.issueCredential(
@@ -53,7 +88,7 @@ class AgentSdJwtTest : FreeSpec({
                     ConstantIndex.CredentialRepresentation.SD_JWT,
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
-        )
+        ).getOrThrow()
     }
 
     "simple walk-through success" {
@@ -137,7 +172,6 @@ class AgentSdJwtTest : FreeSpec({
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
             .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
         issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
-        verifier.setRevocationList(issuer.issueRevocationListCredential()!!) shouldBe true
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         verified.isRevoked shouldBe true

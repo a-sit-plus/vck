@@ -3,6 +3,8 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import kotlinx.datetime.Instant
 
@@ -35,7 +37,7 @@ interface IssuerCredentialStore {
      * Expected to return a new index to use as a `statusListIndex`
      * Returns null if `vcId` is already registered
      */
-    fun storeGetNextIndex(
+    suspend fun storeGetNextIndex(
         credential: Credential,
         subjectPublicKey: CryptoPublicKey,
         issuanceDate: Instant,
@@ -46,11 +48,10 @@ interface IssuerCredentialStore {
     /**
      * Returns a list of revoked credentials, represented by their `statusListIndex`
      */
-    fun getRevokedStatusListIndexList(timePeriod: Int): Collection<Long>
+    fun getStatusListView(timePeriod: Int): StatusListView
 
     /**
-     * Revoke the credential with this `vcId`, if it exists
+     * Set the status of the credential with this `vcId`, if it exists
      */
-    fun revoke(vcId: String, timePeriod: Int): Boolean
-
+    fun setStatus(vcId: String, status: TokenStatus, timePeriod: Int): Boolean
 }

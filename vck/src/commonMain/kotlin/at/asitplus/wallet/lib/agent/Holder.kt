@@ -5,6 +5,7 @@ import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import kotlinx.serialization.Serializable
 
@@ -28,13 +29,6 @@ interface Holder {
      */
     val keyPair: KeyMaterial
 
-    /**
-     * Sets the revocation list ot use for further processing of Verifiable Credentials
-     *
-     * @return `true` if the revocation list has been validated and set, `false` otherwise
-     */
-    fun setRevocationList(it: String): Boolean
-
     sealed class StoreCredentialInput {
         data class Vc(
             val vcJws: String,
@@ -55,40 +49,35 @@ interface Holder {
     /**
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
-     *
-     * Note: Revocation credentials should not be stored, but set with [setRevocationList].
      */
     suspend fun storeCredential(credential: StoreCredentialInput): KmmResult<StoredCredential>
 
     /**
      * Gets a list of all stored credentials, with a revocation status.
-     *
-     * Note that the revocation status may be [Validator.RevocationStatus.UNKNOWN] if no revocation list
-     * has been set with [setRevocationList]
      */
     suspend fun getCredentials(): Collection<StoredCredential>?
 
     sealed class StoredCredential(
         open val storeEntry: SubjectCredentialStore.StoreEntry,
-        val status: Validator.RevocationStatus,
+        val status: TokenStatus?,
     ) {
         class Vc(
             override val storeEntry: SubjectCredentialStore.StoreEntry.Vc,
-            status: Validator.RevocationStatus
+            status: TokenStatus?
         ) : StoredCredential(
             storeEntry = storeEntry, status = status
         )
 
         class SdJwt(
             override val storeEntry: SubjectCredentialStore.StoreEntry.SdJwt,
-            status: Validator.RevocationStatus
+            status: TokenStatus?
         ) : StoredCredential(
             storeEntry = storeEntry, status = status
         )
 
         class Iso(
             override val storeEntry: SubjectCredentialStore.StoreEntry.Iso,
-            status: Validator.RevocationStatus
+            status: TokenStatus?,
         ) : StoredCredential(
             storeEntry = storeEntry, status = status
         )

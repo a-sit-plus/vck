@@ -3,7 +3,11 @@ package at.asitplus.wallet.lib.cbor
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.cosef.*
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
@@ -49,6 +53,10 @@ interface VerifierCoseService {
         externalAad: ByteArray = byteArrayOf(),
     ): KmmResult<Verifier.Success>
 
+    fun <P : Any> verifyCose(
+        coseSigned: CoseSigned<P>,
+        serializer: KSerializer<P>,
+    ): KmmResult<Verifier.Success>
 }
 
 class DefaultCoseService(private val cryptoService: CryptoService) : CoseService {
@@ -124,6 +132,8 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
 
 class DefaultVerifierCoseService(
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
+    /** Need to implement if valid keys for CoseSigned are transported somehow out-of-band, e.g. provided by a trust store */
+    private val publicKeyLookup: PublicCoseKeyLookup = { null },
 ) : VerifierCoseService {
 
     /**
@@ -148,7 +158,24 @@ class DefaultVerifierCoseService(
             publicKey = publicKey
         ).getOrThrow()
     }
+
+    /**
+     * Verifiers the signature of [coseSigned] by extracting the coseSigned public key, or by using
+     * [publicKeyLookup].
+     */
+    override fun <P : Any> verifyCose(
+        coseSigned: CoseSigned<P>,
+        serializer: KSerializer<P>
+    ): KmmResult<Verifier.Success> = catching {
+        coseSigned.loadPublicKeys().also {
+            Napier.d("Public keys available: ${it.size}")
+        }.firstNotNullOf { coseKey ->
+            verifyCose(coseSigned, coseKey, serializer).getOrNull()
+        }
+    }
+
+    fun CoseSigned<*>.loadPublicKeys(): Set<CoseKey> =
+        (protectedHeader.value.publicKey ?: unprotectedHeader?.publicKey)?.let { setOf(it) } ?: publicKeyLookup(this) ?: setOf()
 }
 
-
-
+typealias PublicCoseKeyLookup = (CoseSigned<*>) -> Set<CoseKey>?

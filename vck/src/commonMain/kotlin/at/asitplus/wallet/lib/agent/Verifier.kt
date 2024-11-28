@@ -3,7 +3,11 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.json.JsonObject
@@ -17,15 +21,16 @@ import kotlinx.serialization.json.JsonObject
 interface Verifier {
 
     /**
-     * Set the revocation list to use for validating VCs (from [Issuer.issueRevocationListCredential])
+     * Set the revocation list to use for validating VCs (from [Issuer.issueStatusListJwt])
      */
-    fun setRevocationList(it: String): Boolean
+    fun verifyRevocationStatusListJwtIntegrity(it: String): Boolean
+    fun verifyRevocationStatusListCwtIntegrity(it: ByteArray): Boolean
 
     /**
      * Verifies a presentation of some credentials from a holder,
      * that shall include the [challenge] (sent by this verifier).
      */
-    fun verifyPresentation(it: String, challenge: String): VerifyPresentationResult
+    suspend fun verifyPresentation(it: String, challenge: String): VerifyPresentationResult
 
     sealed class VerifyPresentationResult {
         data class Success(val vp: VerifiablePresentationParsed) : VerifyPresentationResult()

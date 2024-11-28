@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.asn1.BitSet
-import at.asitplus.signum.indispensable.asn1.toBitSet
 import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
-import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
@@ -22,10 +22,11 @@ import at.asitplus.wallet.lib.jws.VerifierJwsService
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.base64.Base64
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.serialization.json.buildJsonObject
-
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Parses and validates Verifiable Credentials and Verifiable Presentations.
@@ -33,108 +34,112 @@ import kotlinx.serialization.json.buildJsonObject
  * Does verify the revocation status of the data (when a status information is encoded in the credential).
  */
 class Validator(
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(
+        DefaultVerifierCryptoService(),
+    ),
+    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(
+        DefaultVerifierCryptoService(),
+    ),
     private val parser: Parser = Parser(),
-    private val zlibService: ZlibService = DefaultZlibService(),
+    private val tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
+    private val clock: Clock = Clock.System,
 ) {
-
     constructor(
         cryptoService: VerifierCryptoService,
         parser: Parser = Parser(),
-        zlibService: ZlibService = DefaultZlibService(),
+        tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
+        clock: Clock = Clock.System,
     ) : this(
         verifierJwsService = DefaultVerifierJwsService(cryptoService = cryptoService),
         verifierCoseService = DefaultVerifierCoseService(cryptoService = cryptoService),
         parser = parser,
-        zlibService = zlibService
+        tokenStatusResolver = tokenStatusResolver,
+        clock = clock,
     )
 
-    private var revocationList: BitSet? = null
+    constructor(
+        resolveStatusListToken: suspend (UniformResourceIdentifier) -> StatusListToken,
+        verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(
+            DefaultVerifierCryptoService(),
+        ),
+        verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(
+            DefaultVerifierCryptoService(),
+        ),
+        parser: Parser = Parser(),
+        zlibService: ZlibService = DefaultZlibService(),
+        clock: Clock = Clock.System,
+    ) : this(
+        verifierJwsService = verifierJwsService,
+        verifierCoseService = verifierCoseService,
+        parser = parser,
+        tokenStatusResolver = { status ->
+            val token = resolveStatusListToken(status.statusList.uri)
+
+            val payload = token.validate(
+                statusListInfo = status.statusList,
+                isInstantInThePast = {
+                    it < clock.now()
+                },
+                validateStatusListTokenIntegrity = {
+                    Validator(
+                        verifierJwsService = verifierJwsService,
+                        verifierCoseService = verifierCoseService,
+                        parser = parser,
+                        clock = clock,
+                    ).validateStatusListTokenIntegrity(it).getOrThrow()
+                },
+            ).getOrThrow()
+
+            StatusListTokenValidator.extractTokenStatus(
+                statusList = payload.statusList,
+                statusListInfo = status.statusList,
+                zlibService = zlibService,
+            ).getOrThrow()
+        },
+        clock = clock,
+    )
 
     /**
-     * Sets the revocation list for verifying the revocation status of the VC
-     * that will be later verified with [verifyVcJws].
-     *
-     * @return `true` if the revocation list was valid and has been set
+     * Checks the revocation state of the passed MDOC Credential.
      */
-    fun setRevocationList(it: String): Boolean {
-        Napier.d("setRevocationList: Loading $it")
-        val jws =
-            JwsSigned.deserialize<VerifiableCredentialJws>(VerifiableCredentialJws.serializer(), it, vckJsonSerializer)
-                .getOrElse {
-                    Napier.w("Revocation List: Could not parse JWS", it)
-                    return false
-                }
-        if (!verifierJwsService.verifyJwsObject(jws)) {
-            Napier.w("Revocation List: Signature invalid")
-            return false
+    suspend fun checkRevocationStatus(issuerSigned: IssuerSigned): TokenStatus? {
+        return issuerSigned.issuerAuth.payload?.status?.let {
+            checkRevocationStatus(it)
         }
-        val parsedVc = parser.parseVcJws(it, jws.payload)
-        if (parsedVc !is Parser.ParseVcResult.Success) {
-            Napier.d("Revocation List: Could not parse VC: $parsedVc")
-            return false
-        }
-        if (parsedVc.jws.vc.credentialSubject !is RevocationListSubject) {
-            Napier.d("credentialSubject invalid")
-            return false
-        }
-        val encodedList = parsedVc.jws.vc.credentialSubject.encodedList
-        this.revocationList = encodedList.decodeToByteArrayOrNull(Base64Strict)?.let {
-            zlibService.decompress(it)?.toBitSet() ?: return false.also { Napier.d("Invalid ZLIB") }
-        } ?: return false.also { Napier.d("Invalid Base64") }
-        Napier.d("Revocation list is valid")
-        return true
-    }
-
-    enum class RevocationStatus {
-        /**
-         * Either no revocation status list has been set (see [Validator.setRevocationList]),
-         * or there is no revocation lookup information attached to the credential.
-         */
-        UNKNOWN,
-
-        /**
-         * Revocation status list is available, credential has been marked revoked in there.
-         */
-        REVOKED,
-
-        /**
-         * Revocation status list is available, credential is not revoked.
-         */
-        VALID;
     }
 
     /**
      * Checks the revocation state of the passed Verifiable Credential.
-     *
-     * Be sure to call [setRevocationList] first, otherwise this method will return [RevocationStatus.UNKNOWN].
      */
-    fun checkRevocationStatus(vcJws: VerifiableCredentialJws): RevocationStatus {
-        return vcJws.vc.credentialStatus?.index?.let { checkRevocationStatus(it) } ?: RevocationStatus.UNKNOWN
+    suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws): TokenStatus? {
+        return vcJws.vc.credentialStatus?.let {
+            checkRevocationStatus(it)
+        }
     }
 
     /**
      * Checks the revocation state of the passed Verifiable Credential.
-     *
-     * Be sure to call [setRevocationList] first, otherwise this method will return [RevocationStatus.UNKNOWN].
      */
-    fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt): RevocationStatus {
-        return sdJwt.credentialStatus?.index?.let { checkRevocationStatus(it) } ?: RevocationStatus.UNKNOWN
+    suspend fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt): TokenStatus? {
+        return sdJwt.credentialStatus?.let {
+            checkRevocationStatus(it)
+        }
     }
 
     /**
-     * Checks the revocation status of a Verifiable Credential with defined [statusListIndex].
-     *
-     * Be sure to call [setRevocationList] first, otherwise this method will return [RevocationStatus.UNKNOWN].
+     * Checks the revocation state using the provided status mechanisms
      */
-    fun checkRevocationStatus(statusListIndex: Long): RevocationStatus {
-        revocationList?.let { bitSet ->
-            if (bitSet.length() > statusListIndex && bitSet[statusListIndex])
-                return RevocationStatus.REVOKED
-            return RevocationStatus.VALID
+    private suspend fun checkRevocationStatus(status: Status): TokenStatus {
+        val resolver = tokenStatusResolver ?: {
+            TokenStatus.Valid
         }
-        return RevocationStatus.UNKNOWN
+        return try {
+            resolver.invoke(status)
+        } catch (_: Throwable) {
+            // A status mechanism is specified, but no status can be retrieved, consider this to be
+            // invalid
+            TokenStatus.Invalid
+        }
     }
 
     /**
@@ -144,8 +149,8 @@ class Validator(
      * @param challenge Nonce that the verifier has sent to the holder
      * @param clientId Identifier of the verifier (i.e. the audience of the presentation)
      */
-    @Throws(IllegalArgumentException::class)
-    fun verifyVpJws(
+    @Throws(IllegalArgumentException::class, CancellationException::class)
+    suspend fun verifyVpJws(
         input: String,
         challenge: String,
         clientId: String,
@@ -197,7 +202,7 @@ class Validator(
      * @param input SD-JWT in compact representation, i.e. `$jws~$disclosure1~$disclosure2...~$keyBinding`
      * @param clientId Identifier of the verifier, to verify audience of key binding JWS
      */
-    fun verifyVpSdJwt(
+    suspend fun verifyVpSdJwt(
         input: String,
         challenge: String,
         clientId: String,
@@ -373,7 +378,9 @@ class Validator(
      * @param input JWS in compact representation
      * @param publicKey Optionally the local key, to verify VC was issued to correct subject
      */
-    fun verifyVcJws(input: String, publicKey: CryptoPublicKey?): Verifier.VerifyCredentialResult {
+    suspend fun verifyVcJws(
+        input: String, publicKey: CryptoPublicKey?
+    ): Verifier.VerifyCredentialResult {
         Napier.d("Verifying VC-JWS $input")
         val jws = JwsSigned.deserialize<VerifiableCredentialJws>(
             VerifiableCredentialJws.serializer(),
@@ -394,13 +401,19 @@ class Validator(
                 return Verifier.VerifyCredentialResult.InvalidStructure(input)
             }
         }
-        if (checkRevocationStatus(vcJws) == RevocationStatus.REVOKED) {
-            Napier.d("VC: revoked")
-            return Verifier.VerifyCredentialResult.Revoked(input, vcJws)
+        vcJws.vc.credentialStatus?.let {
+            Napier.d("VC: status found")
+            if (checkRevocationStatus(it) == TokenStatus.Invalid) {
+                Napier.d("VC: revoked")
+                return Verifier.VerifyCredentialResult.Revoked(input, vcJws)
+            }
+            Napier.d("VC: not revoked")
         }
         return when (parser.parseVcJws(input, vcJws)) {
-            is Parser.ParseVcResult.InvalidStructure -> Verifier.VerifyCredentialResult.InvalidStructure(input)
-                .also { Napier.d("VC: Invalid structure from Parser") }
+            is Parser.ParseVcResult.InvalidStructure -> {
+                Verifier.VerifyCredentialResult.InvalidStructure(input)
+                    .also { Napier.d("VC: Invalid structure from Parser") }
+            }
 
             is Parser.ParseVcResult.Success -> Verifier.VerifyCredentialResult.SuccessJwt(vcJws)
                 .also { Napier.d("VC: Valid") }
@@ -416,7 +429,10 @@ class Validator(
      * @param input SD-JWT in compact representation, i.e. `$jws~$disclosure1~$disclosure2...`
      * @param publicKey Optionally the local key, to verify SD-JWT was issued to correct subject
      */
-    fun verifySdJwt(input: String, publicKey: CryptoPublicKey?): Verifier.VerifyCredentialResult {
+    suspend fun verifySdJwt(
+        input: String,
+        publicKey: CryptoPublicKey?,
+    ): Verifier.VerifyCredentialResult {
         Napier.d("Verifying SD-JWT $input for $publicKey")
         val sdJwtSigned = SdJwtSigned.parse(input) ?: run {
             Napier.w("verifySdJwt: Could not parse SD-JWT from $input")
@@ -436,17 +452,17 @@ class Validator(
                 return Verifier.VerifyCredentialResult.InvalidStructure(input)
             }
         }
-        val isRevoked = checkRevocationStatus(sdJwt) == RevocationStatus.REVOKED
-        if (isRevoked)
+        val isRevoked = checkRevocationStatus(sdJwt) == TokenStatus.Invalid
+        if (isRevoked) {
             Napier.d("verifySdJwt: revoked")
+        }
         val issuerSigned = sdJwtSigned.getPayloadAsJsonObject().getOrElse { ex ->
             Napier.w("verifySdJwt: Could not parse payload", ex)
             return Verifier.VerifyCredentialResult.InvalidStructure(input)
         }
 
         val sdJwtValidator = SdJwtValidator(sdJwtSigned)
-        val reconstructedJsonObject = sdJwtValidator.reconstructedJsonObject
-            ?: buildJsonObject { }
+        val reconstructedJsonObject = sdJwtValidator.reconstructedJsonObject ?: buildJsonObject { }
 
         /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
         val validDisclosures: Map<String, SelectiveDisclosureItem> = sdJwtValidator.validDisclosures
@@ -489,4 +505,119 @@ class Validator(
         return Verifier.VerifyCredentialResult.SuccessIso(it)
     }
 
+
+    /**
+     * Validate a status list jwt within a relevant context.
+     */
+    fun validateStatusListJwt(
+        it: String,
+        statusListInfo: StatusListInfo,
+        resolvedAt: Instant?,
+    ): KmmResult<Unit> = at.asitplus.catching {
+        Napier.d("setRevocationStatusListCwt: Loading $it")
+        val payload = validateStatusListJwtIntegrity(it).getOrThrow()
+        StatusListTokenValidator.validateStatusListTokenPayloadClaims(
+            statusListTokenPayload = payload,
+            statusListInfo = statusListInfo,
+            statusListTokenResolvedAt = resolvedAt,
+            isInstantInThePast = {
+                it < clock.now()
+            },
+        ).getOrThrow()
+        Napier.d("Token is valid")
+    }
+
+    /**
+     * Validate a status list cwt within a relevant context.
+     */
+    fun validateStatusListCwt(
+        it: ByteArray,
+        statusListInfo: StatusListInfo,
+        resolvedAt: Instant?,
+    ): KmmResult<Unit> = at.asitplus.catching {
+        Napier.d("setRevocationStatusListCwt: Loading $it")
+        val payload = validateStatusListCwtIntegrity(it).getOrThrow()
+        StatusListTokenValidator.validateStatusListTokenPayloadClaims(
+            statusListTokenPayload = payload,
+            statusListInfo = statusListInfo,
+            statusListTokenResolvedAt = resolvedAt,
+            isInstantInThePast = {
+                it < clock.now()
+            },
+        ).getOrThrow()
+        Napier.d("Token is valid")
+    }
+
+    /**
+     * Validate deserialization and the integrity of a status list jwt
+     */
+    fun validateStatusListJwtIntegrity(it: String) = catching {
+        val jwsSigned = JwsSigned.deserialize(StatusListTokenPayload.serializer(), it).getOrElse {
+            throw IllegalArgumentException("Could not parse as JWS", it)
+        }
+        validateStatusListJwtIntegrity(
+            StatusListToken.StatusListJwt(
+                jwsSigned,
+                resolvedAt = null,
+            ),
+        ).getOrThrow()
+    }
+
+    /**
+     * Validate deserialization and the integrity of a status list cwt
+     */
+    fun validateStatusListCwtIntegrity(it: ByteArray) = catching {
+        val coseSigned = CoseSigned.deserialize(StatusListTokenPayload.serializer(), it).getOrElse {
+            throw IllegalArgumentException("Could not parse CoseSigned", it)
+        }
+        validateStatusListCwtIntegrity(
+            StatusListToken.StatusListCwt(
+                coseSigned,
+                resolvedAt = null,
+            ),
+        ).getOrThrow()
+    }
+
+    /**
+     * Validate the integrity of a status list token
+     */
+    fun validateStatusListTokenIntegrity(statusListToken: StatusListToken) =
+        when (val it = statusListToken) {
+            is StatusListToken.StatusListJwt -> validateStatusListJwtIntegrity(it)
+            is StatusListToken.StatusListCwt -> validateStatusListCwtIntegrity(it)
+        }
+
+    /**
+     * Validate the integrity of a status list jwt
+     */
+    fun validateStatusListJwtIntegrity(statusListToken: StatusListToken.StatusListJwt): KmmResult<StatusListTokenPayload> =
+        catching {
+            val jwsSigned = statusListToken.value
+            verifierJwsService.verifyJwsObject(jwsSigned).ifFalse {
+                throw IllegalStateException("Invalid Signature.")
+            }
+            if (jwsSigned.header.type != MediaTypes.Application.STATUSLIST_JWT) {
+                throw IllegalArgumentException("Invalid type header")
+            }
+            jwsSigned.payload
+        }
+
+    /**
+     * Validate the integrity of a status list cwt
+     */
+    fun validateStatusListCwtIntegrity(statusListToken: StatusListToken.StatusListCwt): KmmResult<StatusListTokenPayload> =
+        catching {
+            val coseStatus = statusListToken.value
+            verifierCoseService.verifyCose(
+                coseSigned = coseStatus,
+                serializer = StatusListTokenPayload.serializer(),
+            ).isFailure.ifTrue {
+                throw IllegalStateException("Invalid Signature.")
+            }
+            if (coseStatus.protectedHeader.value.type != MediaTypes.Application.STATUSLIST_CWT) {
+                throw IllegalArgumentException("Invalid type header")
+            }
+            coseStatus.payload
+                ?: throw IllegalStateException("Status list token payload not found.")
+        }
 }
