@@ -5,7 +5,12 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.supreme.signature
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.CredentialStatus
+import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -20,6 +25,7 @@ import kotlinx.datetime.Instant
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 
+@ExperimentalUnsignedTypes
 class ValidatorVcTest : FreeSpec() {
 
     private lateinit var issuer: Issuer
@@ -67,16 +73,20 @@ class ValidatorVcTest : FreeSpec() {
 
             val value = validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
-            issuerCredentialStore.revoke(value.jws.vc.id, FixedTimePeriodProvider.timePeriod) shouldBe true
+            issuerCredentialStore.setStatus(
+                value.jws.vc.id,
+                status = TokenStatus.Invalid,
+                FixedTimePeriodProvider.timePeriod,
+            ) shouldBe true
             val revocationListCredential =
-                issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+                issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
             revocationListCredential.shouldNotBeNull()
-            validator.setRevocationList(revocationListCredential)
+            validator.setRevocationStatusListJwt(revocationListCredential)
 
             validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
 
-            validator.setRevocationList(revocationListCredential) shouldBe true
+            validator.setRevocationStatusListJwt(revocationListCredential) shouldBe true
             validator.checkRevocationStatus(value.jws.vc.credentialStatus!!.index) shouldBe Validator.RevocationStatus.REVOKED
         }
 
@@ -104,8 +114,10 @@ class ValidatorVcTest : FreeSpec() {
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            validator.verifyVcJws(credential.vcJws.replaceFirstChar { "f" }, verifierKeyMaterial.publicKey)
-                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
+            validator.verifyVcJws(
+                credential.vcJws.replaceFirstChar { "f" },
+                verifierKeyMaterial.publicKey,
+            ).shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
         }
 
         "Manually created and valid credential is valid" - {
@@ -309,7 +321,7 @@ class ValidatorVcTest : FreeSpec() {
         }
     }
 
-    private fun issueCredential(
+    private suspend fun issueCredential(
         credential: CredentialToBeIssued,
         issuanceDate: Instant = Clock.System.now(),
         expirationDate: Instant? = Clock.System.now() + 60.seconds,
@@ -321,7 +333,11 @@ class ValidatorVcTest : FreeSpec() {
         val vcId = "urn:uuid:${uuid4()}"
         val exp = expirationDate ?: (Clock.System.now() + 60.seconds)
         val statusListIndex = issuerCredentialStore.storeGetNextIndex(
-            credential = IssuerCredentialStore.Credential.VcJwt(vcId, sub, ConstantIndex.AtomicAttribute2023),
+            credential = IssuerCredentialStore.Credential.VcJwt(
+                vcId,
+                sub,
+                ConstantIndex.AtomicAttribute2023
+            ),
             subjectPublicKey = issuerKeyMaterial.publicKey,
             issuanceDate = issuanceDate,
             expirationDate = exp,
@@ -355,11 +371,12 @@ class ValidatorVcTest : FreeSpec() {
         jwtId = jwtId
     )
 
-    private suspend fun signJws(vcJws: VerifiableCredentialJws): String = issuerJwsService.createSignedJwt(
-        JwsContentTypeConstants.JWT,
-        vcJws,
-        VerifiableCredentialJws.serializer()
-    ).getOrThrow().serialize()
+    private suspend fun signJws(vcJws: VerifiableCredentialJws): String =
+        issuerJwsService.createSignedJwt(
+            JwsContentTypeConstants.JWT,
+            vcJws,
+            VerifiableCredentialJws.serializer()
+        ).getOrThrow().serialize()
 
     private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String {
         val jwsHeader = JwsHeader(
@@ -367,8 +384,9 @@ class ValidatorVcTest : FreeSpec() {
             keyId = verifierKeyMaterial.identifier,
             type = JwsContentTypeConstants.JWT
         )
-        val signatureInput = jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
-                "." + vcJws.serialize().encodeToByteArray().encodeToString(Base64UrlStrict)
+        val signatureInput =
+            jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
+                    "." + vcJws.serialize().encodeToByteArray().encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
         val signature = DefaultCryptoService(issuerKeyMaterial).sign(signatureInputBytes).signature
         return JwsSigned(jwsHeader, vcJws, signature, signatureInputBytes).serialize()

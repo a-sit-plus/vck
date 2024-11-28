@@ -2,8 +2,25 @@
 
 package at.asitplus.wallet.lib
 
-import kotlinx.cinterop.*
-import platform.Foundation.*
+import at.asitplus.wallet.lib.data.rfc1950.CompressionMethod
+import at.asitplus.wallet.lib.data.rfc1950.CompressionMethodAndFlags
+import kotlinx.cinterop.ByteVar
+import kotlinx.cinterop.CPointer
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.MemScope
+import kotlinx.cinterop.ObjCObjectVar
+import kotlinx.cinterop.alloc
+import kotlinx.cinterop.allocArrayOf
+import kotlinx.cinterop.get
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
+import kotlinx.cinterop.reinterpret
+import platform.Foundation.NSData
+import platform.Foundation.NSDataCompressionAlgorithmZlib
+import platform.Foundation.NSError
+import platform.Foundation.compressedDataUsingAlgorithm
+import platform.Foundation.create
+import platform.Foundation.decompressedDataUsingAlgorithm
 
 actual class DefaultZlibService actual constructor() : ZlibService {
 
@@ -11,7 +28,8 @@ actual class DefaultZlibService actual constructor() : ZlibService {
         memScoped {
             val data = toData(input)
             val errorPointer = alloc<ObjCObjectVar<NSError?>>()
-            val compressed = data.compressedDataUsingAlgorithm(NSDataCompressionAlgorithmZlib, errorPointer.ptr)
+            val compressed =
+                data.compressedDataUsingAlgorithm(NSDataCompressionAlgorithmZlib, errorPointer.ptr)
             // for debug reasons: println(errorPointer.value)
             // The iOS SDK implements Raw Deflate, so it
             // does not prepend the ZLIB header 0x78 0x9C,
@@ -48,19 +66,24 @@ actual class DefaultZlibService actual constructor() : ZlibService {
 
     actual override fun decompress(input: ByteArray): ByteArray? {
         memScoped {
-            var data = toData(input)
-            if (input.size > 1 && input[0] == 0x78.toByte() && input[1] == 0x9C.toByte()) {
-                // The iOS SDK implements Raw Inflate, so the
-                // ZLIB header bytes 0x78 0x9C should be stripped
-                data = toData(input.drop(2).toByteArray())
-            }
+            // The iOS SDK implements Raw Inflate,
+            // so this only works if the compression method DEFLATE is used.
+            val data = toData(
+                if (input.size > 1 && CompressionMethodAndFlags(input[0]).compressionMethod.value == CompressionMethod.DEFLATE.toByte()) {
+                    input.drop(2).toByteArray()
+                } else {
+                    TODO("Implement fallback to generic zlib decompression algorithm.")
+                },
+            )
             val errorPointer = alloc<ObjCObjectVar<NSError?>>()
-            val decompressed = data.decompressedDataUsingAlgorithm(NSDataCompressionAlgorithmZlib, errorPointer.ptr)
+            val decompressed = data.decompressedDataUsingAlgorithm(
+                NSDataCompressionAlgorithmZlib,
+                errorPointer.ptr
+            )
             // for debug reasons: println(errorPointer.value)
             return decompressed?.toByteArray()
         }
     }
-
 }
 
 inline fun MemScope.toData(array: ByteArray): NSData =
@@ -70,7 +93,7 @@ inline fun MemScope.toData(array: ByteArray): NSData =
     )
 
 // from https://github.com/mirego/trikot.foundation/pull/41/files
-public fun NSData.toByteArray(): ByteArray {
+fun NSData.toByteArray(): ByteArray {
     return this.bytes?.let {
         val dataPointer: CPointer<ByteVar> = it.reinterpret()
         ByteArray(this.length.toInt()) { index -> dataPointer[index] }

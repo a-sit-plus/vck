@@ -3,6 +3,10 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.ReferencedTokenIssuer
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.StatusIssuer
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.StatusProvider
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import kotlinx.datetime.Instant
 
@@ -12,7 +16,8 @@ import kotlinx.datetime.Instant
  *
  * It can issue Verifiable Credentials, revoke credentials and build a revocation list.
  */
-interface Issuer {
+@OptIn(ExperimentalUnsignedTypes::class)
+interface Issuer<WebToken: Any> : ReferencedTokenIssuer, StatusIssuer<String, ByteArray>, StatusProvider<WebToken> {
 
     /**
      * A credential issued by an [Issuer], in a specific format
@@ -62,17 +67,33 @@ interface Issuer {
     suspend fun issueCredential(credential: CredentialToBeIssued): KmmResult<IssuedCredential>
 
     /**
-     * Wraps the revocation information into a VC,
-     * returns a JWS representation of that.
+     * @return a status list jwt.
      * @param timePeriod time Period to issue a revocation list for
      */
-    suspend fun issueRevocationListCredential(timePeriod: Int? = null): String?
+    suspend fun issueStatusListJwt(timePeriod: Int? = null): String?
 
     /**
-     * Returns a Base64-encoded, zlib-compressed bitstring of revoked credentials, where
-     * the entry at "revocationListIndex" (of the credential) is true iff it is revoked
+     * @return a status list json string.
+     * @param timePeriod time Period to issue a revocation list for
      */
-    fun buildRevocationList(timePeriod: Int? = null): String?
+    suspend fun issueStatusListJson(timePeriod: Int? = null): String?
+
+    /**
+     * @return a status list cwt.
+     * @param timePeriod time Period to issue a revocation list for
+     */
+    suspend fun issueStatusListCwt(timePeriod: Int? = null): ByteArray?
+
+    /**
+     * @return a status list cbor byte array.
+     * @param timePeriod time Period to issue a revocation list for
+     */
+    suspend fun issueStatusListCbor(timePeriod: Int? = null): ByteArray?
+
+    /**
+     * Returns a status list as defined in [TokenListStatus](https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html)
+     */
+    fun buildStatusList(timePeriod: Int? = null): StatusList?
 
     /**
      * Revokes all verifiable credentials from [credentialsToRevoke] list that parse and validate.
@@ -86,8 +107,8 @@ interface Issuer {
      */
     fun revokeCredentialsWithId(credentialIdsToRevoke: Map<String, Instant>): Boolean
 
-    fun compileCurrentRevocationLists(): List<String>
 
+    fun compileCurrentRevocationLists(): List<String>
 }
 
 fun Issuer.IssuedCredential.toStoreCredentialInput() = when (this) {

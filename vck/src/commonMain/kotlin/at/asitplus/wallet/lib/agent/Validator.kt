@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.asn1.BitSet
 import at.asitplus.signum.indispensable.asn1.toBitSet
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
@@ -22,6 +21,12 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList.Companion.toStatusList
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.wallet.lib.iso.Document
@@ -32,6 +37,7 @@ import at.asitplus.wallet.lib.iso.ValueDigestList
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.iso.wrapInCborTag
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import io.github.aakira.napier.Napier
@@ -48,13 +54,17 @@ import kotlinx.serialization.json.buildJsonObject
  * Does verify the cryptographic authenticity of the data.
  * Does verify the revocation status of the data (when a status information is encoded in the credential).
  */
+@ExperimentalUnsignedTypes
 class Validator(
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(
+        DefaultVerifierCryptoService(),
+    ),
+    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(
+        DefaultVerifierCryptoService(),
+    ),
     private val parser: Parser = Parser(),
     private val zlibService: ZlibService = DefaultZlibService(),
 ) {
-
     constructor(
         cryptoService: VerifierCryptoService,
         parser: Parser = Parser(),
@@ -63,10 +73,10 @@ class Validator(
         verifierJwsService = DefaultVerifierJwsService(cryptoService = cryptoService),
         verifierCoseService = DefaultVerifierCoseService(cryptoService = cryptoService),
         parser = parser,
-        zlibService = zlibService
+        zlibService = zlibService,
     )
 
-    private var revocationList: BitSet? = null
+    private var revocationStatusList: StatusList? = null
 
     /**
      * Sets the revocation list for verifying the revocation status of the VC
@@ -74,14 +84,14 @@ class Validator(
      *
      * @return `true` if the revocation list was valid and has been set
      */
-    fun setRevocationList(it: String): Boolean {
+    fun setRevocationListCredential(it: String): Boolean {
         Napier.d("setRevocationList: Loading $it")
-        val jws =
-            JwsSigned.deserialize<VerifiableCredentialJws>(VerifiableCredentialJws.serializer(), it, vckJsonSerializer)
-                .getOrElse {
-                    Napier.w("Revocation List: Could not parse JWS", it)
-                    return false
-                }
+        val jws = JwsSigned.deserialize<VerifiableCredentialJws>(
+            VerifiableCredentialJws.serializer(), it, vckJsonSerializer
+        ).getOrElse {
+                Napier.w("Revocation List: Could not parse JWS", it)
+                return false
+            }
         if (!verifierJwsService.verifyJwsObject(jws)) {
             Napier.w("Revocation List: Signature invalid")
             return false
@@ -96,16 +106,51 @@ class Validator(
             return false
         }
         val encodedList = parsedVc.jws.vc.credentialSubject.encodedList
-        this.revocationList = encodedList.decodeToByteArrayOrNull(Base64Strict)?.let {
+        val decompressed = encodedList.decodeToByteArrayOrNull(Base64Strict)?.let {
             zlibService.decompress(it)?.toBitSet() ?: return false.also { Napier.d("Invalid ZLIB") }
         } ?: return false.also { Napier.d("Invalid Base64") }
+
+        this.revocationStatusList = StatusListView.fromTokenStatuses(
+            decompressed.map {
+                if (it) TokenStatus.Invalid
+                else TokenStatus.Valid
+            }, statusBitSize = TokenStatusBitSize.ONE
+        ).toStatusList(
+            aggregationUri = null,
+        )
         Napier.d("Revocation list is valid")
+        return true
+    }
+
+    /**
+     * Sets the revocation list for verifying the revocation status of the VC
+     * that will be later verified with [verifyVcJws].
+     *
+     * @return `true` if the revocation list was valid and has been set
+     */
+    fun setRevocationStatusListJwt(it: String): Boolean {
+        Napier.d("setRevocationStatusListJwt: Loading $it")
+        val jws = JwsSigned.deserialize(StatusListTokenPayload.serializer(), it, vckJsonSerializer)
+            .getOrElse {
+                Napier.w("setRevocationStatusListJwt: Could not parse JWS", it)
+                return false
+            }
+        if (jws.header.type != JwsContentTypeConstants.STATUSLIST_JWT) {
+            Napier.w("setRevocationStatusListJwt: Invalid type")
+            return false
+        }
+        if (!verifierJwsService.verifyJwsObject(jws)) {
+            Napier.w("setRevocationStatusListJwt: Signature invalid")
+            return false
+        }
+        this.revocationStatusList = jws.payload.statusList
+        Napier.d("setRevocationStatusListJwt: Signature is valid")
         return true
     }
 
     enum class RevocationStatus {
         /**
-         * Either no revocation status list has been set (see [Validator.setRevocationList]),
+         * Either no revocation status list has been set (see [Validator.setRevocationStatusListJwt]),
          * or there is no revocation lookup information attached to the credential.
          */
         UNKNOWN,
@@ -124,33 +169,45 @@ class Validator(
     /**
      * Checks the revocation state of the passed Verifiable Credential.
      *
-     * Be sure to call [setRevocationList] first, otherwise this method will return [RevocationStatus.UNKNOWN].
+     * Be sure to call [setRevocationStatusListJwt] first,
+     * otherwise this method will return [RevocationStatus.UNKNOWN].
      */
     fun checkRevocationStatus(vcJws: VerifiableCredentialJws): RevocationStatus {
-        return vcJws.vc.credentialStatus?.index?.let { checkRevocationStatus(it) } ?: RevocationStatus.UNKNOWN
+        return vcJws.vc.credentialStatus?.index?.let {
+            checkRevocationStatus(it)
+        } ?: RevocationStatus.UNKNOWN
     }
 
     /**
      * Checks the revocation state of the passed Verifiable Credential.
      *
-     * Be sure to call [setRevocationList] first, otherwise this method will return [RevocationStatus.UNKNOWN].
+     * Be sure to call [setRevocationStatusListJwt] first,
+     * otherwise this method will return [RevocationStatus.UNKNOWN].
      */
     fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt): RevocationStatus {
-        return sdJwt.credentialStatus?.index?.let { checkRevocationStatus(it) } ?: RevocationStatus.UNKNOWN
+        return sdJwt.credentialStatus?.index?.let {
+            checkRevocationStatus(it)
+        } ?: RevocationStatus.UNKNOWN
     }
 
     /**
      * Checks the revocation status of a Verifiable Credential with defined [statusListIndex].
      *
-     * Be sure to call [setRevocationList] first, otherwise this method will return [RevocationStatus.UNKNOWN].
+     * Be sure to call [setRevocationStatusListJwt] first,
+     * otherwise this method will return [RevocationStatus.UNKNOWN].
      */
     fun checkRevocationStatus(statusListIndex: Long): RevocationStatus {
-        revocationList?.let { bitSet ->
-            if (bitSet.length() > statusListIndex && bitSet[statusListIndex])
-                return RevocationStatus.REVOKED
-            return RevocationStatus.VALID
+        return checkTokenStatus(statusListIndex)?.let {
+            if (it.isValid) RevocationStatus.VALID
+            else RevocationStatus.REVOKED
+        } ?: RevocationStatus.UNKNOWN
+    }
+
+    @OptIn(ExperimentalUnsignedTypes::class)
+    fun checkTokenStatus(statusListIndex: Long): TokenStatus? {
+        return revocationStatusList?.let {
+            it.toStatusListView()[statusListIndex]
         }
-        return RevocationStatus.UNKNOWN
     }
 
     /**
@@ -167,10 +224,10 @@ class Validator(
         clientId: String,
     ): Verifier.VerifyPresentationResult {
         Napier.d("Verifying VP $input")
-        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(
+        val jws = JwsSigned.deserialize(
             VerifiablePresentationJws.serializer(),
             input,
-            vckJsonSerializer
+            vckJsonSerializer,
         ).getOrElse {
             Napier.w("VP: Could not parse JWS", it)
             throw IllegalArgumentException(it)
@@ -184,17 +241,15 @@ class Validator(
             Napier.d("VP: Could not parse content")
             throw IllegalArgumentException("vp.content")
         }
-        val parsedVcList = parsedVp.jws.vp.verifiableCredential
-            .map { verifyVcJws(it, null) }
-        val validVcList = parsedVcList
-            .filterIsInstance<Verifier.VerifyCredentialResult.SuccessJwt>()
-            .map { it.jws }
-        val revokedVcList = parsedVcList
-            .filterIsInstance<Verifier.VerifyCredentialResult.Revoked>()
-            .map { it.jws }
-        val invalidVcList = parsedVcList
-            .filterIsInstance<Verifier.VerifyCredentialResult.InvalidStructure>()
-            .map { it.input }
+        val parsedVcList = parsedVp.jws.vp.verifiableCredential.map { verifyVcJws(it, null) }
+        val validVcList =
+            parsedVcList.filterIsInstance<Verifier.VerifyCredentialResult.SuccessJwt>()
+                .map { it.jws }
+        val revokedVcList =
+            parsedVcList.filterIsInstance<Verifier.VerifyCredentialResult.Revoked>().map { it.jws }
+        val invalidVcList =
+            parsedVcList.filterIsInstance<Verifier.VerifyCredentialResult.InvalidStructure>()
+                .map { it.input }
         val vp = VerifiablePresentationParsed(
             id = parsedVp.jws.vp.id,
             type = parsedVp.jws.vp.type,
@@ -267,18 +322,20 @@ class Validator(
     private fun VerifiableCredentialSdJwt.verifyKeyBinding(
         jwsHeader: JwsHeader,
         keyBindingSigned: JwsSigned<KeyBindingJws>,
-    ): Boolean =
-        if (confirmationClaim != null) {
-            verifierJwsService.verifyConfirmationClaim(this.confirmationClaim, keyBindingSigned)
-        } else {
-            subject == jwsHeader.keyId
-        }
+    ): Boolean = if (confirmationClaim != null) {
+        verifierJwsService.verifyConfirmationClaim(this.confirmationClaim, keyBindingSigned)
+    } else {
+        subject == jwsHeader.keyId
+    }
 
     /**
      * Validates an ISO device response, equivalent of a Verifiable Presentation
      */
     @Throws(IllegalArgumentException::class)
-    fun verifyDeviceResponse(deviceResponse: DeviceResponse, challenge: String): Verifier.VerifyPresentationResult {
+    fun verifyDeviceResponse(
+        deviceResponse: DeviceResponse,
+        challenge: String,
+    ): Verifier.VerifyPresentationResult {
         if (deviceResponse.status != 0U) {
             Napier.w("Status invalid: ${deviceResponse.status}")
             throw IllegalArgumentException("status")
@@ -288,7 +345,9 @@ class Validator(
             throw IllegalArgumentException("documents")
         }
         return Verifier.VerifyPresentationResult.SuccessIso(
-            documents = deviceResponse.documents.map { verifyDocument(it, challenge) }
+            documents = deviceResponse.documents.map {
+                verifyDocument(it, challenge)
+            },
         )
     }
 
@@ -309,7 +368,10 @@ class Validator(
             throw IllegalArgumentException("issuerKey")
         }
         val x509Certificate = X509Certificate.decodeFromDerSafe(certificateChain).getOrElse {
-            Napier.w("Could not parse issuer certificate in ${certificateChain.encodeToString(Base64())}", it)
+            Napier.w(
+                "Could not parse issuer certificate in ${certificateChain.encodeToString(Base64())}",
+                it,
+            )
             throw IllegalArgumentException("issuerKey")
         }
         val issuerKey = x509Certificate.publicKey.toCoseKey().getOrElse {
@@ -317,7 +379,10 @@ class Validator(
             throw IllegalArgumentException("issuerKey")
         }
 
-        if (verifierCoseService.verifyCose(issuerAuth, issuerKey, MobileSecurityObject.serializer()).isFailure) {
+        if (verifierCoseService.verifyCose(
+                issuerAuth, issuerKey, MobileSecurityObject.serializer()
+            ).isFailure
+        ) {
             Napier.w("IssuerAuth not verified: $issuerAuth")
             throw IllegalArgumentException("issuerAuth")
         }
@@ -339,7 +404,10 @@ class Validator(
             throw IllegalArgumentException("deviceSignature")
         }
 
-        if (verifierCoseService.verifyCose(deviceSignature, walletKey, ByteArraySerializer()).isFailure) {
+        if (verifierCoseService.verifyCose(
+                deviceSignature, walletKey, ByteArraySerializer()
+            ).isFailure
+        ) {
             Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}")
             throw IllegalArgumentException("deviceSignature")
         }
@@ -373,8 +441,10 @@ class Validator(
      * See ISO/IEC 18013-5:2021, 9.3.1 Inspection procedure for issuer data authentication
      */
     private fun ByteStringWrapper<IssuerSignedItem>.verify(mdlItems: ValueDigestList?): Boolean {
-        val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId }
-            ?: return false
+        val issuerHash = mdlItems?.entries?.firstOrNull {
+            it.key == value.digestId
+        } ?: return false
+
         val verifierHash = serialized.wrapInCborTag(24).sha256()
         if (!verifierHash.contentEquals(issuerHash.value)) {
             Napier.w("Could not verify hash of value for ${value.elementIdentifier}")
@@ -394,7 +464,7 @@ class Validator(
         val jws = JwsSigned.deserialize<VerifiableCredentialJws>(
             VerifiableCredentialJws.serializer(),
             input,
-            vckJsonSerializer
+            vckJsonSerializer,
         ).getOrElse {
             Napier.w("VC: Could not parse JWS", it)
             return Verifier.VerifyCredentialResult.InvalidStructure(input)
@@ -415,8 +485,10 @@ class Validator(
             return Verifier.VerifyCredentialResult.Revoked(input, vcJws)
         }
         return when (parser.parseVcJws(input, vcJws)) {
-            is Parser.ParseVcResult.InvalidStructure -> Verifier.VerifyCredentialResult.InvalidStructure(input)
-                .also { Napier.d("VC: Invalid structure from Parser") }
+            is Parser.ParseVcResult.InvalidStructure -> {
+                Verifier.VerifyCredentialResult.InvalidStructure(input)
+                    .also { Napier.d("VC: Invalid structure from Parser") }
+            }
 
             is Parser.ParseVcResult.Success -> Verifier.VerifyCredentialResult.SuccessJwt(vcJws)
                 .also { Napier.d("VC: Valid") }
@@ -453,16 +525,16 @@ class Validator(
             }
         }
         val isRevoked = checkRevocationStatus(sdJwt) == RevocationStatus.REVOKED
-        if (isRevoked)
+        if (isRevoked) {
             Napier.d("verifySdJwt: revoked")
+        }
         val issuerSigned = sdJwtSigned.getPayloadAsJsonObject().getOrElse { ex ->
             Napier.w("verifySdJwt: Could not parse payload", ex)
             return Verifier.VerifyCredentialResult.InvalidStructure(input)
         }
 
         val sdJwtValidator = SdJwtValidator(sdJwtSigned)
-        val reconstructedJsonObject = sdJwtValidator.reconstructedJsonObject
-            ?: buildJsonObject { }
+        val reconstructedJsonObject = sdJwtValidator.reconstructedJsonObject ?: buildJsonObject { }
 
         /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
         val validDisclosures: Map<String, SelectiveDisclosureItem> = sdJwtValidator.validDisclosures
@@ -495,7 +567,11 @@ class Validator(
                 it.serialize().encodeToString(Base16(strict = true))
             )
         }
-        val result = verifierCoseService.verifyCose(it.issuerAuth, issuerKey, MobileSecurityObject.serializer())
+        val result = verifierCoseService.verifyCose(
+            it.issuerAuth,
+            issuerKey,
+            MobileSecurityObject.serializer(),
+        )
         if (result.isFailure) {
             Napier.w("ISO: Could not verify credential", result.exceptionOrNull())
             return Verifier.VerifyCredentialResult.InvalidStructure(

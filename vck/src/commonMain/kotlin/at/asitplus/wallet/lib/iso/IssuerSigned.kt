@@ -15,7 +15,6 @@ data class IssuerSigned private constructor(
     @SerialName("issuerAuth")
     val issuerAuth: CoseSigned<MobileSecurityObject>,
 ) {
-
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
 
     override fun equals(other: Any?): Boolean {

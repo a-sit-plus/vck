@@ -11,10 +11,10 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 
-
 /**
  * An agent that only implements [Verifier], i.e. it can only verify credentials of other agents.
  */
+@ExperimentalUnsignedTypes
 class VerifierAgent(
     /**
      * The identifier of this verifier, that is expected to be the audience of verifiable presentations.
@@ -24,8 +24,8 @@ class VerifierAgent(
     private val validator: Validator = Validator(),
 ) : Verifier {
 
-    override fun setRevocationList(it: String): Boolean {
-        return validator.setRevocationList(it)
+    override fun setRevocationStatusListJwt(it: String): Boolean {
+        return validator.setRevocationStatusListJwt(it)
     }
 
     /**
@@ -33,7 +33,8 @@ class VerifierAgent(
      * that shall include the [challenge] (sent by this verifier),
      * as well as the expected [identifier] (identifying this verifier).
      */
-    override fun verifyPresentation(input: String, challenge: String): Verifier.VerifyPresentationResult {
+    override fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
+        val input = it
         val sdJwtSigned = runCatching { SdJwtSigned.parse(input) }.getOrNull()
         if (sdJwtSigned != null) {
             return runCatching {
@@ -75,3 +76,4 @@ class VerifierAgent(
     }
 
 }
+

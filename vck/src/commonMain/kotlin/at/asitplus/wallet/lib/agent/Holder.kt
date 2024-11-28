@@ -34,6 +34,7 @@ interface Holder {
      * @return `true` if the revocation list has been validated and set, `false` otherwise
      */
     fun setRevocationList(it: String): Boolean
+    fun setRevocationStatusListJwt(it: String): Boolean
 
     sealed class StoreCredentialInput {
         data class Vc(
@@ -56,7 +57,7 @@ interface Holder {
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
      *
-     * Note: Revocation credentials should not be stored, but set with [setRevocationList].
+     * Note: Revocation credentials should not be stored, but set with [setRevocationStatusListJwt].
      */
     suspend fun storeCredential(credential: StoreCredentialInput): KmmResult<StoredCredential>
 
@@ -64,7 +65,7 @@ interface Holder {
      * Gets a list of all stored credentials, with a revocation status.
      *
      * Note that the revocation status may be [Validator.RevocationStatus.UNKNOWN] if no revocation list
-     * has been set with [setRevocationList]
+     * has been set with [setRevocationStatusListJwt]
      */
     suspend fun getCredentials(): Collection<StoredCredential>?
 

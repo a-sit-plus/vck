@@ -13,6 +13,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
+@ExperimentalUnsignedTypes
 class AgentTest : FreeSpec({
     val singularPresentationDefinition = PresentationDefinition(
         id = uuid4().toString(),
@@ -101,9 +102,9 @@ class AgentTest : FreeSpec({
         issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
 
         val revocationListCredential =
-            issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+            issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
         revocationListCredential.shouldNotBeNull()
-        validator.setRevocationList(revocationListCredential) shouldBe true
+        validator.setRevocationStatusListJwt(revocationListCredential) shouldBe true
 
         validator.verifyVcJws(credentials.vcJws, holderKeyMaterial.publicKey)
             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
@@ -122,9 +123,9 @@ class AgentTest : FreeSpec({
             credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
             issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
             val revocationListCredential =
-                issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+                issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
             revocationListCredential.shouldNotBeNull()
-            holder.setRevocationList(revocationListCredential) shouldBe true
+            holder.setRevocationStatusListJwt(revocationListCredential) shouldBe true
 
             val storedCredentials = holder.storeCredential(credentials.toStoreCredentialInput())
             storedCredentials.isFailure shouldBe true
@@ -145,9 +146,9 @@ class AgentTest : FreeSpec({
 
             issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
             val revocationListCredential =
-                issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+                issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
             revocationListCredential.shouldNotBeNull()
-            holder.setRevocationList(revocationListCredential) shouldBe true
+            holder.setRevocationStatusListJwt(revocationListCredential) shouldBe true
 
             holder.createPresentation(
                 challenge = challenge,
@@ -187,8 +188,8 @@ class AgentTest : FreeSpec({
             }
 
             "with a revocation list set" {
-                holder.setRevocationList(
-                    issuer.issueRevocationListCredential(
+                holder.setRevocationStatusListJwt(
+                    issuer.issueStatusListJwt(
                         FixedTimePeriodProvider.timePeriod
                     )!!
                 ) shouldBe true
@@ -215,9 +216,9 @@ class AgentTest : FreeSpec({
 
             issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
             val revocationListCredential =
-                issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+                issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
             revocationListCredential.shouldNotBeNull()
-            holder.setRevocationList(revocationListCredential) shouldBe true
+            holder.setRevocationStatusListJwt(revocationListCredential) shouldBe true
 
             val holderCredentials = holder.getCredentials()
             holderCredentials.shouldNotBeNull()
@@ -289,9 +290,9 @@ class AgentTest : FreeSpec({
         credentialsToRevoke.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
         issuer.revokeCredentials(listOf(credentialsToRevoke.vcJws)) shouldBe true
         val revocationList =
-            issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+            issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
         revocationList.shouldNotBeNull()
-        verifier.setRevocationList(revocationList) shouldBe true
+        verifier.setRevocationStatusListJwt(revocationList) shouldBe true
 
         val result = verifier.verifyPresentation(vp.jws, challenge)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()

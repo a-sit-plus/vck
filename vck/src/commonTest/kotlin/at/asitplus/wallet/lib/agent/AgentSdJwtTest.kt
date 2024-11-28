@@ -4,6 +4,7 @@ import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.signum.indispensable.cosef.CborWebToken
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -137,7 +138,7 @@ class AgentSdJwtTest : FreeSpec({
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
             .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
         issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
-        verifier.setRevocationList(issuer.issueRevocationListCredential()!!) shouldBe true
+        verifier.setRevocationStatusListJwt(issuer.issueStatusListJwt()!!) shouldBe true
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         verified.isRevoked shouldBe true
@@ -197,6 +198,7 @@ private suspend fun createSdJwtPresentation(
         Napier.w("Could not re-create JWS from stored SD-JWT", it)
         throw PresentationException(it)
     }
+    CborWebToken
     val sdJwt = SdJwtSigned.serializePresentation(jwsFromIssuer, filteredDisclosures, keyBinding)
     return Holder.CreatePresentationResult.SdJwt(sdJwt)
 }

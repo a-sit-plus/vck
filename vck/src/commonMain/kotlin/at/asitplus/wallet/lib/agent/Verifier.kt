@@ -17,9 +17,9 @@ import kotlinx.serialization.json.JsonObject
 interface Verifier {
 
     /**
-     * Set the revocation list to use for validating VCs (from [Issuer.issueRevocationListCredential])
+     * Set the revocation list to use for validating VCs (from [Issuer.issueStatusListJwt])
      */
-    fun setRevocationList(it: String): Boolean
+    fun setRevocationStatusListJwt(it: String): Boolean
 
     /**
      * Verifies a presentation of some credentials from a holder,

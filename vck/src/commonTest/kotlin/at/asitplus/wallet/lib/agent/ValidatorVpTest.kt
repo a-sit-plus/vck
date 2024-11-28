@@ -7,6 +7,7 @@ import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -18,6 +19,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
+@ExperimentalUnsignedTypes
 class ValidatorVpTest : FreeSpec({
     val singularPresentationDefinition = PresentationDefinition(
         id = uuid4().toString(),
@@ -131,15 +133,16 @@ class ValidatorVpTest : FreeSpec({
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
             .map { it.vc }
             .forEach {
-                issuerCredentialStore.revoke(
+                issuerCredentialStore.setStatus(
                     it.vc.id,
+                    status = TokenStatus.Invalid,
                     FixedTimePeriodProvider.timePeriod
                 ) shouldBe true
             }
         val revocationList =
-            issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+            issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
         revocationList.shouldNotBeNull()
-        verifier.setRevocationList(revocationList)
+        verifier.setRevocationStatusListJwt(revocationList)
 
         val result = verifier.verifyPresentation(vp.jws, challenge)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
