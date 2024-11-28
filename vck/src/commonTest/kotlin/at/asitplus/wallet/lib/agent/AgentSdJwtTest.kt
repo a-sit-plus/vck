@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -24,6 +25,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.random.Random
+
 
 class AgentSdJwtTest : FreeSpec({
 
@@ -37,13 +40,37 @@ class AgentSdJwtTest : FreeSpec({
     lateinit var verifierId: String
 
     beforeEach {
+        val validator = Validator(
+            resolveStatusListToken = {
+                if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                    issuer.issueStatusListJwt(),
+                    resolvedAt = Clock.System.now()
+                ) else {
+                    StatusListToken.StatusListCwt(
+                        issuer.issueStatusListCwt(),
+                        resolvedAt = Clock.System.now(),
+                    )
+                }
+            },
+        )
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         holderCredentialStore = InMemorySubjectCredentialStore()
-        issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore)
+        issuer = IssuerAgent(
+            EphemeralKeyWithoutCert(),
+            issuerCredentialStore,
+            validator = validator,
+        )
         holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
-        holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
+        holder = HolderAgent(
+            holderKeyMaterial,
+            holderCredentialStore,
+            validator = validator,
+        )
         verifierId = "urn:${uuid4()}"
-        verifier = VerifierAgent(identifier = verifierId)
+        verifier = VerifierAgent(
+            identifier = verifierId,
+            validator = validator,
+        )
         challenge = uuid4().toString()
         holder.storeCredential(
             issuer.issueCredential(
@@ -53,14 +80,17 @@ class AgentSdJwtTest : FreeSpec({
                     ConstantIndex.CredentialRepresentation.SD_JWT,
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
-        )
+        ).getOrThrow()
     }
 
     "simple walk-through success" {
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifierId,
-            presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME, CLAIM_DATE_OF_BIRTH)
+            presentationDefinition = buildPresentationDefinition(
+                CLAIM_GIVEN_NAME,
+                CLAIM_DATE_OF_BIRTH
+            )
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -137,7 +167,6 @@ class AgentSdJwtTest : FreeSpec({
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
             .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
         issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
-        verifier.setRevocationList(issuer.issueRevocationListCredential()!!) shouldBe true
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         verified.isRevoked shouldBe true
@@ -177,7 +206,8 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
             inputDescriptors = listOf(DifInputDescriptor(id = uuid4().toString()))
         ),
     ).getOrThrow()
-    val sdJwt = presentationResult.presentationResults.first() as Holder.CreatePresentationResult.SdJwt
+    val sdJwt =
+        presentationResult.presentationResults.first() as Holder.CreatePresentationResult.SdJwt
     return sdJwt.sdJwt
 }
 
@@ -190,10 +220,15 @@ private suspend fun createSdJwtPresentation(
 ): Holder.CreatePresentationResult.SdJwt {
     val filteredDisclosures = validSdJwtCredential.disclosures
         .filter { it.value!!.claimName == claimName }.keys
-    val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
-    val keyBinding = createKeyBindingJws(jwsService, audienceId, challenge, issuerJwtPlusDisclosures)
+    val issuerJwtPlusDisclosures =
+        SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
+    val keyBinding =
+        createKeyBindingJws(jwsService, audienceId, challenge, issuerJwtPlusDisclosures)
     val sdJwtSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
-    val jwsFromIssuer = JwsSigned.deserialize<VerifiableCredentialSdJwt>(VerifiableCredentialSdJwt.serializer(), sdJwtSerialized).getOrElse {
+    val jwsFromIssuer = JwsSigned.deserialize<VerifiableCredentialSdJwt>(
+        VerifiableCredentialSdJwt.serializer(),
+        sdJwtSerialized
+    ).getOrElse {
         Napier.w("Could not re-create JWS from stored SD-JWT", it)
         throw PresentationException(it)
     }

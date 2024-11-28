@@ -3,6 +3,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.wallet.lib.data.Status
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -26,6 +27,8 @@ data class MobileSecurityObject(
     val docType: String,
     @SerialName("validityInfo")
     val validityInfo: ValidityInfo,
+    @SerialName("status")
+    val status: Status? = null,
 ) {
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)

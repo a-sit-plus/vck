@@ -667,7 +667,7 @@ class OidcSiopVerifier(
      * [OpenID for VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html),
      * as referenced by [OpenID for VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html).
      */
-    private fun verifyPresentationResult(
+    private suspend fun verifyPresentationResult(
         descriptor: PresentationSubmissionDescriptor,
         relatedPresentation: JsonElement,
         challenge: String,

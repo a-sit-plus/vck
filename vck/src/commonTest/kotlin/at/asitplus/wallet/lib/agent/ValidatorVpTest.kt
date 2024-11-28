@@ -5,8 +5,10 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -17,6 +19,9 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.datetime.Clock
+import kotlin.random.Random
+
 
 class ValidatorVpTest : FreeSpec({
     val singularPresentationDefinition = PresentationDefinition(
@@ -36,15 +41,38 @@ class ValidatorVpTest : FreeSpec({
     lateinit var challenge: String
 
     beforeEach {
-        validator = Validator()
+        validator = Validator(
+            resolveStatusListToken = {
+                if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                    issuer.issueStatusListJwt(),
+                    resolvedAt = Clock.System.now()
+                ) else {
+                    StatusListToken.StatusListCwt(
+                        issuer.issueStatusListCwt(),
+                        resolvedAt = Clock.System.now()
+                    )
+                }
+            },
+        )
         issuerCredentialStore = InMemoryIssuerCredentialStore()
-        issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore)
+        issuer = IssuerAgent(
+            EphemeralKeyWithoutCert(),
+            issuerCredentialStore,
+            validator = validator,
+        )
         holderCredentialStore = InMemorySubjectCredentialStore()
         holderKeyMaterial = EphemeralKeyWithoutCert()
-        holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
+        holder = HolderAgent(
+            holderKeyMaterial,
+            holderCredentialStore,
+            validator = validator,
+        )
         holderJwsService = DefaultJwsService(DefaultCryptoService(holderKeyMaterial))
         verifierId = "urn:${uuid4()}"
-        verifier = VerifierAgent(identifier = verifierId)
+        verifier = VerifierAgent(
+            identifier = verifierId,
+            validator = validator,
+        )
         challenge = uuid4().toString()
 
         holder.storeCredential(
@@ -55,7 +83,7 @@ class ValidatorVpTest : FreeSpec({
                     ConstantIndex.CredentialRepresentation.PLAIN_JWT,
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
-        )
+        ).getOrThrow()
     }
 
     "correct challenge in VP leads to Success" {
@@ -108,8 +136,7 @@ class ValidatorVpTest : FreeSpec({
             challenge = challenge,
             audienceId = "keyId",
             presentationDefinition = singularPresentationDefinition,
-        ).getOrNull()
-        presentationParameters.shouldNotBeNull()
+        ).getOrThrow()
         val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
@@ -131,15 +158,12 @@ class ValidatorVpTest : FreeSpec({
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
             .map { it.vc }
             .forEach {
-                issuerCredentialStore.revoke(
+                issuerCredentialStore.setStatus(
                     it.vc.id,
+                    status = TokenStatus.Invalid,
                     FixedTimePeriodProvider.timePeriod
                 ) shouldBe true
             }
-        val revocationList =
-            issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
-        revocationList.shouldNotBeNull()
-        verifier.setRevocationList(revocationList)
 
         val result = verifier.verifyPresentation(vp.jws, challenge)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
@@ -152,7 +176,7 @@ class ValidatorVpTest : FreeSpec({
         val credentials = holderCredentialStore.getCredentials().getOrThrow()
         val validCredentials = credentials
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
-            .filter { validator.checkRevocationStatus(it.vc) != Validator.RevocationStatus.REVOKED }
+            .filter { validator.checkRevocationStatus(it.vc) != TokenStatus.Invalid }
             .map { it.vcSerialized }
         (validCredentials.isEmpty()) shouldBe false
 

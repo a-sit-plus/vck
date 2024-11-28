@@ -5,20 +5,29 @@ import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.supreme.signature
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.Status
+import at.asitplus.wallet.lib.data.StatusListToken
+import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
+
 
 class ValidatorVcTest : FreeSpec() {
 
@@ -33,12 +42,28 @@ class ValidatorVcTest : FreeSpec() {
 
     init {
         beforeEach {
+            validator = Validator(
+                resolveStatusListToken = {
+                    if (Random.nextBoolean()) StatusListToken.StatusListJwt(
+                        issuer.issueStatusListJwt(),
+                        resolvedAt = Clock.System.now(),
+                    ) else {
+                        StatusListToken.StatusListCwt(
+                            issuer.issueStatusListCwt(),
+                            resolvedAt = Clock.System.now(),
+                        )
+                    }
+                },
+            )
             issuerCredentialStore = InMemoryIssuerCredentialStore()
             issuerKeyMaterial = EphemeralKeyWithoutCert()
-            issuer = IssuerAgent(issuerKeyMaterial, issuerCredentialStore)
+            issuer = IssuerAgent(
+                issuerKeyMaterial,
+                issuerCredentialStore,
+                validator = validator,
+            )
             issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyMaterial))
             verifierKeyMaterial = EphemeralKeyWithoutCert()
-            validator = Validator()
         }
 
         "credentials are valid for" {
@@ -67,17 +92,16 @@ class ValidatorVcTest : FreeSpec() {
 
             val value = validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
-            issuerCredentialStore.revoke(value.jws.vc.id, FixedTimePeriodProvider.timePeriod) shouldBe true
-            val revocationListCredential =
-                issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
-            revocationListCredential.shouldNotBeNull()
-            validator.setRevocationList(revocationListCredential)
+            issuerCredentialStore.setStatus(
+                value.jws.vc.id,
+                status = TokenStatus.Invalid,
+                FixedTimePeriodProvider.timePeriod,
+            ) shouldBe true
 
             validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
 
-            validator.setRevocationList(revocationListCredential) shouldBe true
-            validator.checkRevocationStatus(value.jws.vc.credentialStatus!!.index) shouldBe Validator.RevocationStatus.REVOKED
+            validator.checkRevocationStatus(value.jws) shouldBe TokenStatus.Invalid
         }
 
         "wrong subject keyId is not be valid" {
@@ -309,7 +333,7 @@ class ValidatorVcTest : FreeSpec() {
         }
     }
 
-    private fun issueCredential(
+    private suspend fun issueCredential(
         credential: CredentialToBeIssued,
         issuanceDate: Instant = Clock.System.now(),
         expirationDate: Instant? = Clock.System.now() + 60.seconds,
@@ -327,7 +351,13 @@ class ValidatorVcTest : FreeSpec() {
             expirationDate = exp,
             timePeriod = FixedTimePeriodProvider.timePeriod
         )!!
-        val credentialStatus = CredentialStatus(revocationListUrl, statusListIndex)
+        val credentialStatus = Status(
+            statusList = StatusListInfo(
+                index = statusListIndex.toULong(),
+                uri = UniformResourceIdentifier(revocationListUrl),
+            )
+        )
+
         return VerifiableCredential(
             id = vcId,
             issuer = issuer.keyMaterial.identifier,
