@@ -3,7 +3,12 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
-import at.asitplus.dif.*
+import at.asitplus.dif.ClaimFormat
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.PresentationSubmission
+import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
@@ -13,6 +18,7 @@ import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
@@ -23,6 +29,7 @@ import io.github.aakira.napier.Napier
  * An agent that only implements [Holder], i.e. it can receive credentials form other agents
  * and present credentials to other agents.
  */
+
 class HolderAgent(
     private val validator: Validator = Validator(),
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
@@ -47,19 +54,8 @@ class HolderAgent(
     )
 
     /**
-     * Sets the revocation list ot use for further processing of Verifiable Credentials
-     *
-     * @return `true` if the revocation list has been validated and set, `false` otherwise
-     */
-    override fun setRevocationList(it: String): Boolean {
-        return validator.setRevocationList(it)
-    }
-
-    /**
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
-     *
-     * Note: Revocation credentials should not be stored, but set with [setRevocationList].
      */
     override suspend fun storeCredential(credential: Holder.StoreCredentialInput) = catching {
         when (credential) {
@@ -107,9 +103,6 @@ class HolderAgent(
 
     /**
      * Gets a list of all stored credentials, with a revocation status.
-     *
-     * Note that the revocation status may be [Validator.RevocationStatus.UNKNOWN] if no revocation list
-     * has been set with [setRevocationList]
      */
     override suspend fun getCredentials(): Collection<Holder.StoredCredential>? {
         val credentials = subjectCredentialStore.getCredentials().getOrNull()
@@ -117,17 +110,20 @@ class HolderAgent(
         return credentials.map { it.toStoredCredential() }
     }
 
-    private fun SubjectCredentialStore.StoreEntry.toStoredCredential() = when (this) {
+    private suspend fun SubjectCredentialStore.StoreEntry.toStoredCredential() = when (this) {
         is SubjectCredentialStore.StoreEntry.Iso -> Holder.StoredCredential.Iso(
-            this, Validator.RevocationStatus.UNKNOWN
+            this,
+            validator.checkRevocationStatus(this.issuerSigned),
         )
 
         is SubjectCredentialStore.StoreEntry.Vc -> Holder.StoredCredential.Vc(
-            this, validator.checkRevocationStatus(vc)
+            this,
+            validator.checkRevocationStatus(vc),
         )
 
         is SubjectCredentialStore.StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
-            this, validator.checkRevocationStatus(sdJwt)
+            this,
+            validator.checkRevocationStatus(sdJwt),
         )
     }
 
@@ -135,7 +131,7 @@ class HolderAgent(
      * Gets a list of all valid stored credentials sorted by preference
      */
     private suspend fun getValidCredentialsByPriority() = getCredentials()
-        ?.filter { it.status != Validator.RevocationStatus.REVOKED }
+        ?.filter { it.status != TokenStatus.Invalid }
         ?.map { it.storeEntry }
         ?.sortedBy {
             // prefer iso credentials and sd jwt credentials over plain vc credentials

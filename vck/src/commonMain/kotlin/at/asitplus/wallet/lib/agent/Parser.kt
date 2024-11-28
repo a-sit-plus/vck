@@ -37,9 +37,12 @@ class Parser(
      */
     fun parseVpJws(input: String, challenge: String, clientId: String): ParseVpResult {
         Napier.d("Parsing VP $input")
-        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(VerifiablePresentationJws.serializer(), input, vckJsonSerializer).getOrNull()
-            ?: return ParseVpResult.InvalidStructure(input)
-                .also { Napier.w("Could not parse JWS: $input") }
+        val jws = JwsSigned.deserialize(
+            VerifiablePresentationJws.serializer(),
+            input,
+            vckJsonSerializer,
+        ).getOrNull() ?: return ParseVpResult.InvalidStructure(input)
+            .also { Napier.w("Could not parse JWS: $input") }
         return parseVpJws(input, jws.payload, challenge, clientId)
     }
 
@@ -60,7 +63,7 @@ class Parser(
                 .also { Napier.w("jti invalid: ${vpJws.jwtId}, expected ${vpJws.vp.id}") }
         if (vpJws.vp.type != VERIFIABLE_PRESENTATION)
             return ParseVpResult.InvalidStructure(it)
-                .also { Napier.w("type invalid: ${vpJws.vp.type}, expected $VERIFIABLE_PRESENTATION")}
+                .also { Napier.w("type invalid: ${vpJws.vp.type}, expected $VERIFIABLE_PRESENTATION") }
         Napier.d("VP is valid")
         return ParseVpResult.Success(vpJws)
     }

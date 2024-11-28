@@ -1,7 +1,7 @@
 # Changelog
 
 Release 5.3.0:
- - tbd
+- Add draft token-status-list-06
 
 Release 5.2.0:
 - Remote qualified electronic signatures:

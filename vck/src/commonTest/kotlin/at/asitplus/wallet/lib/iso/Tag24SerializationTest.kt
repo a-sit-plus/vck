@@ -2,7 +2,12 @@ package at.asitplus.wallet.lib.iso
 
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.cosef.*
+import at.asitplus.signum.indispensable.cosef.CoseEllipticCurve
+import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.CoseKeyParams
+import at.asitplus.signum.indispensable.cosef.CoseKeyType
+import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
@@ -14,6 +19,7 @@ import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.maps.shouldNotBeEmpty
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContainOnlyOnce
 import io.kotest.matchers.string.shouldStartWith
@@ -30,6 +36,7 @@ import kotlin.random.Random
  * Test correct appending tag 24 (in hex `D818`) for certain data structures,
  * as defined by ISO/IEC 18013-5:2021
  */
+
 @OptIn(ExperimentalSerializationApi::class)
 class Tag24SerializationTest : FreeSpec({
 
@@ -99,8 +106,10 @@ class Tag24SerializationTest : FreeSpec({
             ).getOrThrow()
         ).getOrThrow().shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
-        issuedCredential.issuerSigned.namespaces!!.shouldNotBeEmpty()
-        val numberOfClaims = issuedCredential.issuerSigned.namespaces.entries.fold(0) { acc, entry ->
+        val namespaces = issuedCredential.issuerSigned.namespaces
+        namespaces.shouldNotBeNull()
+        namespaces.shouldNotBeEmpty()
+        val numberOfClaims = namespaces.entries.fold(0) { acc, entry ->
             acc + entry.value.entries.size
         }
         val serialized = issuedCredential.issuerSigned.serialize().encodeToString(Base16(true))

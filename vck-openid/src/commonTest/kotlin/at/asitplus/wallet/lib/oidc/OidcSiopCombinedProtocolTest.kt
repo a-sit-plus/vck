@@ -1,7 +1,13 @@
 package at.asitplus.wallet.lib.oidc
 
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
@@ -17,6 +23,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
+@ExperimentalUnsignedTypes
 class OidcSiopCombinedProtocolTest : FreeSpec({
 
     lateinit var clientId: String
@@ -275,6 +282,7 @@ private suspend fun Holder.storeJwtCredential(
     )
 }
 
+@ExperimentalUnsignedTypes
 private suspend fun Holder.storeSdJwtCredential(
     holderKeyMaterial: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,
@@ -290,6 +298,7 @@ private suspend fun Holder.storeSdJwtCredential(
     )
 }
 
+@ExperimentalUnsignedTypes
 private suspend fun Holder.storeIsoCredential(
     holderKeyMaterial: KeyMaterial,
     credentialScheme: ConstantIndex.CredentialScheme,

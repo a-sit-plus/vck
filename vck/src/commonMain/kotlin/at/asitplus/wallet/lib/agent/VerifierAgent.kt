@@ -11,7 +11,6 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 
-
 /**
  * An agent that only implements [Verifier], i.e. it can only verify credentials of other agents.
  */
@@ -23,9 +22,15 @@ class VerifierAgent(
     private val identifier: String,
     private val validator: Validator = Validator(),
 ) : Verifier {
-
-    override fun setRevocationList(it: String): Boolean {
-        return validator.setRevocationList(it)
+    override fun verifyRevocationStatusListJwtIntegrity(it: String): Boolean {
+        return runCatching {
+            validator.validateStatusListJwtIntegrity(it)
+        }.isSuccess
+    }
+    override fun verifyRevocationStatusListCwtIntegrity(it: ByteArray): Boolean {
+        return runCatching {
+            validator.validateStatusListCwtIntegrity(it)
+        }.isSuccess
     }
 
     /**
@@ -33,7 +38,8 @@ class VerifierAgent(
      * that shall include the [challenge] (sent by this verifier),
      * as well as the expected [identifier] (identifying this verifier).
      */
-    override fun verifyPresentation(input: String, challenge: String): Verifier.VerifyPresentationResult {
+    override suspend fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
+        val input = it
         val sdJwtSigned = runCatching { SdJwtSigned.parse(input) }.getOrNull()
         if (sdJwtSigned != null) {
             return runCatching {
@@ -47,6 +53,7 @@ class VerifierAgent(
             return runCatching {
                 validator.verifyVpJws(input, challenge, identifier)
             }.getOrElse {
+                Napier.d(it.stackTraceToString())
                 Verifier.VerifyPresentationResult.InvalidStructure(input)
             }
         }
@@ -75,3 +82,4 @@ class VerifierAgent(
     }
 
 }
+

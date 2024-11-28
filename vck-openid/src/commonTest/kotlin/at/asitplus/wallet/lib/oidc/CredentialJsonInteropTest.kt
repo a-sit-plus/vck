@@ -27,8 +27,11 @@ class CredentialJsonInteropTest : FreeSpec({
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
         subjectCredentialStore = InMemorySubjectCredentialStore()
-        holderAgent = HolderAgent(holderKeyMaterial, subjectCredentialStore)
-        issuerAgent = IssuerAgent(EphemeralKeyWithSelfSignedCert())
+        holderAgent = HolderAgent(
+            holderKeyMaterial,
+            subjectCredentialStore,
+        )
+        issuerAgent = IssuerAgent(EphemeralKeyWithSelfSignedCert(),)
     }
 
     "Plain jwt credential path resolving" {
@@ -43,7 +46,9 @@ class CredentialJsonInteropTest : FreeSpec({
         )
 
         val credential =
-            CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
+            CredentialToJsonConverter.toJsonElement(
+                subjectCredentialStore.getCredentials().getOrThrow()[0]
+            )
         credential.getByJsonPath("\$.id").content shouldNotBe null
         credential.getByJsonPath("\$['id']").content shouldNotBe null
         credential.getByJsonPath("\$.name").content shouldNotBe null
@@ -66,7 +71,9 @@ class CredentialJsonInteropTest : FreeSpec({
         )
 
         val credential =
-            CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
+            CredentialToJsonConverter.toJsonElement(
+                subjectCredentialStore.getCredentials().getOrThrow()[0]
+            )
         credential.getByJsonPath("\$['given_name']").content shouldNotBe null
         credential.getByJsonPath("\$['family_name']").content shouldNotBe null
         credential.getByJsonPath("\$['date_of_birth']").content shouldNotBe null
@@ -85,7 +92,9 @@ class CredentialJsonInteropTest : FreeSpec({
         )
 
         val credential =
-            CredentialToJsonConverter.toJsonElement(subjectCredentialStore.getCredentials().getOrThrow()[0])
+            CredentialToJsonConverter.toJsonElement(
+                subjectCredentialStore.getCredentials().getOrThrow()[0]
+            )
         credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['given_name']").content shouldNotBe null
         credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['family_name']").content shouldNotBe null
         credential.getByJsonPath("\$['${ConstantIndex.AtomicAttribute2023.isoNamespace}']['date_of_birth']").content shouldNotBe null

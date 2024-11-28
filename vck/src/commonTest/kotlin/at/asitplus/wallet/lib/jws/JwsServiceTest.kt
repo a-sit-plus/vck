@@ -115,7 +115,7 @@ class JwsServiceTest : FreeSpec({
         val signed = jwsService.createSignedJws(header, randomPayload, String.serializer()).getOrThrow()
         val validKey = cryptoService.keyMaterial.jsonWebKey
 
-        val publicKeyLookup: PublicKeyLookup = { setOf(validKey) }
+        val publicKeyLookup: PublicJsonWebKeyLookup = { setOf(validKey) }
         verifierJwsService = DefaultVerifierJwsService(publicKeyLookup = publicKeyLookup)
         verifierJwsService.verifyJwsObject(signed) shouldBe true
     }

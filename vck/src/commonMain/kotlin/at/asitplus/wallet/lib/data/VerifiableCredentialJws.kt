@@ -1,8 +1,9 @@
 package at.asitplus.wallet.lib.data
 
 import at.asitplus.KmmResult.Companion.wrap
-import kotlinx.datetime.Instant
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.jwt.claims.JwtStatusPayloadClaimSpecification
+import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -25,9 +26,10 @@ data class VerifiableCredentialJws(
     @Serializable(with = NullableInstantLongSerializer::class)
     val expiration: Instant?,
     @SerialName("jti")
-    val jwtId: String
+    val jwtId: String,
+    @SerialName(JwtStatusPayloadClaimSpecification.NAME)
+    val status: Status? = null,
 ) {
-
     fun serialize() = vckJsonSerializer.encodeToString(this)
 
     companion object {
@@ -37,3 +39,4 @@ data class VerifiableCredentialJws(
     }
 
 }
+

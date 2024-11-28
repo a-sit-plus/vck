@@ -3,7 +3,12 @@ package at.asitplus.wallet.lib.cbor
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.cosef.*
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
+import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
@@ -49,11 +54,16 @@ interface VerifierCoseService {
         serializer: KSerializer<P>,
     ): KmmResult<Verifier.Success>
 
+    fun <P : Any> verifyCose(
+        coseSigned: CoseSigned<P>,
+        serializer: KSerializer<P>,
+    ): KmmResult<Verifier.Success>
 }
 
 class DefaultCoseService(private val cryptoService: CryptoService) : CoseService {
 
-    override val algorithm: CoseAlgorithm = cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
+    override val algorithm: CoseAlgorithm =
+        cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
 
     override suspend fun <P : Any> createSignedCose(
         protectedHeader: CoseHeader?,
@@ -103,16 +113,19 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         payload: P?,
         serializer: KSerializer<P>,
     ): CryptoSignature.RawByteEncodable =
-        CoseSigned.prepareCoseSignatureInput<P>(protectedHeader, payload, serializer).let { signatureInput ->
-            cryptoService.sign(signatureInput).asKmmResult().getOrElse {
-                Napier.w("No signature from native code", it)
-                throw it
+        CoseSigned.prepareCoseSignatureInput<P>(protectedHeader, payload, serializer)
+            .let { signatureInput ->
+                cryptoService.sign(signatureInput).asKmmResult().getOrElse {
+                    Napier.w("No signature from native code", it)
+                    throw it
+                }
             }
-        }
 }
 
 class DefaultVerifierCoseService(
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
+    /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
+    private val publicKeyLookup: PublicCoseKeyLookup = { null },
 ) : VerifierCoseService {
 
     /**
@@ -126,7 +139,7 @@ class DefaultVerifierCoseService(
         val signatureInput = CoseSigned.prepareCoseSignatureInput(
             protectedHeader = coseSigned.protectedHeader.value,
             payload = coseSigned.payload,
-            serializer = serializer
+            serializer = serializer,
         )
         val algorithm = coseSigned.protectedHeader.value.algorithm
             ?: throw IllegalArgumentException("Algorithm not specified")
@@ -141,7 +154,26 @@ class DefaultVerifierCoseService(
             publicKey = publicKey
         ).getOrThrow()
     }
+
+    /**
+     * Verifies the signature of [jwsObject], by extracting the public key from [JwsHeader.publicKey],
+     * or by using [jwkSetRetriever] if [JwsHeader.jsonWebKeySetUrl] is set.
+     */
+    override fun <P : Any> verifyCose(
+        coseSigned: CoseSigned<P>,
+        serializer: KSerializer<P>
+    ): KmmResult<Verifier.Success> = catching {
+        coseSigned.loadPublicKeys().also {
+            Napier.d("Public keys available: ${it.size}")
+        }.firstNotNullOf { coseKey ->
+            verifyCose(coseSigned, coseKey, serializer).getOrNull()
+        }
+    }
+
+    fun CoseSigned<*>.loadPublicKeys(): Set<CoseKey> =
+        publicKey?.let { setOf(it) } ?: publicKeyLookup(this) ?: setOf<CoseKey>().also {
+            Napier.d("No public keys: $this")
+        }
 }
 
-
-
+typealias PublicCoseKeyLookup = (CoseSigned<*>) -> Set<CoseKey>?

@@ -8,12 +8,33 @@ import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo8Bytes
 import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
+import at.asitplus.signum.indispensable.josef.JweDecrypted
+import at.asitplus.signum.indispensable.josef.JweEncrypted
+import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.indispensable.josef.JweHeader
+import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
+import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
+import at.asitplus.wallet.lib.agent.EphemeralKeyHolder
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.VerifierCryptoService
+import at.asitplus.wallet.lib.data.rfc7515.headers.JwsAlgorithmHeaderParameterSpecification
+import at.asitplus.wallet.lib.data.rfc7515.headers.JwsJsonWebKeyHeaderParameterSpecification
+import at.asitplus.wallet.lib.data.rfc7515.headers.JwsJsonWebKeySetUrlHeaderParameterSpecification
+import at.asitplus.wallet.lib.data.rfc7515.headers.JwsKeyIdHeaderParameterSpecification
+import at.asitplus.wallet.lib.data.rfc7515.headers.JwsX509CertificateSha256ThumbprintHeaderParameterSpecification
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
@@ -74,7 +95,7 @@ interface JwsService {
         addX5c: Boolean = false
     ): KmmResult<JwsSigned<T>>
 
-    suspend fun <T: Any> encryptJweObject(
+    suspend fun <T : Any> encryptJweObject(
         header: JweHeader? = null,
         payload: T,
         serializer: SerializationStrategy<T>,
@@ -83,7 +104,7 @@ interface JwsService {
         jweEncryption: JweEncryption
     ): KmmResult<JweEncrypted>
 
-    fun <T: Any> encryptJweObject(
+    fun <T : Any> encryptJweObject(
         type: String,
         payload: T,
         serializer: SerializationStrategy<T>,
@@ -93,7 +114,7 @@ interface JwsService {
         jweEncryption: JweEncryption
     ): KmmResult<JweEncrypted>
 
-    suspend fun <T: Any> decryptJweObject(
+    suspend fun <T : Any> decryptJweObject(
         jweObject: JweEncrypted,
         serialized: String,
         deserializer: DeserializationStrategy<T>,
@@ -104,13 +125,13 @@ interface JwsService {
 interface VerifierJwsService {
 
     val supportedAlgorithms: List<JwsAlgorithm>
+    val supportedHeaders: Map<String, (Any) -> Boolean>
 
     fun verifyJwsObject(jwsObject: JwsSigned<*>): Boolean
 
     fun verifyJws(jwsObject: JwsSigned<*>, signer: JsonWebKey): Boolean
 
     fun verifyConfirmationClaim(cnf: ConfirmationClaim, jwsSigned: JwsSigned<*>): Boolean
-
 }
 
 class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
@@ -147,13 +168,15 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         payload: T,
         serializer: SerializationStrategy<T>,
     ) = catching {
-        if (header.algorithm != cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
+        if (header.algorithm != cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm()
+                .getOrThrow()
             || header.jsonWebKey?.let { it != cryptoService.keyMaterial.jsonWebKey } == true
         ) {
             throw IllegalArgumentException("Algorithm or JSON Web Key not matching to cryptoService")
         }
 
-        val plainSignatureInput = prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
+        val plainSignatureInput =
+            prepareJwsSignatureInput(header, payload, serializer, vckJsonSerializer)
         val signature = cryptoService.sign(plainSignatureInput).asKmmResult().getOrThrow()
         JwsSigned(header, payload, signature, plainSignatureInput)
     }
@@ -177,11 +200,12 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             copy = copy.copy(jsonWebKey = cryptoService.keyMaterial.jsonWebKey)
         // Null pointer is a controlled error case inside the catching block
         if (addX5c)
-            copy = copy.copy(certificateChain = listOf(cryptoService.keyMaterial.getCertificate()!!))
+            copy =
+                copy.copy(certificateChain = listOf(cryptoService.keyMaterial.getCertificate()!!))
         createSignedJws(copy, payload, serializer).getOrThrow()
     }
 
-    override suspend fun <T: Any> decryptJweObject(
+    override suspend fun <T : Any> decryptJweObject(
         jweObject: JweEncrypted,
         serialized: String,
         deserializer: DeserializationStrategy<T>,
@@ -206,8 +230,10 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
         val ciphertext = jweObject.ciphertext
         val authTag = jweObject.authTag
-        val plaintext = cryptoService.decrypt(key.aesKey, iv, aad, ciphertext, authTag, enc).getOrThrow()
-        val plainObject = vckJsonSerializer.decodeFromString(deserializer, plaintext.decodeToString())
+        val plaintext =
+            cryptoService.decrypt(key.aesKey, iv, aad, ciphertext, authTag, enc).getOrThrow()
+        val plainObject =
+            vckJsonSerializer.decodeFromString(deserializer, plaintext.decodeToString())
         key.hmacKey?.let { hmacKey ->
             val expectedAuthTag = cryptoService.hmac(hmacKey, enc, hmacInput(aad, iv, ciphertext))
                 .getOrThrow()
@@ -219,7 +245,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         JweDecrypted(header, plainObject)
     }
 
-    override suspend fun <T: Any> encryptJweObject(
+    override suspend fun <T : Any> encryptJweObject(
         header: JweHeader?,
         payload: T,
         serializer: SerializationStrategy<T>,
@@ -236,10 +262,18 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             jsonWebKey = cryptoService.keyMaterial.jsonWebKey,
             ephemeralKeyPair = ephemeralKeyPair.publicJsonWebKey
         )
-        encryptJwe(ephemeralKeyPair, recipientKey, jweAlgorithm, jweEncryption, jweHeader, payload, serializer)
+        encryptJwe(
+            ephemeralKeyPair,
+            recipientKey,
+            jweAlgorithm,
+            jweEncryption,
+            jweHeader,
+            payload,
+            serializer
+        )
     }
 
-    override fun <T: Any> encryptJweObject(
+    override fun <T : Any> encryptJweObject(
         type: String,
         payload: T,
         serializer: SerializationStrategy<T>,
@@ -259,10 +293,18 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             contentType = contentType,
             ephemeralKeyPair = ephemeralKeyPair.publicJsonWebKey
         )
-        encryptJwe(ephemeralKeyPair, recipientKey, jweAlgorithm, jweEncryption, jweHeader, payload, serializer)
+        encryptJwe(
+            ephemeralKeyPair,
+            recipientKey,
+            jweAlgorithm,
+            jweEncryption,
+            jweHeader,
+            payload,
+            serializer
+        )
     }
 
-    private fun <T: Any> encryptJwe(
+    private fun <T : Any> encryptJwe(
         ephemeralKeyPair: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         jweAlgorithm: JweAlgorithm,
@@ -286,9 +328,14 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val aad = headerSerialized.encodeToByteArray()
         val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
         val bytes = vckJsonSerializer.encodeToString(serializer, payload).encodeToByteArray()
-        val ciphertext = cryptoService.encrypt(key.aesKey, iv, aadForCipher, bytes, jweEncryption).getOrThrow()
+        val ciphertext =
+            cryptoService.encrypt(key.aesKey, iv, aadForCipher, bytes, jweEncryption).getOrThrow()
         val authTag = key.hmacKey?.let { hmacKey ->
-            cryptoService.hmac(hmacKey, jweEncryption, hmacInput(aadForCipher, iv, ciphertext.ciphertext))
+            cryptoService.hmac(
+                hmacKey,
+                jweEncryption,
+                hmacInput(aadForCipher, iv, ciphertext.ciphertext)
+            )
                 .getOrThrow()
                 .take(jweEncryption.macLength!!).toByteArray()
         } ?: ciphertext.authtag
@@ -329,7 +376,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         encryptionKeyLengthBits: Int
     ): ByteArray {
         val digest = Digest.SHA256
-        val repetitions = (encryptionKeyLengthBits.toUInt() + digest.outputLength.bits - 1U) / digest.outputLength.bits
+        val repetitions =
+            (encryptionKeyLengthBits.toUInt() + digest.outputLength.bits - 1U) / digest.outputLength.bits
         val algId = jweEncryption.text.encodeToByteArray().prependWith4BytesSize()
         val apuEncoded = apu?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
         val apvEncoded = apv?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
@@ -350,7 +398,7 @@ typealias JwkSetRetrieverFunction = (String) -> JsonWebKeySet?
 /**
  * Clients get the parsed [JwsSigned] and need to provide a set of keys, which will be used for verification one-by-one.
  */
-typealias PublicKeyLookup = (JwsSigned<*>) -> Set<JsonWebKey>?
+typealias PublicJsonWebKeyLookup = (JwsSigned<*>) -> Set<JsonWebKey>?
 
 class DefaultVerifierJwsService(
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
@@ -360,11 +408,23 @@ class DefaultVerifierJwsService(
      */
     private val jwkSetRetriever: JwkSetRetrieverFunction = { null },
     /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
-    private val publicKeyLookup: PublicKeyLookup = { null },
+    private val publicKeyLookup: PublicJsonWebKeyLookup = { null },
 ) : VerifierJwsService {
 
     override val supportedAlgorithms: List<JwsAlgorithm> =
         cryptoService.supportedAlgorithms.map { it.toJwsAlgorithm().getOrThrow() }
+
+    override val supportedHeaders: Map<String, (Any) -> Boolean>
+        get() = mapOf(
+            JwsJsonWebKeyHeaderParameterSpecification.NAME to { true },
+            JwsJsonWebKeySetUrlHeaderParameterSpecification.NAME to { true },
+            JwsKeyIdHeaderParameterSpecification.NAME to { true },
+            JwsX509CertificateSha256ThumbprintHeaderParameterSpecification.NAME to { true },
+            JwsX509CertificateSha256ThumbprintHeaderParameterSpecification.NAME to { true },
+            JwsAlgorithmHeaderParameterSpecification.NAME to { alg ->
+                JwsAlgorithm.entries.first { it.identifier == alg } in supportedAlgorithms
+            },
+        )
 
     /**
      * Verifies the signature of [jwsObject], by extracting the public key from [JwsHeader.publicKey],

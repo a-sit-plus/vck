@@ -7,15 +7,32 @@ import at.asitplus.openid.OpenIdConstants.ID_TOKEN
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.signum.indispensable.josef.*
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.signum.indispensable.josef.ConfirmationClaim
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
-import at.asitplus.wallet.lib.oidvci.*
+import at.asitplus.wallet.lib.oidvci.MapStore
+import at.asitplus.wallet.lib.oidvci.NonceService
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
+import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
@@ -28,10 +45,12 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.*
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
 import kotlinx.datetime.Clock
 import kotlin.time.Duration.Companion.seconds
 
+@ExperimentalUnsignedTypes
 class OidcSiopProtocolTest : FreeSpec({
 
     lateinit var clientId: String
@@ -416,6 +435,7 @@ class OidcSiopProtocolTest : FreeSpec({
     }
 })
 
+@ExperimentalUnsignedTypes
 private fun requestOptionsAtomicAttribute() = RequestOptions(
     credentials = setOf(
         OidcSiopVerifier.RequestOptionsCredential(
@@ -457,6 +477,7 @@ private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
         }
     }
 
+@ExperimentalUnsignedTypes
 private suspend fun verifySecondProtocolRun(
     verifierSiop: OidcSiopVerifier,
     walletUrl: String,
@@ -468,6 +489,7 @@ private suspend fun verifySecondProtocolRun(
         .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
 }
 
+@ExperimentalUnsignedTypes
 private val defaultRequestOptions = RequestOptions(
     credentials = setOf(
         OidcSiopVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)

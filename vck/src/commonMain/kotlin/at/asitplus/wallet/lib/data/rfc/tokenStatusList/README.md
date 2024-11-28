@@ -1,0 +1,1 @@
+# [Specification](https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html)
