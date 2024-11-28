@@ -43,9 +43,9 @@ class AgentRevocationTest : FreeSpec({
     }
 
     "revocation credential should be valid" {
-        val revocationCredential = issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+        val revocationCredential = issuer.issueRevocationStatusListJwt(FixedTimePeriodProvider.timePeriod)
         revocationCredential.shouldNotBeNull()
-        val vcJws = verifier.setRevocationList(revocationCredential)
+        val vcJws = verifier.setRevocationStatusListJwt(revocationCredential)
         vcJws shouldBe true
     }
 

@@ -11,7 +11,6 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 
-
 /**
  * An agent that only implements [Verifier], i.e. it can only verify credentials of other agents.
  */
@@ -25,7 +24,12 @@ class VerifierAgent(
 ) : Verifier {
 
     override fun setRevocationList(it: String): Boolean {
-        return validator.setRevocationList(it)
+        return validator.setRevocationListCredential(it)
+    }
+
+    @ExperimentalUnsignedTypes
+    override fun setRevocationStatusListJwt(it: String): Boolean {
+        return validator.setRevocationStatusListJwt(it)
     }
 
     /**
@@ -75,3 +79,4 @@ class VerifierAgent(
     }
 
 }
+

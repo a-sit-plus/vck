@@ -17,7 +17,7 @@ class InMemoryIssuerCredentialStore : IssuerCredentialStore {
         val scheme: ConstantIndex.CredentialScheme,
     )
 
-    private val map = mutableMapOf<Int, MutableList<Credential>>()
+    private val credentialMap = mutableMapOf<Int, MutableList<Credential>>()
 
     override fun storeGetNextIndex(
         credential: IssuerCredentialStore.Credential,
@@ -26,7 +26,7 @@ class InMemoryIssuerCredentialStore : IssuerCredentialStore {
         expirationDate: Instant,
         timePeriod: Int
     ): Long {
-        val list = map.getOrPut(timePeriod) { mutableListOf() }
+        val list = credentialMap.getOrPut(timePeriod) { mutableListOf() }
         val newIndex = (list.maxOfOrNull { it.statusListIndex } ?: 0) + 1
         val vcId = when (credential) {
             is IssuerCredentialStore.Credential.Iso -> credential.issuerSignedItemList.toString().encodeToByteArray()
@@ -51,11 +51,22 @@ class InMemoryIssuerCredentialStore : IssuerCredentialStore {
     }
 
     override fun getRevokedStatusListIndexList(timePeriod: Int): Collection<Long> {
-        return map.getOrPut(timePeriod) { mutableListOf() }.filter { it.revoked }.map { it.statusListIndex }
+        return credentialMap.getOrPut(timePeriod) {
+            mutableListOf()
+        }.filter {
+            it.revoked
+        }.map {
+            it.statusListIndex
+        }
     }
 
     override fun revoke(vcId: String, timePeriod: Int): Boolean {
-        val entry = map.getOrPut(timePeriod) { mutableListOf() }.find { it.vcId == vcId } ?: return false
+        val entry = credentialMap.getOrPut(timePeriod) {
+            mutableListOf()
+        }.find {
+            it.vcId == vcId
+        } ?: return false
+
         entry.revoked = true
         return true
     }

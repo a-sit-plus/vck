@@ -137,9 +137,9 @@ class ValidatorVpTest : FreeSpec({
                 ) shouldBe true
             }
         val revocationList =
-            issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
+            issuer.issueRevocationStatusListJwt(FixedTimePeriodProvider.timePeriod)
         revocationList.shouldNotBeNull()
-        verifier.setRevocationList(revocationList)
+        verifier.setRevocationStatusListJwt(revocationList)
 
         val result = verifier.verifyPresentation(vp.jws, challenge)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()

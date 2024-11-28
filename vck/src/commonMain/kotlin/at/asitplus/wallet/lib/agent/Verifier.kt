@@ -22,6 +22,11 @@ interface Verifier {
     fun setRevocationList(it: String): Boolean
 
     /**
+     * Set the revocation list to use for validating VCs (from [Issuer.issueRevocationStatusListJwt])
+     */
+    fun setRevocationStatusListJwt(it: String): Boolean
+
+    /**
      * Verifies a presentation of some credentials from a holder,
      * that shall include the [challenge] (sent by this verifier).
      */

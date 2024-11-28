@@ -23,6 +23,7 @@ import io.github.aakira.napier.Napier
  * An agent that only implements [Holder], i.e. it can receive credentials form other agents
  * and present credentials to other agents.
  */
+@ExperimentalUnsignedTypes
 class HolderAgent(
     private val validator: Validator = Validator(),
     private val subjectCredentialStore: SubjectCredentialStore = InMemorySubjectCredentialStore(),
@@ -52,14 +53,18 @@ class HolderAgent(
      * @return `true` if the revocation list has been validated and set, `false` otherwise
      */
     override fun setRevocationList(it: String): Boolean {
-        return validator.setRevocationList(it)
+        return validator.setRevocationListCredential(it)
+    }
+
+    override fun setRevocationStatusListJwt(it: String): Boolean {
+        return validator.setRevocationStatusListJwt(it)
     }
 
     /**
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
      *
-     * Note: Revocation credentials should not be stored, but set with [setRevocationList].
+     * Note: Revocation credentials should not be stored, but set with [setRevocationStatusListJwt].
      */
     override suspend fun storeCredential(credential: Holder.StoreCredentialInput) = catching {
         when (credential) {
@@ -109,7 +114,7 @@ class HolderAgent(
      * Gets a list of all stored credentials, with a revocation status.
      *
      * Note that the revocation status may be [Validator.RevocationStatus.UNKNOWN] if no revocation list
-     * has been set with [setRevocationList]
+     * has been set with [setRevocationStatusListJwt]
      */
     override suspend fun getCredentials(): Collection<Holder.StoredCredential>? {
         val credentials = subjectCredentialStore.getCredentials().getOrNull()
@@ -119,15 +124,18 @@ class HolderAgent(
 
     private fun SubjectCredentialStore.StoreEntry.toStoredCredential() = when (this) {
         is SubjectCredentialStore.StoreEntry.Iso -> Holder.StoredCredential.Iso(
-            this, Validator.RevocationStatus.UNKNOWN
+            this,
+            Validator.RevocationStatus.UNKNOWN,
         )
 
         is SubjectCredentialStore.StoreEntry.Vc -> Holder.StoredCredential.Vc(
-            this, validator.checkRevocationStatus(vc)
+            this,
+            validator.checkRevocationStatus(vc),
         )
 
         is SubjectCredentialStore.StoreEntry.SdJwt -> Holder.StoredCredential.SdJwt(
-            this, validator.checkRevocationStatus(sdJwt)
+            this,
+            validator.checkRevocationStatus(sdJwt),
         )
     }
 

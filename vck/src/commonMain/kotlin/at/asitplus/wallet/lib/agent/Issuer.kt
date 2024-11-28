@@ -69,6 +69,18 @@ interface Issuer {
     suspend fun issueRevocationListCredential(timePeriod: Int? = null): String?
 
     /**
+     * @return a status list jwt.
+     * @param timePeriod time Period to issue a revocation list for
+     */
+    suspend fun issueRevocationStatusListJwt(timePeriod: Int? = null): String?
+
+    /**
+     * @return a status list jwt.
+     * @param timePeriod time Period to issue a revocation list for
+     */
+    suspend fun issueRevocationStatusListCwt(timePeriod: Int? = null): ByteArray?
+
+    /**
      * Returns a Base64-encoded, zlib-compressed bitstring of revoked credentials, where
      * the entry at "revocationListIndex" (of the credential) is true iff it is revoked
      */
