@@ -24,7 +24,7 @@ data class CredentialResponseParameters(
      * See Appendix A for the Credential Format-specific encoding requirements.
      */
     @SerialName("credential")
-    val credential: String? = null, // TODO May be a JSON element
+    val credential: JsonElement? = null,
 
     /**
      * OID4VCI: OPTIONAL. Contains an array of issued Credentials.

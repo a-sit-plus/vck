@@ -16,6 +16,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.json.JsonPrimitive
 
 fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<SignatureAlgorithm>? = null)
         : Map<String, SupportedCredentialFormat> {
@@ -113,17 +114,17 @@ fun CredentialFormatEnum.toRepresentation() = when (this) {
 fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
     is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
         format = CredentialFormatEnum.MSO_MDOC,
-        credential = issuerSigned.serialize().encodeToString(Base64UrlStrict),
+        credential = JsonPrimitive(issuerSigned.serialize().encodeToString(Base64UrlStrict)),
     )
 
     is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
         format = CredentialFormatEnum.JWT_VC,
-        credential = vcJws,
+        credential = JsonPrimitive(vcJws),
     )
 
     is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
         format = CredentialFormatEnum.VC_SD_JWT,
-        credential = vcSdJwt,
+        credential = JsonPrimitive(vcSdJwt),
     )
 }
 

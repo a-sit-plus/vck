@@ -28,6 +28,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlinx.serialization.json.jsonPrimitive
 
 class OidvciCodeFlowTest : FreeSpec({
 
@@ -125,7 +126,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(scope)
         val credential = issueCredential(requestOptions, token)
         credential.format shouldBe CredentialFormatEnum.JWT_VC
-        val serializedCredential = credential.credential.shouldNotBeNull()
+        val serializedCredential = credential.credential.shouldNotBeNull().jsonPrimitive.content
 
         JwsSigned.deserialize<VerifiableCredentialJws>(serializedCredential, vckJsonSerializer).getOrThrow()
             .payload.vc.credentialSubject.shouldBeInstanceOf<at.asitplus.wallet.lib.data.AtomicAttribute2023>()
@@ -204,7 +205,7 @@ class OidvciCodeFlowTest : FreeSpec({
 
         val credential = issueCredential(requestOptions, token)
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
-        val serializedCredential = credential.credential.shouldNotBeNull()
+        val serializedCredential = credential.credential.shouldNotBeNull().jsonPrimitive.content
 
         val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(serializedCredential.substringBefore("~"))
             .getOrThrow().payload
@@ -224,7 +225,7 @@ class OidvciCodeFlowTest : FreeSpec({
 
         val credential = issueCredential(credentialIdToRequest, token)
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
-        val serializedCredential = credential.credential.shouldNotBeNull()
+        val serializedCredential = credential.credential.shouldNotBeNull().jsonPrimitive.content
 
         val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(serializedCredential.substringBefore("~"))
             .getOrThrow().payload
@@ -241,7 +242,7 @@ class OidvciCodeFlowTest : FreeSpec({
 
         val credential = issueCredential(requestOptions, token)
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
-        val serializedCredential = credential.credential.shouldNotBeNull()
+        val serializedCredential = credential.credential.shouldNotBeNull().jsonPrimitive.content
 
         val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(serializedCredential.substringBefore("~"))
             .getOrThrow().payload
@@ -258,7 +259,7 @@ class OidvciCodeFlowTest : FreeSpec({
 
         val credential = issueCredential(requestOptions, token)
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC
-        val serializedCredential = credential.credential.shouldNotBeNull()
+        val serializedCredential = credential.credential.shouldNotBeNull().jsonPrimitive.content
 
         val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64())).getOrThrow()
 
@@ -276,7 +277,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(scope)
         val credential = issueCredential(requestOptions, token)
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC
-        val serializedCredential = credential.credential.shouldNotBeNull()
+        val serializedCredential = credential.credential.shouldNotBeNull().jsonPrimitive.content
 
         val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64())).getOrThrow()
 

@@ -1,5 +1,10 @@
 # Changelog
 
+Release 5.3.0:
+ - OID4VCI: Update to draft 14
+   - In `CredentialResponseParameters`, add `credentials`
+   - In `CredentialResponseParameters`, change type of `credential` from `String` to `JsonElement`
+
 Release 5.2.0:
 - New `Initializer` object in `vck-openid` which needs to be called at the start of the project if artifact is used
 - New artifacts `rqes-data-classes` and `vck-rqes` which allow handling of remote signature requests as described by the draft of POTENTIAL use-case 5 which is based on the CSC API v2.0.0.2
