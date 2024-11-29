@@ -14,7 +14,6 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
-import at.asitplus.wallet.lib.oidc.jsonSerializer
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.json
@@ -56,7 +55,7 @@ class RequestParser(
                 }
             }.onFailure { it.printStackTrace() }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
-                val params = jsonSerializer.decodeFromString(PolymorphicSerializer(RequestParameters::class), input)
+                val params = vckJsonSerializer.decodeFromString(PolymorphicSerializer(RequestParameters::class), input)
                 matchRequestParameterCases(input, params)
             }.getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
@@ -79,7 +78,7 @@ class RequestParser(
         }
 
     private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom<*>? {
-        return JwsSigned.deserialize<AuthenticationRequestParameters>(requestObject, vckJsonSerializer).getOrNull()
+        return JwsSigned.deserialize<RequestParameters>(requestObject, vckJsonSerializer).getOrNull()
             ?.let { jws ->
                 if (requestObjectJwsVerifier.invoke(jws)) {
                     RequestParametersFrom.JwsSigned(jws, jws.payload)
@@ -94,7 +93,9 @@ class RequestParser(
                 when (input) {
                     is Url -> RequestParametersFrom.Uri(input, params)
                     is JwsSigned<*> -> RequestParametersFrom.JwsSigned(
-                        input as JwsSigned<RequestParameters>, params)
+                        input as JwsSigned<RequestParameters>, params
+                    )
+
                     is String -> RequestParametersFrom.Json(input, params)
                     else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
                 }
