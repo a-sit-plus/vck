@@ -5,6 +5,7 @@ import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonElement
 import kotlin.time.Duration
 
 @Serializable
@@ -17,33 +18,44 @@ data class CredentialResponseParameters(
     val format: CredentialFormatEnum? = null,
 
     /**
-     * OID4VCI:
-     * OPTIONAL. Contains issued Credential. MUST be present when acceptance_token is not returned.
-     * MAY be a JSON string or a JSON object, depending on the Credential format.
+     * OID4VCI: OPTIONAL. Contains issued Credential.
+     * It MUST NOT be used if [credentials] or [transactionId] parameter is present.
+     * It MAY be a string or an object, depending on the Credential Format.
+     * See Appendix A for the Credential Format-specific encoding requirements.
      */
     @SerialName("credential")
-    val credential: String? = null, // TODO May be a JSON object
+    val credential: String? = null, // TODO May be a JSON element
 
     /**
-     * OID4CI:
-     * OPTIONAL. A JSON string containing a security token subsequently used to obtain a Credential. MUST be present
-     * when credential is not returned.
+     * OID4VCI: OPTIONAL. Contains an array of issued Credentials.
+     * It MUST NOT be used if [credential] or [transactionId] parameter is present.
+     * The values in the array MAY be a string or an object, depending on the Credential Format.
+     * See Appendix A for the Credential Format-specific encoding requirements.
      */
-    @SerialName("acceptance_token")
-    val acceptanceToken: String? = null,
+    @SerialName("credentials")
+    val credentials: List<JsonElement>? = null,
 
     /**
-     * OID4VCI:
-     * OPTIONAL. JSON string containing a nonce to be used to create a proof of possession of key material when
-     * requesting a Credential. When received, the Wallet MUST use this nonce value for its subsequent credential
-     * requests until the Credential Issuer provides a fresh nonce.
+     * OID4CI: OPTIONAL. String identifying a Deferred Issuance transaction.
+     * This claim is contained in the response if the Credential Issuer cannot immediately issue the Credential.
+     * The value is subsequently used to obtain the respective Credential with the Deferred Credential Endpoint.
+     * It MUST not be used if [credential] or [credentials] is present.
+     * It MUST be invalidated after the Credential for which it was meant has been obtained by the Wallet.
+     */
+    @SerialName("transaction_id")
+    val transactionId: String? = null,
+
+    /**
+     * OID4VCI: OPTIONAL. String containing a nonce to be used to create a proof of possession of key material when
+     * requesting a Credential.
+     * When received, the Wallet MUST use this nonce value for its subsequent Credential Requests until the
+     * Credential Issuer provides a fresh nonce.
      */
     @SerialName("c_nonce")
     val clientNonce: String? = null,
 
     /**
-     * OID4VCI:
-     * OPTIONAL. JSON integer denoting the lifetime in seconds of the c_nonce.
+     * OID4VCI: OPTIONAL. Number denoting the lifetime in seconds of the [clientNonce].
      */
     @SerialName("c_nonce_expires_in")
     @Serializable(with = DurationSecondsIntSerializer::class)

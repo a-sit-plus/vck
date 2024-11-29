@@ -80,7 +80,7 @@ class SerializationTest : FunSpec({
     fun createCredentialResponse() = CredentialResponseParameters(
         format = CredentialFormatEnum.JWT_VC,
         credential = randomString(),
-        acceptanceToken = randomString(),
+        transactionId = randomString(),
         clientNonce = randomString(),
         clientNonceExpiresIn = Random.nextInt(1, Int.MAX_VALUE).seconds,
     )
