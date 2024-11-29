@@ -111,21 +111,10 @@ fun CredentialFormatEnum.toRepresentation() = when (this) {
     else -> CredentialRepresentation.PLAIN_JWT
 }
 
-fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
-    is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
-        format = CredentialFormatEnum.MSO_MDOC,
-        credential = JsonPrimitive(issuerSigned.serialize().encodeToString(Base64UrlStrict)),
-    )
-
-    is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
-        format = CredentialFormatEnum.JWT_VC,
-        credential = JsonPrimitive(vcJws),
-    )
-
-    is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
-        format = CredentialFormatEnum.VC_SD_JWT,
-        credential = JsonPrimitive(vcSdJwt),
-    )
+fun Issuer.IssuedCredential.toCredentialResponseJsonPrimitive() = when (this) {
+    is Issuer.IssuedCredential.Iso -> JsonPrimitive(issuerSigned.serialize().encodeToString(Base64UrlStrict))
+    is Issuer.IssuedCredential.VcJwt -> JsonPrimitive(vcJws)
+    is Issuer.IssuedCredential.VcSdJwt -> JsonPrimitive(vcSdJwt)
 }
 
 class OAuth2Exception(val error: String, val errorDescription: String? = null) : Throwable(error) {

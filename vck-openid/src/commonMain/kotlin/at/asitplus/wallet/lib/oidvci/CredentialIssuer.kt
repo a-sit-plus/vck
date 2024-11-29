@@ -99,11 +99,11 @@ class CredentialIssuer(
         configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
         grants = CredentialOfferGrants(
             authorizationCode =
-            CredentialOfferGrantsAuthCode(
-                // TODO remember this state, for subsequent requests from the Wallet
-                issuerState = uuid4().toString(),
-                authorizationServer = authorizationService.publicContext
-            ),
+                CredentialOfferGrantsAuthCode(
+                    // TODO remember this state, for subsequent requests from the Wallet
+                    issuerState = uuid4().toString(),
+                    authorizationServer = authorizationService.publicContext
+                ),
         )
     )
 
@@ -143,8 +143,6 @@ class CredentialIssuer(
         accessToken: String,
         params: CredentialRequestParameters
     ): KmmResult<CredentialResponseParameters> = catching {
-        val subjectPublicKey = validateProofExtractSubjectPublicKey(params)
-
         val userInfo = authorizationService.getUserInfo(accessToken).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_TOKEN)
                 .also { Napier.w("credential: client did not provide correct token: $accessToken") }
@@ -156,30 +154,28 @@ class CredentialIssuer(
 
         val claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
 
-        val credentialToBeIssued = credentialProvider.getCredential(
-            userInfo = userInfo,
-            subjectPublicKey = subjectPublicKey,
-            credentialScheme = credentialScheme,
-            representation = representation.toRepresentation(),
-            claimNames = claimNames
-        ).getOrElse {
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
-                .also { Napier.w("credential: did not get any credential from provideUserInfo", it) }
-        }
-
-        val issuedCredential = issuer.issueCredential(
-            credential = credentialToBeIssued
-        ).getOrElse {
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
-                .also { Napier.w("credential: issuer did not issue credential", it) }
-        }
-
-        issuedCredential.toCredentialResponseParameters()
+        validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
+            issuer.issueCredential(
+                credential = credentialProvider.getCredential(
+                    userInfo = userInfo,
+                    subjectPublicKey = subjectPublicKey,
+                    credentialScheme = credentialScheme,
+                    representation = representation.toRepresentation(),
+                    claimNames = claimNames
+                ).getOrElse {
+                    throw OAuth2Exception(Errors.INVALID_REQUEST)
+                        .also { Napier.w("credential: did not get any credential from credentialProvider", it) }
+                }
+            ).getOrElse {
+                throw OAuth2Exception(Errors.INVALID_REQUEST)
+                    .also { Napier.w("credential: issuer did not issue credential", it) }
+            }
+        }.toCredentialResponseParameters(representation)
             .also { Napier.i("credential returns $it") }
     }
 
-    private suspend fun validateProofExtractSubjectPublicKey(params: CredentialRequestParameters): CryptoPublicKey =
-        params.proof?.validateProof()
+    private suspend fun validateProofExtractSubjectPublicKeys(params: CredentialRequestParameters): Collection<CryptoPublicKey> =
+        params.proof?.validateProof()?.let { listOf(it) }
             ?: params.proofs?.validateProof()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("credential: client did not provide proof of possession") }
@@ -191,7 +187,7 @@ class CredentialIssuer(
     }
 
     private suspend fun CredentialRequestProofContainer.validateProof() = when (proofType) {
-        ProofType.JWT -> jwt?.map { it.validateJwtProof() }?.toSet()?.singleOrNull()
+        ProofType.JWT -> jwt?.map { it.validateJwtProof() }
         else -> null
     }
 
@@ -239,9 +235,15 @@ class CredentialIssuer(
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide no valid key in header in CWT in proof: $header") }
     }
-
-
 }
+
+private fun List<Issuer.IssuedCredential>.toCredentialResponseParameters(
+    representation: CredentialFormatEnum
+): CredentialResponseParameters = CredentialResponseParameters(
+    format = representation,
+    credential = if (size == 1) this.first().toCredentialResponseJsonPrimitive() else null,
+    credentials = if (size > 1) map { it.toCredentialResponseJsonPrimitive() } else null
+)
 
 private fun CredentialRequestParameters.extractCredentialScheme(format: CredentialFormatEnum) = when (format) {
     CredentialFormatEnum.JWT_VC -> credentialDefinition?.types?.firstOrNull { it != VERIFIABLE_CREDENTIAL }

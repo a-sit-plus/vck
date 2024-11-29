@@ -4,6 +4,7 @@ Release 5.3.0:
  - OID4VCI: Update to draft 14
    - In `CredentialResponseParameters`, add `credentials`
    - In `CredentialResponseParameters`, change type of `credential` from `String` to `JsonElement`
+   - Support issuing credentials for multiple proofs
 
 Release 5.2.0:
 - New `Initializer` object in `vck-openid` which needs to be called at the start of the project if artifact is used

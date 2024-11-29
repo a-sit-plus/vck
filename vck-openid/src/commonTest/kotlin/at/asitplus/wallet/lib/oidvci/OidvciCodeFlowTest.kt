@@ -22,6 +22,7 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -147,16 +148,16 @@ class OidvciCodeFlowTest : FreeSpec({
         }
     }
 
-    "proof over different keys leads to an error" {
+    "proof over different keys lead to multiple credentials" {
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
         val scope = client.buildScope(requestOptions, issuer.metadata)
         val token = getToken(scope)
-        val proof = client.createCredentialRequestProof(
+        val proofFirstKey = client.createCredentialRequestProof(
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,
             clock = requestOptions.clock
         )
-        val differentProof = WalletService().createCredentialRequestProof(
+        val proofSecondKey = WalletService().createCredentialRequestProof(
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,
             clock = requestOptions.clock
@@ -168,12 +169,12 @@ class OidvciCodeFlowTest : FreeSpec({
             ),
             proofs = CredentialRequestProofContainer(
                 proofType = OpenIdConstants.ProofType.JWT,
-                jwt = setOf(proof.jwt!!, differentProof.jwt!!)
+                jwt = setOf(proofFirstKey.jwt!!, proofSecondKey.jwt!!)
             )
         )
 
-        issuer.credential(token.accessToken, credentialRequest)
-            .exceptionOrNull().shouldBeInstanceOf<OAuth2Exception>()
+        issuer.credential(token.accessToken, credentialRequest).getOrThrow()
+            .credentials.shouldNotBeNull().shouldHaveSize(2)
     }
 
     "authorizationService with defect mapstore leads to an error" {
