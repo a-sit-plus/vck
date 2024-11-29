@@ -78,7 +78,7 @@ class RequestParser(
         }
 
     private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom<*>? {
-        return JwsSigned.deserialize<RequestParameters>(requestObject, vckJsonSerializer).getOrNull()
+        return JwsSigned.deserialize<RequestParameters>(PolymorphicSerializer(RequestParameters::class), requestObject, vckJsonSerializer).getOrNull()
             ?.let { jws ->
                 if (requestObjectJwsVerifier.invoke(jws)) {
                     RequestParametersFrom.JwsSigned(jws, jws.payload)

@@ -37,7 +37,7 @@ class Parser(
      */
     fun parseVpJws(input: String, challenge: String, clientId: String): ParseVpResult {
         Napier.d("Parsing VP $input")
-        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(input, vckJsonSerializer).getOrNull()
+        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(VerifiablePresentationJws.serializer(), input, vckJsonSerializer).getOrNull()
             ?: return ParseVpResult.InvalidStructure(input)
                 .also { Napier.w("Could not parse JWS: $input") }
         return parseVpJws(input, jws.payload, challenge, clientId)

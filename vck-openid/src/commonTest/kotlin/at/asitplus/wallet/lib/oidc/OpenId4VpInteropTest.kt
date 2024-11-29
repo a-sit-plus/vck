@@ -112,7 +112,7 @@ class OpenId4VpInteropTest : FreeSpec({
         requestUrlForWallet shouldContain verifierClientId.encodeURLParameter()
         requestUrlForWallet shouldStartWith "haip://"
 
-        val jar = JwsSigned.deserialize<AuthenticationRequestParameters>(requestObject, vckJsonSerializer).getOrThrow()
+        val jar = JwsSigned.deserialize<AuthenticationRequestParameters>(AuthenticationRequestParameters.serializer(), requestObject, vckJsonSerializer).getOrThrow()
 
         jar.header.algorithm shouldBe JwsAlgorithm.ES256
         jar.header.type shouldBe "oauth-authz-req+jwt"
@@ -202,7 +202,7 @@ class OpenId4VpInteropTest : FreeSpec({
             .i7Kli1T5RZzo2-TvWsw9-JpxjYPBUae8Lrc_ORfTdabHlXmuPucGVrE5lkBu7vLss2RKKEmdFFy57-ZvRFn4Tg
         """.trimIndent()
 
-        val jar = JwsSigned.deserialize<AuthenticationRequestParameters>(input, vckJsonSerializer).getOrThrow()
+        val jar = JwsSigned.deserialize<AuthenticationRequestParameters>(AuthenticationRequestParameters.serializer(), input, vckJsonSerializer).getOrThrow()
 
         jar.header.algorithm shouldBe JwsAlgorithm.ES256
         jar.header.type shouldBe " oauth-authz-req+jwt " // that's a typo in the document ...

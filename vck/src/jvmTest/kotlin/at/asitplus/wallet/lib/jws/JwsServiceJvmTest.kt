@@ -131,7 +131,7 @@ class JwsServiceJvmTest : FreeSpec({
 
                     // Parsing to our structure verifying payload
                     val signedLibObject = libObject.serialize()
-                    val parsedJwsSigned = JwsSigned.deserialize<JsonElement>(signedLibObject).getOrThrow()
+                    val parsedJwsSigned = JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), signedLibObject).getOrThrow()
                     parsedJwsSigned.payload.jsonPrimitive.content shouldBe randomPayload.content
                     val parsedSig = parsedJwsSigned.signature.rawByteArray.encodeToString(Base64UrlStrict)
 

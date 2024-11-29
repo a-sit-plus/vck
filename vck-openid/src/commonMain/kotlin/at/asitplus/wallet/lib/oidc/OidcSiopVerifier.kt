@@ -81,7 +81,7 @@ class OidcSiopVerifier(
          */
         data class VerifierAttestation(
             val attestationJwt: JwsSigned<JsonWebToken>,
-            override val clientId: String
+            override val clientId: String,
         ) : ClientIdScheme(VerifierAttestation, attestationJwt.payload.subject!!)
 
         /**
@@ -100,7 +100,7 @@ class OidcSiopVerifier(
          */
         data class CertificateSanDns(
             val chain: CertificateChain,
-            override val clientId: String
+            override val clientId: String,
         ) : ClientIdScheme(X509SanDns, clientId)
 
         /**
@@ -111,7 +111,7 @@ class OidcSiopVerifier(
          * parameter.
          */
         data class RedirectUri(
-            override val clientId: String
+            override val clientId: String,
         ) : ClientIdScheme(RedirectUri, clientId)
 
         /**
@@ -543,7 +543,11 @@ class OidcSiopVerifier(
             ?: return AuthnResponseResult.ValidationError("state", params.state)
                 .also { Napier.w("Invalid state: ${params.state}") }
         params.response?.let { response ->
-            JwsSigned.deserialize<AuthenticationResponseParameters>(response, vckJsonSerializer).getOrNull()
+            JwsSigned.deserialize<AuthenticationResponseParameters>(
+                AuthenticationResponseParameters.serializer(),
+                response,
+                vckJsonSerializer
+            ).getOrNull()
                 ?.let { jarmResponse ->
                     if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
                         return AuthnResponseResult.ValidationError("response", state)
@@ -611,7 +615,7 @@ class OidcSiopVerifier(
 
     @Throws(IllegalArgumentException::class, CancellationException::class)
     private suspend fun extractValidatedIdToken(idTokenJws: String): IdToken {
-        val jwsSigned = JwsSigned.deserialize<IdToken>(idTokenJws, vckJsonSerializer).getOrNull()
+        val jwsSigned = JwsSigned.deserialize<IdToken>(IdToken.serializer(), idTokenJws, vckJsonSerializer).getOrNull()
             ?: throw IllegalArgumentException("idToken")
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
         if (!verifierJwsService.verifyJwsObject(jwsSigned))
@@ -651,11 +655,12 @@ class OidcSiopVerifier(
     private fun verifyPresentationResult(
         descriptor: PresentationSubmissionDescriptor,
         relatedPresentation: JsonElement,
-        challenge: String
+        challenge: String,
     ) = when (descriptor.format) {
         ClaimFormat.JWT_SD,
         ClaimFormat.MSO_MDOC,
-        ClaimFormat.JWT_VP -> when (relatedPresentation) {
+        ClaimFormat.JWT_VP,
+            -> when (relatedPresentation) {
             is JsonPrimitive -> verifier.verifyPresentation(
                 relatedPresentation.content,
                 challenge
