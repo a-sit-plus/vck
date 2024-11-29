@@ -252,6 +252,12 @@ class OidcSiopVerifier(
          * or `null` to make no restrictions
          */
         val requestedAttributes: List<String>? = null,
+        /**
+         * List of attributes that shall be requested explicitly (selective disclosure),
+         * but are not required (i.e. marked as optional),
+         * or `null` to make no restrictions
+         */
+        val requestedOptionalAttributes: List<String>? = null,
     )
 
     /**
@@ -404,10 +410,14 @@ class OidcSiopVerifier(
             credentialScheme.isoDocType!! else uuid4().toString()
 
     private fun RequestOptionsCredential.toConstraint() =
-        Constraint(fields = (toAttributeConstraints() + toTypeConstraint()).filterNotNull())
+        Constraint(fields = (requiredAttributes() + optionalAttributes() + toTypeConstraint()).filterNotNull())
 
-    private fun RequestOptionsCredential.toAttributeConstraints() =
-        requestedAttributes?.createConstraints(representation, credentialScheme)
+    private fun RequestOptionsCredential.requiredAttributes() =
+        requestedAttributes?.createConstraints(representation, credentialScheme, false)
+            ?: listOf()
+
+    private fun RequestOptionsCredential.optionalAttributes() =
+        requestedOptionalAttributes?.createConstraints(representation, credentialScheme, true)
             ?: listOf()
 
     private fun RequestOptionsCredential.toTypeConstraint() = when (representation) {
@@ -443,21 +453,26 @@ class OidcSiopVerifier(
     private fun List<String>.createConstraints(
         representation: ConstantIndex.CredentialRepresentation,
         credentialScheme: ConstantIndex.CredentialScheme?,
+        optional: Boolean,
     ): Collection<ConstraintField> = map {
         if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-            credentialScheme.toConstraintField(it)
+            credentialScheme.toConstraintField(it, optional)
         else
-            ConstraintField(path = listOf("\$[${it.quote()}]"))
+            ConstraintField(path = listOf("\$[${it.quote()}]"), optional = optional)
     }
 
-    private fun ConstantIndex.CredentialScheme?.toConstraintField(attributeType: String) = ConstraintField(
+    private fun ConstantIndex.CredentialScheme?.toConstraintField(
+        attributeType: String,
+        optional: Boolean,
+    ) = ConstraintField(
         path = listOf(
             NormalizedJsonPath(
                 NormalizedJsonPathSegment.NameSegment(this?.isoNamespace ?: "mdoc"),
                 NormalizedJsonPathSegment.NameSegment(attributeType),
             ).toString()
         ),
-        intentToRetain = false
+        intentToRetain = false,
+        optional = optional,
     )
 
 

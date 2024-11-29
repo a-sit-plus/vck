@@ -28,6 +28,7 @@ Release 5.2.0:
 - Remove function `verifyPresentationContainsAttributes()` from `Verifier`, and `VerifierAgent`
 - Remove function `verifyVcJws(it: String): VerifyCredentialResult` from `VerifierAgent`, was only forwarding call to `Validator` anyway
 - Remove secondary constructor from `OidcSiopVerifier`
+- Add option to request optional attributes in `OidcSiopVerifier.RequestOptionsCredential`
  - SD-JWT: Validate confirmation claims correctly
  - Adapt to changes in `signum`, i.e. the classes `JwsSigned`, `JweDecrypted`, `CoseSigned` are now typed to their payload, leading to changes in `CoseService` and `JwsService` to add overloads for typed payloads, as well as members in data classes containing e.g. `JwsSigned<*>`
  - ISO credentials: Serialize and deserialize device signed items correctly (i.e. considering the namespace of the element)
