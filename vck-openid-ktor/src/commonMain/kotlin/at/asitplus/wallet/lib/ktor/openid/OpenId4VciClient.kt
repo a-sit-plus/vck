@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.ktor.openid
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
@@ -116,17 +118,16 @@ class OpenId4VciClient(
     /**
      * Loads credential metadata info from [host]
      */
-    @Throws(Throwable::class)
     suspend fun loadCredentialMetadata(
         host: String,
-    ): Collection<CredentialIdentifierInfo> {
+    ): KmmResult<Collection<CredentialIdentifierInfo>> = catching {
         Napier.i("loadCredentialMetadata: $host")
         val credentialMetadata = client
             .get("$host${OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER}")
             .body<IssuerMetadata>()
         val supported = credentialMetadata.supportedCredentialConfigurations
-            ?: throw Throwable("No supported credential configurations")
-        return supported.mapNotNull {
+            ?: throw Exception("No supported credential configurations")
+        supported.mapNotNull {
             CredentialIdentifierInfo(
                 credentialIdentifier = it.key,
                 attributes = it.value.resolveAttributes()
@@ -149,12 +150,11 @@ class OpenId4VciClient(
     /**
      * Starts the issuing process at [credentialIssuer]
      */
-    @Throws(Throwable::class)
     suspend fun startProvisioningWithAuthRequest(
         credentialIssuer: String,
         credentialIdentifierInfo: CredentialIdentifierInfo,
         requestedAttributes: Set<NormalizedJsonPath>?,
-    ) {
+    ): KmmResult<Unit> = catching {
         Napier.i("startProvisioningWithAuthRequest: $credentialIssuer with $credentialIdentifierInfo")
         // Load certificate, might trigger biometric prompt?
         CoroutineScope(Dispatchers.Unconfined).launch { cryptoService.keyMaterial.getCertificate() }
@@ -203,8 +203,10 @@ class OpenId4VciClient(
     /**
      * Called after getting the redirect back from ID Austria to the Issuing Service
      */
-    @Throws(Throwable::class)
-    suspend fun resumeWithAuthCode(url: String) {
+    @Throws(Exception::class)
+    suspend fun resumeWithAuthCode(
+        url: String
+    ): KmmResult<Unit> = catching {
         Napier.i("resumeWithAuthCode: $url")
         val context = loadProvisioningContext()
             ?: throw Exception("No provisioning context")
@@ -255,6 +257,7 @@ class OpenId4VciClient(
                 CredentialRequestInput.Format(supportedCredentialFormat, requestedAttributes)
         } ?: CredentialRequestInput.Format(supportedCredentialFormat, requestedAttributes)
 
+    @Throws(Exception::class)
     private suspend fun postToken(
         tokenEndpointUrl: String,
         credentialIssuer: String,
@@ -292,6 +295,7 @@ class OpenId4VciClient(
         }.body<TokenResponseParameters>()
     }
 
+    @Throws(Exception::class)
     private suspend fun postCredentialRequestAndStore(
         credentialEndpointUrl: String,
         input: CredentialRequestInput,
@@ -339,7 +343,7 @@ class OpenId4VciClient(
         credentialIdentifierInfo: CredentialIdentifierInfo,
         transactionCode: String? = null,
         requestedAttributes: Set<NormalizedJsonPath>?
-    ) {
+    ): KmmResult<Unit> = catching {
         Napier.i("loadCredentialWithOffer: $credentialOffer")
         val credentialIssuer = credentialOffer.credentialIssuer
         val issuerMetadata = client
@@ -413,14 +417,15 @@ class OpenId4VciClient(
                 parEndpointUrl = oauthMetadata.pushedAuthorizationRequestEndpoint,
                 credentialIssuer = credentialIssuer,
                 issuerState = it.issuerState,
-                push = oauthMetadata.requirePushedAuthorizationRequests ?: false,
+                push = oauthMetadata.requirePushedAuthorizationRequests == true,
                 tokenAuthMethods = oauthMetadata.tokenEndPointAuthMethodsSupported
             )
-        } ?: {
+        } ?: run {
             throw Exception("No offer grants received in ${credentialOffer.grants}")
         }
     }
 
+    @Throws(Exception::class)
     private fun String.toStoreCredentialInput(
         format: CredentialFormatEnum?,
         credentialScheme: ConstantIndex.CredentialScheme,
@@ -444,6 +449,7 @@ class OpenId4VciClient(
         }
     }
 
+    @Throws(Exception::class)
     private suspend fun openAuthRequestInBrowser(
         state: String,
         authorizationDetails: Set<OpenIdAuthorizationDetails>,
@@ -476,6 +482,7 @@ class OpenId4VciClient(
         openUrlExternally.invoke(authorizationUrl)
     }
 
+    @Throws(Exception::class)
     private suspend fun pushAuthorizationRequest(
         authRequest: AuthenticationRequestParameters,
         state: String,

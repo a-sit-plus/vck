@@ -1,5 +1,7 @@
 package at.asitplus.wallet.lib.ktor.openid
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.CryptoService
@@ -72,9 +74,16 @@ class OpenId4VpWallet(
         requestObjectJwsVerifier = { _ -> true }, // unsure about this one?
     )
 
-    @Throws(Throwable::class)
-    suspend fun startPresentation(request: RequestParametersFrom<AuthenticationRequestParameters>) {
-        Napier.i("startSiop: $request")
+    /**
+     * Calls [oidcSiopWallet] to create the authentication response.
+     * In case the result shall be POSTed to the verifier, we call [client] to do that,
+     * and optionally [openUrlExternally] with the `redirect_uri` of that POST.
+     * In case the result shall be sent as a redirect to the verifier, we call [openUrlExternally].
+     */
+    suspend fun startPresentation(
+        request: RequestParametersFrom<AuthenticationRequestParameters>
+    ): KmmResult<Unit> = catching {
+        Napier.i("startPresentation: $request")
         oidcSiopWallet.createAuthnResponse(request).getOrThrow().let {
             when (it) {
                 is AuthenticationResponseResult.Post -> postResponse(it)
@@ -85,23 +94,21 @@ class OpenId4VpWallet(
 
     private suspend fun postResponse(it: AuthenticationResponseResult.Post) {
         Napier.i("postResponse: $it")
-        handlePostResponse(client.submitForm(
-            url = it.url,
-            formParameters = parameters {
-                it.params.forEach { append(it.key, it.value) }
-            }
-        ))
+        handlePostResponse(
+            client.submitForm(
+                url = it.url,
+                formParameters = parameters {
+                    it.params.forEach { append(it.key, it.value) }
+                }
+            ))
     }
 
+    @Throws(Exception::class)
     private suspend fun handlePostResponse(response: HttpResponse) {
         Napier.i("handlePostResponse: response $response")
         when (response.status.value) {
-            HttpStatusCode.InternalServerError.value ->
-                throw Exception("InternalServerErrorException", Exception(response.bodyAsText()))
-
-            in 200..399 -> response.extractRedirectUri()
-                ?.let { openUrlExternally.invoke(it) }
-
+            HttpStatusCode.InternalServerError.value -> throw Exception(response.bodyAsText())
+            in 200..399 -> response.extractRedirectUri()?.let { openUrlExternally.invoke(it) }
             else -> throw Exception(response.readBytes().decodeToString())
         }
     }
