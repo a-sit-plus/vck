@@ -105,7 +105,7 @@ class OidvciCodeFlowTest : FreeSpec({
 
     suspend fun issueCredential(
         credentialIdentifier: String,
-        token: TokenResponseParameters
+        token: TokenResponseParameters,
     ): CredentialResponseParameters {
         val credentialRequest = client.createCredentialRequest(
             input = WalletService.CredentialRequestInput.CredentialIdentifier(credentialIdentifier),

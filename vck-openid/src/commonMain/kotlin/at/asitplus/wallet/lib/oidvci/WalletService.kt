@@ -157,6 +157,7 @@ class WalletService(
     ) = credentialConfigurationIds.map {
         OpenIdAuthorizationDetails(
             credentialConfigurationId = it,
+            // TODO Add doctype here? How to get it when requesting attributes later on below?
             locations = authorizationServers,
             // Not supporting different credential datasets for one credential configuration at the moment,
             // so we'll just use the `credentialConfigurationId`, see OID4VCI 6.2
@@ -169,7 +170,7 @@ class WalletService(
      */
     fun buildScope(
         requestOptions: RequestOptions,
-        metadata: IssuerMetadata
+        metadata: IssuerMetadata,
     ) = metadata.supportedCredentialConfigurations?.values?.filter {
         it.format.toRepresentation() == requestOptions.representation
     }?.firstOrNull {
@@ -181,15 +182,27 @@ class WalletService(
     }?.scope
 
     sealed class CredentialRequestInput {
-        /**
-         * @param id from the token response, see [TokenResponseParameters.authorizationDetails]
-         * and [OpenIdcredentialConfigurationId]
-         */
-        data class CredentialIdentifier(val id: String) : CredentialRequestInput()
-        data class RequestOptions(val requestOptions: WalletService.RequestOptions) : CredentialRequestInput()
+        // TODO Maybe merge with AuthorizationDetails below
+        data class CredentialIdentifier(
+            /**
+             * from the token response, see [TokenResponseParameters.authorizationDetails]
+             * and [OpenIdAuthorizationDetails.credentialConfigurationId]
+             */
+            val id: String,
+        ) : CredentialRequestInput()
+
+        data class AuthorizationDetails(
+            val details: OpenIdAuthorizationDetails,
+            val requestedAttributes: Set<String>? = null,
+        ) : CredentialRequestInput()
+
+        data class RequestOptions(
+            val requestOptions: WalletService.RequestOptions, // contains requested attributes!
+        ) : CredentialRequestInput()
+
         data class Format(
             val supportedCredentialFormat: SupportedCredentialFormat,
-            val requestedAttributes: Set<String>? = null
+            val requestedAttributes: Set<String>? = null,
         ) : CredentialRequestInput()
     }
 
@@ -233,20 +246,14 @@ class WalletService(
     ): KmmResult<CredentialRequestParameters> = catching {
         val clock = (input as? CredentialRequestInput.RequestOptions)?.requestOptions?.clock ?: Clock.System
         when (input) {
-            is CredentialRequestInput.CredentialIdentifier ->
-                CredentialRequestParameters(credentialIdentifier = input.id)
-
-            is CredentialRequestInput.Format ->
-                input.supportedCredentialFormat.toCredentialRequestParameters(input.requestedAttributes)
-
-            is CredentialRequestInput.RequestOptions -> with(input.requestOptions) {
-                credentialScheme.toCredentialRequestParameters(representation, requestedAttributes)
-            }
+            is CredentialRequestInput.CredentialIdentifier -> input.toCredentialRequestParameters()
+            is CredentialRequestInput.AuthorizationDetails -> input.toCredentialRequestParameters()
+            is CredentialRequestInput.Format -> input.toCredentialRequestParameters()
+            is CredentialRequestInput.RequestOptions -> input.toCredentialRequestParameters()
         }.copy(
             proof = createCredentialRequestProof(clientNonce, credentialIssuer, clock)
         ).also { Napier.i("createCredentialRequest returns $it") }
     }
-
 
     internal suspend fun createCredentialRequestProof(
         clientNonce: String?,
@@ -271,6 +278,12 @@ class WalletService(
             addX5c = false,
         ).getOrThrow().serialize()
     )
+
+    private fun CredentialRequestInput.RequestOptions.toCredentialRequestParameters(): CredentialRequestParameters =
+        requestOptions.credentialScheme.toCredentialRequestParameters(
+            requestOptions.representation,
+            requestOptions.requestedAttributes
+        )
 
     private fun ConstantIndex.CredentialScheme.toCredentialRequestParameters(
         credentialRepresentation: CredentialRepresentation,
@@ -298,6 +311,21 @@ class WalletService(
         else -> throw IllegalArgumentException("format $credentialRepresentation not applicable to $this")
     }
 
+    private fun CredentialRequestInput.CredentialIdentifier.toCredentialRequestParameters() =
+        CredentialRequestParameters(
+            credentialIdentifier = id,
+        )
+
+    private fun CredentialRequestInput.AuthorizationDetails.toCredentialRequestParameters() =
+        CredentialRequestParameters(
+            credentialIdentifier = this.details.credentialConfigurationId, // TODO Verify this is correct
+            claims = details.sdJwtVcType?.let { requestedAttributes?.toRequestedClaimsSdJwt(it) }
+                ?: details.docType?.let { requestedAttributes?.toRequestedClaimsIso(it) },
+        )
+
+    private fun CredentialRequestInput.Format.toCredentialRequestParameters(): CredentialRequestParameters =
+        supportedCredentialFormat.toCredentialRequestParameters(requestedAttributes)
+
     private fun SupportedCredentialFormat.toCredentialRequestParameters(
         requestedAttributes: Set<String>?,
     ) = when (format) {
@@ -322,6 +350,7 @@ class WalletService(
     }
 }
 
+// TODO Unify these methods
 private fun Collection<String>.toRequestedClaimsSdJwt(sdJwtType: String) =
     mapOf(sdJwtType to this.associateWith { RequestedCredentialClaimSpecification() })
 
@@ -342,7 +371,7 @@ private fun CredentialRepresentation.toFormat() = when (this) {
 suspend fun JwsService.buildDPoPHeader(
     url: String,
     httpMethod: String = "POST",
-    accessToken: String? = null
+    accessToken: String? = null,
 ) = createSignedJwsAddingParams(
     header = JwsHeader(
         algorithm = algorithm,
@@ -422,7 +451,7 @@ suspend fun JwsService.buildClientAttestationPoPJwt(
     audience: String,
     nonce: String? = null,
     lifetime: Duration = 10.minutes,
-    clockSkew: Duration = 5.minutes
+    clockSkew: Duration = 5.minutes,
 ) = createSignedJwsAddingParams(
     header = JwsHeader(
         algorithm = algorithm,

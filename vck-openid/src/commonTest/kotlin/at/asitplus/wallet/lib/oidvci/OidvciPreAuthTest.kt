@@ -1,12 +1,15 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CredentialOffer
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
@@ -16,7 +19,9 @@ import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.serialization.json.jsonPrimitive
 
 class OidvciPreAuthTest : FreeSpec({
 
@@ -44,7 +49,7 @@ class OidvciPreAuthTest : FreeSpec({
 
     suspend fun getToken(
         credentialOffer: CredentialOffer,
-        credentialIdToRequest: Set<String>
+        credentialIdToRequest: Set<String>,
     ): TokenResponseParameters {
         val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
@@ -78,6 +83,36 @@ class OidvciPreAuthTest : FreeSpec({
         credential.credential.shouldNotBeNull()
     }
 
+    "process with pre-authorized code, credential offer, and authorization details for just one claim" {
+        val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
+        val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
+
+        val token = getToken(credentialOffer, setOf(credentialIdToRequest))
+        val authorizationDetails = token.authorizationDetails
+            .shouldNotBeNull()
+
+        val first = authorizationDetails.first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
+        val credentialRequest = client.createCredentialRequest(
+            input = WalletService.CredentialRequestInput.AuthorizationDetails(
+                details = first,
+                requestedAttributes = setOf(CLAIM_FAMILY_NAME)
+            ),
+            clientNonce = token.clientNonce,
+            credentialIssuer = issuer.metadata.credentialIssuer
+        ).getOrThrow()
+
+        val credential = issuer.credential(token.accessToken, credentialRequest)
+            .getOrThrow()
+        val serializedCredential = credential.credential.shouldNotBeNull().jsonPrimitive.content
+
+        val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(serializedCredential.substringBefore("~"))
+            .getOrThrow().payload
+
+        sdJwt.disclosureDigests
+            .shouldNotBeNull()
+            .size shouldBe 1
+    }
+
     "process with pre-authorized code, credential offer, and authorization details for all credentials" {
         val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
         val credentialIdsToRequest = credentialOffer.configurationIds
@@ -93,8 +128,7 @@ class OidvciPreAuthTest : FreeSpec({
             it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
             // Not supporting different credential datasets for one credential configuration at the moment,
             // so we'll just use the credential identifier, see OID4VCI 6.2
-            val credentialIdentifier = it.credentialIdentifiers?.first()
-                ?: throw IllegalArgumentException("credential_identifiers")
+            val credentialIdentifier = it.credentialIdentifiers.first()
             val credentialRequest = client.createCredentialRequest(
                 input = WalletService.CredentialRequestInput.CredentialIdentifier(credentialIdentifier),
                 clientNonce = token.clientNonce,
