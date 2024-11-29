@@ -549,7 +549,7 @@ class OidcSiopVerifier private constructor(
             ?: return AuthnResponseResult.ValidationError("state", params.state)
                 .also { Napier.w("Invalid state: ${params.state}") }
         params.response?.let { response ->
-            JwsSigned.deserialize<AuthenticationResponseParameters>(response, vckJsonSerializer).getOrNull()
+            JwsSigned.deserialize<AuthenticationResponseParameters>(response, AuthenticationResponseParameters.serializer(), vckJsonSerializer).getOrNull()
                 ?.let { jarmResponse ->
                     if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
                         return AuthnResponseResult.ValidationError("response", state)
@@ -617,7 +617,7 @@ class OidcSiopVerifier private constructor(
 
     @Throws(IllegalArgumentException::class, CancellationException::class)
     private suspend fun extractValidatedIdToken(idTokenJws: String): IdToken {
-        val jwsSigned = JwsSigned.deserialize<IdToken>(idTokenJws, vckJsonSerializer).getOrNull()
+        val jwsSigned = JwsSigned.deserialize<IdToken>(idTokenJws, IdToken.serializer(), vckJsonSerializer).getOrNull()
             ?: throw IllegalArgumentException("idToken")
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
         if (!verifierJwsService.verifyJwsObject(jwsSigned))
