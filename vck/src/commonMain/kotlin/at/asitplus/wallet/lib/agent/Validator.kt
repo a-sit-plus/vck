@@ -60,7 +60,7 @@ class Validator(
      */
     fun setRevocationList(it: String): Boolean {
         Napier.d("setRevocationList: Loading $it")
-        val jws = JwsSigned.deserialize<VerifiableCredentialJws>(it, VerifiableCredentialJws.serializer(), vckJsonSerializer).getOrNull()
+        val jws = JwsSigned.deserialize<VerifiableCredentialJws>(VerifiableCredentialJws.serializer(), it, vckJsonSerializer).getOrNull()
             ?: return false
                 .also { Napier.w("Revocation List: Could not parse JWS") }
         if (!verifierJwsService.verifyJwsObject(jws))
@@ -145,7 +145,7 @@ class Validator(
         publicKey: CryptoPublicKey
     ): Verifier.VerifyPresentationResult {
         Napier.d("Verifying VP $input")
-        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(input, VerifiablePresentationJws.serializer(), vckJsonSerializer).getOrNull()
+        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(VerifiablePresentationJws.serializer(), input, vckJsonSerializer).getOrNull()
             ?: return Verifier.VerifyPresentationResult.InvalidStructure(input)
                 .also { Napier.w("VP: Could not parse JWS") }
         if (!verifierJwsService.verifyJwsObject(jws))
@@ -356,7 +356,7 @@ class Validator(
      */
     fun verifyVcJws(input: String, publicKey: CryptoPublicKey?): Verifier.VerifyCredentialResult {
         Napier.d("Verifying VC-JWS $input")
-        val jws = JwsSigned.deserialize<VerifiableCredentialJws>(input, VerifiableCredentialJws.serializer(), vckJsonSerializer).getOrNull()
+        val jws = JwsSigned.deserialize<VerifiableCredentialJws>(VerifiableCredentialJws.serializer(), input, vckJsonSerializer).getOrNull()
             ?: return Verifier.VerifyCredentialResult.InvalidStructure(input)
                 .also { Napier.w("VC: Could not parse JWS") }
         if (!verifierJwsService.verifyJwsObject(jws))

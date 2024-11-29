@@ -47,7 +47,7 @@ class VerifierAgent private constructor(
         if (sdJwtSigned != null) {
             return validator.verifyVpSdJwt(input, challenge, keyMaterial.publicKey)
         }
-        val jwsSigned = JwsSigned.deserialize<VerifiablePresentationJws>(input, VerifiablePresentationJws.serializer(), vckJsonSerializer).getOrNull()
+        val jwsSigned = JwsSigned.deserialize<VerifiablePresentationJws>(VerifiablePresentationJws.serializer(), input, vckJsonSerializer).getOrNull()
         if (jwsSigned != null) {
             return validator.verifyVpJws(input, challenge, keyMaterial.publicKey)
         }
