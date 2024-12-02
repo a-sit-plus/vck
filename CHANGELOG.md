@@ -2,13 +2,16 @@
 
 Release 5.3.0:
  - OID4VCI: Update to draft 14
-   - In `CredentialResponseParameters`, add `credentials`
-   - In `CredentialResponseParameters`, change type of `credential` from `String` to `JsonElement`
    - Support issuing credentials for multiple proofs
-   - For `CredentialRequestInput` add subclass `AuthorizationDetails` to request only some specific claims
+   - Clarify usage of identifiers for credential configuration vs credential datasets
+   - In `CredentialResponseParameters` add `credentials`, i.e. an array of issued credentials
+   - In `CredentialResponseParameters` change type of `credential` from `String` to `JsonElement`
+   - In `CredentialRequestInput` add subclass `AuthorizationDetails` to request only some specific claims
    - In `CredentialRequestParameters` change type of `claims` to `JsonElement`, to support ISO mDoc and SD-JWT claims (cf. `SupportedCredentialFormat`)
    - In `CredentialIssuer` change constructor parameter `credentialSchemes` to type `CredentialSchemeAdapter`, see `DefaultCredentialSchemeAdapter`
    - In `CredentialAuthorizationServiceStrategy` change constructor parameter `credentialSchemes` to type `CredentialSchemeAdapter`, see `DefaultCredentialSchemeAdapter`
+   - In `CredentialRequestParameters` add member `credentialConfigurationId`
+   - In `WalletService.buildAuthorizationDetails()` replace parameter `authorizationServers` with `issuerMetadata` to pass whole credential issuer metadata object
 
 Release 5.2.0:
 - New `Initializer` object in `vck-openid` which needs to be called at the start of the project if artifact is used

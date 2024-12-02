@@ -219,10 +219,7 @@ class OidvciCodeFlowTest : FreeSpec({
 
     "request credential in SD-JWT, using authorization details" {
         val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
-        val authorizationDetails = client.buildAuthorizationDetails(
-            credentialConfigurationId = credentialIdToRequest,
-            authorizationServers = issuer.metadata.authorizationServers
-        )
+        val authorizationDetails = client.buildAuthorizationDetails(credentialIdToRequest, issuer.metadata)
         val token = getToken(authorizationDetails)
 
         val credential = issueCredential(credentialIdToRequest, token)

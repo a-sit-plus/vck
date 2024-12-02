@@ -55,7 +55,7 @@ class OidvciPreAuthTest : FreeSpec({
             authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth.preAuthorizedCode),
             authorizationDetails = client.buildAuthorizationDetails(
                 credentialIdToRequest,
-                issuer.metadata.authorizationServers
+                issuer.metadata
             )
         )
         return authorizationService.token(tokenRequest).getOrThrow()

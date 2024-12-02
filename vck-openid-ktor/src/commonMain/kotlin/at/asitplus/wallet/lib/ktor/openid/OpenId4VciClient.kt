@@ -190,7 +190,7 @@ class OpenId4VciClient(
             state = state,
             authorizationDetails = oid4vciService.buildAuthorizationDetails(
                 credentialIdentifierInfo.credentialIdentifier,
-                issuerMetadata.authorizationServers
+                issuerMetadata
             ),
             authorizationEndpointUrl = oauthMetadata.authorizationEndpoint
                 ?: throw Exception("no authorizationEndpoint in $oauthMetadata"),
@@ -405,7 +405,7 @@ class OpenId4VciClient(
 
             val authorizationDetails = oid4vciService.buildAuthorizationDetails(
                 credentialIdentifierInfo.credentialIdentifier,
-                issuerMetadata.authorizationServers
+                issuerMetadata
             )
 
             val tokenResponse = postToken(
@@ -448,7 +448,7 @@ class OpenId4VciClient(
                 state = state,
                 authorizationDetails = oid4vciService.buildAuthorizationDetails(
                     credentialIdentifierInfo.credentialIdentifier,
-                    issuerMetadata.authorizationServers
+                    issuerMetadata
                 ),
                 authorizationEndpointUrl = oauthMetadata.authorizationEndpoint
                     ?: throw Exception("no authorizationEndpoint in $oauthMetadata"),

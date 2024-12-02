@@ -136,31 +136,37 @@ class WalletService(
      * @param credentialConfigurationId which credentials to request, i.e.
      * one of the keys from [IssuerMetadata.supportedCredentialConfigurations],
      * or from [CredentialOffer.configurationIds]
-     * @param authorizationServers from [IssuerMetadata.authorizationServers]
      */
     fun buildAuthorizationDetails(
         credentialConfigurationId: String,
-        authorizationServers: Set<String>? = null,
-    ) = buildAuthorizationDetails(setOf(credentialConfigurationId), authorizationServers)
+        issuerMetadata: IssuerMetadata,
+    ) = buildAuthorizationDetails(
+        credentialConfigurationIds = setOf(credentialConfigurationId),
+        issuerMetadata = issuerMetadata
+    )
 
     /**
      * Build authorization details for use in [OAuth2Client.createAuthRequest].
      *
      * @param credentialConfigurationIds which credentials to request, i.e.
-     * filtered keys from [IssuerMetadata.supportedCredentialConfigurations],
-     * or from [CredentialOffer.configurationIds]
-     * @param authorizationServers from [IssuerMetadata.authorizationServers]
+     * filtered entries from [IssuerMetadata.supportedCredentialConfigurations],
+     * or from keys from [CredentialOffer.configurationIds] with values from
+     * [IssuerMetadata.supportedCredentialConfigurations]
      */
     fun buildAuthorizationDetails(
         credentialConfigurationIds: Set<String>,
-        authorizationServers: Set<String>? = null,
-    ) = credentialConfigurationIds.map {
-        OpenIdAuthorizationDetails(
-            credentialConfigurationId = it,
-            // TODO Add doctype, or sd-jwt-vc-type, according to credential format
-            locations = authorizationServers,
-        )
-    }.toSet()
+        issuerMetadata: IssuerMetadata,
+    ) = credentialConfigurationIds
+        .mapNotNull { credentialId -> issuerMetadata.supportedCredentialConfigurations?.entries?.firstOrNull { it.key == credentialId } }
+        .map {
+            OpenIdAuthorizationDetails(
+                credentialConfigurationId = it.key,
+                docType = it.value.docType,
+                sdJwtVcType = it.value.sdJwtVcType,
+                credentialDefinition = it.value.credentialDefinition,
+                locations = issuerMetadata.authorizationServers,
+            )
+        }.toSet()
 
     /**
      * Build `scope` value for use in [OAuth2Client.createAuthRequest] and [OAuth2Client.createTokenRequestParameters].
