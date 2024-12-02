@@ -5,6 +5,9 @@ import at.asitplus.KmmResult.Companion.wrap
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 
 @Serializable
 data class CredentialRequestParameters(
@@ -44,13 +47,12 @@ data class CredentialRequestParameters(
     val docType: String? = null,
 
     /**
-     * OID4VCI: ISO mDL: OPTIONAL. Object as defined in Appendix A.3.2 excluding the `display` and `value_type`
-     * parameters. The `mandatory` parameter here is used by the Wallet to indicate to the Issuer that it only accepts
-     * Credential(s) issued with those claim(s).
+     * OID4VCI: ISO mDL: OPTIONAL. Object as defined in Appendix A.2.2, see [SupportedCredentialFormat.isoClaims].
+     *
+     * OID4VCI: SD-JWT: OPTIONAL. An object as defined in Appendix A.3.2, see [SupportedCredentialFormat.sdJwtClaims].
      */
     @SerialName("claims")
-    // TODO Verify format for ISO-MDOC and SD-JWT
-    val claims: Map<String, Map<String, RequestedCredentialClaimSpecification>>? = null,
+    var claims: JsonElement? = null,
 
     /**
      * OID4VCI: W3C VC: OPTIONAL. Object containing a detailed description of the Credential consisting of the
@@ -83,6 +85,34 @@ data class CredentialRequestParameters(
     @SerialName("proofs")
     val proofs: CredentialRequestProofContainer? = null,
 ) {
+
+    /**
+     * OID4VCI: ISO mDL: OPTIONAL. Object as defined in Appendix A.2.2, see [SupportedCredentialFormat.isoClaims].
+     */
+    val isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>?
+        get() = claims?.let {
+            runCatching {
+                odcJsonSerializer.decodeFromJsonElement<Map<String, Map<String, RequestedCredentialClaimSpecification>>>(
+                    it
+                )
+            }.getOrNull()
+        }
+
+    fun withIsoClaims(isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>) =
+        this.copy(claims = odcJsonSerializer.encodeToJsonElement(isoClaims))
+
+    /**
+     * OID4VCI: SD-JWT: OPTIONAL. An object as defined in Appendix A.3.2, see [SupportedCredentialFormat.sdJwtClaims].
+     */
+    val sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>?
+        get() = claims?.let {
+            runCatching {
+                odcJsonSerializer.decodeFromJsonElement<Map<String, RequestedCredentialClaimSpecification>>(it)
+            }.getOrNull()
+        }
+
+    fun withSdJwtClaims(sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>) =
+        this.copy(claims = odcJsonSerializer.encodeToJsonElement(sdJwtClaims))
 
     fun serialize() = odcJsonSerializer.encodeToString(this)
 

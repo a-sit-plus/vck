@@ -8,7 +8,7 @@ data class RequestedCredentialClaimSpecification(
 
     /**
      * OID4VCI:
-     * Boolean which when set to true indicates the claim MUST be present in the issued Credential.
+     * Boolean which when set to `true` indicates the claim MUST be present in the issued Credential.
      * If the mandatory property is omitted its default should be assumed to be false.
      */
     @SerialName("mandatory")

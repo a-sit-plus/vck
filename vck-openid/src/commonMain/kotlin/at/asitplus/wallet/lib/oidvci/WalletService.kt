@@ -299,29 +299,40 @@ class WalletService(
         credentialRepresentation == SD_JWT && supportsSdJwt -> CredentialRequestParameters(
             format = CredentialFormatEnum.VC_SD_JWT,
             sdJwtVcType = sdJwtType!!,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtType!!),
-        )
+        ).let {
+            if (requestedAttributes != null && sdJwtType != null)
+                it.withSdJwtClaims(requestedAttributes.toRequestedClaimsSdJwt(sdJwtType!!))
+            else it
+        }
 
         credentialRepresentation == ISO_MDOC && supportsIso -> CredentialRequestParameters(
-            format = CredentialFormatEnum.MSO_MDOC,
-            docType = isoDocType,
-            claims = requestedAttributes?.toRequestedClaimsIso(isoNamespace!!),
-        )
+            format = CredentialFormatEnum.MSO_MDOC, docType = isoDocType,
+        ).let {
+            if (requestedAttributes != null && isoNamespace != null)
+                it.withIsoClaims(requestedAttributes.toRequestedClaimsIso(isoNamespace!!))
+            else
+                it
+        }
+
 
         else -> throw IllegalArgumentException("format $credentialRepresentation not applicable to $this")
     }
 
     private fun CredentialRequestInput.CredentialIdentifier.toCredentialRequestParameters() =
-        CredentialRequestParameters(
-            credentialIdentifier = id,
-        )
+        CredentialRequestParameters(credentialIdentifier = id)
 
     private fun CredentialRequestInput.AuthorizationDetails.toCredentialRequestParameters() =
         CredentialRequestParameters(
             credentialIdentifier = this.details.credentialConfigurationId, // TODO Verify this is correct
-            claims = details.sdJwtVcType?.let { requestedAttributes?.toRequestedClaimsSdJwt(it) }
-                ?: details.docType?.let { requestedAttributes?.toRequestedClaimsIso(it) },
-        )
+        ).let {
+            if (requestedAttributes != null && details.sdJwtVcType != null) {
+                it.withSdJwtClaims(requestedAttributes.toRequestedClaimsSdJwt(details.sdJwtVcType!!))
+            } else if (requestedAttributes != null && details.docType != null) {
+                it.withIsoClaims(requestedAttributes.toRequestedClaimsIso(details.docType!!))
+            } else {
+                it
+            }
+        }
 
     private fun CredentialRequestInput.Format.toCredentialRequestParameters(): CredentialRequestParameters =
         supportedCredentialFormat.toCredentialRequestParameters(requestedAttributes)
@@ -330,21 +341,25 @@ class WalletService(
         requestedAttributes: Set<String>?,
     ) = when (format) {
         CredentialFormatEnum.JWT_VC -> CredentialRequestParameters(
-            format = format,
-            credentialDefinition = credentialDefinition,
+            format = format, credentialDefinition = credentialDefinition,
         )
 
         CredentialFormatEnum.VC_SD_JWT -> CredentialRequestParameters(
-            format = format,
-            sdJwtVcType = sdJwtVcType,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
-        )
+            format = format, sdJwtVcType = sdJwtVcType
+        ).let {
+            if (requestedAttributes != null && sdJwtVcType != null)
+                it.withSdJwtClaims(requestedAttributes.toRequestedClaimsSdJwt(sdJwtVcType!!))
+            else it
+        }
 
         CredentialFormatEnum.MSO_MDOC -> CredentialRequestParameters(
-            format = format,
-            docType = docType,
-            claims = requestedAttributes?.toRequestedClaimsIso(isoClaims?.keys?.firstOrNull() ?: docType!!),
-        )
+            format = format, docType = docType
+        ).let {
+            if (requestedAttributes != null)
+                it.withIsoClaims(requestedAttributes.toRequestedClaimsIso(isoClaims?.keys?.firstOrNull() ?: docType!!))
+            else
+                it
+        }
 
         else -> throw IllegalArgumentException("format $format not applicable to create credential request")
     }
@@ -352,7 +367,7 @@ class WalletService(
 
 // TODO Unify these methods
 private fun Collection<String>.toRequestedClaimsSdJwt(sdJwtType: String) =
-    mapOf(sdJwtType to this.associateWith { RequestedCredentialClaimSpecification() })
+    this.associateWith { RequestedCredentialClaimSpecification() }
 
 private fun Collection<String>.toRequestedClaimsIso(isoNamespace: String) =
     mapOf(isoNamespace to this.associateWith { RequestedCredentialClaimSpecification() })

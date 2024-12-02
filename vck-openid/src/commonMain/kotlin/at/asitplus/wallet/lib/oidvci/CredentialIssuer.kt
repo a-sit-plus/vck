@@ -19,6 +19,7 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
@@ -152,7 +153,11 @@ class CredentialIssuer(
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("credential: client did not provide correct credential scheme: $params") }
 
-        val claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
+        val claimNames = when (representation.toRepresentation()) {
+            CredentialRepresentation.PLAIN_JWT -> null
+            CredentialRepresentation.SD_JWT -> params.sdJwtClaims?.keys
+            CredentialRepresentation.ISO_MDOC -> params.isoClaims?.filter { it.key == credentialScheme.isoDocType }?.keys
+        }?.ifEmpty { null }
 
         validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
             issuer.issueCredential(
@@ -273,7 +278,7 @@ fun interface CredentialIssuerDataProvider {
         userInfo: OidcUserInfoExtended,
         subjectPublicKey: CryptoPublicKey,
         credentialScheme: ConstantIndex.CredentialScheme,
-        representation: ConstantIndex.CredentialRepresentation,
+        representation: CredentialRepresentation,
         claimNames: Collection<String>?,
     ): KmmResult<CredentialToBeIssued>
 }

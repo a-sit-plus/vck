@@ -82,10 +82,14 @@ data class SupportedCredentialFormat private constructor(
 
     /**
      * OID4VCI:
-     * ISO mDL: OPTIONAL. Object containing a list of name/value pairs, where the name is a certain namespace as
+     * ISO mDL: OPTIONAL. Object containing a list of name/value pairs, where the name is a certain `namespace` as
      * defined in (ISO.18013-5) (or any profile of it), and the value is an object. This object also contains a list
      * of name/value pairs, where the name is a claim name value that is defined in the respective namespace and is
      * offered in the Credential.
+     *
+     * SD-JWT: OPTIONAL. Object containing a list of name/value pairs, where each name identifies a claim about the
+     * subject offered in the Credential. The value can be another such object (nested data structures), or an array
+     * of such objects.
      */
     @SerialName("claims")
     private var claims: JsonElement? = null,
@@ -107,6 +111,14 @@ data class SupportedCredentialFormat private constructor(
     @SerialName("display")
     val display: Set<DisplayProperties>? = null,
 ) {
+
+    /**
+     * OID4VCI:
+     * ISO mDL: OPTIONAL. Object containing a list of name/value pairs, where the name is a certain `namespace` as
+     * defined in (ISO.18013-5) (or any profile of it), and the value is an object. This object also contains a list
+     * of name/value pairs, where the name is a claim name value that is defined in the respective namespace and is
+     * offered in the Credential.
+     */
     val isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>?
         get() = claims?.let {
             runCatching {
@@ -114,6 +126,12 @@ data class SupportedCredentialFormat private constructor(
             }.getOrNull()
         }
 
+    /**
+     * OID4VCI:
+     * SD-JWT: OPTIONAL. Object containing a list of name/value pairs, where each name identifies a claim about the
+     * subject offered in the Credential. The value can be another such object (nested data structures), or an array
+     * of such objects.
+     */
     val sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>?
         get() = claims?.let {
             runCatching {
