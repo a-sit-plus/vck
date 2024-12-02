@@ -73,7 +73,7 @@ class OidvciPreAuthTest : FreeSpec({
 
         val first = authorizationDetails.first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
         val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialConfigurationId!!),
+            input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialIdentifiers.first()),
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer
         ).getOrThrow()

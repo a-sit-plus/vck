@@ -18,6 +18,23 @@ import at.asitplus.wallet.lib.data.VcDataModelConstants
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.JsonPrimitive
 
+typealias CredentialSchemeInRepresentation = Pair<CredentialScheme, CredentialRepresentation>
+
+interface CredentialSchemeAdapter {
+    fun toSupportedCredentialFormat(
+        credentialScheme: CredentialScheme,
+        cryptoAlgorithms: Set<SignatureAlgorithm>? = null,
+    ): Pair<String, SupportedCredentialFormat>
+
+    fun toCredentialIdentifier(credentialScheme: CredentialScheme): String
+
+    fun toCredentialIdentifier(credentialScheme: CredentialSchemeInRepresentation): String
+
+    fun fromCredentialIdentifier(input: String): CredentialSchemeInRepresentation?
+
+    fun matches(input: OpenIdAuthorizationDetails): CredentialSchemeInRepresentation?
+}
+
 fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<SignatureAlgorithm>? = null)
         : Map<String, SupportedCredentialFormat> {
     val iso = if (supportsIso) {

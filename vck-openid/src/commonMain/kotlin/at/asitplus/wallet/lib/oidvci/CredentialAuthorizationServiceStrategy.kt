@@ -36,6 +36,7 @@ class CredentialAuthorizationServiceStrategy(
                 } ?: authnDetails.format?.let {
                     supportedCredentialSchemes.values.any {
                         it.format == authnDetails.format &&
+                                // TODO should not match all identifiers, but only one!
                                 it.docType == authnDetails.docType &&
                                 it.sdJwtVcType == authnDetails.sdJwtVcType &&
                                 it.credentialDefinition == authnDetails.credentialDefinition

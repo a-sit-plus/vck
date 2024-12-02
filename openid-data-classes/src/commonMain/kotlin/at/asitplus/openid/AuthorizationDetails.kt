@@ -75,6 +75,5 @@ data class OpenIdAuthorizationDetails(
      * identifiers together with an Access Token in subsequent Credential Requests.
      */
     @SerialName("credential_identifiers")
-    // TODO Verify if we're using this correctly
     val credentialIdentifiers: Set<String>,
 ) : AuthorizationDetails

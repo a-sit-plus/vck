@@ -13,5 +13,4 @@ interface AuthorizationServiceStrategy {
 
     fun filterAuthorizationDetails(authorizationDetails: Set<AuthorizationDetails>): Set<AuthorizationDetails>
 
-
 }

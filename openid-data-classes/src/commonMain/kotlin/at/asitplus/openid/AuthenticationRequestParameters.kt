@@ -152,7 +152,8 @@ data class AuthenticationRequestParameters(
      * The type of resource or access requirement is determined by the [AuthorizationDetails.type] field.
      *
      * OID4VCI: This parameter MUST be used to convey th details about the Credentials the Wallet wants to obtain.
-     * This specification introduces a new authorization details type `openid_credential`.
+     * This specification introduces a new authorization details type `openid_credential`,
+     * see [OpenIdAuthorizationDetails].
      */
     @SerialName("authorization_details")
     val authorizationDetails: Set<AuthorizationDetails>? = null,

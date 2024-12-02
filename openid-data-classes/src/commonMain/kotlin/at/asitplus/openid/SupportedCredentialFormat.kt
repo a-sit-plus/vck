@@ -143,7 +143,7 @@ data class SupportedCredentialFormat private constructor(
 
         fun forIsoMdoc(
             format: CredentialFormatEnum,
-            scope: String,
+            scope: String? = null,
             supportedBindingMethods: Set<String>? = null,
             supportedSigningAlgorithms: Set<String>? = null,
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
@@ -153,7 +153,7 @@ data class SupportedCredentialFormat private constructor(
             order: Set<String>? = null,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
-            format = format,
+            format = CredentialFormatEnum.MSO_MDOC,
             scope = scope,
             supportedBindingMethods = supportedBindingMethods,
             supportedSigningAlgorithms = supportedSigningAlgorithms,
@@ -167,7 +167,7 @@ data class SupportedCredentialFormat private constructor(
 
         fun forSdJwt(
             format: CredentialFormatEnum,
-            scope: String,
+            scope: String? = null,
             supportedBindingMethods: Set<String>? = null,
             supportedSigningAlgorithms: Set<String>? = null,
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
@@ -177,7 +177,7 @@ data class SupportedCredentialFormat private constructor(
             order: Set<String>? = null,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
-            format = format,
+            format = CredentialFormatEnum.VC_SD_JWT,
             scope = scope,
             supportedBindingMethods = supportedBindingMethods,
             supportedSigningAlgorithms = supportedSigningAlgorithms,
@@ -191,7 +191,7 @@ data class SupportedCredentialFormat private constructor(
 
         fun forVcJwt(
             format: CredentialFormatEnum,
-            scope: String,
+            scope: String? = null,
             supportedBindingMethods: Set<String>? = null,
             supportedSigningAlgorithms: Set<String>? = null,
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
@@ -199,7 +199,7 @@ data class SupportedCredentialFormat private constructor(
             order: Set<String>? = null,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
-            format = format,
+            format = CredentialFormatEnum.JWT_VC,
             scope = scope,
             supportedBindingMethods = supportedBindingMethods,
             supportedSigningAlgorithms = supportedSigningAlgorithms,
