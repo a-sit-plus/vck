@@ -6,9 +6,11 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.OidcSiopWallet
+import at.asitplus.wallet.lib.oidc.helpers.AuthorizationResponsePreparationState
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -25,7 +27,6 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 /**
  * Implements the wallet side of
@@ -52,10 +53,7 @@ class OpenId4VpWallet(
     private val client: HttpClient = HttpClient(engine) {
         followRedirects = false
         install(ContentNegotiation) {
-            json(Json {
-                isLenient = true
-                ignoreUnknownKeys = true
-            })
+            json(vckJsonSerializer)
         }
         install(DefaultRequest) {
             header(HttpHeaders.ContentType, ContentType.Application.Json)
@@ -74,6 +72,19 @@ class OpenId4VpWallet(
         requestObjectJwsVerifier = { _ -> true }, // unsure about this one?
     )
 
+    suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
+        oidcSiopWallet.parseAuthenticationRequestParameters(input)
+
+    suspend fun startAuthorizationResponsePreparation(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+    ): KmmResult<AuthorizationResponsePreparationState> =
+        oidcSiopWallet.startAuthorizationResponsePreparation(request)
+
+    suspend fun startAuthorizationResponsePreparation(
+        input: String
+    ): KmmResult<AuthorizationResponsePreparationState> =
+        oidcSiopWallet.startAuthorizationResponsePreparation(input)
+
     /**
      * Calls [oidcSiopWallet] to create the authentication response.
      * In case the result shall be POSTed to the verifier, we call [client] to do that,
@@ -81,7 +92,7 @@ class OpenId4VpWallet(
      * In case the result shall be sent as a redirect to the verifier, we call [openUrlExternally].
      */
     suspend fun startPresentation(
-        request: RequestParametersFrom<AuthenticationRequestParameters>
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<Unit> = catching {
         Napier.i("startPresentation: $request")
         oidcSiopWallet.createAuthnResponse(request).getOrThrow().let {
