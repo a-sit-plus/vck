@@ -121,19 +121,3 @@ fun decodeFromCredentialIdentifier(input: String): Pair<CredentialScheme, Creden
             ?.let { Pair(it, CredentialFormatEnum.MSO_MDOC) }
     }
 }
-
-fun CredentialFormatEnum.toRepresentation() = when (this) {
-    CredentialFormatEnum.VC_SD_JWT -> CredentialRepresentation.SD_JWT
-    CredentialFormatEnum.MSO_MDOC -> CredentialRepresentation.ISO_MDOC
-    else -> CredentialRepresentation.PLAIN_JWT
-}
-
-fun Issuer.IssuedCredential.toCredentialResponseJsonPrimitive() = when (this) {
-    is Issuer.IssuedCredential.Iso -> JsonPrimitive(issuerSigned.serialize().encodeToString(Base64UrlStrict))
-    is Issuer.IssuedCredential.VcJwt -> JsonPrimitive(vcJws)
-    is Issuer.IssuedCredential.VcSdJwt -> JsonPrimitive(vcSdJwt)
-}
-
-class OAuth2Exception(val error: String, val errorDescription: String? = null) : Throwable(error) {
-
-}
