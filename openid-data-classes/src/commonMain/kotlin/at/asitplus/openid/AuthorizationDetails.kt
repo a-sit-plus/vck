@@ -69,11 +69,12 @@ data class OpenIdAuthorizationDetails(
     val locations: Set<String>? = null,
 
     /**
-     * OID4VCI: REQUIRED. Array of strings, each uniquely identifying a Credential Dataset that can be issued using
+     * OID4VCI: REQUIRED (only when used in the token response!).
+     * Array of strings, each uniquely identifying a Credential Dataset that can be issued using
      * the Access Token returned in this response. Each of these Credential Datasets corresponds to the same
      * Credential Configuration in the [IssuerMetadata.supportedCredentialConfigurations]. The Wallet MUST use these
      * identifiers together with an Access Token in subsequent Credential Requests.
      */
     @SerialName("credential_identifiers")
-    val credentialIdentifiers: Set<String>,
+    val credentialIdentifiers: Set<String>? = null, // TODO Rename to credentialDatasets?
 ) : AuthorizationDetails

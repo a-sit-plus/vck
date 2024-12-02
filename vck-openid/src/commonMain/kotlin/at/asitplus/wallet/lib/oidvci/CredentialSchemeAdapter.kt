@@ -30,6 +30,12 @@ interface CredentialSchemeAdapter {
     fun getConfigurationIds(): Collection<String>
 
     /**
+     * Not supporting different credential datasets for one credential configuration at the moment,
+     * so we'll just use the `credentialConfigurationId`, see OID4VCI 6.2
+     */
+    fun getCredentialDatasets(credentialConfigurationId: String): Set<String>
+
+    /**
      * Used to decode the Wallet's request to issue credentials
      */
     fun fromCredentialRequest(params: CredentialRequestParameters): CredentialSchemeInRepresentation?
@@ -58,9 +64,13 @@ class DefaultCredentialSchemeAdapter(
 
     override fun getConfigurationIds(): Collection<String> = credentialSchemes.flatMap { it.toCredentialIdentifier() }
 
+
+    override fun getCredentialDatasets(credentialConfigurationId: String): Set<String> = setOf(credentialConfigurationId)
+
     override fun fromCredentialRequest(params: CredentialRequestParameters): CredentialSchemeInRepresentation? =
         params.format?.let { params.extractCredentialScheme(it) }
-            ?: params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
+            ?: params.credentialIdentifier?.let { decodeFromCredentialDataset(it) }
+            ?: params.credentialConfigurationId?.let { decodeFromCredentialIdentifier(it) }
 
     override fun supportsAuthorization(authnDetails: OpenIdAuthorizationDetails): Boolean =
         authnDetails.credentialConfigurationId?.let {
@@ -157,6 +167,12 @@ private fun CredentialRequestParameters.extractCredentialScheme(format: Credenti
  */
 private fun encodeToCredentialIdentifier(type: String, format: CredentialFormatEnum) =
     "$type#${format.text}"
+
+/**
+ * Not supporting different credential datasets for one credential configuration at the moment,
+ * so we'll just use the `credentialConfigurationId`, see OID4VCI 6.2
+ */
+private fun decodeFromCredentialDataset(input: String) = decodeFromCredentialIdentifier(input)
 
 /**
  * Reverse functionality of [encodeToCredentialIdentifier], which can also handle ISO namespaces,

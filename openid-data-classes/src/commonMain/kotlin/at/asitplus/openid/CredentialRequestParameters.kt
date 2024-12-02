@@ -12,13 +12,26 @@ import kotlinx.serialization.json.encodeToJsonElement
 @Serializable
 data class CredentialRequestParameters(
     /**
-     * OID4VCI: REQUIRED when an [OpenIdAuthorizationDetails] was returned from the
-     * [TokenResponseParameters]. It MUST NOT be used otherwise. A string that identifies a Credential Dataset that is
-     * requested for issuance. When this parameter is used, the [format] parameter and any other Credential format
-     * specific parameters such as those defined in Appendix A MUST NOT be present
+     * OID4VCI: REQUIRED when an Authorization Details of type `openid_credential` was returned from the Token Response
+     * (see [TokenResponseParameters.authorizationDetails]).
+     * It MUST NOT be used otherwise. A string that identifies a Credential Dataset that is requested for issuance.
+     * When this parameter is used, the [credentialConfigurationId] MUST NOT be present.
      */
     @SerialName("credential_identifier")
     val credentialIdentifier: String? = null,
+
+    /**
+     * OID4VCI: REQUIRED if a `credential_identifiers` parameter was not returned from the Token Response as part of
+     * the `authorization_details` parameter (see [OpenIdAuthorizationDetails.credentialIdentifiers]).
+     * It MUST NOT be used otherwise. String that uniquely identifies one of the keys in the name/value pairs stored
+     * in the `credential_configurations_supported` Credential Issuer metadata
+     * (see [IssuerMetadata.supportedCredentialConfigurations]).
+     * The corresponding object in the `credential_configurations_supported` map MUST contain one of the value(s)
+     * used in the `scope` parameter in the Authorization Request.
+     * When this parameter is used, the [credentialIdentifier] MUST NOT be present.
+     */
+    @SerialName("credential_configuration_id")
+    val credentialConfigurationId: String? = null,
 
     /**
      * OID4VCI: REQUIRED if an [OpenIdAuthorizationDetails] was not returned from the

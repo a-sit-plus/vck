@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdAuthorizationDetails
-import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oauth2.AuthorizationServiceStrategy
 
 /**
@@ -27,5 +26,12 @@ class CredentialAuthorizationServiceStrategy(
         authorizationDetails
             .filterIsInstance<OpenIdAuthorizationDetails>()
             .filter { credentialSchemes.supportsAuthorization(it) }
+            .map {
+                if (it.credentialConfigurationId != null) {
+                    it.copy(credentialIdentifiers = credentialSchemes.getCredentialDatasets(it.credentialConfigurationId!!))
+                } else {
+                    it
+                }
+            }
             .toSet()
 }

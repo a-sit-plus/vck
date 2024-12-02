@@ -252,9 +252,12 @@ class OpenId4VciClient(
         requestedAttributes: Set<String>?,
         supportedCredentialFormat: SupportedCredentialFormat,
     ): CredentialRequestInput =
-        // TODO Always the first one?
         authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.firstOrNull()?.let {
-            CredentialRequestInput.AuthorizationDetails(it)
+            if (it.credentialIdentifiers != null)
+            // TODO Let the user select it the credential dataset
+                CredentialRequestInput.AuthorizationDetails(it, it.credentialIdentifiers?.first(), requestedAttributes)
+            else
+                CredentialRequestInput.CredentialIdentifier(credentialIdentifier)
         } ?: CredentialRequestInput.Format(supportedCredentialFormat, requestedAttributes)
 
     @Throws(Exception::class)

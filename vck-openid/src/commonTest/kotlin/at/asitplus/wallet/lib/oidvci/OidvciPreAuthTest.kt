@@ -66,12 +66,9 @@ class OidvciPreAuthTest : FreeSpec({
         val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(PLAIN_JWT)
 
         val token = getToken(credentialOffer, setOf(credentialIdToRequest))
-        val authorizationDetails = token.authorizationDetails
-            .shouldNotBeNull()
 
-        val first = authorizationDetails.first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
         val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialIdentifiers.first()),
+            input = WalletService.CredentialRequestInput.CredentialIdentifier(credentialIdToRequest),
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer
         ).getOrThrow()
@@ -93,6 +90,7 @@ class OidvciPreAuthTest : FreeSpec({
         val credentialRequest = client.createCredentialRequest(
             input = WalletService.CredentialRequestInput.AuthorizationDetails(
                 details = first,
+                credentialDataset = first.credentialIdentifiers!!.first(),
                 requestedAttributes = setOf(CLAIM_FAMILY_NAME)
             ),
             clientNonce = token.clientNonce,
@@ -122,13 +120,25 @@ class OidvciPreAuthTest : FreeSpec({
             .shouldNotBeNull()
             .shouldHaveSize(4)
 
-        authnDetails.forEach {
+        authnDetails.forEach { // with credential dataset
             it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
             // Not supporting different credential datasets for one credential configuration at the moment,
             // so we'll just use the credential identifier, see OID4VCI 6.2
-            val credentialIdentifier = it.credentialIdentifiers.first()
+            val credentialDataset = it.credentialIdentifiers!!.first()
             val credentialRequest = client.createCredentialRequest(
-                input = WalletService.CredentialRequestInput.CredentialIdentifier(credentialIdentifier),
+                input = WalletService.CredentialRequestInput.AuthorizationDetails(it, credentialDataset),
+                clientNonce = token.clientNonce,
+                credentialIssuer = issuer.metadata.credentialIssuer
+            ).getOrThrow()
+
+            val credential = issuer.credential(token.accessToken, credentialRequest)
+                .getOrThrow()
+            credential.credential.shouldNotBeNull()
+        }
+
+        credentialIdsToRequest.forEach { // with credential_configuration_id
+            val credentialRequest = client.createCredentialRequest(
+                input = WalletService.CredentialRequestInput.CredentialIdentifier(it),
                 clientNonce = token.clientNonce,
                 credentialIssuer = issuer.metadata.credentialIssuer
             ).getOrThrow()

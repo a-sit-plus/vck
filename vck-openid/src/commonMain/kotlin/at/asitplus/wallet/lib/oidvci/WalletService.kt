@@ -157,11 +157,8 @@ class WalletService(
     ) = credentialConfigurationIds.map {
         OpenIdAuthorizationDetails(
             credentialConfigurationId = it,
-            // TODO Add doctype here? How to get it when requesting attributes later on below?
+            // TODO Add doctype, or sd-jwt-vc-type, according to credential format
             locations = authorizationServers,
-            // Not supporting different credential datasets for one credential configuration at the moment,
-            // so we'll just use the `credentialConfigurationId`, see OID4VCI 6.2
-            credentialIdentifiers = setOf(it)
         )
     }.toSet()
 
@@ -182,17 +179,17 @@ class WalletService(
     }?.scope
 
     sealed class CredentialRequestInput {
-        // TODO Maybe merge with AuthorizationDetails below
         data class CredentialIdentifier(
             /**
              * from the token response, see [TokenResponseParameters.authorizationDetails]
-             * and [OpenIdAuthorizationDetails.credentialConfigurationId]
+             * and [OpenIdAuthorizationDetails.credentialIdentifiers]
              */
-            val id: String,
+            val credentialConfigurationId: String,
         ) : CredentialRequestInput()
 
         data class AuthorizationDetails(
             val details: OpenIdAuthorizationDetails,
+            val credentialDataset: String? = null,
             val requestedAttributes: Set<String>? = null,
         ) : CredentialRequestInput()
 
@@ -319,12 +316,10 @@ class WalletService(
     }
 
     private fun CredentialRequestInput.CredentialIdentifier.toCredentialRequestParameters() =
-        CredentialRequestParameters(credentialIdentifier = id)
+        CredentialRequestParameters(credentialConfigurationId = credentialConfigurationId)
 
     private fun CredentialRequestInput.AuthorizationDetails.toCredentialRequestParameters() =
-        CredentialRequestParameters(
-            credentialIdentifier = this.details.credentialConfigurationId, // TODO Verify this is correct
-        ).let {
+        CredentialRequestParameters(credentialIdentifier = this.credentialDataset).let {
             if (requestedAttributes != null && details.sdJwtVcType != null) {
                 it.withSdJwtClaims(requestedAttributes.toRequestedClaimsSdJwt())
             } else if (requestedAttributes != null && details.docType != null) {

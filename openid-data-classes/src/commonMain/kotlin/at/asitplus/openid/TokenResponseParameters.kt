@@ -83,7 +83,8 @@ data class TokenResponseParameters(
     val interval: Duration? = null,
 
     /**
-     * OID4VP: REQUIRED when `authorization_details` parameter is used to request issuance of a certain Credential type.
+     * OID4VP: REQUIRED when `authorization_details` (see [TokenRequestParameters.authorizationDetails])
+     * parameter is used to request issuance of a certain Credential type.
      * It MUST NOT be used otherwise.
      */
     @SerialName("authorization_details")
