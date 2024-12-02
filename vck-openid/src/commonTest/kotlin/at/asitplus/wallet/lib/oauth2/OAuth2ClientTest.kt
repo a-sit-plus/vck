@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidc.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
+import at.asitplus.wallet.lib.oidvci.DefaultCredentialSchemeAdapter
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FunSpec
@@ -25,7 +26,7 @@ class OAuth2ClientTest : FunSpec({
         server = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(
                 DummyOAuth2DataProvider,
-                setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme)
+                DefaultCredentialSchemeAdapter(setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme))
             ),
         )
     }

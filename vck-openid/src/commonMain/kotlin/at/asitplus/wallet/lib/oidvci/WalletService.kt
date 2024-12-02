@@ -301,7 +301,7 @@ class WalletService(
             sdJwtVcType = sdJwtType!!,
         ).let {
             if (requestedAttributes != null && sdJwtType != null)
-                it.withSdJwtClaims(requestedAttributes.toRequestedClaimsSdJwt(sdJwtType!!))
+                it.withSdJwtClaims(requestedAttributes.toRequestedClaimsSdJwt())
             else it
         }
 
@@ -326,7 +326,7 @@ class WalletService(
             credentialIdentifier = this.details.credentialConfigurationId, // TODO Verify this is correct
         ).let {
             if (requestedAttributes != null && details.sdJwtVcType != null) {
-                it.withSdJwtClaims(requestedAttributes.toRequestedClaimsSdJwt(details.sdJwtVcType!!))
+                it.withSdJwtClaims(requestedAttributes.toRequestedClaimsSdJwt())
             } else if (requestedAttributes != null && details.docType != null) {
                 it.withIsoClaims(requestedAttributes.toRequestedClaimsIso(details.docType!!))
             } else {
@@ -348,7 +348,7 @@ class WalletService(
             format = format, sdJwtVcType = sdJwtVcType
         ).let {
             if (requestedAttributes != null && sdJwtVcType != null)
-                it.withSdJwtClaims(requestedAttributes.toRequestedClaimsSdJwt(sdJwtVcType!!))
+                it.withSdJwtClaims(requestedAttributes.toRequestedClaimsSdJwt())
             else it
         }
 
@@ -365,19 +365,11 @@ class WalletService(
     }
 }
 
-// TODO Unify these methods
-private fun Collection<String>.toRequestedClaimsSdJwt(sdJwtType: String) =
+private fun Collection<String>.toRequestedClaimsSdJwt() =
     this.associateWith { RequestedCredentialClaimSpecification() }
 
 private fun Collection<String>.toRequestedClaimsIso(isoNamespace: String) =
     mapOf(isoNamespace to this.associateWith { RequestedCredentialClaimSpecification() })
-
-
-private fun CredentialRepresentation.toFormat() = when (this) {
-    PLAIN_JWT -> CredentialFormatEnum.JWT_VC
-    SD_JWT -> CredentialFormatEnum.VC_SD_JWT
-    ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
-}
 
 /**
  * To be set as header `DPoP` in making request to [url],

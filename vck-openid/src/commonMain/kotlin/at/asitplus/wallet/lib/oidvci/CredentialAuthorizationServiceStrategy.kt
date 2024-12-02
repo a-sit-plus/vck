@@ -15,14 +15,10 @@ class CredentialAuthorizationServiceStrategy(
      */
     private val dataProvider: OAuth2DataProvider,
     /**
-     * List of supported schemes.
+     * Holds a list of supported credential schemes, to be transformed into matching data classes.
      */
-    credentialSchemes: Set<ConstantIndex.CredentialScheme>,
+    private val credentialSchemes: CredentialSchemeAdapter,
 ) : AuthorizationServiceStrategy {
-
-    private val supportedCredentialSchemes = credentialSchemes
-        .flatMap { it.toSupportedCredentialFormat().entries }
-        .associate { it.key to it.value }
 
     override suspend fun loadUserInfo(request: AuthenticationRequestParameters, code: String) =
         dataProvider.loadUserInfo(request, code)
@@ -30,17 +26,6 @@ class CredentialAuthorizationServiceStrategy(
     override fun filterAuthorizationDetails(authorizationDetails: Set<AuthorizationDetails>) =
         authorizationDetails
             .filterIsInstance<OpenIdAuthorizationDetails>()
-            .filter { authnDetails ->
-                authnDetails.credentialConfigurationId?.let {
-                    supportedCredentialSchemes.containsKey(it)
-                } ?: authnDetails.format?.let {
-                    supportedCredentialSchemes.values.any {
-                        it.format == authnDetails.format &&
-                                // TODO should not match all identifiers, but only one!
-                                it.docType == authnDetails.docType &&
-                                it.sdJwtVcType == authnDetails.sdJwtVcType &&
-                                it.credentialDefinition == authnDetails.credentialDefinition
-                    }
-                } ?: false
-            }.toSet()
+            .filter { credentialSchemes.supportsAuthorization(it) }
+            .toSet()
 }

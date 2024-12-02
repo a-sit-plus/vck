@@ -39,16 +39,17 @@ class OidvciCodeFlowTest : FreeSpec({
     lateinit var state: String
 
     beforeEach {
+        val credentialSchemes = DefaultCredentialSchemeAdapter(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme))
         authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(
                 DummyOAuth2DataProvider,
-                setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)
+                credentialSchemes
             ),
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
-            credentialSchemes = setOf(AtomicAttribute2023),
+            credentialSchemes = credentialSchemes,
             credentialProvider = DummyOAuth2IssuerCredentialDataProvider,
         )
         client = WalletService()
@@ -93,7 +94,7 @@ class OidvciCodeFlowTest : FreeSpec({
 
     suspend fun issueCredential(
         requestOptions: RequestOptions,
-        token: TokenResponseParameters
+        token: TokenResponseParameters,
     ): CredentialResponseParameters {
         val credentialRequest = client.createCredentialRequest(
             input = WalletService.CredentialRequestInput.RequestOptions(requestOptions),
@@ -182,13 +183,13 @@ class OidvciCodeFlowTest : FreeSpec({
             codeToUserInfoStore = defectMapStore(),
             strategy = CredentialAuthorizationServiceStrategy(
                 DummyOAuth2DataProvider,
-                setOf(AtomicAttribute2023)
+                DefaultCredentialSchemeAdapter(setOf(AtomicAttribute2023))
             ),
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
-            credentialSchemes = setOf(AtomicAttribute2023),
+            credentialSchemes = DefaultCredentialSchemeAdapter(setOf(AtomicAttribute2023)),
             credentialProvider = DummyOAuth2IssuerCredentialDataProvider
         )
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)

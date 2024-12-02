@@ -17,10 +17,8 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.Issuer
-import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
-import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -43,9 +41,9 @@ class CredentialIssuer(
      */
     private val issuer: Issuer,
     /**
-     * List of supported schemes.
+     * Holds a list of supported credential schemes, to be transformed into matching data classes.
      */
-    private val credentialSchemes: Set<ConstantIndex.CredentialScheme>,
+    private val credentialSchemes: CredentialSchemeAdapter,
     /**
      * Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients.
      */
@@ -58,7 +56,8 @@ class CredentialIssuer(
     /**
      * Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]
      */
-    private val credentialProvider: CredentialIssuerDataProvider
+    private val credentialProvider: CredentialIssuerDataProvider,
+
 ) {
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`
@@ -70,9 +69,7 @@ class CredentialIssuer(
             credentialIssuer = publicContext,
             authorizationServers = setOf(authorizationService.publicContext),
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
-            supportedCredentialConfigurations = credentialSchemes
-                .flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).entries }
-                .associate { it.key to it.value },
+            supportedCredentialConfigurations = credentialSchemes.getSupportedCredentialConfigurations(issuer.cryptoAlgorithms),
             batchCredentialIssuance = BatchCredentialIssuanceMetadata(1)
         )
     }
@@ -97,7 +94,7 @@ class CredentialIssuer(
      */
     suspend fun credentialOfferWithAuthorizationCode(): CredentialOffer = CredentialOffer(
         credentialIssuer = publicContext,
-        configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
+        configurationIds = credentialSchemes.getConfigurationIds(),
         grants = CredentialOfferGrants(
             authorizationCode =
                 CredentialOfferGrantsAuthCode(
@@ -120,7 +117,7 @@ class CredentialIssuer(
         user: OidcUserInfoExtended,
     ): CredentialOffer = CredentialOffer(
         credentialIssuer = publicContext,
-        configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
+        configurationIds = credentialSchemes.getConfigurationIds(),
         grants = CredentialOfferGrants(
             preAuthorizedCode = CredentialOfferGrantsPreAuthCode(
                 preAuthorizedCode = authorizationService.providePreAuthorizedCode(user),
@@ -148,12 +145,11 @@ class CredentialIssuer(
             ?: throw OAuth2Exception(Errors.INVALID_TOKEN)
                 .also { Napier.w("credential: client did not provide correct token: $accessToken") }
 
-        val (credentialScheme, representation) = params.format?.let { params.extractCredentialScheme(it) }
-            ?: params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
+        val (credentialScheme, representation) = credentialSchemes.fromCredentialRequest(params)
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
                 .also { Napier.w("credential: client did not provide correct credential scheme: $params") }
 
-        val claimNames = when (representation.toRepresentation()) {
+        val claimNames = when (representation) {
             CredentialRepresentation.PLAIN_JWT -> null
             CredentialRepresentation.SD_JWT -> params.sdJwtClaims?.keys
             CredentialRepresentation.ISO_MDOC -> params.isoClaims?.filter { it.key == credentialScheme.isoDocType }?.keys
@@ -165,7 +161,7 @@ class CredentialIssuer(
                     userInfo = userInfo,
                     subjectPublicKey = subjectPublicKey,
                     credentialScheme = credentialScheme,
-                    representation = representation.toRepresentation(),
+                    representation = representation,
                     claimNames = claimNames
                 ).getOrElse {
                     throw OAuth2Exception(Errors.INVALID_REQUEST)
@@ -243,26 +239,12 @@ class CredentialIssuer(
 }
 
 private fun List<Issuer.IssuedCredential>.toCredentialResponseParameters(
-    representation: CredentialFormatEnum
+    representation: CredentialRepresentation
 ): CredentialResponseParameters = CredentialResponseParameters(
-    format = representation,
+    format = representation.toFormat(),
     credential = if (size == 1) this.first().toCredentialResponseJsonPrimitive() else null,
     credentials = if (size > 1) map { it.toCredentialResponseJsonPrimitive() } else null
 )
-
-private fun CredentialRequestParameters.extractCredentialScheme(format: CredentialFormatEnum) = when (format) {
-    CredentialFormatEnum.JWT_VC -> credentialDefinition?.types?.firstOrNull { it != VERIFIABLE_CREDENTIAL }
-        ?.let { AttributeIndex.resolveAttributeType(it) }
-        ?.let { it to CredentialFormatEnum.JWT_VC }
-
-    CredentialFormatEnum.VC_SD_JWT -> sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
-        ?.let { it to CredentialFormatEnum.VC_SD_JWT }
-
-    CredentialFormatEnum.MSO_MDOC -> docType?.let { AttributeIndex.resolveIsoDoctype(it) }
-        ?.let { it to CredentialFormatEnum.MSO_MDOC }
-
-    else -> null
-}
 
 fun interface CredentialIssuerDataProvider {
 

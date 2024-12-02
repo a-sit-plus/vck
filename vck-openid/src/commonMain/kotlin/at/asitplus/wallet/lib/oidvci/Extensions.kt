@@ -12,6 +12,11 @@ fun CredentialFormatEnum.toRepresentation() = when (this) {
     CredentialFormatEnum.MSO_MDOC -> CredentialRepresentation.ISO_MDOC
     else -> CredentialRepresentation.PLAIN_JWT
 }
+fun CredentialRepresentation.toFormat() = when (this) {
+    CredentialRepresentation.PLAIN_JWT -> CredentialFormatEnum.JWT_VC
+    CredentialRepresentation.SD_JWT -> CredentialFormatEnum.VC_SD_JWT
+    CredentialRepresentation.ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
+}
 
 fun Issuer.IssuedCredential.toCredentialResponseJsonPrimitive() = when (this) {
     is Issuer.IssuedCredential.Iso -> JsonPrimitive(issuerSigned.serialize().encodeToString(Base64UrlStrict))

@@ -27,16 +27,14 @@ class OidvciInteropTest : FunSpec({
     lateinit var state: String
 
     beforeEach {
+        val credentialSchemes = DefaultCredentialSchemeAdapter(setOf(AtomicAttribute2023, MobileDrivingLicenceScheme))
         authorizationService = SimpleAuthorizationService(
-            strategy = CredentialAuthorizationServiceStrategy(
-                DummyOAuth2DataProvider,
-                setOf(AtomicAttribute2023, MobileDrivingLicenceScheme)
-            ),
+            strategy = CredentialAuthorizationServiceStrategy(DummyOAuth2DataProvider, credentialSchemes),
         )
         issuer = CredentialIssuer(
             authorizationService = authorizationService,
             issuer = IssuerAgent(),
-            credentialSchemes = setOf(AtomicAttribute2023, MobileDrivingLicenceScheme),
+            credentialSchemes = credentialSchemes,
             credentialProvider = DummyOAuth2IssuerCredentialDataProvider
         )
         client = WalletService()

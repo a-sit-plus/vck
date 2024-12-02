@@ -7,6 +7,8 @@ Release 5.3.0:
    - Support issuing credentials for multiple proofs
    - For `CredentialRequestInput` add subclass `AuthorizationDetails` to request only some specific claims
    - In `CredentialRequestParameters` change type of `claims` to `JsonElement`, to support ISO mDoc and SD-JWT claims (cf. `SupportedCredentialFormat`)
+   - In `CredentialIssuer` change constructor parameter `credentialSchemes` to type `CredentialSchemeAdapter`, see `DefaultCredentialSchemeAdapter`
+   - In `CredentialAuthorizationServiceStrategy` change constructor parameter `credentialSchemes` to type `CredentialSchemeAdapter`, see `DefaultCredentialSchemeAdapter`
 
 Release 5.2.0:
 - New `Initializer` object in `vck-openid` which needs to be called at the start of the project if artifact is used

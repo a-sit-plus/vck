@@ -122,7 +122,9 @@ data class SupportedCredentialFormat private constructor(
     val isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>?
         get() = claims?.let {
             runCatching {
-                odcJsonSerializer.decodeFromJsonElement<Map<String, Map<String, RequestedCredentialClaimSpecification>>>(it)
+                odcJsonSerializer.decodeFromJsonElement<Map<String, Map<String, RequestedCredentialClaimSpecification>>>(
+                    it
+                )
             }.getOrNull()
         }
 
@@ -139,10 +141,12 @@ data class SupportedCredentialFormat private constructor(
             }.getOrNull()
         }
 
+    fun copyWithSupportedAlgorithms(supportedSigningAlgorithms: Set<String>) =
+        copy(supportedSigningAlgorithms = supportedSigningAlgorithms)
+
     companion object {
 
         fun forIsoMdoc(
-            format: CredentialFormatEnum,
             scope: String? = null,
             supportedBindingMethods: Set<String>? = null,
             supportedSigningAlgorithms: Set<String>? = null,
@@ -166,7 +170,6 @@ data class SupportedCredentialFormat private constructor(
         )
 
         fun forSdJwt(
-            format: CredentialFormatEnum,
             scope: String? = null,
             supportedBindingMethods: Set<String>? = null,
             supportedSigningAlgorithms: Set<String>? = null,
@@ -190,7 +193,6 @@ data class SupportedCredentialFormat private constructor(
         )
 
         fun forVcJwt(
-            format: CredentialFormatEnum,
             scope: String? = null,
             supportedBindingMethods: Set<String>? = null,
             supportedSigningAlgorithms: Set<String>? = null,
