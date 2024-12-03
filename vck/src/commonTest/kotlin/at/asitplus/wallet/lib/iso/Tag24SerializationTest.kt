@@ -132,7 +132,7 @@ class Tag24SerializationTest : FreeSpec({
 
         serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         serializedMso.encodeToString(Base16(true)).shouldStartWith("D818")
-        vckCborSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(serialized) shouldBe input
+        vckCborSerializer.decodeFromByteArray<CoseSigned<MobileSecurityObject>>(serialized) shouldBe input
         MobileSecurityObject.deserializeFromIssuerAuth(serializedMso).getOrThrow() shouldBe mso
     }
 
