@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.catching
+import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.*
-import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
@@ -49,10 +49,10 @@ class Tag24SerializationTest : FreeSpec({
             ),
             deviceAuth = DeviceAuth(
                 deviceSignature = CoseSigned<ByteArray>(
-                    protectedHeader = ByteStringWrapper(CoseHeader()),
+                    protectedHeader = CoseHeader(),
                     unprotectedHeader = null,
                     payload = byteArrayOf(),
-                    rawSignature = byteArrayOf()
+                    signature = CryptoSignature.RSAorHMAC(byteArrayOf())
                 )
 
             )
@@ -121,10 +121,10 @@ class Tag24SerializationTest : FreeSpec({
         )
         val serializedMso = mso.serializeForIssuerAuth()
         val input = CoseSigned<MobileSecurityObject>(
-            protectedHeader = ByteStringWrapper(CoseHeader()),
+            protectedHeader = CoseHeader(),
             unprotectedHeader = null,
             payload = mso,
-            rawSignature = byteArrayOf()
+            signature = CryptoSignature.RSAorHMAC(byteArrayOf())
         )
 
         val serialized = vckCborSerializer.encodeToByteArray(input)
@@ -171,10 +171,10 @@ private fun deviceKeyInfo() =
     DeviceKeyInfo(CoseKey(CoseKeyType.EC2, keyParams = CoseKeyParams.EcYBoolParams(CoseEllipticCurve.P256)))
 
 private fun issuerAuth() = CoseSigned<MobileSecurityObject>(
-    protectedHeader = ByteStringWrapper(CoseHeader()),
+    protectedHeader = CoseHeader(),
     unprotectedHeader = null,
     payload = null,
-    rawSignature = byteArrayOf()
+    signature = CryptoSignature.RSAorHMAC(byteArrayOf())
 )
 
 private fun issuerSignedItem() = IssuerSignedItem(0u, Random.nextBytes(16), "identifier", "value")

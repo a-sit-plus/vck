@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.wallet.lib.iso.*
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -47,9 +47,9 @@ class DeviceSignedItemSerializationTest : FreeSpec({
             key = elementId,
             value = Random.nextBytes(32),
         )
-        val protectedHeader = ByteStringWrapper(CoseHeader(), CoseHeader().serialize())
-        val issuerAuth = CoseSigned<MobileSecurityObject>(protectedHeader, null, null, byteArrayOf())
-        val deviceAuth = CoseSigned<ByteArray>(protectedHeader, null, null, byteArrayOf())
+        val protectedHeader = CoseHeader()
+        val issuerAuth = CoseSigned<MobileSecurityObject>(protectedHeader, null, null, CryptoSignature.RSAorHMAC(byteArrayOf()))
+        val deviceAuth = CoseSigned<ByteArray>(protectedHeader, null, null, CryptoSignature.RSAorHMAC(byteArrayOf()))
 
         val doc = Document(
             docType = uuid4().toString(),
