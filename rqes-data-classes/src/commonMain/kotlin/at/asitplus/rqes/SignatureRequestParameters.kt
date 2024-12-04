@@ -5,14 +5,10 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
-import at.asitplus.rqes.collection_entries.TransactionData
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 
 /**
  * In the Wallet centric model this is the request
@@ -71,7 +67,7 @@ data class SignatureRequestParameters(
      * `invalid_request` Authorization Response error.
      */
     @SerialName("response_uri")
-    val responseUrl: String? = null,
+    override val responseUrl: String? = null,
 
     /**
      * OIDC: OPTIONAL. String value used to associate a Client session with an ID Token, and to mitigate replay attacks.
@@ -141,17 +137,7 @@ data class SignatureRequestParameters(
     override val transactionData: Set<String>? = null,
 ) : RequestParameters {
 
-    @Transient
-    val hashAlgorithm: Digest = hashAlgorithmOid.getHashAlgorithm()
-
     override val redirectUrl: String? = null
     override val audience: String? = null
 
-    val transactionDataTyped: Set<TransactionData>? by lazy {
-        transactionData?.mapNotNull {
-            rdcJsonSerializer.decodeFromString<TransactionData>(
-                it.decodeToByteArray(Base64UrlStrict).decodeToString()
-            )
-        }?.toSet()
-    }
 }

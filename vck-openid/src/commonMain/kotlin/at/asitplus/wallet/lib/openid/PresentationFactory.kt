@@ -6,6 +6,8 @@ import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.*
+import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
@@ -34,18 +36,15 @@ internal class PresentationFactory(
 ) {
     suspend fun createPresentationExchangePresentation(
         holder: Holder,
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParameters,
+        nonce: String,
         audience: String,
         presentationDefinition: PresentationDefinition,
         clientMetadata: RelyingPartyMetadata?,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
         jsonWebKeys: Collection<JsonWebKey>?,
     ): KmmResult<PresentationResponseParameters> = catching {
-        request.parameters.verifyResponseType()
-        val nonce = request.parameters.nonce ?: run {
-            Napier.w("nonce is null in ${request.parameters}")
-            throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
-        }
+        request.verifyResponseType()
         val credentialSubmissions = inputDescriptorSubmissions
             ?: holder.matchInputDescriptorsAgainstCredentialStore(
                 inputDescriptors = presentationDefinition.inputDescriptors,
@@ -59,11 +58,13 @@ internal class PresentationFactory(
         )
 
         val responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsEncryption() == true
-        val clientId = request.parameters.clientId
-        val responseUrl = request.parameters.responseUrl
+        val clientId = request.clientId
+        val responseUrl = request.responseUrl
         val vpRequestParams = PresentationRequestParameters(
             nonce = nonce,
             audience = audience,
+            // TODO Exact encoding is not specified
+            transactionData = request.transactionData?.map { it.encodeToByteArray() },
             calcIsoDeviceSignature = { docType ->
                 calcDeviceSignature(responseWillBeEncrypted, clientId, responseUrl, nonce, docType)
             }
@@ -74,7 +75,7 @@ internal class PresentationFactory(
             presentationSubmissionSelection = credentialSubmissions,
         ).getOrElse {
             Napier.w("Could not create presentation", it)
-            throw OAuth2Exception(OpenIdConstants.Errors.USER_CANCELLED)
+            throw OAuth2Exception(Errors.USER_CANCELLED)
         }.also { container ->
             clientMetadata?.vpFormats?.let {
                 container.verifyFormatSupport(it)
@@ -139,17 +140,17 @@ internal class PresentationFactory(
         } to null
     }
 
-    suspend fun createSignedIdToken(
+    suspend fun <T : RequestParameters> createSignedIdToken(
         clock: Clock,
         agentPublicKey: CryptoPublicKey,
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<T>,
     ): KmmResult<JwsSigned<IdToken>?> = catching {
         if (request.parameters.responseType?.contains(OpenIdConstants.ID_TOKEN) != true) {
             return@catching null
         }
         val nonce = request.parameters.nonce ?: run {
             Napier.w("nonce is null in ${request.parameters}")
-            throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
         val now = clock.now()
         // we'll assume jwk-thumbprint
@@ -172,15 +173,15 @@ internal class PresentationFactory(
             addX5c = false
         ).getOrElse {
             Napier.w("Could not sign id_token", it)
-            throw OAuth2Exception(OpenIdConstants.Errors.USER_CANCELLED)
+            throw OAuth2Exception(Errors.USER_CANCELLED)
         }
     }
 
     @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParameters.verifyResponseType() {
-        if (responseType == null || !responseType!!.contains(OpenIdConstants.VP_TOKEN)) {
+    private fun RequestParameters.verifyResponseType() {
+        if (responseType == null || !responseType!!.contains(VP_TOKEN)) {
             Napier.w("vp_token not requested in response_type='$responseType'")
-            throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
+            throw OAuth2Exception(Errors.INVALID_REQUEST)
         }
     }
 
@@ -193,14 +194,14 @@ internal class PresentationFactory(
         val validator = PresentationSubmissionValidator.Companion.createInstance(this).getOrThrow()
         if (!validator.isValidSubmission(credentialSubmissions.keys)) {
             Napier.w("submission requirements are not satisfied")
-            throw OAuth2Exception(OpenIdConstants.Errors.USER_CANCELLED)
+            throw OAuth2Exception(Errors.USER_CANCELLED)
         }
 
         // making sure, that all the submissions actually match the corresponding input descriptor requirements
         credentialSubmissions.forEach { submission ->
             val inputDescriptor = this.inputDescriptors.firstOrNull { it.id == submission.key } ?: run {
                 Napier.w("Invalid input descriptor id")
-                throw OAuth2Exception(OpenIdConstants.Errors.USER_CANCELLED)
+                throw OAuth2Exception(Errors.USER_CANCELLED)
             }
 
             val constraintFieldMatches = holder.evaluateInputDescriptorAgainstCredential(
@@ -223,7 +224,7 @@ internal class PresentationFactory(
                 disclosedAttributes.firstOrNull { allowedPaths.contains(it) } ?: run {
                     val keyId = constraintField.key.id?.let { " Missing field: $it" }
                     Napier.w("Input descriptor constraints not satisfied: ${inputDescriptor.id}.$keyId")
-                    throw OAuth2Exception(OpenIdConstants.Errors.USER_CANCELLED)
+                    throw OAuth2Exception(Errors.USER_CANCELLED)
                 }
             }
             // TODO: maybe we also want to validate, whether there are any redundant disclosed attributes?
@@ -236,7 +237,7 @@ internal class PresentationFactory(
         presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
             if (supportedFormats.isMissingFormatSupport(descriptor.format)) {
                 Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
-                throw OAuth2Exception(OpenIdConstants.Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
+                throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
             }
         }
 

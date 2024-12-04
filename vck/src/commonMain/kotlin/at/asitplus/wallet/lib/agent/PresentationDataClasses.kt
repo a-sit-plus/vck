@@ -23,6 +23,7 @@ import kotlinx.serialization.Serializable
 data class PresentationRequestParameters(
     val nonce: String,
     val audience: String,
+    val transactionData: Collection<ByteArray>? = null,
     /**
      * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
      * (OpenId4VP with ISO/IEC 18013-7)

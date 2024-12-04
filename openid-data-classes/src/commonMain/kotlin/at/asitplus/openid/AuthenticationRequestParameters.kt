@@ -228,7 +228,7 @@ data class AuthenticationRequestParameters(
      * `invalid_request` Authorization Response error.
      */
     @SerialName("response_uri")
-    val responseUrl: String? = null,
+    override val responseUrl: String? = null,
 
     /**
      * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`
@@ -458,31 +458,5 @@ data class AuthenticationRequestParameters(
         }.wrap()
     }
 
-    /**
-     * Reads the [OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],
-     * or by extracting the prefix from [clientId] (as specified in OpenID4VP draft 22 onwards).
-     */
-    val clientIdSchemeExtracted: OpenIdConstants.ClientIdScheme? by lazy {
-        clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(clientId) }
-    }
-
-    /**
-     * Reads the [clientId] and removes the prefix of the [clientIdSchemeExtracted],
-     * as specified in OpenID4VP draft 22 onwards.
-     * OpenID4VP states that the *full* [clientId] must be used for presentations and anything else.
-     */
-    val clientIdWithoutPrefix: String? by lazy {
-        clientId?.let { clientId ->
-            clientIdSchemeExtracted?.let { clientId.removePrefix("${it.stringRepresentation}:") }
-        }
-    }
-
-    /**
-     * Reads the [redirectUrl], or the [clientIdWithoutPrefix] if [clientIdSchemeExtracted] is
-     * [OpenIdConstants.ClientIdScheme.RedirectUri], as specified in OpenID4VP draft 22 onwards.
-     */
-    val redirectUrlExtracted: String? by lazy {
-       redirectUrl ?: (clientIdSchemeExtracted as? OpenIdConstants.ClientIdScheme.RedirectUri)?.let { clientIdWithoutPrefix }
-    }
 }
 

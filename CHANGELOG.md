@@ -7,6 +7,7 @@ Release 5.4.0:
   - OpenID4VP: Update implementation to draft 23, adding transaction data hashes to the response of the Wallet
 - Refactorings:
   - Rename `RequestOptions` to `OpenIdRequestOptions`
+  - Add `transactionData` to `PresentationRequestParameters`
   - Remove elements marked as deprecated in 5.3.0: `OidcSiopVerifier`, `OidcSiopWallet`, `Verifier.verifyPresentation()`, `OpenId4VpVerifier.validateAuthnResponseFromPost()`
 
 Release 5.3.1:

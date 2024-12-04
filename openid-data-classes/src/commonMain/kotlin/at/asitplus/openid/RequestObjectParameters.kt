@@ -38,6 +38,7 @@ data class RequestObjectParameters(
     override val nonce: String? = null
     override val clientId: String? = null
     override val redirectUrl: String? = null
+    override val responseUrl: String? = null
     override val audience: String? = null
     override val state: String? = null
     override val transactionData: Set<String>? = null
