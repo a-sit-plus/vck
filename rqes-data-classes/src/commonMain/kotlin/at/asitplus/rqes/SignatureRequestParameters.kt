@@ -7,10 +7,12 @@ import at.asitplus.openid.RequestParameters
 import at.asitplus.rqes.collection_entries.CscDocumentDigest
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
+import at.asitplus.rqes.collection_entries.TransactionData
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignatureQualifier
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
+import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
@@ -25,8 +27,9 @@ import kotlinx.serialization.json.JsonObject
  * coming from the Driving application to the wallet which starts
  * the process
  *
- * This should not be confused with the CSC-related extensions to [AuthenticationRequestParameters] which are used
- * by the wallet to communicate with the QTSP using OAuth2
+ * This should not be confused with the CSC-related extensions in
+ * [at.asitplus.openid.CscAuthenticationRequestParameters] which are used
+ * by the wallet to communicate with the QTSP using OAuth2.
  */
 @Serializable
 data class SignatureRequestParameters(
@@ -134,11 +137,20 @@ data class SignatureRequestParameters(
     /**
      * CSC: OPTIONAL
      * Arbitrary data from the signature application. It can be used to handle a
-     * transaction identifier or other application-spe cific data that may be useful for
+     * transaction identifier or other application-specific data that may be useful for
      * debugging purposes
      */
     @SerialName("clientData")
     val clientData: String?,
+
+    /**
+     * OID4VP: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed
+     * parameter set with details about the transaction that the Verifier is requesting the End-User to authorize.
+     * The Wallet MUST return an error if a request contains even one unrecognized transaction data type or transaction
+     * data not conforming to the respective type definition.
+     */
+    @SerialName("transaction_data")
+    val transactionData: Set<@Serializable(Base64URLTransactionDataSerializer::class) TransactionData>? = null,
 ) : RequestParameters {
 
     @Transient

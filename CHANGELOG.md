@@ -16,9 +16,6 @@ Release 5.2.0:
 - New class `SignatureRequestParameters`
 - Refactor `AuthenticationRequestParametersFrom` to generic sealed class `RequestParametersFrom`
 - Refactor `AuthenticationRequestParser` to open class `RequestParser`
-- SD-JWT: Validate confirmation claims correctly
-- Adapt to changes in `signum`, i.e. the classes `JwsSigned` and `JweDecrypted` are now typed to their payload
-- ISO credentials: Serialize and deserialize device signed items correctly (i.e. considering the namespace of the element)
 - Add constructor parameter `identifier` to `IssuerAgent`, to be used as the `issuer` property in issued credentials
 - Refactor extracting the audience of a verifiable presentation from an OpenID Authn Request (now uses the `client_id` or `audience` before extracting key identifiers)
 - Add `customKeyId` to `KeyMaterial` to not use the DID encoding as the identifier for keys
@@ -36,6 +33,7 @@ Release 5.2.0:
  - Add extension functions to `JwsService` to create JWTs for OAuth 2.0 Attestation-Based Client Authentication
  - New artefact `vck-openid-ktor` implements a ktor client for OpenID for Verifiable Credential Issuance and OpenID for Verifiable Presentations
  - Remove `scopePresentationDefinitionRetriever` from `OidcSiopWallet` to keep implementation simple
+ - OpenID4VP: Update implementation to draft 23, adding transaction data hashes to the response of the Wallet
 
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact

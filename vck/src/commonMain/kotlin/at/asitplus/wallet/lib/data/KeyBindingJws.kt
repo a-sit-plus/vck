@@ -16,13 +16,31 @@ data class KeyBindingJws(
     @SerialName("iat")
     @Serializable(with = InstantLongSerializer::class)
     val issuedAt: Instant? = null,
+
     @SerialName("aud")
     val audience: String,
+
     @SerialName("nonce")
     val challenge: String,
+
     @SerialName("sd_hash")
     @Serializable(with = ByteArrayBase64UrlSerializer::class)
     val sdHash: ByteArray,
+
+    /**
+     * OID4VP: Array of hashes, where each hash is calculated using a hash function over the strings received in the
+     * `transaction_data` request parameter (see `SignatureRequestParameters`). Each hash value ensures the integrity
+     * of, and maps to, the respective transaction data object.
+     */
+    @SerialName("transaction_data_hashes")
+    val transactionDataHashes: Set<@Serializable(ByteArrayBase64UrlSerializer::class) ByteArray>? = null,
+
+    /**
+     * OID4VP: REQUIRED when this parameter was present in the `transaction_data` request parameter. String representing
+     * the hash algorithm identifier used to calculate hashes in [transactionDataHashes] response parameter.
+     */
+    @SerialName("transaction_data_hashes_alg")
+    val transactionDataHashesAlgorithm: String? = null,
 ) {
 
     fun serialize() = vckJsonSerializer.encodeToString(this)
@@ -37,6 +55,8 @@ data class KeyBindingJws(
         if (audience != other.audience) return false
         if (challenge != other.challenge) return false
         if (!sdHash.contentEquals(other.sdHash)) return false
+        if (transactionDataHashes != other.transactionDataHashes) return false
+        if (transactionDataHashesAlgorithm != other.transactionDataHashesAlgorithm) return false
 
         return true
     }
@@ -46,6 +66,8 @@ data class KeyBindingJws(
         result = 31 * result + audience.hashCode()
         result = 31 * result + challenge.hashCode()
         result = 31 * result + sdHash.contentHashCode()
+        result = 31 * result + (transactionDataHashes?.hashCode() ?: 0)
+        result = 31 * result + (transactionDataHashesAlgorithm?.hashCode() ?: 0)
         return result
     }
 
