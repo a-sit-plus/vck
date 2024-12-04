@@ -22,11 +22,10 @@ object Base64URLTransactionDataSerializer : KSerializer<TransactionData> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("Base64URLTransactionDataSerializer", PrimitiveKind.STRING)
 
-    override fun deserialize(decoder: Decoder): TransactionData {
-        val jsonString = decoder.decodeString()
-        val base64URLString = jsonString.decodeToByteArray(Base64UrlStrict).decodeToString()
-        return rdcJsonSerializer.decodeFromString<TransactionData>(base64URLString)
-    }
+    override fun deserialize(decoder: Decoder): TransactionData =
+        rdcJsonSerializer.decodeFromString<TransactionData>(
+            decoder.decodeString().decodeToByteArray(Base64UrlStrict).decodeToString()
+        )
 
     override fun serialize(encoder: Encoder, value: TransactionData) {
         val jsonString = rdcJsonSerializer.encodeToString<TransactionData>(value)
