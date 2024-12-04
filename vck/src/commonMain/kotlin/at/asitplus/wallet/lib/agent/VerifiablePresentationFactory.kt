@@ -15,6 +15,7 @@ import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
+import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.json.JsonElement
 
 class VerifiablePresentationFactory(
@@ -57,6 +58,7 @@ class VerifiablePresentationFactory(
     ): Holder.CreatePresentationResult.DeviceResponse {
         val deviceSignature = coseService.createSignedCose(
             payload = challenge.encodeToByteArray(),
+            serializer = ByteArraySerializer(),
             addKeyId = false
         ).getOrElse {
             Napier.w("Could not create DeviceAuth for presentation", it)

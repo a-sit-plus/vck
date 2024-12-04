@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
@@ -45,8 +46,8 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementIdentifier = elementId,
             elementValue = Random.nextBytes(32),
         )
-        val protectedHeader = ByteStringWrapper(CoseHeader(), CoseHeader().serialize())
-        val issuerAuth = CoseSigned<MobileSecurityObject>(protectedHeader, null, null, byteArrayOf())
+        val protectedHeader = CoseHeader()
+        val issuerAuth = CoseSigned<MobileSecurityObject>(protectedHeader, null, null, CryptoSignature.RSAorHMAC(byteArrayOf()))
         val doc = Document(
             docType = uuid4().toString(),
             issuerSigned = IssuerSigned.fromIssuerSignedItems(

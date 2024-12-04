@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.catching
+import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
@@ -9,6 +10,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
+import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.maps.shouldNotBeEmpty
@@ -47,10 +49,10 @@ class Tag24SerializationTest : FreeSpec({
             ),
             deviceAuth = DeviceAuth(
                 deviceSignature = CoseSigned<ByteArray>(
-                    protectedHeader = ByteStringWrapper(CoseHeader()),
+                    protectedHeader = CoseHeader(),
                     unprotectedHeader = null,
                     payload = byteArrayOf(),
-                    rawSignature = byteArrayOf()
+                    signature = CryptoSignature.RSAorHMAC(byteArrayOf())
                 )
 
             )
@@ -98,11 +100,13 @@ class Tag24SerializationTest : FreeSpec({
         ).getOrThrow().shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
         issuedCredential.issuerSigned.namespaces!!.shouldNotBeEmpty()
-        val numberOfClaims = issuedCredential.issuerSigned.namespaces!!.entries.fold(0) { acc, entry ->
+        val numberOfClaims = issuedCredential.issuerSigned.namespaces.entries.fold(0) { acc, entry ->
             acc + entry.value.entries.size
         }
         val serialized = issuedCredential.issuerSigned.serialize().encodeToString(Base16(true))
-        "D818".toRegex().findAll(serialized).toList().shouldHaveSize(numberOfClaims + 1)
+        withClue(serialized) {
+            "D818".toRegex().findAll(serialized).toList().shouldHaveSize(numberOfClaims + 1)
+        }
         // add 1 for MSO in IssuerAuth
     }
 
@@ -116,18 +120,18 @@ class Tag24SerializationTest : FreeSpec({
             validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
         )
         val serializedMso = mso.serializeForIssuerAuth()
-        val input = CoseSigned<ByteStringWrapper<MobileSecurityObject>>(
-            protectedHeader = ByteStringWrapper(CoseHeader()),
+        val input = CoseSigned<MobileSecurityObject>(
+            protectedHeader = CoseHeader(),
             unprotectedHeader = null,
-            payload = serializedMso,
-            rawSignature = byteArrayOf()
+            payload = mso,
+            signature = CryptoSignature.RSAorHMAC(byteArrayOf())
         )
 
         val serialized = vckCborSerializer.encodeToByteArray(input)
 
         serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         serializedMso.encodeToString(Base16(true)).shouldStartWith("D818")
-        vckCborSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(serialized) shouldBe input
+        vckCborSerializer.decodeFromByteArray<CoseSigned<MobileSecurityObject>>(serialized) shouldBe input
         MobileSecurityObject.deserializeFromIssuerAuth(serializedMso).getOrThrow() shouldBe mso
     }
 
@@ -167,10 +171,10 @@ private fun deviceKeyInfo() =
     DeviceKeyInfo(CoseKey(CoseKeyType.EC2, keyParams = CoseKeyParams.EcYBoolParams(CoseEllipticCurve.P256)))
 
 private fun issuerAuth() = CoseSigned<MobileSecurityObject>(
-    protectedHeader = ByteStringWrapper(CoseHeader()),
+    protectedHeader = CoseHeader(),
     unprotectedHeader = null,
-    payload = byteArrayOf(),
-    rawSignature = byteArrayOf()
+    payload = null,
+    signature = CryptoSignature.RSAorHMAC(byteArrayOf())
 )
 
 private fun issuerSignedItem() = IssuerSignedItem(0u, Random.nextBytes(16), "identifier", "value")
