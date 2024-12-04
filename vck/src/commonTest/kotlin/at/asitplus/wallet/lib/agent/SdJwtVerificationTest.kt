@@ -129,7 +129,7 @@ class SdJwtVerificationTest : FreeSpec({
               }
             }
         """.trimIndent()
-        println(reconstructed)
+
         reconstructed shouldBe vckJsonSerializer.parseToJsonElement(expected)
     }
 

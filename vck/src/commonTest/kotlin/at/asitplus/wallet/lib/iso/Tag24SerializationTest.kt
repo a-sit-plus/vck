@@ -84,7 +84,6 @@ class Tag24SerializationTest : FreeSpec({
         )
 
         val serialized = vckCborSerializer.encodeToByteArray(input)
-            .also{println(it.encodeToString(Base16Strict))}
 
         serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         vckCborSerializer.decodeFromByteArray<IssuerSigned>(serialized) shouldBe input
