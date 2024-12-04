@@ -22,6 +22,7 @@ data class QesInputDescriptor(
     override val format: FormatHolder? = null,
     @SerialName("constraints")
     override val constraints: Constraint? = null,
+    // TODO Is this now obsoleted by OpenID4VP draft 23?
     @SerialName("transaction_data")
     val transactionData: List<@Serializable(Base64URLTransactionDataSerializer::class) TransactionData>,
 ) : InputDescriptor

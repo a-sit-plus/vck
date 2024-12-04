@@ -133,7 +133,10 @@ class OidcSiopWallet(
      * [AuthenticationResponseResult].
      */
     suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
-        catching { requestParser.parseRequestParameters(input).getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters> }
+        catching {
+            requestParser.parseRequestParameters(input)
+                .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
+        }
 
     /**
      * Pass in the deserialized [AuthenticationRequestParameters], which were either encoded as query params,
@@ -210,15 +213,18 @@ class OidcSiopWallet(
      * @param preparationState The preparation state from [startAuthorizationResponsePreparation]
      * @param inputDescriptorSubmissions Map from input descriptor ids to [CredentialSubmission]
      */
-    suspend fun finalizeAuthorizationResponseParameters(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+    suspend fun <T : RequestParameters> finalizeAuthorizationResponseParameters(
+        request: RequestParametersFrom<T>,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponse> = preparationState.catching {
         val certKey = (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
             ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
-        val audience = request.extractAudience(clientJsonWebKeySet)
+        val audience = request.parameters.extractAudience(clientJsonWebKeySet)
+        val nonce = request.parameters.nonce
+            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+                .also { Napier.w("nonce is null in ${request.parameters}") }
         val presentationFactory = PresentationFactory(jwsService)
         val idToken = presentationFactory.createSignedIdToken(
             clock = clock,
@@ -229,8 +235,9 @@ class OidcSiopWallet(
         val resultContainer = presentationDefinition?.let {
             presentationFactory.createPresentationExchangePresentation(
                 holder = holder,
-                request = request,
+                request = request.parameters,
                 audience = audience,
+                nonce = nonce,
                 presentationDefinition = presentationDefinition,
                 clientMetadata = clientMetadata,
                 inputDescriptorSubmissions = inputDescriptorSubmissions
@@ -249,10 +256,10 @@ class OidcSiopWallet(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun RequestParametersFrom<AuthenticationRequestParameters>.extractAudience(
+    private fun RequestParameters.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
-    ) = parameters.clientId
-        ?: parameters.audience
+    ) = this.clientId
+        ?: this.audience
         ?: clientJsonWebKeySet?.keys?.firstOrNull()
             ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }
         ?: throw OAuth2Exception(Errors.INVALID_REQUEST)

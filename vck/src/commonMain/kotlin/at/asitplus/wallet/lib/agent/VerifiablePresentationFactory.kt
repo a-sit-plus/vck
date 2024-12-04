@@ -28,6 +28,7 @@ class VerifiablePresentationFactory(
         audienceId: String,
         credential: SubjectCredentialStore.StoreEntry,
         disclosedAttributes: Collection<NormalizedJsonPath>,
+        transactionData: Collection<ByteArray>? = null,
     ): KmmResult<Holder.CreatePresentationResult> = runCatching {
         when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> createVcPresentation(
@@ -41,6 +42,7 @@ class VerifiablePresentationFactory(
                 audienceId = audienceId,
                 validSdJwtCredential = credential,
                 requestedClaims = disclosedAttributes,
+                transactionData = transactionData,
             )
 
             is SubjectCredentialStore.StoreEntry.Iso -> createIsoPresentation(
@@ -54,7 +56,7 @@ class VerifiablePresentationFactory(
     private suspend fun createIsoPresentation(
         challenge: String,
         credential: SubjectCredentialStore.StoreEntry.Iso,
-        requestedClaims: Collection<NormalizedJsonPath>
+        requestedClaims: Collection<NormalizedJsonPath>,
     ): Holder.CreatePresentationResult.DeviceResponse {
         val deviceSignature = coseService.createSignedCose(
             payload = challenge.encodeToByteArray(),
@@ -129,6 +131,7 @@ class VerifiablePresentationFactory(
         challenge: String,
         validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
         requestedClaims: Collection<NormalizedJsonPath>,
+        transactionData: Collection<ByteArray>? = null,
     ): Holder.CreatePresentationResult.SdJwt {
         val filteredDisclosures = requestedClaims
             .flatMap { it.segments }
@@ -138,12 +141,14 @@ class VerifiablePresentationFactory(
             }.toSet()
 
         val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
-        val keyBinding = createKeyBindingJws(audienceId, challenge, issuerJwtPlusDisclosures)
+        val keyBinding = createKeyBindingJws(audienceId, challenge, issuerJwtPlusDisclosures, transactionData)
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
-        val issuerSignedJws = JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer).getOrElse {
-            Napier.w("Could not re-create JWS from stored SD-JWT", it)
-            throw PresentationException(it)
-        }
+        val issuerSignedJws =
+            JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer)
+                .getOrElse {
+                    Napier.w("Could not re-create JWS from stored SD-JWT", it)
+                    throw PresentationException(it)
+                }
         val sdJwt = SdJwtSigned.serializePresentation(issuerSignedJws, filteredDisclosures, keyBinding)
         return Holder.CreatePresentationResult.SdJwt(sdJwt)
     }
@@ -152,6 +157,7 @@ class VerifiablePresentationFactory(
         audienceId: String,
         challenge: String,
         issuerJwtPlusDisclosures: String,
+        transactionData: Collection<ByteArray>?,
     ): JwsSigned<KeyBindingJws> = jwsService.createSignedJwsAddingParams(
         header = JwsHeader(
             type = JwsContentTypeConstants.KB_JWT,
@@ -162,6 +168,8 @@ class VerifiablePresentationFactory(
             audience = audienceId,
             challenge = challenge,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
+            transactionDataHashes = transactionData?.map { it.sha256() }?.toSet(),
+            transactionDataHashesAlgorithm = transactionData?.let { "sha-256" }
         ),
         serializer = KeyBindingJws.serializer(),
         addKeyId = false,

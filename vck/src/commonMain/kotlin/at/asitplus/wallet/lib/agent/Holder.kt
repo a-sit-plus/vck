@@ -114,11 +114,11 @@ interface Holder {
     suspend fun createPresentation(
         challenge: String,
         audienceId: String,
+        transactionData: Collection<ByteArray>? = null,
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
     ): KmmResult<PresentationResponseParameters>
-
 
     /**
      * Creates [PresentationResponseParameters] (that is a list of [CreatePresentationResult] and a
@@ -134,6 +134,7 @@ interface Holder {
     suspend fun createPresentation(
         challenge: String,
         audienceId: String,
+        transactionData: Collection<ByteArray>? = null,
         presentationDefinitionId: String?,
         presentationSubmissionSelection: Map<String, CredentialSubmission>,
     ): KmmResult<PresentationResponseParameters>

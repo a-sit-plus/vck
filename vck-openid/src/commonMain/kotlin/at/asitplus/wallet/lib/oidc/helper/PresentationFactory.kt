@@ -5,12 +5,12 @@ import at.asitplus.catching
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.IdToken
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -30,17 +30,14 @@ internal class PresentationFactory(
 ) {
     suspend fun createPresentationExchangePresentation(
         holder: Holder,
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParameters,
+        nonce: String,
         audience: String,
         presentationDefinition: PresentationDefinition,
         clientMetadata: RelyingPartyMetadata?,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<Holder.PresentationResponseParameters> = catching {
-        request.parameters.verifyResponseType()
-        val nonce = request.parameters.nonce ?: run {
-            Napier.w("nonce is null in ${request.parameters}")
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
-        }
+        request.verifyResponseType()
         val credentialSubmissions = inputDescriptorSubmissions
             ?: holder.matchInputDescriptorsAgainstCredentialStore(
                 inputDescriptors = presentationDefinition.inputDescriptors,
@@ -56,6 +53,8 @@ internal class PresentationFactory(
         holder.createPresentation(
             challenge = nonce,
             audienceId = audience,
+            // TODO Exact encoding is not specified
+            transactionData = request.transactionData?.map { it.encodeToByteArray() },
             presentationDefinitionId = presentationDefinition.id,
             presentationSubmissionSelection = credentialSubmissions,
         ).getOrElse {
@@ -69,10 +68,10 @@ internal class PresentationFactory(
     }
 
 
-    suspend fun createSignedIdToken(
+    suspend fun <T : RequestParameters> createSignedIdToken(
         clock: Clock,
         agentPublicKey: CryptoPublicKey,
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<T>,
     ): KmmResult<JwsSigned<IdToken>?> = catching {
         if (request.parameters.responseType?.contains(ID_TOKEN) != true) {
             return@catching null
@@ -105,7 +104,7 @@ internal class PresentationFactory(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParameters.verifyResponseType() {
+    private fun RequestParameters.verifyResponseType() {
         if (responseType == null || !responseType!!.contains(VP_TOKEN)) {
             Napier.w("vp_token not requested in response_type='$responseType'")
             throw OAuth2Exception(Errors.INVALID_REQUEST)

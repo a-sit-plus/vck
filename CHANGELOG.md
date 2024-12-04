@@ -33,7 +33,8 @@ Release 5.2.0:
  - Add extension functions to `JwsService` to create JWTs for OAuth 2.0 Attestation-Based Client Authentication
  - New artefact `vck-openid-ktor` implements a ktor client for OpenID for Verifiable Credential Issuance and OpenID for Verifiable Presentations
  - Remove `scopePresentationDefinitionRetriever` from `OidcSiopWallet` to keep implementation simple
- - OpenID4VP: Update implementation to draft 23, adding transaction data hashes to the response of the Wallet
+ - OpenID4VP: Update implementation to draft 23
+    - Add transaction data hashes to the response of the Wallet (at least for SD-JWT)
 
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact

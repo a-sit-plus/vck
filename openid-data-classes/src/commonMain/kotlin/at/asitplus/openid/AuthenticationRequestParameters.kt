@@ -26,13 +26,13 @@ data class AuthenticationRequestParameters(
      * Optional when JAR (RFC9101) is used.
      */
     @SerialName("response_type")
-    val responseType: String? = null,
+    override val responseType: String? = null,
 
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      */
     @SerialName("client_id")
-    val clientId: String? = null,
+    override val clientId: String? = null,
 
     /**
      * OIDC: REQUIRED. Redirection URI to which the response will be sent. This URI MUST exactly match one of the
@@ -42,7 +42,7 @@ data class AuthenticationRequestParameters(
      * Optional when JAR (RFC9101) is used.
      */
     @SerialName("redirect_uri")
-    val redirectUrl: String? = null,
+    override val redirectUrl: String? = null,
 
     /**
      * OIDC: REQUIRED. OpenID Connect requests MUST contain the openid scope value. If the openid scope value is not
@@ -59,7 +59,7 @@ data class AuthenticationRequestParameters(
      * parameter with a browser cookie.
      */
     @SerialName("state")
-    val state: String? = null,
+    override val state: String? = null,
 
     /**
      * OIDC: OPTIONAL. String value used to associate a Client session with an ID Token, and to mitigate replay attacks.
@@ -67,7 +67,7 @@ data class AuthenticationRequestParameters(
      * be present in the nonce values used to prevent attackers from guessing values.
      */
     @SerialName("nonce")
-    val nonce: String? = null,
+    override val nonce: String? = null,
 
     /**
      * OIDC: OPTIONAL. This parameter is used to request that specific Claims be returned. The value is a JSON object
@@ -221,7 +221,7 @@ data class AuthenticationRequestParameters(
      * value of `aud` should be the value of the authorization server (AS) `issuer`, as defined in RFC 8414.
      */
     @SerialName("aud")
-    val audience: String? = null,
+    override val audience: String? = null,
 
     /**
      * OAuth 2.0 JAR: If signed, the Authorization Request Object SHOULD contain the Claims `iss` (issuer) and `aud`
@@ -261,6 +261,7 @@ data class AuthenticationRequestParameters(
 ) : RequestParameters {
 
     fun serialize() = odcJsonSerializer.encodeToString(this)
+    override val transactionData: Set<String>? = null
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {

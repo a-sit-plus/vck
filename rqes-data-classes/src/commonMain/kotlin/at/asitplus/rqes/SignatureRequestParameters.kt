@@ -12,11 +12,12 @@ import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignatureQualifier
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
-import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -44,13 +45,13 @@ data class SignatureRequestParameters(
      * Optional when JAR (RFC9101) is used.
      */
     @SerialName("response_type")
-    val responseType: String,
+    override val responseType: String,
 
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      */
     @SerialName("client_id")
-    val clientId: String,
+    override val clientId: String,
 
     /**
      * OID4VP: OPTIONAL. A string identifying the scheme of the value in the `client_id` Authorization Request parameter
@@ -91,7 +92,7 @@ data class SignatureRequestParameters(
      * be present in the nonce values used to prevent attackers from guessing values.
      */
     @SerialName("nonce")
-    val nonce: String,
+    override val nonce: String,
 
     /**
      * OIDC: RECOMMENDED. Opaque value used to maintain state between the request and the callback. Typically,
@@ -99,7 +100,7 @@ data class SignatureRequestParameters(
      * parameter with a browser cookie.
      */
     @SerialName("state")
-    val state: String? = null,
+    override val state: String? = null,
 
     /**
      * UC5 Draft REQUIRED.
@@ -150,11 +151,16 @@ data class SignatureRequestParameters(
      * data not conforming to the respective type definition.
      */
     @SerialName("transaction_data")
-    val transactionData: Set<@Serializable(Base64URLTransactionDataSerializer::class) TransactionData>? = null,
+    override val transactionData: Set<String>? = null,
 ) : RequestParameters {
 
     @Transient
     val hashAlgorithm: Digest = hashAlgorithmOid.getHashAlgorithm()
+
+    @Transient
+    val transactionDataTyped: Set<TransactionData>? = transactionData?.map {
+        rdcJsonSerializer.decodeFromString<TransactionData>(it.decodeToByteArray(Base64UrlStrict).decodeToString())
+    }?.toSet()
 
     fun toAuthorizationDetails(): AuthorizationDetails =
         CscAuthorizationDetails(
@@ -183,4 +189,7 @@ data class SignatureRequestParameters(
             signedProps = signedProps,
             signedEnvelopeProperty = signedEnvelopeProperty
         )
+
+    override val redirectUrl: String? = null
+    override val audience: String? = null
 }

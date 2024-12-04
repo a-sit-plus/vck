@@ -151,6 +151,7 @@ class HolderAgent(
     override suspend fun createPresentation(
         challenge: String,
         audienceId: String,
+        transactionData: Collection<ByteArray>?,
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
@@ -178,6 +179,7 @@ class HolderAgent(
         createPresentation(
             challenge = challenge,
             audienceId = audienceId,
+            transactionData = transactionData,
             presentationDefinitionId = presentationDefinition.id,
             presentationSubmissionSelection = submittedCredentials,
         ).getOrThrow()
@@ -186,6 +188,7 @@ class HolderAgent(
     override suspend fun createPresentation(
         challenge: String,
         audienceId: String,
+        transactionData: Collection<ByteArray>?,
         presentationDefinitionId: String?,
         presentationSubmissionSelection: Map<String, CredentialSubmission>,
     ): KmmResult<Holder.PresentationResponseParameters> = runCatching {
@@ -203,6 +206,7 @@ class HolderAgent(
                 audienceId = audienceId,
                 credential = credential,
                 disclosedAttributes = disclosedAttributes,
+                transactionData = transactionData,
             ).getOrThrow()
         }
 

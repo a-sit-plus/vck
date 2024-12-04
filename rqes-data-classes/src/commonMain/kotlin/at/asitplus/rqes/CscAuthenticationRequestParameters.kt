@@ -31,13 +31,13 @@ data class CscAuthenticationRequestParameters(
      * Optional when JAR (RFC9101) is used.
      */
     @SerialName("response_type")
-    val responseType: String,
+    override val responseType: String,
 
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      */
     @SerialName("client_id")
-    val clientId: String,
+    override val clientId: String,
 
     /**
      * OIDC: REQUIRED. Redirection URI to which the response will be sent. This URI MUST exactly match one of the
@@ -47,7 +47,7 @@ data class CscAuthenticationRequestParameters(
      * Optional when JAR (RFC9101) is used.
      */
     @SerialName("redirect_uri")
-    val redirectUrl: String? = null,
+    override val redirectUrl: String? = null,
 
     /**
      * OIDC: REQUIRED. OpenID Connect requests MUST contain the openid scope value. If the openid scope value is not
@@ -64,7 +64,7 @@ data class CscAuthenticationRequestParameters(
      * parameter with a browser cookie.
      */
     @SerialName("state")
-    val state: String? = null,
+    override val state: String? = null,
 
     /**
      * OAuth 2.0 JAR: REQUIRED unless request is specified. The absolute URI, as defined by RFC3986, that is the
@@ -229,6 +229,10 @@ data class CscAuthenticationRequestParameters(
         result = 31 * result + (clientData?.hashCode() ?: 0)
         return result
     }
+
+    override val nonce: String? = null
+    override val audience: String? = null
+    override val transactionData: Set<String>? = null
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
