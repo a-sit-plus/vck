@@ -127,7 +127,7 @@ class OidvciCodeFlowTest : FreeSpec({
         credential.format shouldBe CredentialFormatEnum.JWT_VC
         val serializedCredential = credential.credential.shouldNotBeNull()
 
-        JwsSigned.deserialize<VerifiableCredentialJws>(serializedCredential, vckJsonSerializer).getOrThrow()
+        JwsSigned.deserialize<VerifiableCredentialJws>(VerifiableCredentialJws.serializer(), serializedCredential, vckJsonSerializer).getOrThrow()
             .payload.vc.credentialSubject.shouldBeInstanceOf<at.asitplus.wallet.lib.data.AtomicAttribute2023>()
     }
 
@@ -206,7 +206,7 @@ class OidvciCodeFlowTest : FreeSpec({
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential.shouldNotBeNull()
 
-        val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(serializedCredential.substringBefore("~"))
+        val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(VerifiableCredentialSdJwt.serializer(), serializedCredential.substringBefore("~"))
             .getOrThrow().payload
 
         sdJwt.disclosureDigests
@@ -226,7 +226,7 @@ class OidvciCodeFlowTest : FreeSpec({
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential.shouldNotBeNull()
 
-        val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(serializedCredential.substringBefore("~"))
+        val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(VerifiableCredentialSdJwt.serializer(), serializedCredential.substringBefore("~"))
             .getOrThrow().payload
 
         sdJwt.disclosureDigests
@@ -243,7 +243,7 @@ class OidvciCodeFlowTest : FreeSpec({
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credential.shouldNotBeNull()
 
-        val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(serializedCredential.substringBefore("~"))
+        val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(VerifiableCredentialSdJwt.serializer(), serializedCredential.substringBefore("~"))
             .getOrThrow().payload
 
         sdJwt.disclosureDigests

@@ -42,7 +42,7 @@ class VerifierAgent(
                 Verifier.VerifyPresentationResult.InvalidStructure(input)
             }
         }
-        val jwsSigned = JwsSigned.deserialize<VerifiablePresentationJws>(input, vckJsonSerializer).getOrNull()
+        val jwsSigned = JwsSigned.deserialize<VerifiablePresentationJws>(VerifiablePresentationJws.serializer(), input, vckJsonSerializer).getOrNull()
         if (jwsSigned != null) {
             return runCatching {
                 validator.verifyVpJws(input, challenge, identifier)

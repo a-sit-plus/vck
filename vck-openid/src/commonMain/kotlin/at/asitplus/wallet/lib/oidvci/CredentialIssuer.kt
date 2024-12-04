@@ -196,7 +196,7 @@ class CredentialIssuer(
     }
 
     private suspend fun String.validateJwtProof(): CryptoPublicKey {
-        val jwsSigned = JwsSigned.deserialize<JsonWebToken>(this, vckJsonSerializer).getOrNull()
+        val jwsSigned = JwsSigned.deserialize<JsonWebToken>(JsonWebToken.serializer(), this, vckJsonSerializer).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid proof: $this") }
         val jwt = jwsSigned.payload

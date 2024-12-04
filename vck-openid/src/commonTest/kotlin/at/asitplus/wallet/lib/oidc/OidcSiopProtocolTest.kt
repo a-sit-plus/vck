@@ -151,7 +151,7 @@ class OidcSiopProtocolTest : FreeSpec({
         authnRequest.clientId shouldBe clientId
         val jar = authnRequest.request
             .shouldNotBeNull()
-        val jwsObject = JwsSigned.deserialize<AuthenticationRequestParameters>(jar, vckJsonSerializer).getOrThrow()
+        val jwsObject = JwsSigned.deserialize<AuthenticationRequestParameters>(AuthenticationRequestParameters.serializer(), jar, vckJsonSerializer).getOrThrow()
         DefaultVerifierJwsService().verifyJwsObject(jwsObject).shouldBeTrue()
 
         val authnResponse = holderSiop.createAuthnResponse(jar).getOrThrow()
@@ -195,7 +195,7 @@ class OidcSiopProtocolTest : FreeSpec({
         authnResponse.url.shouldBe(clientId)
         authnResponse.params.shouldHaveSize(2)
         val jarmResponse = authnResponse.params.entries.first { it.key == "response" }.value
-        val jwsObject = JwsSigned.deserialize<AuthenticationResponseParameters>(jarmResponse).getOrThrow()
+        val jwsObject = JwsSigned.deserialize<AuthenticationResponseParameters>(AuthenticationResponseParameters.serializer(), jarmResponse).getOrThrow()
         DefaultVerifierJwsService().verifyJwsObject(jwsObject).shouldBeTrue()
 
         val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
@@ -446,7 +446,7 @@ private suspend fun buildAttestationJwt(
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
     object : RequestObjectJwsVerifier {
         override fun invoke(jws: JwsSigned<RequestParameters>): Boolean {
-            val attestationJwt = jws.header.attestationJwt?.let { JwsSigned.deserialize<JsonWebToken>(it).getOrThrow() }
+            val attestationJwt = jws.header.attestationJwt?.let { JwsSigned.deserialize<JsonWebToken>(JsonWebToken.serializer(), it).getOrThrow() }
                 ?: return false
             val verifierJwsService = DefaultVerifierJwsService()
             if (!verifierJwsService.verifyJws(attestationJwt, trustedKey))

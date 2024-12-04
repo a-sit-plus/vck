@@ -14,8 +14,23 @@ import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
-import at.asitplus.wallet.lib.data.*
-import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.RevocationListSubject
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.wallet.lib.iso.ValueDigestList
+import at.asitplus.wallet.lib.iso.sha256
+import at.asitplus.wallet.lib.iso.wrapInCborTag
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
@@ -60,10 +75,12 @@ class Validator(
      */
     fun setRevocationList(it: String): Boolean {
         Napier.d("setRevocationList: Loading $it")
-        val jws = JwsSigned.deserialize<VerifiableCredentialJws>(it, vckJsonSerializer).getOrElse {
-            Napier.w("Revocation List: Could not parse JWS", it)
-            return false
-        }
+        val jws =
+            JwsSigned.deserialize<VerifiableCredentialJws>(VerifiableCredentialJws.serializer(), it, vckJsonSerializer)
+                .getOrElse {
+                    Napier.w("Revocation List: Could not parse JWS", it)
+                    return false
+                }
         if (!verifierJwsService.verifyJwsObject(jws)) {
             Napier.w("Revocation List: Signature invalid")
             return false
@@ -146,10 +163,14 @@ class Validator(
     fun verifyVpJws(
         input: String,
         challenge: String,
-        clientId: String
+        clientId: String,
     ): Verifier.VerifyPresentationResult {
         Napier.d("Verifying VP $input")
-        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(input, vckJsonSerializer).getOrElse {
+        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(
+            VerifiablePresentationJws.serializer(),
+            input,
+            vckJsonSerializer
+        ).getOrElse {
             Napier.w("VP: Could not parse JWS", it)
             throw IllegalArgumentException(it)
         }
@@ -194,7 +215,7 @@ class Validator(
     fun verifyVpSdJwt(
         input: String,
         challenge: String,
-        clientId: String
+        clientId: String,
     ): Verifier.VerifyPresentationResult {
         Napier.d("verifyVpSdJwt: '$input', '$challenge', '$clientId'")
         val sdJwtResult = verifySdJwt(input, null)
@@ -244,7 +265,7 @@ class Validator(
 
     private fun VerifiableCredentialSdJwt.verifyKeyBinding(
         jwsHeader: JwsHeader,
-        keyBindingSigned: JwsSigned<KeyBindingJws>
+        keyBindingSigned: JwsSigned<KeyBindingJws>,
     ): Boolean =
         if (confirmationClaim != null) {
             verifierJwsService.verifyConfirmationClaim(this.confirmationClaim, keyBindingSigned)
@@ -300,7 +321,8 @@ class Validator(
             throw IllegalArgumentException("issuerAuth")
         }
 
-        val mso: MobileSecurityObject? = issuerSigned.issuerAuth.getTypedPayload(MobileSecurityObject.serializer()).onFailure {
+        val mso: MobileSecurityObject? =
+            issuerSigned.issuerAuth.getTypedPayload(MobileSecurityObject.serializer()).onFailure {
                 throw IllegalArgumentException("mso", it)
                 Napier.w("MSO could not be decoded", it)
             }.getOrNull()?.value
@@ -371,7 +393,11 @@ class Validator(
      */
     fun verifyVcJws(input: String, publicKey: CryptoPublicKey?): Verifier.VerifyCredentialResult {
         Napier.d("Verifying VC-JWS $input")
-        val jws = JwsSigned.deserialize<VerifiableCredentialJws>(input, vckJsonSerializer).getOrElse {
+        val jws = JwsSigned.deserialize<VerifiableCredentialJws>(
+            VerifiableCredentialJws.serializer(),
+            input,
+            vckJsonSerializer
+        ).getOrElse {
             Napier.w("VC: Could not parse JWS", it)
             return Verifier.VerifyCredentialResult.InvalidStructure(input)
         }

@@ -193,7 +193,7 @@ private suspend fun createSdJwtPresentation(
     val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
     val keyBinding = createKeyBindingJws(jwsService, audienceId, challenge, issuerJwtPlusDisclosures)
     val sdJwtSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
-    val jwsFromIssuer = JwsSigned.deserialize<VerifiableCredentialSdJwt>(sdJwtSerialized).getOrElse {
+    val jwsFromIssuer = JwsSigned.deserialize<VerifiableCredentialSdJwt>(VerifiableCredentialSdJwt.serializer(), sdJwtSerialized).getOrElse {
         Napier.w("Could not re-create JWS from stored SD-JWT", it)
         throw PresentationException(it)
     }

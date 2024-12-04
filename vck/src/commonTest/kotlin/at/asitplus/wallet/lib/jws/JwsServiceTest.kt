@@ -45,7 +45,7 @@ class JwsServiceTest : FreeSpec({
             jwsService.createSignedJwt(JwsContentTypeConstants.JWT, payload, ByteArraySerializer()).getOrThrow()
                 .serialize()
 
-        val parsed = JwsSigned.deserialize<ByteArray>(signed).getOrThrow()
+        val parsed = JwsSigned.deserialize<ByteArray>(ByteArraySerializer(), signed).getOrThrow()
         parsed.serialize() shouldBe signed
         parsed.payload shouldBe payload
 

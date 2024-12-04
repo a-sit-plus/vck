@@ -138,7 +138,7 @@ class VerifiablePresentationFactory(
         val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
         val keyBinding = createKeyBindingJws(audienceId, challenge, issuerJwtPlusDisclosures)
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
-        val issuerSignedJws = JwsSigned.deserialize<JsonElement>(issuerSignedJwsSerialized, vckJsonSerializer).getOrElse {
+        val issuerSignedJws = JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer).getOrElse {
             Napier.w("Could not re-create JWS from stored SD-JWT", it)
             throw PresentationException(it)
         }
