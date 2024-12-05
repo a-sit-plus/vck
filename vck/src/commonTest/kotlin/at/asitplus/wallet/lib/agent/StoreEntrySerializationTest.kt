@@ -6,6 +6,7 @@ import at.asitplus.wallet.lib.iso.CborCredentialSerializer
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToString
 
@@ -66,7 +67,10 @@ class StoreEntrySerializationTest : FreeSpec({
 
     "serialize stored ISO mDoc" {
         CborCredentialSerializer.register(
-            mapOf(ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT to ByteArraySerializer()),
+            mapOf(
+                ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT to ByteArraySerializer(),
+                ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH to LocalDate.serializer(),
+            ),
             ConstantIndex.AtomicAttribute2023.isoNamespace
         )
         val credentials = issuer.issueCredential(
