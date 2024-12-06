@@ -272,7 +272,7 @@ class HolderAgent(
         }.filter {
             // iso credentials now have their doctype encoded into the id
             when (it) {
-                is SubjectCredentialStore.StoreEntry.Iso -> it.scheme.isoDocType == inputDescriptor.id
+                is SubjectCredentialStore.StoreEntry.Iso -> it.scheme?.isoDocType == inputDescriptor.id
                 else -> true
             }
         }.firstNotNullOf {

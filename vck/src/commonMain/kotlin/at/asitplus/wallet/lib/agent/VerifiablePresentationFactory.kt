@@ -106,7 +106,7 @@ class VerifiablePresentationFactory(
                 version = "1.0",
                 documents = arrayOf(
                     Document(
-                        docType = credential.scheme.isoDocType!!,
+                        docType = credential.scheme?.isoDocType!!,
                         issuerSigned = IssuerSigned.fromIssuerSignedItems(
                             namespacedItems = disclosedItems,
                             issuerAuth = credential.issuerSigned.issuerAuth

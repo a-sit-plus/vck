@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
-import io.matthewnelson.encoding.base16.Base16
+import at.asitplus.signum.indispensable.contentEqualsIfArray
+import at.asitplus.signum.indispensable.contentHashCodeIfArray
+import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.cbor.ByteString
@@ -32,32 +34,24 @@ data class IssuerSignedItem(
         if (digestId != other.digestId) return false
         if (!random.contentEquals(other.random)) return false
         if (elementIdentifier != other.elementIdentifier) return false
-        if (elementValue is ByteArray && other.elementValue is ByteArray) return elementValue.contentEquals(other.elementValue)
-        if (elementValue is IntArray && other.elementValue is IntArray) return elementValue.contentEquals(other.elementValue)
-        if (elementValue is BooleanArray && other.elementValue is BooleanArray) return elementValue.contentEquals(other.elementValue)
-        if (elementValue is CharArray && other.elementValue is CharArray) return elementValue.contentEquals(other.elementValue)
-        if (elementValue is ShortArray && other.elementValue is ShortArray) return elementValue.contentEquals(other.elementValue)
-        if (elementValue is LongArray && other.elementValue is LongArray) return elementValue.contentEquals(other.elementValue)
-        if (elementValue is FloatArray && other.elementValue is FloatArray) return elementValue.contentEquals(other.elementValue)
-        if (elementValue is DoubleArray && other.elementValue is DoubleArray) return elementValue.contentEquals(other.elementValue)
-        return if (elementValue is Array<*> && other.elementValue is Array<*>) elementValue.contentDeepEquals(other.elementValue)
-        //It was time for Thomas to leave. He had seen everything.
-        else elementValue == other.elementValue
+        if (!elementValue.contentEqualsIfArray(other.elementValue)) return false
+
+        return true
     }
 
     override fun hashCode(): Int {
         var result = digestId.hashCode()
         result = 31 * result + random.contentHashCode()
         result = 31 * result + elementIdentifier.hashCode()
-        result = 31 * result + elementValue.hashCode()
+        result = 31 * result + elementValue.contentHashCodeIfArray()
         return result
     }
 
     override fun toString(): String {
         return "IssuerSignedItem(digestId=$digestId," +
-                " random=${random.encodeToString(Base16(strict = true))}," +
+                " random=${random.encodeToString(Base16Strict)}," +
                 " elementIdentifier='$elementIdentifier'," +
-                " elementValue=$elementValue)"
+                " elementValue=${elementValue.toCustomString()})"
     }
 
     companion object {
@@ -70,4 +64,10 @@ data class IssuerSignedItem(
         internal const val PROP_ELEMENT_ID = "elementIdentifier"
         internal const val PROP_ELEMENT_VALUE = "elementValue"
     }
+}
+
+private fun Any.toCustomString(): String = when (this) {
+    is ByteArray -> this.encodeToString(Base16Strict)
+    is Array<*> -> this.contentDeepToString()
+    else -> this.toString()
 }
