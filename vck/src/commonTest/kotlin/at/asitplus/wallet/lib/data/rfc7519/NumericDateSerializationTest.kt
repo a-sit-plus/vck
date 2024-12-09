@@ -4,7 +4,7 @@ import at.asitplus.wallet.lib.data.rfc7519.primitives.NumericDate
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
-import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 
 class NumericDateSerializationTest : FreeSpec({
@@ -12,12 +12,12 @@ class NumericDateSerializationTest : FreeSpec({
         withData(
             data = mapOf(
                 "epoch" to 0,
-                "sometime in the future" to 9e15,
-                "sometime in the past" to -9e15,
+                "sometime in the future" to Instant.DISTANT_FUTURE.epochSeconds,
+                "sometime in the past" to Instant.DISTANT_PAST.epochSeconds,
             )
         ) {
             val value = Json.decodeFromString<NumericDate>(it.toString())
-            value.secondsSinceEpoch shouldBe it
+            value.instant shouldBe Instant.fromEpochSeconds(it)
         }
     }
 })

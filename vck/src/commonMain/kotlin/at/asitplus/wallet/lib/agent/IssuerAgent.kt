@@ -13,17 +13,29 @@ import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.CredentialStatus
+import at.asitplus.wallet.lib.data.VerifiableCredential
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList.Companion.toStatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.StatusListAggregation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.data.rfc7519.primitives.NumericDate
 import at.asitplus.wallet.lib.data.rfc7519.primitives.StringOrURI
 import at.asitplus.wallet.lib.data.rfc9596.cose.headers.CoseTypeHeaderParameterSpecification
-import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.iso.DeviceKeyInfo
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
+import at.asitplus.wallet.lib.iso.ValidityInfo
+import at.asitplus.wallet.lib.iso.ValueDigest
+import at.asitplus.wallet.lib.iso.ValueDigestList
+import at.asitplus.wallet.lib.iso.vckCborSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -240,45 +252,48 @@ class IssuerAgent(
      * Wraps the revocation information from [issuerCredentialStore] into a Status List Token,
      * returns a JWS representation of that.
      */
-    override suspend fun issueStatusListJwt(timePeriod: Int?): String? {
+    override suspend fun issueStatusListJwt(time: Instant?) =
+        issueStatusListJwt(time.toTimePeriod())
+            ?: throw IllegalStateException("Status token could not be created.")
+
+    suspend fun issueStatusListJwt(timePeriod: Int?): String? {
         val tokenPayload = buildStatusListTokenPayload(timePeriod)
         return wrapStatusListTokenInJws(tokenPayload)
     }
-
-    override suspend fun issueStatusListJwt(): String? = issueStatusListJwt(null)
 
     /**
      * Wraps the revocation information from [issuerCredentialStore] into a Status List Token,
      * returns a CWS representation of that.
      */
-    override suspend fun issueStatusListCwt(timePeriod: Int?): ByteArray? {
+    override suspend fun issueStatusListCwt(time: Instant?) =
+        issueStatusListCwt(time.toTimePeriod())
+            ?: throw IllegalStateException("Status token could not be created.")
+
+    suspend fun issueStatusListCwt(timePeriod: Int?): ByteArray? {
         val tokenPayload = buildStatusListTokenPayload(timePeriod)
         return wrapStatusListTokenInCoseSigned(tokenPayload)
     }
-
-    override suspend fun issueStatusListCwt() = issueStatusListCwt(null)
 
     /**
      * Wraps the revocation information from [issuerCredentialStore] into a Status List,
      * returns a Json representation of that.
      */
-    override suspend fun issueStatusListJson(timePeriod: Int?): String {
+    override suspend fun issueStatusListJson(time: Instant?) = issueStatusListJson(time.toTimePeriod())
+    suspend fun issueStatusListJson(timePeriod: Int?): String {
         val statusList = buildStatusList(timePeriod)
         return vckJsonSerializer.encodeToString(statusList)
     }
-
-    override suspend fun issueStatusListJson() = issueStatusListJson(null)
 
     /**
      * Wraps the revocation information from [issuerCredentialStore] into a Status List,
      * returns a Cbor representation of that.
      */
-    override suspend fun issueStatusListCbor(timePeriod: Int?): ByteArray {
+
+    override suspend fun issueStatusListCbor(time: Instant?) = issueStatusListCbor(time.toTimePeriod())
+    suspend fun issueStatusListCbor(timePeriod: Int?): ByteArray {
         val statusList = buildStatusList(timePeriod)
         return vckCborSerializer.encodeToByteArray(statusList)
     }
-
-    override suspend fun issueStatusListCbor() = issueStatusListCbor(null)
 
     private fun buildStatusListTokenPayload(timePeriod: Int?): StatusListTokenPayload {
         val revocationListUrl =
@@ -288,7 +303,7 @@ class IssuerAgent(
         Napier.d("revocation status list: $statusList")
         return StatusListTokenPayload(
             statusList = statusList,
-            issuedAt = Clock.System.now().toNumericDate(),
+            issuedAt = NumericDate(Clock.System.now()),
             subject = StringOrURI(revocationListUrl),
         )
     }
@@ -336,8 +351,9 @@ class IssuerAgent(
     override fun compileCurrentRevocationLists(): List<String> {
         val list = mutableListOf<String>()
         for (timePeriod in timePeriodProvider.getRelevantTimePeriods(clock)) {
-            if (timePeriodProvider.getCurrentTimePeriod(clock) == timePeriod
-                || issuerCredentialStore.getStatusListView(timePeriod).isNotEmpty()
+            if (timePeriodProvider.getCurrentTimePeriod(clock) == timePeriod || issuerCredentialStore.getStatusListView(
+                    timePeriod
+                ).isNotEmpty()
             ) {
                 list.add(getRevocationListUrlFor(timePeriod))
             }
@@ -345,11 +361,20 @@ class IssuerAgent(
         return list
     }
 
-    override suspend fun provideStatusList(acceptedContentTypes: List<StatusListTokenMediaType>): WebToken {
+    override suspend fun provideStatusListAggregation() = StatusListAggregation(
+        statusLists = compileCurrentRevocationLists().map {
+            UniformResourceIdentifier(it)
+        }
+    )
+
+    override suspend fun provideStatusList(
+        acceptedContentTypes: List<StatusListTokenMediaType>,
+        time: Instant?,
+    ): Pair<StatusListTokenMediaType, Any> {
         val preferedType = acceptedContentTypes.firstOrNull()
             ?: throw IllegalArgumentException("Argument `acceptedContentTypes` must contain at least one item.")
 
-        return when (preferedType) {
+        return preferedType to when (preferedType) {
             StatusListTokenMediaType.Jwt -> issueStatusListJwt()
             StatusListTokenMediaType.Cwt -> issueStatusListCwt()
         }
@@ -402,8 +427,8 @@ class IssuerAgent(
         expiration = expirationDate,
         jwtId = id,
     )
-}
 
-fun Instant.toNumericDate() = NumericDate(
-    toEpochMilliseconds().toDouble() / 1000
-)
+    private fun Instant?.toTimePeriod() = this?.let {
+        timePeriodProvider.getTimePeriodFor(this)
+    } ?: timePeriodProvider.getCurrentTimePeriod(clock)
+}

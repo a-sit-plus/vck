@@ -5,6 +5,7 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -102,7 +103,7 @@ class AgentTest : FreeSpec({
         issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
 
         val revocationListCredential =
-            issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
+            issuer.issueStatusListJwt()
         revocationListCredential.shouldNotBeNull()
         validator.setRevocationStatusListJwt(revocationListCredential) shouldBe true
 
@@ -122,10 +123,12 @@ class AgentTest : FreeSpec({
             ).getOrThrow()
             credentials.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
             issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
-            val revocationListCredential =
-                issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
+            val revocationListCredential = issuer.issueStatusListJwt()
             revocationListCredential.shouldNotBeNull()
-            holder.setRevocationStatusListJwt(revocationListCredential) shouldBe true
+            holder.setRevocationStatusList(
+                StatusListTokenMediaType.Jwt,
+                revocationListCredential,
+            ) shouldBe true
 
             val storedCredentials = holder.storeCredential(credentials.toStoreCredentialInput())
             storedCredentials.isFailure shouldBe true
@@ -145,10 +148,12 @@ class AgentTest : FreeSpec({
             storedCredentials.shouldBeInstanceOf<Holder.StoredCredential.Vc>()
 
             issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
-            val revocationListCredential =
-                issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
+            val revocationListCredential = issuer.issueStatusListJwt()
             revocationListCredential.shouldNotBeNull()
-            holder.setRevocationStatusListJwt(revocationListCredential) shouldBe true
+            holder.setRevocationStatusList(
+                StatusListTokenMediaType.Jwt,
+                revocationListCredential,
+            ) shouldBe true
 
             holder.createPresentation(
                 challenge = challenge,
@@ -188,10 +193,9 @@ class AgentTest : FreeSpec({
             }
 
             "with a revocation list set" {
-                holder.setRevocationStatusListJwt(
-                    issuer.issueStatusListJwt(
-                        FixedTimePeriodProvider.timePeriod
-                    )!!
+                holder.setRevocationStatusList(
+                    StatusListTokenMediaType.Jwt,
+                    issuer.issueStatusListJwt()!!
                 ) shouldBe true
                 val holderCredentials = holder.getCredentials()
                 holderCredentials.shouldNotBeNull()
@@ -216,9 +220,12 @@ class AgentTest : FreeSpec({
 
             issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
             val revocationListCredential =
-                issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
+                issuer.issueStatusListJwt()
             revocationListCredential.shouldNotBeNull()
-            holder.setRevocationStatusListJwt(revocationListCredential) shouldBe true
+            holder.setRevocationStatusList(
+                StatusListTokenMediaType.Jwt,
+                issuer.issueStatusListJwt()!!
+            ) shouldBe true
 
             val holderCredentials = holder.getCredentials()
             holderCredentials.shouldNotBeNull()
@@ -290,7 +297,7 @@ class AgentTest : FreeSpec({
         credentialsToRevoke.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
         issuer.revokeCredentials(listOf(credentialsToRevoke.vcJws)) shouldBe true
         val revocationList =
-            issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
+            issuer.issueStatusListJwt()
         revocationList.shouldNotBeNull()
         verifier.setRevocationStatusListJwt(revocationList) shouldBe true
 

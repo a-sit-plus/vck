@@ -1,10 +1,8 @@
 package at.asitplus.wallet.lib.data.rfc7519.primitives
 
+import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.longOrNull
 import kotlin.jvm.JvmInline
 
 /**
@@ -16,10 +14,10 @@ import kotlin.jvm.JvmInline
  *       than that non-integer values can be represented.  See RFC 3339
  *       [RFC3339] for details regarding date/times in general and UTC in
  *       particular.
- *
- *  Note: Double has a precision of 53 bits.
- *  This is sufficient to represent more than 250000 years on millisecond precision.
- *  This is good enough for now, even for
  */
 @Serializable
-@JvmInline value class NumericDate(val secondsSinceEpoch: Double)
+@JvmInline
+value class NumericDate(
+    // TODO: Replace with serializer that properly supports second fractions
+    @Serializable(with = InstantLongSerializer::class) val instant: Instant,
+)

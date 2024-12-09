@@ -17,7 +17,7 @@ import kotlinx.datetime.Instant
  * It can issue Verifiable Credentials, revoke credentials and build a revocation list.
  */
 @OptIn(ExperimentalUnsignedTypes::class)
-interface Issuer<WebToken: Any> : ReferencedTokenIssuer, StatusIssuer<String, ByteArray>, StatusProvider<WebToken> {
+interface Issuer : ReferencedTokenIssuer<CredentialToBeIssued, KmmResult<Issuer.IssuedCredential>>, StatusIssuer<String, ByteArray>, StatusProvider<Any> {
 
     /**
      * A credential issued by an [Issuer], in a specific format
@@ -65,30 +65,7 @@ interface Issuer<WebToken: Any> : ReferencedTokenIssuer, StatusIssuer<String, By
      * according to the representation, i.e. it essentially signs the credential with the issuer key.
      */
     suspend fun issueCredential(credential: CredentialToBeIssued): KmmResult<IssuedCredential>
-
-    /**
-     * @return a status list jwt.
-     * @param timePeriod time Period to issue a revocation list for
-     */
-    suspend fun issueStatusListJwt(timePeriod: Int? = null): String?
-
-    /**
-     * @return a status list json string.
-     * @param timePeriod time Period to issue a revocation list for
-     */
-    suspend fun issueStatusListJson(timePeriod: Int? = null): String?
-
-    /**
-     * @return a status list cwt.
-     * @param timePeriod time Period to issue a revocation list for
-     */
-    suspend fun issueStatusListCwt(timePeriod: Int? = null): ByteArray?
-
-    /**
-     * @return a status list cbor byte array.
-     * @param timePeriod time Period to issue a revocation list for
-     */
-    suspend fun issueStatusListCbor(timePeriod: Int? = null): ByteArray?
+    override suspend fun issueToken(tokenRequest: CredentialToBeIssued) = issueCredential(credential = tokenRequest)
 
     /**
      * Returns a status list as defined in [TokenListStatus](https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html)

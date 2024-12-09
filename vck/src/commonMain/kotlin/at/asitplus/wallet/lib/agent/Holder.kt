@@ -5,6 +5,7 @@ import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import kotlinx.serialization.Serializable
 
@@ -33,8 +34,7 @@ interface Holder {
      *
      * @return `true` if the revocation list has been validated and set, `false` otherwise
      */
-    fun setRevocationList(it: String): Boolean
-    fun setRevocationStatusListJwt(it: String): Boolean
+    fun setRevocationStatusList(type: StatusListTokenMediaType, it: Any): Boolean
 
     sealed class StoreCredentialInput {
         data class Vc(
@@ -57,7 +57,7 @@ interface Holder {
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
      *
-     * Note: Revocation credentials should not be stored, but set with [setRevocationStatusListJwt].
+     * Note: Revocation credentials should not be stored, but set with [setRevocationStatusList].
      */
     suspend fun storeCredential(credential: StoreCredentialInput): KmmResult<StoredCredential>
 
@@ -65,7 +65,7 @@ interface Holder {
      * Gets a list of all stored credentials, with a revocation status.
      *
      * Note that the revocation status may be [Validator.RevocationStatus.UNKNOWN] if no revocation list
-     * has been set with [setRevocationStatusListJwt]
+     * has been set with [setRevocationStatusList]
      */
     suspend fun getCredentials(): Collection<StoredCredential>?
 

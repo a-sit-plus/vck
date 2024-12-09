@@ -3,30 +3,41 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.asn1.toBitSet
 import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
+import at.asitplus.wallet.lib.cbor.CoseSignedTypeConstants
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.RevocationListSubject
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.Status
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.data.WebToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList.Companion.toStatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.StatusListTokenResolver
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.routines.EvaluateStatusFromStatusListInfo
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBitSize
+import at.asitplus.wallet.lib.data.rfc7519.validateJwt
+import at.asitplus.wallet.lib.data.rfc9110.HttpRequestResolver
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.wallet.lib.iso.Document
@@ -45,9 +56,10 @@ import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.datetime.Clock
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.json.buildJsonObject
-
+import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * Parses and validates Verifiable Credentials and Verifiable Presentations.
@@ -64,16 +76,19 @@ class Validator(
     ),
     private val parser: Parser = Parser(),
     private val zlibService: ZlibService = DefaultZlibService(),
+    private val httpRequestResolver: HttpRequestResolver? = null,
 ) {
     constructor(
         cryptoService: VerifierCryptoService,
         parser: Parser = Parser(),
         zlibService: ZlibService = DefaultZlibService(),
+        httpRequestResolver: HttpRequestResolver? = null,
     ) : this(
         verifierJwsService = DefaultVerifierJwsService(cryptoService = cryptoService),
         verifierCoseService = DefaultVerifierCoseService(cryptoService = cryptoService),
         parser = parser,
         zlibService = zlibService,
+        httpRequestResolver = httpRequestResolver,
     )
 
     private var revocationStatusList: StatusList? = null
@@ -89,9 +104,9 @@ class Validator(
         val jws = JwsSigned.deserialize<VerifiableCredentialJws>(
             VerifiableCredentialJws.serializer(), it, vckJsonSerializer
         ).getOrElse {
-                Napier.w("Revocation List: Could not parse JWS", it)
-                return false
-            }
+            Napier.w("Revocation List: Could not parse JWS", it)
+            return false
+        }
         if (!verifierJwsService.verifyJwsObject(jws)) {
             Napier.w("Revocation List: Signature invalid")
             return false
@@ -145,6 +160,36 @@ class Validator(
         }
         this.revocationStatusList = jws.payload.statusList
         Napier.d("setRevocationStatusListJwt: Signature is valid")
+        return true
+    }
+
+    /**
+     * Sets the revocation list for verifying the revocation status of the VC
+     * that will be later verified with [verifyVcJws].
+     *
+     * @return `true` if the revocation list was valid and has been set
+     */
+    fun setRevocationStatusListCwt(it: ByteArray): Boolean {
+        Napier.d("setRevocationStatusListCwt: Loading $it")
+        val coseStatus = CoseSigned.deserialize(StatusListTokenPayload.serializer(), it).getOrElse {
+                Napier.w("setRevocationStatusListCwt: Could not parse JWS", it)
+                return false
+            }
+        if (coseStatus.protectedHeader.value.type != CoseSignedTypeConstants.STATUSLIST_CWT) {
+            Napier.w("setRevocationStatusListCwt: Invalid type")
+            return false
+        }
+        if (verifierCoseService.verifyCose(
+                coseSigned = coseStatus,
+                serializer = StatusListTokenPayload.serializer(),
+                signer = TODO("Why is this a required parameter?")
+            ).isFailure
+        ) {
+            Napier.w("setRevocationStatusListCwt: Signature invalid")
+            return false
+        }
+        this.revocationStatusList = coseStatus.payload!!.statusList
+        Napier.d("setRevocationStatusListCwt: Signature is valid")
         return true
     }
 
@@ -480,7 +525,7 @@ class Validator(
                 return Verifier.VerifyCredentialResult.InvalidStructure(input)
             }
         }
-        if (checkRevocationStatus(vcJws) == RevocationStatus.REVOKED) {
+        if (checkRevocationStatus(vcJws.status) == RevocationStatus.REVOKED) {
             Napier.d("VC: revoked")
             return Verifier.VerifyCredentialResult.Revoked(input, vcJws)
         }
@@ -496,6 +541,56 @@ class Validator(
             is Parser.ParseVcResult.SuccessSdJwt -> Verifier.VerifyCredentialResult.SuccessJwt(vcJws)
                 .also { Napier.d("VC: Valid") }
         }
+    }
+
+    private suspend fun checkRevocationStatus(status: Status): RevocationStatus {
+        val tokenStatus = status.statusList?.let {
+            checkRevocationStatusUsingStatusList(it)
+        }
+
+        return when (tokenStatus) {
+            TokenStatus.Valid -> RevocationStatus.VALID
+            TokenStatus.Invalid -> RevocationStatus.REVOKED
+            else -> RevocationStatus.UNKNOWN
+        }
+    }
+
+    private suspend fun checkRevocationStatusUsingStatusList(statusListInfo: StatusListInfo): TokenStatus {
+        return EvaluateStatusFromStatusListInfo.WithValidationRules(
+            resolveStatusListToken = { uri ->
+                StatusListTokenResolver.FromHttpRequestResolver(
+                    acceptedTypes = StatusListTokenMediaType.entries,
+                    httpRequestResolver = httpRequestResolver!!,
+                    httpResponseContentToStatusListToken = { type, data ->
+                        when (type) {
+                            StatusListTokenMediaType.Jwt -> WebToken.JsonWebToken(
+                                data.decodeToString()
+                            )
+
+                            StatusListTokenMediaType.Cwt -> WebToken.CborWebToken(data)
+                        }
+                    },
+                ).invoke(uri)
+            },
+            validateStatusListToken = {
+                when (it) {
+                    is WebToken.JsonWebToken -> {
+                        val payload = verifierJwsService.validateJwt(it.value)
+                        joseCompliantSerializer.decodeFromJsonElement<StatusListTokenPayload>(
+                            payload
+                        )
+                    }
+
+                    is WebToken.CborWebToken -> TODO()
+                }
+            },
+            extractStatusListTokenResolvedAt = {
+                Clock.System.now()
+            },
+            isInstantInThePast = {
+                it < Clock.System.now()
+            },
+        ).invoke(statusListInfo)
     }
 
     /**

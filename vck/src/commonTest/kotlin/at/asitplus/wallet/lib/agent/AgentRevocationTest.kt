@@ -35,7 +35,7 @@ class AgentRevocationTest : FreeSpec({
     }
 
     "revocation list should contain indices of revoked credential" {
-        val statusListJson = issuer.issueStatusListJson(FixedTimePeriodProvider.timePeriod)
+        val statusListJson = issuer.issueStatusListJson()
         statusListJson.shouldNotBeNull()
 
         val statusList = vckJsonSerializer.decodeFromString<StatusList>(statusListJson)
@@ -45,7 +45,7 @@ class AgentRevocationTest : FreeSpec({
 
     "revocation credential should be valid" {
         val revocationCredential =
-            issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
+            issuer.issueStatusListJwt()
         revocationCredential.shouldNotBeNull()
         val vcJws = verifier.setRevocationStatusListJwt(revocationCredential)
         vcJws shouldBe true

@@ -139,8 +139,7 @@ class ValidatorVpTest : FreeSpec({
                     FixedTimePeriodProvider.timePeriod
                 ) shouldBe true
             }
-        val revocationList =
-            issuer.issueStatusListJwt(FixedTimePeriodProvider.timePeriod)
+        val revocationList = issuer.issueStatusListJwt()
         revocationList.shouldNotBeNull()
         verifier.setRevocationStatusListJwt(revocationList)
 

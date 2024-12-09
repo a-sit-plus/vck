@@ -47,7 +47,9 @@ class OidcSiopVerifier(
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(
+        DefaultVerifierCryptoService()
+    ),
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
@@ -124,8 +126,9 @@ class OidcSiopVerifier(
         ) : ClientIdScheme(PreRegistered, clientId)
     }
 
-    private val containerJwt =
-        FormatContainerJwt(algorithmStrings = verifierJwsService.supportedAlgorithms.map { it.identifier })
+    private val containerJwt = FormatContainerJwt(
+        algorithmStrings = verifierJwsService.supportedAlgorithms.map { it.identifier },
+    )
 
 
     /**
@@ -147,7 +150,11 @@ class OidcSiopVerifier(
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.clientId),
             jsonWebKeySet = JsonWebKeySet(listOf(keyMaterial.publicKey.toJsonWebKey())),
-            subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY, BINDING_METHOD_JWK),
+            subjectSyntaxTypesSupported = setOf(
+                URN_TYPE_JWK_THUMBPRINT,
+                PREFIX_DID_KEY,
+                BINDING_METHOD_JWK
+            ),
             vpFormats = FormatHolder(
                 msoMdoc = containerJwt,
                 jwtVp = containerJwt,
@@ -331,9 +338,11 @@ class OidcSiopVerifier(
         requestOptions: RequestOptions,
     ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
         val requestObject = createAuthnRequest(requestOptions)
-        val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
+        val attestationJwt =
+            (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
         val certificateChain = (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain
-        val issuer = (clientIdScheme as? ClientIdScheme.PreRegistered)?.clientId ?: "https://self-issued.me/v2"
+        val issuer = (clientIdScheme as? ClientIdScheme.PreRegistered)?.clientId
+            ?: "https://self-issued.me/v2"
         jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 algorithm = jwsService.algorithm,
@@ -490,7 +499,8 @@ class OidcSiopVerifier(
         /**
          * Wallet provided an `id_token`, no `vp_token` (as requested by us!)
          */
-        data class IdToken(val idToken: at.asitplus.openid.IdToken, val state: String?) : AuthnResponseResult()
+        data class IdToken(val idToken: at.asitplus.openid.IdToken, val state: String?) :
+            AuthnResponseResult()
 
         /**
          * Validation results of all returned verifiable presentations
@@ -571,7 +581,11 @@ class OidcSiopVerifier(
                     return validateAuthnResponse(jarmResponse.payload)
                 }
             JweEncrypted.deserialize(response).getOrNull()?.let { jarmResponse ->
-                jwsService.decryptJweObject(jarmResponse, response, AuthenticationResponseParameters.serializer())
+                jwsService.decryptJweObject(
+                    jarmResponse,
+                    response,
+                    AuthenticationResponseParameters.serializer()
+                )
                     .getOrNull()?.let { decrypted ->
                         return validateAuthnResponse(decrypted.payload)
                     }
@@ -608,7 +622,8 @@ class OidcSiopVerifier(
 
             val validationResults = descriptors.map { descriptor ->
                 val relatedPresentation =
-                    JsonPath(descriptor.cumulativeJsonPath).query(verifiablePresentation).first().value
+                    JsonPath(descriptor.cumulativeJsonPath).query(verifiablePresentation)
+                        .first().value
                 val result = runCatching {
                     verifyPresentationResult(descriptor, relatedPresentation, expectedNonce)
                 }.getOrElse {
@@ -630,9 +645,11 @@ class OidcSiopVerifier(
 
     @Throws(IllegalArgumentException::class, CancellationException::class)
     private suspend fun extractValidatedIdToken(idTokenJws: String): IdToken {
-        val jwsSigned = JwsSigned.deserialize<IdToken>(IdToken.serializer(), idTokenJws, vckJsonSerializer).getOrNull()
-            ?: throw IllegalArgumentException("idToken")
-                .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
+        val jwsSigned =
+            JwsSigned.deserialize<IdToken>(IdToken.serializer(), idTokenJws, vckJsonSerializer)
+                .getOrNull()
+                ?: throw IllegalArgumentException("idToken")
+                    .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
         if (!verifierJwsService.verifyJwsObject(jwsSigned))
             throw IllegalArgumentException("idToken")
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
@@ -675,7 +692,7 @@ class OidcSiopVerifier(
         ClaimFormat.JWT_SD,
         ClaimFormat.MSO_MDOC,
         ClaimFormat.JWT_VP,
-            -> when (relatedPresentation) {
+        -> when (relatedPresentation) {
             is JsonPrimitive -> verifier.verifyPresentation(
                 relatedPresentation.content,
                 challenge
@@ -687,32 +704,33 @@ class OidcSiopVerifier(
         else -> throw IllegalArgumentException()
     }
 
-    private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
-        is Verifier.VerifyPresentationResult.InvalidStructure ->
-            AuthnResponseResult.Error("parse vp failed", state)
-                .also { Napier.w("VP error: $this") }
+    private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(state: String) =
+        when (this) {
+            is Verifier.VerifyPresentationResult.InvalidStructure ->
+                AuthnResponseResult.Error("parse vp failed", state)
+                    .also { Napier.w("VP error: $this") }
 
-        is Verifier.VerifyPresentationResult.NotVerified ->
-            AuthnResponseResult.ValidationError("vpToken", state)
-                .also { Napier.w("VP error: $this") }
+            is Verifier.VerifyPresentationResult.NotVerified ->
+                AuthnResponseResult.ValidationError("vpToken", state)
+                    .also { Napier.w("VP error: $this") }
 
-        is Verifier.VerifyPresentationResult.Success ->
-            AuthnResponseResult.Success(vp, state)
-                .also { Napier.i("VP success: $this") }
+            is Verifier.VerifyPresentationResult.Success ->
+                AuthnResponseResult.Success(vp, state)
+                    .also { Napier.i("VP success: $this") }
 
-        is Verifier.VerifyPresentationResult.SuccessIso ->
-            AuthnResponseResult.SuccessIso(documents, state)
-                .also { Napier.i("VP success: $this") }
+            is Verifier.VerifyPresentationResult.SuccessIso ->
+                AuthnResponseResult.SuccessIso(documents, state)
+                    .also { Napier.i("VP success: $this") }
 
-        is Verifier.VerifyPresentationResult.SuccessSdJwt ->
-            AuthnResponseResult.SuccessSdJwt(
-                sdJwtSigned = sdJwtSigned,
-                verifiableCredentialSdJwt = verifiableCredentialSdJwt,
-                reconstructed = reconstructedJsonObject,
-                disclosures = disclosures,
-                state = state
-            ).also { Napier.i("VP success: $this") }
-    }
+            is Verifier.VerifyPresentationResult.SuccessSdJwt ->
+                AuthnResponseResult.SuccessSdJwt(
+                    sdJwtSigned = sdJwtSigned,
+                    verifiableCredentialSdJwt = verifiableCredentialSdJwt,
+                    reconstructed = reconstructedJsonObject,
+                    disclosures = disclosures,
+                    state = state
+                ).also { Napier.i("VP success: $this") }
+        }
 
 }
 

@@ -5,42 +5,15 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
-import at.asitplus.wallet.lib.data.rfc7519.primitives.NumericDate
 import io.github.aakira.napier.Napier
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
+import kotlinx.datetime.Instant
 
 fun interface EvaluateStatusFromStatusListInfo {
     suspend operator fun invoke(statusListInfo: StatusListInfo): TokenStatus
 
     @ExperimentalUnsignedTypes
     class WithValidationRules<StatusListToken : Any>(
-        val validateStatusListTokenAsWebToken: (StatusListToken) -> Boolean,
         val resolveStatusListToken: suspend (UniformResourceIdentifier) -> StatusListToken,
-
-        val extractStatusListTokenPayload: (StatusListToken) -> StatusListTokenPayload,
-        val extractStatusListTokenResolvedAt: ((StatusListToken) -> NumericDate)? = null,
-
-        val isNumericDateInThePast: (NumericDate) -> Boolean,
-    ) : EvaluateStatusFromStatusListInfo {
-        override suspend operator fun invoke(
-            statusListInfo: StatusListInfo,
-        ): TokenStatus {
-            /**
-             * Resolve the Status List Token from the provided URI.
-             */
-            val statusListToken = resolveStatusListToken(statusListInfo.uri)
-
-            val payload = validateStatusListToken(statusListToken)
-
-            validateStatusListTokenClaims(payload, statusListInfo, statusListToken)
-
-            return extractTokenStatus(
-                statusList = payload.statusList,
-                statusListInfo = statusListInfo,
-            )
-        }
-
         /**
          * Validate the Status List Token:
          *
@@ -50,13 +23,36 @@ fun interface EvaluateStatusFromStatusListInfo {
          * Check for the existence of the required claims as defined in Section 5.1 and Section 5.2
          * depending on token type.
          */
-        private fun validateStatusListToken(statusListToken: StatusListToken): StatusListTokenPayload {
-            if(!validateStatusListTokenAsWebToken(statusListToken)) {
-                throw IllegalArgumentException("Argument `statusListToken` is not a valid web token.")
-            }
+        val validateStatusListToken: (StatusListToken) -> StatusListTokenPayload,
+        val extractStatusListTokenResolvedAt: ((StatusListToken) -> Instant)? = null,
 
-            // This unwrapping implicitly checks the existence of required claims
-            return extractStatusListTokenPayload(statusListToken)
+        val isInstantInThePast: (Instant) -> Boolean,
+    ) : EvaluateStatusFromStatusListInfo {
+        override suspend operator fun invoke(
+            statusListInfo: StatusListInfo,
+        ): TokenStatus {
+            /**
+             * Resolve the Status List Token from the provided URI.
+             */
+            val statusListToken = resolveStatusListToken(statusListInfo.uri)
+
+            /**
+             * Validate the Status List Token:
+             *
+             * Validate the Status List Token by following the rules defined in section 7.2 of [RFC7519]
+             * for JWTs and section 7.2 of [RFC8392] for CWTs
+             *
+             * Check for the existence of the required claims as defined in Section 5.1 and Section 5.2
+             * depending on token type.
+             */
+            val payload = validateStatusListToken(statusListToken)
+
+            validateStatusListTokenClaims(payload, statusListInfo, statusListToken)
+
+            return extractTokenStatus(
+                statusList = payload.statusList,
+                statusListInfo = statusListInfo,
+            )
         }
 
         /**
@@ -85,19 +81,16 @@ fun interface EvaluateStatusFromStatusListInfo {
                 throw IllegalStateException("The subject claim of the Status List Token is not equal to the uri claim in the status_list object of the Referenced Token.")
             }
             statusListTokenPayload.expirationTime?.let {
-                if (isNumericDateInThePast(it)) {
+                if (isInstantInThePast(it.instant)) {
                     throw IllegalStateException("The status list token is expired.")
                 }
             }
             statusListTokenPayload.timeToLive?.let { ttl ->
                 extractStatusListTokenResolvedAt?.let {
                     val resolvedAt = it(statusListToken)
-                    val validUntilDurationSinceEpoch =
-                        resolvedAt.secondsSinceEpoch.toDuration(DurationUnit.SECONDS) + ttl.duration
-                    val validUntil =
-                        NumericDate(validUntilDurationSinceEpoch.inWholeNanoseconds.toDouble() / 1_000_000_000)
+                    val validUntil = resolvedAt.plus(ttl.duration)
 
-                    if (isNumericDateInThePast(validUntil)) {
+                    if (isInstantInThePast(validUntil)) {
                         throw IllegalStateException("The status list token is expired.")
                     }
                 } ?: Napier.w("No status list token resolved timestamp was found despite a time to live claim.")

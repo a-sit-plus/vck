@@ -5,6 +5,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusBit
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
+import kotlinx.datetime.Instant
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.time.DurationUnit
@@ -36,10 +37,10 @@ class StatusListTokenSerializationTest : FreeSpec({
                             it.timeToLive!!.duration shouldBe 43200.toDuration(DurationUnit.SECONDS)
                         },
                         "iat consistency" to {
-                            it.issuedAt.secondsSinceEpoch - 1686920170 shouldBe 0
+                            it.issuedAt.instant shouldBe Instant.fromEpochSeconds(1686920170)
                         },
                         "exp consistency" to {
-                            it.expirationTime!!.secondsSinceEpoch - 2291720170 shouldBe 0
+                            it.expirationTime!!.instant shouldBe Instant.fromEpochSeconds(2291720170)
                         },
                         "statuslist bitsize" to {
                             it.statusList.statusBitSize shouldBe TokenStatusBitSize.ONE

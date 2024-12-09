@@ -3,7 +3,12 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
-import at.asitplus.dif.*
+import at.asitplus.dif.ClaimFormat
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.PresentationSubmission
+import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
@@ -13,6 +18,7 @@ import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import com.benasher44.uuid.uuid4
@@ -52,19 +58,26 @@ class HolderAgent(
      *
      * @return `true` if the revocation list has been validated and set, `false` otherwise
      */
-    override fun setRevocationList(it: String): Boolean {
-        return validator.setRevocationListCredential(it)
+    override fun setRevocationStatusList(type: StatusListTokenMediaType, it: Any): Boolean {
+        return when(type) {
+            StatusListTokenMediaType.Jwt -> setRevocationStatusListJwt(it as String)
+            StatusListTokenMediaType.Cwt -> setRevocationStatusListCwt(it as ByteArray)
+        }
     }
 
-    override fun setRevocationStatusListJwt(it: String): Boolean {
+    fun setRevocationStatusListJwt(it: String): Boolean {
         return validator.setRevocationStatusListJwt(it)
+    }
+
+    fun setRevocationStatusListCwt(it: ByteArray): Boolean {
+        return validator.setRevocationStatusListCwt(it)
     }
 
     /**
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
      *
-     * Note: Revocation credentials should not be stored, but set with [setRevocationStatusListJwt].
+     * Note: Revocation credentials should not be stored, but set with [setRevocationStatusList].
      */
     override suspend fun storeCredential(credential: Holder.StoreCredentialInput) = catching {
         when (credential) {
@@ -114,7 +127,7 @@ class HolderAgent(
      * Gets a list of all stored credentials, with a revocation status.
      *
      * Note that the revocation status may be [Validator.RevocationStatus.UNKNOWN] if no revocation list
-     * has been set with [setRevocationStatusListJwt]
+     * has been set with [setRevocationStatusList]
      */
     override suspend fun getCredentials(): Collection<Holder.StoredCredential>? {
         val credentials = subjectCredentialStore.getCredentials().getOrNull()
