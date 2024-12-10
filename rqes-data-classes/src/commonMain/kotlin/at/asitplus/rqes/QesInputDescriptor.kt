@@ -3,6 +3,7 @@ package at.asitplus.rqes
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.InputDescriptorFeatures
 import at.asitplus.rqes.collection_entries.TransactionData
 import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
 import kotlinx.serialization.SerialName
@@ -24,4 +25,4 @@ data class QesInputDescriptor(
     override val constraints: Constraint? = null,
     @SerialName("transaction_data")
     val transactionData: List<@Serializable(Base64URLTransactionDataSerializer::class) TransactionData>,
-) : InputDescriptor
+) : InputDescriptor,  InputDescriptorFeatures.GroupFeature
