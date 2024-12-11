@@ -1,5 +1,8 @@
 # Changelog
 
+Release 5.3.0:
+ - tbd
+
 Release 5.2.0:
 - Remote qualified electronic signatures:
     - New `Initializer` object in `vck-openid` which needs to be called at the start of the project if artifact is used
