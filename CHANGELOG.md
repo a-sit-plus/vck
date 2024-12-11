@@ -41,7 +41,7 @@ Release 5.2.0:
     - New artefact `vck-openid-ktor` implements a ktor client for OpenID for Verifiable Credential Issuance and OpenID for Verifiable Presentations
     - Remove `scopePresentationDefinitionRetriever` from `OidcSiopWallet` to keep implementation simple
 - Dependency Updates:
-    - Signum 3.11.0
+    - Signum 3.11.1
     - Kotlin 2.1.0  through Conventions 2.1.0+20241204
 
 Release 5.1.0:
