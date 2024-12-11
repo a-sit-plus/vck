@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.jws
 
 import at.asitplus.signum.indispensable.ECCurve
-import at.asitplus.signum.indispensable.io.ensureSize
 import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.wallet.lib.ensureSize
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -24,8 +24,8 @@ class JsonWebKeyJvmTest : FreeSpec({
     }
 
     "JWK can be created from Coordinates" - {
-        val xFromBc = (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        val yFromBc = (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
+        val xFromBc = (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes.toInt())
+        val yFromBc = (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes.toInt())
         val jsonWebKey = JsonWebKey.fromCoordinates(ecCurve, xFromBc, yFromBc).getOrThrow()
 
         jsonWebKey.x shouldBe xFromBc
@@ -42,8 +42,8 @@ class JsonWebKeyJvmTest : FreeSpec({
     }
 
     "JWK can be created from ANSI X962" - {
-        val xFromBc = (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
-        val yFromBc = (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes)
+        val xFromBc = (keyPair.public as ECPublicKey).w.affineX.toByteArray().ensureSize(ecCurve.coordinateLengthBytes.toInt())
+        val yFromBc = (keyPair.public as ECPublicKey).w.affineY.toByteArray().ensureSize(ecCurve.coordinateLengthBytes.toInt())
         val ansiX962 = byteArrayOf(0x04) + xFromBc + yFromBc
         val jsonWebKey = JsonWebKey.fromCoordinates(ecCurve, xFromBc, yFromBc).getOrThrow()
 

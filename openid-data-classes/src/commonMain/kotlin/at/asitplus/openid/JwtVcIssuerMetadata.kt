@@ -11,7 +11,8 @@ import kotlinx.serialization.encodeToString
  * Metadata about the credential issuer in
  * [SD-JWT VC](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html)
  *
- * To be serialized into JSON and made available at `/.well-known/jwt-vc-issuer` at the credential issuer.
+ * To be serialized into JSON and made available at `/.well-known/jwt-vc-issuer` at the credential issuer
+ * (see [OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA]).
  */
 @Serializable
 data class JwtVcIssuerMetadata(
@@ -35,10 +36,10 @@ data class JwtVcIssuerMetadata(
     @SerialName("jwks_uri")
     val jsonWebKeySetUrl: String? = null,
 ) {
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(input: String): KmmResult<JwtVcIssuerMetadata> =
-            runCatching { jsonSerializer.decodeFromString<JwtVcIssuerMetadata>(input) }.wrap()
+            runCatching { odcJsonSerializer.decodeFromString<JwtVcIssuerMetadata>(input) }.wrap()
     }
 }

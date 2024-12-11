@@ -7,7 +7,6 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonPrimitive
 
 class OidcUserInfoSerializationTest : FunSpec({
-
     test("Basic") {
         val input = """
         {
@@ -45,7 +44,7 @@ class OidcUserInfoSerializationTest : FunSpec({
 })
 
 private fun assertKeyHasValue(deserialized: OidcUserInfoExtended, key: String, value: String) {
-    deserialized.jsonObject [key].apply {
+    deserialized.jsonObject[key].apply {
         shouldBeInstanceOf<JsonPrimitive>()
         content shouldBe value
     }

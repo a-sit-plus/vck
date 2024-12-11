@@ -27,7 +27,6 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlinx.datetime.Clock
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -43,14 +42,20 @@ import kotlin.time.toDuration
  *
  * This class creates the Authentication Request, [verifier] verifies the response. See [OidcSiopWallet] for the holder.
  */
-class OidcSiopVerifier private constructor(
-    private val verifier: Verifier,
-    private val jwsService: JwsService,
-    private val verifierJwsService: VerifierJwsService,
+class OidcSiopVerifier(
+    private val clientIdScheme: ClientIdScheme,
+    private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
+    private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
+    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
-    private val clientIdScheme: ClientIdScheme,
+    /**
+     * Used to store the nonce, associated to the state, to first send [AuthenticationRequestParameters.nonce],
+     * and then verify the challenge in the submitted verifiable presentation in
+     * [AuthenticationResponseParameters.vpToken].
+     */
     private val stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
     private val stateToResponseTypeStore: MapStore<String, String> = DefaultMapStore(),
 ) {
@@ -75,12 +80,9 @@ class OidcSiopVerifier private constructor(
          * the public key MUST be obtained from the `client_metadata` parameter.
          */
         data class VerifierAttestation(
-            val attestationJwt: JwsSigned,
-            override val clientId: String
-        ) : ClientIdScheme(
-            VerifierAttestation,
-            JsonWebToken.deserialize(attestationJwt.payload.decodeToString()).getOrThrow().subject!!
-        )
+            val attestationJwt: JwsSigned<JsonWebToken>,
+            override val clientId: String,
+        ) : ClientIdScheme(VerifierAttestation, attestationJwt.payload.subject!!)
 
         /**
          * When the Client Identifier Scheme is x509_san_dns, the Client Identifier MUST be a DNS name and match a
@@ -98,7 +100,7 @@ class OidcSiopVerifier private constructor(
          */
         data class CertificateSanDns(
             val chain: CertificateChain,
-            override val clientId: String
+            override val clientId: String,
         ) : ClientIdScheme(X509SanDns, clientId)
 
         /**
@@ -109,7 +111,7 @@ class OidcSiopVerifier private constructor(
          * parameter.
          */
         data class RedirectUri(
-            override val clientId: String
+            override val clientId: String,
         ) : ClientIdScheme(RedirectUri, clientId)
 
         /**
@@ -122,41 +124,29 @@ class OidcSiopVerifier private constructor(
         ) : ClientIdScheme(PreRegistered, clientId)
     }
 
-    constructor(
-        keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-        verifier: Verifier = VerifierAgent(keyMaterial),
-        verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-        jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-        timeLeewaySeconds: Long = 300L,
-        clock: Clock = Clock.System,
-        nonceService: NonceService = DefaultNonceService(),
-        clientIdScheme: ClientIdScheme,
-        /**
-         * Used to store the nonce, associated to the state, to first send [AuthenticationRequestParameters.nonce],
-         * and then verify the challenge in the submitted verifiable presentation in
-         * [AuthenticationResponseParameters.vpToken].
-         */
-        stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
-        stateToResponseTypeStore: MapStore<String, String> = DefaultMapStore(),
-    ) : this(
-        verifier = verifier,
-        jwsService = jwsService,
-        verifierJwsService = verifierJwsService,
-        timeLeewaySeconds = timeLeewaySeconds,
-        clock = clock,
-        nonceService = nonceService,
-        clientIdScheme = clientIdScheme,
-        stateToNonceStore = stateToNonceStore,
-        stateToResponseTypeStore = stateToResponseTypeStore,
-    )
-
     private val containerJwt =
-        FormatContainerJwt(algorithms = verifierJwsService.supportedAlgorithms.map { it.identifier })
+        FormatContainerJwt(algorithmStrings = verifierJwsService.supportedAlgorithms.map { it.identifier })
 
+
+    /**
+     * Serve this result JSON-serialized under `/.well-known/jar-issuer`
+     * (see [OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER]),
+     * so that SIOP Wallets can look up the keys used to sign request objects.
+     */
+    val jarMetadata: JwtVcIssuerMetadata by lazy {
+        JwtVcIssuerMetadata(
+            issuer = clientIdScheme.clientId,
+            jsonWebKeySet = JsonWebKeySet(setOf(jwsService.keyMaterial.jsonWebKey))
+        )
+    }
+
+    /**
+     * Creates the [RelyingPartyMetadata], without encryption (see [metadataWithEncryption])
+     */
     val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.clientId),
-            jsonWebKeySet = JsonWebKeySet(listOf(verifier.keyMaterial.publicKey.toJsonWebKey())),
+            jsonWebKeySet = JsonWebKeySet(listOf(keyMaterial.publicKey.toJsonWebKey())),
             subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY, BINDING_METHOD_JWK),
             vpFormats = FormatHolder(
                 msoMdoc = containerJwt,
@@ -202,11 +192,13 @@ class OidcSiopVerifier private constructor(
      * Creates a JWS containing signed [RelyingPartyMetadata],
      * to be served under a `client_metadata_uri` at the Verifier.
      */
-    suspend fun createSignedMetadata(): KmmResult<JwsSigned> = jwsService.createSignedJwsAddingParams(
-        payload = metadata.serialize().encodeToByteArray(),
-        addKeyId = true,
-        addX5c = false
-    )
+    suspend fun createSignedMetadata(): KmmResult<JwsSigned<RelyingPartyMetadata>> =
+        jwsService.createSignedJwsAddingParams(
+            payload = metadata,
+            serializer = RelyingPartyMetadata.serializer(),
+            addKeyId = true,
+            addX5c = false
+        )
 
     data class RequestOptions(
         /**
@@ -260,6 +252,12 @@ class OidcSiopVerifier private constructor(
          * or `null` to make no restrictions
          */
         val requestedAttributes: List<String>? = null,
+        /**
+         * List of attributes that shall be requested explicitly (selective disclosure),
+         * but are not required (i.e. marked as optional),
+         * or `null` to make no restrictions
+         */
+        val requestedOptionalAttributes: List<String>? = null,
     )
 
     /**
@@ -331,20 +329,20 @@ class OidcSiopVerifier private constructor(
      */
     suspend fun createAuthnRequestAsSignedRequestObject(
         requestOptions: RequestOptions,
-    ): KmmResult<JwsSigned> = catching {
+    ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
         val requestObject = createAuthnRequest(requestOptions)
-        val requestObjectSerialized = jsonSerializer.encodeToString(
-            requestObject.copy(audience = "https://self-issued.me/v2", issuer = "https://self-issued.me/v2")
-        )
         val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
         val certificateChain = (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain
+        val issuer = (clientIdScheme as? ClientIdScheme.PreRegistered)?.clientId ?: "https://self-issued.me/v2"
         jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 algorithm = jwsService.algorithm,
                 attestationJwt = attestationJwt,
                 certificateChain = certificateChain,
+                type = JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST
             ),
-            payload = requestObjectSerialized.encodeToByteArray(),
+            payload = requestObject.copy(audience = "https://self-issued.me/v2", issuer = issuer),
+            serializer = AuthenticationRequestParameters.serializer(),
             addJsonWebKey = certificateChain == null,
         ).getOrThrow()
     }
@@ -412,10 +410,14 @@ class OidcSiopVerifier private constructor(
             credentialScheme.isoDocType!! else uuid4().toString()
 
     private fun RequestOptionsCredential.toConstraint() =
-        Constraint(fields = (toAttributeConstraints() + toTypeConstraint()).filterNotNull())
+        Constraint(fields = (requiredAttributes() + optionalAttributes() + toTypeConstraint()).filterNotNull())
 
-    private fun RequestOptionsCredential.toAttributeConstraints() =
-        requestedAttributes?.createConstraints(representation, credentialScheme)
+    private fun RequestOptionsCredential.requiredAttributes() =
+        requestedAttributes?.createConstraints(representation, credentialScheme, false)
+            ?: listOf()
+
+    private fun RequestOptionsCredential.optionalAttributes() =
+        requestedOptionalAttributes?.createConstraints(representation, credentialScheme, true)
             ?: listOf()
 
     private fun RequestOptionsCredential.toTypeConstraint() = when (representation) {
@@ -451,21 +453,26 @@ class OidcSiopVerifier private constructor(
     private fun List<String>.createConstraints(
         representation: ConstantIndex.CredentialRepresentation,
         credentialScheme: ConstantIndex.CredentialScheme?,
+        optional: Boolean,
     ): Collection<ConstraintField> = map {
         if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-            credentialScheme.toConstraintField(it)
+            credentialScheme.toConstraintField(it, optional)
         else
-            ConstraintField(path = listOf("\$[${it.quote()}]"))
+            ConstraintField(path = listOf("\$[${it.quote()}]"), optional = optional)
     }
 
-    private fun ConstantIndex.CredentialScheme?.toConstraintField(attributeType: String) = ConstraintField(
+    private fun ConstantIndex.CredentialScheme?.toConstraintField(
+        attributeType: String,
+        optional: Boolean,
+    ) = ConstraintField(
         path = listOf(
             NormalizedJsonPath(
                 NormalizedJsonPathSegment.NameSegment(this?.isoNamespace ?: "mdoc"),
                 NormalizedJsonPathSegment.NameSegment(attributeType),
             ).toString()
         ),
-        intentToRetain = false
+        intentToRetain = false,
+        optional = optional,
     )
 
 
@@ -503,8 +510,6 @@ class OidcSiopVerifier private constructor(
         data class SuccessSdJwt(
             val sdJwtSigned: SdJwtSigned,
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
-            @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
-            val sdJwt: VerifiableCredentialSdJwt,
             val reconstructed: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
             val state: String?,
@@ -553,19 +558,23 @@ class OidcSiopVerifier private constructor(
             ?: return AuthnResponseResult.ValidationError("state", params.state)
                 .also { Napier.w("Invalid state: ${params.state}") }
         params.response?.let { response ->
-            JwsSigned.deserialize(response).getOrNull()?.let { jarmResponse ->
-                if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
-                    return AuthnResponseResult.ValidationError("response", state)
-                        .also { Napier.w { "JWS of response not verified: ${params.response}" } }
+            JwsSigned.deserialize<AuthenticationResponseParameters>(
+                AuthenticationResponseParameters.serializer(),
+                response,
+                vckJsonSerializer
+            ).getOrNull()
+                ?.let { jarmResponse ->
+                    if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
+                        return AuthnResponseResult.ValidationError("response", state)
+                            .also { Napier.w { "JWS of response not verified: ${params.response}" } }
+                    }
+                    return validateAuthnResponse(jarmResponse.payload)
                 }
-                AuthenticationResponseParameters.deserialize(jarmResponse.payload.decodeToString())
-                    .getOrNull()?.let { return validateAuthnResponse(it) }
-            }
             JweEncrypted.deserialize(response).getOrNull()?.let { jarmResponse ->
-                jwsService.decryptJweObject(jarmResponse, response).getOrNull()?.let { decrypted ->
-                    AuthenticationResponseParameters.deserialize(decrypted.payload.decodeToString())
-                        .getOrNull()?.let { return validateAuthnResponse(it) }
-                }
+                jwsService.decryptJweObject(jarmResponse, response, AuthenticationResponseParameters.serializer())
+                    .getOrNull()?.let { decrypted ->
+                        return validateAuthnResponse(decrypted.payload)
+                    }
             }
         }
         val responseType = stateToResponseTypeStore.get(state)
@@ -621,13 +630,13 @@ class OidcSiopVerifier private constructor(
 
     @Throws(IllegalArgumentException::class, CancellationException::class)
     private suspend fun extractValidatedIdToken(idTokenJws: String): IdToken {
-        val jwsSigned = JwsSigned.deserialize(idTokenJws).getOrNull()
+        val jwsSigned = JwsSigned.deserialize<IdToken>(IdToken.serializer(), idTokenJws, vckJsonSerializer).getOrNull()
             ?: throw IllegalArgumentException("idToken")
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
         if (!verifierJwsService.verifyJwsObject(jwsSigned))
             throw IllegalArgumentException("idToken")
                 .also { Napier.w { "JWS of idToken not verified: $idTokenJws" } }
-        val idToken = IdToken.deserialize(jwsSigned.payload.decodeToString()).getOrThrow()
+        val idToken = jwsSigned.payload
         if (idToken.issuer != idToken.subject)
             throw IllegalArgumentException("idToken.iss")
                 .also { Napier.d("Wrong issuer: ${idToken.issuer}, expected: ${idToken.subject}") }
@@ -661,19 +670,23 @@ class OidcSiopVerifier private constructor(
     private fun verifyPresentationResult(
         descriptor: PresentationSubmissionDescriptor,
         relatedPresentation: JsonElement,
-        challenge: String
+        challenge: String,
     ) = when (descriptor.format) {
-        ClaimFormatEnum.JWT_SD,
-        ClaimFormatEnum.MSO_MDOC,
-        ClaimFormatEnum.JWT_VP -> when (relatedPresentation) {
-            is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, challenge)
+        ClaimFormat.JWT_SD,
+        ClaimFormat.MSO_MDOC,
+        ClaimFormat.JWT_VP,
+            -> when (relatedPresentation) {
+            is JsonPrimitive -> verifier.verifyPresentation(
+                relatedPresentation.content,
+                challenge
+            )
+
             else -> throw IllegalArgumentException()
         }
 
         else -> throw IllegalArgumentException()
     }
 
-    @Suppress("DEPRECATION")
     private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
         is Verifier.VerifyPresentationResult.InvalidStructure ->
             AuthnResponseResult.Error("parse vp failed", state)
@@ -693,12 +706,11 @@ class OidcSiopVerifier private constructor(
 
         is Verifier.VerifyPresentationResult.SuccessSdJwt ->
             AuthnResponseResult.SuccessSdJwt(
-                sdJwtSigned,
-                verifiableCredentialSdJwt,
-                sdJwt,
-                reconstructedJsonObject,
-                disclosures,
-                state
+                sdJwtSigned = sdJwtSigned,
+                verifiableCredentialSdJwt = verifiableCredentialSdJwt,
+                reconstructed = reconstructedJsonObject,
+                disclosures = disclosures,
+                state = state
             ).also { Napier.i("VP success: $this") }
     }
 

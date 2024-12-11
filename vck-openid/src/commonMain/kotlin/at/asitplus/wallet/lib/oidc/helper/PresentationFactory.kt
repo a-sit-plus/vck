@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.oidc.helper
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.ClaimFormatEnum
+import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -11,6 +11,7 @@ import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -19,7 +20,6 @@ import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.toDefaultSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
@@ -30,7 +30,7 @@ internal class PresentationFactory(
 ) {
     suspend fun createPresentationExchangePresentation(
         holder: Holder,
-        request: AuthenticationRequestParametersFrom,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         audience: String,
         presentationDefinition: PresentationDefinition,
         clientMetadata: RelyingPartyMetadata?,
@@ -72,8 +72,8 @@ internal class PresentationFactory(
     suspend fun createSignedIdToken(
         clock: Clock,
         agentPublicKey: CryptoPublicKey,
-        request: AuthenticationRequestParametersFrom,
-    ): KmmResult<JwsSigned?> = catching {
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+    ): KmmResult<JwsSigned<IdToken>?> = catching {
         if (request.parameters.responseType?.contains(ID_TOKEN) != true) {
             return@catching null
         }
@@ -94,8 +94,11 @@ internal class PresentationFactory(
             expiration = now + 60.seconds,
             nonce = nonce,
         )
-        val jwsPayload = idToken.serialize().encodeToByteArray()
-        jwsService.createSignedJwsAddingParams(payload = jwsPayload, addX5c = false).getOrElse {
+        jwsService.createSignedJwsAddingParams(
+            payload = idToken,
+            serializer = IdToken.serializer(),
+            addX5c = false
+        ).getOrElse {
             Napier.w("Could not sign id_token", it)
             throw OAuth2Exception(Errors.USER_CANCELLED)
         }
@@ -165,15 +168,15 @@ internal class PresentationFactory(
             }
         }
 
-    private fun FormatHolder.isMissingFormatSupport(claimFormatEnum: ClaimFormatEnum) =
-        when (claimFormatEnum) {
-            ClaimFormatEnum.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm.identifier) }
+    private fun FormatHolder.isMissingFormatSupport(claimFormat: ClaimFormat) =
+        when (claimFormat) {
+            ClaimFormat.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm) }
                 ?: false
 
-            ClaimFormatEnum.JWT_SD -> jwtSd?.algorithms?.let { !it.contains(jwsService.algorithm.identifier) }
+            ClaimFormat.JWT_SD -> jwtSd?.algorithms?.let { !it.contains(jwsService.algorithm) }
                 ?: false
 
-            ClaimFormatEnum.MSO_MDOC -> msoMdoc?.algorithms?.let { !it.contains(jwsService.algorithm.identifier) }
+            ClaimFormat.MSO_MDOC -> msoMdoc?.algorithms?.let { !it.contains(jwsService.algorithm) }
                 ?: false
 
             else -> false

@@ -5,7 +5,6 @@ import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import kotlinx.serialization.Serializable
 
@@ -101,20 +100,19 @@ interface Holder {
     )
 
     /**
-     * Creates an array of [VerifiablePresentation] and a [PresentationSubmission] to match
-     * the [presentationDefinition].
+     * Creates [PresentationResponseParameters] (that is a list of [CreatePresentationResult] and a
+     * [PresentationSubmission]) to match the [presentationDefinition].
      *
      * Fails in case the default submission is not a valid submission.
      *
-     * @param fallbackFormatHolder: format holder to be used in case there is no format holder in a
+     * @param fallbackFormatHolder format holder to be used in case there is no format holder in a
      *  given presentation definition and the input descriptor.
-     *  This will mostly resolve to be the some clientMetadata.vpFormats
-     * @param pathAuthorizationValidator: Provides the user of this library with a way to enforce
+     *  This will mostly resolve to be the same as in `clientMetadata.vpFormats`.
+     * @param pathAuthorizationValidator Provides the user of this library with a way to enforce
      *  authorization rules.
      */
     suspend fun createPresentation(
         challenge: String,
-        // TODO Pass a public key adapter here
         audienceId: String,
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder? = null,
@@ -123,14 +121,14 @@ interface Holder {
 
 
     /**
-     * Creates an array of [VerifiablePresentation] and a [PresentationSubmission] from already
-     * preselected [presentationSubmissionSelection].
+     * Creates [PresentationResponseParameters] (that is a list of [CreatePresentationResult] and a
+     * [PresentationSubmission]) to match the [presentationSubmissionSelection].
      *
      * Assumptions:
      *  - the presentation submission selection is a valid submission regarding the submission requirements
      *
-     * @param presentationDefinitionId: id of the presentation definition this submission is intended for
-     * @param presentationSubmissionSelection: a selection of input descriptors by id and
+     * @param presentationDefinitionId id of the presentation definition this submission is intended for
+     * @param presentationSubmissionSelection a selection of input descriptors by `id` and
      *  corresponding credentials along with a description of the fields to be disclosed
      */
     suspend fun createPresentation(
@@ -144,10 +142,10 @@ interface Holder {
      * Creates a mapping from the input descriptors of the presentation definition to matching
      * credentials and the fields that would need to be disclosed.
      *
-     * @param fallbackFormatHolder: format holder to be used in case there is no format holder in a
+     * @param fallbackFormatHolder format holder to be used in case there is no format holder in a
      *  given presentation definition and the input descriptor.
-     *  This will mostly resolve to be the some clientMetadata.vpFormats
-     * @param pathAuthorizationValidator: Provides the user of this library with a way to enforce
+     *  This will mostly resolve to be the same `clientMetadata.vpFormats`.
+     * @param pathAuthorizationValidator Provides the user of this library with a way to enforce
      *  authorization rules on attribute credentials that are to be disclosed.
      */
     suspend fun matchInputDescriptorsAgainstCredentialStore(
@@ -157,13 +155,13 @@ interface Holder {
     ): KmmResult<Map<String, InputDescriptorMatches>>
 
     /**
-     * Evaluates a given input descriptor against a store enctry.
+     * Evaluates a given input descriptor against a store entry.
      *
-     * @param fallbackFormatHolder: format holder to be used in case there is no format holder in the input descriptor.
-     *  This will mostly be some presentationDefinition.formats ?: clientMetadata.vpFormats
-     * @param pathAuthorizationValidator: Provides the user of this library with a way to enforce
+     * @param fallbackFormatHolder format holder to be used in case there is no format holder in the input descriptor.
+     *  This will mostly be some `presentationDefinition.formats ?: clientMetadata.vpFormats`
+     * @param pathAuthorizationValidator Provides the user of this library with a way to enforce
      *  authorization rules on attribute credentials that are to be disclosed.
-     * @return for each constraint field a set of matching nodes or null,
+     * @return for each constraint field a set of matching nodes or null
      */
     fun evaluateInputDescriptorAgainstCredential(
         inputDescriptor: InputDescriptor,

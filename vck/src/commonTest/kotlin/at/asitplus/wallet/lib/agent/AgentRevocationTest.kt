@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.io.BitSet
-import at.asitplus.signum.indispensable.io.toBitSet
+import at.asitplus.signum.indispensable.asn1.BitSet
+import at.asitplus.signum.indispensable.asn1.toBitSet
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessJwt
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -30,7 +30,7 @@ class AgentRevocationTest : FreeSpec({
         issuerCredentialStore = InMemoryIssuerCredentialStore()
         issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore)
         verifierKeyMaterial = EphemeralKeyWithoutCert()
-        verifier = VerifierAgent(verifierKeyMaterial)
+        verifier = VerifierAgent(identifier = "urn:${uuid4()}")
         expectedRevokedIndexes = issuerCredentialStore.revokeRandomCredentials()
     }
 
@@ -61,7 +61,7 @@ class AgentRevocationTest : FreeSpec({
         }
         result.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-        val vcJws = verifier.verifyVcJws(result.vcJws)
+        val vcJws = Validator().verifyVcJws(result.vcJws, verifierKeyMaterial.publicKey)
         vcJws.shouldBeInstanceOf<SuccessJwt>()
         val credentialStatus = vcJws.jws.vc.credentialStatus
         credentialStatus.shouldNotBeNull()

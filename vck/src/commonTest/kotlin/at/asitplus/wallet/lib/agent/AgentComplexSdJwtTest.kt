@@ -26,6 +26,7 @@ class AgentComplexSdJwtTest : FreeSpec({
     lateinit var holderCredentialStore: SubjectCredentialStore
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var challenge: String
+    lateinit var verifierId: String
 
     beforeEach {
         issuerCredentialStore = InMemoryIssuerCredentialStore()
@@ -33,7 +34,8 @@ class AgentComplexSdJwtTest : FreeSpec({
         issuer = IssuerAgent(EphemeralKeyWithoutCert(), issuerCredentialStore)
         holderKeyMaterial = EphemeralKeyWithSelfSignedCert()
         holder = HolderAgent(holderKeyMaterial, holderCredentialStore)
-        verifier = VerifierAgent()
+        verifierId = "urn:${uuid4()}"
+        verifier = VerifierAgent(identifier = verifierId)
         challenge = uuid4().toString()
     }
 
@@ -52,7 +54,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
         )
 
-        val vp = createPresentation(holder, challenge, verifier, presentationDefinition)
+        val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
@@ -81,7 +83,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
         )
 
-        val vp = createPresentation(holder, challenge, verifier, presentationDefinition)
+        val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
@@ -111,7 +113,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
         )
 
-        val vp = createPresentation(holder, challenge, verifier, presentationDefinition)
+        val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
@@ -138,7 +140,7 @@ class AgentComplexSdJwtTest : FreeSpec({
             "$.$CLAIM_ALWAYS_VISIBLE"
         )
 
-        val vp = createPresentation(holder, challenge, verifier, presentationDefinition)
+        val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
@@ -189,11 +191,11 @@ private fun buildPresentationDefinition(vararg attributeName: String) = Presenta
 private suspend fun createPresentation(
     holder: Holder,
     challenge: String,
-    verifier: Verifier,
-    presentationDefinition: PresentationDefinition
+    presentationDefinition: PresentationDefinition,
+    verifierId: String
 ) = holder.createPresentation(
     challenge = challenge,
-    audienceId = verifier.keyMaterial.identifier,
+    audienceId = verifierId,
     presentationDefinition = presentationDefinition
 ).getOrThrow().presentationResults.firstOrNull()
 

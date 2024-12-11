@@ -19,6 +19,7 @@ import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlin.random.Random
 
 class IsoProcessTest : FreeSpec({
@@ -44,7 +45,7 @@ class Wallet {
     private val coseService = DefaultCoseService(cryptoService)
 
     val deviceKeyInfo = DeviceKeyInfo(cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow())
-    private var storedIssuerAuth: CoseSigned? = null
+    private var storedIssuerAuth: CoseSigned<MobileSecurityObject>? = null
     private var storedMdlItems: IssuerSignedList? = null
 
     fun storeMdl(deviceResponse: DeviceResponse) {
@@ -54,7 +55,8 @@ class Wallet {
         this.storedIssuerAuth = issuerAuth
 
         issuerAuth.payload.shouldNotBeNull()
-        val mso = document.issuerSigned.getIssuerAuthPayloadAsMso().getOrThrow()
+        val mso = document.issuerSigned.issuerAuth
+            .payload.shouldNotBeNull()
 
         val mdlItems = document.issuerSigned.namespaces?.get(ConstantIndex.AtomicAttribute2023.isoNamespace)
             .shouldNotBeNull()
@@ -86,8 +88,9 @@ class Wallet {
                     deviceSigned = DeviceSigned(
                         namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf())),
                         deviceAuth = DeviceAuth(
-                            deviceSignature = coseService.createSignedCose(
+                            deviceSignature = coseService.createSignedCose<ByteArray>(
                                 payload = null,
+                                serializer = ByteArraySerializer(),
                                 addKeyId = false
                             ).getOrThrow()
                         )
@@ -138,7 +141,8 @@ class Issuer {
                             ConstantIndex.AtomicAttribute2023.isoNamespace to issuerSigned
                         ),
                         issuerAuth = coseService.createSignedCose(
-                            payload = mso.serializeForIssuerAuth(),
+                            payload = mso,
+                            serializer = MobileSecurityObject.serializer(),
                             addKeyId = false,
                             addCertificate = true,
                         ).getOrThrow()
@@ -177,9 +181,10 @@ class Verifier {
                         )
                     )
                 ),
-                readerAuth = coseService.createSignedCose(
+                readerAuth = coseService.createSignedCose<ByteArray>(
                     unprotectedHeader = CoseHeader(),
                     payload = null,
+                    serializer = ByteArraySerializer(),
                     addKeyId = false,
                 ).getOrThrow()
             )
@@ -193,16 +198,16 @@ class Verifier {
         doc.errors.shouldBeNull()
         val issuerSigned = doc.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
-        verifierCoseService.verifyCose(issuerAuth, issuerKey).isSuccess shouldBe true
+        verifierCoseService.verifyCose(issuerAuth, issuerKey, MobileSecurityObject.serializer()).isSuccess shouldBe true
         issuerAuth.payload.shouldNotBeNull()
-        val mso = issuerSigned.getIssuerAuthPayloadAsMso().getOrThrow()
+        val mso = issuerAuth.payload.shouldNotBeNull()
 
         mso.docType shouldBe ConstantIndex.AtomicAttribute2023.isoDocType
         val mdlItems = mso.valueDigests[ConstantIndex.AtomicAttribute2023.isoNamespace].shouldNotBeNull()
 
         val walletKey = mso.deviceKeyInfo.deviceKey
         val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature.shouldNotBeNull()
-        verifierCoseService.verifyCose(deviceSignature, walletKey).isSuccess shouldBe true
+        verifierCoseService.verifyCose(deviceSignature, walletKey, ByteArraySerializer()).isSuccess shouldBe true
         val namespaces = issuerSigned.namespaces.shouldNotBeNull()
         val issuerSignedItems = namespaces[ConstantIndex.AtomicAttribute2023.isoNamespace].shouldNotBeNull()
 

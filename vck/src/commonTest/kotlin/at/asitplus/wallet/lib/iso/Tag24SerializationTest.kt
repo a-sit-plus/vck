@@ -1,13 +1,16 @@
 package at.asitplus.wallet.lib.iso
 
-import arrow.core.fold
+import at.asitplus.catching
+import at.asitplus.signum.indispensable.CryptoSignature
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapperSerializer
 import at.asitplus.wallet.lib.agent.DummyCredentialDataProvider
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
+import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.maps.shouldNotBeEmpty
@@ -45,7 +48,13 @@ class Tag24SerializationTest : FreeSpec({
                 )
             ),
             deviceAuth = DeviceAuth(
-                deviceSignature = issuerAuth()
+                deviceSignature = CoseSigned<ByteArray>(
+                    protectedHeader = CoseHeader(),
+                    unprotectedHeader = null,
+                    payload = byteArrayOf(),
+                    signature = CryptoSignature.RSAorHMAC(byteArrayOf())
+                )
+
             )
         )
 
@@ -91,11 +100,13 @@ class Tag24SerializationTest : FreeSpec({
         ).getOrThrow().shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
         issuedCredential.issuerSigned.namespaces!!.shouldNotBeEmpty()
-        val numberOfClaims = issuedCredential.issuerSigned.namespaces!!.fold(0) { acc, entry ->
+        val numberOfClaims = issuedCredential.issuerSigned.namespaces.entries.fold(0) { acc, entry ->
             acc + entry.value.entries.size
         }
         val serialized = issuedCredential.issuerSigned.serialize().encodeToString(Base16(true))
-        "D818".toRegex().findAll(serialized).toList().shouldHaveSize(numberOfClaims + 1)
+        withClue(serialized) {
+            "D818".toRegex().findAll(serialized).toList().shouldHaveSize(numberOfClaims + 1)
+        }
         // add 1 for MSO in IssuerAuth
     }
 
@@ -109,32 +120,61 @@ class Tag24SerializationTest : FreeSpec({
             validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
         )
         val serializedMso = mso.serializeForIssuerAuth()
-        val input = CoseSigned(
-            protectedHeader = ByteStringWrapper(CoseHeader()),
+        val input = CoseSigned<MobileSecurityObject>(
+            protectedHeader = CoseHeader(),
             unprotectedHeader = null,
-            payload = serializedMso,
-            rawSignature = byteArrayOf()
+            payload = mso,
+            signature = CryptoSignature.RSAorHMAC(byteArrayOf())
         )
 
         val serialized = vckCborSerializer.encodeToByteArray(input)
 
         serialized.encodeToString(Base16(true)).shouldContainOnlyOnce("D818")
         serializedMso.encodeToString(Base16(true)).shouldStartWith("D818")
-        vckCborSerializer.decodeFromByteArray<CoseSigned>(serialized) shouldBe input
+        vckCborSerializer.decodeFromByteArray<CoseSigned<MobileSecurityObject>>(serialized) shouldBe input
         MobileSecurityObject.deserializeFromIssuerAuth(serializedMso).getOrThrow() shouldBe mso
     }
 
 
 })
 
+/**
+ * Ensures serialization of this structure in [IssuerSigned.issuerAuth]:
+ * ```
+ * IssuerAuth = COSE_Sign1     ; The payload is MobileSecurityObjectBytes
+ * MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
+ * ```
+ *
+ * See ISO/IEC 18013-5:2021, 9.1.2.4 Signing method and structure for MSO
+ */
+fun MobileSecurityObject.serializeForIssuerAuth() = vckCborSerializer.encodeToByteArray(
+    ByteStringWrapperSerializer(MobileSecurityObject.serializer()), ByteStringWrapper(this)
+).wrapInCborTag(24)
+
+/**
+ * Deserializes the structure from the [IssuerSigned.issuerAuth] is deserialized:
+ * ```
+ * IssuerAuth = COSE_Sign1     ; The payload is MobileSecurityObjectBytes
+ * MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
+ * ```
+ *
+ * See ISO/IEC 18013-5:2021, 9.1.2.4 Signing method and structure for MSO
+ */
+private fun MobileSecurityObject.Companion.deserializeFromIssuerAuth(it: ByteArray) = catching {
+    vckCborSerializer.decodeFromByteArray(
+        ByteStringWrapperSerializer(serializer()),
+        it.stripCborTag(24)
+    ).value
+}
+
 private fun deviceKeyInfo() =
     DeviceKeyInfo(CoseKey(CoseKeyType.EC2, keyParams = CoseKeyParams.EcYBoolParams(CoseEllipticCurve.P256)))
 
-private fun issuerAuth() = CoseSigned(
-    protectedHeader = ByteStringWrapper(CoseHeader()),
+private fun issuerAuth() = CoseSigned<MobileSecurityObject>(
+    protectedHeader = CoseHeader(),
     unprotectedHeader = null,
-    payload = byteArrayOf(),
-    rawSignature = byteArrayOf()
+    payload = null,
+    signature = CryptoSignature.RSAorHMAC(byteArrayOf())
 )
 
 private fun issuerSignedItem() = IssuerSignedItem(0u, Random.nextBytes(16), "identifier", "value")

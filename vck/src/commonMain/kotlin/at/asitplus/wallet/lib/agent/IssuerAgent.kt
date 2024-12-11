@@ -3,9 +3,9 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.asn1.BitSet
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.io.Base64Strict
-import at.asitplus.signum.indispensable.io.BitSet
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.DataSourceProblem
@@ -25,7 +25,7 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
@@ -47,19 +47,25 @@ class IssuerAgent(
     override val keyMaterial: KeyMaterial,
     override val cryptoAlgorithms: Set<SignatureAlgorithm> = setOf(keyMaterial.signatureAlgorithm),
     private val timePeriodProvider: TimePeriodProvider = FixedTimePeriodProvider,
+    /**
+     * The identifier used in `issuer` properties of issued credentials.
+     * Note that for SD-JWT VC this must be a URI. */
+    private val identifier: String = keyMaterial.identifier,
 ) : Issuer {
 
     constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         issuerCredentialStore: IssuerCredentialStore = InMemoryIssuerCredentialStore(),
         validator: Validator = Validator(),
+        identifier: String = keyMaterial.identifier,
     ) : this(
-        validator = Validator(),
+        validator = validator,
         issuerCredentialStore = issuerCredentialStore,
         jwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
         coseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
         keyMaterial = keyMaterial,
         cryptoAlgorithms = setOf(keyMaterial.signatureAlgorithm),
+        identifier = identifier,
     )
 
     /**
@@ -112,7 +118,8 @@ class IssuerAgent(
         val issuerSigned = IssuerSigned.fromIssuerSignedItems(
             namespacedItems = mapOf(credential.scheme.isoNamespace!! to credential.issuerSignedItems),
             issuerAuth = coseService.createSignedCose(
-                payload = mso.serializeForIssuerAuth(),
+                payload = mso,
+                serializer = MobileSecurityObject.serializer(),
                 addKeyId = false,
                 addCertificate = true,
             ).getOrThrow(),
@@ -138,7 +145,7 @@ class IssuerAgent(
         val credentialStatus = CredentialStatus(getRevocationListUrlFor(timePeriod), statusListIndex)
         val vc = VerifiableCredential(
             id = vcId,
-            issuer = keyMaterial.identifier,
+            issuer = identifier,
             issuanceDate = issuanceDate,
             expirationDate = expirationDate,
             credentialStatus = credentialStatus,
@@ -173,13 +180,13 @@ class IssuerAgent(
         val vcSdJwt = VerifiableCredentialSdJwt(
             subject = subjectId,
             notBefore = issuanceDate,
-            issuer = keyMaterial.identifier,
+            issuer = identifier,
             expiration = expirationDate,
             issuedAt = issuanceDate,
             jwtId = vcId,
             verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
             selectiveDisclosureAlgorithm = "sha-256",
-            cnfElement = vckJsonSerializer.encodeToJsonElement(cnf),
+            confirmationClaim = cnf,
             credentialStatus = credentialStatus,
         )
         val vcSdJwtObject = vckJsonSerializer.encodeToJsonElement(vcSdJwt).jsonObject
@@ -191,11 +198,11 @@ class IssuerAgent(
                 put(it.key, it.value)
             }
         }
-        val jwsPayload = vckJsonSerializer.encodeToString(entireObject).encodeToByteArray()
-        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.SD_JWT, jwsPayload).getOrElse {
-            Napier.w("Could not wrap credential in SD-JWT", it)
-            throw RuntimeException("Signing failed", it)
-        }
+        val jws = jwsService.createSignedJwt(JwsContentTypeConstants.SD_JWT, entireObject, JsonObject.serializer())
+            .getOrElse {
+                Napier.w("Could not wrap credential in SD-JWT", it)
+                throw RuntimeException("Signing failed", it)
+            }
         val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
         Napier.i("issueVcSd: $vcInSdJwt")
         return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme)
@@ -213,7 +220,7 @@ class IssuerAgent(
         val subject = RevocationListSubject("$revocationListUrl#list", revocationList)
         val credential = VerifiableCredential(
             id = revocationListUrl,
-            issuer = keyMaterial.identifier,
+            issuer = identifier,
             issuanceDate = clock.now(),
             lifetime = revocationListLifetime,
             credentialSubject = subject
@@ -272,13 +279,12 @@ class IssuerAgent(
         return list
     }
 
-    private suspend fun wrapVcInJws(vc: VerifiableCredential): String? {
-        val jwsPayload = vc.toJws().serialize().encodeToByteArray()
-        return jwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrElse {
-            Napier.w("Could not wrapVcInJws", it)
-            return null
-        }.serialize()
-    }
+    private suspend fun wrapVcInJws(vc: VerifiableCredential): String? =
+        jwsService.createSignedJwt(JwsContentTypeConstants.JWT, vc.toJws(), VerifiableCredentialJws.serializer())
+            .getOrElse {
+                Napier.w("Could not wrapVcInJws", it)
+                return null
+            }.serialize()
 
     private fun getRevocationListUrlFor(timePeriod: Int) =
         revocationListBaseUrl.let { it + (if (!it.endsWith('/')) "/" else "") + timePeriod }

@@ -40,14 +40,6 @@ kotlin {
             }
         }
 
-        commonTest {
-            dependencies {
-                implementation("io.arrow-kt:arrow-core:1.2.4") //to make arrow's nonFatalOrThrow work in tests
-                implementation(kotlin("reflect"))
-            }
-        }
-
-
         jvmMain {
             dependencies {
                 implementation(signum.bcpkix.jdk18on)

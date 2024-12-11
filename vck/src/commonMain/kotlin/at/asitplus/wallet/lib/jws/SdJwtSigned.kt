@@ -9,7 +9,9 @@ import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * Representation of a signed SD-JWT,
@@ -19,9 +21,9 @@ import kotlinx.serialization.json.JsonObject
  * possibly ending with a [keyBindingJws], that is a JWS with payload [KeyBindingJws].
  */
 data class SdJwtSigned(
-    val jws: JwsSigned,
+    val jws: JwsSigned<JsonElement>,
     val rawDisclosures: List<String>,
-    val keyBindingJws: JwsSigned? = null,
+    val keyBindingJws: JwsSigned<KeyBindingJws>? = null,
 ) {
 
     override fun equals(other: Any?): Boolean {
@@ -45,10 +47,10 @@ data class SdJwtSigned(
     }
 
     fun getPayloadAsVerifiableCredentialSdJwt(): KmmResult<VerifiableCredentialSdJwt> =
-        VerifiableCredentialSdJwt.deserialize(jws.payload.decodeToString())
+        runCatching { vckJsonSerializer.decodeFromJsonElement<VerifiableCredentialSdJwt>(jws.payload) }.wrap()
 
     fun getPayloadAsJsonObject(): KmmResult<JsonObject> =
-        runCatching { vckJsonSerializer.decodeFromString<JsonObject>(jws.payload.decodeToString()) }.wrap()
+        runCatching { jws.payload as JsonObject }.wrap()
 
     companion object {
         fun parse(input: String): SdJwtSigned? {
@@ -57,21 +59,22 @@ data class SdJwtSigned(
             val stringList = input.replace("[^A-Za-z0-9-_.~]".toRegex(), "").split("~")
             if (stringList.isEmpty())
                 return null.also { Napier.w("Could not parse SD-JWT: $input") }
-            val jws = JwsSigned.deserialize(stringList.first()).getOrNull()
+            val jws = JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), stringList.first(), vckJsonSerializer).getOrNull()
                 ?: return null.also { Napier.w("Could not parse JWS from SD-JWT: $input") }
             val stringListWithoutJws = stringList.drop(1)
             val rawDisclosures = stringListWithoutJws
                 .filterNot { it.contains(".") }
                 .filterNot { it.isEmpty() }
             val keyBindingString = stringList.drop(1 + rawDisclosures.size).firstOrNull()
-            val keyBindingJws = keyBindingString?.let { JwsSigned.deserialize(it).getOrNull() }
+            val keyBindingJws = keyBindingString
+                ?.let { JwsSigned.deserialize<KeyBindingJws>(KeyBindingJws.serializer(), it, vckJsonSerializer).getOrNull() }
             return SdJwtSigned(jws, rawDisclosures, keyBindingJws)
         }
 
         fun serializePresentation(
-            jwsFromIssuer: JwsSigned,
+            jwsFromIssuer: JwsSigned<*>,
             filteredDisclosures: Set<String>,
-            keyBinding: JwsSigned
+            keyBinding: JwsSigned<KeyBindingJws>
         ) = (listOf(jwsFromIssuer.serialize()) + filteredDisclosures + keyBinding.serialize()).joinToString("~")
 
         fun sdHashInput(

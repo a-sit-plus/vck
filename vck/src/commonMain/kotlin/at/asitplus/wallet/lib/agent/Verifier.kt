@@ -17,37 +17,21 @@ import kotlinx.serialization.json.JsonObject
 interface Verifier {
 
     /**
-     * The public key for this agent, i.e. the one used to validate the audience of a VP against
-     */
-    val keyMaterial: KeyMaterial
-
-    /**
      * Set the revocation list to use for validating VCs (from [Issuer.issueRevocationListCredential])
      */
     fun setRevocationList(it: String): Boolean
 
     /**
-     * Verifies a presentation of some credentials that a holder issued with that [challenge] we sent before.
+     * Verifies a presentation of some credentials from a holder,
+     * that shall include the [challenge] (sent by this verifier).
      */
     fun verifyPresentation(it: String, challenge: String): VerifyPresentationResult
-
-    /**
-     * Verifies if a presentation contains all required [attributeNames].
-     */
-    fun verifyPresentationContainsAttributes(it: VerifiablePresentationParsed, attributeNames: List<String>): Boolean
-
-    /**
-     * Parse a single VC, checks if subject matches
-     */
-    fun verifyVcJws(it: String): VerifyCredentialResult
 
     sealed class VerifyPresentationResult {
         data class Success(val vp: VerifiablePresentationParsed) : VerifyPresentationResult()
         data class SuccessSdJwt(
             val sdJwtSigned: SdJwtSigned,
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
-            @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
-            val sdJwt: VerifiableCredentialSdJwt,
             val reconstructedJsonObject: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
             val isRevoked: Boolean
@@ -63,8 +47,6 @@ interface Verifier {
         data class SuccessSdJwt(
             val sdJwtSigned: SdJwtSigned,
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
-            @Deprecated("Renamed to verifiableCredentialSdJwt", replaceWith = ReplaceWith("verifiableCredentialSdJwt"))
-            val sdJwt: VerifiableCredentialSdJwt,
             val reconstructedJsonObject: JsonObject,
             /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
             val disclosures: Map<String, SelectiveDisclosureItem>,
@@ -86,12 +68,14 @@ fun CryptoPublicKey.matchesIdentifier(input: String): Boolean {
         return true
     if (didEncoded == input)
         return true
-    if (toJsonWebKey().keyId == input)
-        return true
-    if (toJsonWebKey().jwkThumbprint == input)
-        return true
-    if (toJsonWebKey().didEncoded == input)
-        return true
+    with(toJsonWebKey()) {
+        if (keyId == input)
+            return true
+        if (jwkThumbprint == input)
+            return true
+        if (didEncoded == input)
+            return true
+    }
     return false
 }
 

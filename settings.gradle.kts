@@ -29,9 +29,11 @@ if (System.getProperty("publishing.excludeIncludedBuilds") != "true") {
 rootProject.name = "vc-k"
 include(":dif-data-classes")
 include(":openid-data-classes")
+include(":rqes-data-classes")
 include(":vck")
 include(":vck-openid")
-include(":mobiledrivinglicence")
+include(":vck-rqes")
+include(":vck-openid-ktor")
 
 dependencyResolutionManagement {
     repositories {

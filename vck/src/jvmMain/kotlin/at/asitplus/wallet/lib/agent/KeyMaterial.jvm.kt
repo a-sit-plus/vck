@@ -19,16 +19,19 @@ class KeyStoreMaterial
     keyAlias: String,
     privateKeyPassword: CharArray,
     providerName: String? = null,
-    private val certAlias: String? = null
+    private val certAlias: String? = null,
+    customKeyId: String? = null,
 ) : SignerBasedKeyMaterial(
-    runBlocking {
+    signer = runBlocking {
         JKSProvider {
             withBackingObject { store = keyStore }
         }.getOrThrow().getSignerForKey(keyAlias) {
             this.privateKeyPassword = privateKeyPassword
             provider = providerName
         }.getOrThrow()
-    }) {
+    },
+    customKeyId = customKeyId
+) {
     override suspend fun getCertificate(): X509Certificate? =
         certAlias?.let { X509Certificate.decodeFromByteArray(keyStore.getCertificate(it).encoded) }
 

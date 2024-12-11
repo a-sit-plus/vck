@@ -112,8 +112,8 @@ fun CredentialFormatEnum.toRepresentation() = when (this) {
 
 fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
     is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
-        CredentialFormatEnum.MSO_MDOC,
-        issuerSigned.serialize().encodeToString(Base64UrlStrict),
+        format = CredentialFormatEnum.MSO_MDOC,
+        credential = issuerSigned.serialize().encodeToString(Base64UrlStrict),
     )
 
     is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(

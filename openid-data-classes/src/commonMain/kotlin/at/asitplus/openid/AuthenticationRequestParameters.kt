@@ -2,7 +2,6 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
@@ -33,7 +32,7 @@ data class AuthenticationRequestParameters(
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      */
     @SerialName("client_id")
-    val clientId: String,
+    val clientId: String? = null,
 
     /**
      * OIDC: REQUIRED. Redirection URI to which the response will be sent. This URI MUST exactly match one of the
@@ -259,85 +258,13 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("code_challenge_method")
     val codeChallengeMethod: String? = null,
+) : RequestParameters {
 
-    /**
-     * CSC: Optional
-     * Request a preferred language according to RFC 5646
-     */
-    @SerialName("lang")
-    val lang: String? = null,
-
-    /**
-     * CSC: REQUIRED-"credential"
-     * The identifier associated to the credential to authorize
-     */
-    @SerialName("credentialID")
-    val credentialID: String? = null,
-
-    /**
-     * CSC: Required-"credential"
-     * This parameter contains the symbolic identifier determining the kind of
-     * signature to be created
-     */
-    @SerialName("signatureQualifier")
-    val signatureQualifier: String? = null,
-
-    /**
-     * CSC: Required-"credential"
-     * The number of signatures to authorize
-     */
-    @SerialName("numSignatures")
-    val numSignatures: Int? = null,
-
-    /**
-     * CSC: REQUIRED-"credential"
-     * One or more base64-encoded hash values to be signed
-     */
-    @SerialName("hashes")
-    @Serializable(HashesSerializer::class)
-    val hashes: List<ByteArray>? = null,
-
-    /**
-     * CSC: REQUIRED-"credential"
-     * String containing the OID of the hash algorithm used to generate the hashes
-     */
-    @SerialName("hashAlgorithmOID")
-    val hashAlgorithmOID: String? = null,
-
-    /**
-     * CSC: OPTIONAL
-     * A free form description of the authorization transaction in the lang language.
-     * The maximum size of the string is 500 characters
-     */
-    @SerialName("description")
-    val description: String? = null,
-
-    /**
-     * CSC: OPTIONAL
-     * To restrict access to the authorization server of a remote service, this specification introduces the
-     * additional account_token parameter to be used when calling the oauth2/authorize endpoint. This
-     * parameter contains a secure token designed to authenticate the authorization request based on an
-     * Account ID that SHALL be uniquely assigned by the signature application to the signing user or to the
-     * user’s application account
-     */
-    @SerialName("account_token")
-    val accountToken: JsonWebToken? = null,
-
-    /**
-     * CSC: OPTIONAL
-     * Arbitrary data from the signature application. It can be used to handle a
-     * transaction identifier or other application-spe cific data that may be useful for
-     * debugging purposes
-     */
-    @SerialName("clientData")
-    val clientData: String? = null,
-) {
-
-    fun serialize() = jsonSerializer.encodeToString(this)
+    fun serialize() = odcJsonSerializer.encodeToString(this)
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
-            jsonSerializer.decodeFromString<AuthenticationRequestParameters>(it)
+            odcJsonSerializer.decodeFromString<AuthenticationRequestParameters>(it)
         }.wrap()
     }
 }

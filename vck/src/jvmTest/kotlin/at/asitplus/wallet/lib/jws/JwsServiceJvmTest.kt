@@ -4,7 +4,6 @@ import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.getJcaPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.nativeDigest
 import at.asitplus.signum.supreme.HazardousMaterials
@@ -12,17 +11,21 @@ import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import com.nimbusds.jose.*
-import com.nimbusds.jose.crypto.*
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.crypto.ECDSAVerifier
+import com.nimbusds.jose.crypto.RSASSASigner
+import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jose.jwk.JWK
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.RSAPrivateKey
@@ -88,44 +91,28 @@ class JwsServiceJvmTest : FreeSpec({
                     }
             }.getOrThrow()
 
-            val jweAlgorithm = when (algo) {
-                X509SignatureAlgorithm.ES256, X509SignatureAlgorithm.ES384, X509SignatureAlgorithm.ES512 -> JweAlgorithm.ECDH_ES
-                X509SignatureAlgorithm.RS256, X509SignatureAlgorithm.PS256 -> JweAlgorithm.RSA_OAEP_256
-                X509SignatureAlgorithm.RS384, X509SignatureAlgorithm.PS384 -> JweAlgorithm.RSA_OAEP_384
-                X509SignatureAlgorithm.RS512, X509SignatureAlgorithm.PS512 -> JweAlgorithm.RSA_OAEP_512
-                else -> throw IllegalArgumentException("Unknown JweAlgorithm")
-            }
-
             val jvmVerifier =
                 if (algo.isEc) ECDSAVerifier(ephemeralKey.publicKey.getJcaPublicKey().getOrThrow() as ECPublicKey)
                 else RSASSAVerifier(ephemeralKey.publicKey.getJcaPublicKey().getOrThrow() as RSAPublicKey)
             val jvmSigner =
                 if (algo.isEc) ECDSASigner(ephemeralKey.jcaPrivateKey as ECPrivateKey)
                 else RSASSASigner(ephemeralKey.jcaPrivateKey as RSAPrivateKey)
-            val jvmEncrypter =
-                if (algo.isEc) ECDHEncrypter(ephemeralKey.publicKey.getJcaPublicKey().getOrThrow() as ECPublicKey)
-                else RSAEncrypter(ephemeralKey.publicKey.getJcaPublicKey().getOrThrow() as RSAPublicKey)
-            val jvmDecrypter =
-                if (algo.isEc) ECDHDecrypter(ephemeralKey.jcaPrivateKey as ECPrivateKey)
-                else RSADecrypter(ephemeralKey.jcaPrivateKey as RSAPrivateKey)
 
 
             val keyPairAdapter = EphemeralKeyWithoutCert(ephemeralKey)
             val cryptoService = DefaultCryptoService(keyPairAdapter)
             val jwsService = DefaultJwsService(cryptoService)
             val verifierJwsService = DefaultVerifierJwsService()
-            val randomPayload = uuid4().toString()
+            val randomPayload = JsonPrimitive(uuid4().toString())
 
             val testIdentifier = "$algo, ${thisConfiguration.second}, ${number + 1}"
 
             "$testIdentifier:" - {
 
                 "Signed object from int. library can be verified with int. library" {
-                    val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
-                    val signed =
-                        jwsService.createSignedJwt(JwsContentTypeConstants.JWT, stringPayload.encodeToByteArray())
-                            .getOrThrow()
-                    signed.shouldNotBeNull()
+                    val signed = jwsService.createSignedJwt(
+                        JwsContentTypeConstants.JWT, randomPayload, JsonPrimitive.serializer()
+                    ).getOrThrow()
                     val selfVerify = verifierJwsService.verifyJwsObject(signed)
                     withClue("$algo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
                         selfVerify shouldBe true
@@ -133,20 +120,19 @@ class JwsServiceJvmTest : FreeSpec({
                 }
 
                 "Signed object from ext. library can be verified with int. library" {
-                    val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
                     val libHeader = JWSHeader.Builder(JWSAlgorithm(algo.name))
                         .type(JOSEObjectType("JWT"))
                         .jwk(JWK.parse(cryptoService.keyMaterial.jsonWebKey.serialize()))
                         .build()
-                    val libObject = JWSObject(libHeader, Payload(stringPayload)).also {
+                    val libObject = JWSObject(libHeader, Payload(randomPayload.content)).also {
                         it.sign(jvmSigner)
                     }
                     libObject.verify(jvmVerifier) shouldBe true
 
                     // Parsing to our structure verifying payload
                     val signedLibObject = libObject.serialize()
-                    val parsedJwsSigned = JwsSigned.deserialize(signedLibObject).getOrThrow()
-                    parsedJwsSigned.payload.decodeToString() shouldBe stringPayload
+                    val parsedJwsSigned = JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), signedLibObject).getOrThrow()
+                    parsedJwsSigned.payload.jsonPrimitive.content shouldBe randomPayload.content
                     val parsedSig = parsedJwsSigned.signature.rawByteArray.encodeToString(Base64UrlStrict)
 
                     withClue(
@@ -166,14 +152,12 @@ class JwsServiceJvmTest : FreeSpec({
                 }
 
                 "Signed object from int. library can be verified with ext. library" {
-                    val stringPayload = vckJsonSerializer.encodeToString(randomPayload)
-                    val signed =
-                        jwsService.createSignedJwt(JwsContentTypeConstants.JWT, stringPayload.encodeToByteArray())
-                            .getOrThrow()
-                    signed.shouldNotBeNull()
+                    val signed = jwsService.createSignedJwt(
+                        JwsContentTypeConstants.JWT, randomPayload, JsonPrimitive.serializer()
+                    ).getOrThrow()
                     val parsed = JWSObject.parse(signed.serialize())
-                    parsed.shouldNotBeNull()
-                    parsed.payload.toString() shouldBe stringPayload
+                        .shouldNotBeNull()
+                    parsed.payload.toBytes().decodeToString() shouldBe "\"${randomPayload.content}\""
                     val result = parsed.verify(jvmVerifier)
                     withClue("$algo: Signature: ${parsed.signature}") {
                         result shouldBe true

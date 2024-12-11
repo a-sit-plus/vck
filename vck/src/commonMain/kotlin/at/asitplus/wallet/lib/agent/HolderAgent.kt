@@ -272,7 +272,7 @@ class HolderAgent(
         }.filter {
             // iso credentials now have their doctype encoded into the id
             when (it) {
-                is SubjectCredentialStore.StoreEntry.Iso -> it.scheme.isoDocType == inputDescriptor.id
+                is SubjectCredentialStore.StoreEntry.Iso -> it.scheme?.isoDocType == inputDescriptor.id
                 else -> true
             }
         }.firstNotNullOf {
@@ -316,9 +316,9 @@ class HolderAgent(
     ) = PresentationSubmissionDescriptor(
         id = inputDescriptorId,
         format = when (credential) {
-            is SubjectCredentialStore.StoreEntry.Vc -> ClaimFormatEnum.JWT_VP
-            is SubjectCredentialStore.StoreEntry.SdJwt -> ClaimFormatEnum.JWT_SD
-            is SubjectCredentialStore.StoreEntry.Iso -> ClaimFormatEnum.MSO_MDOC
+            is SubjectCredentialStore.StoreEntry.Vc -> ClaimFormat.JWT_VP
+            is SubjectCredentialStore.StoreEntry.SdJwt -> ClaimFormat.JWT_SD
+            is SubjectCredentialStore.StoreEntry.Iso -> ClaimFormat.MSO_MDOC
         },
         // from https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-6.1-2.4
         // These objects contain a field called path, which, for this specification,

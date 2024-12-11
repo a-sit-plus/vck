@@ -5,10 +5,13 @@ import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
@@ -72,14 +75,14 @@ class OidcSiopProtocolTest : FreeSpec({
         val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl, defaultRequestOptions)
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         authnResponse.url.shouldNotContain("?")
         authnResponse.url.shouldContain("#")
         authnResponse.url.shouldStartWith(clientId)
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
 
         verifySecondProtocolRun(verifierSiop, walletUrl, holderSiop)
@@ -102,10 +105,10 @@ class OidcSiopProtocolTest : FreeSpec({
         val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl, requestOptions)
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.ValidationError>()
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.ValidationError>()
         result.field shouldBe "idToken"
     }
 
@@ -122,7 +125,7 @@ class OidcSiopProtocolTest : FreeSpec({
         val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl, defaultRequestOptions)
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.ValidationError>()
@@ -147,14 +150,15 @@ class OidcSiopProtocolTest : FreeSpec({
             Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
         authnRequest.clientId shouldBe clientId
         val jar = authnRequest.request
-        jar.shouldNotBeNull()
-        DefaultVerifierJwsService().verifyJwsObject(JwsSigned.deserialize(jar).getOrThrow()).shouldBeTrue()
+            .shouldNotBeNull()
+        val jwsObject = JwsSigned.deserialize<AuthenticationRequestParameters>(AuthenticationRequestParameters.serializer(), jar, vckJsonSerializer).getOrThrow()
+        DefaultVerifierJwsService().verifyJwsObject(jwsObject).shouldBeTrue()
 
         val authnResponse = holderSiop.createAuthnResponse(jar).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+        verifierSiop.validateAuthnResponse(authnResponse.url)
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
     }
 
     "test with direct_post" {
@@ -168,12 +172,11 @@ class OidcSiopProtocolTest : FreeSpec({
         )
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         authnResponse.url.shouldBe(clientId)
 
-        val result =
-            verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+        val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
 
@@ -188,15 +191,15 @@ class OidcSiopProtocolTest : FreeSpec({
         )
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         authnResponse.url.shouldBe(clientId)
         authnResponse.params.shouldHaveSize(2)
         val jarmResponse = authnResponse.params.entries.first { it.key == "response" }.value
-        DefaultVerifierJwsService().verifyJwsObject(JwsSigned.deserialize(jarmResponse).getOrThrow()).shouldBeTrue()
+        val jwsObject = JwsSigned.deserialize<AuthenticationResponseParameters>(AuthenticationResponseParameters.serializer(), jarmResponse).getOrThrow()
+        DefaultVerifierJwsService().verifyJwsObject(jwsObject).shouldBeTrue()
 
-        val result =
-            verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+        val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
 
@@ -212,14 +215,14 @@ class OidcSiopProtocolTest : FreeSpec({
         )
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         authnResponse.url.shouldContain("?")
         authnResponse.url.shouldNotContain("#")
         authnResponse.url.shouldStartWith(clientId)
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.state.shouldBe(expectedState)
     }
@@ -231,7 +234,7 @@ class OidcSiopProtocolTest : FreeSpec({
         val parsedAuthnRequest: AuthenticationRequestParameters =
             authnRequestUrlParams.decodeFromUrlQuery()
         val authnResponse = holderSiop.createAuthnResponseParams(
-            AuthenticationRequestParametersFrom.Uri(
+            RequestParametersFrom.Uri<AuthenticationRequestParameters>(
                 Url(authnRequestUrlParams),
                 parsedAuthnRequest
             )
@@ -241,7 +244,7 @@ class OidcSiopProtocolTest : FreeSpec({
         val parsedAuthnResponse: AuthenticationResponseParameters =
             authnResponseParams.decodeFromPostBody()
         val result = verifierSiop.validateAuthnResponse(parsedAuthnResponse)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
 
@@ -252,10 +255,10 @@ class OidcSiopProtocolTest : FreeSpec({
         )
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
@@ -269,10 +272,10 @@ class OidcSiopProtocolTest : FreeSpec({
         ).getOrThrow()
 
         val authnResponse = holderSiop.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
@@ -293,13 +296,13 @@ class OidcSiopProtocolTest : FreeSpec({
 
         holderSiop = OidcSiopWallet(
             holder = holderAgent,
-            requestObjectJwsVerifier = verifierAttestationVerifier(sprsCryptoService.keyMaterial.jsonWebKey)
+            requestObjectJwsVerifier = attestationJwtVerifier(sprsCryptoService.keyMaterial.jsonWebKey)
         )
         val authnResponse = holderSiop.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
@@ -320,7 +323,7 @@ class OidcSiopProtocolTest : FreeSpec({
 
         holderSiop = OidcSiopWallet(
             holder = holderAgent,
-            requestObjectJwsVerifier = verifierAttestationVerifier(EphemeralKeyWithoutCert().jsonWebKey)
+            requestObjectJwsVerifier = attestationJwtVerifier(EphemeralKeyWithoutCert().jsonWebKey)
         )
         shouldThrow<OAuth2Exception> {
             holderSiop.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
@@ -349,10 +352,10 @@ class OidcSiopProtocolTest : FreeSpec({
         )
 
         val authnResponse = holderSiop.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
@@ -378,10 +381,10 @@ class OidcSiopProtocolTest : FreeSpec({
         )
 
         val authnResponse = holderSiop.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
@@ -404,7 +407,7 @@ class OidcSiopProtocolTest : FreeSpec({
             remoteResourceRetriever = {
                 if (it == requestUrl) jar.serialize() else null
             },
-            requestObjectJwsVerifier = { _, _ -> false }
+            requestObjectJwsVerifier = { _ -> false }
         )
 
         shouldThrow<OAuth2Exception> {
@@ -425,7 +428,7 @@ private suspend fun buildAttestationJwt(
     sprsCryptoService: DefaultCryptoService,
     clientId: String,
     verifierKeyMaterial: KeyMaterial
-): JwsSigned = DefaultJwsService(sprsCryptoService).createSignedJws(
+): JwsSigned<JsonWebToken> = DefaultJwsService(sprsCryptoService).createSignedJws(
     header = JwsHeader(
         algorithm = sprsCryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
     ),
@@ -436,19 +439,19 @@ private suspend fun buildAttestationJwt(
         expiration = Clock.System.now().plus(10.seconds),
         notBefore = Clock.System.now(),
         confirmationClaim = ConfirmationClaim(jsonWebKey = verifierKeyMaterial.jsonWebKey),
-    ).serialize().encodeToByteArray()
+    ),
+    serializer = JsonWebToken.serializer(),
 ).getOrThrow()
 
-private fun verifierAttestationVerifier(trustedKey: JsonWebKey) =
+private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
     object : RequestObjectJwsVerifier {
-        override fun invoke(jws: JwsSigned, authnRequest: AuthenticationRequestParameters): Boolean {
-            val attestationJwt = jws.header.attestationJwt?.let { JwsSigned.deserialize(it).getOrThrow() }
+        override fun invoke(jws: JwsSigned<RequestParameters>): Boolean {
+            val attestationJwt = jws.header.attestationJwt?.let { JwsSigned.deserialize<JsonWebToken>(JsonWebToken.serializer(), it).getOrThrow() }
                 ?: return false
             val verifierJwsService = DefaultVerifierJwsService()
             if (!verifierJwsService.verifyJws(attestationJwt, trustedKey))
                 return false
-            val verifierPublicKey = JsonWebToken.deserialize(attestationJwt.payload.decodeToString())
-                .getOrNull()?.confirmationClaim?.jsonWebKey
+            val verifierPublicKey = attestationJwt.payload.confirmationClaim?.jsonWebKey
                 ?: return false
             return verifierJwsService.verifyJws(jws, verifierPublicKey)
         }
@@ -461,10 +464,8 @@ private suspend fun verifySecondProtocolRun(
 ) {
     val authnRequestUrl = verifierSiop.createAuthnRequestUrl(walletUrl, defaultRequestOptions)
     val authnResponse = holderSiop.createAuthnResponse(authnRequestUrl)
-    val validation = verifierSiop.validateAuthnResponse(
-        (authnResponse.getOrThrow() as AuthenticationResponseResult.Redirect).url
-    )
-    validation.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+    verifierSiop.validateAuthnResponse((authnResponse.getOrThrow() as AuthenticationResponseResult.Redirect).url)
+        .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
 }
 
 private val defaultRequestOptions = RequestOptions(

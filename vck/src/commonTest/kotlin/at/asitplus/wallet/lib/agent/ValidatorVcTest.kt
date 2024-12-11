@@ -26,8 +26,8 @@ class ValidatorVcTest : FreeSpec() {
     private lateinit var issuerCredentialStore: IssuerCredentialStore
     private lateinit var issuerJwsService: JwsService
     private lateinit var issuerKeyMaterial: KeyMaterial
-    private lateinit var verifier: Verifier
     private lateinit var verifierKeyMaterial: KeyMaterial
+    private lateinit var validator: Validator
 
     private val revocationListUrl: String = "https://wallet.a-sit.at/backend/credentials/status/1"
 
@@ -38,7 +38,7 @@ class ValidatorVcTest : FreeSpec() {
             issuer = IssuerAgent(issuerKeyMaterial, issuerCredentialStore)
             issuerJwsService = DefaultJwsService(DefaultCryptoService(issuerKeyMaterial))
             verifierKeyMaterial = EphemeralKeyWithoutCert()
-            verifier = VerifierAgent(verifierKeyMaterial)
+            validator = Validator()
         }
 
         "credentials are valid for" {
@@ -51,7 +51,8 @@ class ValidatorVcTest : FreeSpec() {
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            verifier.verifyVcJws(credential.vcJws).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
+            validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
+                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
         }
 
         "revoked credentials are not valid" {
@@ -64,19 +65,19 @@ class ValidatorVcTest : FreeSpec() {
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            val value = verifier.verifyVcJws(credential.vcJws)
-            value.shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
+            val value = validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
+                .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
             issuerCredentialStore.revoke(value.jws.vc.id, FixedTimePeriodProvider.timePeriod) shouldBe true
             val revocationListCredential =
                 issuer.issueRevocationListCredential(FixedTimePeriodProvider.timePeriod)
             revocationListCredential.shouldNotBeNull()
-            verifier.setRevocationList(revocationListCredential)
-            verifier.verifyVcJws(credential.vcJws)
+            validator.setRevocationList(revocationListCredential)
+
+            validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.Revoked>()
 
-            val defaultValidator = Validator()
-            defaultValidator.setRevocationList(revocationListCredential) shouldBe true
-            defaultValidator.checkRevocationStatus(value.jws.vc.credentialStatus!!.index) shouldBe Validator.RevocationStatus.REVOKED
+            validator.setRevocationList(revocationListCredential) shouldBe true
+            validator.checkRevocationStatus(value.jws.vc.credentialStatus!!.index) shouldBe Validator.RevocationStatus.REVOKED
         }
 
         "wrong subject keyId is not be valid" {
@@ -89,7 +90,7 @@ class ValidatorVcTest : FreeSpec() {
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            verifier.verifyVcJws(credential.vcJws)
+            validator.verifyVcJws(credential.vcJws, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
         }
 
@@ -103,7 +104,7 @@ class ValidatorVcTest : FreeSpec() {
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
 
-            verifier.verifyVcJws(credential.vcJws.replaceFirstChar { "f" })
+            validator.verifyVcJws(credential.vcJws.replaceFirstChar { "f" }, verifierKeyMaterial.publicKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
         }
 
@@ -117,7 +118,8 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
                     .let {
-                        verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
+                        validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
+                            .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                     }
             }
         }
@@ -131,8 +133,8 @@ class ValidatorVcTest : FreeSpec() {
                 issueCredential(it)
                     .let { wrapVcInJws(it) }
                     .let { wrapVcInJwsWrongKey(it) }
-                    ?.let {
-                        verifier.verifyVcJws(it)
+                    .let {
+                        validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
             }
@@ -148,7 +150,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it, subject = "vc.id") }
                     .let { signJws(it) }
                     .let {
-                        verifier.verifyVcJws(it)
+                        validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
             }
@@ -163,7 +165,7 @@ class ValidatorVcTest : FreeSpec() {
                 issueCredential(it)
                     .let { wrapVcInJws(it, issuer = "vc.issuer") }
                     .let { signJws(it) }.let {
-                        verifier.verifyVcJws(it)
+                        validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
             }
@@ -179,7 +181,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it, jwtId = "vc.jwtId") }
                     .let { signJws(it) }
                     .let {
-                        verifier.verifyVcJws(it)
+                        validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
             }
@@ -195,7 +197,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let {
                         VerifiableCredentialJws(
                             vc = it,
-                            subject = verifier.keyMaterial.identifier,
+                            subject = "urn:${uuid4()}",
                             notBefore = it.issuanceDate,
                             issuer = it.issuer,
                             expiration = Clock.System.now() + 1.hours,
@@ -204,7 +206,7 @@ class ValidatorVcTest : FreeSpec() {
                     }
                     .let { signJws(it) }
                     .let {
-                        verifier.verifyVcJws(it)
+                        validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
             }
@@ -220,7 +222,8 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
                     .let {
-                        verifier.verifyVcJws(it).shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
+                        validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
+                            .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessJwt>()
                     }
             }
         }
@@ -235,7 +238,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it, expirationDate = Clock.System.now() - 1.hours) }
                     .let { signJws(it) }
                     .let {
-                        verifier.verifyVcJws(it)
+                        validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
             }
@@ -251,7 +254,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it, expirationDate = Clock.System.now() + 2.hours) }
                     .let { signJws(it) }
                     .let {
-                        verifier.verifyVcJws(it)
+                        validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
             }
@@ -267,7 +270,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it, issuanceDate = Clock.System.now() + 2.hours) }
                     .let { signJws(it) }
                     .let {
-                        verifier.verifyVcJws(it)
+                        validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
             }
@@ -283,7 +286,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it) }
                     .let { signJws(it) }
                     .let {
-                        verifier.verifyVcJws(it)
+                        validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
             }
@@ -299,7 +302,7 @@ class ValidatorVcTest : FreeSpec() {
                     .let { wrapVcInJws(it, issuanceDate = Clock.System.now()) }
                     .let { signJws(it) }
                     .let {
-                        verifier.verifyVcJws(it)
+                        validator.verifyVcJws(it, verifierKeyMaterial.publicKey)
                             .shouldBeInstanceOf<Verifier.VerifyCredentialResult.InvalidStructure>()
                     }
             }
@@ -338,7 +341,7 @@ class ValidatorVcTest : FreeSpec() {
 
     private fun wrapVcInJws(
         it: VerifiableCredential,
-        subject: String = verifier.keyMaterial.identifier,
+        subject: String = verifierKeyMaterial.identifier,
         issuer: String = it.issuer,
         jwtId: String = it.id,
         issuanceDate: Instant = it.issuanceDate,
@@ -352,25 +355,23 @@ class ValidatorVcTest : FreeSpec() {
         jwtId = jwtId
     )
 
-    private suspend fun signJws(vcJws: VerifiableCredentialJws): String {
-        val vcSerialized = vcJws.serialize()
-        val jwsPayload = vcSerialized.encodeToByteArray()
-        return issuerJwsService.createSignedJwt(JwsContentTypeConstants.JWT, jwsPayload).getOrThrow().serialize()
-    }
+    private suspend fun signJws(vcJws: VerifiableCredentialJws): String = issuerJwsService.createSignedJwt(
+        JwsContentTypeConstants.JWT,
+        vcJws,
+        VerifiableCredentialJws.serializer()
+    ).getOrThrow().serialize()
 
-    private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String? {
+    private suspend fun wrapVcInJwsWrongKey(vcJws: VerifiableCredentialJws): String {
         val jwsHeader = JwsHeader(
             algorithm = JwsAlgorithm.ES256,
-            keyId = verifier.keyMaterial.identifier,
+            keyId = verifierKeyMaterial.identifier,
             type = JwsContentTypeConstants.JWT
         )
-        val jwsPayload = vcJws.serialize().encodeToByteArray()
-        val signatureInput =
-            jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
-                    "." + jwsPayload.encodeToString(Base64UrlStrict)
+        val signatureInput = jwsHeader.serialize().encodeToByteArray().encodeToString(Base64UrlStrict) +
+                "." + vcJws.serialize().encodeToByteArray().encodeToString(Base64UrlStrict)
         val signatureInputBytes = signatureInput.encodeToByteArray()
         val signature = DefaultCryptoService(issuerKeyMaterial).sign(signatureInputBytes).signature
-        return JwsSigned(jwsHeader, jwsPayload, signature, signatureInput).serialize()
+        return JwsSigned(jwsHeader, vcJws, signature, signatureInputBytes).serialize()
     }
 
 }

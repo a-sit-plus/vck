@@ -19,7 +19,6 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
     lateinit var verifierKeyMaterial: KeyMaterial
 
     lateinit var holderAgent: Holder
-    lateinit var verifierAgent: Verifier
 
     lateinit var holderSiop: OidcSiopWallet
     lateinit var verifierSiop: OidcSiopVerifier
@@ -30,7 +29,6 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         clientId = "https://example.com/rp/${uuid4()}"
         walletUrl = "https://example.com/wallet/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
-        verifierAgent = VerifierAgent(verifierKeyMaterial)
 
         holderAgent.storeCredential(
             IssuerAgent().issueCredential(
@@ -53,10 +51,6 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
 
     "Selective Disclosure with custom credential" {
         val requestedClaim = CLAIM_GIVEN_NAME
-        verifierSiop = OidcSiopVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId)
-        )
         val authnRequest = verifierSiop.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = RequestOptions(

@@ -1,13 +1,8 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.catching
 import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
-import at.asitplus.wallet.lib.iso.IssuerSignedItem.Companion.PROP_ELEMENT_ID
 import kotlinx.serialization.*
-import net.orandja.obor.codec.Cbor
-import net.orandja.obor.data.*
 
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
@@ -18,13 +13,11 @@ data class IssuerSigned private constructor(
     @Serializable(with = NamespacedIssuerSignedListSerializer::class)
     val namespaces: Map<String, @Contextual IssuerSignedList>? = null,
     @SerialName("issuerAuth")
-    val issuerAuth: CoseSigned,
+    val issuerAuth: CoseSigned<MobileSecurityObject>,
 ) {
-    fun getIssuerAuthPayloadAsMso() = catching {
-        MobileSecurityObject.deserializeFromIssuerAuth(issuerAuth.payload!!).getOrThrow()
-    }
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is IssuerSigned) return false
@@ -61,13 +54,12 @@ data class IssuerSigned private constructor(
          */
         fun fromIssuerSignedItems(
             namespacedItems: Map<String, List<IssuerSignedItem>>,
-            issuerAuth: CoseSigned,
+            issuerAuth: CoseSigned<MobileSecurityObject>,
         ): IssuerSigned = IssuerSigned(
             namespaces = namespacedItems.map { (namespace, value) ->
                 namespace to IssuerSignedList.fromIssuerSignedItems(value, namespace)
             }.toMap(),
             issuerAuth = issuerAuth,
         )
-
     }
 }

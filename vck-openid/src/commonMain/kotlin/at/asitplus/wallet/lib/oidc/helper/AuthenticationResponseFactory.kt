@@ -1,12 +1,13 @@
 package at.asitplus.wallet.lib.oidc.helper
 
+import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ResponseMode.*
 import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JweHeader
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidc.AuthenticationRequestParametersFrom
 import at.asitplus.wallet.lib.oidc.AuthenticationResponse
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -23,7 +24,7 @@ internal class AuthenticationResponseFactory(
     val jwsService: JwsService,
 ) {
     internal suspend fun createAuthenticationResponse(
-        request: AuthenticationRequestParametersFrom,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ) = when (request.parameters.responseMode) {
         DirectPost -> authnResponseDirectPost(request, response)
@@ -37,7 +38,7 @@ internal class AuthenticationResponseFactory(
      * Per OID4VP, the response may either be signed, or encrypted (never signed and encrypted!)
      */
     internal suspend fun authnResponseDirectPostJwt(
-        request: AuthenticationRequestParametersFrom,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
@@ -52,7 +53,7 @@ internal class AuthenticationResponseFactory(
     }
 
     internal fun authnResponseDirectPost(
-        request: AuthenticationRequestParametersFrom,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
@@ -62,7 +63,7 @@ internal class AuthenticationResponseFactory(
     }
 
     internal fun authnResponseQuery(
-        request: AuthenticationRequestParametersFrom,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Redirect {
         val url = request.parameters.redirectUrl?.let { redirectUrl ->
@@ -80,7 +81,7 @@ internal class AuthenticationResponseFactory(
      * That's the default for `id_token` and `vp_token`
      */
     internal fun authnResponseFragment(
-        request: AuthenticationRequestParametersFrom,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Redirect {
         val url = request.parameters.redirectUrl?.let { redirectUrl ->
@@ -93,7 +94,7 @@ internal class AuthenticationResponseFactory(
 
 
     private suspend fun buildJarm(
-        request: AuthenticationRequestParametersFrom,
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ) =
         if (response.clientMetadata != null && response.jsonWebKeys != null && response.clientMetadata.requestsEncryption()) {
@@ -104,7 +105,6 @@ internal class AuthenticationResponseFactory(
                 runCatching { request.parameters.nonce?.decodeToByteArray(Base64()) }.getOrNull()
                     ?: runCatching { request.parameters.nonce?.encodeToByteArray() }.getOrNull()
                     ?: Random.Default.nextBytes(16)
-            val payload = response.params.serialize().encodeToByteArray()
             jwsService.encryptJweObject(
                 header = JweHeader(
                     algorithm = alg,
@@ -114,7 +114,8 @@ internal class AuthenticationResponseFactory(
                     agreementPartyUInfo = Random.nextBytes(16),
                     keyId = jwk.keyId,
                 ),
-                payload = payload,
+                payload = response.params,
+                serializer = AuthenticationResponseParameters.serializer(),
                 recipientKey = jwk,
                 jweAlgorithm = alg,
                 jweEncryption = enc,
@@ -124,7 +125,9 @@ internal class AuthenticationResponseFactory(
             }
         } else {
             jwsService.createSignedJwsAddingParams(
-                payload = response.params.serialize().encodeToByteArray(), addX5c = false
+                payload = response.params,
+                serializer = AuthenticationResponseParameters.serializer(),
+                addX5c = false
             ).map { it.serialize() }.getOrElse {
                 Napier.w("buildJarm error", it)
                 throw OAuth2Exception(Errors.INVALID_REQUEST)

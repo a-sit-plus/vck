@@ -86,13 +86,13 @@ object ConstantIndex {
     }
 
     val CredentialScheme.supportsSdJwt
-        get() = supportedRepresentations.contains(ConstantIndex.CredentialRepresentation.SD_JWT) && sdJwtType != null
+        get() = supportedRepresentations.contains(CredentialRepresentation.SD_JWT) && sdJwtType != null
 
     val CredentialScheme.supportsVcJwt
-        get() = supportedRepresentations.contains(ConstantIndex.CredentialRepresentation.PLAIN_JWT) && vcType != null
+        get() = supportedRepresentations.contains(CredentialRepresentation.PLAIN_JWT) && vcType != null
 
     val CredentialScheme.supportsIso
-        get() = supportedRepresentations.contains(ConstantIndex.CredentialRepresentation.ISO_MDOC)
+        get() = supportedRepresentations.contains(CredentialRepresentation.ISO_MDOC)
                 && isoNamespace != null && isoDocType != null
 
 }

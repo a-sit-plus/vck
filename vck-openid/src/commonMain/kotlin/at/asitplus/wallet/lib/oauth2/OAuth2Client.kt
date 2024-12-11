@@ -6,7 +6,10 @@ import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidvci.*
+import at.asitplus.wallet.lib.oidvci.DefaultMapStore
+import at.asitplus.wallet.lib.oidvci.MapStore
+import at.asitplus.wallet.lib.oidvci.WalletService
+import at.asitplus.wallet.lib.oidvci.buildDPoPHeader
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlin.random.Random
 
@@ -20,11 +23,11 @@ class OAuth2Client(
      * Used to create [AuthenticationRequestParameters], [TokenRequestParameters] and [CredentialRequestProof],
      * typically a URI.
      */
-    private val clientId: String = "https://wallet.a-sit.at/app",
+    val clientId: String = "https://wallet.a-sit.at/app",
     /**
      * Used to create [AuthenticationRequestParameters] and [TokenRequestParameters].
      */
-    private val redirectUrl: String = "$clientId/callback",
+    val redirectUrl: String = "$clientId/callback",
     /**
      * Used to store the code, associated to the state, to first send [AuthenticationRequestParameters.codeChallenge],
      * and then [TokenRequestParameters.codeVerifier], see [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636).
@@ -52,12 +55,14 @@ class OAuth2Client(
      * @param authorizationDetails from RFC 9396 OAuth 2.0 Rich Authorization Requests
      * @param resource from RFC 8707 Resource Indicators for OAuth 2.0, in OID4VCI flows the value
      * of [IssuerMetadata.credentialIssuer]
+     * @param issuerState for OID4VCI flows the value from [CredentialOfferGrantsAuthCode.issuerState]
      */
     suspend fun createAuthRequest(
         state: String,
         authorizationDetails: Set<AuthorizationDetails>? = null,
         scope: String? = null,
         resource: String? = null,
+        issuerState: String? = null,
     ) = AuthenticationRequestParameters(
         responseType = GRANT_TYPE_CODE,
         state = state,
@@ -65,13 +70,14 @@ class OAuth2Client(
         authorizationDetails = authorizationDetails,
         scope = scope,
         resource = resource,
+        issuerState = issuerState,
         redirectUrl = redirectUrl,
         codeChallenge = generateCodeVerifier(state),
-        codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
+        codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256
     )
 
     @OptIn(ExperimentalStdlibApi::class)
-    private suspend fun generateCodeVerifier(state: String): String {
+    suspend fun generateCodeVerifier(state: String): String {
         val codeVerifier = Random.nextBytes(32).toHexString(HexFormat.Default)
         stateToCodeStore.put(state, codeVerifier)
         return codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)

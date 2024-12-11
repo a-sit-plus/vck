@@ -20,9 +20,11 @@ import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlinx.serialization.builtins.ByteArraySerializer
 
 /**
  * Server implementation to issue credentials using OID4VCI.
@@ -77,7 +79,8 @@ class CredentialIssuer(
 
     /**
      * Serve this result JSON-serialized under `/.well-known/jwt-vc-issuer`
-     * (see [OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA])
+     * (see [OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA]),
+     * so that verifiers can look up the keys used to sign credentials.
      */
     val jwtVcMetadata: JwtVcIssuerMetadata by lazy {
         JwtVcIssuerMetadata(
@@ -90,14 +93,13 @@ class CredentialIssuer(
      * Offer all [credentialSchemes] to clients.
      *
      * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
-     * i.e. by displaying a QR Code that can be scanned with wallet appps.
+     * i.e. by displaying a QR Code that can be scanned with wallet apps.
      */
     suspend fun credentialOfferWithAuthorizationCode(): CredentialOffer = CredentialOffer(
         credentialIssuer = publicContext,
         configurationIds = credentialSchemes.flatMap { it.toCredentialIdentifier() },
         grants = CredentialOfferGrants(
-            authorizationCode =
-            CredentialOfferGrantsAuthCode(
+            authorizationCode = CredentialOfferGrantsAuthCode(
                 // TODO remember this state, for subsequent requests from the Wallet
                 issuerState = uuid4().toString(),
                 authorizationServer = authorizationService.publicContext
@@ -194,12 +196,10 @@ class CredentialIssuer(
     }
 
     private suspend fun String.validateJwtProof(): CryptoPublicKey {
-        val jwsSigned = JwsSigned.deserialize(this).getOrNull()
+        val jwsSigned = JwsSigned.deserialize<JsonWebToken>(JsonWebToken.serializer(), this, vckJsonSerializer).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid proof: $this") }
-        val jwt = JsonWebToken.deserialize(jwsSigned.payload.decodeToString()).getOrNull()
-            ?: throw OAuth2Exception(Errors.INVALID_PROOF)
-                .also { Napier.w("client did provide invalid JWT in proof: $this") }
+        val jwt = jwsSigned.payload
         if (jwsSigned.header.type != PROOF_JWT_TYPE)
             throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid header type in JWT in proof: ${jwsSigned.header}") }
@@ -219,7 +219,7 @@ class CredentialIssuer(
      * Removed in OID4VCI Draft 14, kept here for a bit of backwards-compatibility
      */
     private suspend fun String.validateCwtProof(): CryptoPublicKey {
-        val coseSigned = CoseSigned.deserialize(decodeToByteArray(Base64UrlStrict)).getOrNull()
+        val coseSigned = CoseSigned.deserialize(ByteArraySerializer(), decodeToByteArray(Base64UrlStrict)).getOrNull()
             ?: throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid proof: $this") }
         val cwt = coseSigned.payload?.let { CborWebToken.deserialize(it).getOrNull() }

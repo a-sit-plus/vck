@@ -40,3 +40,4 @@ out/
 ### VS Code ###
 .vscode/
 repo/
+.run/

@@ -15,11 +15,11 @@ data class IssuerSignedList(
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is IssuerSignedList) return false
+        if (other == null || this::class != other::class) return false
 
-        if (entries != other.entries) return false
+        other as IssuerSignedList
 
-        return true
+        return entries == other.entries
     }
 
     override fun hashCode(): Int {

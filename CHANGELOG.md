@@ -1,5 +1,49 @@
 # Changelog
 
+Release 5.2.0:
+- Remote qualified electronic signatures:
+    - New `Initializer` object in `vck-openid` which needs to be called at the start of the project if artifact is used
+    - New artifacts `rqes-data-classes` and `vck-rqes` which allow handling of remote signature requests as described by the draft of POTENTIAL use-case 5 which is based on the CSC API v2.0.0.2
+    - To use `vck-rqes` the new `Initializer` object in `vck-rqes` which needs to be called at the start of the project if artifact is used
+    - It fully overrides and replaces the effect of the initializer in `vck-openid`
+    - Change class `InputDescriptor` to `DifInputDescriptor` which now implements new interface `InputDescriptor`
+    - New class `QesInputDescriptor` implements `InputDescriptor`
+    - Refactor sealed class `AuthorizationDetails` to interface
+        - Refactor subclass `OpenIdCredential` to class `OpenIdAuthorizationDetails` which implements `AuthrorizationDetails`
+        - Refactor subclass `CSCCredential` to class `CscAuthorizationDetails` which implements `AuthorizationDetails`
+    - New interface `RequestParameters`
+    - Remove RQES components from `AuthenticationRequestParameters`
+    - New class `CscAuthenticationRequestParameters` which now holds the RQES components
+    - New class `SignatureRequestParameters`
+    - Refactor `AuthenticationRequestParametersFrom` to generic sealed class `RequestParametersFrom`
+    - Refactor `AuthenticationRequestParser` to open class `RequestParser`
+- Selective Disclosure JWT:
+    - Validate confirmation claims correctly
+- ISO 18013-5 credentials:
+    - Serialize and deserialize device signed items correctly (i.e. considering the namespace of the element)
+- Refactorings:
+    - Adapt to changes in `signum`, i.e. the classes `JwsSigned`, `JweDecrypted`, `CoseSigned` are now typed to their payload, leading to changes in `CoseService` and `JwsService` to add overloads for typed payloads, as well as members in data classes containing e.g. `JwsSigned<*>`
+    - Add constructor parameter `identifier` to `IssuerAgent`, to be used as the `issuer` property in issued credentials
+    - Remove function `verifyPresentationContainsAttributes()` from `Verifier`, and `VerifierAgent`
+    - Remove function `verifyVcJws(it: String): VerifyCredentialResult` from `VerifierAgent`, was only forwarding call to `Validator` anyway
+    - Remove secondary constructor from `OidcSiopVerifier`
+    - Remove `keyMaterial` from interface `Verifier`
+    - Add option to request optional attributes in `OidcSiopVerifier.RequestOptionsCredential`
+    - In subclasses of `SubjectCredentialStore.StoreEntry` replace `scheme: ConstantIndex.CredentialScheme` with `schemaUri: String` to actually make it serializable
+- Key material:
+    - Refactor extracting the audience of a verifiable presentation from an OpenID Authn Request (now uses the `client_id` or `audience` before extracting key identifiers)
+    - Add `customKeyId` to `KeyMaterial` to not use the DID encoding as the identifier for keys
+    - Do not expect the `audience` of a verifiable presentation to always incude the identifier of a key, but the identifier of the verifier (which may be anything)
+    - Remove additional constructors of `VerifierAgent`, add the required constructor parameter `identifier`
+- OpenID for Verifiable Credential Issuance:
+    - Add `issuerState` to `OAuth2Client.createAuthRequest` for OID4VCI flows
+    - Add extension functions to `JwsService` to create JWTs for OAuth 2.0 Attestation-Based Client Authentication
+    - New artefact `vck-openid-ktor` implements a ktor client for OpenID for Verifiable Credential Issuance and OpenID for Verifiable Presentations
+    - Remove `scopePresentationDefinitionRetriever` from `OidcSiopWallet` to keep implementation simple
+- Dependency Updates:
+    - Signum 3.11.1
+    - Kotlin 2.1.0  through Conventions 2.1.0+20241204
+
 Release 5.1.0:
  - Drop ARIES protocol implementation, and the `vck-aries` artifact
  - Add `credentialScheme` and `subjectPublicKey` to internal `CredentialToBeIssued`
