@@ -171,7 +171,8 @@ class DefaultVerifierCoseService(
     }
 
     fun CoseSigned<*>.loadPublicKeys(): Set<CoseKey> =
-        publicKey?.let { setOf(it) } ?: publicKeyLookup(this) ?: setOf<CoseKey>().also {
+        combinedCoseHeader.publicKey?.let { setOf(it) } ?: publicKeyLookup(this)
+        ?: setOf<CoseKey>().also {
             Napier.d("No public keys: $this")
         }
 }

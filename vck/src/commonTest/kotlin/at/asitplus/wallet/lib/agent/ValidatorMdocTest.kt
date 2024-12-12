@@ -69,7 +69,7 @@ class ValidatorMdocTest : FreeSpec() {
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
-            val issuerKey = credential.issuerSigned.issuerAuth.publicKey
+            val issuerKey = credential.issuerSigned.issuerAuth.combinedCoseHeader.publicKey
 
             validator.verifyIsoCred(credential.issuerSigned, issuerKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
@@ -87,7 +87,7 @@ class ValidatorMdocTest : FreeSpec() {
 
             val issuerKey = credential.issuerSigned.issuerAuth.also {
                 println(it)
-            }.publicKey
+            }.combinedCoseHeader.publicKey
 
             val value = validator.verifyIsoCred(credential.issuerSigned, issuerKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
