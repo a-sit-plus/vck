@@ -4,6 +4,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.CborCredentialSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -363,6 +364,9 @@ class StoreEntrySerializationTest : FreeSpec({
             .let { IssuerSigned.deserialize(it) }.getOrNull()
             ?.let { Holder.StoreCredentialInput.Iso(it, ConstantIndex.AtomicAttribute2023) }
             .shouldNotBeNull()
+
+        val tmp = credentialsInput.issuerSigned.issuerAuth.payload
+        Napier.d("value: $tmp")
 
         val entry = holder.storeCredential(credentialsInput).getOrThrow()
             .shouldBeInstanceOf<Holder.StoredCredential.Iso>()
