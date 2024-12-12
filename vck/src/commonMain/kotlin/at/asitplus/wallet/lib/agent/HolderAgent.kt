@@ -3,7 +3,12 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
-import at.asitplus.dif.*
+import at.asitplus.dif.ClaimFormat
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.PresentationSubmission
+import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
@@ -119,7 +124,10 @@ class HolderAgent(
 
     private fun SubjectCredentialStore.StoreEntry.toStoredCredential() = when (this) {
         is SubjectCredentialStore.StoreEntry.Iso -> Holder.StoredCredential.Iso(
-            this, Validator.RevocationStatus.UNKNOWN
+            this,
+            this.issuerSigned.issuerAuth.payload.let {
+                Validator.RevocationStatus.UNKNOWN
+            }
         )
 
         is SubjectCredentialStore.StoreEntry.Vc -> Holder.StoredCredential.Vc(
