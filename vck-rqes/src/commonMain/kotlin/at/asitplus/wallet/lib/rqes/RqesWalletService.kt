@@ -11,21 +11,28 @@ import at.asitplus.rqes.SignHashParameters
 import at.asitplus.rqes.SignatureRequestParameters
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.oidvci.DefaultMapStore
+import at.asitplus.wallet.lib.oidvci.MapStore
 import com.benasher44.uuid.uuid4
 
 /**
  * Wallet service that implements generation of all data classes necessary
- * to succesfully end-end a remote signature creation request by a driving application
- * This class focusses on the POTENTIAL UC5 wallet use case and
+ * to successfully end-end a remote signature creation request by a driving application
+ * This class focuses on the POTENTIAL UC5 wallet use case and
  * as such currently only supports `signHash`.
  * `signDoc` is out of testing scope for now but may be added later
  */
 class RqesWalletService(
     private val clientId: String = "https://wallet.a-sit.at/app",
     redirectUrl: String = "$clientId/callback",
+    stateToCodeStore: MapStore<String, String>? = null,
 ) {
 
-    private val oauth2Client: OAuth2Client = OAuth2Client(clientId = clientId, redirectUrl = redirectUrl)
+    private val oauth2Client: OAuth2Client = OAuth2Client(
+        clientId = clientId,
+        redirectUrl = redirectUrl,
+        stateToCodeStore = stateToCodeStore ?: DefaultMapStore()
+    )
 
     suspend fun createOAuth2AuthenticationRequest(
         rqesRequest: SignatureRequestParameters,

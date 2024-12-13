@@ -58,7 +58,9 @@ interface SubjectCredentialStore {
 
     @Serializable
     sealed interface StoreEntry {
-        val scheme: ConstantIndex.CredentialScheme
+        val schemaUri: String
+        val scheme: ConstantIndex.CredentialScheme?
+            get() = AttributeIndex.resolveSchemaUri(schemaUri)
 
         @Serializable
         data class Vc(
@@ -66,8 +68,8 @@ interface SubjectCredentialStore {
             val vcSerialized: String,
             @SerialName("vc")
             val vc: VerifiableCredentialJws,
-            @SerialName("scheme")
-            override val scheme: ConstantIndex.CredentialScheme
+            @SerialName("schema-uri")
+            override val schemaUri: String,
         ) : StoreEntry
 
         @Serializable
@@ -79,16 +81,16 @@ interface SubjectCredentialStore {
             /** Map of serialized disclosure item (as [String]) to parsed item (as [SelectiveDisclosureItem]) */
             @SerialName("disclosures")
             val disclosures: Map<String, SelectiveDisclosureItem?>,
-            @SerialName("scheme")
-            override val scheme: ConstantIndex.CredentialScheme
+            @SerialName("schema-uri")
+            override val schemaUri: String,
         ) : StoreEntry
 
         @Serializable
         data class Iso(
             @SerialName("issuer-signed")
             val issuerSigned: IssuerSigned,
-            @SerialName("scheme")
-            override val scheme: ConstantIndex.CredentialScheme
+            @SerialName("schema-uri")
+            override val schemaUri: String,
         ) : StoreEntry
     }
 

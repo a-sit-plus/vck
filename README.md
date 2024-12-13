@@ -13,7 +13,7 @@
 [![A-SIT Plus Official](https://img.shields.io/badge/A--SIT_Plus-official-005b79?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNDMuNzYyODYgMTg0LjgxOTk5Ij48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiIGNsaXBQYXRoVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNMCA1OTUuMjhoODQxLjg5VjBIMFoiLz48L2NsaXBQYXRoPjwvZGVmcz48ZyBjbGlwLXBhdGg9InVybCgjYSkiIHRyYW5zZm9ybT0ibWF0cml4KDEuMzMzMzMzMyAwIDAgLTEuMzMzMzMzMyAtNDgyLjI1IDUxNy41MykiPjxwYXRoIGZpbGw9IiMwMDViNzkiIGQ9Ik00MTUuNjcgMjQ5LjUzYy03LjE1LjA4LTEzLjk0IDEtMjAuMTcgMi43NWE1Mi4zMyA1Mi4zMyAwIDAgMC0xNy40OCA4LjQ2IDQwLjQzIDQwLjQzIDAgMCAwLTExLjk2IDE0LjU2Yy0yLjY4IDUuNDEtNC4xNCAxMS44NC00LjM1IDE5LjA5bC0uMDIgNi4xMnYyLjE3YS43MS43MSAwIDAgMCAuNy43M2gxNi41MmMuMzkgMCAuNy0uMzIuNzEtLjdsLjAxLTIuMmMwLTIuNi4wMi01LjgyLjAzLTYuMDcuMi00LjYgMS4yNC04LjY2IDMuMDgtMTIuMDZhMjguNTIgMjguNTIgMCAwIDEgOC4yMy05LjU4IDM1LjI1IDM1LjI1IDAgMCAxIDExLjk2LTUuNTggNTUuMzggNTUuMzggMCAwIDEgMTIuNTgtMS43NmM0LjMyLjEgOC42LjcgMTIuNzQgMS44YTM1LjA3IDM1LjA3IDAgMCAxIDExLjk2IDUuNTcgMjguNTQgMjguNTQgMCAwIDEgOC4yNCA5LjU3YzEuOTYgMy42NCAzIDguMDIgMy4xMiAxMy4wMnYyNC4wOUgzNjIuNGEuNy43IDAgMCAwLS43MS43VjMzNWMwIDguNDMuMDEgOC4wNS4wMSA4LjE0LjIgNy4zIDEuNjcgMTMuNzcgNC4zNiAxOS4yMmE0MC40MyA0MC40MyAwIDAgMCAxMS45NiAxNC41N2M1IDMuNzYgMTAuODcgNi42MSAxNy40OCA4LjQ2YTc3LjUgNzcuNSAwIDAgMCAyMC4wMiAyLjc3YzcuMTUtLjA3IDEzLjk0LTEgMjAuMTctMi43NGE1Mi4zIDUyLjMgMCAwIDAgMTcuNDgtOC40NiA0MC40IDQwLjQgMCAwIDAgMTEuOTUtMTQuNTdjMS42Mi0zLjI2IDMuNzctMTAuMDQgMy43Ny0xNC42OCAwLS4zOC0uMTctLjc0LS41NC0uODJsLTE2Ljg5LS40Yy0uMi0uMDQtLjM0LjM0LS4zNC41NCAwIC4yNy0uMDMuNC0uMDYuNi0uNSAyLjgyLTEuMzggNS40LTIuNjEgNy42OWEyOC41MyAyOC41MyAwIDAgMS04LjI0IDkuNTggMzUuMDEgMzUuMDEgMCAwIDEtMTEuOTYgNS41NyA1NS4yNSA1NS4yNSAwIDAgMS0xMi41NyAxLjc3Yy00LjMyLS4xLTguNjEtLjcxLTEyLjc1LTEuOGEzNS4wNSAzNS4wNSAwIDAgMS0xMS45Ni01LjU3IDI4LjUyIDI4LjUyIDAgMCAxLTguMjMtOS41OGMtMS44Ni0zLjQ0LTIuOS03LjU1LTMuMDktMTIuMmwtLjAxLTcuNDdoODkuMTZhLjcuNyAwIDAgMCAuNy0uNzJ2LTM5LjVjLS4xLTcuNjUtMS41OC0xNC40LTQuMzgtMjAuMDZhNDAuNCA0MC40IDAgMCAwLTExLjk1LTE0LjU2IDUyLjM3IDUyLjM3IDAgMCAwLTE3LjQ4LTguNDcgNzcuNTYgNzcuNTYgMCAwIDAtMjAuMDEtMi43N1oiLz48cGF0aCBmaWxsPSIjY2U0OTJlIiBkPSJNNDE5LjM4IDI4MC42M2gtNy41N2EuNy43IDAgMCAwLS43MS43MXYxNS40MmE4LjE3IDguMTcgMCAwIDAtMy43OCA2LjkgOC4yOCA4LjI4IDAgMCAwIDE2LjU0IDAgOC4yOSA4LjI5IDAgMCAwLTMuNzYtNi45di0xNS40MmEuNy43IDAgMCAwLS43Mi0uNzEiLz48L2c%2BPC9zdmc%2B&logoColor=white&labelColor=white)](https://a-sit-plus.github.io)
 [![GitHub license](https://img.shields.io/badge/license-Apache%20License%202.0-brightgreen.svg?style=flat)](http://www.apache.org/licenses/LICENSE-2.0)
 [![Kotlin](https://img.shields.io/badge/kotlin-multiplatform--mobile-orange.svg?logo=kotlin)](http://kotlinlang.org)
-[![Kotlin](https://img.shields.io/badge/kotlin-2.0.20-blue.svg?logo=kotlin)](http://kotlinlang.org)
+[![Kotlin](https://img.shields.io/badge/kotlin-2.1.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![Java](https://img.shields.io/badge/java-17-blue.svg?logo=OPENJDK)](https://www.oracle.com/java/technologies/downloads/#java17)
 [![Maven Central](https://img.shields.io/maven-central/v/at.asitplus.wallet/vck)](https://mvnrepository.com/artifact/at.asitplus.wallet/vck)
 
@@ -58,7 +58,9 @@ When using the plain JWT representation, the single credential itself is an inst
 Other libraries implementing credential schemes may call `LibraryInitializer.registerExtensionLibrary()` to register with this library. See our implementation of the [EU PID credential](https://github.com/a-sit-plus/eu-pid-credential) or our implementation of the [Mobile Driving Licence](https://github.com/a-sit-plus/mobile-driving-licence-credential/) for examples. We also maintain a comprehensive list of [all credentials powered by this library](https://github.com/a-sit-plus/credentials-collection).
 
 
-For the OpenID protocol family, issuing is implemented using [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), see `WalletService` and `CredentialIssuer`.  Presentation of credentials is implemented using [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), supporting [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), see `OidcSiopVerifier` and `OidcSiopWallet`.
+For the OpenID protocol family, issuing is implemented using [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), see `WalletService` and `CredentialIssuer`. This library supports several features of the OpenID4VCI draft 14: Pre-authorized code grants, authorization code flow, selecting credentials with authorization details and scopes, pushed authorization requests. Not supported are the deferred credential endpoint and the notification endpoint.
+
+Presentation of credentials is implemented using [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), supporting [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), see `OidcSiopVerifier` and `OidcSiopWallet`. This library supports several features of the OpenID4VP draft 23: Same device and cross device flows, response mode `direct_post` and `direct_post.jwt`, request objects by value or reference, presentation definitions and submissions, verifier attestations, signed and/or encrypted responses. Not supported are client identifier schemes embedded in the client identifier, Digital Credential Query Language, embedded transaction data.
 
 ## Usage
 The library is made up of three artifact which build on each other.
@@ -81,74 +83,126 @@ We'll present an issuing process according to [OID4VCI](https://openid.net/specs
 
 ```json
 {
-  "issuer": "https://wallet.a-sit.at/credential-issuer",
-  "credential_issuer": "https://wallet.a-sit.at/credential-issuer",
-  "authorization_servers": [
-    "https://wallet.a-sit.at/authorization-server"
-  ],
-  "credential_endpoint": "https://wallet.a-sit.at/credential-issuer/credential",
-  "token_endpoint": "https://wallet.a-sit.at/authorization-server/token",
-  "authorization_endpoint": "https://wallet.a-sit.at/authorization-server/authorize",
-  "credential_identifiers_supported": true,
-  "credential_configurations_supported": {
-    "at.a-sit.wallet.atomic-attribute-2023": {
-      "format": "mso_mdoc",
-      "scope": "at.a-sit.wallet.atomic-attribute-2023",
-      "cryptographic_binding_methods_supported": [
-        "cose_key"
-      ],
-      "credential_signing_alg_values_supported": [
-        "ES256"
-      ],
-      "doctype": "at.a-sit.wallet.atomic-attribute-2023.iso",
-      "claims": {
+    "issuer": "https://wallet.a-sit.at/credential-issuer",
+    "credential_issuer": "https://wallet.a-sit.at/credential-issuer",
+    "authorization_servers": [
+        "https://wallet.a-sit.at/authorization-server"
+    ],
+    "credential_endpoint": "https://wallet.a-sit.at/credential-issuer/credential",
+    "batch_credential_issuance": {
+        "batch_size": 1
+    },
+    "credential_configurations_supported": {
         "at.a-sit.wallet.atomic-attribute-2023": {
-          "given_name": {},
-          "family_name": {},
-          "date_of_birth": {}
+            "format": "mso_mdoc",
+            "scope": "at.a-sit.wallet.atomic-attribute-2023",
+            "cryptographic_binding_methods_supported": [
+                "jwk",
+                "cose_key"
+            ],
+            "credential_signing_alg_values_supported": [
+                "ES256"
+            ],
+            "doctype": "at.a-sit.wallet.atomic-attribute-2023.iso",
+            "claims": {
+                "at.a-sit.wallet.atomic-attribute-2023": {
+                    "given_name": {},
+                    "family_name": {},
+                    "date_of_birth": {},
+                    "portrait": {}
+                }
+            }
+        },
+        "AtomicAttribute2023#jwt_vc_json": {
+            "format": "jwt_vc_json",
+            "scope": "AtomicAttribute2023",
+            "cryptographic_binding_methods_supported": [
+                "jwk",
+                "urn:ietf:params:oauth:jwk-thumbprint"
+            ],
+            "credential_signing_alg_values_supported": [
+                "ES256"
+            ],
+            "credential_definition": {
+                "type": [
+                    "VerifiableCredential",
+                    "AtomicAttribute2023"
+                ],
+                "credentialSubject": {
+                    "given_name": {},
+                    "family_name": {},
+                    "date_of_birth": {},
+                    "portrait": {}
+                }
+            }
+        },
+        "AtomicAttribute2023#vc+sd-jwt": {
+            "format": "vc+sd-jwt",
+            "scope": "AtomicAttribute2023",
+            "cryptographic_binding_methods_supported": [
+                "jwk",
+                "urn:ietf:params:oauth:jwk-thumbprint"
+            ],
+            "credential_signing_alg_values_supported": [
+                "ES256"
+            ],
+            "vct": "AtomicAttribute2023",
+            "claims": {
+                "given_name": {},
+                "family_name": {},
+                "date_of_birth": {},
+                "portrait": {}
+            }
+        },
+        "org.iso.18013.5.1": {
+            "format": "mso_mdoc",
+            "scope": "org.iso.18013.5.1",
+            "cryptographic_binding_methods_supported": [
+                "jwk",
+                "cose_key"
+            ],
+            "credential_signing_alg_values_supported": [
+                "ES256"
+            ],
+            "doctype": "org.iso.18013.5.1.mDL",
+            "claims": {
+                "org.iso.18013.5.1": {
+                    "family_name": {},
+                    "given_name": {},
+                    "birth_date": {},
+                    "issue_date": {},
+                    "expiry_date": {},
+                    "issuing_country": {},
+                    "issuing_authority": {},
+                    "document_number": {},
+                    "portrait": {},
+                    "driving_privileges": {},
+                    "un_distinguishing_sign": {},
+                    "administrative_number": {},
+                    "sex": {},
+                    "height": {},
+                    "weight": {},
+                    "eye_colour": {},
+                    "hair_colour": {},
+                    "birth_place": {},
+                    "resident_address": {},
+                    "portrait_capture_date": {},
+                    "age_in_years": {},
+                    "age_birth_year": {},
+                    "age_over_18": {},
+                    "issuing_jurisdiction": {},
+                    "nationality": {},
+                    "resident_city": {},
+                    "resident_state": {},
+                    "resident_postal_code": {},
+                    "resident_country": {},
+                    "family_name_national_character": {},
+                    "given_name_national_character": {},
+                    "signature_usual_mark": {}
+                }
+            }
         }
-      }
-    },
-    "AtomicAttribute2023#jwt_vc_json": {
-      "format": "jwt_vc_json",
-      "scope": "AtomicAttribute2023",
-      "cryptographic_binding_methods_supported": [
-        "did:key",
-        "urn:ietf:params:oauth:jwk-thumbprint"
-      ],
-      "credential_signing_alg_values_supported": [
-        "ES256"
-      ],
-      "credential_definition": {
-        "type": [
-          "VerifiableCredential",
-          "AtomicAttribute2023"
-        ],
-        "credentialSubject": {
-          "given_name": {},
-          "family_name": {},
-          "date_of_birth": {}
-        }
-      }
-    },
-    "AtomicAttribute2023#vc+sd-jwt": {
-      "format": "vc+sd-jwt",
-      "scope": "AtomicAttribute2023",
-      "cryptographic_binding_methods_supported": [
-        "did:key",
-        "urn:ietf:params:oauth:jwk-thumbprint"
-      ],
-      "credential_signing_alg_values_supported": [
-        "ES256"
-      ],
-      "vct": "AtomicAttribute2023",
-      "claims": {
-        "given_name": {},
-        "family_name": {},
-        "date_of_birth": {}
-      }
     }
-  }
 }
 ```
 </details>
@@ -158,22 +212,19 @@ We'll present an issuing process according to [OID4VCI](https://openid.net/specs
 
 ```json
 {
-  "credential_issuer": "https://wallet.a-sit.at/credential-issuer",
-  "credential_configuration_ids": [
-    "at.a-sit.wallet.atomic-attribute-2023",
-    "AtomicAttribute2023#jwt_vc_json",
-    "AtomicAttribute2023#vc+sd-jwt"
-  ],
-  "grants": {
-    "authorization_code": {
-      "issuer_state": "18136181-97fd-4af9-9e66-85a51cdea269",
-      "authorization_server": "https://wallet.a-sit.at/authorization-server"
-    },
-    "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
-      "pre-authorized_code": "2c74a00b-70b8-4062-9757-75652174bc5d",
-      "authorization_server": "https://wallet.a-sit.at/authorization-server"
+    "credential_issuer": "https://wallet.a-sit.at/credential-issuer",
+    "credential_configuration_ids": [
+        "at.a-sit.wallet.atomic-attribute-2023",
+        "AtomicAttribute2023#jwt_vc_json",
+        "AtomicAttribute2023#vc+sd-jwt",
+        "org.iso.18013.5.1"
+    ],
+    "grants": {
+        "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+            "pre-authorized_code": "fe8cee09-1b9a-4be4-90f4-3c77c44c37a6",
+            "authorization_server": "https://wallet.a-sit.at/authorization-server"
+        }
     }
-  }
 }
 ```
 </details>
@@ -183,17 +234,22 @@ We'll present an issuing process according to [OID4VCI](https://openid.net/specs
 
 ```json
 {
-  "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
-  "redirect_uri": "https://wallet.a-sit.at/app/callback",
-  "client_id": "https://wallet.a-sit.at/app",
-  "authorization_details": [
-    {
-      "type": "openid_credential",
-      "format": "vc+sd-jwt",
-      "vct": "AtomicAttribute2023"
-    }
-  ],
-  "pre-authorized_code": "2c74a00b-70b8-4062-9757-75652174bc5d"
+    "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+    "redirect_uri": "https://wallet.a-sit.at/app/callback",
+    "client_id": "https://wallet.a-sit.at/app",
+    "authorization_details": [
+        {
+            "type": "openid_credential",
+            "credential_configuration_id": "AtomicAttribute2023#vc+sd-jwt",
+            "locations": [
+                "https://wallet.a-sit.at/authorization-server"
+            ],
+            "credential_identifiers": [
+                "AtomicAttribute2023#vc+sd-jwt"
+            ]
+        }
+    ],
+    "pre-authorized_code": "fe8cee09-1b9a-4be4-90f4-3c77c44c37a6"
 }
 ```
 </details>
@@ -203,11 +259,22 @@ We'll present an issuing process according to [OID4VCI](https://openid.net/specs
 
 ```json
 {
-  "access_token": "413ed326-107b-4429-8efa-872cb89949d8",
-  "token_type": "bearer",
-  "expires_in": 3600,
-  "c_nonce": "4fc81553-970e-4765-899f-611d7c4173ae",
-  "authorization_details": []
+    "access_token": "8c41ad84-01ec-4300-9627-d210d1c0800e",
+    "token_type": "bearer",
+    "expires_in": 3600,
+    "c_nonce": "cf0875c8-afec-4890-aba1-b87aa0bfd4ce",
+    "authorization_details": [
+        {
+            "type": "openid_credential",
+            "credential_configuration_id": "AtomicAttribute2023#vc+sd-jwt",
+            "locations": [
+                "https://wallet.a-sit.at/authorization-server"
+            ],
+            "credential_identifiers": [
+                "AtomicAttribute2023#vc+sd-jwt"
+            ]
+        }
+    ]
 }
 ```
 </details>
@@ -217,12 +284,11 @@ We'll present an issuing process according to [OID4VCI](https://openid.net/specs
 
 ```json
 {
-  "format": "vc+sd-jwt",
-  "vct": "AtomicAttribute2023",
-  "proof": {
-    "proof_type": "jwt",
-    "jwt": "eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7ImNydiI6IlAtMjU2Iiwia3R5IjoiRUMiLCJ4IjoiS1R2WlRpX28xeTc5REQwSk1IanZyYUpkaXFEWGpNZlZIZVNYemVEVVV4ZyIsInkiOiJiUkZReC1meG9GOURJOTdUWmRQZmNYUXlEY0V0eEQydlNTNWNZMERHYXJZIn19.eyJpc3MiOiJodHRwczovL3dhbGxldC5hLXNpdC5hdC9hcHAiLCJhdWQiOiJodHRwczovL3dhbGxldC5hLXNpdC5hdC9jcmVkZW50aWFsLWlzc3VlciIsIm5vbmNlIjoiNGZjODE1NTMtOTcwZS00NzY1LTg5OWYtNjExZDdjNDE3M2FlIiwiaWF0IjoxNzIwNDIyNTM3fQ.FNM1BCli6pHEXedxRGOmNzxfpsEwQz67onbeQZfRU4tNxEqYauW45MrFkrYsi0Ly7wvfdoPkONZG7s7EmD-vkA"
-  }
+    "credential_identifier": "AtomicAttribute2023#vc+sd-jwt",
+    "proof": {
+        "proof_type": "jwt",
+        "jwt": "eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7ImNydiI6IlAtMjU2Iiwia2lkIjoiZGlkOmtleTp6RG5hZVlUN3BwWDRGeVM1Z3ZvcXJmQ2lMNmdMYm92bjVKQzRZelh4dUEydXBvcGtmIiwia3R5IjoiRUMiLCJ4IjoiZHlrQXRvMmhVcG85MzllX0IzaHRjQ0hDY1Y4c3Y1TkRfRDhZX0EtdlQtQSIsInkiOiJXc1pIazZ4N090bXI3WE5YNk9GT3lCdkpOYUxYX0RBVTFZemFMWnZNb3NnIn19.eyJpc3MiOiJodHRwczovL3dhbGxldC5hLXNpdC5hdC9hcHAiLCJhdWQiOiJodHRwczovL3dhbGxldC5hLXNpdC5hdC9jcmVkZW50aWFsLWlzc3VlciIsIm5vbmNlIjoiY2YwODc1YzgtYWZlYy00ODkwLWFiYTEtYjg3YWEwYmZkNGNlIiwiaWF0IjoxNzMzODIxNzQ0fQ.vSmPOkdtaAPHfpYocNG1af45SZvEpvhN9kKVKJ2-5TS_0dnn0ap7_91pJq_WlKGxhf5UF1T1j9TKITV8zEpb1Q"
+    }
 }
 ```
 </details>
@@ -236,9 +302,10 @@ We'll present an issuing process according to [OID4VCI](https://openid.net/specs
   "alg": "ES256",
   "jwk": {
     "crv": "P-256",
+    "kid": "did:key:zDnaeYT7ppX4FyS5gvoqrfCiL6gLbovn5JC4YzXxuA2upopkf",
     "kty": "EC",
-    "x": "KTvZTi_o1y79DD0JMHjvraJdiqDXjMfVHeSXzeDUUxg",
-    "y": "bRFQx-fxoF9DI97TZdPfcXQyDcEtxD2vSS5cY0DGarY"
+    "x": "dykAto2hUpo939e_B3htcCHCcV8sv5ND_D8Y_A-vT-A",
+    "y": "WsZHk6x7Otmr7XNX6OFOyBvJNaLX_DAU1YzaLZvMosg"
   }
 }
 ```
@@ -249,8 +316,8 @@ and
 {
   "iss": "https://wallet.a-sit.at/app",
   "aud": "https://wallet.a-sit.at/credential-issuer",
-  "nonce": "4fc81553-970e-4765-899f-611d7c4173ae",
-  "iat": 1720422537
+  "nonce": "cf0875c8-afec-4890-aba1-b87aa0bfd4ce",
+  "iat": 1733821744
 }
 ```
 </details>
@@ -260,8 +327,8 @@ and
 
 ```json
 {
-  "format": "vc+sd-jwt",
-  "credential": "eyJraWQiOiJkaWQ6a2V5OnpEbmFleVlrcDlqZ0hjN3lheEcybkZTMXc4MXJISkVyS3hZSkVtTExVRTJVU05wWmUiLCJ0eXAiOiJ2YytzZC1qd3QiLCJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJkaWQ6a2V5OnpEbmFlVEN2aDdZS1N5b21hUnFONFZ3TnZSZFRLdzJBakVkR0VkcndtNHZEUXU5RXciLCJuYmYiOjE3MjA0MjI1MzcsImlzcyI6ImRpZDprZXk6ekRuYWV5WWtwOWpnSGM3eWF4RzJuRlMxdzgxckhKRXJLeFlKRW1MTFVFMlVTTnBaZSIsImV4cCI6MTcyMDQyMjU5NywiaWF0IjoxNzIwNDIyNTM3LCJqdGkiOiJ1cm46dXVpZDpkODE1ZTEwZC1hNDRkLTQxNDQtYmZhNS05Zjk5MTNjZjE5ZmUiLCJfc2QiOlsiaHBNUTFpeWV0cTkzeWVCNG5FZXVmeDYweHY0WTVqbHFWcThIc2tJc1pZMCIsIkFHR1hZRTlIeXF1bGxTSF9iTC02dkRTSEhyZU9HckRWUVVOdEVQM3p1QlEiLCJva2VaSElRQkNQVlVxdUo4VmI3bHd2bWtLWnNmUktKVUE3X0VOMlZjX2M0Il0sInZjdCI6IkF0b21pY0F0dHJpYnV0ZTIwMjMiLCJzdGF0dXMiOnsiaWQiOiJodHRwczovL3dhbGxldC5hLXNpdC5hdC9iYWNrZW5kL2NyZWRlbnRpYWxzL3N0YXR1cy8xIzMiLCJ0eXBlIjoiUmV2b2NhdGlvbkxpc3QyMDIwU3RhdHVzIiwicmV2b2NhdGlvbkxpc3RJbmRleCI6MywicmV2b2NhdGlvbkxpc3RDcmVkZW50aWFsIjoiaHR0cHM6Ly93YWxsZXQuYS1zaXQuYXQvYmFja2VuZC9jcmVkZW50aWFscy9zdGF0dXMvMSJ9LCJfc2RfYWxnIjoic2hhLTI1NiIsImNuZiI6eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwia2lkIjoidXJuOmlldGY6cGFyYW1zOm9hdXRoOmp3ay10aHVtYnByaW50OnNoYTI1NjpaaC1yNlZsWE5UQUZheTVYVjFzWFpJUG5mZjdHcGVZMFAzTHNPVDJmSFlRPSIsIngiOiJLVHZaVGlfbzF5NzlERDBKTUhqdnJhSmRpcURYak1mVkhlU1h6ZURVVXhnIiwieSI6ImJSRlF4LWZ4b0Y5REk5N1RaZFBmY1hReURjRXR4RDJ2U1M1Y1kwREdhclkifX0.oDdilbVBmoRpy162gcDR8a0vvYHlP7LXvJ3gxmjz4dYKRLhoMwM_tIcu0Dy5_ftXPq5IO1p9GYMkfUhHk881kw~WyI4cWRNYkN6SWZGajQxT1ZVUE13OEI5R2xaN2tiemxxaXg5T1RSU2huWGgwIiwiZ2l2ZW5fbmFtZSIsIkVyaWthIl0~WyIxUDdYQjB5eFFjaVBlZkVrV2o5R2N0MzNUYVZXeGNnVER1N19aTGptWG13IiwiZmFtaWx5X25hbWUiLCJNdXN0ZXJmcmF1Il0~WyJ3a2VlWG4wejAwa2tiaHVaeVBXM2dwZVBpOXhSVWU1cmVrQ3Npc2d6ZXg4Iiwic3ViamVjdCIsInN1YmplY3QiXQ"
+    "format": "vc+sd-jwt",
+    "credential": "eyJraWQiOiJkaWQ6a2V5OnpEbmFlZHBaWjlwM3ZXQ2VBZlA2OU5EcGVoU2VuNGNTVWFCZDNHQlh6TUs3RnZ3UkIiLCJ0eXAiOiJ2YytzZC1qd3QiLCJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJkaWQ6a2V5OnpEbmFlWVQ3cHBYNEZ5UzVndm9xcmZDaUw2Z0xib3ZuNUpDNFl6WHh1QTJ1cG9wa2YiLCJuYmYiOjE3MzM4MjE3NDQsImlzcyI6ImRpZDprZXk6ekRuYWVkcFpaOXAzdldDZUFmUDY5TkRwZWhTZW40Y1NVYUJkM0dCWHpNSzdGdndSQiIsImV4cCI6MTczMzgyMTgwNCwiaWF0IjoxNzMzODIxNzQ0LCJqdGkiOiJ1cm46dXVpZDowYzE4MGQ5Zi0wNzJkLTQyMGUtYmE1ZC00ZDllMGQxY2ViMWUiLCJ2Y3QiOiJBdG9taWNBdHRyaWJ1dGUyMDIzIiwic3RhdHVzIjp7ImlkIjoiaHR0cHM6Ly93YWxsZXQuYS1zaXQuYXQvYmFja2VuZC9jcmVkZW50aWFscy9zdGF0dXMvMSMxIiwidHlwZSI6IlJldm9jYXRpb25MaXN0MjAyMFN0YXR1cyIsInJldm9jYXRpb25MaXN0SW5kZXgiOjEsInJldm9jYXRpb25MaXN0Q3JlZGVudGlhbCI6Imh0dHBzOi8vd2FsbGV0LmEtc2l0LmF0L2JhY2tlbmQvY3JlZGVudGlhbHMvc3RhdHVzLzEifSwiX3NkX2FsZyI6InNoYS0yNTYiLCJjbmYiOnsiandrIjp7ImNydiI6IlAtMjU2Iiwia2lkIjoiZGlkOmtleTp6RG5hZVlUN3BwWDRGeVM1Z3ZvcXJmQ2lMNmdMYm92bjVKQzRZelh4dUEydXBvcGtmIiwia3R5IjoiRUMiLCJ4IjoiZHlrQXRvMmhVcG85MzllX0IzaHRjQ0hDY1Y4c3Y1TkRfRDhZX0EtdlQtQSIsInkiOiJXc1pIazZ4N090bXI3WE5YNk9GT3lCdkpOYUxYX0RBVTFZemFMWnZNb3NnIn19LCJfc2QiOlsiM29aamN4Yy1XTi1idDF0aUJTamx3clJBbUY0OGpSMTNfeFUyandLWU9HTSIsIlNBcEhtRjJUN3lLazYwamxTbkFvbFdhMEZpYnljLWZwdkNWRlBJN0NPNDAiLCJIUFpyaHpTQno1U2ZtbmxCeml5QzNXX3JmRXFobkh3YTNwQ21GYzc3U19zIiwidXl6YXBxcDdNWkZFY1pVX3lqYnJRcW5mcUhUT1pudjM2MG1XRUh3ajM0TSJdfQ.KhdVWwIJAPoxm8vxQ4Fbq9_DC_szV2aLziDFe5Opns0H2bHgT4WAkR4yPf1cs1mJV7DEgJcMqAw1ABXTeaEpvw~WyJwQ0xUeXd0NTRnOFlSWGMwWkZuZlRYU05xSGR3YkpUZm1KM3l0SmJfTmYwIiwiZ2l2ZW5fbmFtZSIsIlN1c2FubmUiXQ~WyJXemdkNmI0QWg4WGdzcExKM1IxNzJrczV1Qi1la3NiajNXRk5RcE52SjBBIiwiZmFtaWx5X25hbWUiLCJNZWllciJd~WyJ4Q3hpcWZUUzNXNkUtbW15UVEwbVFmbVRBYjdPRjV6aW13UVZ1Zi0wN3cwIiwiZGF0ZV9vZl9iaXJ0aCIsIjE5OTAtMDEtMDEiXQ~WyJkQWN0Y05MVlFyVVpnN2tMeGJEYkVRdF9jS09mRVVKZ3EyZjBzVlZiNEQwIiwicG9ydHJhaXQiLCJQR3JvT2dFcnROYU84RnVubm54amJ3Q3dic1NwanZhNDZyd3VqdVA4dGxnQVl2YjhHLXF0RG9oVHl2Qjd1NkVqZENXN0ltYlhVWFJFbzkzWTBZZjUzZyJd~"
 }
 ```
 </details>
@@ -271,32 +338,35 @@ and
 
 ```json
 {
-  "sub": "did:key:zDnaeTCvh7YKSyomaRqN4VwNvRdTKw2AjEdGEdrwm4vDQu9Ew",
-  "nbf": 1720422537,
-  "iss": "did:key:zDnaeyYkp9jgHc7yaxG2nFS1w81rHJErKxYJEmLLUE2USNpZe",
-  "exp": 1720422597,
-  "iat": 1720422537,
-  "jti": "urn:uuid:d815e10d-a44d-4144-bfa5-9f9913cf19fe",
-  "_sd": [
-    "hpMQ1iyetq93yeB4nEeufx60xv4Y5jlqVq8HskIsZY0",
-    "AGGXYE9HyqullSH_bL-6vDSHHreOGrDVQUNtEP3zuBQ",
-    "okeZHIQBCPVUquJ8Vb7lwvmkKZsfRKJUA7_EN2Vc_c4"
-  ],
+  "sub": "did:key:zDnaeYT7ppX4FyS5gvoqrfCiL6gLbovn5JC4YzXxuA2upopkf",
+  "nbf": 1733821744,
+  "iss": "did:key:zDnaedpZZ9p3vWCeAfP69NDpehSen4cSUaBd3GBXzMK7FvwRB",
+  "exp": 1733821804,
+  "iat": 1733821744,
+  "jti": "urn:uuid:0c180d9f-072d-420e-ba5d-4d9e0d1ceb1e",
   "vct": "AtomicAttribute2023",
   "status": {
-    "id": "https://wallet.a-sit.at/backend/credentials/status/1#3",
+    "id": "https://wallet.a-sit.at/backend/credentials/status/1#1",
     "type": "RevocationList2020Status",
-    "revocationListIndex": 3,
+    "revocationListIndex": 1,
     "revocationListCredential": "https://wallet.a-sit.at/backend/credentials/status/1"
   },
   "_sd_alg": "sha-256",
   "cnf": {
-    "crv": "P-256",
-    "kty": "EC",
-    "kid": "urn:ietf:params:oauth:jwk-thumbprint:sha256:Zh-r6VlXNTAFay5XV1sXZIPnff7GpeY0P3LsOT2fHYQ=",
-    "x": "KTvZTi_o1y79DD0JMHjvraJdiqDXjMfVHeSXzeDUUxg",
-    "y": "bRFQx-fxoF9DI97TZdPfcXQyDcEtxD2vSS5cY0DGarY"
-  }
+    "jwk": {
+      "crv": "P-256",
+      "kid": "did:key:zDnaeYT7ppX4FyS5gvoqrfCiL6gLbovn5JC4YzXxuA2upopkf",
+      "kty": "EC",
+      "x": "dykAto2hUpo939e_B3htcCHCcV8sv5ND_D8Y_A-vT-A",
+      "y": "WsZHk6x7Otmr7XNX6OFOyBvJNaLX_DAU1YzaLZvMosg"
+    }
+  },
+  "_sd": [
+    "3oZjcxc-WN-bt1tiBSjlwrRAmF48jR13_xU2jwKYOGM",
+    "SApHmF2T7yKk60jlSnAolWa0Fibyc-fpvCVFPI7CO40",
+    "HPZrhzSBz5SfmnlBziyC3W_rfEqhnHwa3pCmFc77S_s",
+    "uyzapqp7MZFEcZU_yjbrQqnfqHTOZnv360mWEHwj34M"
+  ]
 }
 ```
 </details>
@@ -305,21 +375,21 @@ and
 <summary>with the following claims appended:</summary>
 
 ```json
-["8qdMbCzIfFj41OVUPMw8B9GlZ7kbzlqix9OTRShnXh0","given_name","Erika"]
+["pCLTywt54g8YRXc0ZFnfTXSNqHdwbJTfmJ3ytJb_Nf0","given_name","Susanne"]
 ```
 
 ```json
-["1P7XB0yxQciPefEkWj9Gct33TaVWxcgTDu7_ZLjmXmw","family_name","Musterfrau"]
+["Wzgd6b4Ah8XgspLJ3R172ks5uB-eksbj3WFNQpNvJ0A","family_name","Meier"]
 ```
 
 ```json
-["wkeeXn0z00kkbhuZyPW3gpePi9xRUe5rekCsisgzex8","date_of_birth","1980-01-13"]
+["xCxiqfTS3W6E-mmyQQ0mQfmTAb7OF5zimwQVuf-07w0","date_of_birth","1990-01-01"]
 ```
 </details>
 
 
 
-## Dataflow for SIOPv2
+## Dataflow for SIOPv2/OpenID4VP
 
 We'll present a presentation process according to [SIOPv2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), along with [OID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), with all terms taken from there.
 
@@ -327,9 +397,9 @@ We'll present a presentation process according to [SIOPv2](https://openid.net/sp
 <summary>The verifier creates a URL to be displayed to the wallet, containing a reference to the authentication request itself:</summary>
 
 ```
-https://wallet.a-sit.at/mobile
-    ?client_id=https://example.com/rp
-    &request_uri=https://example.com/request/15a4e87c-8e3e-4368-87a3-48083bac7232
+https://example.com/wallet/9ecf4d9d-e0a7-488c-960f-448299bfc004
+    ?client_id=https%3A%2F%2Fexample.com%2Frp%2F2cb7cb49-305e-4e7a-a235-d3fc2f426db3
+    &request_uri=https%3A%2F%2Fwww.example.com%2Frequest%2Fd4a5305d-1ade-40c0-8db4-d8ec458b0750
 ```
 </details>
 
@@ -338,71 +408,95 @@ https://wallet.a-sit.at/mobile
 
 ```json
 {
+  "kid": "did:key:zDnaeY1pcEbr4eV4oDgYbbHKERhUdRsh6UJ7114rvkmBve9ps",
+  "typ": "oauth-authz-req+jwt",
   "alg": "ES256",
-  "x5c": [
-    "MIIBNDCB2qADAgECAgjm7Gfdm0IFUDAKBggqhkjOPQQDAjASMRAwDgYDVQQDDAdEZWZhdWx0MB4XDTI0MDcxNzEzNTUzMVoXDTI0MDcxNzEzNTYwMVowEjEQMA4GA1UEAwwHRGVmYXVsdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABCaD9zTN05m6zZSX+QrQzdF4l1Bt3pVSo6VV9VFUSFCkImDkSsyCbgkJoZFkUNObbMiZbccQk6H33HAfxGWpLTyjGjAYMBYGA1UdEQQPMA2CC2V4YW1wbGUuY29tMAoGCCqGSM49BAMCA0kAMEYCIQDSotU4YnsO0Ar5+barXkCn3PQlCaPJEnBwRL60SnHW9wIhAK5mLYgfslZvT5jFmMrS3Ivzm2EpNyjdCPGVT3wpt6/t"
-  ]
+  "jwk": {
+    "crv": "P-256",
+    "kid": "did:key:zDnaeY1pcEbr4eV4oDgYbbHKERhUdRsh6UJ7114rvkmBve9ps",
+    "kty": "EC",
+    "x": "cK4D5_nqSbOut9t80PpEn1evjm39TxvlyAWZTGH72dA",
+    "y": "L91dVJYKkfhIe6VTXxtoIxqYNKyuSKeiTTZ5Rde4owI"
+  }
 }
 ```
 
 ```json
 {
-  "response_type": "id_token vp_token",
-  "client_id": "example.com",
+  "response_type": "vp_token",
+  "client_id": "https://example.com/rp/f924b863-10e0-4740-8bea-7026742c734c",
   "scope": "openid profile AtomicAttribute2023 AtomicAttribute2023 at.a-sit.wallet.atomic-attribute-2023",
-  "state": "36efe035-ecf6-4c56-94c8-3dfe167ddaad",
-  "nonce": "148279b8-5222-4db9-bb9b-0614bbe0ef7d",
+  "state": "2add0b20-feaf-43e2-a368-92748e7b0860",
+  "nonce": "776acc4f-1606-4112-b799-69c74064499e",
   "client_metadata": {
     "redirect_uris": [
-      "https://example.com/rp"
+      "https://example.com/rp/f924b863-10e0-4740-8bea-7026742c734c"
     ],
     "jwks": {
       "keys": [
         {
           "crv": "P-256",
           "kty": "EC",
-          "x": "JoP3NM3TmbrNlJf5CtDN0XiXUG3elVKjpVX1UVRIUKQ",
-          "y": "ImDkSsyCbgkJoZFkUNObbMiZbccQk6H33HAfxGWpLTw"
+          "x": "cK4D5_nqSbOut9t80PpEn1evjm39TxvlyAWZTGH72dA",
+          "y": "L91dVJYKkfhIe6VTXxtoIxqYNKyuSKeiTTZ5Rde4owI"
         }
       ]
     },
     "subject_syntax_types_supported": [
       "urn:ietf:params:oauth:jwk-thumbprint",
-      "did:key"
+      "did:key",
+      "jwk"
     ],
     "vp_formats": {
       "jwt_vp": {
-        "alg": [ "ES256", "ES384", "ES512" ]
+        "alg": [
+          "ES256"
+        ]
       },
       "vc+sd-jwt": {
-        "alg": [ "ES256", "ES384", "ES512" ]
+        "alg": [
+          "ES256"
+        ]
       },
       "mso_mdoc": {
-        "alg": [ "ES256", "ES384", "ES512" ]
+        "alg": [
+          "ES256"
+        ]
       }
     }
   },
   "id_token_type": "subject_signed_id_token",
   "presentation_definition": {
-    "id": "b0611eea-89e4-4b78-8f44-40a2cb608d4a",
+    "id": "cc94b105-48c1-41a4-b6c1-40043ed65a96",
     "input_descriptors": [
       {
-        "id": "9a5511bf-efe4-4ec2-84e5-4cabf1d13000",
-        "schema": [
-          {
-            "uri": "https://wallet.a-sit.at/schemas/1.0.0/AtomicAttribute2023.json"
+        "type": "at.asitplus.dif.DifInputDescriptor",
+        "id": "a8cb5330-b9da-4ed7-9f5c-d9a388834257",
+        "format": {
+          "vc+sd-jwt": {
+            "alg": [
+              "ES256"
+            ]
           }
-        ],
+        },
         "constraints": {
           "fields": [
             {
-              "path": [ "$[\"family_name\"]" ]
+              "optional": false,
+              "path": [
+                "$[\"given_name\"]"
+              ]
             },
             {
-              "path": [ "$[\"given_name\"]" ]
+              "optional": false,
+              "path": [
+                "$[\"family_name\"]"
+              ]
             },
             {
-              "path": [ "$.vct" ],
+              "path": [
+                "$.vct"
+              ],
               "filter": {
                 "type": "string",
                 "pattern": "AtomicAttribute2023"
@@ -411,51 +505,46 @@ https://wallet.a-sit.at/mobile
           ]
         }
       }
-    ],
-    "format": {
-      "vc+sd-jwt": {
-        "alg": [ "ES256", "ES384", "ES512" ]
-      }
-    }
+    ]
   },
-  "client_id_scheme": "x509_san_dns",
+  "client_id_scheme": "redirect_uri",
   "response_mode": "direct_post",
-  "response_uri": "https://example.com/response",
-  "aud": "https://example.com/rp",
-  "iss": "https://example.com/rp"
+  "response_uri": "https://example.com/rp/response/830f5637-4885-43fe-a2c3-f155a8a073ac",
+  "aud": "https://self-issued.me/v2",
+  "iss": "https://self-issued.me/v2"
+}
 }
 ```
-The certificate includes the X.509 SAN extension with the value `example.com`.
 </details>
 
-The wallet posts back the response to `https://example.com/response` with the parameters `presentation_submission`, `vp_token` and `state`.
+The wallet sends back the response as a POST to `https://example.com/rp/response/830f5637-4885-43fe-a2c3-f155a8a073ac` with the parameters `presentation_submission`, `vp_token` and `state` set.
 
 <details>
 <summary>
-The value for `presentation_submission` is:
+The value for the presentation submission is:
 </summary>
 
 ```json
 {
-  "id": "be3972bc-18cf-4e24-abf4-fe49eb870bab",
-  "definition_id": "b0611eea-89e4-4b78-8f44-40a2cb608d4a",
-  "descriptor_map": [
-    {
-      "id": "9a5511bf-efe4-4ec2-84e5-4cabf1d13000",
-      "format": "vc+sd-jwt",
-      "path": "$"
-    }
-  ]
+    "id": "6d30b07d-d589-4bef-85e0-4feef73e012b",
+    "definition_id": "cc94b105-48c1-41a4-b6c1-40043ed65a96",
+    "descriptor_map": [
+        {
+            "id": "a8cb5330-b9da-4ed7-9f5c-d9a388834257",
+            "format": "vc+sd-jwt",
+            "path": "$"
+        }
+    ]
 }
 ```
 </details>
 
 <details>
-<summary>The value for `vp_token` is an SD-JWT, with header and payload:</summary>
+<summary>The value for the VP token is an SD-JWT, with header and payload:</summary>
 
 ```json
 {
-  "kid": "did:key:zDnaezoC5xdfzSdKoCZCZiw52eqnTks3xMKMDRTFKfSiq9obD",
+  "kid": "did:key:zDnaemxTpFAmVZVdKvraBmLd2aDUqrmYRKJcDQnD8Zg7B2rKu",
   "typ": "vc+sd-jwt",
   "alg": "ES256"
 }
@@ -463,30 +552,34 @@ The value for `presentation_submission` is:
 
 ```json
 {
-  "sub": "did:key:zDnaexYu9PCJsDmg7YwyBCJR2qQT8DxqwXhm4BLAJVWUgW1Ms",
-  "nbf": 1721224531,
-  "iss": "did:key:zDnaezoC5xdfzSdKoCZCZiw52eqnTks3xMKMDRTFKfSiq9obD",
-  "exp": 1721224591,
-  "iat": 1721224531,
-  "jti": "urn:uuid:6ed95e4f-83ca-457c-8d8b-bf8bf93ad09e",
-  "_sd": [
-    "0nIEwdknjG7aMeKKiVnJNd7lK-dleq0_RPYc84gDg98",
-    "DZo-dZ4EQTxcekJqJKvhYZySgxodgH1vvT5su__pJlk"
-  ],
+  "sub": "did:key:zDnaeqVE5wWY9jD862tRpMu4DFpR4vfzBQihTCwZ8bZRP3Jdn",
+  "nbf": 1733823057,
+  "iss": "did:key:zDnaemxTpFAmVZVdKvraBmLd2aDUqrmYRKJcDQnD8Zg7B2rKu",
+  "exp": 1733823117,
+  "iat": 1733823057,
+  "jti": "urn:uuid:4b51b38b-9604-4e7e-8775-2b794184b5df",
   "vct": "AtomicAttribute2023",
   "status": {
-    "id": "https://wallet.a-sit.at/backend/credentials/status/1#2",
+    "id": "https://wallet.a-sit.at/backend/credentials/status/1#1",
     "type": "RevocationList2020Status",
-    "revocationListIndex": 2,
+    "revocationListIndex": 1,
     "revocationListCredential": "https://wallet.a-sit.at/backend/credentials/status/1"
   },
   "_sd_alg": "sha-256",
   "cnf": {
-    "crv": "P-256",
-    "kty": "EC",
-    "x": "3Tyi-VLN7pmm6kcbRuyD0bYrYllX_cH1fYbf72pNwtI",
-    "y": "6K5c5nYUfRBY3vRo-Q043hr8cFCqYj3iwnxwGFF2Ca8"
-  }
+    "jwk": {
+      "crv": "P-256",
+      "kty": "EC",
+      "x": "dEnr0EF1Bh7G4r_dFSuCrAvyqaeMXd9D6WVu-yDBhmk",
+      "y": "j3y-WVyrs5XIePFQ_PVQjDuQxp4TGV1F4EyrJlz8LMc"
+    }
+  },
+  "_sd": [
+    "VOfQfO9t-aUWwtcU498-SMJ0rzZpZdHObmzHuYZ7Eeg",
+    "1ehcufQBrCsqdSIR6ZH7X5JDt63Ygk7NJYM66gjzeAw",
+    "wyuZnInA1l1Tqsz44D8MUOfB7gWhJZkja_bMoyuoX9Q",
+    "L5Hnmjie5TH4MvTCDIiQkX47YsKszi4AP75iuku8AY8"
+  ]
 }
 ```
 </details>
@@ -495,15 +588,11 @@ The value for `presentation_submission` is:
 <summary>With the following claims appended:</summary>
 
 ```json
-["_bBdCtzFzC1DYL1r6gNq2fZPMvMdR31mo2zp6gq1sZ4","given_name","Susanne"]
+["1jvI5VgkgvP8zTr7wCCjKoFhAuyM5YdTP8EQUSrGSwk","given_name","Susanne"]
 ```
 
 ```json
-["SNDcrxkCBGQrLj0kHiX72Gn4l5dz-sfKo12tbqAoNf8","family_name","Meier"]
-```
-
-```json
-["wkeeXn0z00kkbhuZyPW3gpePi9xRUe5rekCsisgzex8","date_of_birth","1990-02-14"]
+["RPEnzDNDIVcCBK0GsLgbM7JAU-zjE5xozTHnAZxcCdY","family_name","Meier"]
 ```
 </details>
 
@@ -516,19 +605,20 @@ The value for `presentation_submission` is:
   "alg": "ES256",
   "jwk": {
     "crv": "P-256",
+    "kid": "did:key:zDnaeqVE5wWY9jD862tRpMu4DFpR4vfzBQihTCwZ8bZRP3Jdn",
     "kty": "EC",
-    "x": "3Tyi-VLN7pmm6kcbRuyD0bYrYllX_cH1fYbf72pNwtI",
-    "y": "6K5c5nYUfRBY3vRo-Q043hr8cFCqYj3iwnxwGFF2Ca8"
+    "x": "dEnr0EF1Bh7G4r_dFSuCrAvyqaeMXd9D6WVu-yDBhmk",
+    "y": "j3y-WVyrs5XIePFQ_PVQjDuQxp4TGV1F4EyrJlz8LMc"
   }
 }
 ```
 
 ```json
 {
-  "iat": 1721224531,
-  "aud": "did:key:zDnaeT2KFSXyCSo3WLjrZeQsNwaCQv2r6bV4bLZNbdhZKhBbh",
-  "nonce": "148279b8-5222-4db9-bb9b-0614bbe0ef7d",
-  "sd_hash": "UkLqyUz3zKR1iMTam7AsP89aEzYvbQqiJ4jfV82A96c"
+  "iat": 1733823057,
+  "aud": "https://example.com/rp/f924b863-10e0-4740-8bea-7026742c734c",
+  "nonce": "776acc4f-1606-4112-b799-69c74064499e",
+  "sd_hash": "ruXlGvBJ1rR0OHCyCPEuRkuxlQ6CcCe6KEdH-tw8DPU"
 }
 ```
 </details>

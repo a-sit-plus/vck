@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.wallet.lib.agent.CredentialSubmission
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -81,7 +82,7 @@ class OpenId4VpWallet(
         oidcSiopWallet.startAuthorizationResponsePreparation(request)
 
     suspend fun startAuthorizationResponsePreparation(
-        input: String
+        input: String,
     ): KmmResult<AuthorizationResponsePreparationState> =
         oidcSiopWallet.startAuthorizationResponsePreparation(input)
 
@@ -96,6 +97,30 @@ class OpenId4VpWallet(
     ): KmmResult<Unit> = catching {
         Napier.i("startPresentation: $request")
         oidcSiopWallet.createAuthnResponse(request).getOrThrow().let {
+            when (it) {
+                is AuthenticationResponseResult.Post -> postResponse(it)
+                is AuthenticationResponseResult.Redirect -> redirectResponse(it)
+            }
+        }
+    }
+
+    /**
+     * Calls [oidcSiopWallet] to finalize the authentication response.
+     * In case the result shall be POSTed to the verifier, we call [client] to do that,
+     * and optionally [openUrlExternally] with the `redirect_uri` of that POST.
+     * In case the result shall be sent as a redirect to the verifier, we call [openUrlExternally].
+     */
+    suspend fun finalizeAuthorizationResponse(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        preparationState: AuthorizationResponsePreparationState,
+        inputDescriptorSubmission: Map<String, CredentialSubmission>,
+    ): KmmResult<Unit> = catching {
+        Napier.i("startPresentation: $request")
+        oidcSiopWallet.finalizeAuthorizationResponse(
+            request = request,
+            preparationState = preparationState,
+            inputDescriptorSubmissions = inputDescriptorSubmission
+        ).getOrThrow().let {
             when (it) {
                 is AuthenticationResponseResult.Post -> postResponse(it)
                 is AuthenticationResponseResult.Redirect -> redirectResponse(it)
