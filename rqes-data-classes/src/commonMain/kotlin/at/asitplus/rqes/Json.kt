@@ -8,6 +8,8 @@ import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.CscAuthenticationRequestParameters
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.TransactionData
+import at.asitplus.rqes.collection_entries.RqesTransactionData
 import at.asitplus.rqes.serializers.InputDescriptorSerializer
 import at.asitplus.rqes.serializers.RequestParametersSerializer
 import kotlinx.serialization.json.Json
@@ -59,6 +61,16 @@ private val authorizationDetailsModule = SerializersModule {
 }
 
 /**
+ * Placeholder, to extend use
+ */
+private val transactionDataModule = SerializersModule {
+    polymorphic(TransactionData::class) {
+        subclass(RqesTransactionData.QesAuthorization::class, RqesTransactionData.QesAuthorization.serializer())
+        subclass(RqesTransactionData.QCertCreationAcceptance::class, RqesTransactionData.QCertCreationAcceptance.serializer())
+    }
+}
+
+/**
  * This module fully overrides the one specified in `at.asitplus.openid.Json.kt`
  * It allows de-/serialization of open interfaces defined in this module as well as the OpenId module
  */
@@ -66,6 +78,7 @@ private val extendedOpenIdSerializerModule = SerializersModule {
     include(inputDescriptorModule)
     include(requestParametersModule)
     include(authorizationDetailsModule)
+    include(transactionDataModule)
 }
 
 

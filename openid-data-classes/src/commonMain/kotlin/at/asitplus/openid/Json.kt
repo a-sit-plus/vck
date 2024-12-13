@@ -66,12 +66,29 @@ private val inputDescriptorModule = SerializersModule {
 }
 
 /**
+ * Placeholder, current implementations are found in `rqes-data-classes`
+ */
+private val transactionDataModule = SerializersModule {
+    polymorphic(TransactionData::class) {}
+
+    polymorphicDefaultSerializer(
+        TransactionData::class,
+        defaultSerializerProvider = { throw NotImplementedError("No serializer for TransactionData available! Perhaps you need to import vck-rqes") },
+    )
+    polymorphicDefaultDeserializer(
+        TransactionData::class,
+        defaultDeserializerProvider = { throw NotImplementedError("No serializer for TransactionData available! Perhaps you need to import vck-rqes") },
+    )
+}
+
+/**
  * This serialization module allows de-/serialization of open interfaces defined in this module
  */
 private val baseOpenIdSerializerModule = SerializersModule {
     include(requestParametersModule)
     include(authorizationDetailsModule)
     include(inputDescriptorModule)
+    include(transactionDataModule)
 }
 
 val odcJsonSerializer by lazy {

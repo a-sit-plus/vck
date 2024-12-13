@@ -12,6 +12,7 @@ import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.TransactionData
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -19,10 +20,13 @@ import at.asitplus.wallet.lib.agent.CredentialSubmission
 import at.asitplus.wallet.lib.agent.Holder
 import at.asitplus.wallet.lib.agent.toDefaultSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
+import kotlinx.serialization.PolymorphicSerializer
+import kotlinx.serialization.encodeToString
 import kotlin.time.Duration.Companion.seconds
 
 internal class PresentationFactory(
@@ -54,7 +58,7 @@ internal class PresentationFactory(
             challenge = nonce,
             audienceId = audience,
             // TODO Exact encoding is not specified
-            transactionData = request.transactionData?.map { it.encodeToByteArray() },
+            transactionData = request.transactionData?.map { vckJsonSerializer.encodeToString(PolymorphicSerializer(TransactionData::class), it).encodeToByteArray() },
             presentationDefinitionId = presentationDefinition.id,
             presentationSubmissionSelection = credentialSubmissions,
         ).getOrElse {

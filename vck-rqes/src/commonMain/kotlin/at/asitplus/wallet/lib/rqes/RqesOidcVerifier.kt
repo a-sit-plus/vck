@@ -28,19 +28,19 @@ import kotlinx.datetime.Clock
 class RqesOidcVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
-    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
+    verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
+    jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+    verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
     timeLeewaySeconds: Long = 300L,
-    private val clock: Clock = Clock.System,
-    private val nonceService: NonceService = DefaultNonceService(),
+    clock: Clock = Clock.System,
+    nonceService: NonceService = DefaultNonceService(),
     /**
      * Used to store the nonce, associated to the state, to first send [AuthenticationRequestParameters.nonce],
      * and then verify the challenge in the submitted verifiable presentation in
      * [AuthenticationResponseParameters.vpToken].
      */
-    private val stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
-    private val stateToResponseTypeStore: MapStore<String, String> = DefaultMapStore(),
+    stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
+    stateToResponseTypeStore: MapStore<String, String> = DefaultMapStore(),
 ) : OidcSiopVerifier(
     clientIdScheme,
     keyMaterial,
