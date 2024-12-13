@@ -3,7 +3,7 @@ package at.asitplus.wallet.lib.rqes
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.rqes.QesInputDescriptor
-import at.asitplus.rqes.collection_entries.TransactionData
+import at.asitplus.rqes.collection_entries.RqesTransactionData
 import at.asitplus.rqes.rdcJsonSerializer
 import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
@@ -65,15 +65,15 @@ class TransactionDataInterop : FreeSpec({
         }
     """.trimIndent().replace("\n", "").replace("\r", "").replace(" ", "")
 
-    val transactionDataTest = TransactionData.QCertCreationAcceptance(
+    val transactionDataTest = RqesTransactionData.QCertCreationAcceptance(
         qcTermsConditionsUri = "abc",
         qcHash = "cde".decodeBase64Bytes(),
         qcHashAlgorithmOid = sha_256
     )
 
     "Serialization is stable" {
-        val encoded = rdcJsonSerializer.encodeToString<TransactionData>(transactionDataTest)
-        val decoded = rdcJsonSerializer.decodeFromString<TransactionData>(encoded)
+        val encoded = rdcJsonSerializer.encodeToString<RqesTransactionData>(transactionDataTest)
+        val decoded = rdcJsonSerializer.decodeFromString<RqesTransactionData>(encoded)
         decoded shouldBe transactionDataTest
     }
 

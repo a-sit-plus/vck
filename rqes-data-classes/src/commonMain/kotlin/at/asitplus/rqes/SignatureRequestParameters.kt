@@ -4,20 +4,20 @@ import CscAuthorizationDetails
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.TransactionData
 import at.asitplus.rqes.collection_entries.CscDocumentDigest
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
-import at.asitplus.rqes.collection_entries.TransactionData
+import at.asitplus.rqes.collection_entries.RqesTransactionData
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignatureQualifier
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
+import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -151,16 +151,11 @@ data class SignatureRequestParameters(
      * data not conforming to the respective type definition.
      */
     @SerialName("transaction_data")
-    override val transactionData: Set<String>? = null,
+    override val transactionData: Collection<@Serializable(with=Base64URLTransactionDataSerializer::class) RqesTransactionData>? = null,
 ) : RequestParameters {
 
     @Transient
     val hashAlgorithm: Digest = hashAlgorithmOid.getHashAlgorithm()
-
-    @Transient
-    val transactionDataTyped: Set<TransactionData>? = transactionData?.map {
-        rdcJsonSerializer.decodeFromString<TransactionData>(it.decodeToByteArray(Base64UrlStrict).decodeToString())
-    }?.toSet()
 
     fun toAuthorizationDetails(): AuthorizationDetails =
         CscAuthorizationDetails(

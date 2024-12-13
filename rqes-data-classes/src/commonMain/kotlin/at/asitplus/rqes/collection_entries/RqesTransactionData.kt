@@ -2,6 +2,7 @@ package at.asitplus.rqes.collection_entries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.openid.TransactionData
 import at.asitplus.rqes.enums.SignatureQualifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
@@ -14,7 +15,7 @@ import kotlinx.serialization.Serializable
  * Implements "Transaction Data entries" from [OpenID4VP Draft 23](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-transaction-data)
  */
 @Serializable
-sealed class TransactionData {
+sealed class RqesTransactionData : TransactionData {
 
     /**
      * OID4VP: REQUIRED. Array of strings each referencing a Credential requested by the Verifier that can be used to
@@ -100,7 +101,7 @@ sealed class TransactionData {
          */
         @SerialName("processID")
         val processID: String? = null,
-    ) : TransactionData() {
+    ) : RqesTransactionData() {
 
         /**
          * Validation according to D3.1: UC Specification WP3
@@ -123,7 +124,7 @@ sealed class TransactionData {
                 credentialId: String?,
                 documentDigest: List<RqesDocumentDigestEntry>,
                 processID: String?,
-            ): KmmResult<TransactionData> = runCatching {
+            ): KmmResult<RqesTransactionData> = runCatching {
                 QesAuthorization(
                     signatureQualifier = signatureQualifier,
                     credentialID = credentialId,
@@ -201,7 +202,7 @@ sealed class TransactionData {
          */
         @SerialName("transaction_data_hashes_alg")
         override val transactionDataHashAlgorithms: Set<String>? = null,
-    ) : TransactionData() {
+    ) : RqesTransactionData() {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other == null || this::class != other::class) return false

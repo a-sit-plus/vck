@@ -3,7 +3,7 @@ package at.asitplus.rqes
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.InputDescriptor
-import at.asitplus.rqes.collection_entries.TransactionData
+import at.asitplus.rqes.collection_entries.RqesTransactionData
 import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -24,5 +24,5 @@ data class QesInputDescriptor(
     override val constraints: Constraint? = null,
     // TODO Is this now obsoleted by OpenID4VP draft 23?
     @SerialName("transaction_data")
-    val transactionData: List<@Serializable(Base64URLTransactionDataSerializer::class) TransactionData>,
+    val transactionData: List<@Serializable(Base64URLTransactionDataSerializer::class) RqesTransactionData>,
 ) : InputDescriptor

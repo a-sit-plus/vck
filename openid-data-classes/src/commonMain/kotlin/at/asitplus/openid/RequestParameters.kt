@@ -7,7 +7,7 @@ interface RequestParameters {
     val redirectUrl: String?
     val audience: String?
     val state: String?
-    val transactionData: Set<String>?
+    val transactionData: Collection<TransactionData>?
 }
 
 

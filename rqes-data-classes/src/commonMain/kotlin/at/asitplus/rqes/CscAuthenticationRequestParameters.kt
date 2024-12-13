@@ -232,7 +232,7 @@ data class CscAuthenticationRequestParameters(
 
     override val nonce: String? = null
     override val audience: String? = null
-    override val transactionData: Set<String>? = null
+    override val transactionData: Collection<TransactionData>? = null
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {

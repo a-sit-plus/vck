@@ -236,6 +236,8 @@ class OidcSiopVerifier(
          * [clientMetadataUrl], that the URL shall point to [OidcSiopVerifier.metadataWithEncryption].
          */
         val encryption: Boolean = false,
+
+        val transactionData:
     )
 
     data class RequestOptionsCredential(

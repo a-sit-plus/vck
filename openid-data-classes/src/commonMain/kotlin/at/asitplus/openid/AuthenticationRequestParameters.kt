@@ -261,7 +261,7 @@ data class AuthenticationRequestParameters(
 ) : RequestParameters {
 
     fun serialize() = odcJsonSerializer.encodeToString(this)
-    override val transactionData: Set<String>? = null
+    override val transactionData: Collection<TransactionData>? = null
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
