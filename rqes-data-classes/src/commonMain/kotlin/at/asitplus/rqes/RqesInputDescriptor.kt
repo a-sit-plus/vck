@@ -9,7 +9,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class QesInputDescriptor(
+data class RqesInputDescriptor(
     @SerialName("id")
     override val id: String,
     @SerialName("group")
@@ -22,7 +22,6 @@ data class QesInputDescriptor(
     override val format: FormatHolder? = null,
     @SerialName("constraints")
     override val constraints: Constraint? = null,
-    // TODO Is this now obsoleted by OpenID4VP draft 23?
     @SerialName("transaction_data")
     val transactionData: List<@Serializable(Base64URLTransactionDataSerializer::class) RqesTransactionData>,
 ) : InputDescriptor

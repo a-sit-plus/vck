@@ -17,7 +17,7 @@ import kotlinx.serialization.modules.polymorphic
 private val inputDescriptorModule = SerializersModule {
     polymorphic(InputDescriptor::class) {
         subclass(DifInputDescriptor::class, DifInputDescriptor.serializer())
-        subclass(QesInputDescriptor::class, QesInputDescriptor.serializer())
+        subclass(RqesInputDescriptor::class, RqesInputDescriptor.serializer())
     }
     polymorphicDefaultSerializer(
         InputDescriptor::class,

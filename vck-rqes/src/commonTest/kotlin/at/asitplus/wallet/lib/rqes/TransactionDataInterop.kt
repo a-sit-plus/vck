@@ -2,7 +2,7 @@ package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.rqes.QesInputDescriptor
+import at.asitplus.rqes.RqesInputDescriptor
 import at.asitplus.rqes.collection_entries.RqesTransactionData
 import at.asitplus.rqes.rdcJsonSerializer
 import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
@@ -78,7 +78,7 @@ class TransactionDataInterop : FreeSpec({
     }
 
     "InputDescriptor serialize" {
-        val test = QesInputDescriptor(
+        val test = RqesInputDescriptor(
             id = "123",
             transactionData = listOf(transactionDataTest)
         )
@@ -165,7 +165,7 @@ class TransactionDataInterop : FreeSpec({
             runCatching { rdcJsonSerializer.decodeFromString<PresentationDefinition>(presentationDefinitionAsJsonString) }.getOrNull()
         Napier.d(presentationDefinition.toString())
         presentationDefinition shouldNotBe null
-        (presentationDefinition?.inputDescriptors?.first() as QesInputDescriptor).transactionData shouldNotBe null
+        (presentationDefinition?.inputDescriptors?.first() as RqesInputDescriptor).transactionData shouldNotBe null
     }
 })
 
