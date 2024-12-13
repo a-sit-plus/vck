@@ -237,7 +237,7 @@ class OidcSiopVerifier(
          */
         val encryption: Boolean = false,
 
-        val transactionData:
+        val transactionData: TransactionData? = null
     )
 
     data class RequestOptionsCredential(
