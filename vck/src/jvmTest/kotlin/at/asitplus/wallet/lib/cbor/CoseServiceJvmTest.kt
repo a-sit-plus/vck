@@ -66,7 +66,7 @@ class CoseServiceJvmTest : FreeSpec({
                 else -> throw IllegalArgumentException("Unknown JweAlgorithm")
             }
 
-            val extLibVerifier = COSEVerifier(ephemeralKey.publicKey.getJcaPublicKey().getOrThrow() as ECPublicKey)
+            val extLibVerifier = COSEVerifier(ephemeralKey.publicKey.toJcaPublicKey().getOrThrow() as ECPublicKey)
 
             @OptIn(HazardousMaterials::class)
             val extLibSigner = COSESigner(ephemeralKey.jcaPrivateKey as ECPrivateKey)
@@ -91,7 +91,7 @@ class CoseServiceJvmTest : FreeSpec({
                     ).getOrThrow()
 
                     withClue("$sigAlgo: Signature: ${signed.signature.encodeToTlv().toDerHexString()}") {
-                        verifierCoseService.verifyCose(signed, cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow(), ByteArraySerializer())
+                        verifierCoseService.verifyCose(signed, cryptoService.keyMaterial.publicKey.toCoseKey().getOrThrow(), byteArrayOf())
                             .isSuccess shouldBe true
                     }
                 }
@@ -135,7 +135,7 @@ class CoseServiceJvmTest : FreeSpec({
                     signedSerialized.length shouldBe extLibSerialized.length
 
                     withClue("$sigAlgo: Signature: $parsedSig") {
-                        verifierCoseService.verifyCose(coseSigned, coseKey, ByteArraySerializer()).isSuccess shouldBe true
+                        verifierCoseService.verifyCose(coseSigned, coseKey, byteArrayOf()).isSuccess shouldBe true
                     }
                 }
 

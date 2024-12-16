@@ -46,7 +46,7 @@ interface VerifierCoseService {
     fun <P : Any> verifyCose(
         coseSigned: CoseSigned<P>,
         signer: CoseKey,
-        serializer: KSerializer<P>,
+        externalAad: ByteArray = byteArrayOf(),
     ): KmmResult<Verifier.Success>
 
 }
@@ -64,12 +64,15 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         addCertificate: Boolean,
     ): KmmResult<CoseSigned<P>> = catching {
         protectedHeader.withAlgorithmAndKeyId(addKeyId).let { coseHeader ->
-            CoseSigned<P>(
-                protectedHeader = coseHeader,
-                unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
-                payload = payload,
-                signature = calcSignature(coseHeader, payload, serializer)
-            )
+            calcSignature(coseHeader, payload, serializer).let { (rawPayload, signature) ->
+                CoseSigned<P>(
+                    protectedHeader = coseHeader,
+                    unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
+                    payload = payload,
+                    signature = signature,
+                    rawPayload = rawPayload
+                )
+            }
         }
     }
 
@@ -97,16 +100,21 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         this?.copy(algorithm = coseAlgorithm)
             ?: CoseHeader(algorithm = coseAlgorithm)
 
+    /**
+     * @return payload to calculated signature
+     */
     @Throws(Throwable::class)
     private suspend fun <P : Any> calcSignature(
         protectedHeader: CoseHeader,
         payload: P?,
         serializer: KSerializer<P>,
-    ): CryptoSignature.RawByteEncodable =
+    ): Pair<ByteArray?, CryptoSignature.RawByteEncodable> =
         CoseSigned.prepareCoseSignatureInput<P>(protectedHeader, payload, serializer).let { signatureInput ->
-            cryptoService.sign(signatureInput).asKmmResult().getOrElse {
+            cryptoService.sign(signatureInput.serialize()).asKmmResult().getOrElse {
                 Napier.w("No signature from native code", it)
                 throw it
+            }.let { signature ->
+                signatureInput.payload to signature
             }
         }
 }
@@ -121,13 +129,9 @@ class DefaultVerifierCoseService(
     override fun <P : Any> verifyCose(
         coseSigned: CoseSigned<P>,
         signer: CoseKey,
-        serializer: KSerializer<P>,
+        externalAad: ByteArray,
     ) = catching {
-        val signatureInput = CoseSigned.prepareCoseSignatureInput(
-            protectedHeader = coseSigned.protectedHeader.value,
-            payload = coseSigned.payload,
-            serializer = serializer
-        )
+        val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad = externalAad)
         val algorithm = coseSigned.protectedHeader.value.algorithm
             ?: throw IllegalArgumentException("Algorithm not specified")
         val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
