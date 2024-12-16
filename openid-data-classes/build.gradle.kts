@@ -40,21 +40,6 @@ kotlin {
                 api("at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}")
             }
         }
-
-        commonTest {
-            dependencies {
-            }
-        }
-
-        jvmMain {
-            dependencies {
-            }
-        }
-
-        jvmTest {
-            dependencies {
-            }
-        }
     }
 }
 
