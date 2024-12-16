@@ -52,7 +52,8 @@ class Tag24SerializationTest : FreeSpec({
                     protectedHeader = CoseHeader(),
                     unprotectedHeader = null,
                     payload = byteArrayOf(),
-                    signature = CryptoSignature.RSAorHMAC(byteArrayOf())
+                    signature = CryptoSignature.RSAorHMAC(byteArrayOf()),
+                    rawPayload = byteArrayOf()
                 )
 
             )
@@ -124,7 +125,8 @@ class Tag24SerializationTest : FreeSpec({
             protectedHeader = CoseHeader(),
             unprotectedHeader = null,
             payload = mso,
-            signature = CryptoSignature.RSAorHMAC(byteArrayOf())
+            signature = CryptoSignature.RSAorHMAC(byteArrayOf()),
+            rawPayload = serializedMso,
         )
 
         val serialized = vckCborSerializer.encodeToByteArray(input)
@@ -174,7 +176,8 @@ private fun issuerAuth() = CoseSigned<MobileSecurityObject>(
     protectedHeader = CoseHeader(),
     unprotectedHeader = null,
     payload = null,
-    signature = CryptoSignature.RSAorHMAC(byteArrayOf())
+    signature = CryptoSignature.RSAorHMAC(byteArrayOf()),
+    rawPayload = null,
 )
 
 private fun issuerSignedItem() = IssuerSignedItem(0u, Random.nextBytes(16), "identifier", "value")

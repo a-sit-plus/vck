@@ -46,7 +46,7 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(parameterSerializer, signed.serialize(parameterSerializer)).getOrThrow()
         parsed shouldBe signed
 
-        val result = verifierCoseService.verifyCose(parsed, coseKey, parameterSerializer)
+        val result = verifierCoseService.verifyCose(parsed, coseKey)
         result.isSuccess shouldBe true
     }
 
@@ -79,7 +79,7 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(parameterSerializer,signed.serialize(parameterSerializer)).getOrThrow()
         parsed shouldBe signed
 
-        val result = verifierCoseService.verifyCose(parsed, coseKey, parameterSerializer)
+        val result = verifierCoseService.verifyCose(parsed, coseKey)
         result.isSuccess shouldBe true
     }
 
@@ -97,7 +97,7 @@ class CoseServiceTest : FreeSpec({
         val parsed = CoseSigned.deserialize(parameterSerializer,signed.serialize(parameterSerializer)).getOrThrow()
         parsed shouldBe signed
 
-        val result = verifierCoseService.verifyCose(parsed, coseKey, parameterSerializer)
+        val result = verifierCoseService.verifyCose(parsed, coseKey)
         result.isSuccess shouldBe true
     }
 
