@@ -5,9 +5,12 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.iso.*
+import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.builtins.ByteArraySerializer
@@ -28,7 +31,8 @@ class CoseServiceTest : FreeSpec({
         cryptoService = DefaultCryptoService(keyMaterial)
         coseService = DefaultCoseService(cryptoService)
         verifierCoseService = DefaultVerifierCoseService()
-        randomPayload = Random.nextBytes(32)
+        // Prevent COSE-special bytes at the start of the payload
+        randomPayload = "This is the content: ".encodeToByteArray() + Random.nextBytes(32)
         coseKey = keyMaterial.publicKey.toCoseKey().getOrThrow()
     }
 
@@ -43,8 +47,14 @@ class CoseServiceTest : FreeSpec({
         signed.payload shouldBe randomPayload
         signed.signature.shouldNotBeNull()
 
-        val parsed = CoseSigned.deserialize(parameterSerializer, signed.serialize(parameterSerializer)).getOrThrow()
-        parsed shouldBe signed
+        val serialized = signed.serialize(parameterSerializer)
+        val parsed = CoseSigned.deserialize(parameterSerializer, serialized).getOrThrow()
+        withClue(
+            "signed.payload ${signed.wireFormat.payload?.encodeToString(Base16())} " +
+                    "vs parsed.payload: ${parsed.payload?.encodeToString(Base16())}"
+        ) {
+            parsed shouldBe signed
+        }
 
         val result = verifierCoseService.verifyCose(parsed, coseKey)
         result.isSuccess shouldBe true
@@ -76,7 +86,7 @@ class CoseServiceTest : FreeSpec({
         signed.payload shouldBe mso
         signed.signature.shouldNotBeNull()
 
-        val parsed = CoseSigned.deserialize(parameterSerializer,signed.serialize(parameterSerializer)).getOrThrow()
+        val parsed = CoseSigned.deserialize(parameterSerializer, signed.serialize(parameterSerializer)).getOrThrow()
         parsed shouldBe signed
 
         val result = verifierCoseService.verifyCose(parsed, coseKey)
@@ -94,7 +104,7 @@ class CoseServiceTest : FreeSpec({
         signed.payload shouldBe null
         signed.signature.shouldNotBeNull()
 
-        val parsed = CoseSigned.deserialize(parameterSerializer,signed.serialize(parameterSerializer)).getOrThrow()
+        val parsed = CoseSigned.deserialize(parameterSerializer, signed.serialize(parameterSerializer)).getOrThrow()
         parsed shouldBe signed
 
         val result = verifierCoseService.verifyCose(parsed, coseKey)

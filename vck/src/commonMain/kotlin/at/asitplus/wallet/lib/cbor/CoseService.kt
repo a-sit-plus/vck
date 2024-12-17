@@ -64,13 +64,13 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         addCertificate: Boolean,
     ): KmmResult<CoseSigned<P>> = catching {
         protectedHeader.withAlgorithmAndKeyId(addKeyId).let { coseHeader ->
-            calcSignature(coseHeader, payload, serializer).let { (rawPayload, signature) ->
-                CoseSigned<P>(
+            calcSignature(coseHeader, payload, serializer).let { signature ->
+                CoseSigned.create(
                     protectedHeader = coseHeader,
                     unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
                     payload = payload,
                     signature = signature,
-                    rawPayload = rawPayload
+                    payloadSerializer = serializer,
                 )
             }
         }
@@ -108,13 +108,16 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         protectedHeader: CoseHeader,
         payload: P?,
         serializer: KSerializer<P>,
-    ): Pair<ByteArray?, CryptoSignature.RawByteEncodable> =
-        CoseSigned.prepareCoseSignatureInput<P>(protectedHeader, payload, serializer).let { signatureInput ->
+    ): CryptoSignature.RawByteEncodable =
+        CoseSigned.prepare<P>(
+            protectedHeader = protectedHeader,
+            externalAad = byteArrayOf(),
+            payload = payload,
+            payloadSerializer = serializer
+        ).let { signatureInput ->
             cryptoService.sign(signatureInput.serialize()).asKmmResult().getOrElse {
                 Napier.w("No signature from native code", it)
                 throw it
-            }.let { signature ->
-                signatureInput.payload to signature
             }
         }
 }
@@ -132,7 +135,7 @@ class DefaultVerifierCoseService(
         externalAad: ByteArray,
     ) = catching {
         val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad = externalAad)
-        val algorithm = coseSigned.protectedHeader.value.algorithm
+        val algorithm = coseSigned.protectedHeader.algorithm
             ?: throw IllegalArgumentException("Algorithm not specified")
         val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
             throw IllegalArgumentException("Signer not convertible")

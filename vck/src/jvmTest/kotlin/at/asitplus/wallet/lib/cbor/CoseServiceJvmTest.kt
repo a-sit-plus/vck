@@ -2,12 +2,12 @@ package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.signum.indispensable.*
 import at.asitplus.signum.indispensable.cosef.*
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.supreme.HazardousMaterials
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.iso.vckCborSerializer
 import com.authlete.cbor.CBORByteArray
 import com.authlete.cbor.CBORDecoder
 import com.authlete.cbor.CBORTaggedItem
@@ -165,7 +165,7 @@ class CoseServiceJvmTest : FreeSpec({
                         SigStructureBuilder().sign1(parsedCoseSign1).build().encode().encodeToString(Base16())
                     val signatureInput = CoseSignatureInput(
                         contextString = "Signature1",
-                        protectedHeader = ByteStringWrapper(CoseHeader(algorithm = coseAlgorithm)),
+                        protectedHeader = vckCborSerializer.encodeToByteArray(CoseHeader.serializer(), CoseHeader(algorithm = coseAlgorithm)),
                         externalAad = byteArrayOf(),
                         payload = randomPayload.encodeToByteArray(),
                     ).serialize().encodeToString(Base16())

@@ -22,6 +22,7 @@ import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
 import kotlin.random.Random
@@ -48,14 +49,13 @@ class Tag24SerializationTest : FreeSpec({
                 )
             ),
             deviceAuth = DeviceAuth(
-                deviceSignature = CoseSigned<ByteArray>(
-                    protectedHeader = CoseHeader(),
+                deviceSignature = CoseSigned.create(
+                    protectedHeader = CoseHeader(algorithm = CoseAlgorithm.RS256),
                     unprotectedHeader = null,
-                    payload = byteArrayOf(),
+                    payload = null,
                     signature = CryptoSignature.RSAorHMAC(byteArrayOf()),
-                    rawPayload = byteArrayOf()
+                    payloadSerializer = ByteArraySerializer()
                 )
-
             )
         )
 
@@ -121,12 +121,12 @@ class Tag24SerializationTest : FreeSpec({
             validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now())
         )
         val serializedMso = mso.serializeForIssuerAuth()
-        val input = CoseSigned<MobileSecurityObject>(
-            protectedHeader = CoseHeader(),
+        val input = CoseSigned.create(
+            protectedHeader = CoseHeader(algorithm = CoseAlgorithm.RS256),
             unprotectedHeader = null,
             payload = mso,
             signature = CryptoSignature.RSAorHMAC(byteArrayOf()),
-            rawPayload = serializedMso,
+            payloadSerializer = MobileSecurityObject.serializer(),
         )
 
         val serialized = vckCborSerializer.encodeToByteArray(input)
@@ -172,12 +172,12 @@ private fun MobileSecurityObject.Companion.deserializeFromIssuerAuth(it: ByteArr
 private fun deviceKeyInfo() =
     DeviceKeyInfo(CoseKey(CoseKeyType.EC2, keyParams = CoseKeyParams.EcYBoolParams(CoseEllipticCurve.P256)))
 
-private fun issuerAuth() = CoseSigned<MobileSecurityObject>(
-    protectedHeader = CoseHeader(),
+private fun issuerAuth() = CoseSigned.create(
+    protectedHeader = CoseHeader(algorithm = CoseAlgorithm.RS256),
     unprotectedHeader = null,
     payload = null,
     signature = CryptoSignature.RSAorHMAC(byteArrayOf()),
-    rawPayload = null,
+    payloadSerializer = MobileSecurityObject.serializer(),
 )
 
 private fun issuerSignedItem() = IssuerSignedItem(0u, Random.nextBytes(16), "identifier", "value")
