@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.rqes
 
+import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthorizationDetails
-import at.asitplus.openid.CscAuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.openid.TokenRequestParameters
@@ -37,7 +37,7 @@ class RqesWalletService(
     suspend fun createOAuth2AuthenticationRequest(
         rqesRequest: SignatureRequestParameters,
         credentialId: ByteArray,
-    ): CscAuthenticationRequestParameters =
+    ): AuthenticationRequestParameters =
         oauth2Client.createCscAuthnRequest(
             state = uuid4().toString(),
             authorizationDetails = setOf(rqesRequest.toAuthorizationDetails()),
@@ -76,7 +76,7 @@ suspend fun OAuth2Client.createCscAuthnRequest(
     scope: String? = null,
     requestUri: String? = null,
     credentialId: ByteArray? = null,
-) = CscAuthenticationRequestParameters(
+) = AuthenticationRequestParameters(
     responseType = GRANT_TYPE_CODE,
     state = state,
     clientId = clientId,
