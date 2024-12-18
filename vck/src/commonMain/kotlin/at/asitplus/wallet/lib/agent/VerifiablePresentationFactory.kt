@@ -168,6 +168,7 @@ class VerifiablePresentationFactory(
             audience = audienceId,
             challenge = challenge,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
+            transactionData =  transactionData,
             transactionDataHashes = transactionData?.map { it.sha256() }?.toSet(),
             transactionDataHashesAlgorithm = transactionData?.let { "sha-256" }
         ),

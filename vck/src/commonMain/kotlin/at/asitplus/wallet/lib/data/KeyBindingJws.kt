@@ -28,6 +28,13 @@ data class KeyBindingJws(
     val sdHash: ByteArray,
 
     /**
+     * Used to link transaction data to Authentication request according to UC5 spec
+     */
+    @Deprecated("Remove as soon as UC5 Specification catches up to OIDVP draft 23")
+    @SerialName("transaction_data")
+    val transactionData: Collection<@Serializable(ByteArrayBase64UrlSerializer::class) ByteArray>? = null,
+
+    /**
      * OID4VP: Array of hashes, where each hash is calculated using a hash function over the strings received in the
      * `transaction_data` request parameter (see `SignatureRequestParameters`). Each hash value ensures the integrity
      * of, and maps to, the respective transaction data object.
