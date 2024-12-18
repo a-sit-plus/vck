@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
@@ -58,12 +59,12 @@ class RqesOidcVerifier(
                 constraints = toConstraint(),
             )
         } else {
-            require(transactionData.all { it.instanceOf(TransactionData::class) }) { "transactionData must be of type TransactionData" }
+            val deserialized = transactionData.map { vckJsonSerializer.decodeFromString(TransactionData.serializer(), it as String) }
             QesInputDescriptor(
                 id = buildId(),
                 format = toFormatHolder(),
                 constraints = toConstraint(),
-                transactionData = transactionData.map { it as TransactionData }
+                transactionData = deserialized
             )
         }
 }
