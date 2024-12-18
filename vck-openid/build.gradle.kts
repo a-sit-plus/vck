@@ -38,6 +38,8 @@ kotlin {
                 api(project(":vck"))
                 api(project(":openid-data-classes"))
                 commonImplementationDependencies()
+                // Add arrow-core dependency because of https://youtrack.jetbrains.com/issue/KT-73858/NullPointerException-when-building-CMP-ios-App
+                api("io.arrow-kt:arrow-core:1.2.4")
             }
         }
 
@@ -58,12 +60,6 @@ kotlin {
             dependencies {
                 implementation(signum.jose)
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
-            }
-        }
-
-        iosTest {
-            dependencies {
-                implementation("io.arrow-kt:arrow-core:1.2.4") //work around klib bug
             }
         }
     }
