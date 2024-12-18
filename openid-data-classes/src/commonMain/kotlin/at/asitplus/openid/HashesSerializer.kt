@@ -1,6 +1,5 @@
-package at.asitplus.rqes.serializers
+package at.asitplus.openid
 
-import at.asitplus.rqes.rdcJsonSerializer
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -19,11 +18,11 @@ object HashesSerializer : KSerializer<List<ByteArray>> {
 
     override fun deserialize(decoder: Decoder): List<ByteArray> {
         val listOfHashes = decoder.decodeString().split(",")
-        return listOfHashes.map { rdcJsonSerializer.decodeFromString(ByteArrayBase64UrlSerializer, it) }
+        return listOfHashes.map { odcJsonSerializer.decodeFromString(ByteArrayBase64UrlSerializer, it) }
     }
 
     override fun serialize(encoder: Encoder, value: List<ByteArray>) {
-        val listOfHashes = value.map { rdcJsonSerializer.encodeToString(ByteArrayBase64UrlSerializer, it) }
+        val listOfHashes = value.map { odcJsonSerializer.encodeToString(ByteArrayBase64UrlSerializer, it) }
         encoder.encodeString(listOfHashes.joinToString(","))
     }
 }

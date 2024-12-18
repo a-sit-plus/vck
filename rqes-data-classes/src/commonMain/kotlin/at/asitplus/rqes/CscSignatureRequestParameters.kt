@@ -1,8 +1,11 @@
 package at.asitplus.rqes
 
+import at.asitplus.openid.Hashes
+import at.asitplus.openid.contentEquals
+import at.asitplus.openid.contentHashCode
 import at.asitplus.rqes.collection_entries.CscDocumentDigest
 import at.asitplus.rqes.enums.OperationMode
-import at.asitplus.rqes.enums.SignatureQualifier
+import at.asitplus.openid.SignatureQualifier
 import at.asitplus.rqes.serializers.CscSignatureRequestParameterSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.SignatureAlgorithm
