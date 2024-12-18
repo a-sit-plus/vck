@@ -1,4 +1,4 @@
-package at.asitplus.rqes
+package at.asitplus.openid
 
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
 import kotlinx.serialization.Serializable

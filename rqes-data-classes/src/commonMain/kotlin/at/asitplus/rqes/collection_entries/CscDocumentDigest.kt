@@ -1,8 +1,8 @@
 package at.asitplus.rqes.collection_entries
 
-import at.asitplus.rqes.Hashes
-import at.asitplus.rqes.contentEquals
-import at.asitplus.rqes.contentHashCode
+import at.asitplus.openid.Hashes
+import at.asitplus.openid.contentEquals
+import at.asitplus.openid.contentHashCode
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
