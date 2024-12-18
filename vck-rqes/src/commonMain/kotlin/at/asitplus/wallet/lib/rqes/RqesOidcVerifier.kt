@@ -36,11 +36,6 @@ class RqesOidcVerifier(
     timeLeewaySeconds: Long = 300L,
     clock: Clock = Clock.System,
     nonceService: NonceService = DefaultNonceService(),
-    /**
-     * Used to store the nonce, associated to the state, to first send [AuthenticationRequestParameters.nonce],
-     * and then verify the challenge in the submitted verifiable presentation in
-     * [AuthenticationResponseParameters.vpToken].
-     */
     stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
     stateToResponseTypeStore: MapStore<String, String> = DefaultMapStore(),
 ) : OidcSiopVerifier(
@@ -55,7 +50,7 @@ class RqesOidcVerifier(
     stateToNonceStore,
     stateToResponseTypeStore,
 ) {
-    override fun RequestOptionsCredential.toInputDescriptor(transactionData: List<Any>?): InputDescriptor =
+    override fun RequestOptionsCredential.toInputDescriptor(transactionData: Set<Any>?): InputDescriptor =
         if (transactionData.isNullOrEmpty()) {
             DifInputDescriptor(
                 id = buildId(),

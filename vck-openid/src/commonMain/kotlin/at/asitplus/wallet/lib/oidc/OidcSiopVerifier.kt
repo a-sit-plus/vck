@@ -15,6 +15,8 @@ import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.wallet.lib.agent.*
@@ -27,6 +29,8 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlinx.datetime.Clock
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -236,6 +240,24 @@ open class OidcSiopVerifier(
          * [clientMetadataUrl], that the URL shall point to [OidcSiopVerifier.metadataWithEncryption].
          */
         val encryption: Boolean = false,
+
+        val rqesParameters: RqesParameters? = null,
+    )
+
+    /**
+     * Parameters defined in the CSC extension of [AuthenticationRequestParameters]
+     */
+    data class RqesParameters(
+        val lang: String? = null,
+        val credentialID: ByteArray? = null,
+        val signatureQualifier: SignatureQualifier? = null,
+        val numSignatures: Int? = null,
+        val hashes: Hashes? = null,
+        val hashAlgorithmOid: ObjectIdentifier? = null,
+        val description: String? = null,
+        val accountToken: JsonWebToken? = null,
+        val clientData: String? = null,
+        val transactionData: Set<String>? = null,
     )
 
     data class RequestOptionsCredential(
@@ -377,9 +399,19 @@ open class OidcSiopVerifier(
         presentationDefinition = PresentationDefinition(
             id = uuid4().toString(),
             inputDescriptors = requestOptions.credentials.map {
-                it.toInputDescriptor()
+                it.toInputDescriptor(requestOptions.rqesParameters?.transactionData)
             },
         ),
+        lang = requestOptions.rqesParameters?.lang,
+        credentialID= requestOptions.rqesParameters?.credentialID,
+        signatureQualifier=requestOptions.rqesParameters?.signatureQualifier,
+        numSignatures=requestOptions.rqesParameters?.numSignatures,
+        hashes=requestOptions.rqesParameters?.hashes,
+        hashAlgorithmOid=requestOptions.rqesParameters?.hashAlgorithmOid,
+        description=requestOptions.rqesParameters?.description,
+        accountToken=requestOptions.rqesParameters?.accountToken,
+        clientData=requestOptions.rqesParameters?.clientData,
+        transactionData=requestOptions.rqesParameters?.transactionData
     )
 
     private fun RequestOptions.buildScope() = (
@@ -393,8 +425,7 @@ open class OidcSiopVerifier(
         get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
                 (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
 
-    //TODO extend for InputDescriptor interface in case QES
-    open fun RequestOptionsCredential.toInputDescriptor(transactionData: List<Any>? = null): InputDescriptor = DifInputDescriptor(
+    open fun RequestOptionsCredential.toInputDescriptor(transactionData: Set<Any>? = null): InputDescriptor = DifInputDescriptor(
         id = buildId(),
         format = toFormatHolder(),
         constraints = toConstraint(),
