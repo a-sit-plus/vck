@@ -2,7 +2,9 @@ package at.asitplus.rqes
 
 import at.asitplus.rqes.enums.CertificateOptions
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class CscCredentialListRequest(
     /**
      * The identifier associated to the identity of the credential owner. This parameter
@@ -11,7 +13,7 @@ data class CscCredentialListRequest(
      * Authorization header.
      */
     @SerialName("userID")
-    val userID: String?,
+    val userID: String? = null,
 
     /**
      * Request to return the main information included in the public key certificate and

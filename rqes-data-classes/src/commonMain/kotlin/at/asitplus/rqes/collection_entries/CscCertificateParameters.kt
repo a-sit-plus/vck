@@ -1,11 +1,12 @@
 package at.asitplus.rqes.collection_entries
 
-import at.asitplus.signum.indispensable.pki.X509Certificate
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * JsonObject which is part of [CredentialInfo]
  */
+@Serializable
 data class CscCertificateParameters(
     /**
      * The status of validity of the end entity certificate.
@@ -22,12 +23,13 @@ data class CscCertificateParameters(
      * certificate SHALL be returned. If the certificates parameter is “none”, this
      * value SHALL NOT be returned.
      */
+    //TODO base64 certificate serializer
     @SerialName("certificates")
-    val certificates: List<X509Certificate>? = null,
+    val certificates: List<String>? = null,
 
     /**
      * The Issuer Distinguished Name from the X.509v3 end entity certificate as
-     * UTF-8-encoded character string according to RFC 4514 [4]. This value
+     * UTF-8-encoded character string according to RFC 4514. This value
      * SHALL be returned when certInfo is “true”.
      */
     @SerialName("issuerDN")

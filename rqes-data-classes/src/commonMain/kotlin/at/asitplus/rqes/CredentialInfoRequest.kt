@@ -2,7 +2,9 @@ package at.asitplus.rqes
 
 import at.asitplus.rqes.enums.CertificateOptions
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class CredentialInfoRequest(
     /**
      * The unique identifier associated to the credential.

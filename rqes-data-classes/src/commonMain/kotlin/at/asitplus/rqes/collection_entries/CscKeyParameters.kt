@@ -2,7 +2,9 @@ package at.asitplus.rqes.collection_entries
 
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class CscKeyParameters(
     /**
      * The status of the signing key of the credential:

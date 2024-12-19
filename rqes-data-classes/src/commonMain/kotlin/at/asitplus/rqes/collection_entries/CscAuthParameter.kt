@@ -1,8 +1,10 @@
 package at.asitplus.rqes.collection_entries
 
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
+@Serializable
 data class CscAuthParameter(
     /**
      * Specifies one of the authorization modes.
@@ -18,7 +20,7 @@ data class CscAuthParameter(
      * SHALL NOT be returned if auth/mode is not “explicit”.
      */
     @SerialName("expression")
-    val expression: AuthExpressionOptions? = null,
+    val expression: String? = null,
 
     /**
      * The authentication object types available for this credential.
@@ -46,6 +48,11 @@ data class CscAuthParameter(
         OAUTH2,
     }
 
+    /**
+     * Defines logic of [expression] string
+     * Example: "PIN AND OTP"
+     * with PIN and OTP then being defined in [objects]
+     */
     enum class AuthExpressionOptions {
         @SerialName("AND")
         AND,

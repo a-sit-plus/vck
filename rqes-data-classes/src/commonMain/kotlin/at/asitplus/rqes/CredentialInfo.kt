@@ -5,16 +5,18 @@ import at.asitplus.rqes.collection_entries.CscCertificateParameters
 import at.asitplus.rqes.collection_entries.CscKeyParameters
 import at.asitplus.rqes.enums.SignatureQualifier
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * In case of credentials/list [credentialID] is REQUIRED
  * in case this is a credentials/info response [credentialID] MUST NOT be in it...
- * TODO presumably make credentialID nullable and make client check when calling credential/list manually
  */
+@Serializable
 data class CredentialInfo(
     /**
      * The credentialID identifying one of the credentials associated with the
      * provided or implicit userID.
+     * MUST be present in `credential/list` request but MUST NOT be present in `credential/info` request
      */
     @SerialName("credentialID")
     val credentialID: String? = null,

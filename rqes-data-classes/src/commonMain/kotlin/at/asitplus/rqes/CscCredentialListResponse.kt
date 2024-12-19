@@ -1,7 +1,9 @@
 package at.asitplus.rqes
 
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class CscCredentialListResponse(
     /**
      * One or more credentialID(s) associated with the provided or implicit userID.
