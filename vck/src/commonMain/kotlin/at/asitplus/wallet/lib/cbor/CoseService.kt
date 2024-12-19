@@ -146,7 +146,7 @@ class DefaultVerifierCoseService(
         signer: CoseKey,
         externalAad: ByteArray,
     ) = catching {
-        val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad)
+        val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad = externalAad)
         val algorithm = coseSigned.protectedHeader.algorithm
             ?: throw IllegalArgumentException("Algorithm not specified")
         val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
