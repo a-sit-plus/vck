@@ -1,5 +1,8 @@
 # Changelog
 
+Release 5.2.1:
+ - Fix COSE signature deserialization and verification, due to signum 3.12.0
+
 Release 5.2.0:
 - Remote qualified electronic signatures:
     - New `Initializer` object in `vck-openid` which needs to be called at the start of the project if artifact is used

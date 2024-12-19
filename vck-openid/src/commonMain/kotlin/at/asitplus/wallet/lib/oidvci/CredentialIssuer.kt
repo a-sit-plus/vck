@@ -228,7 +228,7 @@ class CredentialIssuer(
         if (cwt.nonce == null || !authorizationService.verifyClientNonce(cwt.nonce!!.decodeToString()))
             throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid nonce in CWT in proof: ${cwt.nonce}") }
-        val header = coseSigned.protectedHeader.value
+        val header = coseSigned.protectedHeader
         if (header.contentType != PROOF_CWT_TYPE)
             throw OAuth2Exception(Errors.INVALID_PROOF)
                 .also { Napier.w("client did provide invalid header type in CWT in proof: $header") }
