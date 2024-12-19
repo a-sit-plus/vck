@@ -23,9 +23,15 @@ class VerifierAgent(
     private val identifier: String,
     private val validator: Validator = Validator(),
 ) : Verifier {
-
-    override fun setRevocationList(it: String): Boolean {
-        return validator.setRevocationList(it)
+    override fun verifyRevocationStatusListJwtIntegrity(it: String): Boolean {
+        return runCatching {
+            validator.validateStatusListJwtIntegrity(it)
+        }.isSuccess
+    }
+    override fun verifyRevocationStatusListCwtIntegrity(it: ByteArray): Boolean {
+        return runCatching {
+            validator.validateStatusListCwtIntegrity(it)
+        }.isSuccess
     }
 
     /**
@@ -33,7 +39,8 @@ class VerifierAgent(
      * that shall include the [challenge] (sent by this verifier),
      * as well as the expected [identifier] (identifying this verifier).
      */
-    override fun verifyPresentation(input: String, challenge: String): Verifier.VerifyPresentationResult {
+    override suspend fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
+        val input = it
         val sdJwtSigned = runCatching { SdJwtSigned.parse(input) }.getOrNull()
         if (sdJwtSigned != null) {
             return runCatching {

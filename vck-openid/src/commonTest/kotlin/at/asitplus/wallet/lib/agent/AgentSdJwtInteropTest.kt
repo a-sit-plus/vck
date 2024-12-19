@@ -78,7 +78,7 @@ class AgentSdJwtInteropTest : FreeSpec({
             Holder.StoreCredentialInput.SdJwt(input, EuPidScheme)
         ).getOrThrow()
 
-        stored.status shouldBe Validator.RevocationStatus.UNKNOWN
+        stored.status shouldBe null
         val entry = stored.storeEntry
         entry.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.SdJwt>()
         entry.disclosures.size shouldBe 9
