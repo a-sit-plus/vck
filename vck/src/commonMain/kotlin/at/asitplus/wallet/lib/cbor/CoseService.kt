@@ -183,6 +183,10 @@ class DefaultVerifierCoseService(
 
 typealias PublicCoseKeyLookup = (CoseSigned<*>) -> Set<CoseKey>?
 
+/**
+ * Tries to compute a public key in order from [coseKey], [kid] or
+ * [certificateChain], and takes the first success or null.
+ */
 val CoseHeader.publicKey: CoseKey?
     get() = coseKey?.let { CoseKey.deserialize(it).getOrNull() }
         ?: kid?.let { CoseKey.fromDid(it.decodeToString()) }?.getOrNull()
