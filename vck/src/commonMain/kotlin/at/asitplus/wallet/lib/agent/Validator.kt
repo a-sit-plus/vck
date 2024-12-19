@@ -14,23 +14,8 @@ import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
-import at.asitplus.wallet.lib.data.IsoDocumentParsed
-import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.RevocationListSubject
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import at.asitplus.wallet.lib.data.VerifiablePresentationJws
-import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
-import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.DeviceResponse
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
-import at.asitplus.wallet.lib.iso.ValueDigestList
-import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.iso.wrapInCborTag
+import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import at.asitplus.wallet.lib.jws.VerifierJwsService
@@ -39,7 +24,6 @@ import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.json.buildJsonObject
 
 
@@ -317,7 +301,7 @@ class Validator(
             throw IllegalArgumentException("issuerKey")
         }
 
-        if (verifierCoseService.verifyCose(issuerAuth, issuerKey, MobileSecurityObject.serializer()).isFailure) {
+        if (verifierCoseService.verifyCose(issuerAuth, issuerKey).isFailure) {
             Napier.w("IssuerAuth not verified: $issuerAuth")
             throw IllegalArgumentException("issuerAuth")
         }
@@ -339,7 +323,7 @@ class Validator(
             throw IllegalArgumentException("deviceSignature")
         }
 
-        if (verifierCoseService.verifyCose(deviceSignature, walletKey, ByteArraySerializer()).isFailure) {
+        if (verifierCoseService.verifyCose(deviceSignature, walletKey).isFailure) {
             Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}")
             throw IllegalArgumentException("deviceSignature")
         }
@@ -495,7 +479,7 @@ class Validator(
                 it.serialize().encodeToString(Base16(strict = true))
             )
         }
-        val result = verifierCoseService.verifyCose(it.issuerAuth, issuerKey, MobileSecurityObject.serializer())
+        val result = verifierCoseService.verifyCose(it.issuerAuth, issuerKey)
         if (result.isFailure) {
             Napier.w("ISO: Could not verify credential", result.exceptionOrNull())
             return Verifier.VerifyCredentialResult.InvalidStructure(
