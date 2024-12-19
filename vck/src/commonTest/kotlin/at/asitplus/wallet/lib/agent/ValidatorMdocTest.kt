@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.cbor.publicKey
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
@@ -70,7 +71,7 @@ class ValidatorMdocTest : FreeSpec() {
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
             val issuerKey = credential.issuerSigned.issuerAuth.run {
-                protectedHeader.value.publicKey ?: unprotectedHeader?.publicKey
+                protectedHeader.publicKey ?: unprotectedHeader?.publicKey
             }
 
             validator.verifyIsoCred(credential.issuerSigned, issuerKey)
@@ -90,7 +91,7 @@ class ValidatorMdocTest : FreeSpec() {
             val issuerKey = credential.issuerSigned.issuerAuth.also {
                 println(it)
             }.run {
-                 protectedHeader.value.publicKey ?: unprotectedHeader?.publicKey
+                 protectedHeader.publicKey ?: unprotectedHeader?.publicKey
             }
 
             val value = validator.verifyIsoCred(credential.issuerSigned, issuerKey)

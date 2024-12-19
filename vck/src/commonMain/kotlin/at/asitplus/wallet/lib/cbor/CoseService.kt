@@ -8,6 +8,7 @@ import at.asitplus.signum.indispensable.cosef.CoseHeader
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
@@ -61,7 +62,8 @@ interface VerifierCoseService {
 
 class DefaultCoseService(private val cryptoService: CryptoService) : CoseService {
 
-    override val algorithm: CoseAlgorithm = cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
+    override val algorithm: CoseAlgorithm =
+        cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
 
     override suspend fun <P : Any> createSignedCose(
         protectedHeader: CoseHeader?,
@@ -144,7 +146,7 @@ class DefaultVerifierCoseService(
         signer: CoseKey,
         externalAad: ByteArray,
     ) = catching {
-        val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad = externalAad)
+        val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad)
         val algorithm = coseSigned.protectedHeader.algorithm
             ?: throw IllegalArgumentException("Algorithm not specified")
         val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
@@ -170,12 +172,22 @@ class DefaultVerifierCoseService(
         coseSigned.loadPublicKeys().also {
             Napier.d("Public keys available: ${it.size}")
         }.firstNotNullOf { coseKey ->
-            verifyCose(coseSigned, coseKey, serializer).getOrNull()
+            verifyCose(coseSigned, coseKey).getOrNull()
         }
     }
 
     fun CoseSigned<*>.loadPublicKeys(): Set<CoseKey> =
-        (protectedHeader.value.publicKey ?: unprotectedHeader?.publicKey)?.let { setOf(it) } ?: publicKeyLookup(this) ?: setOf()
+        (protectedHeader.publicKey ?: unprotectedHeader?.publicKey)?.let { setOf(it) }
+            ?: publicKeyLookup(this) ?: setOf()
 }
 
 typealias PublicCoseKeyLookup = (CoseSigned<*>) -> Set<CoseKey>?
+
+val CoseHeader.publicKey: CoseKey?
+    get() = coseKey?.let { CoseKey.deserialize(it).getOrNull() }
+        ?: kid?.let { CoseKey.fromDid(it.decodeToString()) }?.getOrNull()
+        ?: certificateChain?.let {
+            runCatching {
+                X509Certificate.decodeFromDer(it)
+            }.getOrNull()?.publicKey?.toCoseKey()?.getOrThrow()
+        }

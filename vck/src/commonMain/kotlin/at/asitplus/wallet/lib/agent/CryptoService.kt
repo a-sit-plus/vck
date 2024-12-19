@@ -3,7 +3,11 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.signum.indispensable.*
+import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.CryptoSignature
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.ECCurve
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
@@ -68,8 +72,7 @@ interface VerifierCryptoService {
         signature: CryptoSignature,
         algorithm: X509SignatureAlgorithm,
         publicKey: CryptoPublicKey,
-    ): KmmResult<at.asitplus.signum.supreme.sign.Verifier.Success>
-
+    ): KmmResult<Verifier.Success>
 }
 
 
