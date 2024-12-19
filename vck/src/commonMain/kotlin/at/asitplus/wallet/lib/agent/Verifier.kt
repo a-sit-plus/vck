@@ -21,7 +21,7 @@ import kotlinx.serialization.json.JsonObject
 interface Verifier {
 
     /**
-     * Set the revocation list to use for validating VCs (from [Issuer.issueStatusListJwt])
+     * Validate status list tokens issued by a status provider
      */
     fun verifyRevocationStatusListJwtIntegrity(it: String): Boolean
     fun verifyRevocationStatusListCwtIntegrity(it: ByteArray): Boolean
