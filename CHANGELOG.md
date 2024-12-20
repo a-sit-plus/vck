@@ -1,7 +1,7 @@
 # Changelog
 
 Release 5.3.0:
- - tbd
+ - Fix serialization of device signed items in ISO credentials
  
 Release 5.2.1:
  - Fix COSE signature deserialization and verification, due to signum 3.12.0
