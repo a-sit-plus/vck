@@ -16,10 +16,15 @@ jobs:
         run: ./gradlew iosArm64MainKlibrary iosSimulatorArm64MainKlibrary
       - name: Run tests
         run: ./gradlew iosSimulatorArm64Test
+      - name: Run ISO mDL tests
+        run: |
+          cd mobile-driving-licence-credential
+          ./gradlew -DregressionTest=true iosSimulatorArm64Test  
+          cd ..
       - name: Test Report
         uses: dorny/test-reporter@v1
         if: success() || failure()
         with:
           name: vck Tests
-          path: vck/build/test-results/**/TEST*.xml,vck-openid/build/test-results/**/TEST*.xml,vck-openid-ktor/build/test-results/**/TEST*.xml
+          path: vck/build/test-results/**/TEST*.xml,vck-openid/build/test-results/**/TEST*.xml,vck-openid-ktor/build/test-results/**/TEST*.xml,mobile-driving-licence-credential/mobiledrivinglicence/build/test-results/**/TEST*.xml
           reporter: java-junit
