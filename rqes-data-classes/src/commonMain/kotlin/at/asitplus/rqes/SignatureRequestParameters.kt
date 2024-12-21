@@ -4,20 +4,17 @@ import CscAuthorizationDetails
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.SignatureQualifier
 import at.asitplus.rqes.collection_entries.CscDocumentDigest
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
-import at.asitplus.rqes.collection_entries.TransactionData
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
-import at.asitplus.rqes.enums.SignatureQualifier
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -27,10 +24,6 @@ import kotlinx.serialization.json.JsonObject
  * In the Wallet centric model this is the request
  * coming from the Driving application to the wallet which starts
  * the process
- *
- * This should not be confused with the CSC-related extensions in
- * [at.asitplus.openid.CscAuthenticationRequestParameters] which are used
- * by the wallet to communicate with the QTSP using OAuth2.
  */
 @Serializable
 data class SignatureRequestParameters(
@@ -143,24 +136,13 @@ data class SignatureRequestParameters(
      */
     @SerialName("clientData")
     val clientData: String?,
-
-    /**
-     * OID4VP: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed
-     * parameter set with details about the transaction that the Verifier is requesting the End-User to authorize.
-     * The Wallet MUST return an error if a request contains even one unrecognized transaction data type or transaction
-     * data not conforming to the respective type definition.
-     */
-    @SerialName("transaction_data")
-    override val transactionData: Set<String>? = null,
 ) : RequestParameters {
 
     @Transient
     val hashAlgorithm: Digest = hashAlgorithmOid.getHashAlgorithm()
 
     @Transient
-    val transactionDataTyped: Set<TransactionData>? = transactionData?.map {
-        rdcJsonSerializer.decodeFromString<TransactionData>(it.decodeToByteArray(Base64UrlStrict).decodeToString())
-    }?.toSet()
+    override val transactionData: Set<String>? = null
 
     fun toAuthorizationDetails(): AuthorizationDetails =
         CscAuthorizationDetails(

@@ -8,16 +8,16 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-object NamespacedDeviceSignedItemListSerializer : KSerializer<Map<String, DeviceSignedItemList>> {
+object NamespacedDeviceNameSpacesSerializer : KSerializer<DeviceNameSpaces> {
 
     private val mapSerializer = MapSerializer(String.serializer(), object : DeviceSignedItemListSerializer("") {})
 
     override val descriptor = mapSerializer.descriptor
 
-    override fun deserialize(decoder: Decoder): Map<String, DeviceSignedItemList> =
-        NamespacedMapEntryDeserializer().let {
+    override fun deserialize(decoder: Decoder): DeviceNameSpaces =
+        DeviceNameSpaces(NamespacedMapEntryDeserializer().let {
             MapSerializer(it.namespaceSerializer, it.itemSerializer).deserialize(decoder)
-        }
+        })
 
     class NamespacedMapEntryDeserializer {
         lateinit var key: String
@@ -47,8 +47,8 @@ object NamespacedDeviceSignedItemListSerializer : KSerializer<Map<String, Device
         }
     }
 
-    override fun serialize(encoder: Encoder, value: Map<String, DeviceSignedItemList>) =
+    override fun serialize(encoder: Encoder, value: DeviceNameSpaces) =
         NamespacedMapEntryDeserializer().let {
-            MapSerializer(it.namespaceSerializer, it.itemSerializer).serialize(encoder, value)
+            MapSerializer(it.namespaceSerializer, it.itemSerializer).serialize(encoder, value.entries)
         }
 }

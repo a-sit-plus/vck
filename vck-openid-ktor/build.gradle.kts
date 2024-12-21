@@ -68,7 +68,6 @@ kotlin {
 
         iosTest {
             dependencies {
-                implementation("io.arrow-kt:arrow-core:1.2.4") //work around klib bug
                 implementation(ktor("client-darwin"))
             }
         }
