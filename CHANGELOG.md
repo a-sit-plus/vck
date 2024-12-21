@@ -1,7 +1,8 @@
 # Changelog
 
 Release 5.3.0:
- - tbd
+- Remote qualified electronic signatures:
+  - Add request-, response- and auxiliary data classes defined in CSC API v2.0.0.2 Ch. 11.4 `credentials/list` and Ch. 11.5 `credentials/info` 
 
 Release 5.2.0:
 - Remote qualified electronic signatures:
