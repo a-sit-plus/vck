@@ -7,14 +7,15 @@ import kotlin.experimental.or
 
 /**
  * Utility class to access token statuses by index from an uncompressed byte array.
- * In theory this should improve storage size, since byte array allows for a compressed
+ * In theory this should improve storage size compared to a list of token statuses since ByteArray
+ * is stored more efficiently.
  */
 data class StatusListView(
     val uncompressed: ByteArray,
     val statusBitSize: TokenStatusBitSize,
 ) {
     fun isEmpty() = uncompressed.isEmpty()
-    fun isNotEmpty() = uncompressed.isNotEmpty()
+    fun isNotEmpty() = !isEmpty()
 
     operator fun get(index: UInt) = get(index.toULong())
     operator fun get(index: ULong) = getOrNull(index) ?: throw IndexOutOfBoundsException()

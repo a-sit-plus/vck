@@ -23,17 +23,6 @@ class VerifierAgent(
     private val identifier: String,
     private val validator: Validator = Validator(),
 ) : Verifier {
-    override fun verifyRevocationStatusListJwtIntegrity(it: String): Boolean {
-        return runCatching {
-            validator.validateStatusListJwtIntegrity(it)
-        }.isSuccess
-    }
-    override fun verifyRevocationStatusListCwtIntegrity(it: ByteArray): Boolean {
-        return runCatching {
-            validator.validateStatusListCwtIntegrity(it)
-        }.isSuccess
-    }
-
     /**
      * Verifies a presentation of some credentials from a holder,
      * that shall include the [challenge] (sent by this verifier),

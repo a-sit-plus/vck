@@ -1,16 +1,20 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.Verifier.VerifyCredentialResult.SuccessJwt
+import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.datetime.Clock
@@ -38,21 +42,88 @@ class AgentRevocationTest : FreeSpec({
         val statusListJwt = issuer.issueStatusListJwt()
         statusListJwt.shouldNotBeNull()
 
-        val token = JwsSigned.deserialize(StatusListTokenPayload.serializer(), statusListJwt).getOrThrow()
-
-        val statusList = token.payload.statusList
+        val statusList = statusListJwt.payload.statusList
 
         verifyStatusList(statusList, expectedRevokedIndexes)
     }
 
+    "issuer as token status provider" - {
+        "aggregation" - {
+            "should contain links if statuses have been set" {
+                issuer.issueCredential(
+                    DummyCredentialDataProvider.getCredential(
+                        verifierKeyMaterial.publicKey,
+                        ConstantIndex.AtomicAttribute2023,
+                        ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                    ).getOrThrow()
+                ).getOrElse {
+                    fail("no issued credentials")
+                }
+                issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0))
+
+                val statusListAggregation = issuer.provideStatusListAggregation()
+                statusListAggregation.statusLists.size should {
+                    it >= 1
+                }
+            }
+        }
+
+        "issued jwt should have same status list as provided token when asking for jwt" {
+            issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    verifierKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                ).getOrThrow()
+            ).getOrElse {
+                fail("no issued credentials")
+            }
+            issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0))
+
+            val timestamp = Clock.System.now()
+            val issuedToken = issuer.issueStatusListJwt(timestamp)
+            val (type, providedToken) = issuer.provideStatusListToken(
+                acceptedContentTypes = listOf(StatusListTokenMediaType.Jwt),
+                time = timestamp,
+            )
+            providedToken.shouldBeInstanceOf<StatusListToken.StatusListJwt>()
+            providedToken.value.payload.statusList shouldBe issuedToken.payload.statusList
+        }
+
+        "issued cwt should have same status list as provided token when asking for cwt" {
+            issuer.issueCredential(
+                DummyCredentialDataProvider.getCredential(
+                    verifierKeyMaterial.publicKey,
+                    ConstantIndex.AtomicAttribute2023,
+                    ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+                ).getOrThrow()
+            ).getOrElse {
+                fail("no issued credentials")
+            }
+            issuerCredentialStore.revokeCredentialsWithIndexes(listOf(0))
+
+            val timestamp = Clock.System.now()
+            val issuedToken = issuer.issueStatusListJwt(timestamp)
+            val (type, providedToken) = issuer.provideStatusListToken(
+                acceptedContentTypes = listOf(StatusListTokenMediaType.Cwt),
+                time = timestamp,
+            )
+            providedToken.shouldBeInstanceOf<StatusListToken.StatusListCwt>()
+            providedToken.value.payload!!.statusList shouldBe issuedToken.payload.statusList
+        }
+    }
+
     "revocation credential should be valid" {
         issuer.issueStatusListJwt().also {
-            it .shouldNotBeNull()
-            verifier.verifyRevocationStatusListJwtIntegrity(it) shouldBe true
+            it.shouldNotBeNull()
+            DefaultVerifierJwsService().verifyJwsObject(it) shouldBe true
         }
         issuer.issueStatusListCwt().also {
-            it .shouldNotBeNull()
-            verifier.verifyRevocationStatusListCwtIntegrity(it) shouldBe true
+            it.shouldNotBeNull()
+            DefaultVerifierCoseService().verifyCose(
+                it,
+                StatusListTokenPayload.serializer()
+            ).isSuccess shouldBe true
         }
     }
 
@@ -90,7 +161,8 @@ class AgentRevocationTest : FreeSpec({
     "decoding a known value works" {
         expectedRevokedIndexes = listOf(1, 2, 4, 6, 7, 9, 10, 12, 13, 14)
 
-        val revocationList = Json.decodeFromString<StatusList>("""{"lst": "eJy7VgYAAiQBTQ==", "bits": 1}""")
+        val revocationList =
+            Json.decodeFromString<StatusList>("""{"lst": "eJy7VgYAAiQBTQ==", "bits": 1}""")
 
         verifyStatusList(revocationList, expectedRevokedIndexes)
     }
@@ -105,7 +177,7 @@ private fun verifyStatusList(statusList: StatusList, expectedRevokedIndexes: Lis
         expectedRevocationStatuses[it.toInt()] = TokenStatus.Invalid
     }
     expectedRevocationStatuses.forEachIndexed { index, it ->
-        statusList.toStatusListView()[index.toULong()] shouldBe it
+        statusList.view[index.toULong()] shouldBe it
     }
 }
 

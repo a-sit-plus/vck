@@ -26,13 +26,12 @@ data class StatusList(
         aggregationUri = aggregationUri,
     )
 
-    private var view: StatusListView? = null
-    fun toStatusListView(zlibService: ZlibService? = null) = view ?: StatusListView(
-        uncompressed = (zlibService ?: DefaultZlibService()).decompress(compressed)
-            ?: throw IllegalStateException("Member `compressed` must be zlib-deflate-uncompressible."),
-        statusBitSize = statusBitSize,
-    ).also {
-        view = it
+    val view: StatusListView by lazy {
+        StatusListView(
+            uncompressed = DefaultZlibService().decompress(compressed)
+                ?: throw IllegalStateException("Member `compressed` must be zlib-deflate-uncompressible."),
+            statusBitSize = statusBitSize,
+        )
     }
 
     override fun equals(other: Any?): Boolean {

@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsHeader
@@ -12,7 +11,6 @@ import at.asitplus.wallet.lib.data.Status
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
@@ -47,17 +45,11 @@ class ValidatorVcTest : FreeSpec() {
             validator = Validator(
                 resolveStatusListToken = {
                     if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                        JwsSigned.deserialize(
-                            StatusListTokenPayload.serializer(),
-                            issuer.issueStatusListJwt(),
-                        ).getOrThrow(),
+                        issuer.issueStatusListJwt(),
                         resolvedAt = Clock.System.now(),
                     ) else {
                         StatusListToken.StatusListCwt(
-                            CoseSigned.deserialize(
-                                StatusListTokenPayload.serializer(),
-                                issuer.issueStatusListCwt(),
-                            ).getOrThrow(),
+                            issuer.issueStatusListCwt(),
                             resolvedAt = Clock.System.now(),
                         )
                     }

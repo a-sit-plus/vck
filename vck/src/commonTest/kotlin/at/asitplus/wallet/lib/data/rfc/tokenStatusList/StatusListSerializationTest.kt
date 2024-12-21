@@ -100,9 +100,8 @@ class StatusListSerializationTest : FreeSpec({
                 } else {
                     val statusList = Json.decodeFromString<StatusList>(jsonString)
 
-                    val view = statusList.toStatusListView()
                     expectedStatusList.forEachIndexed { index, it ->
-                        view[index.toULong()] shouldBe it
+                        statusList.view[index.toULong()] shouldBe it
                     }
 
                     Json.decodeFromString<StatusList>(Json.encodeToString(statusList)) shouldBe statusList
@@ -153,7 +152,7 @@ class StatusListSerializationTest : FreeSpec({
         ) { (cborString, expectedStatusList) ->
             val statusList = Cbor.decodeFromHexString<StatusList>(cborString)
             expectedStatusList.forEachIndexed { index, it ->
-                statusList.toStatusListView()[index.toULong()] shouldBe it
+                statusList.view[index.toULong()] shouldBe it
             }
 
             Cbor.decodeFromHexString<StatusList>(Cbor.encodeToHexString(statusList)) shouldBe statusList

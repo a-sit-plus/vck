@@ -1,12 +1,12 @@
 package at.asitplus.wallet.lib.data.rfc.tokenStatusList.third_party.kotlin
 
-fun <T> Boolean.ifTrue(block: () -> T) {
+fun Boolean.ifTrue(block: () -> Unit) {
     if(this) {
         block()
     }
 }
 
-fun <T> Boolean.ifFalse(block: () -> T) {
+fun Boolean.ifFalse(block: () -> Unit) {
     if(!this) {
         block()
     }

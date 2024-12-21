@@ -1,11 +1,10 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.cbor.publicKey
+import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.toCoseKey
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.StatusListToken
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -33,24 +32,18 @@ class ValidatorMdocTest : FreeSpec() {
             validator = Validator(
                 resolveStatusListToken = {
                     if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                        JwsSigned.deserialize(
-                            StatusListTokenPayload.serializer(),
-                            issuer.issueStatusListJwt(),
-                        ).getOrThrow(),
+                        issuer.issueStatusListJwt(),
                         resolvedAt = Clock.System.now(),
                     ) else {
                         StatusListToken.StatusListCwt(
-                            CoseSigned.deserialize(
-                                StatusListTokenPayload.serializer(),
-                                issuer.issueStatusListCwt(),
-                            ).getOrThrow(),
+                            issuer.issueStatusListCwt(),
                             resolvedAt = Clock.System.now(),
                         )
                     }
                 },
             )
             issuerCredentialStore = InMemoryIssuerCredentialStore()
-            issuerKeyMaterial = EphemeralKeyWithoutCert()
+            issuerKeyMaterial = EphemeralKeyWithSelfSignedCert()
             issuer = IssuerAgent(
                 issuerKeyMaterial,
                 issuerCredentialStore,
@@ -70,9 +63,11 @@ class ValidatorMdocTest : FreeSpec() {
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
-            val issuerKey = credential.issuerSigned.issuerAuth.run {
-                protectedHeader.publicKey ?: unprotectedHeader?.publicKey
-            }
+            val issuerKey: CoseKey? =
+                credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.let {
+                    runCatching { X509Certificate.decodeFromDer(it) }.getOrNull()?.publicKey?.toCoseKey()
+                        ?.getOrNull()
+                }
 
             validator.verifyIsoCred(credential.issuerSigned, issuerKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()
@@ -88,11 +83,11 @@ class ValidatorMdocTest : FreeSpec() {
             ).getOrThrow()
             credential.shouldBeInstanceOf<Issuer.IssuedCredential.Iso>()
 
-            val issuerKey = credential.issuerSigned.issuerAuth.also {
-                println(it)
-            }.run {
-                 protectedHeader.publicKey ?: unprotectedHeader?.publicKey
-            }
+            val issuerKey: CoseKey? =
+                credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.let {
+                    runCatching { X509Certificate.decodeFromDer(it) }.getOrNull()?.publicKey?.toCoseKey()
+                        ?.getOrNull()
+                }
 
             val value = validator.verifyIsoCred(credential.issuerSigned, issuerKey)
                 .shouldBeInstanceOf<Verifier.VerifyCredentialResult.SuccessIso>()

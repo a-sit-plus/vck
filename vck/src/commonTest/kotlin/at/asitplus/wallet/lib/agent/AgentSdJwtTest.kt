@@ -4,7 +4,6 @@ import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -13,7 +12,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -45,17 +43,11 @@ class AgentSdJwtTest : FreeSpec({
         val validator = Validator(
             resolveStatusListToken = {
                 if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                    JwsSigned.deserialize(
-                        StatusListTokenPayload.serializer(),
-                        issuer.issueStatusListJwt(),
-                    ).getOrThrow(),
+                    issuer.issueStatusListJwt(),
                     resolvedAt = Clock.System.now()
                 ) else {
                     StatusListToken.StatusListCwt(
-                        CoseSigned.deserialize(
-                            StatusListTokenPayload.serializer(),
-                            issuer.issueStatusListCwt(),
-                        ).getOrThrow(),
+                        issuer.issueStatusListCwt(),
                         resolvedAt = Clock.System.now(),
                     )
                 }
@@ -95,7 +87,10 @@ class AgentSdJwtTest : FreeSpec({
         val presentationParameters = holder.createPresentation(
             challenge = challenge,
             audienceId = verifierId,
-            presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME, CLAIM_DATE_OF_BIRTH)
+            presentationDefinition = buildPresentationDefinition(
+                CLAIM_GIVEN_NAME,
+                CLAIM_DATE_OF_BIRTH
+            )
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -211,7 +206,8 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
             inputDescriptors = listOf(DifInputDescriptor(id = uuid4().toString()))
         ),
     ).getOrThrow()
-    val sdJwt = presentationResult.presentationResults.first() as Holder.CreatePresentationResult.SdJwt
+    val sdJwt =
+        presentationResult.presentationResults.first() as Holder.CreatePresentationResult.SdJwt
     return sdJwt.sdJwt
 }
 
@@ -224,10 +220,15 @@ private suspend fun createSdJwtPresentation(
 ): Holder.CreatePresentationResult.SdJwt {
     val filteredDisclosures = validSdJwtCredential.disclosures
         .filter { it.value!!.claimName == claimName }.keys
-    val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
-    val keyBinding = createKeyBindingJws(jwsService, audienceId, challenge, issuerJwtPlusDisclosures)
+    val issuerJwtPlusDisclosures =
+        SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
+    val keyBinding =
+        createKeyBindingJws(jwsService, audienceId, challenge, issuerJwtPlusDisclosures)
     val sdJwtSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
-    val jwsFromIssuer = JwsSigned.deserialize<VerifiableCredentialSdJwt>(VerifiableCredentialSdJwt.serializer(), sdJwtSerialized).getOrElse {
+    val jwsFromIssuer = JwsSigned.deserialize<VerifiableCredentialSdJwt>(
+        VerifiableCredentialSdJwt.serializer(),
+        sdJwtSerialized
+    ).getOrElse {
         Napier.w("Could not re-create JWS from stored SD-JWT", it)
         throw PresentationException(it)
     }

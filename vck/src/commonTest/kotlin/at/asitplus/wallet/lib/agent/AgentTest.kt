@@ -4,11 +4,8 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.StatusListToken
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -41,17 +38,11 @@ class AgentTest : FreeSpec({
         validator = Validator(
             resolveStatusListToken = {
                 if (Random.nextBoolean()) StatusListToken.StatusListJwt(
-                    JwsSigned.deserialize(
-                        StatusListTokenPayload.serializer(),
-                        issuer.issueStatusListJwt(),
-                    ).getOrThrow(),
+                    issuer.issueStatusListJwt(),
                     resolvedAt = Clock.System.now()
                 ) else {
                     StatusListToken.StatusListCwt(
-                        CoseSigned.deserialize(
-                            StatusListTokenPayload.serializer(),
-                            issuer.issueStatusListCwt(),
-                        ).getOrThrow(),
+                        issuer.issueStatusListCwt(),
                         resolvedAt = Clock.System.now()
                     )
                 }

@@ -1,10 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
-import at.asitplus.KmmResult
-import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseKey
-import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.JwsHeader
@@ -16,7 +13,6 @@ import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.Status
 import at.asitplus.wallet.lib.data.StatusListToken
@@ -24,12 +20,8 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenValidator
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.third_party.kotlin.ifFalse
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.third_party.kotlin.ifTrue
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceResponse
@@ -48,7 +40,6 @@ import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -65,20 +56,22 @@ class Validator(
         DefaultVerifierCryptoService(),
     ),
     private val parser: Parser = Parser(),
+    /**
+     * This function should check the status mechanisms in a given status claim in order to
+     * evaluate the token status.
+     * If [tokenStatusResolver] is null, all tokens are considered to be valid.
+     */
     private val tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
-    private val clock: Clock = Clock.System,
 ) {
     constructor(
         cryptoService: VerifierCryptoService,
         parser: Parser = Parser(),
         tokenStatusResolver: (suspend (Status) -> TokenStatus)? = null,
-        clock: Clock = Clock.System,
     ) : this(
         verifierJwsService = DefaultVerifierJwsService(cryptoService = cryptoService),
         verifierCoseService = DefaultVerifierCoseService(cryptoService = cryptoService),
         parser = parser,
         tokenStatusResolver = tokenStatusResolver,
-        clock = clock,
     )
 
     constructor(
@@ -100,17 +93,11 @@ class Validator(
             val token = resolveStatusListToken(status.statusList.uri)
 
             val payload = token.validate(
+                verifierJwsService = verifierJwsService,
+                verifierCoseService = verifierCoseService,
                 statusListInfo = status.statusList,
                 isInstantInThePast = {
                     it < clock.now()
-                },
-                validateStatusListTokenIntegrity = {
-                    Validator(
-                        verifierJwsService = verifierJwsService,
-                        verifierCoseService = verifierCoseService,
-                        parser = parser,
-                        clock = clock,
-                    ).validateStatusListTokenIntegrity(it).getOrThrow()
                 },
             ).getOrThrow()
 
@@ -120,7 +107,6 @@ class Validator(
                 zlibService = zlibService,
             ).getOrThrow()
         },
-        clock = clock,
     )
 
     /**
@@ -291,7 +277,10 @@ class Validator(
      * Validates an ISO device response, equivalent of a Verifiable Presentation
      */
     @Throws(IllegalArgumentException::class)
-    fun verifyDeviceResponse(deviceResponse: DeviceResponse, challenge: String): Verifier.VerifyPresentationResult {
+    fun verifyDeviceResponse(
+        deviceResponse: DeviceResponse,
+        challenge: String
+    ): Verifier.VerifyPresentationResult {
         if (deviceResponse.status != 0U) {
             Napier.w("Status invalid: ${deviceResponse.status}")
             throw IllegalArgumentException("status")
@@ -322,7 +311,10 @@ class Validator(
             throw IllegalArgumentException("issuerKey")
         }
         val x509Certificate = X509Certificate.decodeFromDerSafe(certificateChain).getOrElse {
-            Napier.w("Could not parse issuer certificate in ${certificateChain.encodeToString(Base64())}", it)
+            Napier.w(
+                "Could not parse issuer certificate in ${certificateChain.encodeToString(Base64())}",
+                it
+            )
             throw IllegalArgumentException("issuerKey")
         }
         val issuerKey = x509Certificate.publicKey.toCoseKey().getOrElse {
@@ -403,7 +395,8 @@ class Validator(
      * @param publicKey Optionally the local key, to verify VC was issued to correct subject
      */
     suspend fun verifyVcJws(
-        input: String, publicKey: CryptoPublicKey?
+        input: String,
+        publicKey: CryptoPublicKey?
     ): Verifier.VerifyCredentialResult {
         Napier.d("Verifying VC-JWS $input")
         val jws = JwsSigned.deserialize<VerifiableCredentialJws>(
@@ -528,120 +521,4 @@ class Validator(
         }
         return Verifier.VerifyCredentialResult.SuccessIso(it)
     }
-
-
-    /**
-     * Validate a status list jwt within a relevant context.
-     */
-    fun validateStatusListJwt(
-        it: String,
-        statusListInfo: StatusListInfo,
-        resolvedAt: Instant?,
-    ): KmmResult<Unit> = at.asitplus.catching {
-        Napier.d("setRevocationStatusListCwt: Loading $it")
-        val payload = validateStatusListJwtIntegrity(it).getOrThrow()
-        StatusListTokenValidator.validateStatusListTokenPayloadClaims(
-            statusListTokenPayload = payload,
-            statusListInfo = statusListInfo,
-            statusListTokenResolvedAt = resolvedAt,
-            isInstantInThePast = {
-                it < clock.now()
-            },
-        ).getOrThrow()
-        Napier.d("Token is valid")
-    }
-
-    /**
-     * Validate a status list cwt within a relevant context.
-     */
-    fun validateStatusListCwt(
-        it: ByteArray,
-        statusListInfo: StatusListInfo,
-        resolvedAt: Instant?,
-    ): KmmResult<Unit> = at.asitplus.catching {
-        Napier.d("setRevocationStatusListCwt: Loading $it")
-        val payload = validateStatusListCwtIntegrity(it).getOrThrow()
-        StatusListTokenValidator.validateStatusListTokenPayloadClaims(
-            statusListTokenPayload = payload,
-            statusListInfo = statusListInfo,
-            statusListTokenResolvedAt = resolvedAt,
-            isInstantInThePast = {
-                it < clock.now()
-            },
-        ).getOrThrow()
-        Napier.d("Token is valid")
-    }
-
-    /**
-     * Validate deserialization and the integrity of a status list jwt
-     */
-    fun validateStatusListJwtIntegrity(it: String) = catching {
-        val jwsSigned = JwsSigned.deserialize(StatusListTokenPayload.serializer(), it).getOrElse {
-            throw IllegalArgumentException("Could not parse as JWS", it)
-        }
-        validateStatusListJwtIntegrity(
-            StatusListToken.StatusListJwt(
-                jwsSigned,
-                resolvedAt = null,
-            ),
-        ).getOrThrow()
-    }
-
-    /**
-     * Validate deserialization and the integrity of a status list cwt
-     */
-    fun validateStatusListCwtIntegrity(it: ByteArray) = catching {
-        val coseSigned = CoseSigned.deserialize(StatusListTokenPayload.serializer(), it).getOrElse {
-            throw IllegalArgumentException("Could not parse CoseSigned", it)
-        }
-        validateStatusListCwtIntegrity(
-            StatusListToken.StatusListCwt(
-                coseSigned,
-                resolvedAt = null,
-            ),
-        ).getOrThrow()
-    }
-
-    /**
-     * Validate the integrity of a status list token
-     */
-    fun validateStatusListTokenIntegrity(statusListToken: StatusListToken) =
-        when (val it = statusListToken) {
-            is StatusListToken.StatusListJwt -> validateStatusListJwtIntegrity(it)
-            is StatusListToken.StatusListCwt -> validateStatusListCwtIntegrity(it)
-        }
-
-    /**
-     * Validate the integrity of a status list jwt
-     */
-    fun validateStatusListJwtIntegrity(statusListToken: StatusListToken.StatusListJwt): KmmResult<StatusListTokenPayload> =
-        catching {
-            val jwsSigned = statusListToken.value
-            verifierJwsService.verifyJwsObject(jwsSigned).ifFalse {
-                throw IllegalStateException("Invalid Signature.")
-            }
-            if (jwsSigned.header.type != MediaTypes.Application.STATUSLIST_JWT) {
-                throw IllegalArgumentException("Invalid type header")
-            }
-            jwsSigned.payload
-        }
-
-    /**
-     * Validate the integrity of a status list cwt
-     */
-    fun validateStatusListCwtIntegrity(statusListToken: StatusListToken.StatusListCwt): KmmResult<StatusListTokenPayload> =
-        catching {
-            val coseStatus = statusListToken.value
-            verifierCoseService.verifyCose(
-                coseSigned = coseStatus,
-                serializer = StatusListTokenPayload.serializer(),
-            ).isFailure.ifTrue {
-                throw IllegalStateException("Invalid Signature.")
-            }
-            if (coseStatus.protectedHeader.type != MediaTypes.Application.STATUSLIST_CWT) {
-                throw IllegalArgumentException("Invalid type header")
-            }
-            coseStatus.payload
-                ?: throw IllegalStateException("Status list token payload not found.")
-        }
 }

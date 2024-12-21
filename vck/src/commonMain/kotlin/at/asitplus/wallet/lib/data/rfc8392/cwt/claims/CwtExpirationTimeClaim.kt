@@ -21,6 +21,10 @@ value class CwtExpirationTimeClaim(val value: NumericDate) {
     val instant: Instant
         get() = value.instant
 
+    fun isInvalid(
+        isInstantInThePast: (Instant) -> Boolean,
+    ) = isInstantInThePast(instant)
+
     companion object {
         operator fun invoke(instant: Instant) = CwtExpirationTimeClaim(NumericDate(instant))
     }

@@ -46,7 +46,7 @@ class StatusListTokenSerializationTest : FreeSpec({
                             it.statusList.statusBitSize shouldBe TokenStatusBitSize.ONE
                         },
                         "statuslist status" to {
-                            it.statusList.toStatusListView()[0u] shouldBe TokenStatus(1u)
+                            it.statusList.view[0u] shouldBe TokenStatus(1u)
                         },
                     ),
                 ),

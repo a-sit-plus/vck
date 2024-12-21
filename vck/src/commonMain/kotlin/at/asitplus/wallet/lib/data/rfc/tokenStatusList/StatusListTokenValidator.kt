@@ -89,7 +89,7 @@ object StatusListTokenValidator {
         statusListInfo: StatusListInfo,
         zlibService: ZlibService? = null,
     ): KmmResult<TokenStatus> = catching {
-        statusList.toStatusListView(zlibService).getOrNull(statusListInfo.index)
+        statusList.view.getOrNull(statusListInfo.index)
             ?: throw IndexOutOfBoundsException("The index specified in the status list info is out of bounds of the status list.")
     }
 }

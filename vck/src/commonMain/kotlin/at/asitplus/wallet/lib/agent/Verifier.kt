@@ -19,13 +19,6 @@ import kotlinx.serialization.json.JsonObject
  * It can verify credentials and presentations.
  */
 interface Verifier {
-
-    /**
-     * Validate status list tokens issued by a status provider
-     */
-    fun verifyRevocationStatusListJwtIntegrity(it: String): Boolean
-    fun verifyRevocationStatusListCwtIntegrity(it: ByteArray): Boolean
-
     /**
      * Verifies a presentation of some credentials from a holder,
      * that shall include the [challenge] (sent by this verifier).
