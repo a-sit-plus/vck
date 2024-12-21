@@ -1,5 +1,10 @@
 # Changelog
 
+Release 5.3.0:
+- Remote qualified electronic signatures:
+  - Add request-, response- and auxiliary data classes defined in CSC API v2.0.0.2 Ch. 11.4 `credentials/list` and Ch. 11.5 `credentials/info` 
+- Fix serialization of device signed items in ISO credentials
+ 
 Release 5.2.1:
  - Fix COSE signature deserialization and verification, due to signum 3.12.0
 
@@ -152,6 +157,7 @@ Release 4.1.0:
      * `vclib-aries` -> `vck-aries`
      * `vclib-openid` -> `vck-openid`
  * Rename serializers to avoid ambiguities and kotlin bugs
+   * `jsonSerializer` -> `vckJsonSerializer`
    * `cborSerializer` -> `vckCborSerializer`
  * Update Dependencies
    * Signum (formerly KMP Crypto): 3.6.0
