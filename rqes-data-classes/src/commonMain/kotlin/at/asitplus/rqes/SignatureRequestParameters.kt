@@ -143,35 +143,6 @@ data class SignatureRequestParameters(
 
     @Transient
     override val transactionData: Set<String>? = null
-
-    fun toAuthorizationDetails(): AuthorizationDetails =
-        CscAuthorizationDetails(
-            credentialID = this.clientId,
-            signatureQualifier = this.signatureQualifier,
-            hashAlgorithmOid = this.hashAlgorithmOid,
-            documentDigests = this.documentDigests,
-            documentLocations = this.documentLocations,
-        )
-
-    fun getCscDocumentDigests(
-        signatureFormat: SignatureFormat,
-        signAlgorithm: X509SignatureAlgorithm,
-        signAlgoParam: Asn1Element? = null,
-        signedProps: List<JsonObject>? = null,
-        conformanceLevel: ConformanceLevel? = ConformanceLevel.ADESBB,
-        signedEnvelopeProperty: SignedEnvelopeProperty? = SignedEnvelopeProperty.defaultProperty(signatureFormat),
-    ): CscDocumentDigest =
-        CscDocumentDigest(
-            hashes = this.documentDigests.map { it.hash },
-            hashAlgorithmOid = this.hashAlgorithmOid,
-            signatureFormat = signatureFormat,
-            conformanceLevel = conformanceLevel,
-            signAlgoOid = signAlgorithm.oid,
-            signAlgoParams = signAlgoParam,
-            signedProps = signedProps,
-            signedEnvelopeProperty = signedEnvelopeProperty
-        )
-
     override val redirectUrl: String? = null
     override val audience: String? = null
 }
