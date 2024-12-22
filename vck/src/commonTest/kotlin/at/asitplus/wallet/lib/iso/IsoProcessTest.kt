@@ -198,7 +198,7 @@ class Verifier {
         doc.errors.shouldBeNull()
         val issuerSigned = doc.issuerSigned
         val issuerAuth = issuerSigned.issuerAuth
-        verifierCoseService.verifyCose(issuerAuth, issuerKey, MobileSecurityObject.serializer()).isSuccess shouldBe true
+        verifierCoseService.verifyCose(issuerAuth, issuerKey, byteArrayOf()).isSuccess shouldBe true
         issuerAuth.payload.shouldNotBeNull()
         val mso = issuerAuth.payload.shouldNotBeNull()
 
@@ -207,7 +207,7 @@ class Verifier {
 
         val walletKey = mso.deviceKeyInfo.deviceKey
         val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature.shouldNotBeNull()
-        verifierCoseService.verifyCose(deviceSignature, walletKey, ByteArraySerializer()).isSuccess shouldBe true
+        verifierCoseService.verifyCose(deviceSignature, walletKey, byteArrayOf()).isSuccess shouldBe true
         val namespaces = issuerSigned.namespaces.shouldNotBeNull()
         val issuerSignedItems = namespaces[ConstantIndex.AtomicAttribute2023.isoNamespace].shouldNotBeNull()
 

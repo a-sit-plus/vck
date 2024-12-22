@@ -10,10 +10,9 @@ import kotlinx.serialization.encodeToByteArray
  * Convenience class to prevent
  * usage of the type `ByteStringWrapper<Map<String, Map<String, Any>>>` in [DeviceSigned.namespaces].
  */
-@Serializable
+@Serializable(with = NamespacedDeviceNameSpacesSerializer::class)
 data class DeviceNameSpaces(
-    @Serializable(with = NamespacedDeviceSignedItemListSerializer::class)
-    val entries: Map<String, @Contextual DeviceSignedItemList>
+    val entries: Map<String, @Contextual DeviceSignedItemList>,
 ) {
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
@@ -25,13 +24,12 @@ data class DeviceNameSpaces(
     }
 }
 
-
 /**
  * Convenience class with a custom serializer ([DeviceSignedItemListSerializer]) to prevent
  * usage of the type `Map<String, Map<String, Any>>` in [DeviceNameSpaces.entries].
  */
 data class DeviceSignedItemList(
-    val entries: List<DeviceSignedItem>
+    val entries: List<DeviceSignedItem>,
 )
 
 /**

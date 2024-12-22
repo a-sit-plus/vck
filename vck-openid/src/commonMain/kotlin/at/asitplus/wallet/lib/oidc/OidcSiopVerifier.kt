@@ -15,6 +15,8 @@ import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
+import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.wallet.lib.agent.*
@@ -27,6 +29,8 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlinx.datetime.Clock
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -42,7 +46,7 @@ import kotlin.time.toDuration
  *
  * This class creates the Authentication Request, [verifier] verifies the response. See [OidcSiopWallet] for the holder.
  */
-class OidcSiopVerifier(
+open class OidcSiopVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
@@ -236,6 +240,24 @@ class OidcSiopVerifier(
          * [clientMetadataUrl], that the URL shall point to [OidcSiopVerifier.metadataWithEncryption].
          */
         val encryption: Boolean = false,
+
+        val rqesParameters: RqesParameters? = null,
+    )
+
+    /**
+     * Parameters defined in the CSC extension of [AuthenticationRequestParameters]
+     */
+    data class RqesParameters(
+        val lang: String? = null,
+        val credentialID: ByteArray? = null,
+        val signatureQualifier: SignatureQualifier? = null,
+        val numSignatures: Int? = null,
+        val hashes: Hashes? = null,
+        val hashAlgorithmOid: ObjectIdentifier? = null,
+        val description: String? = null,
+        val accountToken: JsonWebToken? = null,
+        val clientData: String? = null,
+        val transactionData: Set<String>? = null,
     )
 
     data class RequestOptionsCredential(
@@ -377,9 +399,19 @@ class OidcSiopVerifier(
         presentationDefinition = PresentationDefinition(
             id = uuid4().toString(),
             inputDescriptors = requestOptions.credentials.map {
-                it.toInputDescriptor()
+                it.toInputDescriptor(requestOptions.rqesParameters?.transactionData)
             },
         ),
+        lang = requestOptions.rqesParameters?.lang,
+        credentialID= requestOptions.rqesParameters?.credentialID,
+        signatureQualifier=requestOptions.rqesParameters?.signatureQualifier,
+        numSignatures=requestOptions.rqesParameters?.numSignatures,
+        hashes=requestOptions.rqesParameters?.hashes,
+        hashAlgorithmOid=requestOptions.rqesParameters?.hashAlgorithmOid,
+        description=requestOptions.rqesParameters?.description,
+        accountToken=requestOptions.rqesParameters?.accountToken,
+        clientData=requestOptions.rqesParameters?.clientData,
+        transactionData=requestOptions.rqesParameters?.transactionData
     )
 
     private fun RequestOptions.buildScope() = (
@@ -393,8 +425,7 @@ class OidcSiopVerifier(
         get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
                 (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
 
-    //TODO extend for InputDescriptor interface in case QES
-    private fun RequestOptionsCredential.toInputDescriptor() = DifInputDescriptor(
+    open fun RequestOptionsCredential.toInputDescriptor(transactionData: Set<Any>? = null): InputDescriptor = DifInputDescriptor(
         id = buildId(),
         format = toFormatHolder(),
         constraints = toConstraint(),
@@ -405,11 +436,11 @@ class OidcSiopVerifier(
      * encoding it into the descriptor id as in the following non-normative example fow now:
      * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
      */
-    private fun RequestOptionsCredential.buildId() =
+    fun RequestOptionsCredential.buildId() =
         if (credentialScheme.isoDocType != null && representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
             credentialScheme.isoDocType!! else uuid4().toString()
 
-    private fun RequestOptionsCredential.toConstraint() =
+    fun RequestOptionsCredential.toConstraint() =
         Constraint(fields = (requiredAttributes() + optionalAttributes() + toTypeConstraint()).filterNotNull())
 
     private fun RequestOptionsCredential.requiredAttributes() =
@@ -426,7 +457,7 @@ class OidcSiopVerifier(
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
     }
 
-    private fun RequestOptionsCredential.toFormatHolder() = when (representation) {
+    fun RequestOptionsCredential.toFormatHolder() = when (representation) {
         ConstantIndex.CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
         ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerJwt)
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)

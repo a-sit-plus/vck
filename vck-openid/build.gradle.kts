@@ -45,6 +45,12 @@ kotlin {
             dependencies {
                 implementation("at.asitplus.wallet:eupidcredential:${VcLibVersions.eupidcredential}")
                 implementation("at.asitplus.wallet:mobiledrivinglicence:${VcLibVersions.mdl}")
+                // Add arrow-core dependency because of https://youtrack.jetbrains.com/issue/KT-73858/NullPointerException-when-building-CMP-ios-App
+                // credentials depend on older VC-K version, which pulls in old KmmResult and arrow dependency
+                // KLIB dependency resolution is somewhat borked, so we need this here until newer credentials are published based on this VC-K version
+                // that uses the most recent KmmResult without Arrow dependency
+                //TODO REMOVE ONCE mDL and PID are updated to this VC-K release with KmmResul 1.9.0
+                implementation("io.arrow-kt:arrow-core:1.2.4")
             }
         }
 
@@ -58,12 +64,6 @@ kotlin {
             dependencies {
                 implementation(signum.jose)
                 implementation("org.json:json:${VcLibVersions.Jvm.json}")
-            }
-        }
-
-        iosTest {
-            dependencies {
-                implementation("io.arrow-kt:arrow-core:1.2.4") //work around klib bug
             }
         }
     }
