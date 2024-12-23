@@ -23,17 +23,13 @@ class VerifierAgent(
     private val identifier: String,
     private val validator: Validator = Validator(),
 ) : Verifier {
-
-    override fun setRevocationList(it: String): Boolean {
-        return validator.setRevocationList(it)
-    }
-
     /**
      * Verifies a presentation of some credentials from a holder,
      * that shall include the [challenge] (sent by this verifier),
      * as well as the expected [identifier] (identifying this verifier).
      */
-    override fun verifyPresentation(input: String, challenge: String): Verifier.VerifyPresentationResult {
+    override suspend fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
+        val input = it
         val sdJwtSigned = runCatching { SdJwtSigned.parse(input) }.getOrNull()
         if (sdJwtSigned != null) {
             return runCatching {

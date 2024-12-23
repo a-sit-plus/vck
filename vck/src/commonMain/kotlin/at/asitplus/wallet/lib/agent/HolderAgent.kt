@@ -47,19 +47,8 @@ class HolderAgent(
     )
 
     /**
-     * Sets the revocation list ot use for further processing of Verifiable Credentials
-     *
-     * @return `true` if the revocation list has been validated and set, `false` otherwise
-     */
-    override fun setRevocationList(it: String): Boolean {
-        return validator.setRevocationList(it)
-    }
-
-    /**
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
-     *
-     * Note: Revocation credentials should not be stored, but set with [setRevocationList].
      */
     override suspend fun storeCredential(credential: Holder.StoreCredentialInput) = catching {
         when (credential) {
@@ -107,9 +96,6 @@ class HolderAgent(
 
     /**
      * Gets a list of all stored credentials, with a revocation status.
-     *
-     * Note that the revocation status may be [Validator.RevocationStatus.UNKNOWN] if no revocation list
-     * has been set with [setRevocationList]
      */
     override suspend fun getCredentials(): Collection<Holder.StoredCredential>? {
         val credentials = subjectCredentialStore.getCredentials().getOrNull()
@@ -117,9 +103,10 @@ class HolderAgent(
         return credentials.map { it.toStoredCredential() }
     }
 
-    private fun SubjectCredentialStore.StoreEntry.toStoredCredential() = when (this) {
+    private suspend fun SubjectCredentialStore.StoreEntry.toStoredCredential() = when (this) {
         is SubjectCredentialStore.StoreEntry.Iso -> Holder.StoredCredential.Iso(
-            this, Validator.RevocationStatus.UNKNOWN
+            this,
+            validator.checkRevocationStatus(issuerSigned),
         )
 
         is SubjectCredentialStore.StoreEntry.Vc -> Holder.StoredCredential.Vc(
@@ -135,7 +122,7 @@ class HolderAgent(
      * Gets a list of all valid stored credentials sorted by preference
      */
     private suspend fun getValidCredentialsByPriority() = getCredentials()
-        ?.filter { it.status != Validator.RevocationStatus.REVOKED }
+        ?.filter { it.status?.isInvalid != true }
         ?.map { it.storeEntry }
         ?.sortedBy {
             // prefer iso credentials and sd jwt credentials over plain vc credentials

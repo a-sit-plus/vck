@@ -4,7 +4,38 @@ Release 5.3.0:
 - Remote qualified electronic signatures:
   - Add request-, response- and auxiliary data classes defined in CSC API v2.0.0.2 Ch. 11.4 `credentials/list` and Ch. 11.5 `credentials/info` 
 - Fix serialization of device signed items in ISO credentials
- 
+- Add draft token-status-list-06 from https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html
+- `Holder`:
+  - Remove `setRevocationList`
+  - Change `StoredCredential` revocation status to token status
+- `InMemoryIssuerCredentialStore`:
+  - Change `revoke` semantics to `token status` semantics
+  - Add token status bitsize
+  - Change iso credential identifier to make it deterministic
+- `Issuer`:
+  - Change `buildRevocationList` to `buildStatusList` 
+  - Add functions for issuing status lists and status list tokens
+  - Remove `compileCurrentRevocationLists`
+  - Add inheritance from token status agent interfaces
+- `IssuerAgent`
+  - Add revocation status for iso credentials
+  - Change revocation status to token status
+- `IssuerCredentialStore`
+  - Change revocation status semantics to token status semantics
+- `Validator`:
+  - Change revocation status to token status
+  - Change revocation check to token status invalid check by using new status mechanism
+  - Add validation for status list tokens
+- `Verifier`: 
+  - Remove `setRevocationList`
+  - Add `verifyRevocationStatusListJwtIntegrity` and `verifyRevocationStatusListCwtIntegrity`
+- `CoseService`: 
+  - Add check without specifying signer (using cose signed public key or trust store)
+- `VerifiableCredential`: Change `credentialStatus` to `status` and using new status mechanism
+- `VerifiableCredentialSdJwt`: Change `credentialStatus` to use new status mechanism
+- `MobileSecurityObject`: Add status mechanism
+- `iosMain/DefaultZlibService`
+
 Release 5.2.1:
  - Fix COSE signature deserialization and verification, due to signum 3.12.0
 

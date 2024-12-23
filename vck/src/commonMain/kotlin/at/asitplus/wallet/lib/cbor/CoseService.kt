@@ -3,7 +3,12 @@ package at.asitplus.wallet.lib.cbor
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.cosef.*
+import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.CoseHeader
+import at.asitplus.signum.indispensable.cosef.CoseKey
+import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.toCoseAlgorithm
+import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
@@ -49,11 +54,16 @@ interface VerifierCoseService {
         externalAad: ByteArray = byteArrayOf(),
     ): KmmResult<Verifier.Success>
 
+    fun <P : Any> verifyCose(
+        coseSigned: CoseSigned<P>,
+        serializer: KSerializer<P>,
+    ): KmmResult<Verifier.Success>
 }
 
 class DefaultCoseService(private val cryptoService: CryptoService) : CoseService {
 
-    override val algorithm: CoseAlgorithm = cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
+    override val algorithm: CoseAlgorithm =
+        cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
 
     override suspend fun <P : Any> createSignedCose(
         protectedHeader: CoseHeader?,
@@ -124,6 +134,8 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
 
 class DefaultVerifierCoseService(
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
+    /** Need to implement if valid keys for CoseSigned are transported somehow out-of-band, e.g. provided by a trust store */
+    private val publicKeyLookup: PublicCoseKeyLookup = { null },
 ) : VerifierCoseService {
 
     /**
@@ -148,7 +160,38 @@ class DefaultVerifierCoseService(
             publicKey = publicKey
         ).getOrThrow()
     }
+
+    /**
+     * Verifiers the signature of [coseSigned] by extracting the coseSigned public key, or by using
+     * [publicKeyLookup].
+     */
+    override fun <P : Any> verifyCose(
+        coseSigned: CoseSigned<P>,
+        serializer: KSerializer<P>
+    ): KmmResult<Verifier.Success> = catching {
+        coseSigned.loadPublicKeys().also {
+            Napier.d("Public keys available: ${it.size}")
+        }.firstNotNullOf { coseKey ->
+            verifyCose(coseSigned, coseKey).getOrNull()
+        }
+    }
+
+    fun CoseSigned<*>.loadPublicKeys(): Set<CoseKey> =
+        (protectedHeader.publicKey ?: unprotectedHeader?.publicKey)?.let { setOf(it) }
+            ?: publicKeyLookup(this) ?: setOf()
 }
 
+typealias PublicCoseKeyLookup = (CoseSigned<*>) -> Set<CoseKey>?
 
-
+/**
+ * Tries to compute a public key in order from [coseKey], [kid] or
+ * [certificateChain], and takes the first success or null.
+ */
+val CoseHeader.publicKey: CoseKey?
+    get() = coseKey?.let { CoseKey.deserialize(it).getOrNull() }
+        ?: kid?.let { CoseKey.fromDid(it.decodeToString()) }?.getOrNull()
+        ?: certificateChain?.let {
+            runCatching {
+                X509Certificate.decodeFromDer(it)
+            }.getOrNull()?.publicKey?.toCoseKey()?.getOrThrow()
+        }

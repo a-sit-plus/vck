@@ -26,8 +26,8 @@ data class VerifiableCredential(
     @Serializable(with = NullableInstantStringSerializer::class)
     @SerialName("expirationDate")
     val expirationDate: Instant?,
-    @SerialName("credentialStatus")
-    val credentialStatus: CredentialStatus? = null,
+    @SerialName("status")
+    val credentialStatus: Status? = null,
     @Polymorphic
     @SerialName("credentialSubject")
     val credentialSubject: CredentialSubject,
@@ -36,7 +36,7 @@ data class VerifiableCredential(
         id: String,
         issuer: String,
         lifetime: Duration,
-        credentialStatus: CredentialStatus,
+        credentialStatus: Status,
         credentialSubject: CredentialSubject,
         credentialType: String,
         issuanceDate: Instant = Clock.System.now(),
@@ -56,7 +56,7 @@ data class VerifiableCredential(
         issuer: String,
         issuanceDate: Instant,
         expirationDate: Instant?,
-        credentialStatus: CredentialStatus,
+        credentialStatus: Status,
         credentialSubject: CredentialSubject,
         credentialType: String,
     ) : this(
