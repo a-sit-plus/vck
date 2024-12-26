@@ -58,5 +58,5 @@ data class CscAuthorizationDetails(
      * in the Wallet-centric model)
      */
     @SerialName("documentLocations")
-    val documentLocations: Collection<DocumentLocation>,
+    val documentLocations: Collection<DocumentLocation>? = null,
 ) : AuthorizationDetails
