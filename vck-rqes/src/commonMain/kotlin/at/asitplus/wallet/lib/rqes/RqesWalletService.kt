@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.rqes
 
 import CscAuthorizationDetails
+import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
@@ -10,7 +11,6 @@ import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.rqes.CredentialInfo
 import at.asitplus.rqes.CscSignatureRequestParameters
 import at.asitplus.rqes.SignHashParameters
-import at.asitplus.rqes.SignatureRequestParameters
 import at.asitplus.rqes.collection_entries.CscCertificateParameters
 import at.asitplus.rqes.collection_entries.CscDocumentDigest
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
@@ -19,7 +19,9 @@ import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
 import at.asitplus.signum.indispensable.asn1.Asn1Element
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
@@ -35,34 +37,42 @@ import com.benasher44.uuid.uuid4
  */
 class RqesWalletService(
     private val clientId: String = "https://wallet.a-sit.at/app",
-    /**
-     * Way to transform hashes received from DA to DTBS/R which is needed for all actions in connection with CSC
-     * Need [CredentialInfo] of certificate that the QTSP associates with the Wallet and which will be used for signing
-     */
-    private val dtbsrBuilder: (OAuthDocumentDigest, CredentialInfo) -> OAuthDocumentDigest,
     redirectUrl: String = "$clientId/callback",
     stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
 ) {
     /**
      * Initialized to common parameters
      */
-    private object SignatureProperties {
+    object SignatureProperties {
         val signatureQualifier: SignatureQualifier = SignatureQualifier.EU_EIDAS_QES
         var signatureFormat: SignatureFormat = SignatureFormat.PADES
+            internal set
         var conformanceLevel: ConformanceLevel = ConformanceLevel.ADESBB
+            internal set
         var signedEnvelopeProperty: SignedEnvelopeProperty? = null
+            internal set
     }
 
     /**
      * Initialized to common parameters
      */
-    private object CryptoProperties {
+    object CryptoProperties {
         var signAlgorithm: X509SignatureAlgorithm = X509SignatureAlgorithm.ES256
+            internal set
         var signAlgoParam: Asn1Element? = null
-        var hashAlgorithm: Digest = signAlgorithm.digest
+            internal set
     }
 
-    private var credentialInfo: CredentialInfo? = null
+    //For now just store one
+    data class SigningCredential(
+        val credentialId: String,
+        val certificates: List<X509Certificate>,
+        val supportedSigningAlgorithms: List<X509SignatureAlgorithm>,
+    )
+
+    //TODO check if [CryptoProperties] align with signingCredential otw change it
+    var signingCredential: SigningCredential? = null
+        private set
 
     val oauth2Client: OAuth2Client = OAuth2Client(
         clientId = clientId,
@@ -84,8 +94,20 @@ class RqesWalletService(
         require(credentialInfo.certParameters!!.certificates != null)
         require(credentialInfo.certParameters!!.certificates!!.isNotEmpty())
         require(credentialInfo.certParameters!!.status == CscCertificateParameters.CertStatus.VALID)
-        this.credentialInfo = credentialInfo
+
+        val signingAlgos =
+            credentialInfo.keyParameters.algo.mapNotNull { oid -> catching { entries.first { it.oid == oid } }.getOrNull() }
+
+        require(signingAlgos.isNotEmpty())
+
+        signingCredential = SigningCredential(
+            credentialId = credentialInfo.credentialID!!,
+            certificates = credentialInfo.certParameters!!.certificates!!,
+            supportedSigningAlgorithms = signingAlgos
+
+        )
     }
+
 
     suspend fun updateSignaturePropoerties(
         signatureFormat: SignatureFormat? = null,
@@ -105,33 +127,25 @@ class RqesWalletService(
     suspend fun updateCryptoProperties(
         signAlgorithm: X509SignatureAlgorithm? = null,
         signAlgoParam: Asn1Element? = null,
-        hashAlgorithm: Digest? = null,
     ) {
         with(CryptoProperties) {
             this.signAlgorithm = signAlgorithm ?: this.signAlgorithm
             this.signAlgoParam = signAlgoParam ?: this.signAlgoParam
-            this.hashAlgorithm = hashAlgorithm ?: this.hashAlgorithm
-            if (this.signAlgorithm.digest != hashAlgorithm) throw IllegalArgumentException("SignAlgorithm ${this.signAlgorithm::class.simpleName} does not use digest ${this.hashAlgorithm::class.simpleName}!")
         }
     }
 
     suspend fun getCscAuthenticationDetails(
-        signatureRequestParameters: SignatureRequestParameters,
+        /**
+         * Here [OAuthDocumentDigest.hash] is the DTBS/R
+         */
+        documentDigests: Collection<OAuthDocumentDigest>,
     ): AuthorizationDetails =
-        credentialInfo?.let { credInfo ->
-            require(signatureRequestParameters.signatureQualifier == SignatureProperties.signatureQualifier)
-            require(signatureRequestParameters.hashAlgorithm == CryptoProperties.hashAlgorithm)
+        signingCredential?.let { signingCred ->
             CscAuthorizationDetails(
-                credentialID = credInfo.credentialID!!,
-                signatureQualifier = signatureRequestParameters.signatureQualifier,
-                hashAlgorithmOid = signatureRequestParameters.hashAlgorithmOid,
-                documentDigests = signatureRequestParameters.documentDigests.onEach {
-                    dtbsrBuilder(
-                        it,
-                        credInfo
-                    )
-                },
-                documentLocations = signatureRequestParameters.documentLocations,
+                credentialID = signingCred.credentialId,
+                signatureQualifier = SignatureProperties.signatureQualifier,
+                hashAlgorithmOid = CryptoProperties.signAlgorithm.digest.oid,
+                documentDigests = documentDigests
             )
         } ?: throw Exception("Please set a signing credential before using CSC functionality.")
 
@@ -141,7 +155,6 @@ class RqesWalletService(
     ): CscDocumentDigest =
         CscDocumentDigest(
             hashes = documentDigests.map { it.hash },
-            hashAlgorithmOid = CryptoProperties.hashAlgorithm.oid,
             signatureFormat = SignatureProperties.signatureFormat,
             conformanceLevel = SignatureProperties.conformanceLevel,
             signAlgoOid = CryptoProperties.signAlgorithm.oid,
@@ -153,20 +166,19 @@ class RqesWalletService(
     suspend fun createOAuth2AuthenticationRequest(
         scope: RqesOauthScope,
         authorizationDetails: Collection<AuthorizationDetails>? = null,
-        setCredentialId: Boolean,
     ): AuthenticationRequestParameters =
         oauth2Client.createCscAuthnRequest(
             state = uuid4().toString(),
             authorizationDetails = authorizationDetails?.toSet(),
             scope = scope.value,
-            credentialId = if (setCredentialId) credentialInfo?.credentialID?.encodeToByteArray()
+            credentialId = if (scope == RqesOauthScope.CREDENTIAL) signingCredential?.credentialId?.encodeToByteArray()
                 ?: throw Exception("Please set a signing credential before using CSC functionality.") else null,
         )
 
     suspend fun createOAuth2TokenRequest(
         state: String,
         authorization: OAuth2Client.AuthorizationForToken,
-        authorizationDetails: Set<AuthorizationDetails>,
+        authorizationDetails: Set<AuthorizationDetails>? = null,
     ): TokenRequestParameters =
         oauth2Client.createTokenRequestParameters(
             state = state,
@@ -177,7 +189,7 @@ class RqesWalletService(
     suspend fun createSignHashRequestParameters(
         dtbsr: Collection<ByteArray>,
         sad: String,
-    ): CscSignatureRequestParameters = credentialInfo?.credentialID?.let {
+    ): CscSignatureRequestParameters = signingCredential?.credentialId?.let {
         SignHashParameters(
             credentialId = it,
             sad = sad,
