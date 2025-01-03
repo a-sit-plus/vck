@@ -254,10 +254,8 @@ class IssuerAgent(
         issueStatusListJwt(time.toTimePeriod())
             ?: throw IllegalStateException("Status token could not be created.")
 
-    suspend fun issueStatusListJwt(timePeriod: Int?): JwsSigned<StatusListTokenPayload>? {
-        val tokenPayload = buildStatusListTokenPayload(timePeriod)
-        return wrapStatusListTokenInJws(tokenPayload)
-    }
+    suspend fun issueStatusListJwt(timePeriod: Int?): JwsSigned<StatusListTokenPayload>? =
+        wrapStatusListTokenInJws(buildStatusListTokenPayload(timePeriod))
 
     /**
      * Wraps the revocation information from [issuerCredentialStore] into a Status List Token,
@@ -267,44 +265,36 @@ class IssuerAgent(
         issueStatusListCwt(time.toTimePeriod())
             ?: throw IllegalStateException("Status token could not be created.")
 
-    suspend fun issueStatusListCwt(timePeriod: Int?): CoseSigned<StatusListTokenPayload>? {
-        val tokenPayload = buildStatusListTokenPayload(timePeriod)
-        return wrapStatusListTokenInCoseSigned(tokenPayload)
-    }
+    suspend fun issueStatusListCwt(timePeriod: Int?): CoseSigned<StatusListTokenPayload>? =
+        wrapStatusListTokenInCoseSigned(buildStatusListTokenPayload(timePeriod))
 
     /**
      * Wraps the revocation information from [issuerCredentialStore] into a Token Payload
      */
-    private fun buildStatusListTokenPayload(timePeriod: Int?): StatusListTokenPayload {
-        val revocationListUrl =
-            getRevocationListUrlFor(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
-        val statusList = buildStatusList(timePeriod)
-
-        Napier.d("revocation status list: $statusList")
-        return StatusListTokenPayload(
-            statusList = statusList,
+    private fun buildStatusListTokenPayload(timePeriod: Int?): StatusListTokenPayload =
+        StatusListTokenPayload(
+            statusList = buildStatusList(timePeriod),
             issuedAt = clock.now(),
             timeToLive = PositiveDuration(revocationListLifetime),
-            subject = UniformResourceIdentifier(revocationListUrl),
-        )
-    }
+            subject = UniformResourceIdentifier(
+                getRevocationListUrlFor(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
+            ),
+        ).also {
+            Napier.d("revocation status list: ${it.statusList}")
+        }
 
     /**
      * Returns a status list, where the entry at "revocationListIndex" (of the credential) is INVALID if it is revoked
      */
-    override fun buildStatusList(timePeriod: Int?): StatusList {
-        return StatusList(
-            buildStatusListView(timePeriod),
-            statusListAggregationUrl,
+    override fun buildStatusList(timePeriod: Int?): StatusList =
+        StatusList(
+            view = buildStatusListView(timePeriod),
+            aggregationUri = statusListAggregationUrl,
             zlibService = zlibService,
         )
-    }
 
-    private fun buildStatusListView(timePeriod: Int?): StatusListView {
-        return issuerCredentialStore.getStatusListView(
-            timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock)
-        )
-    }
+    private fun buildStatusListView(timePeriod: Int?): StatusListView =
+        issuerCredentialStore.getStatusListView(timePeriod ?: timePeriodProvider.getCurrentTimePeriod(clock))
 
     /**
      * Revokes all verifiable credentials from [credentialsToRevoke] list that parse and validate.
