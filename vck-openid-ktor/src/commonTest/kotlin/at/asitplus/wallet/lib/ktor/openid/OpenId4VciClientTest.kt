@@ -56,13 +56,13 @@ class OpenId4VciClientTest : AnnotationSpec() {
 
     @Test
     fun loadEuPidCredentialSdJwt() = runTest {
-        val expectedAttributes = mapOf(
-            EuPidScheme.Attributes.FAMILY_NAME to Random.nextBytes(32).encodeToString(Base16)
+        val (client, credentialIssuer) = setup(
+            scheme = EuPidScheme,
+            representation = SD_JWT,
+            attributes = mapOf(
+                EuPidScheme.Attributes.FAMILY_NAME to randomString()
+            )
         )
-        val (mockEngine, credentialIssuer) = setupIssuingService(EuPidScheme, SD_JWT, expectedAttributes)
-        val subjectCredentialStore = assertAttributeStore(EuPidScheme, expectedAttributes)
-        val holderAgent = HolderAgent(keyMaterial, subjectCredentialStore)
-        val client: OpenId4VciClient = setupClient(mockEngine, holderAgent)
 
         // Load credential identifier infos from Issuing service
         val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
@@ -73,21 +73,23 @@ class OpenId4VciClientTest : AnnotationSpec() {
         client.startProvisioningWithAuthRequest(
             credentialIssuer = "http://localhost",
             credentialIdentifierInfo = selectedCredential,
-            requestedAttributes = setOf()
-        )
+            requestedAttributes = null,
+        ).apply {
+            this.isSuccess shouldBe true
+        }
 
         assertCorrectCredentialIssued()
     }
 
     @Test
     fun loadEuPidCredentialIsoWithOffer() = runTest {
-        val expectedAttributes = mapOf(
-            EuPidScheme.Attributes.GIVEN_NAME to Random.nextBytes(32).encodeToString(Base16)
+        val (client, credentialIssuer) = setup(
+            scheme = EuPidScheme,
+            representation = ISO_MDOC,
+            attributes = mapOf(
+                EuPidScheme.Attributes.GIVEN_NAME to randomString()
+            )
         )
-        val (mockEngine, credentialIssuer) = setupIssuingService(EuPidScheme, ISO_MDOC, expectedAttributes)
-        val subjectCredentialStore = assertAttributeStore(EuPidScheme, expectedAttributes)
-        val holderAgent = HolderAgent(keyMaterial, subjectCredentialStore)
-        val client: OpenId4VciClient = setupClient(mockEngine, holderAgent)
 
         // Load credential identifier infos from Issuing service
         val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
@@ -96,10 +98,24 @@ class OpenId4VciClientTest : AnnotationSpec() {
             .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
 
         val offer = credentialIssuer.credentialOfferWithPreAuthnForUser(dummyUser())
-        client.loadCredentialWithOffer(offer,selectedCredential, null, null).apply {
+        client.loadCredentialWithOffer(offer, selectedCredential, null, null).apply {
             this.isSuccess shouldBe true
         }
         assertCorrectCredentialIssued()
+    }
+
+    private fun randomString(): String = Random.nextBytes(32).encodeToString(Base16)
+
+    private fun setup(
+        scheme: ConstantIndex.CredentialScheme,
+        representation: ConstantIndex.CredentialRepresentation,
+        attributes: Map<String, String>,
+    ): Pair<OpenId4VciClient, CredentialIssuer> {
+        val (mockEngine, credentialIssuer) = setupIssuingService(scheme, representation, attributes)
+        val subjectCredentialStore = assertAttributeStore(scheme, attributes)
+        val holderAgent = HolderAgent(keyMaterial, subjectCredentialStore)
+        val client = setupClient(mockEngine, holderAgent)
+        return client to credentialIssuer
     }
 
     private fun setupClient(

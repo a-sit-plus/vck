@@ -55,18 +55,15 @@ class OpenId4VpWalletTest : AnnotationSpec() {
 
     @Test
     fun presentEuPidCredentialSdJwtDirectPost() = runTest {
-        val scheme = EuPidScheme
-        val representation = SD_JWT
-        val attributes = mapOf(
-            EuPidScheme.Attributes.FAMILY_NAME to Random.nextBytes(32).encodeToString(Base16)
+        val (wallet, url) = setup(
+            scheme = EuPidScheme,
+            representation = SD_JWT,
+            attributes = mapOf(
+                EuPidScheme.Attributes.FAMILY_NAME to randomString()
+            ),
+            responseMode = ResponseMode.DirectPost,
+            clientId = uuid4().toString()
         )
-        val clientId = uuid4().toString()
-        val requestOptions = buildRequestOptions(scheme, representation, attributes, ResponseMode.DirectPost)
-        holderAgent.storeMockCredentials(scheme, representation, attributes)
-        val (mockEngine, url) = setupRelyingPartyService(clientId, requestOptions) {
-            it.verifyReceivedAttributes(attributes)
-        }
-        val wallet = setupWallet(mockEngine)
 
         val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
         // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
@@ -79,19 +76,15 @@ class OpenId4VpWalletTest : AnnotationSpec() {
 
     @Test
     fun presentEuPidCredentialIsoQuery() = runTest {
-        val scheme = EuPidScheme
-        val representation = ISO_MDOC
-        val attributes = mapOf(
-            EuPidScheme.Attributes.GIVEN_NAME to Random.nextBytes(32).encodeToString(Base16)
+        val (wallet, url) = setup(
+            scheme = EuPidScheme,
+            representation = ISO_MDOC,
+            attributes = mapOf(
+                EuPidScheme.Attributes.GIVEN_NAME to randomString()
+            ),
+            responseMode = ResponseMode.Query,
+            clientId = uuid4().toString()
         )
-        val clientId = uuid4().toString()
-        val requestOptions = buildRequestOptions(scheme, representation, attributes, ResponseMode.Query)
-        holderAgent.storeMockCredentials(scheme, representation, attributes)
-
-        val (mockEngine, url) = setupRelyingPartyService(clientId, requestOptions) {
-            it.verifyReceivedAttributes(attributes)
-        }
-        val wallet = setupWallet(mockEngine)
 
         val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
         // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
@@ -102,21 +95,32 @@ class OpenId4VpWalletTest : AnnotationSpec() {
         assertPresentation(countdownLatch)
     }
 
-    private fun buildRequestOptions(
-        scheme: EuPidScheme,
+    private fun randomString(): String = Random.nextBytes(32).encodeToString(Base16)
+
+    suspend fun setup(
+        scheme: ConstantIndex.CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         attributes: Map<String, String>,
         responseMode: ResponseMode,
-    ) = OidcSiopVerifier.RequestOptions(
-        credentials = setOf(
-            OidcSiopVerifier.RequestOptionsCredential(
-                credentialScheme = scheme,
-                representation = representation,
-                requestedAttributes = attributes.keys.toList()
-            )
-        ),
-        responseMode = responseMode,
-    )
+        clientId: String,
+    ): Pair<OpenId4VpWallet, String> {
+        val requestOptions = OidcSiopVerifier.RequestOptions(
+            credentials = setOf(
+                OidcSiopVerifier.RequestOptionsCredential(
+                    credentialScheme = scheme,
+                    representation = representation,
+                    requestedAttributes = attributes.keys.toList()
+                )
+            ),
+            responseMode = responseMode,
+        )
+        holderAgent.storeMockCredentials(scheme, representation, attributes)
+        val (mockEngine, url) = setupRelyingPartyService(clientId, requestOptions) {
+            it.verifyReceivedAttributes(attributes)
+        }
+        val wallet = setupWallet(mockEngine)
+        return wallet to url
+    }
 
     private fun setupWallet(mockEngine: HttpClientEngine): OpenId4VpWallet = OpenId4VpWallet(
         openUrlExternally = { HttpClient(mockEngine).get(it) },
