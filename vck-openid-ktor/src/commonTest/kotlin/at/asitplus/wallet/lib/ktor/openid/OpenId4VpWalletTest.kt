@@ -4,13 +4,13 @@ import at.asitplus.openid.*
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.AnnotationSpec
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.ktor.client.*
 import io.ktor.client.engine.*
@@ -36,37 +36,39 @@ import kotlin.time.Duration.Companion.minutes
 
 class OpenId4VpWalletTest : AnnotationSpec() {
 
+    lateinit var countdownLatch: Mutex
+    lateinit var keyMaterial: KeyMaterial
+    lateinit var cryptoService: CryptoService
+    lateinit var holderAgent: HolderAgent
+
+    @BeforeEach
+    fun beforeEach() {
+        countdownLatch = Mutex(true)
+        keyMaterial = EphemeralKeyWithoutCert()
+        cryptoService = DefaultCryptoService(keyMaterial)
+        holderAgent = HolderAgent(keyMaterial)
+    }
+
     @Test
     fun presentEuPidCredential() = runTest {
-        val countdownLatch = Mutex(true)
-        val expectedFamilyName = Random.nextBytes(32).encodeToString(Base16)
-        val clientId = "clientId"
+        val expectedScheme = EuPidScheme
+        val expectedRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT
+        val expectedAttributes = mapOf(
+            EuPidScheme.Attributes.FAMILY_NAME to Random.nextBytes(32).encodeToString(Base16)
+        )
+        val clientId = uuid4().toString()
         val requestEndpointPath = "/request/${uuid4()}"
-        val mockEngine = setupRelyingPartyService(requestEndpointPath, clientId) { result ->
-            if (result.disclosures.firstOrNull {
-                    it.claimName == EuPidScheme.Attributes.FAMILY_NAME && it.claimValue.jsonPrimitive.content == expectedFamilyName
-                } != null) {
-                countdownLatch.unlock()
-            }
+        val requestOptionsCredential = OidcSiopVerifier.RequestOptionsCredential(
+            credentialScheme = expectedScheme,
+            representation = expectedRepresentation,
+            requestedAttributes = expectedAttributes.keys.toList()
+        )
+        val mockEngine = setupRelyingPartyService(requestEndpointPath, clientId, requestOptionsCredential) {
+            verifyReceivedAttributes(expectedAttributes, it)
         }
-        val urlToSendToWallet = URLBuilder("http://wallet.example.com/").apply {
-            parameters.append("client_id", clientId)
-            parameters.append("request_uri", "http://rp.example.com$requestEndpointPath")
-        }.buildString()
+        val urlToSendToWallet = buildUrlWithRequestByReference(clientId, requestEndpointPath)
 
-        val keyMaterial = EphemeralKeyWithoutCert()
-        val cryptoService = DefaultCryptoService(keyMaterial)
-        val holderAgent = HolderAgent(keyMaterial)
-        holderAgent.storeCredential(
-            IssuerAgent().issueCredential(
-                CredentialToBeIssued.VcSd(
-                    claims = listOf(ClaimToBeIssued(EuPidScheme.Attributes.FAMILY_NAME, expectedFamilyName)),
-                    expiration = Clock.System.now().plus(1.minutes),
-                    scheme = EuPidScheme,
-                    subjectPublicKey = keyMaterial.publicKey
-                )
-            ).getOrThrow().toStoreCredentialInput()
-        ).getOrThrow()
+        issueAndStoreCredentials(expectedAttributes, expectedScheme)
 
         val wallet = OpenId4VpWallet(
             openUrlExternally = {},
@@ -81,7 +83,54 @@ class OpenId4VpWalletTest : AnnotationSpec() {
             this.isSuccess shouldBe true
         }
 
-        // If the countdownLatch has been unlocked, the correct credential has been posted to the RP, and we're done!
+        assertPresentation(countdownLatch)
+    }
+
+    private fun buildUrlWithRequestByReference(clientId: String, requestEndpointPath: String): String {
+        val urlToSendToWallet = URLBuilder("http://wallet.example.com/").apply {
+            parameters.append("client_id", clientId)
+            parameters.append("request_uri", "http://rp.example.com$requestEndpointPath")
+        }.buildString()
+        return urlToSendToWallet
+    }
+
+    private suspend fun issueAndStoreCredentials(
+        expectedAttributes: Map<String, String>,
+        expectedScheme: EuPidScheme,
+    ) {
+        holderAgent.storeCredential(
+            IssuerAgent().issueCredential(
+                CredentialToBeIssued.VcSd(
+                    claims = expectedAttributes.map { ClaimToBeIssued(it.key, it.value) },
+                    expiration = Clock.System.now().plus(1.minutes),
+                    scheme = expectedScheme,
+                    subjectPublicKey = keyMaterial.publicKey
+                )
+            ).getOrThrow().toStoreCredentialInput()
+        ).getOrThrow()
+    }
+
+    private fun verifyReceivedAttributes(
+        expectedAttributes: Map<String, String>,
+        result: OidcSiopVerifier.AuthnResponseResult,
+    ) {
+        when (result) {
+            is OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt ->
+                if (expectedAttributes.all { attribute ->
+                        result.disclosures.toList().any { it.matchesAttribute(attribute) }
+                    }) {
+                    countdownLatch.unlock()
+                }
+
+            else -> {}
+        }
+    }
+
+    private fun SelectiveDisclosureItem.matchesAttribute(attribute: Map.Entry<String, String>): Boolean =
+        claimName == attribute.key && claimValue.jsonPrimitive.content == attribute.value
+
+    // If the countdownLatch has been unlocked, the correct credential has been posted to the RP, and we're done!
+    private suspend fun assertPresentation(countdownLatch: Mutex) {
         withContext(Dispatchers.Default.limitedParallelism(1)) {
             withTimeout(5000) {
                 countdownLatch.lock()
@@ -96,7 +145,8 @@ class OpenId4VpWalletTest : AnnotationSpec() {
     private suspend fun setupRelyingPartyService(
         requestEndpointPath: String,
         clientId: String,
-        validate: (OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt) -> Unit,
+        requestOptionsCredential: OidcSiopVerifier.RequestOptionsCredential,
+        validate: (OidcSiopVerifier.AuthnResponseResult) -> Unit,
     ): HttpClientEngine {
         val verifier = OidcSiopVerifier(
             clientIdScheme = OidcSiopVerifier.ClientIdScheme.PreRegistered(clientId),
@@ -104,15 +154,7 @@ class OpenId4VpWalletTest : AnnotationSpec() {
         val responseEndpointPath = "/response"
         val jar = verifier.createAuthnRequestAsSignedRequestObject(
             requestOptions = OidcSiopVerifier.RequestOptions(
-                credentials = setOf(
-                    OidcSiopVerifier.RequestOptionsCredential(
-                        credentialScheme = EuPidScheme,
-                        representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                        requestedAttributes = listOf(
-                            EuPidScheme.Attributes.FAMILY_NAME
-                        )
-                    )
-                ),
+                credentials = setOf(requestOptionsCredential),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = responseEndpointPath,
             )
@@ -132,9 +174,7 @@ class OpenId4VpWalletTest : AnnotationSpec() {
                         if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery()
                         else requestBody.decodeFromPostBody()
                     val result = verifier.validateAuthnResponse(authnRequest)
-                    if (result is OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt) {
-                        validate(result)
-                    }
+                    validate(result)
                     respondOk()
                 }
 
