@@ -7,6 +7,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -18,6 +19,7 @@ import at.asitplus.wallet.lib.oidvci.*
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.AnnotationSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.ktor.client.*
 import io.ktor.client.engine.*
 import io.ktor.client.engine.mock.*
@@ -53,11 +55,11 @@ class OpenId4VciClientTest : AnnotationSpec() {
     }
 
     @Test
-    fun loadEuPidCredential() = runTest {
+    fun loadEuPidCredentialSdJwt() = runTest {
         val expectedAttributes = mapOf(
             EuPidScheme.Attributes.FAMILY_NAME to Random.nextBytes(32).encodeToString(Base16)
         )
-        val mockEngine = setupIssuingService(EuPidScheme, SD_JWT, expectedAttributes)
+        val (mockEngine, credentialIssuer) = setupIssuingService(EuPidScheme, SD_JWT, expectedAttributes)
         val subjectCredentialStore = assertAttributeStore(EuPidScheme, expectedAttributes)
         val holderAgent = HolderAgent(keyMaterial, subjectCredentialStore)
         val client: OpenId4VciClient = setupClient(mockEngine, holderAgent)
@@ -77,11 +79,34 @@ class OpenId4VciClientTest : AnnotationSpec() {
         assertCorrectCredentialIssued()
     }
 
+    @Test
+    fun loadEuPidCredentialIsoWithOffer() = runTest {
+        val expectedAttributes = mapOf(
+            EuPidScheme.Attributes.GIVEN_NAME to Random.nextBytes(32).encodeToString(Base16)
+        )
+        val (mockEngine, credentialIssuer) = setupIssuingService(EuPidScheme, ISO_MDOC, expectedAttributes)
+        val subjectCredentialStore = assertAttributeStore(EuPidScheme, expectedAttributes)
+        val holderAgent = HolderAgent(keyMaterial, subjectCredentialStore)
+        val client: OpenId4VciClient = setupClient(mockEngine, holderAgent)
+
+        // Load credential identifier infos from Issuing service
+        val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
+        // just pick the first credential in MSO_MDOC that is available
+        val selectedCredential = credentialIdentifierInfos
+            .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
+
+        val offer = credentialIssuer.credentialOfferWithPreAuthnForUser(dummyUser())
+        client.loadCredentialWithOffer(offer,selectedCredential, null, null).apply {
+            this.isSuccess shouldBe true
+        }
+        assertCorrectCredentialIssued()
+    }
 
     private fun setupClient(
         mockEngine: HttpClientEngine,
         holderAgent: HolderAgent,
     ): OpenId4VciClient {
+        // This construction is needed to continue with client in the openUrlExternally callback
         var client: OpenId4VciClient? = null
         // Simulates the browser, handling authorization to get the authCode
         val clientBrowser = object {
@@ -142,12 +167,12 @@ class OpenId4VciClientTest : AnnotationSpec() {
         scheme: ConstantIndex.CredentialScheme,
         representationToIssue: ConstantIndex.CredentialRepresentation,
         attributesToIssue: Map<String, String>,
-    ): HttpClientEngine {
+    ): Pair<HttpClientEngine, CredentialIssuer> {
         val dataProvider = object : OAuth2DataProvider {
             override suspend fun loadUserInfo(
                 request: AuthenticationRequestParameters,
                 code: String,
-            ) = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
+            ) = dummyUser()
         }
         val credentialProvider = object : CredentialIssuerDataProvider {
             override fun getCredential(
@@ -190,7 +215,7 @@ class OpenId4VciClientTest : AnnotationSpec() {
             credentialEndpointPath = credentialEndpointPath,
         )
 
-        return MockEngine { request ->
+        return Pair(MockEngine { request ->
             when {
                 request.url.fullPath == OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER -> respond(
                     vckJsonSerializer.encodeToString(credentialIssuer.metadata),
@@ -239,8 +264,10 @@ class OpenId4VciClientTest : AnnotationSpec() {
                 else -> respondError(HttpStatusCode.NotFound)
                     .also { Napier.w("NOT MATCHED ${request.url.fullPath}") }
             }
-        }
+        }, credentialIssuer)
     }
+
+    private fun dummyUser(): OidcUserInfoExtended = OidcUserInfoExtended.deserialize("{\"sub\": \"foo\"}").getOrThrow()
 
     // If the countdownLatch has been unlocked, the correct credential has been stored, and we're done!
     private suspend fun assertCorrectCredentialIssued() {
