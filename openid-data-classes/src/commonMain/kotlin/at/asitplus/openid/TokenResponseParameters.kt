@@ -38,7 +38,7 @@ data class TokenResponseParameters(
      */
     @SerialName("expires_in")
     @Serializable(with = DurationSecondsIntSerializer::class)
-    val expires: Duration,
+    val expires: Duration? = null,
 
     /**
      * RFC6749:
