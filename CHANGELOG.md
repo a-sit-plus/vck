@@ -1,9 +1,6 @@
 # Changelog
 
 Release 5.3.0:
-- Remote qualified electronic signatures:
-  - Add request-, response- and auxiliary data classes defined in CSC API v2.0.0.2 Ch. 11.4 `credentials/list` and Ch. 11.5 `credentials/info` 
-- Fix serialization of device signed items in ISO credentials
 - Add draft token-status-list-06 from https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html
 - `Holder`:
   - Remove `setRevocationList`
@@ -35,6 +32,11 @@ Release 5.3.0:
 - `VerifiableCredentialSdJwt`: Change `credentialStatus` to use new status mechanism
 - `MobileSecurityObject`: Add status mechanism
 - `iosMain/DefaultZlibService`
+
+Release 5.2.2:
+ - Remote qualified electronic signatures:
+   - Add request, response and auxiliary data classes defined in CSC API v2.0.0.2 Ch. 11.4 `credentials/list` and Ch. 11.5 `credentials/info` 
+ - Fix serialization of device signed items in ISO credentials
 
 Release 5.2.1:
  - Fix COSE signature deserialization and verification, due to signum 3.12.0
