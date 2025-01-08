@@ -7,6 +7,7 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -40,38 +41,47 @@ import kotlin.random.Random
 
 class OpenId4VciClientTest : AnnotationSpec() {
 
+    lateinit var countdownLatch: Mutex
+    lateinit var keyMaterial: KeyMaterial
+    lateinit var cryptoService: CryptoService
+
+    @BeforeEach
+    fun beforeEach() {
+        countdownLatch = Mutex(true)
+        keyMaterial = EphemeralKeyWithoutCert()
+        cryptoService = DefaultCryptoService(keyMaterial)
+    }
+
     @Test
     fun loadEuPidCredential() = runTest {
-        val countdownLatch = Mutex(true)
-        val expectedFamilyName = Random.nextBytes(32).encodeToString(Base16)
-        val mockEngine = setupIssuingService(mapOf(EuPidScheme.Attributes.FAMILY_NAME to expectedFamilyName))
-        val keyMaterial = EphemeralKeyWithoutCert()
-        val cryptoService = DefaultCryptoService(keyMaterial)
-        val subjectCredentialStore = object : SubjectCredentialStore {
-            override suspend fun storeCredential(
-                vc: VerifiableCredentialJws,
-                vcSerialized: String,
-                scheme: ConstantIndex.CredentialScheme,
-            ) = SubjectCredentialStore.StoreEntry.Vc(vcSerialized, vc, scheme.schemaUri)
+        val expectedAttributes = mapOf(
+            EuPidScheme.Attributes.FAMILY_NAME to Random.nextBytes(32).encodeToString(Base16)
+        )
+        val mockEngine = setupIssuingService(EuPidScheme, SD_JWT, expectedAttributes)
+        val subjectCredentialStore = assertAttributeStore(EuPidScheme, expectedAttributes)
+        val holderAgent = HolderAgent(keyMaterial, subjectCredentialStore)
+        val client: OpenId4VciClient = setupClient(mockEngine, holderAgent)
 
-            override suspend fun storeCredential(
-                vc: VerifiableCredentialSdJwt,
-                vcSerialized: String,
-                disclosures: Map<String, SelectiveDisclosureItem?>,
-                scheme: ConstantIndex.CredentialScheme,
-            ) = SubjectCredentialStore.StoreEntry.SdJwt(vcSerialized, vc, disclosures, scheme.schemaUri).also {
-                if (disclosures.values.firstOrNull { it?.claimName == EuPidScheme.Attributes.FAMILY_NAME && it.claimValue.jsonPrimitive.content == expectedFamilyName } != null) {
-                    countdownLatch.unlock()
-                }
-            }
+        // Load credential identifier infos from Issuing service
+        val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
+        // just pick the first credential in SD-JWT that is available
+        val selectedCredential = credentialIdentifierInfos
+            .first { it.supportedCredentialFormat.format == CredentialFormatEnum.VC_SD_JWT }
+        // client will call clientBrowser.openUrlExternally
+        client.startProvisioningWithAuthRequest(
+            credentialIssuer = "http://localhost",
+            credentialIdentifierInfo = selectedCredential,
+            requestedAttributes = setOf()
+        )
 
-            override suspend fun storeCredential(issuerSigned: IssuerSigned, scheme: ConstantIndex.CredentialScheme) =
-                SubjectCredentialStore.StoreEntry.Iso(issuerSigned, scheme.schemaUri)
+        assertCorrectCredentialIssued()
+    }
 
-            override suspend fun getCredentials(credentialSchemes: Collection<ConstantIndex.CredentialScheme>?): KmmResult<List<SubjectCredentialStore.StoreEntry>> =
-                KmmResult.success(listOf())
-        }
-        val holderAgent = HolderAgent(keyMaterial, subjectCredentialStore = subjectCredentialStore)
+
+    private fun setupClient(
+        mockEngine: HttpClientEngine,
+        holderAgent: HolderAgent,
+    ): OpenId4VciClient {
         var client: OpenId4VciClient? = null
         // Simulates the browser, handling authorization to get the authCode
         val clientBrowser = object {
@@ -93,31 +103,46 @@ class OpenId4VciClientTest : AnnotationSpec() {
             redirectUrl = "http://localhost/mock/",
             clientId = "some client id"
         )
-
-        // Load credential identifier infos from Issuing service
-        val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
-        // just pick the first credential in SD-JWT that is available
-        val selectedCredential =
-            credentialIdentifierInfos.first { it.supportedCredentialFormat.format == CredentialFormatEnum.VC_SD_JWT }
-        // client will call clientBrowser.openUrlExternally
-        client.startProvisioningWithAuthRequest(
-            credentialIssuer = "http://localhost",
-            credentialIdentifierInfo = selectedCredential,
-            requestedAttributes = setOf()
-        )
-
-        // If the countdownLatch has been unlocked, the correct credential has been stored, and we're done!
-        withContext(Dispatchers.Default.limitedParallelism(1)) {
-            withTimeout(5000) {
-                countdownLatch.lock()
-            }
-        }
+        return client
     }
 
-    /**
-     * Mocks the Issuing Service, which will be called by [OpenId4VciClient]
-     */
-    private fun setupIssuingService(attributesToIssue: Map<String, String>): HttpClientEngine {
+    private fun assertAttributeStore(
+        expectedScheme: ConstantIndex.CredentialScheme,
+        expectedAttributes: Map<String, String>,
+    ): SubjectCredentialStore = object : SubjectCredentialStore {
+        override suspend fun storeCredential(
+            vc: VerifiableCredentialJws,
+            vcSerialized: String,
+            scheme: ConstantIndex.CredentialScheme,
+        ) = SubjectCredentialStore.StoreEntry.Vc(vcSerialized, vc, scheme.schemaUri)
+
+        override suspend fun storeCredential(
+            vc: VerifiableCredentialSdJwt,
+            vcSerialized: String,
+            disclosures: Map<String, SelectiveDisclosureItem?>,
+            scheme: ConstantIndex.CredentialScheme,
+        ) = SubjectCredentialStore.StoreEntry.SdJwt(vcSerialized, vc, disclosures, scheme.schemaUri).also {
+            if (expectedAttributes.all { attribute ->
+                    disclosures.values.filterNotNull()
+                        .any { it.claimName == attribute.key && it.claimValue.jsonPrimitive.content == attribute.value }
+                } && scheme == expectedScheme) {
+                countdownLatch.unlock()
+            }
+        }
+
+        override suspend fun storeCredential(issuerSigned: IssuerSigned, scheme: ConstantIndex.CredentialScheme) =
+            SubjectCredentialStore.StoreEntry.Iso(issuerSigned, scheme.schemaUri)
+
+        override suspend fun getCredentials(credentialSchemes: Collection<ConstantIndex.CredentialScheme>?): KmmResult<List<SubjectCredentialStore.StoreEntry>> =
+            KmmResult.success(listOf())
+    }
+
+    // Mocks the Issuing Service, which will be called by [OpenId4VciClient]
+    private fun setupIssuingService(
+        scheme: ConstantIndex.CredentialScheme,
+        representationToIssue: ConstantIndex.CredentialRepresentation,
+        attributesToIssue: Map<String, String>,
+    ): HttpClientEngine {
         val dataProvider = object : OAuth2DataProvider {
             override suspend fun loadUserInfo(
                 request: AuthenticationRequestParameters,
@@ -132,8 +157,8 @@ class OpenId4VciClientTest : AnnotationSpec() {
                 representation: ConstantIndex.CredentialRepresentation,
                 claimNames: Collection<String>?,
             ): KmmResult<CredentialToBeIssued> = catching {
-                require(credentialScheme == EuPidScheme)
-                require(representation == ConstantIndex.CredentialRepresentation.SD_JWT)
+                require(credentialScheme == scheme)
+                require(representation == representationToIssue)
                 CredentialToBeIssued.VcSd(
                     attributesToIssue.map { ClaimToBeIssued(it.key, it.value) },
                     Clock.System.now(),
@@ -213,6 +238,15 @@ class OpenId4VciClientTest : AnnotationSpec() {
 
                 else -> respondError(HttpStatusCode.NotFound)
                     .also { Napier.w("NOT MATCHED ${request.url.fullPath}") }
+            }
+        }
+    }
+
+    // If the countdownLatch has been unlocked, the correct credential has been stored, and we're done!
+    private suspend fun assertCorrectCredentialIssued() {
+        withContext(Dispatchers.Default.limitedParallelism(1)) {
+            withTimeout(5000) {
+                countdownLatch.lock()
             }
         }
     }
