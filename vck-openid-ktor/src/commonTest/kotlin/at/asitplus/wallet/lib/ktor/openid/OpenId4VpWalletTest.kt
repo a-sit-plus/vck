@@ -1,6 +1,6 @@
 package at.asitplus.wallet.lib.ktor.openid
 
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
@@ -12,18 +12,16 @@ import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult.SuccessIso
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt
-import at.asitplus.wallet.lib.oidvci.*
+import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
+import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.kotest.core.spec.style.AnnotationSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.*
 import io.ktor.client.engine.*
 import io.ktor.client.engine.mock.*
-import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
-import io.ktor.client.request.forms.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
@@ -38,61 +36,65 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
-class OpenId4VpWalletTest : AnnotationSpec() {
+class OpenId4VpWalletTest : FunSpec() {
 
     lateinit var countdownLatch: Mutex
     lateinit var keyMaterial: KeyMaterial
     lateinit var cryptoService: CryptoService
     lateinit var holderAgent: HolderAgent
 
-    @BeforeEach
-    fun beforeEach() {
-        countdownLatch = Mutex(true)
-        keyMaterial = EphemeralKeyWithoutCert()
-        cryptoService = DefaultCryptoService(keyMaterial)
-        holderAgent = HolderAgent(keyMaterial)
-    }
-
-    @Test
-    fun presentEuPidCredentialSdJwtDirectPost() = runTest {
-        val (wallet, url) = setup(
-            scheme = EuPidScheme,
-            representation = SD_JWT,
-            attributes = mapOf(
-                EuPidScheme.Attributes.FAMILY_NAME to randomString()
-            ),
-            responseMode = ResponseMode.DirectPost,
-            clientId = uuid4().toString()
-        )
-
-        val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
-        // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
-        wallet.startPresentation(requestParametersFrom).apply {
-            this.isSuccess shouldBe true
+    init {
+        beforeEach {
+            countdownLatch = Mutex(true)
+            keyMaterial = EphemeralKeyWithoutCert()
+            cryptoService = DefaultCryptoService(keyMaterial)
+            holderAgent = HolderAgent(keyMaterial)
         }
 
-        assertPresentation(countdownLatch)
-    }
+        test("presentEuPidCredentialSdJwtDirectPost") {
+            runTest {
+                val (wallet, url) = setup(
+                    scheme = EuPidScheme,
+                    representation = SD_JWT,
+                    attributes = mapOf(
+                        EuPidScheme.Attributes.FAMILY_NAME to randomString()
+                    ),
+                    responseMode = ResponseMode.DirectPost,
+                    clientId = uuid4().toString()
+                )
 
-    @Test
-    fun presentEuPidCredentialIsoQuery() = runTest {
-        val (wallet, url) = setup(
-            scheme = EuPidScheme,
-            representation = ISO_MDOC,
-            attributes = mapOf(
-                EuPidScheme.Attributes.GIVEN_NAME to randomString()
-            ),
-            responseMode = ResponseMode.Query,
-            clientId = uuid4().toString()
-        )
+                val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
+                // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
+                wallet.startPresentation(requestParametersFrom).apply {
+                    this.isSuccess shouldBe true
+                }
 
-        val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
-        // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
-        wallet.startPresentation(requestParametersFrom).apply {
-            this.isSuccess shouldBe true
+                assertPresentation(countdownLatch)
+            }
         }
 
-        assertPresentation(countdownLatch)
+
+        test(" presentEuPidCredentialIsoQuery") {
+            runTest {
+                val (wallet, url) = setup(
+                    scheme = EuPidScheme,
+                    representation = ISO_MDOC,
+                    attributes = mapOf(
+                        EuPidScheme.Attributes.GIVEN_NAME to randomString()
+                    ),
+                    responseMode = ResponseMode.Query,
+                    clientId = uuid4().toString()
+                )
+
+                val requestParametersFrom = wallet.parseAuthenticationRequestParameters(url).getOrThrow()
+                // sends the response to the mock RP, which calls verifyReceivedAttributes, which unlocks the latch
+                wallet.startPresentation(requestParametersFrom).apply {
+                    this.isSuccess shouldBe true
+                }
+
+                assertPresentation(countdownLatch)
+            }
+        }
     }
 
     private fun randomString(): String = Random.nextBytes(32).encodeToString(Base16)

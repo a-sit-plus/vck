@@ -6,27 +6,20 @@ import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
-import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidvci.*
 import io.github.aakira.napier.Napier
-import io.kotest.core.spec.style.AnnotationSpec
+import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.ktor.client.*
 import io.ktor.client.engine.*
 import io.ktor.client.engine.mock.*
-import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
-import io.ktor.client.request.forms.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.util.*
 import io.matthewnelson.encoding.base16.Base16
@@ -41,67 +34,71 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.random.Random
 
-class OpenId4VciClientTest : AnnotationSpec() {
+class OpenId4VciClientTest : FunSpec() {
 
     lateinit var countdownLatch: Mutex
     lateinit var keyMaterial: KeyMaterial
     lateinit var cryptoService: CryptoService
 
-    @BeforeEach
-    fun beforeEach() {
-        countdownLatch = Mutex(true)
-        keyMaterial = EphemeralKeyWithoutCert()
-        cryptoService = DefaultCryptoService(keyMaterial)
-    }
-
-    @Test
-    fun loadEuPidCredentialSdJwt() = runTest {
-        val (client, credentialIssuer) = setup(
-            scheme = EuPidScheme,
-            representation = SD_JWT,
-            attributes = mapOf(
-                EuPidScheme.Attributes.FAMILY_NAME to randomString()
-            )
-        )
-
-        // Load credential identifier infos from Issuing service
-        val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
-        // just pick the first credential in SD-JWT that is available
-        val selectedCredential = credentialIdentifierInfos
-            .first { it.supportedCredentialFormat.format == CredentialFormatEnum.VC_SD_JWT }
-        // client will call clientBrowser.openUrlExternally
-        client.startProvisioningWithAuthRequest(
-            credentialIssuer = "http://localhost",
-            credentialIdentifierInfo = selectedCredential,
-            requestedAttributes = null,
-        ).apply {
-            this.isSuccess shouldBe true
+    init {
+        beforeEach {
+            countdownLatch = Mutex(true)
+            keyMaterial = EphemeralKeyWithoutCert()
+            cryptoService = DefaultCryptoService(keyMaterial)
         }
 
-        assertCorrectCredentialIssued()
-    }
 
-    @Test
-    fun loadEuPidCredentialIsoWithOffer() = runTest {
-        val (client, credentialIssuer) = setup(
-            scheme = EuPidScheme,
-            representation = ISO_MDOC,
-            attributes = mapOf(
-                EuPidScheme.Attributes.GIVEN_NAME to randomString()
-            )
-        )
+        test("loadEuPidCredentialSdJwt") {
+            runTest {
+                val (client, credentialIssuer) = setup(
+                    scheme = EuPidScheme,
+                    representation = SD_JWT,
+                    attributes = mapOf(
+                        EuPidScheme.Attributes.FAMILY_NAME to randomString()
+                    )
+                )
 
-        // Load credential identifier infos from Issuing service
-        val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
-        // just pick the first credential in MSO_MDOC that is available
-        val selectedCredential = credentialIdentifierInfos
-            .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
+                // Load credential identifier infos from Issuing service
+                val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
+                // just pick the first credential in SD-JWT that is available
+                val selectedCredential = credentialIdentifierInfos
+                    .first { it.supportedCredentialFormat.format == CredentialFormatEnum.VC_SD_JWT }
+                // client will call clientBrowser.openUrlExternally
+                client.startProvisioningWithAuthRequest(
+                    credentialIssuer = "http://localhost",
+                    credentialIdentifierInfo = selectedCredential,
+                    requestedAttributes = null,
+                ).apply {
+                    this.isSuccess shouldBe true
+                }
 
-        val offer = credentialIssuer.credentialOfferWithPreAuthnForUser(dummyUser())
-        client.loadCredentialWithOffer(offer, selectedCredential, null, null).apply {
-            this.isSuccess shouldBe true
+                assertCorrectCredentialIssued()
+            }
         }
-        assertCorrectCredentialIssued()
+
+        test("loadEuPidCredentialIsoWithOffer") {
+            runTest {
+                val (client, credentialIssuer) = setup(
+                    scheme = EuPidScheme,
+                    representation = ISO_MDOC,
+                    attributes = mapOf(
+                        EuPidScheme.Attributes.GIVEN_NAME to randomString()
+                    )
+                )
+
+                // Load credential identifier infos from Issuing service
+                val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
+                // just pick the first credential in MSO_MDOC that is available
+                val selectedCredential = credentialIdentifierInfos
+                    .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
+
+                val offer = credentialIssuer.credentialOfferWithPreAuthnForUser(dummyUser())
+                client.loadCredentialWithOffer(offer, selectedCredential, null, null).apply {
+                    this.isSuccess shouldBe true
+                }
+                assertCorrectCredentialIssued()
+            }
+        }
     }
 
     private fun randomString(): String = Random.nextBytes(32).encodeToString(Base16)
