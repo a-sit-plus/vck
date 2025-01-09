@@ -52,7 +52,10 @@ kotlin {
 
         commonTest {
             dependencies {
+                implementation("at.asitplus.wallet:eupidcredential:${VcLibVersions.eupidcredential}")
                 implementation(ktor("client-mock"))
+                implementation(kotest("assertions-core"))
+                implementation(kotest("framework-api"))
             }
         }
 
