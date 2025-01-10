@@ -376,9 +376,7 @@ class OidcSiopVerifier(
         state = requestOptions.state,
         presentationDefinition = PresentationDefinition(
             id = uuid4().toString(),
-            inputDescriptors = requestOptions.credentials.map {
-                it.toInputDescriptor()
-            },
+            inputDescriptors = requestOptions.credentials.map { it.toInputDescriptor() },
         ),
     )
 
@@ -557,40 +555,27 @@ class OidcSiopVerifier(
         val state = params.state
             ?: return AuthnResponseResult.ValidationError("state", params.state)
                 .also { Napier.w("Invalid state: ${params.state}") }
-        params.response?.let { response ->
-            JwsSigned.deserialize<AuthenticationResponseParameters>(
-                AuthenticationResponseParameters.serializer(),
-                response,
-                vckJsonSerializer
-            ).getOrNull()
-                ?.let { jarmResponse ->
-                    if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
-                        return AuthnResponseResult.ValidationError("response", state)
-                            .also { Napier.w { "JWS of response not verified: ${params.response}" } }
-                    }
-                    return validateAuthnResponse(jarmResponse.payload)
+
+        val encodedResponse = params.response
+        if (encodedResponse != null) {
+            encodedResponse.fromJws()?.let { jarm ->
+                if (!verifierJwsService.verifyJwsObject(jarm)) {
+                    Napier.w("JWS of response not verified: $encodedResponse")
+                    return AuthnResponseResult.ValidationError("response", state)
                 }
-            JweEncrypted.deserialize(response).getOrNull()?.let { jarmResponse ->
-                jwsService.decryptJweObject(jarmResponse, response, AuthenticationResponseParameters.serializer())
-                    .getOrNull()?.let { decrypted ->
-                        return validateAuthnResponse(decrypted.payload)
-                    }
+                return validateAuthnResponse(jarm.payload)
             }
+            encodedResponse.fromJwe()?.let { jarm ->
+                return validateAuthnResponse(jarm.payload)
+            }
+
+            Napier.w("Got encoded response, but could not deserialize it: $encodedResponse")
+            return AuthnResponseResult.ValidationError("response", state)
         }
+
         val responseType = stateToResponseTypeStore.get(state)
             ?: return AuthnResponseResult.ValidationError("state", state)
                 .also { Napier.w("State not associated with response type: $state") }
-
-        val idToken: IdToken? = if (responseType.contains(ID_TOKEN)) {
-            params.idToken?.let { idToken ->
-                catching {
-                    extractValidatedIdToken(idToken)
-                }.getOrElse {
-                    return AuthnResponseResult.ValidationError("idToken", state)
-                }
-            } ?: return AuthnResponseResult.ValidationError("idToken", state)
-                .also { Napier.w("State not associated with response type: $state") }
-        } else null
 
         if (responseType.contains(VP_TOKEN)) {
             val expectedNonce = stateToNonceStore.get(state)
@@ -607,8 +592,8 @@ class OidcSiopVerifier(
                     .also { Napier.w("No VP in response") }
 
             val validationResults = descriptors.map { descriptor ->
-                val relatedPresentation =
-                    JsonPath(descriptor.cumulativeJsonPath).query(verifiablePresentation).first().value
+                val relatedPresentation = JsonPath(descriptor.cumulativeJsonPath)
+                    .query(verifiablePresentation).first().value
                 val result = runCatching {
                     verifyPresentationResult(descriptor, relatedPresentation, expectedNonce)
                 }.getOrElse {
@@ -617,16 +602,36 @@ class OidcSiopVerifier(
                 }
                 result.mapToAuthnResponseResult(state)
             }
-
-            return if (validationResults.size != 1) {
-                AuthnResponseResult.VerifiablePresentationValidationResults(validationResults)
-            } else validationResults[0]
+            return validationResults.firstOrList()
         }
 
-        return idToken?.let { AuthnResponseResult.IdToken(it, state) }
-            ?: AuthnResponseResult.Error("Neither id_token nor vp_token", state)
+        if (responseType.contains(ID_TOKEN)) {
+            val idToken = params.idToken?.let { idToken ->
+                catching {
+                    extractValidatedIdToken(idToken)
+                }.getOrElse {
+                    return AuthnResponseResult.ValidationError("idToken", state)
+                }
+            } ?: return AuthnResponseResult.ValidationError("idToken", state)
+                .also { Napier.w("State not associated with response type: $state") }
+            return AuthnResponseResult.IdToken(idToken, state)
+        }
+
+        return AuthnResponseResult.Error("Neither id_token nor vp_token", state)
     }
 
+    private suspend fun String.fromJwe(): JweDecrypted<AuthenticationResponseParameters>? =
+        JweEncrypted.deserialize(this).getOrNull()?.let {
+            jwsService.decryptJweObject(it, this, AuthenticationResponseParameters.serializer()).getOrNull()
+        }
+
+    private fun String.fromJws(): JwsSigned<AuthenticationResponseParameters>? =
+        JwsSigned.deserialize(AuthenticationResponseParameters.serializer(), this, vckJsonSerializer)
+            .getOrNull()
+
+    private fun List<AuthnResponseResult>.firstOrList(): AuthnResponseResult =
+        if (size == 1) this[0]
+        else AuthnResponseResult.VerifiablePresentationValidationResults(this)
 
     @Throws(IllegalArgumentException::class, CancellationException::class)
     private suspend fun extractValidatedIdToken(idTokenJws: String): IdToken {
@@ -676,11 +681,7 @@ class OidcSiopVerifier(
         ClaimFormat.MSO_MDOC,
         ClaimFormat.JWT_VP,
             -> when (relatedPresentation) {
-            is JsonPrimitive -> verifier.verifyPresentation(
-                relatedPresentation.content,
-                challenge
-            )
-
+            is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, challenge)
             else -> throw IllegalArgumentException()
         }
 
