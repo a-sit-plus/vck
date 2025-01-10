@@ -135,8 +135,7 @@ class HolderAgent(
 
 
     override suspend fun createPresentation(
-        challenge: String,
-        audienceId: String,
+        request: PresentationRequestParameters,
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
@@ -162,16 +161,14 @@ class HolderAgent(
         }
 
         createPresentation(
-            challenge = challenge,
-            audienceId = audienceId,
+            request = request,
             presentationDefinitionId = presentationDefinition.id,
             presentationSubmissionSelection = submittedCredentials,
         ).getOrThrow()
     }
 
     override suspend fun createPresentation(
-        challenge: String,
-        audienceId: String,
+        request: PresentationRequestParameters,
         presentationDefinitionId: String?,
         presentationSubmissionSelection: Map<String, CredentialSubmission>,
     ): KmmResult<PresentationResponseParameters> = catching {
@@ -185,8 +182,7 @@ class HolderAgent(
             val credential = match.second.credential
             val disclosedAttributes = match.second.disclosedAttributes
             verifiablePresentationFactory.createVerifiablePresentation(
-                challenge = challenge,
-                audienceId = audienceId,
+                request = request,
                 credential = credential,
                 disclosedAttributes = disclosedAttributes,
             ).getOrThrow()
@@ -200,13 +196,11 @@ class HolderAgent(
 
     suspend fun createVcPresentation(
         validCredentials: List<String>,
-        challenge: String,
-        audienceId: String,
+        request: PresentationRequestParameters,
     ): KmmResult<CreatePresentationResult> = catching {
         verifiablePresentationFactory.createVcPresentation(
             validCredentials = validCredentials,
-            challenge = challenge,
-            audienceId = audienceId,
+            request = request,
         )
     }
 

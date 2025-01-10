@@ -87,8 +87,7 @@ interface Holder {
      *  authorization rules.
      */
     suspend fun createPresentation(
-        challenge: String,
-        audienceId: String,
+        request: PresentationRequestParameters,
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
@@ -107,8 +106,7 @@ interface Holder {
      *  corresponding credentials along with a description of the fields to be disclosed
      */
     suspend fun createPresentation(
-        challenge: String,
-        audienceId: String,
+        request: PresentationRequestParameters,
         presentationDefinitionId: String?,
         presentationSubmissionSelection: Map<String, CredentialSubmission>,
     ): KmmResult<PresentationResponseParameters>

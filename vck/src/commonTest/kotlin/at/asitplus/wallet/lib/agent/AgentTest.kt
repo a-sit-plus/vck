@@ -85,8 +85,7 @@ class AgentTest : FreeSpec({
         holder.getCredentials()?.size shouldBe 1
 
         val presentationParameters = holder.createPresentation(
-            challenge = challenge,
-            audienceId = verifierId,
+            request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
             presentationDefinition = singularPresentationDefinition,
         ).getOrThrow()
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -108,8 +107,7 @@ class AgentTest : FreeSpec({
         ).getOrThrow()
 
         val presentationParameters = holder.createPresentation(
-            challenge = challenge,
-            audienceId = issuer.keyMaterial.identifier,
+            request = PresentationRequestParameters(nonce = challenge, audience = issuer.keyMaterial.identifier),
             presentationDefinition = singularPresentationDefinition,
         ).getOrThrow()
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -167,8 +165,7 @@ class AgentTest : FreeSpec({
             issuer.revokeCredentials(listOf(credentials.vcJws)) shouldBe true
 
             holder.createPresentation(
-                challenge = challenge,
-                audienceId = "urn:${uuid4()}",
+                request = PresentationRequestParameters(nonce = challenge, audience = "urn:${uuid4()}"),
                 presentationDefinition = singularPresentationDefinition,
             ).getOrNull() shouldBe null
         }
@@ -237,8 +234,7 @@ class AgentTest : FreeSpec({
 
     "building presentation without necessary credentials" {
         holder.createPresentation(
-            challenge = challenge,
-            audienceId = "urn:${uuid4()}",
+            request = PresentationRequestParameters(nonce = challenge, audience = "urn:${uuid4()}"),
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull() shouldBe null
     }
@@ -253,8 +249,7 @@ class AgentTest : FreeSpec({
         ).getOrThrow()
         holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
         val presentationParameters = holder.createPresentation(
-            challenge = challenge,
-            audienceId = verifierId,
+            request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -278,8 +273,7 @@ class AgentTest : FreeSpec({
         ).getOrThrow()
         holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
         val presentationParameters = holder.createPresentation(
-            challenge = challenge,
-            audienceId = verifierId,
+            request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()

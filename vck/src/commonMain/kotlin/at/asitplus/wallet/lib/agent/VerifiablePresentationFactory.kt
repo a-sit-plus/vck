@@ -24,27 +24,24 @@ class VerifiablePresentationFactory(
     private val identifier: String,
 ) {
     suspend fun createVerifiablePresentation(
-        challenge: String,
-        audienceId: String,
+        request: PresentationRequestParameters,
         credential: SubjectCredentialStore.StoreEntry,
         disclosedAttributes: Collection<NormalizedJsonPath>,
     ): KmmResult<CreatePresentationResult> = catching {
         when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> createVcPresentation(
-                challenge = challenge,
-                audienceId = audienceId,
+                request = request,
                 validCredentials = listOf(credential.vcSerialized),
             )
 
             is SubjectCredentialStore.StoreEntry.SdJwt -> createSdJwtPresentation(
-                challenge = challenge,
-                audienceId = audienceId,
+                request = request,
                 validSdJwtCredential = credential,
                 requestedClaims = disclosedAttributes,
             )
 
             is SubjectCredentialStore.StoreEntry.Iso -> createIsoPresentation(
-                challenge = challenge,
+                request = request,
                 credential = credential,
                 requestedClaims = disclosedAttributes,
             )
@@ -52,12 +49,12 @@ class VerifiablePresentationFactory(
     }
 
     private suspend fun createIsoPresentation(
-        challenge: String,
+        request: PresentationRequestParameters,
         credential: SubjectCredentialStore.StoreEntry.Iso,
         requestedClaims: Collection<NormalizedJsonPath>,
     ): CreatePresentationResult.DeviceResponse {
         val deviceSignature = coseService.createSignedCose(
-            payload = challenge.encodeToByteArray(),
+            payload = request.nonce.encodeToByteArray(),
             serializer = ByteArraySerializer(),
             addKeyId = false
         ).getOrElse {
@@ -125,8 +122,7 @@ class VerifiablePresentationFactory(
     }
 
     private suspend fun createSdJwtPresentation(
-        audienceId: String,
-        challenge: String,
+        request: PresentationRequestParameters,
         validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
         requestedClaims: Collection<NormalizedJsonPath>,
     ): CreatePresentationResult.SdJwt {
@@ -138,7 +134,7 @@ class VerifiablePresentationFactory(
             }.toSet()
 
         val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
-        val keyBinding = createKeyBindingJws(audienceId, challenge, issuerJwtPlusDisclosures)
+        val keyBinding = createKeyBindingJws(request, issuerJwtPlusDisclosures)
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
         val issuerSignedJws =
             JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer)
@@ -151,8 +147,7 @@ class VerifiablePresentationFactory(
     }
 
     private suspend fun createKeyBindingJws(
-        audienceId: String,
-        challenge: String,
+        request: PresentationRequestParameters,
         issuerJwtPlusDisclosures: String,
     ): JwsSigned<KeyBindingJws> = jwsService.createSignedJwsAddingParams(
         header = JwsHeader(
@@ -161,8 +156,8 @@ class VerifiablePresentationFactory(
         ),
         payload = KeyBindingJws(
             issuedAt = Clock.System.now(),
-            audience = audienceId,
-            challenge = challenge,
+            audience = request.audience,
+            challenge = request.nonce,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
         ),
         serializer = KeyBindingJws.serializer(),
@@ -188,13 +183,12 @@ class VerifiablePresentationFactory(
      */
     suspend fun createVcPresentation(
         validCredentials: List<String>,
-        challenge: String,
-        audienceId: String,
+        request: PresentationRequestParameters,
     ) = CreatePresentationResult.Signed(
         jwsService.createSignedJwt(
             type = JwsContentTypeConstants.JWT,
             payload = VerifiablePresentation(validCredentials)
-                .toJws(challenge, identifier, audienceId),
+                .toJws(request.nonce, identifier, request.audience),
             serializer = VerifiablePresentationJws.serializer(),
         ).getOrElse {
             Napier.w("Could not create JWS for presentation", it)

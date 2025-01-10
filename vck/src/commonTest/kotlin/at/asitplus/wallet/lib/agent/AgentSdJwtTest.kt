@@ -85,8 +85,7 @@ class AgentSdJwtTest : FreeSpec({
 
     "simple walk-through success" {
         val presentationParameters = holder.createPresentation(
-            challenge = challenge,
-            audienceId = verifierId,
+            request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
             presentationDefinition = buildPresentationDefinition(
                 CLAIM_GIVEN_NAME,
                 CLAIM_DATE_OF_BIRTH
@@ -123,8 +122,7 @@ class AgentSdJwtTest : FreeSpec({
 
     "wrong key binding jwt" {
         val presentationParameters = holder.createPresentation(
-            challenge = challenge,
-            audienceId = verifierId,
+            request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
             presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
@@ -141,8 +139,7 @@ class AgentSdJwtTest : FreeSpec({
     "wrong challenge in key binding jwt" {
         val malformedChallenge = challenge.reversed()
         val presentationParameters = holder.createPresentation(
-            challenge = malformedChallenge,
-            audienceId = verifierId,
+            request = PresentationRequestParameters(nonce = malformedChallenge, audience = verifierId),
             presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
@@ -155,8 +152,7 @@ class AgentSdJwtTest : FreeSpec({
 
     "revoked sd jwt" {
         val presentationParameters = holder.createPresentation(
-            challenge = challenge,
-            audienceId = verifierId,
+            request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
             presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
         ).getOrThrow()
 
@@ -199,8 +195,7 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
         ).getOrThrow().toStoreCredentialInput()
     )
     val presentationResult = holder.createPresentation(
-        challenge = challenge,
-        audienceId = verifierId,
+        request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
         presentationDefinition = PresentationDefinition(
             id = uuid4().toString(),
             inputDescriptors = listOf(DifInputDescriptor(id = uuid4().toString()))

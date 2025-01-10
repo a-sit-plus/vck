@@ -194,8 +194,7 @@ private suspend fun createPresentation(
     presentationDefinition: PresentationDefinition,
     verifierId: String
 ) = holder.createPresentation(
-    challenge = challenge,
-    audienceId = verifierId,
+    request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
     presentationDefinition = presentationDefinition
 ).getOrThrow().presentationResults.firstOrNull()
 

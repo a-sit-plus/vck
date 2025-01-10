@@ -6,6 +6,11 @@ import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import kotlinx.serialization.Serializable
 
+data class PresentationRequestParameters(
+    val nonce: String,
+    val audience: String,
+)
+
 data class PresentationResponseParameters(
     val presentationSubmission: PresentationSubmission,
     val presentationResults: List<CreatePresentationResult>

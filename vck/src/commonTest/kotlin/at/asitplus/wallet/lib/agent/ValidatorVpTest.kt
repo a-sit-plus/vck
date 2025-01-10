@@ -88,8 +88,7 @@ class ValidatorVpTest : FreeSpec({
 
     "correct challenge in VP leads to Success" {
         val presentationParameters = holder.createPresentation(
-            challenge = challenge,
-            audienceId = verifierId,
+            request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -107,7 +106,10 @@ class ValidatorVpTest : FreeSpec({
             .filterIsInstance<Holder.StoredCredential.Vc>()
             .map { it.storeEntry.vcSerialized }
             .map { it.reversed() }
-        val vp = holder.createVcPresentation(holderVcSerialized, challenge, verifierId).getOrNull()
+        val vp = holder.createVcPresentation(
+            holderVcSerialized,
+            PresentationRequestParameters(nonce = challenge, audience = verifierId)
+        ).getOrNull()
         vp.shouldNotBeNull()
 
         vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
@@ -120,8 +122,7 @@ class ValidatorVpTest : FreeSpec({
 
     "wrong challenge in VP leads to InvalidStructure" {
         val presentationParameters = holder.createPresentation(
-            challenge = "challenge",
-            audienceId = verifierId,
+            request = PresentationRequestParameters(nonce = "challenge", audience = verifierId),
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
@@ -133,8 +134,7 @@ class ValidatorVpTest : FreeSpec({
 
     "wrong audience in VP leads to InvalidStructure" {
         val presentationParameters = holder.createPresentation(
-            challenge = challenge,
-            audienceId = "keyId",
+            request = PresentationRequestParameters(nonce = challenge, audience = "keyId"),
             presentationDefinition = singularPresentationDefinition,
         ).getOrThrow()
         val vp = presentationParameters.presentationResults.firstOrNull()
@@ -146,8 +146,7 @@ class ValidatorVpTest : FreeSpec({
 
     "valid parsed presentation should separate revoked and valid credentials" {
         val presentationResults = holder.createPresentation(
-            challenge = challenge,
-            audienceId = verifierId,
+            request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationResults.shouldNotBeNull()

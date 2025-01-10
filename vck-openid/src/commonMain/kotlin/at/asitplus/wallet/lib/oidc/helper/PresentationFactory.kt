@@ -15,10 +15,7 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.CredentialSubmission
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.PresentationResponseParameters
-import at.asitplus.wallet.lib.agent.toDefaultSubmission
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -55,8 +52,7 @@ internal class PresentationFactory(
         )
 
         holder.createPresentation(
-            challenge = nonce,
-            audienceId = audience,
+            request = PresentationRequestParameters(nonce = nonce, audience = audience),
             presentationDefinitionId = presentationDefinition.id,
             presentationSubmissionSelection = credentialSubmissions,
         ).getOrElse {
