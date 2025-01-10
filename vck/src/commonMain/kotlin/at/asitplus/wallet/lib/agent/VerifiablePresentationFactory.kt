@@ -1,7 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
@@ -28,7 +28,7 @@ class VerifiablePresentationFactory(
         audienceId: String,
         credential: SubjectCredentialStore.StoreEntry,
         disclosedAttributes: Collection<NormalizedJsonPath>,
-    ): KmmResult<CreatePresentationResult> = runCatching {
+    ): KmmResult<CreatePresentationResult> = catching {
         when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> createVcPresentation(
                 challenge = challenge,
@@ -49,12 +49,12 @@ class VerifiablePresentationFactory(
                 requestedClaims = disclosedAttributes,
             )
         }
-    }.wrap()
+    }
 
     private suspend fun createIsoPresentation(
         challenge: String,
         credential: SubjectCredentialStore.StoreEntry.Iso,
-        requestedClaims: Collection<NormalizedJsonPath>
+        requestedClaims: Collection<NormalizedJsonPath>,
     ): CreatePresentationResult.DeviceResponse {
         val deviceSignature = coseService.createSignedCose(
             payload = challenge.encodeToByteArray(),
@@ -140,10 +140,12 @@ class VerifiablePresentationFactory(
         val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
         val keyBinding = createKeyBindingJws(audienceId, challenge, issuerJwtPlusDisclosures)
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
-        val issuerSignedJws = JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer).getOrElse {
-            Napier.w("Could not re-create JWS from stored SD-JWT", it)
-            throw PresentationException(it)
-        }
+        val issuerSignedJws =
+            JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer)
+                .getOrElse {
+                    Napier.w("Could not re-create JWS from stored SD-JWT", it)
+                    throw PresentationException(it)
+                }
         val sdJwt = SdJwtSigned.serializePresentation(issuerSignedJws, filteredDisclosures, keyBinding)
         return CreatePresentationResult.SdJwt(sdJwt)
     }

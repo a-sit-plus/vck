@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
 import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
@@ -141,7 +140,7 @@ class HolderAgent(
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
-    ): KmmResult<PresentationResponseParameters> = runCatching {
+    ): KmmResult<PresentationResponseParameters> = catching {
         val submittedCredentials = matchInputDescriptorsAgainstCredentialStore(
             inputDescriptors = presentationDefinition.inputDescriptors,
             fallbackFormatHolder = fallbackFormatHolder,
@@ -168,14 +167,14 @@ class HolderAgent(
             presentationDefinitionId = presentationDefinition.id,
             presentationSubmissionSelection = submittedCredentials,
         ).getOrThrow()
-    }.wrap()
+    }
 
     override suspend fun createPresentation(
         challenge: String,
         audienceId: String,
         presentationDefinitionId: String?,
         presentationSubmissionSelection: Map<String, CredentialSubmission>,
-    ): KmmResult<PresentationResponseParameters> = runCatching {
+    ): KmmResult<PresentationResponseParameters> = catching {
         val submissionList = presentationSubmissionSelection.toList()
         val presentationSubmission = PresentationSubmission.fromMatches(
             presentationId = presentationDefinitionId,
@@ -197,26 +196,25 @@ class HolderAgent(
             presentationSubmission = presentationSubmission,
             presentationResults = verifiablePresentations,
         )
-    }.wrap()
+    }
 
     suspend fun createVcPresentation(
         validCredentials: List<String>,
         challenge: String,
         audienceId: String,
-    ): KmmResult<CreatePresentationResult> = runCatching {
+    ): KmmResult<CreatePresentationResult> = catching {
         verifiablePresentationFactory.createVcPresentation(
             validCredentials = validCredentials,
             challenge = challenge,
             audienceId = audienceId,
         )
-    }.wrap()
-
+    }
 
     override suspend fun matchInputDescriptorsAgainstCredentialStore(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
-    ) = runCatching {
+    ) = catching {
         findInputDescriptorMatches(
             inputDescriptors = inputDescriptors,
             credentials = getValidCredentialsByPriority()
@@ -224,7 +222,7 @@ class HolderAgent(
             fallbackFormatHolder = fallbackFormatHolder,
             pathAuthorizationValidator = pathAuthorizationValidator,
         )
-    }.wrap()
+    }
 
     private fun findInputDescriptorMatches(
         inputDescriptors: Collection<InputDescriptor>,
