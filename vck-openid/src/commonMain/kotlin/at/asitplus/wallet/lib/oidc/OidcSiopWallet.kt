@@ -223,11 +223,7 @@ class OidcSiopWallet(
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val audience = request.extractAudience(clientJsonWebKeySet)
         val presentationFactory = PresentationFactory(jwsService)
-        val idToken = presentationFactory.createSignedIdToken(
-            clock = clock,
-            agentPublicKey = agentPublicKey,
-            request = request,
-        ).getOrNull()?.serialize()
+        val idToken = presentationFactory.createSignedIdToken(clock, agentPublicKey, request).getOrNull()?.serialize()
 
         val resultContainer = presentationDefinition?.let {
             presentationFactory.createPresentationExchangePresentation(

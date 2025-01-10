@@ -11,14 +11,30 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.Serializable
 
+/**
+ * Input to create a verifiable presentation of credentials, i.e. contains input required to fill fields in the VP,
+ * like a challenge from the verifier, ot their identifier.
+ *
+ * Decouples the reading of that data fields from the protocol input (e.g. OpenID4VP) from the usage in the [Holder].
+ *
+ * See [VerifiablePresentationFactory.createVerifiablePresentation] for usage of these data fields.
+ */
 data class PresentationRequestParameters(
     val nonce: String,
     val audience: String,
+    /**
+     * Whether the response will be encrypted, and the fields [clientId] and [responseUrl] shall be used for OpenId4VP.
+     */
+    val responseWillBeEncrypted: Boolean = false,
+    /** Required for mDoc responses in OpenId4VP */
+    val clientId: String? = null,
+    /** Required for mDoc responses in OpenId4VP */
+    val responseUrl: String? = null,
 )
 
 data class PresentationResponseParameters(
     val presentationSubmission: PresentationSubmission,
-    val presentationResults: List<CreatePresentationResult>
+    val presentationResults: List<CreatePresentationResult>,
 )
 
 sealed class CreatePresentationResult {
@@ -34,6 +50,11 @@ sealed class CreatePresentationResult {
 
     data class DeviceResponse(
         val deviceResponse: at.asitplus.wallet.lib.iso.DeviceResponse,
+        /**
+         * has been used to calculate the session transcript, and needs to be set into `apu` of the
+         * JWE, see ISO/IEC 18013-7:2024 B.4.3.3.2.
+         */
+        val mdocGeneratedNonce: String?
     ) : CreatePresentationResult()
 }
 

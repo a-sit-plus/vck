@@ -51,8 +51,15 @@ internal class PresentationFactory(
             credentialSubmissions = credentialSubmissions
         )
 
+        val vpRequestParams = PresentationRequestParameters(
+            nonce = nonce,
+            audience = audience,
+            //TODO responseWillBeEncrypted = true,
+            clientId = request.parameters.clientId,
+            responseUrl = request.parameters.responseUrl,
+        )
         holder.createPresentation(
-            request = PresentationRequestParameters(nonce = nonce, audience = audience),
+            request = vpRequestParams,
             presentationDefinitionId = presentationDefinition.id,
             presentationSubmissionSelection = credentialSubmissions,
         ).getOrElse {
