@@ -40,6 +40,7 @@ Release 5.3.0:
   - In `Holder.createPresentation()` replace parameters `challenge` and `audience` with `PresentationRequestParameters`, extending the possible inputs for calculating the verifiable presentation
   - In `Verifier` and `VerifierAgent` add methods `verifyPresentationVcJwt()`, `verifyPresentationSdJwt()` and `verifyPresentationIsoMdoc()` to directly verify typed objects
   - For verification of credentials and presentations add `ValidationError` cases to sealed classes
+  - In `OidcSiopVerifier` replace `stateToNonceStore` and `stateToResponseTypeStore` with `stateToAuthnRequestStore`
 
 Release 5.2.2:
  - Remote qualified electronic signatures:

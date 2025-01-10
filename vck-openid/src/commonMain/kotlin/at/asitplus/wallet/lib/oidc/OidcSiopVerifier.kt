@@ -60,7 +60,8 @@ class OidcSiopVerifier(
      * [AuthenticationResponseParameters.vpToken].
      */
     private val stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
-    private val stateToResponseTypeStore: MapStore<String, String> = DefaultMapStore(),
+    /** Used to store issued authn requests, to verify the authn response to it */
+    private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore()
 ) {
 
     private val responseParser = ResponseParser(jwsService, verifierJwsService)
@@ -360,15 +361,13 @@ class OidcSiopVerifier(
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions,
     ) = AuthenticationRequestParameters(
-        responseType = requestOptions.responseType
-            .also { stateToResponseTypeStore.put(requestOptions.state, it) },
+        responseType = requestOptions.responseType,
         clientId = clientIdScheme.clientId,
         redirectUrl = if (!requestOptions.isAnyDirectPost) clientIdScheme.clientId else null,
         responseUrl = requestOptions.responseUrl,
         clientIdScheme = clientIdScheme.scheme,
         scope = requestOptions.buildScope(),
-        nonce = nonceService.provideNonce()
-            .also { stateToNonceStore.put(requestOptions.state, it) },
+        nonce = nonceService.provideNonce(),
         clientMetadata = if (requestOptions.clientMetadataUrl != null) {
             null
         } else {
@@ -382,7 +381,7 @@ class OidcSiopVerifier(
             id = uuid4().toString(),
             inputDescriptors = requestOptions.credentials.map { it.toInputDescriptor() },
         ),
-    )
+    ).also { stateToAuthnRequestStore.put(requestOptions.state, it) }
 
     private fun RequestOptions.buildScope() = (
             listOf(SCOPE_OPENID, SCOPE_PROFILE)
@@ -570,13 +569,13 @@ class OidcSiopVerifier(
         val state = params.state
             ?: return AuthnResponseResult.ValidationError("state", params.state)
                 .also { Napier.w("Invalid state: ${params.state}") }
-
-        val responseType = stateToResponseTypeStore.get(state)
+        val authnRequest = stateToAuthnRequestStore.get(state)
             ?: return AuthnResponseResult.ValidationError("state", state)
-                .also { Napier.w("State not associated with response type: $state") }
+                .also { Napier.w("State not associated with authn request: $state") }
 
-        if (responseType.contains(VP_TOKEN)) {
-            val expectedNonce = stateToNonceStore.get(state)
+        val responseType = authnRequest.responseType
+        if (responseType?.contains(VP_TOKEN) == true) {
+            val expectedNonce = authnRequest.nonce
                 ?: return AuthnResponseResult.ValidationError("state", state)
                     .also { Napier.w("State not associated with nonce: $state") }
             val presentationSubmission = params.presentationSubmission
@@ -603,7 +602,7 @@ class OidcSiopVerifier(
             return validationResults.firstOrList()
         }
 
-        if (responseType.contains(ID_TOKEN)) {
+        if (responseType?.contains(ID_TOKEN) == true) {
             val idToken = params.idToken?.let { idToken ->
                 catching {
                     extractValidatedIdToken(idToken)

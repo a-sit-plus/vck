@@ -111,10 +111,10 @@ class OidcSiopProtocolTest : FreeSpec({
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
-            stateToNonceStore = object : MapStore<String, String> {
-                override suspend fun put(key: String, value: String) {}
-                override suspend fun get(key: String): String? = null
-                override suspend fun remove(key: String): String? = null
+            stateToAuthnRequestStore = object : MapStore<String, AuthenticationRequestParameters> {
+                override suspend fun put(key: String, value: AuthenticationRequestParameters) {}
+                override suspend fun get(key: String): AuthenticationRequestParameters? = null
+                override suspend fun remove(key: String): AuthenticationRequestParameters? = null
             },
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl, defaultRequestOptions)
