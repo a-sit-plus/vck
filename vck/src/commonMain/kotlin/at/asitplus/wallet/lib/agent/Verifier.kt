@@ -1,13 +1,11 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.data.IsoDocumentParsed
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
-import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.json.JsonObject
@@ -23,7 +21,35 @@ interface Verifier {
      * Verifies a presentation of some credentials from a holder,
      * that shall include the [challenge] (sent by this verifier).
      */
+    @Deprecated("Use specific methods instead")
     suspend fun verifyPresentation(it: String, challenge: String): VerifyPresentationResult
+
+    /**
+     * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.SD_JWT] from a holder,
+     * that shall include the [challenge] (sent by this verifier).
+     */
+    suspend fun verifyPresentationSdJwt(
+        input: SdJwtSigned,
+        challenge: String,
+    ): VerifyPresentationResult
+
+    /**
+     * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.PLAIN_JWT] from a holder,
+     * that shall include the [challenge] (sent by this verifier).
+     */
+    suspend fun verifyPresentationVcJwt(
+        input: JwsSigned<VerifiablePresentationJws>,
+        challenge: String,
+    ): VerifyPresentationResult
+
+    /**
+     * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.ISO_MDOC] from a holder,
+     * that shall include the [challenge] (sent by this verifier).
+     */
+    suspend fun verifyPresentationIsoMdoc(
+        input: DeviceResponse,
+        challenge: String,
+    ): VerifyPresentationResult
 
     sealed class VerifyPresentationResult {
         data class Success(val vp: VerifiablePresentationParsed) : VerifyPresentationResult()
@@ -32,12 +58,14 @@ interface Verifier {
             val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
             val reconstructedJsonObject: JsonObject,
             val disclosures: Collection<SelectiveDisclosureItem>,
-            val isRevoked: Boolean
+            val isRevoked: Boolean,
         ) : VerifyPresentationResult()
 
         data class SuccessIso(val documents: Collection<IsoDocumentParsed>) : VerifyPresentationResult()
         data class InvalidStructure(val input: String) : VerifyPresentationResult()
-        data class NotVerified(val input: String, val challenge: String) : VerifyPresentationResult()
+        data class ValidationError(val cause: Throwable) : VerifyPresentationResult() {
+            constructor(message: String) : this(Throwable(message))
+        }
     }
 
     sealed class VerifyCredentialResult {
@@ -54,6 +82,9 @@ interface Verifier {
         data class SuccessIso(val issuerSigned: IssuerSigned) : VerifyCredentialResult()
         data class Revoked(val input: String, val jws: VerifiableCredentialJws) : VerifyCredentialResult()
         data class InvalidStructure(val input: String) : VerifyCredentialResult()
+        data class ValidationError(val cause: Throwable) : VerifyCredentialResult() {
+            constructor(message: String) : this(Throwable(message))
+        }
     }
 
 }

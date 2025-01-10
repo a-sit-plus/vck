@@ -88,14 +88,13 @@ class AgentTest : FreeSpec({
             request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
             presentationDefinition = singularPresentationDefinition,
         ).getOrThrow()
-        val vp = presentationParameters.presentationResults.firstOrNull()
-        vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
-        val verified = verifier.verifyPresentation(vp.jws, challenge)
+        val vp = presentationParameters.presentationResults.first()
+            .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+        val verified = verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
         verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
     }
 
-    "wrong keyId in presentation leads to InvalidStructure" {
+    "wrong keyId in presentation leads to error" {
         holder.storeCredential(
             issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
@@ -110,11 +109,10 @@ class AgentTest : FreeSpec({
             request = PresentationRequestParameters(nonce = challenge, audience = issuer.keyMaterial.identifier),
             presentationDefinition = singularPresentationDefinition,
         ).getOrThrow()
-        val vp = presentationParameters.presentationResults.firstOrNull()
-        vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
-        val result = verifier.verifyPresentation(vp.jws, challenge)
-        result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
+        val vp = presentationParameters.presentationResults.first()
+            .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+        val result = verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+        result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
     }
 
     "revoked credentials must not be validated" {
@@ -257,10 +255,11 @@ class AgentTest : FreeSpec({
         vp.shouldNotBeNull()
         vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
-        val result = verifier.verifyPresentation(vp.jws, challenge)
-        result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-        result.vp.revokedVerifiableCredentials.shouldBeEmpty()
-        result.vp.verifiableCredentials shouldHaveSize 1
+        verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
+            it.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+            it.vp.revokedVerifiableCredentials.shouldBeEmpty()
+            it.vp.verifiableCredentials shouldHaveSize 1
+        }
     }
 
     "valid presentation is valid -- some other attributes revoked" {
@@ -291,8 +290,9 @@ class AgentTest : FreeSpec({
         credentialsToRevoke.shouldBeInstanceOf<Issuer.IssuedCredential.VcJwt>()
         issuer.revokeCredentials(listOf(credentialsToRevoke.vcJws)) shouldBe true
 
-        val result = verifier.verifyPresentation(vp.jws, challenge)
-        result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+        verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
     }
 
 })
+

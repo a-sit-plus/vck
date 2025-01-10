@@ -7,6 +7,7 @@ import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
@@ -57,7 +58,7 @@ class AgentComplexSdJwtTest : FreeSpec({
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+        val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
         verified.disclosures.size shouldBe 1 // for address only
@@ -86,7 +87,7 @@ class AgentComplexSdJwtTest : FreeSpec({
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+        val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
         verified.disclosures.size shouldBe 2 // for region, country
@@ -116,7 +117,7 @@ class AgentComplexSdJwtTest : FreeSpec({
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+        val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
         verified.disclosures.size shouldBe 3 // for address, region, country
@@ -143,7 +144,7 @@ class AgentComplexSdJwtTest : FreeSpec({
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
             .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+        val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
         verified.disclosures.size shouldBe 2 // claim_given_name, claim_family_name

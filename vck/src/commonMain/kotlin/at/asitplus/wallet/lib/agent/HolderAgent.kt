@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 
@@ -64,7 +65,7 @@ class HolderAgent(
             }
 
             is Holder.StoreCredentialInput.SdJwt -> {
-                val sdJwt = validator.verifySdJwt(credential.vcSdJwt, keyPair.publicKey)
+                val sdJwt = validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, keyPair.publicKey)
                 if (sdJwt !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
                     throw VerificationError(sdJwt.toString())
                 }

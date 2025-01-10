@@ -95,7 +95,7 @@ class AgentSdJwtTest : FreeSpec({
         val vp = presentationParameters.presentationResults.firstOrNull()
             .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+        val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
         verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
@@ -112,8 +112,8 @@ class AgentSdJwtTest : FreeSpec({
             challenge = challenge,
             validSdJwtCredential = credential,
             claimName = CLAIM_GIVEN_NAME
-        ).sdJwt
-        val verified = verifier.verifyPresentation(sdJwt, challenge)
+        )
+        val verified = verifier.verifyPresentationSdJwt(sdJwt.sdJwt!!, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
 
         verified.reconstructedJsonObject.keys shouldContain CLAIM_GIVEN_NAME
@@ -130,10 +130,10 @@ class AgentSdJwtTest : FreeSpec({
             .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
         // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
         val freshKbJwt = createFreshSdJwtKeyBinding(challenge, verifierId)
-        val malformedVpSdJwt = vp.sdJwt.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
+        val malformedVpSdJwt = vp.serialized.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
 
-        verifier.verifyPresentation(malformedVpSdJwt, challenge)
-            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
+        verifier.verifyPresentationSdJwt(SdJwtSigned.parse(malformedVpSdJwt)!!, challenge)
+            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
     }
 
     "wrong challenge in key binding jwt" {
@@ -146,8 +146,8 @@ class AgentSdJwtTest : FreeSpec({
         val vp = presentationParameters.presentationResults.firstOrNull()
             .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-        verifier.verifyPresentation(vp.sdJwt, challenge)
-            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
+        verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
     }
 
     "revoked sd jwt" {
@@ -163,7 +163,7 @@ class AgentSdJwtTest : FreeSpec({
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
             .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
         issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
-        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+        val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
         verified.isRevoked shouldBe true
     }
@@ -201,9 +201,7 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
             inputDescriptors = listOf(DifInputDescriptor(id = uuid4().toString()))
         ),
     ).getOrThrow()
-    val sdJwt =
-        presentationResult.presentationResults.first() as CreatePresentationResult.SdJwt
-    return sdJwt.sdJwt
+    return (presentationResult.presentationResults.first() as CreatePresentationResult.SdJwt).serialized
 }
 
 private suspend fun createSdJwtPresentation(

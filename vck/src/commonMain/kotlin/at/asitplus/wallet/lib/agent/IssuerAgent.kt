@@ -15,28 +15,14 @@ import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
-import at.asitplus.wallet.lib.data.Status
-import at.asitplus.wallet.lib.data.StatusListToken
-import at.asitplus.wallet.lib.data.VerifiableCredential
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.*
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusList
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListAggregation
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListView
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.PositiveDuration
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
-import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.DeviceKeyInfo
-import at.asitplus.wallet.lib.iso.IssuerSigned
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
-import at.asitplus.wallet.lib.iso.ValidityInfo
-import at.asitplus.wallet.lib.iso.ValueDigest
-import at.asitplus.wallet.lib.iso.ValueDigestList
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
@@ -105,7 +91,7 @@ class IssuerAgent(
 
     private suspend fun issueMdoc(
         credential: CredentialToBeIssued.Iso,
-        issuanceDate: Instant
+        issuanceDate: Instant,
     ): Issuer.IssuedCredential {
         val expirationDate = credential.expiration
         val timePeriod = timePeriodProvider.getTimePeriodFor(issuanceDate)
@@ -200,7 +186,7 @@ class IssuerAgent(
 
     private suspend fun issueVcSd(
         credential: CredentialToBeIssued.VcSd,
-        issuanceDate: Instant
+        issuanceDate: Instant,
     ): Issuer.IssuedCredential {
         val vcId = "urn:uuid:${uuid4()}"
         val expirationDate = credential.expiration
@@ -252,11 +238,10 @@ class IssuerAgent(
             JwsContentTypeConstants.SD_JWT,
             entireObject,
             JsonObject.serializer()
-        )
-            .getOrElse {
-                Napier.w("Could not wrap credential in SD-JWT", it)
-                throw RuntimeException("Signing failed", it)
-            }
+        ).getOrElse {
+            Napier.w("Could not wrap credential in SD-JWT", it)
+            throw RuntimeException("Signing failed", it)
+        }
         val vcInSdJwt = (listOf(jws.serialize()) + disclosures).joinToString("~", postfix = "~")
         Napier.i("issueVcSd: $vcInSdJwt")
         return Issuer.IssuedCredential.VcSdJwt(vcInSdJwt, credential.scheme)

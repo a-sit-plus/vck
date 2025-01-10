@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.iso.MobileSecurityObject
 
 /**
  * Intermediate class used by [at.asitplus.wallet.lib.agent.Validator.verifyDocument] when parsing an ISO document,
- * and also in [at.asitplus.wallet.lib.agent.VerifierAgent.verifyPresentation].
+ * and also in [at.asitplus.wallet.lib.agent.VerifierAgent.verifyPresentationIsoMdoc].
  */
 data class IsoDocumentParsed(
     val mso: MobileSecurityObject,

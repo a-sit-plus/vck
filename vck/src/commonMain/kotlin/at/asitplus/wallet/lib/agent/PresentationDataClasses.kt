@@ -1,9 +1,14 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.KmmResult
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.Serializable
 
 data class PresentationRequestParameters(
@@ -17,22 +22,19 @@ data class PresentationResponseParameters(
 )
 
 sealed class CreatePresentationResult {
-    /**
-     * [jws] contains a valid, serialized, Verifiable Presentation that can be parsed by [Verifier.verifyPresentation]
-     */
-    data class Signed(val jws: String) : CreatePresentationResult()
+    data class Signed(val serialized: String) : CreatePresentationResult() {
+        val jwsSigned: KmmResult<JwsSigned<VerifiablePresentationJws>> by lazy {
+            JwsSigned.deserialize(VerifiablePresentationJws.serializer(), serialized, vckJsonSerializer)
+        }
+    }
 
-    /**
-     * [sdJwt] contains a serialized SD-JWT credential with disclosures and key binding JWT appended
-     * (separated with `~` as in the specification), that can be parsed by [Verifier.verifyPresentation].
-     */
-    data class SdJwt(val sdJwt: String) : CreatePresentationResult()
+    data class SdJwt(val serialized: String) : CreatePresentationResult() {
+        val sdJwt: SdJwtSigned? by lazy { SdJwtSigned.parse(serialized) }
+    }
 
-    /**
-     * [deviceResponse] contains a valid ISO 18013 [DeviceResponse] with [Document] and [DeviceSigned] structures
-     */
-    data class DeviceResponse(val deviceResponse: at.asitplus.wallet.lib.iso.DeviceResponse) :
-        CreatePresentationResult()
+    data class DeviceResponse(
+        val deviceResponse: at.asitplus.wallet.lib.iso.DeviceResponse,
+    ) : CreatePresentationResult()
 }
 
 @Serializable

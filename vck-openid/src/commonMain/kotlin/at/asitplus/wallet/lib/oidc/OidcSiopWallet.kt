@@ -285,8 +285,8 @@ class OidcSiopWallet(
      * [OID4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A)
      */
     private fun CreatePresentationResult.toJsonPrimitive() = when (this) {
-        is CreatePresentationResult.Signed -> JsonPrimitive(jws)
-        is CreatePresentationResult.SdJwt -> JsonPrimitive(sdJwt)
+        is CreatePresentationResult.Signed -> JsonPrimitive(serialized)
+        is CreatePresentationResult.SdJwt -> JsonPrimitive(serialized)
         is CreatePresentationResult.DeviceResponse -> JsonPrimitive(
             deviceResponse.serialize().encodeToString(Base64UrlStrict)
         )

@@ -4,6 +4,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.VerifiablePresentation
@@ -92,11 +93,10 @@ class ValidatorVpTest : FreeSpec({
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
-        val vp = presentationParameters.presentationResults.firstOrNull()
-        vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
-        val result = verifier.verifyPresentation(vp.jws, challenge)
-        result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+        val vp = presentationParameters.presentationResults.first()
+            .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+        verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+            .shouldBeInstanceOf<VerifyPresentationResult.Success>()
     }
 
     "wrong structure of VC is detected" {
@@ -109,39 +109,38 @@ class ValidatorVpTest : FreeSpec({
         val vp = holder.createVcPresentation(
             holderVcSerialized,
             PresentationRequestParameters(nonce = challenge, audience = verifierId)
-        ).getOrNull()
-        vp.shouldNotBeNull()
+        ).getOrThrow()
+            .shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
-        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
-        val result = verifier.verifyPresentation(vp.jws, challenge)
-        result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-        result.vp.verifiableCredentials.shouldBeEmpty()
-        result.vp.revokedVerifiableCredentials.shouldBeEmpty()
-        result.vp.invalidVerifiableCredentials.shouldBe(holderVcSerialized)
+        verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
+            it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
+            it.vp.verifiableCredentials.shouldBeEmpty()
+            it.vp.revokedVerifiableCredentials.shouldBeEmpty()
+            it.vp.invalidVerifiableCredentials.shouldBe(holderVcSerialized)
+        }
     }
 
-    "wrong challenge in VP leads to InvalidStructure" {
+    "wrong challenge in VP leads to error" {
         val presentationParameters = holder.createPresentation(
             request = PresentationRequestParameters(nonce = "challenge", audience = verifierId),
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.presentationResults.firstOrNull()
-        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
-        val result = verifier.verifyPresentation(vp.jws, challenge)
-        result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
+            .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+        verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+            .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
     }
 
-    "wrong audience in VP leads to InvalidStructure" {
+    "wrong audience in VP leads to error" {
         val presentationParameters = holder.createPresentation(
             request = PresentationRequestParameters(nonce = challenge, audience = "keyId"),
             presentationDefinition = singularPresentationDefinition,
         ).getOrThrow()
-        val vp = presentationParameters.presentationResults.firstOrNull()
-        vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
-        val result = verifier.verifyPresentation(vp.jws, challenge)
-        result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
+        val vp = presentationParameters.presentationResults.first()
+            .shouldBeInstanceOf<CreatePresentationResult.Signed>()
+        verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
+            .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
     }
 
     "valid parsed presentation should separate revoked and valid credentials" {
@@ -150,23 +149,23 @@ class ValidatorVpTest : FreeSpec({
             presentationDefinition = singularPresentationDefinition,
         ).getOrNull()
         presentationResults.shouldNotBeNull()
-        val vp = presentationResults.presentationResults.firstOrNull()
-        vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
+        val vp = presentationResults.presentationResults.first()
+            .shouldBeInstanceOf<CreatePresentationResult.Signed>()
         holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
             .map { it.vc }
             .forEach {
                 issuerCredentialStore.setStatus(
                     it.vc.id,
-                    status = TokenStatus.Invalid,
+                    TokenStatus.Invalid,
                     FixedTimePeriodProvider.timePeriod
                 ) shouldBe true
             }
 
-        val result = verifier.verifyPresentation(vp.jws, challenge)
-        result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
-        result.vp.verifiableCredentials.shouldBeEmpty()
+        verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
+            it.shouldBeInstanceOf<VerifyPresentationResult.Success>()
+            it.vp.verifiableCredentials.shouldBeEmpty()
+        }
         holderCredentialStore.getCredentials().getOrThrow()
             .shouldHaveSize(1)
     }
@@ -189,10 +188,10 @@ class ValidatorVpTest : FreeSpec({
             JwsContentTypeConstants.JWT,
             vpSerialized,
             VerifiablePresentationJws.serializer()
-        ).getOrThrow().serialize()
+        ).getOrThrow()
 
-        verifier.verifyPresentation(vpJws, challenge)
-            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
+        verifier.verifyPresentationVcJwt(vpJws, challenge)
+            .shouldBeInstanceOf<VerifyPresentationResult.Success>()
     }
 
     "Wrong jwtId in VP is not valid" {
@@ -212,10 +211,9 @@ class ValidatorVpTest : FreeSpec({
             vpSerialized,
             VerifiablePresentationJws.serializer()
         ).getOrThrow()
-            .serialize()
 
-        verifier.verifyPresentation(vpJws, challenge)
-            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
+        verifier.verifyPresentationVcJwt(vpJws, challenge)
+            .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
     }
 
     "Wrong type in VP is not valid" {
@@ -238,9 +236,8 @@ class ValidatorVpTest : FreeSpec({
             vpSerialized,
             VerifiablePresentationJws.serializer()
         ).getOrThrow()
-            .serialize()
 
-        verifier.verifyPresentation(vpJws, challenge)
-            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
+        verifier.verifyPresentationVcJwt(vpJws, challenge)
+            .shouldBeInstanceOf<VerifyPresentationResult.ValidationError>()
     }
 })

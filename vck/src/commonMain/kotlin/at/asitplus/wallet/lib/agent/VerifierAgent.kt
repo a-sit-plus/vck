@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceResponse
@@ -28,22 +29,24 @@ class VerifierAgent(
      * that shall include the [challenge] (sent by this verifier),
      * as well as the expected [identifier] (identifying this verifier).
      */
-    override suspend fun verifyPresentation(it: String, challenge: String): Verifier.VerifyPresentationResult {
+    @Deprecated("Use specific methods instead")
+    override suspend fun verifyPresentation(it: String, challenge: String): VerifyPresentationResult {
         val input = it
         val sdJwtSigned = runCatching { SdJwtSigned.parse(input) }.getOrNull()
         if (sdJwtSigned != null) {
             return runCatching {
-                validator.verifyVpSdJwt(input, challenge, identifier)
+                validator.verifyVpSdJwt(sdJwtSigned, challenge, identifier)
             }.getOrElse {
-                Verifier.VerifyPresentationResult.InvalidStructure(input)
+                VerifyPresentationResult.ValidationError(it)
             }
         }
-        val jwsSigned = JwsSigned.deserialize<VerifiablePresentationJws>(VerifiablePresentationJws.serializer(), input, vckJsonSerializer).getOrNull()
+        val jwsSigned = JwsSigned.deserialize(VerifiablePresentationJws.serializer(), input, vckJsonSerializer)
+            .getOrNull()
         if (jwsSigned != null) {
             return runCatching {
-                validator.verifyVpJws(input, challenge, identifier)
+                validator.verifyVpJws(jwsSigned, challenge, identifier)
             }.getOrElse {
-                Verifier.VerifyPresentationResult.InvalidStructure(input)
+                VerifyPresentationResult.ValidationError(it)
             }
         }
         val document = input.decodeToByteArrayOrNull(Base16(false))
@@ -52,9 +55,9 @@ class VerifierAgent(
             val verifiedDocument = runCatching {
                 validator.verifyDocument(document, challenge)
             }.getOrElse {
-                return Verifier.VerifyPresentationResult.InvalidStructure(input)
+                return VerifyPresentationResult.ValidationError(it)
             }
-            return Verifier.VerifyPresentationResult.SuccessIso(listOf(verifiedDocument))
+            return VerifyPresentationResult.SuccessIso(listOf(verifiedDocument))
         }
         val deviceResponse = input.decodeToByteArrayOrNull(Base64UrlStrict)
             ?.let { bytes -> DeviceResponse.deserialize(bytes).getOrNull() }
@@ -62,12 +65,38 @@ class VerifierAgent(
             val result = runCatching {
                 validator.verifyDeviceResponse(deviceResponse, challenge)
             }.getOrElse {
-                return Verifier.VerifyPresentationResult.InvalidStructure(input)
+                return VerifyPresentationResult.ValidationError(it)
             }
             return result
         }
-        return Verifier.VerifyPresentationResult.InvalidStructure(input)
+        return VerifyPresentationResult.InvalidStructure(input)
             .also { Napier.w("Could not verify presentation, unknown format: $it") }
     }
 
+    override suspend fun verifyPresentationSdJwt(
+        input: SdJwtSigned,
+        challenge: String,
+    ): VerifyPresentationResult = runCatching {
+        validator.verifyVpSdJwt(input, challenge, identifier)
+    }.getOrElse {
+        VerifyPresentationResult.ValidationError(it)
+    }
+
+    override suspend fun verifyPresentationVcJwt(
+        input: JwsSigned<VerifiablePresentationJws>,
+        challenge: String,
+    ): VerifyPresentationResult = runCatching {
+        validator.verifyVpJws(input, challenge, identifier)
+    }.getOrElse {
+        VerifyPresentationResult.ValidationError(it)
+    }
+
+    override suspend fun verifyPresentationIsoMdoc(
+        input: DeviceResponse,
+        challenge: String,
+    ): VerifyPresentationResult = runCatching {
+        validator.verifyDeviceResponse(input, challenge)
+    }.getOrElse {
+        VerifyPresentationResult.ValidationError(it)
+    }
 }

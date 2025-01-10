@@ -15,21 +15,24 @@ import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
+import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -592,8 +595,8 @@ class OidcSiopVerifier(
                 val result = runCatching {
                     verifyPresentationResult(descriptor, relatedPresentation, expectedNonce)
                 }.getOrElse {
-                    return AuthnResponseResult.ValidationError("Invalid presentation format", state)
-                        .also { Napier.w("Invalid presentation format: $relatedPresentation") }
+                    Napier.w("Invalid presentation format: $relatedPresentation", it)
+                    return AuthnResponseResult.ValidationError("Invalid presentation", state)
                 }
                 result.mapToAuthnResponseResult(state)
             }
@@ -663,15 +666,28 @@ class OidcSiopVerifier(
         relatedPresentation: JsonElement,
         challenge: String,
     ) = when (descriptor.format) {
-        ClaimFormat.JWT_SD,
-        ClaimFormat.MSO_MDOC,
-        ClaimFormat.JWT_VP,
-            -> when (relatedPresentation) {
-            is JsonPrimitive -> verifier.verifyPresentation(relatedPresentation.content, challenge)
-            else -> throw IllegalArgumentException()
-        }
+        ClaimFormat.JWT_SD -> verifier.verifyPresentationSdJwt(
+            input = SdJwtSigned.parse(relatedPresentation.jsonPrimitive.content)
+                ?: throw IllegalArgumentException("relatedPresentation"),
+            challenge
+        )
 
-        else -> throw IllegalArgumentException()
+        ClaimFormat.JWT_VP -> verifier.verifyPresentationVcJwt(
+            input = JwsSigned.deserialize<VerifiablePresentationJws>(
+                VerifiablePresentationJws.serializer(),
+                relatedPresentation.jsonPrimitive.content,
+                vckJsonSerializer
+            ).getOrThrow(),
+            challenge
+        )
+
+        ClaimFormat.MSO_MDOC -> verifier.verifyPresentationIsoMdoc(
+            input = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
+                .let { DeviceResponse.deserialize(it).getOrThrow() },
+            challenge
+        )
+
+        else -> throw IllegalArgumentException("descriptor.format")
     }
 
     private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
@@ -679,7 +695,7 @@ class OidcSiopVerifier(
             AuthnResponseResult.Error("parse vp failed", state)
                 .also { Napier.w("VP error: $this") }
 
-        is Verifier.VerifyPresentationResult.NotVerified ->
+        is Verifier.VerifyPresentationResult.ValidationError ->
             AuthnResponseResult.ValidationError("vpToken", state)
                 .also { Napier.w("VP error: $this") }
 

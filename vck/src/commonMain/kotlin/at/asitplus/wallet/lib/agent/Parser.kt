@@ -37,30 +37,37 @@ class Parser(
      */
     fun parseVpJws(input: String, challenge: String, clientId: String): ParseVpResult {
         Napier.d("Parsing VP $input")
-        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(VerifiablePresentationJws.serializer(), input, vckJsonSerializer).getOrNull()
+        val jws = JwsSigned.deserialize<VerifiablePresentationJws>(
+            VerifiablePresentationJws.serializer(),
+            input,
+            vckJsonSerializer
+        ).getOrNull()
             ?: return ParseVpResult.InvalidStructure(input)
                 .also { Napier.w("Could not parse JWS: $input") }
-        return parseVpJws(input, jws.payload, challenge, clientId)
+        return parseVpJws(jws.payload, challenge, clientId)
     }
 
     fun parseVpJws(
-        it: String,
         vpJws: VerifiablePresentationJws,
         challenge: String,
         clientId: String,
     ): ParseVpResult {
-        if (vpJws.challenge != challenge)
-            return ParseVpResult.InvalidStructure(it)
-                .also { Napier.w("nonce invalid") }
-        if (clientId != vpJws.audience)
-            return ParseVpResult.InvalidStructure(it)
-                .also { Napier.w("aud invalid: ${vpJws.audience}, expected $clientId}") }
-        if (vpJws.jwtId != vpJws.vp.id)
-            return ParseVpResult.InvalidStructure(it)
-                .also { Napier.w("jti invalid: ${vpJws.jwtId}, expected ${vpJws.vp.id}") }
-        if (vpJws.vp.type != VERIFIABLE_PRESENTATION)
-            return ParseVpResult.InvalidStructure(it)
-                .also { Napier.w("type invalid: ${vpJws.vp.type}, expected $VERIFIABLE_PRESENTATION")}
+        if (vpJws.challenge != challenge) {
+            Napier.w("nonce invalid")
+            return ParseVpResult.ValidationError("nonce invalid")
+        }
+        if (clientId != vpJws.audience) {
+            Napier.w("aud invalid: ${vpJws.audience}, expected $clientId}")
+            return ParseVpResult.ValidationError("aud invalid: ${vpJws.audience}")
+        }
+        if (vpJws.jwtId != vpJws.vp.id) {
+            Napier.w("jti invalid: ${vpJws.jwtId}, expected ${vpJws.vp.id}")
+            return ParseVpResult.ValidationError("jti invalid: ${vpJws.jwtId}")
+        }
+        if (vpJws.vp.type != VERIFIABLE_PRESENTATION) {
+            Napier.w("type invalid: ${vpJws.vp.type}, expected $VERIFIABLE_PRESENTATION")
+            return ParseVpResult.ValidationError("type invalid: ${vpJws.vp.type}")
+        }
         Napier.d("VP is valid")
         return ParseVpResult.Success(vpJws)
     }
@@ -106,17 +113,17 @@ class Parser(
     }
 
     /**
-     * Parses a Verifiable Credential in SD-JWT format, and verifies its time validity.
-     *
-     * @param it the JWS enclosing the SD-JWT, in compact representation
+     * Verifies the time validity of a [VerifiableCredentialSdJwt]
      */
-    fun parseSdJwt(it: String, sdJwt: VerifiableCredentialSdJwt): ParseVcResult {
-        if (sdJwt.expiration != null && sdJwt.expiration < (clock.now() - timeLeeway))
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.w("exp invalid: ${sdJwt.expiration}, now is ${clock.now()}") }
-        if (sdJwt.notBefore != null && sdJwt.notBefore > (clock.now() + timeLeeway))
-            return ParseVcResult.InvalidStructure(it)
-                .also { Napier.w("nbf invalid: ${sdJwt.notBefore}, now is ${clock.now()}") }
+    fun verifySdJwtValidity(sdJwt: VerifiableCredentialSdJwt): ParseVcResult {
+        if (sdJwt.expiration != null && sdJwt.expiration < (clock.now() - timeLeeway)) {
+            Napier.w("exp invalid: ${sdJwt.expiration}, now is ${clock.now()}")
+            return ParseVcResult.ValidationError("exp invalid: ${sdJwt.expiration}, now is ${clock.now()}")
+        }
+        if (sdJwt.notBefore != null && sdJwt.notBefore > (clock.now() + timeLeeway)) {
+            Napier.w("nbf invalid: ${sdJwt.notBefore}, now is ${clock.now()}")
+            return ParseVcResult.ValidationError("nbf invalid: ${sdJwt.notBefore}, now is ${clock.now()}")
+        }
         Napier.d("SD-JWT is valid")
         return ParseVcResult.SuccessSdJwt(sdJwt)
     }
@@ -125,11 +132,17 @@ class Parser(
         data class Success(val jws: VerifiableCredentialJws) : ParseVcResult()
         data class SuccessSdJwt(val sdJwt: VerifiableCredentialSdJwt) : ParseVcResult()
         data class InvalidStructure(val input: String) : ParseVcResult()
+        data class ValidationError(val cause: Throwable) : ParseVcResult() {
+            constructor(message: String) : this(Throwable(message))
+        }
     }
 
     sealed class ParseVpResult {
         data class Success(val jws: VerifiablePresentationJws) : ParseVpResult()
         data class InvalidStructure(val input: String) : ParseVpResult()
+        data class ValidationError(val cause: Throwable) : ParseVpResult() {
+            constructor(message: String) : this(Throwable(message))
+        }
     }
 }
 
