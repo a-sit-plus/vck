@@ -162,7 +162,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-        val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
+        val result = verifierSiop.validateAuthnResponse(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
 
         val document = result.documents.first()

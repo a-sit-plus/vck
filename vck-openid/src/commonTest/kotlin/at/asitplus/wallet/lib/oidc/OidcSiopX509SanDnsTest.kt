@@ -8,13 +8,7 @@ import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
@@ -89,7 +83,7 @@ class OidcSiopX509SanDnsTest : FreeSpec({
         val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-        val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
+        val result = verifierSiop.validateAuthnResponse(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
         result.reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
 

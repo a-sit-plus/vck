@@ -237,10 +237,8 @@ class OpenId4VpWalletTest : FunSpec() {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val queryParameters: Map<String, String> =
                         request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
-                    val authnRequest: AuthenticationResponseParameters =
-                        if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery()
-                        else requestBody.decodeFromPostBody()
-                    val result = verifier.validateAuthnResponse(authnRequest)
+                    val result = if (requestBody.isNotEmpty()) verifier.validateAuthnResponse(requestBody)
+                    else verifier.validateAuthnResponse(queryParameters)
                     validate(result)
                     respondOk()
                 }

@@ -60,6 +60,7 @@ class OidcSiopVerifier(
     private val stateToResponseTypeStore: MapStore<String, String> = DefaultMapStore(),
 ) {
 
+    private val responseParser = ResponseParser(jwsService, verifierJwsService)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
 
     sealed class ClientIdScheme(
@@ -524,54 +525,48 @@ class OidcSiopVerifier(
      * Validates the OIDC Authentication Response from the Wallet, where [content] are the HTTP POST encoded
      * [AuthenticationResponseParameters], e.g. `id_token=...&vp_token=...`
      */
+    @Deprecated("Use validateAuthnResponse", ReplaceWith("validateAuthnResponse"))
     suspend fun validateAuthnResponseFromPost(content: String): AuthnResponseResult {
-        val params: AuthenticationResponseParameters = content.decodeFromPostBody()
-            ?: return AuthnResponseResult.Error("content", null)
-                .also { Napier.w("Could not parse authentication response: $it") }
-        return validateAuthnResponse(params)
+        return validateAuthnResponse(content)
     }
 
     /**
-     * Validates the OIDC Authentication Response from the Wallet, where [url] is the whole URL, containing the
-     * [AuthenticationResponseParameters] as the fragment, e.g. `https://example.com#id_token=...`
+     * Validates an Authentication Response from the Wallet, where [input] is a map of POST parameters received.
      */
-    suspend fun validateAuthnResponse(url: String): AuthnResponseResult {
-        val params = kotlin.runCatching {
-            val parsedUrl = Url(url)
-            if (parsedUrl.fragment.isNotEmpty())
-                parsedUrl.fragment.decodeFromPostBody<AuthenticationResponseParameters>()
-            else
-                parsedUrl.encodedQuery.decodeFromUrlQuery<AuthenticationResponseParameters>()
-        }.getOrNull()
-            ?: return AuthnResponseResult.Error("url not parsable", null)
-                .also { Napier.w("Could not parse authentication response: $url") }
-        return validateAuthnResponse(params)
+    suspend fun validateAuthnResponse(input: Map<String, String>): AuthnResponseResult {
+        val paramsFrom = runCatching {
+            ResponseParametersFrom.Post(input.decode<AuthenticationResponseParameters>())
+        }.getOrElse {
+            Napier.w("Could not parse authentication response: $input", it)
+            return AuthnResponseResult.Error("Can't parse input", null)
+        }
+        return validateAuthnResponse(paramsFrom)
+    }
+
+    /**
+     * Validates an Authentication Response from the Wallet, where [input] is either:
+     * - a URL, containing parameters in the fragment, e.g. `https://example.com#id_token=...`
+     * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
+     * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
+     */
+    suspend fun validateAuthnResponse(input: String): AuthnResponseResult {
+        val paramsFrom = runCatching {
+            responseParser.parseAuthnResponse(input)
+        }.getOrElse {
+            Napier.w("Could not parse authentication response: $input", it)
+            return AuthnResponseResult.Error("Can't parse input", null)
+        }
+        return validateAuthnResponse(paramsFrom)
     }
 
     /**
      * Validates [AuthenticationResponseParameters] from the Wallet
      */
-    suspend fun validateAuthnResponse(params: AuthenticationResponseParameters): AuthnResponseResult {
+    suspend fun validateAuthnResponse(input: ResponseParametersFrom): AuthnResponseResult {
+        val params = input.parameters
         val state = params.state
             ?: return AuthnResponseResult.ValidationError("state", params.state)
                 .also { Napier.w("Invalid state: ${params.state}") }
-
-        val encodedResponse = params.response
-        if (encodedResponse != null) {
-            encodedResponse.fromJws()?.let { jarm ->
-                if (!verifierJwsService.verifyJwsObject(jarm)) {
-                    Napier.w("JWS of response not verified: $encodedResponse")
-                    return AuthnResponseResult.ValidationError("response", state)
-                }
-                return validateAuthnResponse(jarm.payload)
-            }
-            encodedResponse.fromJwe()?.let { jarm ->
-                return validateAuthnResponse(jarm.payload)
-            }
-
-            Napier.w("Got encoded response, but could not deserialize it: $encodedResponse")
-            return AuthnResponseResult.ValidationError("response", state)
-        }
 
         val responseType = stateToResponseTypeStore.get(state)
             ?: return AuthnResponseResult.ValidationError("state", state)
@@ -619,15 +614,6 @@ class OidcSiopVerifier(
 
         return AuthnResponseResult.Error("Neither id_token nor vp_token", state)
     }
-
-    private suspend fun String.fromJwe(): JweDecrypted<AuthenticationResponseParameters>? =
-        JweEncrypted.deserialize(this).getOrNull()?.let {
-            jwsService.decryptJweObject(it, this, AuthenticationResponseParameters.serializer()).getOrNull()
-        }
-
-    private fun String.fromJws(): JwsSigned<AuthenticationResponseParameters>? =
-        JwsSigned.deserialize(AuthenticationResponseParameters.serializer(), this, vckJsonSerializer)
-            .getOrNull()
 
     private fun List<AuthnResponseResult>.firstOrList(): AuthnResponseResult =
         if (size == 1) this[0]

@@ -1,12 +1,7 @@
 package at.asitplus.wallet.lib.oidc
 
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
-import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -100,7 +95,7 @@ class OidcSiopProtocolTest : FreeSpec({
         )
         val requestOptions = RequestOptions(
             credentials = setOf(OidcSiopVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
-            responseType = "$ID_TOKEN $VP_TOKEN"
+            responseType = ID_TOKEN
         )
         val authnRequest = verifierSiop.createAuthnRequestUrl(walletUrl, requestOptions)
 
@@ -175,7 +170,7 @@ class OidcSiopProtocolTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         authnResponse.url.shouldBe(clientId)
 
-        val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
+        val result = verifierSiop.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
@@ -198,7 +193,7 @@ class OidcSiopProtocolTest : FreeSpec({
         val jwsObject = JwsSigned.deserialize<AuthenticationResponseParameters>(AuthenticationResponseParameters.serializer(), jarmResponse).getOrThrow()
         DefaultVerifierJwsService().verifyJwsObject(jwsObject).shouldBeTrue()
 
-        val result = verifierSiop.validateAuthnResponseFromPost(authnResponse.params.formUrlEncode())
+        val result = verifierSiop.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
@@ -241,9 +236,7 @@ class OidcSiopProtocolTest : FreeSpec({
         ).getOrThrow().params
         val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode()
 
-        val parsedAuthnResponse: AuthenticationResponseParameters =
-            authnResponseParams.decodeFromPostBody()
-        val result = verifierSiop.validateAuthnResponse(parsedAuthnResponse)
+        val result = verifierSiop.validateAuthnResponse(authnResponseParams)
             .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }

@@ -14,7 +14,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
-import at.asitplus.wallet.lib.oidvci.decode
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -184,7 +183,7 @@ class OpenId4VpInteropTest : FreeSpec({
             }
         }
 
-        verifierSiop.validateAuthnResponse(params = response.params.decode())
+        verifierSiop.validateAuthnResponse(response.params)
             .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
     }
 
