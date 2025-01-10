@@ -53,6 +53,7 @@ class VerifiablePresentationFactory(
         credential: SubjectCredentialStore.StoreEntry.Iso,
         requestedClaims: Collection<NormalizedJsonPath>,
     ): CreatePresentationResult.DeviceResponse {
+        // TODO Here create the session transcript!
         val deviceSignature = coseService.createSignedCose(
             payload = request.nonce.encodeToByteArray(),
             serializer = ByteArraySerializer(),
