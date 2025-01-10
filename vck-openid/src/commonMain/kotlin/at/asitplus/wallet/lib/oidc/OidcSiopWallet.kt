@@ -154,12 +154,10 @@ class OidcSiopWallet(
      */
     suspend fun createAuthnResponseParams(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
-    ): KmmResult<AuthenticationResponse> = startAuthorizationResponsePreparation(params).map {
-        finalizeAuthorizationResponseParameters(
-            request = params,
-            preparationState = it,
-        ).getOrThrow()
-    }
+    ): KmmResult<AuthenticationResponse> =
+        startAuthorizationResponsePreparation(params).map {
+            finalizeAuthorizationResponseParameters(request = params, preparationState = it).getOrThrow()
+        }
 
     /**
      * Starts the authorization response building process from the RP's authentication request in [input]
@@ -194,17 +192,10 @@ class OidcSiopWallet(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
-    ): KmmResult<AuthenticationResponseResult> = finalizeAuthorizationResponseParameters(
-        request,
-        preparationState,
-        inputDescriptorSubmissions,
-    ).map { responseParameters ->
-        AuthenticationResponseFactory(jwsService).createAuthenticationResponse(
-            request,
-            responseParameters,
-        )
-    }
-
+    ): KmmResult<AuthenticationResponseResult> =
+        finalizeAuthorizationResponseParameters(request, preparationState, inputDescriptorSubmissions).map {
+            AuthenticationResponseFactory(jwsService).createAuthenticationResponse(request, it)
+        }
 
     /**
      * Finalize the authorization response parameters
@@ -237,6 +228,10 @@ class OidcSiopWallet(
         }
         val vpToken = resultContainer?.presentationResults?.map { it.toJsonPrimitive() }?.singleOrArray()
         val presentationSubmission = resultContainer?.presentationSubmission
+        val mdocGeneratedNonce = resultContainer?.presentationResults
+            ?.filterIsInstance<CreatePresentationResult.DeviceResponse>()
+            ?.singleOrNull()
+            ?.mdocGeneratedNonce
         val parameters = AuthenticationResponseParameters(
             state = request.parameters.state,
             idToken = idToken,
@@ -244,7 +239,7 @@ class OidcSiopWallet(
             presentationSubmission = presentationSubmission,
         )
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
-        AuthenticationResponse(parameters, clientMetadata, jsonWebKeys)
+        AuthenticationResponse(parameters, clientMetadata, jsonWebKeys, mdocGeneratedNonce)
     }
 
     @Throws(OAuth2Exception::class)

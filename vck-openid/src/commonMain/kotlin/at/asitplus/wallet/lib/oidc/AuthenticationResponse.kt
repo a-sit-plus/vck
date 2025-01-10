@@ -13,4 +13,9 @@ data class AuthenticationResponse(
     val params: AuthenticationResponseParameters,
     val clientMetadata: RelyingPartyMetadata?,
     val jsonWebKeys: Collection<JsonWebKey>?,
+    /**
+     * If this is set (acc. to ISO/IEC 18013-7:2024), it needs to be set as
+     * [at.asitplus.signum.indispensable.josef.JweHeader.agreementPartyUInfo] when encrypting the response.
+     */
+    val mdocGeneratedNonce: String? = null,
 )

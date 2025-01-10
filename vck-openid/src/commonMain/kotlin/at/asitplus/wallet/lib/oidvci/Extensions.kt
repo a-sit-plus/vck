@@ -127,6 +127,10 @@ fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
     )
 }
 
-class OAuth2Exception(val error: String, val errorDescription: String? = null) : Throwable(error) {
+class OAuth2Exception : Throwable {
+    constructor(error: String) : super(error)
+    constructor(error: String, errorDescription: String) : super("$error: $errorDescription")
+    constructor(error: String, cause: Throwable) : super(error, cause)
+    constructor(error: String, errorDescription: String, cause: Throwable) : super("$error: $errorDescription", cause)
 
 }
