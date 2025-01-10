@@ -28,7 +28,7 @@ class VerifiablePresentationFactory(
         audienceId: String,
         credential: SubjectCredentialStore.StoreEntry,
         disclosedAttributes: Collection<NormalizedJsonPath>,
-    ): KmmResult<Holder.CreatePresentationResult> = runCatching {
+    ): KmmResult<CreatePresentationResult> = runCatching {
         when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> createVcPresentation(
                 challenge = challenge,
@@ -55,7 +55,7 @@ class VerifiablePresentationFactory(
         challenge: String,
         credential: SubjectCredentialStore.StoreEntry.Iso,
         requestedClaims: Collection<NormalizedJsonPath>
-    ): Holder.CreatePresentationResult.DeviceResponse {
+    ): CreatePresentationResult.DeviceResponse {
         val deviceSignature = coseService.createSignedCose(
             payload = challenge.encodeToByteArray(),
             serializer = ByteArraySerializer(),
@@ -101,7 +101,7 @@ class VerifiablePresentationFactory(
                     ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
             }
         }
-        return Holder.CreatePresentationResult.DeviceResponse(
+        return CreatePresentationResult.DeviceResponse(
             DeviceResponse(
                 version = "1.0",
                 documents = arrayOf(
@@ -129,7 +129,7 @@ class VerifiablePresentationFactory(
         challenge: String,
         validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
         requestedClaims: Collection<NormalizedJsonPath>,
-    ): Holder.CreatePresentationResult.SdJwt {
+    ): CreatePresentationResult.SdJwt {
         val filteredDisclosures = requestedClaims
             .flatMap { it.segments }
             .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
@@ -145,7 +145,7 @@ class VerifiablePresentationFactory(
             throw PresentationException(it)
         }
         val sdJwt = SdJwtSigned.serializePresentation(issuerSignedJws, filteredDisclosures, keyBinding)
-        return Holder.CreatePresentationResult.SdJwt(sdJwt)
+        return CreatePresentationResult.SdJwt(sdJwt)
     }
 
     private suspend fun createKeyBindingJws(
@@ -188,7 +188,7 @@ class VerifiablePresentationFactory(
         validCredentials: List<String>,
         challenge: String,
         audienceId: String,
-    ): Holder.CreatePresentationResult = Holder.CreatePresentationResult.Signed(
+    ) = CreatePresentationResult.Signed(
         jwsService.createSignedJwt(
             type = JwsContentTypeConstants.JWT,
             payload = VerifiablePresentation(validCredentials)

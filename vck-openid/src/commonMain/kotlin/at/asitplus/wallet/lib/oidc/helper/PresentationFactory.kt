@@ -17,6 +17,7 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.CredentialSubmission
 import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters
 import at.asitplus.wallet.lib.agent.toDefaultSubmission
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.jws.JwsService
@@ -35,7 +36,7 @@ internal class PresentationFactory(
         presentationDefinition: PresentationDefinition,
         clientMetadata: RelyingPartyMetadata?,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
-    ): KmmResult<Holder.PresentationResponseParameters> = catching {
+    ): KmmResult<PresentationResponseParameters> = catching {
         request.parameters.verifyResponseType()
         val nonce = request.parameters.nonce ?: run {
             Napier.w("nonce is null in ${request.parameters}")
@@ -67,7 +68,6 @@ internal class PresentationFactory(
             }
         }
     }
-
 
     suspend fun createSignedIdToken(
         clock: Clock,
@@ -160,7 +160,7 @@ internal class PresentationFactory(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun Holder.PresentationResponseParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
+    private fun PresentationResponseParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
         presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
             if (supportedFormats.isMissingFormatSupport(descriptor.format)) {
                 Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
@@ -170,15 +170,9 @@ internal class PresentationFactory(
 
     private fun FormatHolder.isMissingFormatSupport(claimFormat: ClaimFormat) =
         when (claimFormat) {
-            ClaimFormat.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm) }
-                ?: false
-
-            ClaimFormat.JWT_SD -> jwtSd?.algorithms?.let { !it.contains(jwsService.algorithm) }
-                ?: false
-
-            ClaimFormat.MSO_MDOC -> msoMdoc?.algorithms?.let { !it.contains(jwsService.algorithm) }
-                ?: false
-
+            ClaimFormat.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm) } ?: false
+            ClaimFormat.JWT_SD -> jwtSd?.algorithms?.let { !it.contains(jwsService.algorithm) } ?: false
+            ClaimFormat.MSO_MDOC -> msoMdoc?.algorithms?.let { !it.contains(jwsService.algorithm) } ?: false
             else -> false
         }
 }

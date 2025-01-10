@@ -141,7 +141,7 @@ class HolderAgent(
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
-    ): KmmResult<Holder.PresentationResponseParameters> = runCatching {
+    ): KmmResult<PresentationResponseParameters> = runCatching {
         val submittedCredentials = matchInputDescriptorsAgainstCredentialStore(
             inputDescriptors = presentationDefinition.inputDescriptors,
             fallbackFormatHolder = fallbackFormatHolder,
@@ -175,7 +175,7 @@ class HolderAgent(
         audienceId: String,
         presentationDefinitionId: String?,
         presentationSubmissionSelection: Map<String, CredentialSubmission>,
-    ): KmmResult<Holder.PresentationResponseParameters> = runCatching {
+    ): KmmResult<PresentationResponseParameters> = runCatching {
         val submissionList = presentationSubmissionSelection.toList()
         val presentationSubmission = PresentationSubmission.fromMatches(
             presentationId = presentationDefinitionId,
@@ -193,7 +193,7 @@ class HolderAgent(
             ).getOrThrow()
         }
 
-        Holder.PresentationResponseParameters(
+        PresentationResponseParameters(
             presentationSubmission = presentationSubmission,
             presentationResults = verifiablePresentations,
         )
@@ -203,7 +203,7 @@ class HolderAgent(
         validCredentials: List<String>,
         challenge: String,
         audienceId: String,
-    ): KmmResult<Holder.CreatePresentationResult> = runCatching {
+    ): KmmResult<CreatePresentationResult> = runCatching {
         verifiablePresentationFactory.createVcPresentation(
             validCredentials = validCredentials,
             challenge = challenge,

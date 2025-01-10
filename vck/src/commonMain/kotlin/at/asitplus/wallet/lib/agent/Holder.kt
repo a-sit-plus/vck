@@ -7,15 +7,6 @@ import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.iso.IssuerSigned
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class CredentialSubmission(
-    val credential: SubjectCredentialStore.StoreEntry,
-    val disclosedAttributes: Collection<NormalizedJsonPath>,
-)
-
-typealias InputDescriptorMatches = Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>
 
 /**
  * Summarizes operations for a Holder in the sense of the [W3C VC Data Model](https://w3c.github.io/vc-data-model/).
@@ -82,11 +73,6 @@ interface Holder {
             storeEntry = storeEntry, status = status
         )
     }
-
-    data class PresentationResponseParameters(
-        val presentationSubmission: PresentationSubmission,
-        val presentationResults: List<CreatePresentationResult>
-    )
 
     /**
      * Creates [PresentationResponseParameters] (that is a list of [CreatePresentationResult] and a
@@ -159,48 +145,5 @@ interface Holder {
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
     ): KmmResult<Map<ConstraintField, NodeList>>
 
-    sealed class CreatePresentationResult {
-        /**
-         * [jws] contains a valid, serialized, Verifiable Presentation that can be parsed by [Verifier.verifyPresentation]
-         */
-        data class Signed(val jws: String) : CreatePresentationResult()
-
-        /**
-         * [sdJwt] contains a serialized SD-JWT credential with disclosures and key binding JWT appended
-         * (separated with `~` as in the specification), that can be parsed by [Verifier.verifyPresentation].
-         */
-        data class SdJwt(val sdJwt: String) : CreatePresentationResult()
-
-        /**
-         * [deviceResponse] contains a valid ISO 18013 [DeviceResponse] with [Document] and [DeviceSigned] structures
-         */
-        data class DeviceResponse(val deviceResponse: at.asitplus.wallet.lib.iso.DeviceResponse) :
-            CreatePresentationResult()
-    }
-
 }
 
-fun Map<String, Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>>.toDefaultSubmission() =
-    mapNotNull { descriptorCredentialMatches ->
-        descriptorCredentialMatches.value.entries.firstNotNullOfOrNull { credentialConstraintFieldMatches ->
-            CredentialSubmission(
-                credential = credentialConstraintFieldMatches.key,
-                disclosedAttributes = credentialConstraintFieldMatches.value.values.mapNotNull {
-                    it.firstOrNull()?.normalizedJsonPath
-                },
-            )
-        }?.let {
-            descriptorCredentialMatches.key to it
-        }
-    }.toMap()
-
-
-/**
- * Implementations should return true, when the credential attribute may be disclosed to the verifier.
- */
-typealias PathAuthorizationValidator = (credential: SubjectCredentialStore.StoreEntry, attributePath: NormalizedJsonPath) -> Boolean
-
-open class PresentationException : Exception {
-    constructor(message: String) : super(message)
-    constructor(throwable: Throwable) : super(throwable)
-}

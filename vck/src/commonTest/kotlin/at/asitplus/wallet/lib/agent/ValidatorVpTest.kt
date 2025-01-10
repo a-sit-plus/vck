@@ -95,7 +95,7 @@ class ValidatorVpTest : FreeSpec({
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
+        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
         val result = verifier.verifyPresentation(vp.jws, challenge)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
     }
@@ -110,7 +110,7 @@ class ValidatorVpTest : FreeSpec({
         val vp = holder.createVcPresentation(holderVcSerialized, challenge, verifierId).getOrNull()
         vp.shouldNotBeNull()
 
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
+        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
         val result = verifier.verifyPresentation(vp.jws, challenge)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
         result.vp.verifiableCredentials.shouldBeEmpty()
@@ -126,7 +126,7 @@ class ValidatorVpTest : FreeSpec({
         ).getOrNull()
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.presentationResults.firstOrNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
+        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
         val result = verifier.verifyPresentation(vp.jws, challenge)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
     }
@@ -139,7 +139,7 @@ class ValidatorVpTest : FreeSpec({
         ).getOrThrow()
         val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
+        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
         val result = verifier.verifyPresentation(vp.jws, challenge)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
     }
@@ -153,7 +153,7 @@ class ValidatorVpTest : FreeSpec({
         presentationResults.shouldNotBeNull()
         val vp = presentationResults.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
+        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
         holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.Vc>()
             .map { it.vc }

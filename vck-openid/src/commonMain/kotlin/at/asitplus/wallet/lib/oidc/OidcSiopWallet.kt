@@ -133,7 +133,10 @@ class OidcSiopWallet(
      * [AuthenticationResponseResult].
      */
     suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
-        catching { requestParser.parseRequestParameters(input).getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters> }
+        catching {
+            requestParser.parseRequestParameters(input)
+                .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
+        }
 
     /**
      * Pass in the deserialized [AuthenticationRequestParameters], which were either encoded as query params,
@@ -281,11 +284,12 @@ class OidcSiopWallet(
      * Source for logic:  Appendix A. Credential Format Profiles in
      * [OID4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A)
      */
-    private fun Holder.CreatePresentationResult.toJsonPrimitive() = when (this) {
-        is Holder.CreatePresentationResult.Signed -> JsonPrimitive(jws)
-        is Holder.CreatePresentationResult.SdJwt -> JsonPrimitive(sdJwt)
-        is Holder.CreatePresentationResult.DeviceResponse ->
-            JsonPrimitive(deviceResponse.serialize().encodeToString(Base64UrlStrict))
+    private fun CreatePresentationResult.toJsonPrimitive() = when (this) {
+        is CreatePresentationResult.Signed -> JsonPrimitive(jws)
+        is CreatePresentationResult.SdJwt -> JsonPrimitive(sdJwt)
+        is CreatePresentationResult.DeviceResponse -> JsonPrimitive(
+            deviceResponse.serialize().encodeToString(Base64UrlStrict)
+        )
     }
 
     private fun List<JsonPrimitive>.singleOrArray() = if (size == 1) {

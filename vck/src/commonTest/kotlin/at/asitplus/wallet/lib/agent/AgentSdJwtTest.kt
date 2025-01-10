@@ -94,7 +94,7 @@ class AgentSdJwtTest : FreeSpec({
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
-            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
@@ -129,7 +129,7 @@ class AgentSdJwtTest : FreeSpec({
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
-            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
         // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
         val freshKbJwt = createFreshSdJwtKeyBinding(challenge, verifierId)
         val malformedVpSdJwt = vp.sdJwt.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
@@ -147,7 +147,7 @@ class AgentSdJwtTest : FreeSpec({
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
-            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
         verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
@@ -161,7 +161,7 @@ class AgentSdJwtTest : FreeSpec({
         ).getOrThrow()
 
         val vp = presentationParameters.presentationResults.firstOrNull()
-            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
         val listOfJwtId = holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
@@ -207,7 +207,7 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
         ),
     ).getOrThrow()
     val sdJwt =
-        presentationResult.presentationResults.first() as Holder.CreatePresentationResult.SdJwt
+        presentationResult.presentationResults.first() as CreatePresentationResult.SdJwt
     return sdJwt.sdJwt
 }
 
@@ -217,7 +217,7 @@ private suspend fun createSdJwtPresentation(
     challenge: String,
     validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
     claimName: String,
-): Holder.CreatePresentationResult.SdJwt {
+): CreatePresentationResult.SdJwt {
     val filteredDisclosures = validSdJwtCredential.disclosures
         .filter { it.value!!.claimName == claimName }.keys
     val issuerJwtPlusDisclosures =
@@ -233,7 +233,7 @@ private suspend fun createSdJwtPresentation(
         throw PresentationException(it)
     }
     val sdJwt = SdJwtSigned.serializePresentation(jwsFromIssuer, filteredDisclosures, keyBinding)
-    return Holder.CreatePresentationResult.SdJwt(sdJwt)
+    return CreatePresentationResult.SdJwt(sdJwt)
 }
 
 private suspend fun createKeyBindingJws(

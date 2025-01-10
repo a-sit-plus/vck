@@ -91,7 +91,7 @@ class AgentTest : FreeSpec({
         ).getOrThrow()
         val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
+        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
         val verified = verifier.verifyPresentation(vp.jws, challenge)
         verified.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
     }
@@ -114,7 +114,7 @@ class AgentTest : FreeSpec({
         ).getOrThrow()
         val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
+        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
         val result = verifier.verifyPresentation(vp.jws, challenge)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.InvalidStructure>()
     }
@@ -260,7 +260,7 @@ class AgentTest : FreeSpec({
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
+        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
         val result = verifier.verifyPresentation(vp.jws, challenge)
         result.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
@@ -285,7 +285,7 @@ class AgentTest : FreeSpec({
         presentationParameters.shouldNotBeNull()
         val vp = presentationParameters.presentationResults.firstOrNull()
         vp.shouldNotBeNull()
-        vp.shouldBeInstanceOf<Holder.CreatePresentationResult.Signed>()
+        vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
         val credentialsToRevoke = issuer.issueCredential(
             DummyCredentialDataProvider.getCredential(

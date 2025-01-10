@@ -55,7 +55,7 @@ class AgentComplexSdJwtTest : FreeSpec({
         )
 
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
-            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
@@ -84,7 +84,7 @@ class AgentComplexSdJwtTest : FreeSpec({
         )
 
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
-            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
@@ -114,7 +114,7 @@ class AgentComplexSdJwtTest : FreeSpec({
         )
 
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
-            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
@@ -141,7 +141,7 @@ class AgentComplexSdJwtTest : FreeSpec({
         )
 
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
-            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()

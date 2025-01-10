@@ -35,6 +35,8 @@ Release 5.3.0:
 - OpenID4VP for mdocs:
   - Implement device response including session transcript and handover structure acc. to ISO/IEC 18013-7 Annex B for mDoc responses
   - `CoseService` adds method `createSignedCoseWithDetachedPayload` to not serialize the payload in the `CoseSigned` structure
+  - Move `at.asitplus.wallet.lib.agent.Holder.PresentationResponseParameters` to `at.asitplus.wallet.lib.agent.PresentationResponseParameters`
+  - Move `at.asitplus.wallet.lib.agent.Holder.CreatePresentationResult` to `at.asitplus.wallet.lib.agent.CreatePresentationResult`
 
 Release 5.2.2:
  - Remote qualified electronic signatures:
