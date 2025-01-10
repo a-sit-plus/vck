@@ -31,7 +31,10 @@ Release 5.3.0:
 - `VerifiableCredential`: Change `credentialStatus` to `status` and using new status mechanism
 - `VerifiableCredentialSdJwt`: Change `credentialStatus` to use new status mechanism
 - `MobileSecurityObject`: Add status mechanism
-- `iosMain/DefaultZlibService`
+- `iosMain/DefaultZlibService`: Verify compression method was deflate when inflating
+- OpenID4VP for mdocs:
+  - Implement device response including session transcript and handover structure acc. to ISO/IEC 18013-7 Annex B for mDoc responses
+  - `CoseService` adds method `createSignedCoseWithDetachedPayload` to not serialize the payload in the `CoseSigned` structure
 
 Release 5.2.2:
  - Remote qualified electronic signatures:
