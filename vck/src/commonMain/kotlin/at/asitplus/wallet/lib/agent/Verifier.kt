@@ -49,6 +49,12 @@ interface Verifier {
     suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         challenge: String,
+        /** may specify the received nonce from the mDoc holder to verify the session transcript */
+        mdocGeneratedNonce: String? = null,
+        /** optional `client_id` from the authn request, to verify the session transcript */
+        clientId: String? = null,
+        /** optional `response_uri` from the authn request, to verify the session transcript */
+        responseUrl: String? = null,
     ): VerifyPresentationResult
 
     sealed class VerifyPresentationResult {

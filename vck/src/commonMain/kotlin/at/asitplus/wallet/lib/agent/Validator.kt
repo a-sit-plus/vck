@@ -257,6 +257,9 @@ class Validator(
     fun verifyDeviceResponse(
         deviceResponse: DeviceResponse,
         challenge: String,
+        mdocGeneratedNonce: String? = null,
+        clientId: String? = null,
+        responseUrl: String? = null,
     ): VerifyPresentationResult {
         if (deviceResponse.status != 0U) {
             Napier.w("Status invalid: ${deviceResponse.status}")
@@ -267,7 +270,9 @@ class Validator(
             throw IllegalArgumentException("documents")
         }
         return VerifyPresentationResult.SuccessIso(
-            documents = deviceResponse.documents.map { verifyDocument(it, challenge) }
+            documents = deviceResponse.documents.map {
+                verifyDocument(it, challenge, mdocGeneratedNonce, clientId, responseUrl)
+            }
         )
     }
 
@@ -275,7 +280,13 @@ class Validator(
      * Validates an ISO document, equivalent of a Verifiable Presentation
      */
     @Throws(IllegalArgumentException::class)
-    fun verifyDocument(doc: Document, challenge: String): IsoDocumentParsed {
+    fun verifyDocument(
+        doc: Document,
+        challenge: String,
+        mdocGeneratedNonce: String? = null,
+        clientId: String? = null,
+        responseUrl: String? = null,
+    ): IsoDocumentParsed {
         if (doc.errors != null) {
             Napier.w("Document has errors: ${doc.errors}")
             throw IllegalArgumentException("errors")
@@ -321,9 +332,24 @@ class Validator(
             throw IllegalArgumentException("deviceSignature")
         }
 
-        if (verifierCoseService.verifyCose(deviceSignature, walletKey).isFailure) {
-            Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}")
-            throw IllegalArgumentException("deviceSignature")
+        if (mdocGeneratedNonce != null && clientId != null && responseUrl != null) {
+            val deviceAuthentication =
+                doc.calcDeviceAuthentication(challenge, mdocGeneratedNonce, clientId, responseUrl)
+            Napier.d("Device authentication is ${deviceAuthentication.encodeToString(Base16())}")
+            if (verifierCoseService.verifyCose(
+                    deviceSignature,
+                    walletKey,
+                    detachedPayload = deviceAuthentication
+                ).isFailure
+            ) {
+                Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}")
+                throw IllegalArgumentException("deviceSignature")
+            }
+        } else {
+            if (verifierCoseService.verifyCose(deviceSignature, walletKey).isFailure) {
+                Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}")
+                throw IllegalArgumentException("deviceSignature")
+            }
         }
 
         val deviceSignaturePayload = deviceSignature.payload ?: run {
@@ -347,6 +373,38 @@ class Validator(
             }
         }
         return IsoDocumentParsed(mso = mso, validItems = validItems, invalidItems = invalidItems)
+    }
+
+    /**
+     * Performs calculation of the [SessionTranscript] and [DeviceAuthentication],
+     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024
+     */
+    private fun Document.calcDeviceAuthentication(
+        challenge: String,
+        mdocGeneratedNonce: String,
+        clientId: String,
+        responseUrl: String,
+    ): ByteArray {
+        val clientIdToHash = ClientIdToHash(clientId = clientId, mdocGeneratedNonce = mdocGeneratedNonce)
+        val responseUriToHash = ResponseUriToHash(responseUri = responseUrl, mdocGeneratedNonce = mdocGeneratedNonce)
+        val sessionTranscript = SessionTranscript(
+            deviceEngagementBytes = null,
+            eReaderKeyBytes = null,
+            handover = ByteStringWrapper(
+                OID4VPHandover(
+                    clientIdHash = clientIdToHash.serialize().sha256(),
+                    responseUriHash = responseUriToHash.serialize().sha256(),
+                    nonce = challenge
+                )
+            ),
+        )
+        val deviceAuthentication = DeviceAuthentication(
+            type = "DeviceAuthentication",
+            sessionTranscript = sessionTranscript,
+            docType = docType,
+            namespaces = deviceSigned.namespaces
+        )
+        return deviceAuthentication.serialize()
     }
 
     /**

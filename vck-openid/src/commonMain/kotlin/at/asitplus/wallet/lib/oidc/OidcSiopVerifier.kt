@@ -29,6 +29,7 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -61,7 +62,7 @@ class OidcSiopVerifier(
      */
     private val stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
     /** Used to store issued authn requests, to verify the authn response to it */
-    private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore()
+    private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
 ) {
 
     private val responseParser = ResponseParser(jwsService, verifierJwsService)
@@ -592,7 +593,14 @@ class OidcSiopVerifier(
                 val relatedPresentation = JsonPath(descriptor.cumulativeJsonPath)
                     .query(verifiablePresentation).first().value
                 val result = runCatching {
-                    verifyPresentationResult(descriptor, relatedPresentation, expectedNonce)
+                    verifyPresentationResult(
+                        descriptor,
+                        relatedPresentation,
+                        expectedNonce,
+                        input,
+                        authnRequest.clientId,
+                        authnRequest.responseUrl
+                    )
                 }.getOrElse {
                     Napier.w("Invalid presentation format: $relatedPresentation", it)
                     return AuthnResponseResult.ValidationError("Invalid presentation", state)
@@ -663,12 +671,15 @@ class OidcSiopVerifier(
     private suspend fun verifyPresentationResult(
         descriptor: PresentationSubmissionDescriptor,
         relatedPresentation: JsonElement,
-        challenge: String,
+        expectedNonce: String,
+        input: ResponseParametersFrom,
+        clientId: String?,
+        responseUrl: String?,
     ) = when (descriptor.format) {
         ClaimFormat.JWT_SD -> verifier.verifyPresentationSdJwt(
             input = SdJwtSigned.parse(relatedPresentation.jsonPrimitive.content)
                 ?: throw IllegalArgumentException("relatedPresentation"),
-            challenge
+            challenge = expectedNonce
         )
 
         ClaimFormat.JWT_VP -> verifier.verifyPresentationVcJwt(
@@ -677,13 +688,17 @@ class OidcSiopVerifier(
                 relatedPresentation.jsonPrimitive.content,
                 vckJsonSerializer
             ).getOrThrow(),
-            challenge
+            challenge = expectedNonce
         )
 
         ClaimFormat.MSO_MDOC -> verifier.verifyPresentationIsoMdoc(
             input = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
                 .let { DeviceResponse.deserialize(it).getOrThrow() },
-            challenge
+            challenge = expectedNonce,
+            mdocGeneratedNonce = (input as? ResponseParametersFrom.JweDecrypted)?.jweDecrypted
+                ?.header?.agreementPartyUInfo?.decodeToByteArrayOrNull(Base64UrlStrict)?.decodeToString(),
+            clientId = clientId,
+            responseUrl = responseUrl,
         )
 
         else -> throw IllegalArgumentException("descriptor.format")

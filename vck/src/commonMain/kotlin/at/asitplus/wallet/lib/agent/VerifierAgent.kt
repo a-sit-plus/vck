@@ -94,8 +94,11 @@ class VerifierAgent(
     override suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         challenge: String,
+        mdocGeneratedNonce: String?,
+        clientId: String?,
+        responseUrl: String?,
     ): VerifyPresentationResult = runCatching {
-        validator.verifyDeviceResponse(input, challenge)
+        validator.verifyDeviceResponse(input, challenge, mdocGeneratedNonce, clientId, responseUrl)
     }.getOrElse {
         VerifyPresentationResult.ValidationError(it)
     }

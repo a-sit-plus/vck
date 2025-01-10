@@ -123,8 +123,8 @@ class VerifiablePresentationFactory(
     }
 
     /**
-     * Performs calculation of the [SessionTranscript] acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024,
-     * if required in [request]
+     * Performs calculation of the [SessionTranscript] and [DeviceAuthentication],
+     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required in [request] (i.e. it will be encrypted)
      */
     @Throws(PresentationException::class)
     private suspend fun calcDeviceSignature(
