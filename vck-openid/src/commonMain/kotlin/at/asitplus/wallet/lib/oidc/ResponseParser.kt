@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import io.github.aakira.napier.Napier
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Parses authentication responses for [OidcSiopVerifier]
@@ -25,7 +26,7 @@ class ResponseParser(
      * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
      * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
      */
-    @Throws(IllegalArgumentException::class)
+    @Throws(IllegalArgumentException::class, CancellationException::class)
     suspend fun parseAuthnResponse(input: String): ResponseParametersFrom {
         val paramsFrom = runCatching {
             val url = io.ktor.http.Url(input)
@@ -51,7 +52,7 @@ class ResponseParser(
      * Extracts [AuthenticationResponseParameters] from [input] if it is encoded there as
      * [AuthenticationResponseParameters.response], which may be a JWS or JWE.
      */
-    @Throws(IllegalArgumentException::class)
+    @Throws(IllegalArgumentException::class, CancellationException::class)
     internal suspend fun extractAuthnResponse(input: ResponseParametersFrom): ResponseParametersFrom {
         val encodedResponse = input.parameters.response
         if (encodedResponse != null) {
