@@ -44,12 +44,12 @@ class RequestParser(
             ?: runCatching { // maybe it's in the URL parameters
                 Url(input).let {
                     val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
-                    matchRequestParameterCases(
-                        it,
-                        json.decodeFromJsonElement(PolymorphicSerializer(RequestParameters::class), params)
-                    )
+                    val parsed = json.decodeFromJsonElement(PolymorphicSerializer(RequestParameters::class), params)
+                    matchRequestParameterCases(it, parsed)
                 }
-            }.onFailure { it.printStackTrace() }.getOrNull()
+            }.onFailure {
+                Napier.d("parseRequestParameters: Failed for $input", it)
+            }.getOrNull()
             ?: catching {  // maybe it is already a JSON string
                 val params = vckJsonSerializer.decodeFromString(PolymorphicSerializer(RequestParameters::class), input)
                 matchRequestParameterCases(input, params)
@@ -57,12 +57,10 @@ class RequestParser(
             ?: throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
                 .also { Napier.w("Could not parse authentication request: $input") }
 
-        val extractedParams =
-            (parsedParams.parameters as? AuthenticationRequestParameters)?.let {
-                extractRequestObject(it)
-            } ?: parsedParams
-                .also { Napier.i("Parsed authentication request: $it") }
-        extractedParams
+        (parsedParams.parameters as? AuthenticationRequestParameters)?.let {
+            extractRequestObject(it)
+        } ?: parsedParams
+            .also { Napier.i("Parsed authentication request: $it") }
     }
 
     private suspend fun extractRequestObject(params: AuthenticationRequestParameters): RequestParametersFrom<*>? =
@@ -73,19 +71,23 @@ class RequestParser(
                 ?.let { parseRequestParameters(it).getOrNull() }
         }
 
-    private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom<*>? {
-        return JwsSigned.Companion.deserialize<RequestParameters>(
-            PolymorphicSerializer(RequestParameters::class), requestObject,
+    private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom<*>? =
+        JwsSigned.deserialize<RequestParameters>(
+            PolymorphicSerializer(RequestParameters::class),
+            requestObject,
             vckJsonSerializer
-        ).getOrNull()
-            ?.let { jws ->
-                if (requestObjectJwsVerifier.invoke(jws)) {
-                    RequestParametersFrom.JwsSigned(jws, jws.payload)
-                } else null
-                    .also { Napier.w("parseRequestObjectJws: Signature not verified for $jws") }
+        ).onFailure {
+            Napier.d("parseRequestObjectJws: Error for $requestObject", it)
+        }.getOrNull()?.let { jws ->
+            if (requestObjectJwsVerifier.invoke(jws)) {
+                RequestParametersFrom.JwsSigned(jws, jws.payload)
+            } else {
+                Napier.w("parseRequestObjectJws: Signature not verified for $jws")
+                null
             }
-    }
+        }
 
+    @Suppress("UNCHECKED_CAST")
     private fun <T> matchRequestParameterCases(input: T, params: RequestParameters): RequestParametersFrom<*> =
         when (params) {
             is AuthenticationRequestParameters -> when (input) {
