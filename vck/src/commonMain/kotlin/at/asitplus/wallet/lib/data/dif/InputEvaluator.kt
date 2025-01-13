@@ -36,7 +36,7 @@ class InputEvaluator {
             }
             if (fieldQueryResult.isEmpty() && field.optional != true) {
                 throw FailedFieldQueryException(field).also {
-                    Napier.w("evaluateFieldQueryResult failed", it)
+                    Napier.v("evaluateFieldQueryResult failed", it)
                 }
             }
             field.predicate?.let {
@@ -67,7 +67,7 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
             "boolean" -> !this.isString && this.booleanOrNull != null
             "integer" -> !this.isString && this.longOrNull != null
             "number" -> !this.isString && this.doubleOrNull != null
-            else -> false
+            else -> true // no further filtering required
         }
     }
 
