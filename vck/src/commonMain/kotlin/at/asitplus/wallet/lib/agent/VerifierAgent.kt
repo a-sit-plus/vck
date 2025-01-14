@@ -7,6 +7,7 @@ import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.DeviceResponse
 import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
@@ -53,7 +54,7 @@ class VerifierAgent(
             ?.let { bytes -> Document.deserialize(bytes).getOrNull() }
         if (document != null) {
             val verifiedDocument = runCatching {
-                validator.verifyDocument(document, challenge)
+                validator.verifyDocument(document, { _, _ -> true })
             }.getOrElse {
                 return VerifyPresentationResult.ValidationError(it)
             }
@@ -63,7 +64,7 @@ class VerifierAgent(
             ?.let { bytes -> DeviceResponse.deserialize(bytes).getOrNull() }
         if (deviceResponse != null) {
             val result = runCatching {
-                validator.verifyDeviceResponse(deviceResponse, challenge)
+                validator.verifyDeviceResponse(deviceResponse, { _, _ -> true })
             }.getOrElse {
                 return VerifyPresentationResult.ValidationError(it)
             }
@@ -94,11 +95,9 @@ class VerifierAgent(
     override suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         challenge: String,
-        mdocGeneratedNonce: String?,
-        clientId: String?,
-        responseUrl: String?,
+        verifyDocument: (MobileSecurityObject, Document) -> Boolean,
     ): VerifyPresentationResult = runCatching {
-        validator.verifyDeviceResponse(input, challenge, mdocGeneratedNonce, clientId, responseUrl)
+        validator.verifyDeviceResponse(input, verifyDocument)
     }.getOrElse {
         VerifyPresentationResult.ValidationError(it)
     }

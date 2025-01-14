@@ -6,7 +6,9 @@ import at.asitplus.signum.indispensable.josef.jwkId
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.wallet.lib.iso.Document
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.iso.MobileSecurityObject
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import kotlinx.serialization.json.JsonObject
 
@@ -49,12 +51,7 @@ interface Verifier {
     suspend fun verifyPresentationIsoMdoc(
         input: DeviceResponse,
         challenge: String,
-        /** may specify the received nonce from the mDoc holder to verify the session transcript */
-        mdocGeneratedNonce: String? = null,
-        /** optional `client_id` from the authn request, to verify the session transcript */
-        clientId: String? = null,
-        /** optional `response_uri` from the authn request, to verify the session transcript */
-        responseUrl: String? = null,
+        verifyDocument: (MobileSecurityObject, Document) -> Boolean,
     ): VerifyPresentationResult
 
     sealed class VerifyPresentationResult {
@@ -67,7 +64,7 @@ interface Verifier {
             val isRevoked: Boolean,
         ) : VerifyPresentationResult()
 
-        data class SuccessIso(val documents: Collection<IsoDocumentParsed>) : VerifyPresentationResult()
+        data class SuccessIso(val documents: List<IsoDocumentParsed>) : VerifyPresentationResult()
         data class InvalidStructure(val input: String) : VerifyPresentationResult()
         data class ValidationError(val cause: Throwable) : VerifyPresentationResult() {
             constructor(message: String) : this(Throwable(message))

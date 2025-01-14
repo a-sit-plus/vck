@@ -256,10 +256,7 @@ class Validator(
     @Throws(IllegalArgumentException::class)
     fun verifyDeviceResponse(
         deviceResponse: DeviceResponse,
-        challenge: String,
-        mdocGeneratedNonce: String? = null,
-        clientId: String? = null,
-        responseUrl: String? = null,
+        verifyDocumentCallback: (MobileSecurityObject, Document) -> Boolean,
     ): VerifyPresentationResult {
         if (deviceResponse.status != 0U) {
             Napier.w("Status invalid: ${deviceResponse.status}")
@@ -271,7 +268,7 @@ class Validator(
         }
         return VerifyPresentationResult.SuccessIso(
             documents = deviceResponse.documents.map {
-                verifyDocument(it, challenge, mdocGeneratedNonce, clientId, responseUrl)
+                verifyDocument(it, verifyDocumentCallback)
             }
         )
     }
@@ -282,10 +279,7 @@ class Validator(
     @Throws(IllegalArgumentException::class)
     fun verifyDocument(
         doc: Document,
-        challenge: String,
-        mdocGeneratedNonce: String? = null,
-        clientId: String? = null,
-        responseUrl: String? = null,
+        verifyDocumentCallback: (MobileSecurityObject, Document) -> Boolean,
     ): IsoDocumentParsed {
         if (doc.errors != null) {
             Napier.w("Document has errors: ${doc.errors}")
@@ -325,39 +319,9 @@ class Validator(
             Napier.w("Invalid MSO docType '${mso.docType}' does not match Doc docType '${doc.docType}")
             throw IllegalArgumentException("mso.docType")
         }
-        val walletKey = mso.deviceKeyInfo.deviceKey
 
-        val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature ?: run {
-            Napier.w("DeviceSignature is null: ${doc.deviceSigned.deviceAuth}")
-            throw IllegalArgumentException("deviceSignature")
-        }
-
-        if (mdocGeneratedNonce != null && clientId != null && responseUrl != null) {
-            val deviceAuthentication =
-                doc.calcDeviceAuthentication(challenge, mdocGeneratedNonce, clientId, responseUrl)
-            Napier.d("Device authentication is ${deviceAuthentication.encodeToString(Base16())}")
-            verifierCoseService.verifyCose(
-                deviceSignature,
-                walletKey,
-                detachedPayload = deviceAuthentication
-            ).onFailure {
-                Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}", it)
-                throw IllegalArgumentException("deviceSignature")
-            }
-        } else {
-            verifierCoseService.verifyCose(deviceSignature, walletKey).onFailure {
-                Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}", it)
-                throw IllegalArgumentException("deviceSignature")
-            }
-            val deviceSignaturePayload = deviceSignature.payload ?: run {
-                Napier.w("DeviceSignature does not contain challenge")
-                throw IllegalArgumentException("challenge")
-            }
-            if (!deviceSignaturePayload.contentEquals(challenge.encodeToByteArray())) {
-                Napier.w("DeviceSignature does not contain correct challenge")
-                throw IllegalArgumentException("challenge")
-            }
-        }
+        if (!verifyDocumentCallback.invoke(mso, doc))
+            throw IllegalArgumentException("document callback failed: $doc")
 
         val validItems = mutableListOf<IssuerSignedItem>()
         val invalidItems = mutableListOf<IssuerSignedItem>()
@@ -371,38 +335,6 @@ class Validator(
             }
         }
         return IsoDocumentParsed(mso = mso, validItems = validItems, invalidItems = invalidItems)
-    }
-
-    /**
-     * Performs calculation of the [SessionTranscript] and [DeviceAuthentication],
-     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024
-     */
-    private fun Document.calcDeviceAuthentication(
-        challenge: String,
-        mdocGeneratedNonce: String,
-        clientId: String,
-        responseUrl: String,
-    ): ByteArray {
-        val clientIdToHash = ClientIdToHash(clientId = clientId, mdocGeneratedNonce = mdocGeneratedNonce)
-        val responseUriToHash = ResponseUriToHash(responseUri = responseUrl, mdocGeneratedNonce = mdocGeneratedNonce)
-        val sessionTranscript = SessionTranscript(
-            deviceEngagementBytes = null,
-            eReaderKeyBytes = null,
-            handover = ByteStringWrapper(
-                OID4VPHandover(
-                    clientIdHash = clientIdToHash.serialize().sha256(),
-                    responseUriHash = responseUriToHash.serialize().sha256(),
-                    nonce = challenge
-                )
-            ),
-        )
-        val deviceAuthentication = DeviceAuthentication(
-            type = "DeviceAuthentication",
-            sessionTranscript = sessionTranscript,
-            docType = docType,
-            namespaces = deviceSigned.namespaces
-        )
-        return deviceAuthentication.serialize()
     }
 
     /**
