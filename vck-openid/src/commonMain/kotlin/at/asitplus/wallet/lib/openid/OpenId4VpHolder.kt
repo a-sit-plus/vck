@@ -26,7 +26,7 @@ import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidc.RemoteResourceRetrieverFunction
+import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidc.helper.AuthenticationResponseFactory
 import at.asitplus.wallet.lib.oidc.helper.AuthorizationRequestValidator

@@ -15,8 +15,8 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
@@ -300,19 +300,6 @@ class OidcSiopWallet(
     } else buildJsonArray {
         forEach { add(it) }
     }
-}
-
-/**
- * Implementations need to fetch the url passed in, and return either the body, if there is one,
- * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
- */
-typealias RemoteResourceRetrieverFunction = suspend (String) -> String?
-
-/**
- * Implementations need to verify the passed [JwsSigned] and return its result
- */
-fun interface RequestObjectJwsVerifier {
-    operator fun invoke(jws: JwsSigned<RequestParameters>): Boolean
 }
 
 private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> {
