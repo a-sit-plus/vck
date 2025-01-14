@@ -48,6 +48,8 @@ Release 5.3.0:
   - Move `RequestObjectJwsVerifier` from `at.asitplus.wallet.lib.oidc` to `at.asitplus.wallet.lib.openid`
   - Move `RemoteResourceRetrieverFunction` from `at.asitplus.wallet.lib.oidc` to `at.asitplus.wallet.lib`
   - Move `AuthorizationResponsePreparationState` from `at.asitplus.wallet.lib.oidc.helpers` to `at.asitplus.wallet.lib.openid`
+- General cleanup:
+  - Remove `SchemaIndex`
 
 Release 5.2.2:
  - Remote qualified electronic signatures:
