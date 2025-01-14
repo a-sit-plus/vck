@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidc.helpers
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.RelyingPartyMetadata

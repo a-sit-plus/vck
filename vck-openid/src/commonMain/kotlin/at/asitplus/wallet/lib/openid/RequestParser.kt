@@ -1,10 +1,11 @@
-package at.asitplus.wallet.lib.oidc.helper
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.*
-import at.asitplus.openid.OpenIdConstants.Errors
-import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -12,16 +13,15 @@ import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.json
-import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.ktor.util.*
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.json.JsonObject
 
-class RequestParser(
+internal class RequestParser(
     /**
-     * Need to implement if resources are defined by reference, i.e. the URL for a [JsonWebKeySet],
+     * Need to implement if resources are defined by reference, i.e. the URL for a [at.asitplus.signum.indispensable.josef.JsonWebKeySet],
      * or the request itself as `request_uri`, or `presentation_definition_uri`.
      * Implementations need to fetch the url passed in, and return either the body, if there is one,
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
@@ -29,19 +29,19 @@ class RequestParser(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /**
      * Need to verify the request object serialized as a JWS,
-     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
+     * which may be signed with a pre-registered key (see [at.asitplus.openid.OpenIdConstants.ClientIdScheme.PreRegistered]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _: Any -> true },
 ) {
     /**
-     * Pass in the URL sent by the Verifier (containing the [RequestParameters] as query parameters),
-     * to create [AuthenticationResponseParameters] that can be sent back to the Verifier, see
+     * Pass in the URL sent by the Verifier (containing the [at.asitplus.openid.RequestParameters] as query parameters),
+     * to create [at.asitplus.openid.AuthenticationResponseParameters] that can be sent back to the Verifier, see
      * [AuthenticationResponseResult].
      */
     suspend fun parseRequestParameters(input: String): KmmResult<RequestParametersFrom<*>> = catching {
         // maybe it is a request JWS
-        val parsedParams = kotlin.run { parseRequestObjectJws(input) }
-            ?: kotlin.runCatching { // maybe it's in the URL parameters
+        val parsedParams = run { parseRequestObjectJws(input) }
+            ?: runCatching { // maybe it's in the URL parameters
                 Url(input).let {
                     val params = it.parameters.flattenEntries().toMap().decodeFromUrlQuery<JsonObject>()
                     matchRequestParameterCases(
@@ -54,7 +54,7 @@ class RequestParser(
                 val params = vckJsonSerializer.decodeFromString(PolymorphicSerializer(RequestParameters::class), input)
                 matchRequestParameterCases(input, params)
             }.getOrNull()
-            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            ?: throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
                 .also { Napier.w("Could not parse authentication request: $input") }
 
         val extractedParams =
@@ -74,7 +74,10 @@ class RequestParser(
         }
 
     private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom<*>? {
-        return JwsSigned.deserialize<RequestParameters>(PolymorphicSerializer(RequestParameters::class), requestObject, vckJsonSerializer).getOrNull()
+        return JwsSigned.Companion.deserialize<RequestParameters>(
+            PolymorphicSerializer(RequestParameters::class), requestObject,
+            vckJsonSerializer
+        ).getOrNull()
             ?.let { jws ->
                 if (requestObjectJwsVerifier.invoke(jws)) {
                     RequestParametersFrom.JwsSigned(jws, jws.payload)

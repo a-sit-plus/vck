@@ -22,14 +22,8 @@ import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidc.helper.AuthenticationResponseFactory
-import at.asitplus.wallet.lib.oidc.helper.AuthorizationRequestValidator
-import at.asitplus.wallet.lib.oidc.helper.PresentationFactory
-import at.asitplus.wallet.lib.oidc.helper.RequestParser
-import at.asitplus.wallet.lib.oidc.helpers.AuthorizationResponsePreparationState
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.openid.AuthenticationResponse
-import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.*
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -67,14 +61,14 @@ class OidcSiopWallet(
      * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
+) {
     /**
      * Used to resolve [RequestParameters] by reference and also matches them to the correct [RequestParametersFrom]
      */
     private val requestParser: RequestParser = RequestParser(
         remoteResourceRetriever = remoteResourceRetriever,
         requestObjectJwsVerifier = requestObjectJwsVerifier,
-    ),
-) {
+    )
     constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         holder: Holder = HolderAgent(keyMaterial),
@@ -94,13 +88,6 @@ class OidcSiopWallet(
          * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
          */
         requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
-        /**
-         * Used to resolve [RequestParameters] by reference and also matches them to the correct [RequestParametersFrom]
-         */
-        requestParser: RequestParser = RequestParser(
-            remoteResourceRetriever = remoteResourceRetriever,
-            requestObjectJwsVerifier = requestObjectJwsVerifier,
-        ),
     ) : this(
         holder = holder,
         agentPublicKey = keyMaterial.publicKey,
@@ -110,7 +97,6 @@ class OidcSiopWallet(
         clientId = clientId,
         remoteResourceRetriever = remoteResourceRetriever,
         requestObjectJwsVerifier = requestObjectJwsVerifier,
-        requestParser = requestParser,
     )
 
     val metadata: OAuth2AuthorizationServerMetadata by lazy {

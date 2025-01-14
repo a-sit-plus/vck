@@ -3,36 +3,19 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.IdTokenType
-import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.CreatePresentationResult
-import at.asitplus.wallet.lib.agent.CredentialSubmission
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
-import at.asitplus.wallet.lib.oidc.helper.AuthenticationResponseFactory
-import at.asitplus.wallet.lib.oidc.helper.AuthorizationRequestValidator
-import at.asitplus.wallet.lib.oidc.helper.PresentationFactory
-import at.asitplus.wallet.lib.oidc.helper.RequestParser
-import at.asitplus.wallet.lib.oidc.helpers.AuthorizationResponsePreparationState
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -66,14 +49,14 @@ class OpenId4VpHolder(
      * which may be signed with a pre-registered key (see [at.asitplus.openid.OpenIdConstants.ClientIdScheme.PreRegistered]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
+) {
     /**
      * Used to resolve [at.asitplus.openid.RequestParameters] by reference and also matches them to the correct [at.asitplus.openid.RequestParametersFrom]
      */
     private val requestParser: RequestParser = RequestParser(
         remoteResourceRetriever = remoteResourceRetriever,
         requestObjectJwsVerifier = requestObjectJwsVerifier,
-    ),
-) {
+    )
     constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         holder: Holder = HolderAgent(keyMaterial),
@@ -93,13 +76,6 @@ class OpenId4VpHolder(
          * which may be signed with a pre-registered key (see [at.asitplus.openid.OpenIdConstants.ClientIdScheme.PreRegistered]).
          */
         requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
-        /**
-         * Used to resolve [at.asitplus.openid.RequestParameters] by reference and also matches them to the correct [at.asitplus.openid.RequestParametersFrom]
-         */
-        requestParser: RequestParser = RequestParser(
-            remoteResourceRetriever = remoteResourceRetriever,
-            requestObjectJwsVerifier = requestObjectJwsVerifier,
-        ),
     ) : this(
         holder = holder,
         agentPublicKey = keyMaterial.publicKey,
@@ -109,7 +85,6 @@ class OpenId4VpHolder(
         clientId = clientId,
         remoteResourceRetriever = remoteResourceRetriever,
         requestObjectJwsVerifier = requestObjectJwsVerifier,
-        requestParser = requestParser,
     )
 
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
