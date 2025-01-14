@@ -13,19 +13,28 @@ import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.io.Base16Strict
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 internal class PresentationFactory(
     private val jwsService: JwsService,
+    private val coseService: CoseService,
 ) {
     suspend fun createPresentationExchangePresentation(
         holder: Holder,
@@ -53,12 +62,15 @@ internal class PresentationFactory(
             credentialSubmissions = credentialSubmissions
         )
 
+        val responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsEncryption() == true
+        val clientId = request.parameters.clientId
+        val responseUrl = request.parameters.responseUrl
         val vpRequestParams = PresentationRequestParameters(
             nonce = nonce,
             audience = audience,
-            responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsEncryption() == true,
-            clientId = request.parameters.clientId,
-            responseUrl = request.parameters.responseUrl,
+            calcIsoDeviceSignature = { docType ->
+                calcDeviceSignature(responseWillBeEncrypted, clientId, responseUrl, nonce, docType)
+            }
         )
         holder.createPresentation(
             request = vpRequestParams,
@@ -72,6 +84,62 @@ internal class PresentationFactory(
                 container.verifyFormatSupport(it)
             }
         }
+    }
+
+    /**
+     * Performs calculation of the [SessionTranscript] and [DeviceAuthentication],
+     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required in [request] (i.e. it will be encrypted)
+     */
+    @Throws(PresentationException::class)
+    private suspend fun calcDeviceSignature(
+        responseWillBeEncrypted: Boolean,
+        clientId: String?,
+        responseUrl: String?,
+        nonce: String,
+        docType: String,
+    ): Pair<CoseSigned<ByteArray>, String?> = if (responseWillBeEncrypted && clientId != null && responseUrl != null) {
+        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
+        val mdocGeneratedNonce = Random.nextBytes(16).encodeToString(Base16Strict)
+        val clientIdToHash =
+            ClientIdToHash(clientId = clientId, mdocGeneratedNonce = mdocGeneratedNonce)
+        val responseUriToHash = ResponseUriToHash(
+            responseUri = responseUrl,
+            mdocGeneratedNonce = mdocGeneratedNonce
+        )
+        val sessionTranscript = SessionTranscript(
+            deviceEngagementBytes = null,
+            eReaderKeyBytes = null,
+            handover = ByteStringWrapper(
+                OID4VPHandover(
+                    clientIdHash = clientIdToHash.serialize().sha256(),
+                    responseUriHash = responseUriToHash.serialize().sha256(),
+                    nonce = nonce
+                )
+            ),
+        )
+        val deviceAuthentication = DeviceAuthentication(
+            type = "DeviceAuthentication",
+            sessionTranscript = sessionTranscript,
+            docType = docType,
+            namespaces = deviceNameSpaceBytes
+        )
+        coseService.createSignedCoseWithDetachedPayload(
+            payload = deviceAuthentication.serialize(),
+            serializer = ByteArraySerializer(),
+            addKeyId = false
+        ).getOrElse {
+            Napier.w("Could not create DeviceAuth for presentation", it)
+            throw PresentationException(it)
+        } to mdocGeneratedNonce
+    } else {
+        coseService.createSignedCose(
+            payload = nonce.encodeToByteArray(),
+            serializer = ByteArraySerializer(),
+            addKeyId = false
+        ).getOrElse {
+            Napier.w("Could not create DeviceAuth for presentation", it)
+            throw PresentationException(it)
+        } to null
     }
 
     suspend fun createSignedIdToken(

@@ -5,6 +5,7 @@ import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.PresentationSubmission
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -23,13 +24,10 @@ data class PresentationRequestParameters(
     val nonce: String,
     val audience: String,
     /**
-     * Whether the response will be encrypted, and the fields [clientId] and [responseUrl] shall be used for OpenId4VP.
+     * Handle calculating device signature for ISO mDocs, as this depends on the transport protocol
+     * (OpenId4VP with ISO/IEC 18013-7)
      */
-    val responseWillBeEncrypted: Boolean = false,
-    /** Required for mDoc responses in OpenId4VP */
-    val clientId: String? = null,
-    /** Required for mDoc responses in OpenId4VP */
-    val responseUrl: String? = null,
+    val calcIsoDeviceSignature: (suspend (docType: String) -> Pair<CoseSigned<ByteArray>, String?>?) = { null }
 )
 
 data class PresentationResponseParameters(

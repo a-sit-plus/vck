@@ -18,6 +18,8 @@ import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.cbor.CoseService
+import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.helper.AuthenticationResponseFactory
@@ -44,6 +46,7 @@ class OidcSiopWallet(
     private val holder: Holder,
     private val agentPublicKey: CryptoPublicKey,
     private val jwsService: JwsService,
+    private val coseService: CoseService,
     private val clock: Clock = Clock.System,
     private val clientId: String = "https://wallet.a-sit.at/",
     /**
@@ -70,6 +73,7 @@ class OidcSiopWallet(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         holder: Holder = HolderAgent(keyMaterial),
         jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+        coseService: CoseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
         clock: Clock = Clock.System,
         clientId: String = "https://wallet.a-sit.at/",
         /**
@@ -95,6 +99,7 @@ class OidcSiopWallet(
         holder = holder,
         agentPublicKey = keyMaterial.publicKey,
         jwsService = jwsService,
+        coseService = coseService,
         clock = clock,
         clientId = clientId,
         remoteResourceRetriever = remoteResourceRetriever,
@@ -213,7 +218,7 @@ class OidcSiopWallet(
             ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val audience = request.extractAudience(clientJsonWebKeySet)
-        val presentationFactory = PresentationFactory(jwsService)
+        val presentationFactory = PresentationFactory(jwsService, coseService)
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
         val idToken = presentationFactory.createSignedIdToken(clock, agentPublicKey, request).getOrNull()?.serialize()
 
