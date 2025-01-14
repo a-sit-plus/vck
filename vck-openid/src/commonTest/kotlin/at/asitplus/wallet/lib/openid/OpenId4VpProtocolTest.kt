@@ -79,7 +79,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         )
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
         )
     }
 
@@ -103,7 +103,7 @@ class OpenId4VpProtocolTest : FreeSpec({
     "wrong client nonce in id_token should lead to error" {
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
             nonceService = object : NonceService {
                 override suspend fun provideNonce() = uuid4().toString()
                 override suspend fun verifyNonce(it: String) = false
@@ -127,7 +127,7 @@ class OpenId4VpProtocolTest : FreeSpec({
     "wrong client nonce in vp_token should lead to error" {
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
             stateToAuthnRequestStore = object : MapStore<String, AuthenticationRequestParameters> {
                 override suspend fun put(key: String, value: AuthenticationRequestParameters) {}
                 override suspend fun get(key: String): AuthenticationRequestParameters? = null
@@ -301,7 +301,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         val attestationJwt = buildAttestationJwt(sprsCryptoService, clientId, verifierKeyMaterial)
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.VerifierAttestation(attestationJwt, clientId),
+            clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, clientId),
         )
         val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequestUrlWithRequestObject(
             walletUrl = walletUrl,
@@ -328,7 +328,7 @@ class OpenId4VpProtocolTest : FreeSpec({
 
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.VerifierAttestation(attestationJwt, clientId)
+            clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, clientId)
         )
         val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequestUrlWithRequestObject(
             walletUrl = walletUrl,

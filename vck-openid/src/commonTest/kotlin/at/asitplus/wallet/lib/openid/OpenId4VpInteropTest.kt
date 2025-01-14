@@ -83,7 +83,7 @@ class OpenId4VpInteropTest : FreeSpec({
                     })
                 )
             ),
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.PreRegistered(verifierClientId),
+            clientIdScheme = ClientIdScheme.PreRegistered(verifierClientId),
         )
     }
 

@@ -8,6 +8,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MD
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.AuthnResponseResult.SuccessIso
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt
@@ -217,7 +218,7 @@ class OpenId4VpWalletTest : FunSpec() {
     ): Pair<HttpClientEngine, String> {
         val requestEndpointPath = "/request/${uuid4()}"
         val verifier = OpenId4VpVerifier(
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.PreRegistered(clientId),
+            clientIdScheme = ClientIdScheme.PreRegistered(clientId),
         )
         val responseEndpointPath = "/response"
         val (url, jar) = verifier.createAuthnRequestUrlWithRequestObjectByReference(

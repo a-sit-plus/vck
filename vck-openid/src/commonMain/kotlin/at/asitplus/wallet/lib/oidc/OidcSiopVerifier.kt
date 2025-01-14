@@ -73,6 +73,10 @@ class OidcSiopVerifier(
     private val responseParser = ResponseParser(jwsService, verifierJwsService)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
 
+    @Deprecated(
+        message = "Replace with external class",
+        ReplaceWith("ClientIdScheme", "at.asitplus.wallet.lib.openid")
+    )
     sealed class ClientIdScheme(
         val scheme: OpenIdConstants.ClientIdScheme,
         open val clientId: String,

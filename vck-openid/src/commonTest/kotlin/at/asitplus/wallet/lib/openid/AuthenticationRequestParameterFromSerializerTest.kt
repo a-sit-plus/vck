@@ -24,7 +24,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         holder = HolderAgent(holderKeyMaterial),
     )
     val verifierOid4vp = OpenId4VpVerifier(
-        clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
+        clientIdScheme = ClientIdScheme.RedirectUri(clientId),
     )
     val representations = listOf(
         ConstantIndex.CredentialRepresentation.PLAIN_JWT,

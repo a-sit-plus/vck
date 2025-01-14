@@ -40,7 +40,7 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
         )
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId)
+            clientIdScheme = ClientIdScheme.RedirectUri(clientId)
         )
     }
 

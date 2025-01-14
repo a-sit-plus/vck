@@ -43,6 +43,7 @@ Release 5.3.0:
   - In `OidcSiopVerifier` replace `stateToNonceStore` and `stateToResponseTypeStore` with `stateToAuthnRequestStore`
  - OpenID4VP in general:
   - Deprecate `OidcSiopVerifier`, use `at.asitplus.wallet.lib.openid.OpenId4VpVerifier` instead
+  - Move class `ClientIdScheme` out of `OpenId4VpVerifier`
   - Deprecate `OidcSiopWallet`, use `at.asitplus.wallet.lib.openid.OpenId4VpHolder` instead
 
 Release 5.2.2:

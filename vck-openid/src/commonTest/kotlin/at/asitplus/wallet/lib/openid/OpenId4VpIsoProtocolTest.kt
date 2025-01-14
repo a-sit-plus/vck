@@ -62,7 +62,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
     "test with Fragment for mDL" {
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
             verifierOid4vp,
@@ -86,7 +86,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
     "test with Fragment for custom attributes" {
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
             verifierOid4vp,
@@ -111,7 +111,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
             verifierOid4vp,
@@ -137,7 +137,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
         )
         val requestOptions = OpenId4VpVerifier.RequestOptions(
             credentials = setOf(
@@ -170,7 +170,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
     "Selective Disclosure with mDL JSON Path syntax" {
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
             verifierOid4vp,

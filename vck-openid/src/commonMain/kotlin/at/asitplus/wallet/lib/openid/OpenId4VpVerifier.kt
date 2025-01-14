@@ -9,8 +9,10 @@ import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.*
-import at.asitplus.signum.indispensable.pki.CertificateChain
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JwsHeader
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
@@ -19,7 +21,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.*
-import at.asitplus.wallet.lib.openid.ResponseParser
 import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -65,72 +66,8 @@ class OpenId4VpVerifier(
 
     private val responseParser = ResponseParser(jwsService, verifierJwsService)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
-
-    sealed class ClientIdScheme(
-        val scheme: OpenIdConstants.ClientIdScheme,
-        open val clientId: String,
-    ) {
-        /**
-         * This Client Identifier Scheme allows the Verifier to authenticate using a JWT that is bound to a certain
-         * public key. When the Client Identifier Scheme is `verifier_attestation`, the Client Identifier MUST equal
-         * the `sub` claim value in the Verifier attestation JWT. The request MUST be signed with the private key
-         * corresponding to the public key in the `cnf` claim in the Verifier attestation JWT. This serves as proof of
-         * possession of this key. The Verifier attestation JWT MUST be added to the `jwt` JOSE Header of the request
-         * object. The Wallet MUST validate the signature on the Verifier attestation JWT. The `iss` claim value of the
-         * Verifier Attestation JWT MUST identify a party the Wallet trusts for issuing Verifier Attestation JWTs.
-         * If the Wallet cannot establish trust, it MUST refuse the request. If the issuer of the Verifier Attestation
-         * JWT adds a `redirect_uris` claim to the attestation, the Wallet MUST ensure the `redirect_uri` request
-         * parameter value exactly matches one of the `redirect_uris` claim entries. All Verifier metadata other than
-         * the public key MUST be obtained from the `client_metadata` parameter.
-         */
-        data class VerifierAttestation(
-            val attestationJwt: JwsSigned<JsonWebToken>,
-            override val clientId: String,
-        ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.VerifierAttestation, attestationJwt.payload.subject!!)
-
-        /**
-         * When the Client Identifier Scheme is x509_san_dns, the Client Identifier MUST be a DNS name and match a
-         * `dNSName` Subject Alternative Name (SAN) [RFC5280](https://www.rfc-editor.org/info/rfc5280) entry in the leaf
-         * certificate passed with the request. The request MUST be signed with the private key corresponding to the
-         * public key in the leaf X.509 certificate of the certificate chain added to the request in the `x5c` JOSE
-         * header [RFC7515](https://www.rfc-editor.org/info/rfc7515) of the signed request object.
-         *
-         * The Wallet MUST validate the signature and the trust chain of the X.509 certificate.
-         * All Verifier metadata other than the public key MUST be obtained from the `client_metadata` parameter.
-         * If the Wallet can establish trust in the Client Identifier authenticated through the certificate, e.g.
-         * because the Client Identifier is contained in a list of trusted Client Identifiers, it may allow the client
-         * to freely choose the `redirect_uri` value. If not, the FQDN of the `redirect_uri` value MUST match the
-         * Client Identifier.
-         */
-        data class CertificateSanDns(
-            val chain: CertificateChain,
-            override val clientId: String,
-        ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.X509SanDns, clientId)
-
-        /**
-         * This value indicates that the Verifier's Redirect URI (or Response URI when Response Mode `direct_post` is
-         * used) is also the value of the Client Identifier. The Authorization Request MUST NOT be signed.
-         * The Verifier MAY omit the `redirect_uri` Authorization Request parameter (or `response_uri` when Response
-         * Mode `direct_post` is used). All Verifier metadata parameters MUST be passed using the `client_metadata`
-         * parameter.
-         */
-        data class RedirectUri(
-            override val clientId: String,
-        ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.RedirectUri, clientId)
-
-        /**
-         *  This value represents the RFC6749 default behavior, i.e., the Client Identifier needs to be known to the
-         *  Wallet in advance of the Authorization Request. The Verifier metadata is obtained using RFC7591 or through
-         *  out-of-band mechanisms.
-         */
-        data class PreRegistered(
-            override val clientId: String,
-        ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.PreRegistered, clientId)
-    }
-
     private val containerJwt =
         FormatContainerJwt(algorithmStrings = verifierJwsService.supportedAlgorithms.map { it.identifier })
-
 
     /**
      * Serve this result JSON-serialized under `/.well-known/jar-issuer`

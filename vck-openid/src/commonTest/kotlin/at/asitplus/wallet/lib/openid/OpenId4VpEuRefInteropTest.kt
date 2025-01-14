@@ -323,7 +323,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.CertificateSanDns(
+            clientIdScheme = ClientIdScheme.CertificateSanDns(
                 listOf(verifierKeyMaterial.getCertificate()!!),
                 "example.com"
             ),

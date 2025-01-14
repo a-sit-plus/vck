@@ -27,17 +27,17 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
         val clientId = "example.com"
         val extensions = listOf(
             X509CertificateExtension(
-            KnownOIDs.subjectAltName_2_5_29_17,
-            critical = false,
-            Asn1EncapsulatingOctetString(
-                listOf(
-                Asn1.Sequence {
-                    +Asn1Primitive(
-                        SubjectAltNameImplicitTags.dNSName,
-                        Asn1String.UTF8(clientId).encodeToTlv().content
-                    )
-                }
-            ))))
+                KnownOIDs.subjectAltName_2_5_29_17,
+                critical = false,
+                Asn1EncapsulatingOctetString(
+                    listOf(
+                        Asn1.Sequence {
+                            +Asn1Primitive(
+                                SubjectAltNameImplicitTags.dNSName,
+                                Asn1String.UTF8(clientId).encodeToTlv().content
+                            )
+                        }
+                    ))))
         holderKeyMaterial = EphemeralKeyWithoutCert()
         verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
         holderAgent = HolderAgent(holderKeyMaterial)
@@ -57,10 +57,7 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
         )
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.CertificateSanDns(
-                listOf(verifierKeyMaterial.getCertificate()!!),
-                clientId
-            ),
+            clientIdScheme = ClientIdScheme.CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!), clientId),
         )
     }
 
