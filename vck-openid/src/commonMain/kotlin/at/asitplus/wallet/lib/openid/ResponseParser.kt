@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.ResponseParametersFrom
@@ -11,17 +11,18 @@ import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import io.github.aakira.napier.Napier
+import io.ktor.http.*
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * Parses authentication responses for [OidcSiopVerifier]
+ * Parses authentication responses for [OpenId4VpVerifier]
  */
 class ResponseParser(
     private val jwsService: JwsService,
     private val verifierJwsService: VerifierJwsService
 ) {
     /**
-     * Parses [AuthenticationResponseParameters], where [input] is either:
+     * Parses [at.asitplus.openid.AuthenticationResponseParameters], where [input] is either:
      * - a URL, containing parameters in the fragment, e.g. `https://example.com#id_token=...`
      * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
      * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
@@ -29,7 +30,7 @@ class ResponseParser(
     @Throws(IllegalArgumentException::class, CancellationException::class)
     suspend fun parseAuthnResponse(input: String): ResponseParametersFrom {
         val paramsFrom = runCatching {
-            val url = io.ktor.http.Url(input)
+            val url = Url(input)
             if (url.fragment.isNotEmpty()) {
                 url.fragment.decodeFromPostBody<AuthenticationResponseParameters>().let {
                     ResponseParametersFrom.Uri(url, it)
@@ -72,11 +73,14 @@ class ResponseParser(
     }
 
     private suspend fun String.fromJwe(): JweDecrypted<AuthenticationResponseParameters>? =
-        JweEncrypted.deserialize(this).getOrNull()?.let {
-            jwsService.decryptJweObject(it, this, AuthenticationResponseParameters.serializer()).getOrNull()
+        JweEncrypted.Companion.deserialize(this).getOrNull()?.let {
+            jwsService.decryptJweObject(it, this, AuthenticationResponseParameters.Companion.serializer()).getOrNull()
         }
 
     private fun String.fromJws(): JwsSigned<AuthenticationResponseParameters>? =
-        JwsSigned.deserialize(AuthenticationResponseParameters.serializer(), this, vckJsonSerializer).getOrNull()
+        JwsSigned.Companion.deserialize(
+            AuthenticationResponseParameters.Companion.serializer(), this,
+            vckJsonSerializer
+        ).getOrNull()
 
 }

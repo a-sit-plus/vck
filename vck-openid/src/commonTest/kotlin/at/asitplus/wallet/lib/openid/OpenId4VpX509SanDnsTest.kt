@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
@@ -10,28 +10,27 @@ import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OidcSiopX509SanDnsTest : FreeSpec({
+class OpenId4VpX509SanDnsTest : FreeSpec({
+
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
-
     lateinit var holderAgent: Holder
-
-    lateinit var holderSiop: OidcSiopWallet
-    lateinit var verifierSiop: OidcSiopVerifier
+    lateinit var holderOid4vp: OpenId4VpHolder
+    lateinit var verifierOid4vp: OpenId4VpVerifier
 
     beforeEach {
         val clientId = "example.com"
-        val extensions = listOf(X509CertificateExtension(
+        val extensions = listOf(
+            X509CertificateExtension(
             KnownOIDs.subjectAltName_2_5_29_17,
             critical = false,
-            Asn1EncapsulatingOctetString(listOf(
+            Asn1EncapsulatingOctetString(
+                listOf(
                 Asn1.Sequence {
                     +Asn1Primitive(
                         SubjectAltNameImplicitTags.dNSName,
@@ -52,13 +51,13 @@ class OidcSiopX509SanDnsTest : FreeSpec({
             ).getOrThrow().toStoreCredentialInput()
         )
 
-        holderSiop = OidcSiopWallet(
+        holderOid4vp = OpenId4VpHolder(
             keyMaterial = holderKeyMaterial,
             holder = holderAgent,
         )
-        verifierSiop = OidcSiopVerifier(
+        verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(
+            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.CertificateSanDns(
                 listOf(verifierKeyMaterial.getCertificate()!!),
                 clientId
             ),
@@ -66,13 +65,13 @@ class OidcSiopX509SanDnsTest : FreeSpec({
     }
 
     "test with Fragment" {
-        val authnRequest = verifierSiop.createAuthnRequestAsSignedRequestObject(
-            requestOptions = RequestOptions(
+        val authnRequest = verifierOid4vp.createAuthnRequestAsSignedRequestObject(
+            requestOptions = OpenId4VpVerifier.RequestOptions(
                 credentials = setOf(
-                    OidcSiopVerifier.RequestOptionsCredential(
+                    OpenId4VpVerifier.RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.SD_JWT,
-                        listOf(CLAIM_GIVEN_NAME)
+                        listOf(ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME)
                     )
                 ),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
@@ -80,13 +79,12 @@ class OidcSiopX509SanDnsTest : FreeSpec({
             )
         ).getOrThrow()
 
-        val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-        val result = verifierSiop.validateAuthnResponse(authnResponse.params.formUrlEncode())
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
-        result.reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
+        val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+        result.shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt>()
+        result.reconstructed[ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME].shouldNotBeNull()
 
     }
 })
-

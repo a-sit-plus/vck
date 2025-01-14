@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
@@ -18,39 +18,35 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
     val clientId = "https://example.com/rp/${uuid4()}"
     val walletUrl = "https://example.com/wallet/${uuid4()}"
-
     val holderKeyMaterial = EphemeralKeyWithoutCert()
-    val oidcSiopWallet = OidcSiopWallet(
+    val holderOid4vp = OpenId4VpHolder(
         keyMaterial = holderKeyMaterial,
         holder = HolderAgent(holderKeyMaterial),
     )
-
-    val verifierSiop = OidcSiopVerifier(
-        clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
+    val verifierOid4vp = OpenId4VpVerifier(
+        clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
     )
-
     val representations = listOf(
         ConstantIndex.CredentialRepresentation.PLAIN_JWT,
         ConstantIndex.CredentialRepresentation.SD_JWT,
         ConstantIndex.CredentialRepresentation.ISO_MDOC
     )
 
-
     representations.forEach { representation ->
-        val reqOptions = OidcSiopVerifier.RequestOptions(
+        val reqOptions = OpenId4VpVerifier.RequestOptions(
             credentials = setOf(
-                OidcSiopVerifier.RequestOptionsCredential(
+                OpenId4VpVerifier.RequestOptionsCredential(
                     ConstantIndex.AtomicAttribute2023, representation
                 )
             )
         )
 
         "URL test $representation" {
-            val authnRequest = verifierSiop.createAuthnRequestUrl(
+            val authnRequest = verifierOid4vp.createAuthnRequestUrl(
                 walletUrl = walletUrl,
                 requestOptions = reqOptions
             )
-            val params = oidcSiopWallet.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
+            val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequestParameters>>()
 
             val serialized = vckJsonSerializer.encodeToString(params)
@@ -59,8 +55,8 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         }
 
         "Json test $representation" {
-            val authnRequest = verifierSiop.createAuthnRequest(requestOptions = reqOptions).serialize()
-            val params = oidcSiopWallet.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
+            val authnRequest = verifierOid4vp.createAuthnRequest(requestOptions = reqOptions).serialize()
+            val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
 
             val serialized = vckJsonSerializer.encodeToString(params)
             val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)
@@ -68,7 +64,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         }
 
         "JwsSigned test $representation" {
-            val authnRequestUrl = verifierSiop.createAuthnRequestUrlWithRequestObject(
+            val authnRequestUrl = verifierOid4vp.createAuthnRequestUrlWithRequestObject(
                 walletUrl = walletUrl,
                 requestOptions = reqOptions
             ).getOrThrow()
@@ -77,7 +73,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             interim1.clientId shouldBe clientId
 
             val interim2 = interim1.request ?: throw Exception("Authn request is null")
-            val params = oidcSiopWallet.parseAuthenticationRequestParameters(interim2).getOrThrow()
+            val params = holderOid4vp.parseAuthenticationRequestParameters(interim2).getOrThrow()
 
             val serialized = vckJsonSerializer.encodeToString(params)
             val deserialized = vckJsonSerializer.decodeFromString<RequestParametersFrom<AuthenticationRequestParameters>>(serialized)

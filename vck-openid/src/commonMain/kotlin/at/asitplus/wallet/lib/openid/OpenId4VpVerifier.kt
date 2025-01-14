@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
@@ -7,14 +7,6 @@ import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
-import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
-import at.asitplus.openid.OpenIdConstants.ClientIdScheme.*
-import at.asitplus.openid.OpenIdConstants.ID_TOKEN
-import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
-import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
-import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
-import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
-import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
@@ -27,8 +19,8 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.*
-import at.asitplus.wallet.lib.oidvci.*
 import at.asitplus.wallet.lib.openid.ResponseParser
+import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -44,19 +36,14 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
-
 /**
  * Combines Verifiable Presentations with OpenId Connect.
  * Implements [OIDC for VP](https://openid.net/specs/openid-connect-4-verifiable-presentations-1_0.html) (2023-04-21)
  * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (2023-01-01).
  *
- * This class creates the Authentication Request, [verifier] verifies the response. See [OidcSiopWallet] for the holder.
+ * This class creates the Authentication Request, [verifier] verifies the response. See [at.asitplus.wallet.lib.oidc.OidcSiopWallet] for the holder.
  */
-@Deprecated(
-    message = "Replace with OpenId4VpVerifier",
-    ReplaceWith("OpenId4VpVerifier", "at.asitplus.wallet.lib.openid")
-)
-class OidcSiopVerifier(
+class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
@@ -66,6 +53,12 @@ class OidcSiopVerifier(
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
+    /**
+     * Used to store the nonce, associated to the state, to first send [at.asitplus.openid.AuthenticationRequestParameters.nonce],
+     * and then verify the challenge in the submitted verifiable presentation in
+     * [at.asitplus.openid.AuthenticationResponseParameters.vpToken].
+     */
+    private val stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
     /** Used to store issued authn requests, to verify the authn response to it */
     private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
 ) {
@@ -93,7 +86,7 @@ class OidcSiopVerifier(
         data class VerifierAttestation(
             val attestationJwt: JwsSigned<JsonWebToken>,
             override val clientId: String,
-        ) : ClientIdScheme(VerifierAttestation, attestationJwt.payload.subject!!)
+        ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.VerifierAttestation, attestationJwt.payload.subject!!)
 
         /**
          * When the Client Identifier Scheme is x509_san_dns, the Client Identifier MUST be a DNS name and match a
@@ -112,7 +105,7 @@ class OidcSiopVerifier(
         data class CertificateSanDns(
             val chain: CertificateChain,
             override val clientId: String,
-        ) : ClientIdScheme(X509SanDns, clientId)
+        ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.X509SanDns, clientId)
 
         /**
          * This value indicates that the Verifier's Redirect URI (or Response URI when Response Mode `direct_post` is
@@ -123,7 +116,7 @@ class OidcSiopVerifier(
          */
         data class RedirectUri(
             override val clientId: String,
-        ) : ClientIdScheme(RedirectUri, clientId)
+        ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.RedirectUri, clientId)
 
         /**
          *  This value represents the RFC6749 default behavior, i.e., the Client Identifier needs to be known to the
@@ -132,7 +125,7 @@ class OidcSiopVerifier(
          */
         data class PreRegistered(
             override val clientId: String,
-        ) : ClientIdScheme(PreRegistered, clientId)
+        ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.PreRegistered, clientId)
     }
 
     private val containerJwt =
@@ -152,13 +145,17 @@ class OidcSiopVerifier(
     }
 
     /**
-     * Creates the [RelyingPartyMetadata], without encryption (see [metadataWithEncryption])
+     * Creates the [at.asitplus.openid.RelyingPartyMetadata], without encryption (see [metadataWithEncryption])
      */
     val metadata by lazy {
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.clientId),
             jsonWebKeySet = JsonWebKeySet(listOf(keyMaterial.publicKey.toJsonWebKey())),
-            subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY, BINDING_METHOD_JWK),
+            subjectSyntaxTypesSupported = setOf(
+                OpenIdConstants.URN_TYPE_JWK_THUMBPRINT,
+                OpenIdConstants.PREFIX_DID_KEY,
+                OpenIdConstants.BINDING_METHOD_JWK
+            ),
             vpFormats = FormatHolder(
                 msoMdoc = containerJwt,
                 jwtVp = containerJwt,
@@ -206,7 +203,7 @@ class OidcSiopVerifier(
     suspend fun createSignedMetadata(): KmmResult<JwsSigned<RelyingPartyMetadata>> =
         jwsService.createSignedJwsAddingParams(
             payload = metadata,
-            serializer = RelyingPartyMetadata.serializer(),
+            serializer = RelyingPartyMetadata.Companion.serializer(),
             addKeyId = true,
             addX5c = false
         )
@@ -233,7 +230,7 @@ class OidcSiopVerifier(
          * by default only `vp_token` (as per OpenID4VP spec).
          * Be sure to separate values by a space, e.g. `vp_token id_token`.
          */
-        val responseType: String = VP_TOKEN,
+        val responseType: String = OpenIdConstants.VP_TOKEN,
         /**
          * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
          */
@@ -244,7 +241,7 @@ class OidcSiopVerifier(
         val clientMetadataUrl: String? = null,
         /**
          * Set this value to include metadata with encryption parameters set. Beware if setting this value and also
-         * [clientMetadataUrl], that the URL shall point to [OidcSiopVerifier.metadataWithEncryption].
+         * [clientMetadataUrl], that the URL shall point to [OpenId4VpVerifier.metadataWithEncryption].
          */
         val encryption: Boolean = false,
     )
@@ -353,7 +350,7 @@ class OidcSiopVerifier(
                 type = JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST
             ),
             payload = requestObject.copy(audience = "https://self-issued.me/v2", issuer = issuer),
-            serializer = AuthenticationRequestParameters.serializer(),
+            serializer = AuthenticationRequestParameters.Companion.serializer(),
             addJsonWebKey = certificateChain == null,
         ).getOrThrow()
     }
@@ -390,7 +387,7 @@ class OidcSiopVerifier(
     ).also { stateToAuthnRequestStore.put(requestOptions.state, it) }
 
     private fun RequestOptions.buildScope() = (
-            listOf(SCOPE_OPENID, SCOPE_PROFILE)
+            listOf(OpenIdConstants.SCOPE_OPENID, OpenIdConstants.SCOPE_PROFILE)
                     + credentials.mapNotNull { it.credentialScheme.sdJwtType }
                     + credentials.mapNotNull { it.credentialScheme.vcType }
                     + credentials.mapNotNull { it.credentialScheme.isoNamespace }
@@ -531,7 +528,7 @@ class OidcSiopVerifier(
 
     /**
      * Validates the OIDC Authentication Response from the Wallet, where [content] are the HTTP POST encoded
-     * [AuthenticationResponseParameters], e.g. `id_token=...&vp_token=...`
+     * [at.asitplus.openid.AuthenticationResponseParameters], e.g. `id_token=...&vp_token=...`
      */
     @Deprecated("Use validateAuthnResponse", ReplaceWith("validateAuthnResponse"))
     suspend fun validateAuthnResponseFromPost(content: String): AuthnResponseResult {
@@ -580,7 +577,7 @@ class OidcSiopVerifier(
                 .also { Napier.w("State not associated with authn request: $state") }
 
         val responseType = authnRequest.responseType
-        if (responseType?.contains(VP_TOKEN) == true) {
+        if (responseType?.contains(OpenIdConstants.VP_TOKEN) == true) {
             val expectedNonce = authnRequest.nonce
                 ?: return AuthnResponseResult.ValidationError("state", state)
                     .also { Napier.w("State not associated with nonce: $state") }
@@ -615,7 +612,7 @@ class OidcSiopVerifier(
             return validationResults.firstOrList()
         }
 
-        if (responseType?.contains(ID_TOKEN) == true) {
+        if (responseType?.contains(OpenIdConstants.ID_TOKEN) == true) {
             val idToken = params.idToken?.let { idToken ->
                 catching {
                     extractValidatedIdToken(idToken)
@@ -636,7 +633,10 @@ class OidcSiopVerifier(
 
     @Throws(IllegalArgumentException::class, CancellationException::class)
     private suspend fun extractValidatedIdToken(idTokenJws: String): IdToken {
-        val jwsSigned = JwsSigned.deserialize<IdToken>(IdToken.serializer(), idTokenJws, vckJsonSerializer).getOrNull()
+        val jwsSigned = JwsSigned.Companion.deserialize<IdToken>(
+            IdToken.Companion.serializer(), idTokenJws,
+            vckJsonSerializer
+        ).getOrNull()
             ?: throw IllegalArgumentException("idToken")
                 .also { Napier.w("Could not parse JWS from idToken: $idTokenJws") }
         if (!verifierJwsService.verifyJwsObject(jwsSigned))
@@ -682,14 +682,14 @@ class OidcSiopVerifier(
         responseUrl: String?,
     ) = when (descriptor.format) {
         ClaimFormat.JWT_SD -> verifier.verifyPresentationSdJwt(
-            input = SdJwtSigned.parse(relatedPresentation.jsonPrimitive.content)
+            input = SdJwtSigned.Companion.parse(relatedPresentation.jsonPrimitive.content)
                 ?: throw IllegalArgumentException("relatedPresentation"),
             challenge = expectedNonce
         )
 
         ClaimFormat.JWT_VP -> verifier.verifyPresentationVcJwt(
-            input = JwsSigned.deserialize<VerifiablePresentationJws>(
-                VerifiablePresentationJws.serializer(),
+            input = JwsSigned.Companion.deserialize<VerifiablePresentationJws>(
+                VerifiablePresentationJws.Companion.serializer(),
                 relatedPresentation.jsonPrimitive.content,
                 vckJsonSerializer
             ).getOrThrow(),
@@ -701,7 +701,7 @@ class OidcSiopVerifier(
                 ?.header?.agreementPartyUInfo?.decodeToByteArrayOrNull(Base64UrlStrict)?.decodeToString()
             verifier.verifyPresentationIsoMdoc(
                 input = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
-                    .let { DeviceResponse.deserialize(it).getOrThrow() },
+                    .let { DeviceResponse.Companion.deserialize(it).getOrThrow() },
                 challenge = expectedNonce,
                 verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)
             )
@@ -711,7 +711,7 @@ class OidcSiopVerifier(
     }
 
     /**
-     * Performs verification of the [SessionTranscript] and [DeviceAuthentication],
+     * Performs verification of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required (i.e. response is encrypted)
      */
     @Throws(IllegalArgumentException::class)
@@ -757,7 +757,7 @@ class OidcSiopVerifier(
     }
 
     /**
-     * Performs calculation of the [SessionTranscript] and [DeviceAuthentication],
+     * Performs calculation of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024
      */
     private fun Document.calcDeviceAuthentication(
@@ -816,7 +816,6 @@ class OidcSiopVerifier(
     }
 
 }
-
 
 private val PresentationSubmissionDescriptor.cumulativeJsonPath: String
     get() {

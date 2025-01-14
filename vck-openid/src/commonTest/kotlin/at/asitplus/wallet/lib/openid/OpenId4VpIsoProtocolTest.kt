@@ -1,13 +1,11 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -17,18 +15,15 @@ import io.kotest.matchers.collections.shouldHaveSingleElement
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OidcSiopIsoProtocolTest : FreeSpec({
+class OpenId4VpIsoProtocolTest : FreeSpec({
 
     lateinit var clientId: String
     lateinit var walletUrl: String
-
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
-
     lateinit var holderAgent: Holder
-
-    lateinit var holderSiop: OidcSiopWallet
-    lateinit var verifierSiop: OidcSiopVerifier
+    lateinit var holderOid4vp: OpenId4VpHolder
+    lateinit var verifierOid4vp: OpenId4VpVerifier
 
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -58,30 +53,30 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         )
 
 
-        holderSiop = OidcSiopWallet(
+        holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
             keyMaterial = holderKeyMaterial
         )
     }
 
     "test with Fragment for mDL" {
-        verifierSiop = OidcSiopVerifier(
+        verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
-            verifierSiop,
+            verifierOid4vp,
             walletUrl,
-            OidcSiopVerifier.RequestOptions(
+            OpenId4VpVerifier.RequestOptions(
                 credentials = setOf(
-                    OidcSiopVerifier.RequestOptionsCredential(
+                    OpenId4VpVerifier.RequestOptionsCredential(
                         MobileDrivingLicenceScheme, ConstantIndex.CredentialRepresentation.ISO_MDOC, listOf(
                             MobileDrivingLicenceDataElements.GIVEN_NAME
                         )
                     )
                 )
             ),
-            holderSiop
+            holderOid4vp
         )
 
         document.validItems.shouldNotBeEmpty()
@@ -89,23 +84,23 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     }
 
     "test with Fragment for custom attributes" {
-        verifierSiop = OidcSiopVerifier(
+        verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
-            verifierSiop,
+            verifierOid4vp,
             walletUrl,
-            OidcSiopVerifier.RequestOptions(
+            OpenId4VpVerifier.RequestOptions(
                 credentials = setOf(
-                    OidcSiopVerifier.RequestOptionsCredential(
+                    OpenId4VpVerifier.RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        listOf(CLAIM_GIVEN_NAME)
+                        listOf(ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME)
                     )
                 )
             ),
-            holderSiop
+            holderOid4vp
         )
 
         document.validItems.shouldNotBeEmpty()
@@ -113,24 +108,24 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     }
 
     "Selective Disclosure with mDL" {
-        val requestedClaim = FAMILY_NAME
-        verifierSiop = OidcSiopVerifier(
+        val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
+        verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
-            verifierSiop,
+            verifierOid4vp,
             walletUrl,
-            OidcSiopVerifier.RequestOptions(
+            OpenId4VpVerifier.RequestOptions(
                 credentials = setOf(
-                    OidcSiopVerifier.RequestOptionsCredential(
+                    OpenId4VpVerifier.RequestOptionsCredential(
                         MobileDrivingLicenceScheme,
                         ConstantIndex.CredentialRepresentation.ISO_MDOC,
                         listOf(requestedClaim)
                     )
                 )
             ),
-            holderSiop,
+            holderOid4vp,
         )
 
         document.validItems.shouldBeSingleton()
@@ -139,14 +134,14 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     }
 
     "Selective Disclosure with mDL and encryption (ISO/IEC 18013-7:2024 Annex B)" {
-        val requestedClaim = FAMILY_NAME
-        verifierSiop = OidcSiopVerifier(
+        val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
+        verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
         )
-        val requestOptions = OidcSiopVerifier.RequestOptions(
+        val requestOptions = OpenId4VpVerifier.RequestOptions(
             credentials = setOf(
-                OidcSiopVerifier.RequestOptionsCredential(
+                OpenId4VpVerifier.RequestOptionsCredential(
                     MobileDrivingLicenceScheme, ConstantIndex.CredentialRepresentation.ISO_MDOC, listOf(requestedClaim)
                 )
             ),
@@ -154,16 +149,16 @@ class OidcSiopIsoProtocolTest : FreeSpec({
             responseUrl = "https://example.com/response",
             encryption = true
         )
-        val authnRequest = verifierSiop.createAuthnRequestUrl(
+        val authnRequest = verifierOid4vp.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = requestOptions
         )
 
-        val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
+        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-        val result = verifierSiop.validateAuthnResponse(authnResponse.params.formUrlEncode())
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
+        val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+        result.shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessIso>()
 
         val document = result.documents.first()
 
@@ -173,47 +168,47 @@ class OidcSiopIsoProtocolTest : FreeSpec({
     }
 
     "Selective Disclosure with mDL JSON Path syntax" {
-        verifierSiop = OidcSiopVerifier(
+        verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
         )
         val document = runProcess(
-            verifierSiop,
+            verifierOid4vp,
             walletUrl,
-            OidcSiopVerifier.RequestOptions(
+            OpenId4VpVerifier.RequestOptions(
                 credentials = setOf(
-                    OidcSiopVerifier.RequestOptionsCredential(
+                    OpenId4VpVerifier.RequestOptionsCredential(
                         MobileDrivingLicenceScheme,
                         ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        listOf(FAMILY_NAME)
+                        listOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
                     )
                 )
             ),
-            holderSiop,
+            holderOid4vp,
         )
 
         document.validItems.shouldBeSingleton()
-        document.validItems.shouldHaveSingleElement { it.elementIdentifier == FAMILY_NAME }
+        document.validItems.shouldHaveSingleElement { it.elementIdentifier == MobileDrivingLicenceDataElements.FAMILY_NAME }
         document.invalidItems.shouldBeEmpty()
     }
 
 })
 
 private suspend fun runProcess(
-    verifierSiop: OidcSiopVerifier,
+    verifierOid4vp: OpenId4VpVerifier,
     walletUrl: String,
-    requestOptions: OidcSiopVerifier.RequestOptions,
-    holderSiop: OidcSiopWallet,
+    requestOptions: OpenId4VpVerifier.RequestOptions,
+    holderOid4vp: OpenId4VpHolder,
 ): IsoDocumentParsed {
-    val authnRequest = verifierSiop.createAuthnRequestUrl(
+    val authnRequest = verifierOid4vp.createAuthnRequestUrl(
         walletUrl = walletUrl,
         requestOptions = requestOptions
     )
 
-    val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
+    val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
     authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-    val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-    result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
+    val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+    result.shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessIso>()
     return result.documents.first()
 }

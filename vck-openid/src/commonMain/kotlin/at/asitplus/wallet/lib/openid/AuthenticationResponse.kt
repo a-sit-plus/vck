@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.RelyingPartyMetadata

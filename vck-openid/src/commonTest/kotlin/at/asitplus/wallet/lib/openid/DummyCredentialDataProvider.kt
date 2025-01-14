@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
@@ -9,25 +9,10 @@ import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.mdl.DrivingPrivilege
 import at.asitplus.wallet.mdl.DrivingPrivilegeCode
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.AGE_OVER_18
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.BIRTH_DATE
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUE_DATE
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUING_AUTHORITY
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUING_COUNTRY
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.PORTRAIT
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.UN_DISTINGUISHING_SIGN
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -49,10 +34,10 @@ object DummyCredentialDataProvider {
         if (credentialScheme == ConstantIndex.AtomicAttribute2023) {
             val subjectId = subjectPublicKey.didEncoded
             val claims = listOfNotNull(
-                optionalClaim(claimNames, CLAIM_GIVEN_NAME, "Susanne"),
-                optionalClaim(claimNames, CLAIM_FAMILY_NAME, "Meier"),
-                optionalClaim(claimNames, CLAIM_DATE_OF_BIRTH, LocalDate.parse("1990-01-01")),
-                optionalClaim(claimNames, CLAIM_PORTRAIT, Random.nextBytes(32)),
+                optionalClaim(claimNames, ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME, "Susanne"),
+                optionalClaim(claimNames, ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME, "Meier"),
+                optionalClaim(claimNames, ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH, LocalDate.Companion.parse("1990-01-01")),
+                optionalClaim(claimNames, ConstantIndex.AtomicAttribute2023.CLAIM_PORTRAIT, Random.Default.nextBytes(32)),
             )
             when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
@@ -63,7 +48,11 @@ object DummyCredentialDataProvider {
                 )
 
                 ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialToBeIssued.VcJwt(
-                    subject = AtomicAttribute2023(subjectId, CLAIM_GIVEN_NAME, "Susanne"),
+                    subject = AtomicAttribute2023(
+                        subjectId,
+                        ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME,
+                        "Susanne"
+                    ),
                     expiration = expiration,
                     scheme = credentialScheme,
                     subjectPublicKey = subjectPublicKey,
@@ -81,36 +70,36 @@ object DummyCredentialDataProvider {
         } else if (credentialScheme == MobileDrivingLicenceScheme) {
             val drivingPrivilege = DrivingPrivilege(
                 vehicleCategoryCode = "B",
-                issueDate = LocalDate.parse("2023-01-01"),
-                expiryDate = LocalDate.parse("2033-01-31"),
+                issueDate = LocalDate.Companion.parse("2023-01-01"),
+                expiryDate = LocalDate.Companion.parse("2033-01-31"),
                 codes = arrayOf(DrivingPrivilegeCode(code = "B"))
             )
             var digestId = 0U
             val issuerSignedItems = listOfNotNull(
-                if (claimNames.isNullOrContains(FAMILY_NAME))
-                    issuerSignedItem(FAMILY_NAME, "Mustermann", digestId++) else null,
-                if (claimNames.isNullOrContains(GIVEN_NAME))
-                    issuerSignedItem(GIVEN_NAME, "Max", digestId++) else null,
-                if (claimNames.isNullOrContains(BIRTH_DATE))
-                    issuerSignedItem(BIRTH_DATE, LocalDate.parse("1970-01-01"), digestId++) else null,
-                if (claimNames.isNullOrContains(DOCUMENT_NUMBER))
-                    issuerSignedItem(DOCUMENT_NUMBER, "123456789", digestId++) else null,
-                if (claimNames.isNullOrContains(ISSUE_DATE))
-                    issuerSignedItem(ISSUE_DATE, LocalDate.parse("2023-01-01"), digestId++) else null,
-                if (claimNames.isNullOrContains(EXPIRY_DATE))
-                    issuerSignedItem(EXPIRY_DATE, LocalDate.parse("2033-01-01"), digestId++) else null,
-                if (claimNames.isNullOrContains(ISSUING_COUNTRY))
-                    issuerSignedItem(ISSUING_COUNTRY, "AT", digestId++) else null,
-                if (claimNames.isNullOrContains(ISSUING_AUTHORITY))
-                    issuerSignedItem(ISSUING_AUTHORITY, "AT", digestId++) else null,
-                if (claimNames.isNullOrContains(PORTRAIT))
-                    issuerSignedItem(PORTRAIT, Random.nextBytes(32), digestId++) else null,
-                if (claimNames.isNullOrContains(UN_DISTINGUISHING_SIGN))
-                    issuerSignedItem(UN_DISTINGUISHING_SIGN, "AT", digestId++) else null,
-                if (claimNames.isNullOrContains(DRIVING_PRIVILEGES))
-                    issuerSignedItem(DRIVING_PRIVILEGES, arrayOf(drivingPrivilege), digestId++) else null,
-                if (claimNames.isNullOrContains(AGE_OVER_18))
-                    issuerSignedItem(AGE_OVER_18, true, digestId++) else null,
+                if (claimNames.isNullOrContains(MobileDrivingLicenceDataElements.FAMILY_NAME))
+                    issuerSignedItem(MobileDrivingLicenceDataElements.FAMILY_NAME, "Mustermann", digestId++) else null,
+                if (claimNames.isNullOrContains(MobileDrivingLicenceDataElements.GIVEN_NAME))
+                    issuerSignedItem(MobileDrivingLicenceDataElements.GIVEN_NAME, "Max", digestId++) else null,
+                if (claimNames.isNullOrContains(MobileDrivingLicenceDataElements.BIRTH_DATE))
+                    issuerSignedItem(MobileDrivingLicenceDataElements.BIRTH_DATE, LocalDate.Companion.parse("1970-01-01"), digestId++) else null,
+                if (claimNames.isNullOrContains(MobileDrivingLicenceDataElements.DOCUMENT_NUMBER))
+                    issuerSignedItem(MobileDrivingLicenceDataElements.DOCUMENT_NUMBER, "123456789", digestId++) else null,
+                if (claimNames.isNullOrContains(MobileDrivingLicenceDataElements.ISSUE_DATE))
+                    issuerSignedItem(MobileDrivingLicenceDataElements.ISSUE_DATE, LocalDate.Companion.parse("2023-01-01"), digestId++) else null,
+                if (claimNames.isNullOrContains(MobileDrivingLicenceDataElements.EXPIRY_DATE))
+                    issuerSignedItem(MobileDrivingLicenceDataElements.EXPIRY_DATE, LocalDate.Companion.parse("2033-01-01"), digestId++) else null,
+                if (claimNames.isNullOrContains(MobileDrivingLicenceDataElements.ISSUING_COUNTRY))
+                    issuerSignedItem(MobileDrivingLicenceDataElements.ISSUING_COUNTRY, "AT", digestId++) else null,
+                if (claimNames.isNullOrContains(MobileDrivingLicenceDataElements.ISSUING_AUTHORITY))
+                    issuerSignedItem(MobileDrivingLicenceDataElements.ISSUING_AUTHORITY, "AT", digestId++) else null,
+                if (claimNames.isNullOrContains(MobileDrivingLicenceDataElements.PORTRAIT))
+                    issuerSignedItem(MobileDrivingLicenceDataElements.PORTRAIT, Random.Default.nextBytes(32), digestId++) else null,
+                if (claimNames.isNullOrContains(MobileDrivingLicenceDataElements.UN_DISTINGUISHING_SIGN))
+                    issuerSignedItem(MobileDrivingLicenceDataElements.UN_DISTINGUISHING_SIGN, "AT", digestId++) else null,
+                if (claimNames.isNullOrContains(MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES))
+                    issuerSignedItem(MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES, arrayOf(drivingPrivilege), digestId++) else null,
+                if (claimNames.isNullOrContains(MobileDrivingLicenceDataElements.AGE_OVER_18))
+                    issuerSignedItem(MobileDrivingLicenceDataElements.AGE_OVER_18, true, digestId++) else null,
             )
 
             CredentialToBeIssued.Iso(
@@ -123,7 +112,7 @@ object DummyCredentialDataProvider {
             val subjectId = subjectPublicKey.didEncoded
             val familyName = "Musterfrau"
             val givenName = "Maria"
-            val birthDate = LocalDate.parse("1970-01-01")
+            val birthDate = LocalDate.Companion.parse("1970-01-01")
             val issuingCountry = "AT"
             val nationality = "FR"
             val claims = listOfNotNull(
@@ -187,7 +176,7 @@ object DummyCredentialDataProvider {
     private fun issuerSignedItem(name: String, value: Any, digestId: UInt) =
         IssuerSignedItem(
             digestId = digestId,
-            random = Random.nextBytes(16),
+            random = Random.Default.nextBytes(16),
             elementIdentifier = name,
             elementValue = value
         )

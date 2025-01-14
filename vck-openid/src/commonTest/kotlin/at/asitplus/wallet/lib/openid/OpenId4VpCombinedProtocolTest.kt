@@ -1,11 +1,9 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
@@ -17,17 +15,14 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OidcSiopCombinedProtocolTest : FreeSpec({
+class OpenId4VpCombinedProtocolTest : FreeSpec({
 
     lateinit var clientId: String
-
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
-
     lateinit var holderAgent: Holder
-
-    lateinit var holderSiop: OidcSiopWallet
-    lateinit var verifierSiop: OidcSiopVerifier
+    lateinit var holderOid4vp: OpenId4VpHolder
+    lateinit var verifierOid4vp: OpenId4VpVerifier
 
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -35,13 +30,13 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         clientId = "https://example.com/rp/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
 
-        holderSiop = OidcSiopWallet(
+        holderOid4vp = OpenId4VpHolder(
             keyMaterial = holderKeyMaterial,
             holder = holderAgent,
         )
-        verifierSiop = OidcSiopVerifier(
+        verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
         )
     }
 
@@ -53,17 +48,17 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
-                val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                val authnRequest = verifierOid4vp.createAuthnRequest(
+                    requestOptions = OpenId4VpVerifier.RequestOptions(
                         credentials = setOf(
-                            OidcSiopVerifier.RequestOptionsCredential(
-                                ConstantIndex.AtomicAttribute2023, CredentialRepresentation.PLAIN_JWT
+                            OpenId4VpVerifier.RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.PLAIN_JWT
                             )
                         )
                     )
                 )
                 shouldThrow<OAuth2Exception> {
-                    holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                    holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                 }
             }
 
@@ -73,22 +68,22 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
-                val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                val authnRequest = verifierOid4vp.createAuthnRequest(
+                    requestOptions = OpenId4VpVerifier.RequestOptions(
                         credentials = setOf(
-                            OidcSiopVerifier.RequestOptionsCredential(
+                            OpenId4VpVerifier.RequestOptionsCredential(
                                 ConstantIndex.AtomicAttribute2023,
-                                CredentialRepresentation.PLAIN_JWT
+                                ConstantIndex.CredentialRepresentation.PLAIN_JWT
                             )
                         )
                     )
                 )
 
-                val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                val authnResponse = holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-                val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-                    .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.Success>()
+                val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                    .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
                 result.vp.verifiableCredentials.shouldNotBeEmpty()
                 result.vp.verifiableCredentials.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
@@ -102,17 +97,17 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 holderAgent.storeSdJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
                 holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
-                val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                val authnRequest = verifierOid4vp.createAuthnRequest(
+                    requestOptions = OpenId4VpVerifier.RequestOptions(
                         credentials = setOf(
-                            OidcSiopVerifier.RequestOptionsCredential(
-                                ConstantIndex.AtomicAttribute2023, CredentialRepresentation.SD_JWT
+                            OpenId4VpVerifier.RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.SD_JWT
                             )
                         )
                     )
                 )
                 shouldThrow<OAuth2Exception> {
-                    holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                    holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                 }
             }
 
@@ -122,20 +117,20 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 holderAgent.storeSdJwtCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
                 holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
-                val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                val authnRequest = verifierOid4vp.createAuthnRequest(
+                    requestOptions = OpenId4VpVerifier.RequestOptions(
                         credentials = setOf(
-                            OidcSiopVerifier.RequestOptionsCredential(
-                                ConstantIndex.AtomicAttribute2023, CredentialRepresentation.SD_JWT
+                            OpenId4VpVerifier.RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.SD_JWT
                             )
                         )
                     )
                 )
-                val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                val authnResponse = holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-                val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-                    .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
+                val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                    .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt>()
                 result.verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
             }
         }
@@ -146,17 +141,17 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
-                val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                val authnRequest = verifierOid4vp.createAuthnRequest(
+                    requestOptions = OpenId4VpVerifier.RequestOptions(
                         credentials = setOf(
-                            OidcSiopVerifier.RequestOptionsCredential(
-                                ConstantIndex.AtomicAttribute2023, CredentialRepresentation.ISO_MDOC
+                            OpenId4VpVerifier.RequestOptionsCredential(
+                                ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.ISO_MDOC
                             )
                         )
                     ),
                 )
                 shouldThrow<OAuth2Exception> {
-                    holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                    holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                 }
             }
 
@@ -166,21 +161,21 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
-                val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                val authnRequest = verifierOid4vp.createAuthnRequest(
+                    requestOptions = OpenId4VpVerifier.RequestOptions(
                         credentials = setOf(
-                            OidcSiopVerifier.RequestOptionsCredential(
+                            OpenId4VpVerifier.RequestOptionsCredential(
                                 ConstantIndex.AtomicAttribute2023,
-                                CredentialRepresentation.ISO_MDOC
+                                ConstantIndex.CredentialRepresentation.ISO_MDOC
                             )
                         )
                     ),
                 )
-                val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+                val authnResponse = holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-                verifierSiop.validateAuthnResponse(authnResponse.url)
-                    .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessIso>()
+                verifierOid4vp.validateAuthnResponse(authnResponse.url)
+                    .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessIso>()
             }
         }
     }
@@ -190,23 +185,23 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         holderAgent.storeJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
         holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
-        val authnRequest = verifierSiop.createAuthnRequest(
-            requestOptions = OidcSiopVerifier.RequestOptions(
+        val authnRequest = verifierOid4vp.createAuthnRequest(
+            requestOptions = OpenId4VpVerifier.RequestOptions(
                 credentials = setOf(
-                    OidcSiopVerifier.RequestOptionsCredential(
-                        ConstantIndex.AtomicAttribute2023, CredentialRepresentation.PLAIN_JWT
+                    OpenId4VpVerifier.RequestOptionsCredential(
+                        ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.PLAIN_JWT
                     ),
-                    OidcSiopVerifier.RequestOptionsCredential(
-                        MobileDrivingLicenceScheme, CredentialRepresentation.ISO_MDOC
+                    OpenId4VpVerifier.RequestOptionsCredential(
+                        MobileDrivingLicenceScheme, ConstantIndex.CredentialRepresentation.ISO_MDOC
                     )
                 )
             ),
         )
-        val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val validationResults = verifierSiop.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
+        val validationResults = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
         validationResults.validationResults.size shouldBe 2
     }
 
@@ -214,16 +209,16 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
         holderAgent.storeSdJwtCredential(holderKeyMaterial, EuPidScheme)
         holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
-        val requestOptions = OidcSiopVerifier.RequestOptions(
+        val requestOptions = OpenId4VpVerifier.RequestOptions(
             credentials = setOf(
-                OidcSiopVerifier.RequestOptionsCredential(
+                OpenId4VpVerifier.RequestOptionsCredential(
                     credentialScheme = ConstantIndex.AtomicAttribute2023,
-                    representation = CredentialRepresentation.SD_JWT,
-                    requestedAttributes = listOf(CLAIM_DATE_OF_BIRTH),
+                    representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                    requestedAttributes = listOf(ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH),
                 ),
-                OidcSiopVerifier.RequestOptionsCredential(
+                OpenId4VpVerifier.RequestOptionsCredential(
                     credentialScheme = EuPidScheme,
-                    representation = CredentialRepresentation.SD_JWT,
+                    representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                     requestedAttributes = listOf(
                         EuPidScheme.Attributes.FAMILY_NAME,
                         EuPidScheme.Attributes.GIVEN_NAME
@@ -231,16 +226,16 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 )
             )
         )
-        val authnRequest = verifierSiop.createAuthnRequest(requestOptions)
+        val authnRequest = verifierOid4vp.createAuthnRequest(requestOptions)
 
-        val authnResponse = holderSiop.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val groupedResult = verifierSiop.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
+        val groupedResult = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
         groupedResult.validationResults.size shouldBe 2
         groupedResult.validationResults.forEach { result ->
-            result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
+            result.shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt>()
             result.reconstructed.entries.shouldNotBeEmpty()
             when (result.verifiableCredentialSdJwt.verifiableCredentialType) {
                 EuPidScheme.sdJwtType -> {
@@ -249,7 +244,7 @@ class OidcSiopCombinedProtocolTest : FreeSpec({
                 }
 
                 ConstantIndex.AtomicAttribute2023.sdJwtType -> {
-                    result.reconstructed[CLAIM_DATE_OF_BIRTH].shouldNotBeNull()
+                    result.reconstructed[ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH].shouldNotBeNull()
                 }
 
                 else -> {
@@ -269,7 +264,7 @@ private suspend fun Holder.storeJwtCredential(
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 credentialScheme,
-                CredentialRepresentation.PLAIN_JWT,
+                ConstantIndex.CredentialRepresentation.PLAIN_JWT,
             ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
     )
@@ -284,7 +279,7 @@ private suspend fun Holder.storeSdJwtCredential(
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 credentialScheme,
-                CredentialRepresentation.SD_JWT,
+                ConstantIndex.CredentialRepresentation.SD_JWT,
             ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
     )
@@ -298,7 +293,7 @@ private suspend fun Holder.storeIsoCredential(
         DummyCredentialDataProvider.getCredential(
             holderKeyMaterial.publicKey,
             credentialScheme,
-            CredentialRepresentation.ISO_MDOC,
+            ConstantIndex.CredentialRepresentation.ISO_MDOC,
         ).getOrThrow()
     ).getOrThrow().toStoreCredentialInput()
 )

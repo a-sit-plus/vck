@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -10,17 +10,14 @@ import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
+class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
     lateinit var clientId: String
-
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
-
     lateinit var holderAgent: Holder
-
-    lateinit var holderSiop: OidcSiopWallet
-    lateinit var verifierSiop: OidcSiopVerifier
+    lateinit var holderOid4vp: OpenId4VpHolder
+    lateinit var verifierOid4vp: OpenId4VpVerifier
 
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -28,13 +25,13 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
         clientId = "https://example.com/rp/${uuid4()}"
         holderAgent = HolderAgent(holderKeyMaterial)
 
-        holderSiop = OidcSiopWallet(
+        holderOid4vp = OpenId4VpHolder(
             keyMaterial = holderKeyMaterial,
             holder = holderAgent,
         )
-        verifierSiop = OidcSiopVerifier(
+        verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId),
+            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId),
         )
     }
 
@@ -44,17 +41,17 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
             holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
-            val authnRequest = verifierSiop.createAuthnRequest(
-                requestOptions = OidcSiopVerifier.RequestOptions(
+            val authnRequest = verifierOid4vp.createAuthnRequest(
+                requestOptions = OpenId4VpVerifier.RequestOptions(
                     credentials = setOf(
-                        OidcSiopVerifier.RequestOptionsCredential(
+                        OpenId4VpVerifier.RequestOptionsCredential(
                             ConstantIndex.AtomicAttribute2023,
                             ConstantIndex.CredentialRepresentation.ISO_MDOC
                         )
                     )
                 )
             )
-            val preparationState = holderSiop.startAuthorizationResponsePreparation(authnRequest.serialize())
+            val preparationState = holderOid4vp.startAuthorizationResponsePreparation(authnRequest.serialize())
                 .getOrThrow()
             val presentationDefinition = preparationState.presentationDefinition.shouldNotBeNull()
             val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
@@ -77,10 +74,10 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                 holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
                 holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
-                val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                val authnRequest = verifierOid4vp.createAuthnRequest(
+                    requestOptions = OpenId4VpVerifier.RequestOptions(
                         credentials = setOf(
-                            OidcSiopVerifier.RequestOptionsCredential(
+                            OpenId4VpVerifier.RequestOptionsCredential(
                                 ConstantIndex.AtomicAttribute2023,
                                 ConstantIndex.CredentialRepresentation.ISO_MDOC
                             )
@@ -88,8 +85,8 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                     )
                 )
 
-                val params = holderSiop.parseAuthenticationRequestParameters(authnRequest.serialize()).getOrThrow()
-                val preparationState = holderSiop.startAuthorizationResponsePreparation(params).getOrThrow()
+                val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest.serialize()).getOrThrow()
+                val preparationState = holderOid4vp.startAuthorizationResponsePreparation(params).getOrThrow()
                 val presentationDefinition = preparationState.presentationDefinition.shouldNotBeNull()
                 val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
                 val matches = holderAgent.matchInputDescriptorsAgainstCredentialStore(
@@ -112,7 +109,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                     )
 
                     shouldNotThrowAny {
-                        holderSiop.finalizeAuthorizationResponseParameters(
+                        holderOid4vp.finalizeAuthorizationResponseParameters(
                             preparationState = preparationState,
                             request = params,
                             inputDescriptorSubmissions = submission
@@ -126,18 +123,18 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                 holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val sdJwtMatches = run {
-                    val authnRequestSdJwt = verifierSiop.createAuthnRequest(
-                        requestOptions = OidcSiopVerifier.RequestOptions(
+                    val authnRequestSdJwt = verifierOid4vp.createAuthnRequest(
+                        requestOptions = OpenId4VpVerifier.RequestOptions(
                             credentials = setOf(
-                                OidcSiopVerifier.RequestOptionsCredential(
+                                OpenId4VpVerifier.RequestOptionsCredential(
                                     ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.SD_JWT
                                 )
                             )
                         )
                     )
 
-                    val preparationStateSdJwt = holderSiop.startAuthorizationResponsePreparation(
-                        holderSiop.parseAuthenticationRequestParameters(authnRequestSdJwt.serialize()).getOrThrow()
+                    val preparationStateSdJwt = holderOid4vp.startAuthorizationResponsePreparation(
+                        holderOid4vp.parseAuthenticationRequestParameters(authnRequestSdJwt.serialize()).getOrThrow()
                     ).getOrThrow()
                     val presentationDefinitionSdJwt = preparationStateSdJwt.presentationDefinition.shouldNotBeNull()
 
@@ -155,18 +152,18 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                 }
 
 
-                val authnRequest = verifierSiop.createAuthnRequest(
-                    requestOptions = OidcSiopVerifier.RequestOptions(
+                val authnRequest = verifierOid4vp.createAuthnRequest(
+                    requestOptions = OpenId4VpVerifier.RequestOptions(
                         credentials = setOf(
-                            OidcSiopVerifier.RequestOptionsCredential(
+                            OpenId4VpVerifier.RequestOptionsCredential(
                                 ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.ISO_MDOC
                             )
                         )
                     )
                 )
 
-                val params = holderSiop.parseAuthenticationRequestParameters(authnRequest.serialize()).getOrThrow()
-                val preparationState = holderSiop.startAuthorizationResponsePreparation(params).getOrThrow()
+                val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest.serialize()).getOrThrow()
+                val preparationState = holderOid4vp.startAuthorizationResponsePreparation(params).getOrThrow()
                 val presentationDefinition = preparationState.presentationDefinition.shouldNotBeNull()
                 val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
 
@@ -190,7 +187,7 @@ class OidcSiopCombinedProtocolTwoStepTest : FreeSpec({
                 )
 
                 shouldThrowAny {
-                    holderSiop.finalizeAuthorizationResponse(
+                    holderOid4vp.finalizeAuthorizationResponse(
                         request = params,
                         preparationState = preparationState,
                         inputDescriptorSubmissions = submission

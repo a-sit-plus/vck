@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.ktor.openid
 
-import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
@@ -9,11 +8,9 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MD
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult.SuccessIso
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt
-import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.AuthnResponseResult.SuccessIso
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
@@ -106,9 +103,9 @@ class OpenId4VpWalletTest : FunSpec() {
         responseMode: ResponseMode,
         clientId: String,
     ): Pair<OpenId4VpWallet, String> {
-        val requestOptions = OidcSiopVerifier.RequestOptions(
+        val requestOptions = OpenId4VpVerifier.RequestOptions(
             credentials = setOf(
-                OidcSiopVerifier.RequestOptionsCredential(
+                OpenId4VpVerifier.RequestOptionsCredential(
                     credentialScheme = scheme,
                     representation = representation,
                     requestedAttributes = attributes.keys.toList()
@@ -169,13 +166,13 @@ class OpenId4VpWalletTest : FunSpec() {
     private fun Map.Entry<String, String>.toIssuerSignedItem(): IssuerSignedItem =
         IssuerSignedItem(0U, Random.nextBytes(16), key, value)
 
-    private fun OidcSiopVerifier.AuthnResponseResult.verifyReceivedAttributes(expectedAttributes: Map<String, String>) {
+    private fun OpenId4VpVerifier.AuthnResponseResult.verifyReceivedAttributes(expectedAttributes: Map<String, String>) {
         if (this.containsAllAttributes(expectedAttributes)) {
             countdownLatch.unlock()
         }
     }
 
-    private fun OidcSiopVerifier.AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<String, String>): Boolean =
+    private fun OpenId4VpVerifier.AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<String, String>): Boolean =
         when (this) {
             is SuccessSdJwt -> this.containsAllAttributes(expectedAttributes)
             is SuccessIso -> this.containsAllAttributes(expectedAttributes)
@@ -215,12 +212,12 @@ class OpenId4VpWalletTest : FunSpec() {
      */
     private suspend fun setupRelyingPartyService(
         clientId: String,
-        requestOptions: OidcSiopVerifier.RequestOptions,
-        validate: (OidcSiopVerifier.AuthnResponseResult) -> Unit,
+        requestOptions: OpenId4VpVerifier.RequestOptions,
+        validate: (OpenId4VpVerifier.AuthnResponseResult) -> Unit,
     ): Pair<HttpClientEngine, String> {
         val requestEndpointPath = "/request/${uuid4()}"
-        val verifier = OidcSiopVerifier(
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.PreRegistered(clientId),
+        val verifier = OpenId4VpVerifier(
+            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.PreRegistered(clientId),
         )
         val responseEndpointPath = "/response"
         val (url, jar) = verifier.createAuthnRequestUrlWithRequestObjectByReference(

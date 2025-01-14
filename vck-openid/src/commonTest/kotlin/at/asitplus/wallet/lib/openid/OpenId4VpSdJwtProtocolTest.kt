@@ -1,27 +1,22 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.RequestOptions
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-class OidcSiopSdJwtProtocolTest : FreeSpec({
+class OpenId4VpSdJwtProtocolTest : FreeSpec({
 
     lateinit var clientId: String
     lateinit var walletUrl: String
-
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var verifierKeyMaterial: KeyMaterial
-
     lateinit var holderAgent: Holder
-
-    lateinit var holderSiop: OidcSiopWallet
-    lateinit var verifierSiop: OidcSiopVerifier
+    lateinit var holderOid4vp: OpenId4VpHolder
+    lateinit var verifierOid4vp: OpenId4VpVerifier
 
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -40,22 +35,22 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
             ).getOrThrow().toStoreCredentialInput()
         )
 
-        holderSiop = OidcSiopWallet(
+        holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
         )
-        verifierSiop = OidcSiopVerifier(
+        verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.RedirectUri(clientId)
+            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.RedirectUri(clientId)
         )
     }
 
     "Selective Disclosure with custom credential" {
-        val requestedClaim = CLAIM_GIVEN_NAME
-        val authnRequest = verifierSiop.createAuthnRequestUrl(
+        val requestedClaim = ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+        val authnRequest = verifierOid4vp.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = RequestOptions(
+            requestOptions = OpenId4VpVerifier.RequestOptions(
                 credentials = setOf(
-                    OidcSiopVerifier.RequestOptionsCredential(
+                    OpenId4VpVerifier.RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.SD_JWT,
                         listOf(requestedClaim)
@@ -65,11 +60,11 @@ class OidcSiopSdJwtProtocolTest : FreeSpec({
         )
         authnRequest shouldContain requestedClaim
 
-        val authnResponse = holderSiop.createAuthnResponse(authnRequest).getOrThrow()
+        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierSiop.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
+        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        result.shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt>()
         result.verifiableCredentialSdJwt.shouldNotBeNull()
         result.reconstructed[requestedClaim].shouldNotBeNull()
     }

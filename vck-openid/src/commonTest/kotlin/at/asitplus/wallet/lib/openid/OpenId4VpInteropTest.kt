@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.oidc
+package at.asitplus.wallet.lib.openid
 
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.PresentationSubmission
@@ -9,8 +9,6 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -33,11 +31,11 @@ class OpenId4VpInteropTest : FreeSpec({
     lateinit var issuerClientId: String
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
-    lateinit var holderSiop: OidcSiopWallet
+    lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierClientId: String
     lateinit var verifierKeyId: String
     lateinit var verifierKeyMaterial: KeyMaterial
-    lateinit var verifierSiop: OidcSiopVerifier
+    lateinit var verifierOid4vp: OpenId4VpVerifier
 
     beforeEach {
         issuerKeyId = uuid4().toString()
@@ -60,16 +58,19 @@ class OpenId4VpInteropTest : FreeSpec({
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
-                    listOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
+                    listOf(
+                        ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME,
+                        ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+                    )
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
-        holderSiop = OidcSiopWallet(holderKeyMaterial, holderAgent)
+        holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent)
 
         verifierKeyId = uuid4().toString()
         verifierClientId = "https://verifier.example.com"
         verifierKeyMaterial = EphemeralKeyWithoutCert(customKeyId = verifierKeyId)
-        verifierSiop = OidcSiopVerifier(
+        verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             verifier = VerifierAgent(
                 identifier = verifierClientId,
@@ -82,26 +83,29 @@ class OpenId4VpInteropTest : FreeSpec({
                     })
                 )
             ),
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.PreRegistered(verifierClientId),
+            clientIdScheme = OpenId4VpVerifier.ClientIdScheme.PreRegistered(verifierClientId),
         )
     }
 
     "process with cross-device flow with request_uri and pre-trusted" {
-        val verifierJarMetadata = verifierSiop.jarMetadata
+        val verifierJarMetadata = verifierOid4vp.jarMetadata
         val responseNonce = uuid4().toString()
         val requestNonce = uuid4().toString()
         val requestUrl = "https://verifier.example.com/request/$requestNonce"
-        val (requestUrlForWallet, requestObject) = verifierSiop.createAuthnRequestUrlWithRequestObjectByReference(
+        val (requestUrlForWallet, requestObject) = verifierOid4vp.createAuthnRequestUrlWithRequestObjectByReference(
             walletUrl = "haip://",
             requestUrl = requestUrl,
-            requestOptions = OidcSiopVerifier.RequestOptions(
+            requestOptions = OpenId4VpVerifier.RequestOptions(
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://verifier.example.com/response/$responseNonce",
                 credentials = setOf(
-                    OidcSiopVerifier.RequestOptionsCredential(
+                    OpenId4VpVerifier.RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.SD_JWT,
-                        listOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
+                        listOf(
+                            ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME,
+                            ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+                        )
                     )
                 )
             )
@@ -111,7 +115,10 @@ class OpenId4VpInteropTest : FreeSpec({
         requestUrlForWallet shouldContain verifierClientId.encodeURLParameter()
         requestUrlForWallet shouldStartWith "haip://"
 
-        val jar = JwsSigned.deserialize<AuthenticationRequestParameters>(AuthenticationRequestParameters.serializer(), requestObject, vckJsonSerializer).getOrThrow()
+        val jar = JwsSigned.Companion.deserialize<AuthenticationRequestParameters>(
+            AuthenticationRequestParameters.Companion.serializer(), requestObject,
+            vckJsonSerializer
+        ).getOrThrow()
 
         jar.header.algorithm shouldBe JwsAlgorithm.ES256
         jar.header.type shouldBe "oauth-authz-req+jwt"
@@ -133,18 +140,18 @@ class OpenId4VpInteropTest : FreeSpec({
 
         DefaultVerifierJwsService().verifyJws(jar, verifierRequestSigningKey) shouldBe true
 
-        holderSiop = OidcSiopWallet(
+        holderOid4vp = OpenId4VpHolder(
             holderKeyMaterial,
             holderAgent,
             remoteResourceRetriever = { if (it == requestUrl) requestObject else null })
 
-        val parameters = holderSiop.parseAuthenticationRequestParameters(requestUrlForWallet).getOrThrow()
-        val preparation = holderSiop.startAuthorizationResponsePreparation(parameters).getOrThrow()
-        val response = holderSiop.finalizeAuthorizationResponse(parameters, preparation).getOrThrow()
+        val parameters = holderOid4vp.parseAuthenticationRequestParameters(requestUrlForWallet).getOrThrow()
+        val preparation = holderOid4vp.startAuthorizationResponsePreparation(parameters).getOrThrow()
+        val response = holderOid4vp.finalizeAuthorizationResponse(parameters, preparation).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
         response.params.entries.firstOrNull { it.key == "vp_token" }.shouldNotBeNull().value.let { vp_token ->
-            val sdJwt = SdJwtSigned.parse(vp_token).shouldNotBeNull()
+            val sdJwt = SdJwtSigned.Companion.parse(vp_token).shouldNotBeNull()
             sdJwt.keyBindingJws.shouldNotBeNull().also {
                 it.header.also {
                     it.algorithm shouldBe JwsAlgorithm.ES256
@@ -183,8 +190,8 @@ class OpenId4VpInteropTest : FreeSpec({
             }
         }
 
-        verifierSiop.validateAuthnResponse(response.params)
-            .shouldBeInstanceOf<OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt>()
+        verifierOid4vp.validateAuthnResponse(response.params)
+            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt>()
     }
 
     "parse JAR sample from document" {
@@ -201,7 +208,10 @@ class OpenId4VpInteropTest : FreeSpec({
             .i7Kli1T5RZzo2-TvWsw9-JpxjYPBUae8Lrc_ORfTdabHlXmuPucGVrE5lkBu7vLss2RKKEmdFFy57-ZvRFn4Tg
         """.trimIndent()
 
-        val jar = JwsSigned.deserialize<AuthenticationRequestParameters>(AuthenticationRequestParameters.serializer(), input, vckJsonSerializer).getOrThrow()
+        val jar = JwsSigned.Companion.deserialize<AuthenticationRequestParameters>(
+            AuthenticationRequestParameters.Companion.serializer(), input,
+            vckJsonSerializer
+        ).getOrThrow()
 
         jar.header.algorithm shouldBe JwsAlgorithm.ES256
         jar.header.type shouldBe " oauth-authz-req+jwt " // that's a typo in the document ...
@@ -238,7 +248,7 @@ class OpenId4VpInteropTest : FreeSpec({
             ~WyJlbHVWNU9nM2dTTklJOEVZbnN4QV9BIiwgImZhbWlseV9uYW1lIiwgIkRvZSJd~
         """.trimIndent()
 
-        val sdJwt = SdJwtSigned.parse(input).shouldNotBeNull().also {
+        val sdJwt = SdJwtSigned.Companion.parse(input).shouldNotBeNull().also {
             it.keyBindingJws.shouldBeNull()
             it.getPayloadAsVerifiableCredentialSdJwt().getOrThrow().also {
                 it.issuer shouldBe "https://rvig.nl/jwk"
@@ -253,5 +263,3 @@ class OpenId4VpInteropTest : FreeSpec({
     }
 
 })
-
-
