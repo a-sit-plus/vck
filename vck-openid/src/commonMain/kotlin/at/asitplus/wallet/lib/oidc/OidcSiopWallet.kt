@@ -214,6 +214,7 @@ class OidcSiopWallet(
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val audience = request.extractAudience(clientJsonWebKeySet)
         val presentationFactory = PresentationFactory(jwsService)
+        val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
         val idToken = presentationFactory.createSignedIdToken(clock, agentPublicKey, request).getOrNull()?.serialize()
 
         val resultContainer = presentationDefinition?.let {
@@ -223,6 +224,7 @@ class OidcSiopWallet(
                 audience = audience,
                 presentationDefinition = presentationDefinition,
                 clientMetadata = clientMetadata,
+                jsonWebKeys = jsonWebKeys,
                 inputDescriptorSubmissions = inputDescriptorSubmissions
             ).getOrThrow()
         }
@@ -238,7 +240,6 @@ class OidcSiopWallet(
             vpToken = vpToken,
             presentationSubmission = presentationSubmission,
         )
-        val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
         AuthenticationResponse(parameters, clientMetadata, jsonWebKeys, mdocGeneratedNonce)
     }
 

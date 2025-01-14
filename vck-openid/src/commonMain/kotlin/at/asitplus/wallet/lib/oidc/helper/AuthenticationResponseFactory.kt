@@ -105,57 +105,61 @@ internal class AuthenticationResponseFactory(
     private suspend fun buildJarm(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
-    ) =
-        if (response.clientMetadata != null && response.jsonWebKeys != null && response.clientMetadata.requestsEncryption()) {
-            val alg = response.clientMetadata.authorizationEncryptedResponseAlg!!
-            val enc = response.clientMetadata.authorizationEncryptedResponseEncoding!!
-            val jwk = response.jsonWebKeys.getEcdhEsKey()
-            val recipientNonce = runCatching { request.parameters.nonce?.decodeToByteArray(Base64()) }.getOrNull()
-                ?: runCatching { request.parameters.nonce?.encodeToByteArray() }.getOrNull()
-                ?: Random.nextBytes(16)
-            // TODO Verify whether its always base64-url-no-padding, as in iso/iec 18013-7:2024
-            val apv = recipientNonce.encodeToByteArray(Base64UrlStrict)
-            val senderNonce = response.mdocGeneratedNonce?.encodeToByteArray()
-                ?: Random.nextBytes(16)
-            val apu = senderNonce.encodeToByteArray(Base64UrlStrict)
-            jwsService.encryptJweObject(
-                header = JweHeader(
-                    algorithm = alg,
-                    encryption = enc,
-                    type = null,
-                    agreementPartyVInfo = apv,
-                    agreementPartyUInfo = apu,
-                    keyId = jwk.keyId,
-                ),
-                payload = response.params,
-                serializer = AuthenticationResponseParameters.serializer(),
-                recipientKey = jwk,
-                jweAlgorithm = alg,
-                jweEncryption = enc,
-            ).map { it.serialize() }.getOrElse {
-                Napier.w("buildJarm error", it)
-                throw OAuth2Exception(Errors.INVALID_REQUEST, it)
-            }
-        } else {
-            jwsService.createSignedJwsAddingParams(
-                payload = response.params,
-                serializer = AuthenticationResponseParameters.serializer(),
-                addX5c = false
-            ).map { it.serialize() }.getOrElse {
-                Napier.w("buildJarm error", it)
-                throw OAuth2Exception(Errors.INVALID_REQUEST, it)
-            }
+    ) = if (response.clientMetadata != null && response.jsonWebKeys != null && response.requestsEncryption()) {
+        val alg = response.clientMetadata.authorizationEncryptedResponseAlg!!
+        val enc = response.clientMetadata.authorizationEncryptedResponseEncoding!!
+        val jwk = response.jsonWebKeys.getEcdhEsKey()
+        val recipientNonce = runCatching { request.parameters.nonce?.decodeToByteArray(Base64()) }.getOrNull()
+            ?: runCatching { request.parameters.nonce?.encodeToByteArray() }.getOrNull()
+            ?: Random.nextBytes(16)
+        // TODO Verify whether its always base64-url-no-padding, as in iso/iec 18013-7:2024
+        val apv = recipientNonce.encodeToByteArray(Base64UrlStrict)
+        val senderNonce = response.mdocGeneratedNonce?.encodeToByteArray()
+            ?: Random.nextBytes(16)
+        val apu = senderNonce.encodeToByteArray(Base64UrlStrict)
+        jwsService.encryptJweObject(
+            header = JweHeader(
+                algorithm = alg,
+                encryption = enc,
+                type = null,
+                agreementPartyVInfo = apv,
+                agreementPartyUInfo = apu,
+                keyId = jwk.keyId,
+            ),
+            payload = response.params,
+            serializer = AuthenticationResponseParameters.serializer(),
+            recipientKey = jwk,
+            jweAlgorithm = alg,
+            jweEncryption = enc,
+        ).map { it.serialize() }.getOrElse {
+            Napier.w("buildJarm error", it)
+            throw OAuth2Exception(Errors.INVALID_REQUEST, it)
         }
-
-    @Throws(OAuth2Exception::class)
-    private fun Collection<JsonWebKey>.getEcdhEsKey(): JsonWebKey {
-        val ecKeys = filter { it.type == JwkType.EC }
-        return ecKeys.firstOrNull { it.publicKeyUse == "enc" }
-            ?: ecKeys.firstOrNull { it.algorithm == JweAlgorithm.ECDH_ES }
-            ?: ecKeys.firstOrNull()
-            ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "no suitable ECDH ES key in $ecKeys")
+    } else {
+        jwsService.createSignedJwsAddingParams(
+            payload = response.params,
+            serializer = AuthenticationResponseParameters.serializer(),
+            addX5c = false
+        ).map { it.serialize() }.getOrElse {
+            Napier.w("buildJarm error", it)
+            throw OAuth2Exception(Errors.INVALID_REQUEST, it)
+        }
     }
 
-    private fun RelyingPartyMetadata.requestsEncryption() =
-        authorizationEncryptedResponseAlg != null && authorizationEncryptedResponseEncoding != null
+
+    @Throws(OAuth2Exception::class)
+    private fun Collection<JsonWebKey>.getEcdhEsKey(): JsonWebKey =
+        filter { it.type == JwkType.EC }.let { ecKeys ->
+            ecKeys.firstOrNull { it.publicKeyUse == "enc" }
+                ?: ecKeys.firstOrNull { it.algorithm == JweAlgorithm.ECDH_ES }
+                ?: ecKeys.firstOrNull()
+                ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "no suitable ECDH ES key in $ecKeys")
+        }
+
 }
+
+internal fun AuthenticationResponse.requestsEncryption(): Boolean =
+    clientMetadata != null && jsonWebKeys != null && clientMetadata.requestsEncryption()
+
+internal fun RelyingPartyMetadata.requestsEncryption() =
+    authorizationEncryptedResponseAlg != null && authorizationEncryptedResponseEncoding != null

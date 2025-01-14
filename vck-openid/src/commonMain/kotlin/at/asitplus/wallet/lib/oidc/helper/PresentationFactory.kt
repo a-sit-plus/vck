@@ -13,6 +13,7 @@ import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
@@ -33,6 +34,7 @@ internal class PresentationFactory(
         presentationDefinition: PresentationDefinition,
         clientMetadata: RelyingPartyMetadata?,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
+        jsonWebKeys: Collection<JsonWebKey>?,
     ): KmmResult<PresentationResponseParameters> = catching {
         request.parameters.verifyResponseType()
         val nonce = request.parameters.nonce ?: run {
@@ -54,7 +56,7 @@ internal class PresentationFactory(
         val vpRequestParams = PresentationRequestParameters(
             nonce = nonce,
             audience = audience,
-            //TODO responseWillBeEncrypted = true,
+            responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsEncryption() == true,
             clientId = request.parameters.clientId,
             responseUrl = request.parameters.responseUrl,
         )
