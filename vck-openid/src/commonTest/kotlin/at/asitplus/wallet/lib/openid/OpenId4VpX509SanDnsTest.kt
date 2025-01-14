@@ -10,6 +10,7 @@ import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -68,7 +69,7 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
                     RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.SD_JWT,
-                        listOf(ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME)
+                        setOf(CLAIM_GIVEN_NAME)
                     )
                 ),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
@@ -81,7 +82,7 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
         result.shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-        result.reconstructed[ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME].shouldNotBeNull()
+        result.reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
 
     }
 })

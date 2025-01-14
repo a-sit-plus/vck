@@ -15,6 +15,8 @@ import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import com.benasher44.uuid.uuid4
@@ -58,8 +60,8 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
                     listOf(
-                        ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME,
-                        ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+                        CLAIM_FAMILY_NAME,
+                        CLAIM_GIVEN_NAME
                     )
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
@@ -340,10 +342,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                     RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.SD_JWT,
-                        listOf(
-                            ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME,
-                            ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-                        )
+                        setOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
                     )
                 )
             )

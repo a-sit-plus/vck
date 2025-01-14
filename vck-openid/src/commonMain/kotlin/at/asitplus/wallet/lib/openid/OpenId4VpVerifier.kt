@@ -289,8 +289,8 @@ class OpenId4VpVerifier(
         Constraint(fields = (requiredAttributes() + optionalAttributes() + toTypeConstraint()).filterNotNull())
 
     private fun RequestOptionsCredential.requiredAttributes() =
-        requestedAttributes?.createConstraints(representation, credentialScheme, false)
-            ?: listOf()
+        requestedAttributes?.createConstraints(representation, credentialScheme, false)?.toSet()
+            ?: setOf()
 
     private fun RequestOptionsCredential.optionalAttributes() =
         requestedOptionalAttributes?.createConstraints(representation, credentialScheme, true)
@@ -326,7 +326,7 @@ class OpenId4VpVerifier(
             )
         ) else null
 
-    private fun List<String>.createConstraints(
+    private fun Set<String>.createConstraints(
         representation: ConstantIndex.CredentialRepresentation,
         credentialScheme: ConstantIndex.CredentialScheme?,
         optional: Boolean,

@@ -73,7 +73,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
             RequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(
-                        MobileDrivingLicenceScheme, ISO_MDOC, listOf(GIVEN_NAME)
+                        MobileDrivingLicenceScheme, ISO_MDOC, setOf(GIVEN_NAME)
                     )
                 )
             ),
@@ -94,7 +94,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
             walletUrl,
             RequestOptions(
                 credentials = setOf(
-                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC, listOf(CLAIM_GIVEN_NAME))
+                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC, setOf(CLAIM_GIVEN_NAME))
                 )
             ),
             holderOid4vp
@@ -115,7 +115,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
             walletUrl,
             RequestOptions(
                 credentials = setOf(
-                    RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, listOf(requestedClaim))
+                    RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
                 )
             ),
             holderOid4vp,
@@ -134,7 +134,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         )
         val requestOptions = RequestOptions(
             credentials = setOf(
-                RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, listOf(requestedClaim))
+                RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
             ),
             responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
             responseUrl = "https://example.com/response",
@@ -171,7 +171,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
                     RequestOptionsCredential(
                         MobileDrivingLicenceScheme,
                         ISO_MDOC,
-                        listOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
+                        setOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
                     )
                 )
             ),

@@ -108,7 +108,7 @@ class OpenId4VpWalletTest : FunSpec() {
                 RequestOptionsCredential(
                     credentialScheme = scheme,
                     representation = representation,
-                    requestedAttributes = attributes.keys.toList()
+                    requestedAttributes = attributes.keys
                 )
             ),
             responseMode = responseMode,

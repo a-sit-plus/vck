@@ -214,15 +214,12 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                 RequestOptionsCredential(
                     credentialScheme = ConstantIndex.AtomicAttribute2023,
                     representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                    requestedAttributes = listOf(ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH),
+                    requestedAttributes = setOf(ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH),
                 ),
                 RequestOptionsCredential(
                     credentialScheme = EuPidScheme,
                     representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                    requestedAttributes = listOf(
-                        EuPidScheme.Attributes.FAMILY_NAME,
-                        EuPidScheme.Attributes.GIVEN_NAME
-                    ),
+                    requestedAttributes = setOf(EuPidScheme.Attributes.FAMILY_NAME, EuPidScheme.Attributes.GIVEN_NAME),
                 )
             )
         )

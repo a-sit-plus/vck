@@ -44,6 +44,8 @@ Release 5.3.0:
  - OpenID4VP in general:
   - Deprecate `OidcSiopVerifier`, use `at.asitplus.wallet.lib.openid.OpenId4VpVerifier` instead
   - Move classes `ClientIdScheme`, `RequestOptions`, `AuthResponseResult` out of `OpenId4VpVerifier`
+  - Change type of `RequestOptionsCredential.requestedAttributes` from `List` to `Set`
+  - Change type of `RequestOptionsCredential.requestedOptionalAttributes` from `List` to `Set`
   - Deprecate `OidcSiopWallet`, use `at.asitplus.wallet.lib.openid.OpenId4VpHolder` instead
   - Move `RequestObjectJwsVerifier` from `at.asitplus.wallet.lib.oidc` to `at.asitplus.wallet.lib.openid`
   - Move `RemoteResourceRetrieverFunction` from `at.asitplus.wallet.lib.oidc` to `at.asitplus.wallet.lib`

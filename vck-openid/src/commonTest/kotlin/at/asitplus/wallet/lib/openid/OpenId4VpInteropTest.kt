@@ -9,6 +9,8 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -59,8 +61,8 @@ class OpenId4VpInteropTest : FreeSpec({
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
                     listOf(
-                        ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME,
-                        ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+                        CLAIM_FAMILY_NAME,
+                        CLAIM_GIVEN_NAME
                     )
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
@@ -102,10 +104,7 @@ class OpenId4VpInteropTest : FreeSpec({
                     RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.SD_JWT,
-                        listOf(
-                            ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME,
-                            ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-                        )
+                        setOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
                     )
                 )
             )

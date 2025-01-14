@@ -56,11 +56,11 @@ data class RequestOptionsCredential(
      * List of attributes that shall be requested explicitly (selective disclosure),
      * or `null` to make no restrictions
      */
-    val requestedAttributes: List<String>? = null,
+    val requestedAttributes: Set<String>? = null,
     /**
      * List of attributes that shall be requested explicitly (selective disclosure),
      * but are not required (i.e. marked as optional),
      * or `null` to make no restrictions
      */
-    val requestedOptionalAttributes: List<String>? = null,
+    val requestedOptionalAttributes: Set<String>? = null,
 )

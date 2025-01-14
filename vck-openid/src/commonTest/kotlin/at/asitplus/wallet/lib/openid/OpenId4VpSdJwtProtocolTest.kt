@@ -53,7 +53,7 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
                     RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.SD_JWT,
-                        listOf(requestedClaim)
+                        setOf(requestedClaim)
                     )
                 )
             )
