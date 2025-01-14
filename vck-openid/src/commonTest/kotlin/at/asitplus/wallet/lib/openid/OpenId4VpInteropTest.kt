@@ -95,11 +95,11 @@ class OpenId4VpInteropTest : FreeSpec({
         val (requestUrlForWallet, requestObject) = verifierOid4vp.createAuthnRequestUrlWithRequestObjectByReference(
             walletUrl = "haip://",
             requestUrl = requestUrl,
-            requestOptions = OpenId4VpVerifier.RequestOptions(
+            requestOptions = RequestOptions(
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://verifier.example.com/response/$responseNonce",
                 credentials = setOf(
-                    OpenId4VpVerifier.RequestOptionsCredential(
+                    RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.SD_JWT,
                         listOf(

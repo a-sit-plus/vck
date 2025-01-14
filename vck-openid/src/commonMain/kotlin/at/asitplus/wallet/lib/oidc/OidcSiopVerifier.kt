@@ -215,6 +215,10 @@ class OidcSiopVerifier(
             addX5c = false
         )
 
+    @Deprecated(
+        message = "Replace with external class",
+        ReplaceWith("RequestOptions", "at.asitplus.wallet.lib.openid")
+    )
     data class RequestOptions(
         /**
          * Requested credentials, should be at least one

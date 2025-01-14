@@ -63,9 +63,9 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
 
     "test with Fragment" {
         val authnRequest = verifierOid4vp.createAuthnRequestAsSignedRequestObject(
-            requestOptions = OpenId4VpVerifier.RequestOptions(
+            requestOptions = RequestOptions(
                 credentials = setOf(
-                    OpenId4VpVerifier.RequestOptionsCredential(
+                    RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
                         ConstantIndex.CredentialRepresentation.SD_JWT,
                         listOf(ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME)

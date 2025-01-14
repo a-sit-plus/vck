@@ -12,6 +12,8 @@ import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.AuthnResponseResult.SuccessIso
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt
+import at.asitplus.wallet.lib.openid.RequestOptions
+import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
@@ -104,9 +106,9 @@ class OpenId4VpWalletTest : FunSpec() {
         responseMode: ResponseMode,
         clientId: String,
     ): Pair<OpenId4VpWallet, String> {
-        val requestOptions = OpenId4VpVerifier.RequestOptions(
+        val requestOptions = RequestOptions(
             credentials = setOf(
-                OpenId4VpVerifier.RequestOptionsCredential(
+                RequestOptionsCredential(
                     credentialScheme = scheme,
                     representation = representation,
                     requestedAttributes = attributes.keys.toList()
@@ -213,7 +215,7 @@ class OpenId4VpWalletTest : FunSpec() {
      */
     private suspend fun setupRelyingPartyService(
         clientId: String,
-        requestOptions: OpenId4VpVerifier.RequestOptions,
+        requestOptions: RequestOptions,
         validate: (OpenId4VpVerifier.AuthnResponseResult) -> Unit,
     ): Pair<HttpClientEngine, String> {
         val requestEndpointPath = "/request/${uuid4()}"

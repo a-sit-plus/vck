@@ -2,6 +2,9 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
@@ -37,17 +40,14 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
     "test credential matching" - {
         "only credentials of the correct format are matched" {
-            holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            holderAgent.storeIsoCredential(holderKeyMaterial, AtomicAttribute2023)
             holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
             holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
             val authnRequest = verifierOid4vp.createAuthnRequest(
-                requestOptions = OpenId4VpVerifier.RequestOptions(
+                requestOptions = RequestOptions(
                     credentials = setOf(
-                        OpenId4VpVerifier.RequestOptionsCredential(
-                            ConstantIndex.AtomicAttribute2023,
-                            ConstantIndex.CredentialRepresentation.ISO_MDOC
-                        )
+                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
                     )
                 )
             )
@@ -75,12 +75,9 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                 holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val authnRequest = verifierOid4vp.createAuthnRequest(
-                    requestOptions = OpenId4VpVerifier.RequestOptions(
+                    requestOptions = RequestOptions(
                         credentials = setOf(
-                            OpenId4VpVerifier.RequestOptionsCredential(
-                                ConstantIndex.AtomicAttribute2023,
-                                ConstantIndex.CredentialRepresentation.ISO_MDOC
-                            )
+                            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
                         )
                     )
                 )
@@ -124,11 +121,9 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
                 val sdJwtMatches = run {
                     val authnRequestSdJwt = verifierOid4vp.createAuthnRequest(
-                        requestOptions = OpenId4VpVerifier.RequestOptions(
+                        requestOptions = RequestOptions(
                             credentials = setOf(
-                                OpenId4VpVerifier.RequestOptionsCredential(
-                                    ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.SD_JWT
-                                )
+                                RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, SD_JWT)
                             )
                         )
                     )
@@ -153,11 +148,9 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
 
                 val authnRequest = verifierOid4vp.createAuthnRequest(
-                    requestOptions = OpenId4VpVerifier.RequestOptions(
+                    requestOptions = RequestOptions(
                         credentials = setOf(
-                            OpenId4VpVerifier.RequestOptionsCredential(
-                                ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.ISO_MDOC
-                            )
+                            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
                         )
                     )
                 )
@@ -207,7 +200,7 @@ private suspend fun Holder.storeSdJwtCredential(
             DummyCredentialDataProvider.getCredential(
                 holderKeyMaterial.publicKey,
                 credentialScheme,
-                ConstantIndex.CredentialRepresentation.SD_JWT,
+                SD_JWT,
             ).getOrThrow()
         ).getOrThrow().toStoreCredentialInput()
     )
@@ -221,7 +214,7 @@ private suspend fun Holder.storeIsoCredential(
         DummyCredentialDataProvider.getCredential(
             holderKeyMaterial.publicKey,
             credentialScheme,
-            ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            ISO_MDOC,
         ).getOrThrow()
     ).getOrThrow().toStoreCredentialInput()
 )

@@ -1,35 +1,15 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.signum.indispensable.josef.ConfirmationClaim
-import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.openid.*
+import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
-import at.asitplus.wallet.lib.oidvci.MapStore
-import at.asitplus.wallet.lib.oidvci.NonceService
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
@@ -42,8 +22,7 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
+import io.ktor.http.*
 import kotlinx.datetime.Clock
 import kotlin.time.Duration.Companion.seconds
 
@@ -110,8 +89,8 @@ class OpenId4VpProtocolTest : FreeSpec({
                 override suspend fun verifyAndRemoveNonce(it: String) = false
             }
         )
-        val requestOptions = OpenId4VpVerifier.RequestOptions(
-            credentials = setOf(OpenId4VpVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+        val requestOptions = RequestOptions(
+            credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
             responseType = OpenIdConstants.ID_TOKEN
         )
         val authnRequest = verifierOid4vp.createAuthnRequestUrl(walletUrl, requestOptions)
@@ -179,7 +158,7 @@ class OpenId4VpProtocolTest : FreeSpec({
     "test with direct_post" {
         val authnRequest = verifierOid4vp.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = OpenId4VpVerifier.RequestOptions(
+            requestOptions = RequestOptions(
                 credentials = setOf(OpenId4VpVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = clientId,
@@ -198,7 +177,7 @@ class OpenId4VpProtocolTest : FreeSpec({
     "test with direct_post_jwt" {
         val authnRequest = verifierOid4vp.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = OpenId4VpVerifier.RequestOptions(
+            requestOptions = RequestOptions(
                 credentials = setOf(OpenId4VpVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = clientId,
@@ -211,7 +190,8 @@ class OpenId4VpProtocolTest : FreeSpec({
         authnResponse.params.shouldHaveSize(2)
         val jarmResponse = authnResponse.params.entries.first { it.key == "response" }.value
         val jwsObject = JwsSigned.Companion.deserialize<AuthenticationResponseParameters>(
-            AuthenticationResponseParameters.Companion.serializer(), jarmResponse).getOrThrow()
+            AuthenticationResponseParameters.Companion.serializer(), jarmResponse
+        ).getOrThrow()
         DefaultVerifierJwsService().verifyJwsObject(jwsObject).shouldBeTrue()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
@@ -223,7 +203,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         val expectedState = uuid4().toString()
         val authnRequest = verifierOid4vp.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = OpenId4VpVerifier.RequestOptions(
+            requestOptions = RequestOptions(
                 credentials = setOf(OpenId4VpVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.Query,
                 state = expectedState
@@ -430,18 +410,16 @@ class OpenId4VpProtocolTest : FreeSpec({
     }
 })
 
-private fun requestOptionsAtomicAttribute() = OpenId4VpVerifier.RequestOptions(
+private fun requestOptionsAtomicAttribute() = RequestOptions(
     credentials = setOf(
-        OpenId4VpVerifier.RequestOptionsCredential(
-            ConstantIndex.AtomicAttribute2023,
-        )
+        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
     ),
 )
 
 private suspend fun buildAttestationJwt(
     sprsCryptoService: DefaultCryptoService,
     clientId: String,
-    verifierKeyMaterial: KeyMaterial
+    verifierKeyMaterial: KeyMaterial,
 ): JwsSigned<JsonWebToken> = DefaultJwsService(sprsCryptoService).createSignedJws(
     header = JwsHeader(
         algorithm = sprsCryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
@@ -460,8 +438,11 @@ private suspend fun buildAttestationJwt(
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
     object : RequestObjectJwsVerifier {
         override fun invoke(jws: JwsSigned<RequestParameters>): Boolean {
-            val attestationJwt = jws.header.attestationJwt?.let { JwsSigned.Companion.deserialize<JsonWebToken>(
-                JsonWebToken.Companion.serializer(), it).getOrThrow() }
+            val attestationJwt = jws.header.attestationJwt?.let {
+                JwsSigned.Companion.deserialize<JsonWebToken>(
+                    JsonWebToken.Companion.serializer(), it
+                ).getOrThrow()
+            }
                 ?: return false
             val verifierJwsService = DefaultVerifierJwsService()
             if (!verifierJwsService.verifyJws(attestationJwt, trustedKey))
@@ -475,7 +456,7 @@ private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
 private suspend fun verifySecondProtocolRun(
     verifierOid4vp: OpenId4VpVerifier,
     walletUrl: String,
-    holderOid4vp: OpenId4VpHolder
+    holderOid4vp: OpenId4VpHolder,
 ) {
     val authnRequestUrl = verifierOid4vp.createAuthnRequestUrl(walletUrl, defaultRequestOptions)
     val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl)
@@ -483,8 +464,8 @@ private suspend fun verifySecondProtocolRun(
         .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
 }
 
-private val defaultRequestOptions = OpenId4VpVerifier.RequestOptions(
+private val defaultRequestOptions = RequestOptions(
     credentials = setOf(
-        OpenId4VpVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
     )
 )

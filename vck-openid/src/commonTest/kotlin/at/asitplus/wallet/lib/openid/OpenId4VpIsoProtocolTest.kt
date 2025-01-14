@@ -3,9 +3,12 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -38,7 +41,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     MobileDrivingLicenceScheme,
-                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    ISO_MDOC,
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
@@ -47,7 +50,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                    ISO_MDOC,
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
@@ -67,12 +70,10 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         val document = runProcess(
             verifierOid4vp,
             walletUrl,
-            OpenId4VpVerifier.RequestOptions(
+            RequestOptions(
                 credentials = setOf(
-                    OpenId4VpVerifier.RequestOptionsCredential(
-                        MobileDrivingLicenceScheme, ConstantIndex.CredentialRepresentation.ISO_MDOC, listOf(
-                            MobileDrivingLicenceDataElements.GIVEN_NAME
-                        )
+                    RequestOptionsCredential(
+                        MobileDrivingLicenceScheme, ISO_MDOC, listOf(GIVEN_NAME)
                     )
                 )
             ),
@@ -91,13 +92,9 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         val document = runProcess(
             verifierOid4vp,
             walletUrl,
-            OpenId4VpVerifier.RequestOptions(
+            RequestOptions(
                 credentials = setOf(
-                    OpenId4VpVerifier.RequestOptionsCredential(
-                        ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        listOf(ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME)
-                    )
+                    RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC, listOf(CLAIM_GIVEN_NAME))
                 )
             ),
             holderOid4vp
@@ -116,13 +113,9 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         val document = runProcess(
             verifierOid4vp,
             walletUrl,
-            OpenId4VpVerifier.RequestOptions(
+            RequestOptions(
                 credentials = setOf(
-                    OpenId4VpVerifier.RequestOptionsCredential(
-                        MobileDrivingLicenceScheme,
-                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
-                        listOf(requestedClaim)
-                    )
+                    RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, listOf(requestedClaim))
                 )
             ),
             holderOid4vp,
@@ -139,11 +132,9 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
         )
-        val requestOptions = OpenId4VpVerifier.RequestOptions(
+        val requestOptions = RequestOptions(
             credentials = setOf(
-                OpenId4VpVerifier.RequestOptionsCredential(
-                    MobileDrivingLicenceScheme, ConstantIndex.CredentialRepresentation.ISO_MDOC, listOf(requestedClaim)
-                )
+                RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, listOf(requestedClaim))
             ),
             responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
             responseUrl = "https://example.com/response",
@@ -175,11 +166,11 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         val document = runProcess(
             verifierOid4vp,
             walletUrl,
-            OpenId4VpVerifier.RequestOptions(
+            RequestOptions(
                 credentials = setOf(
-                    OpenId4VpVerifier.RequestOptionsCredential(
+                    RequestOptionsCredential(
                         MobileDrivingLicenceScheme,
-                        ConstantIndex.CredentialRepresentation.ISO_MDOC,
+                        ISO_MDOC,
                         listOf(MobileDrivingLicenceDataElements.FAMILY_NAME)
                     )
                 )
@@ -197,7 +188,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
 private suspend fun runProcess(
     verifierOid4vp: OpenId4VpVerifier,
     walletUrl: String,
-    requestOptions: OpenId4VpVerifier.RequestOptions,
+    requestOptions: RequestOptions,
     holderOid4vp: OpenId4VpHolder,
 ): IsoDocumentParsed {
     val authnRequest = verifierOid4vp.createAuthnRequestUrl(
