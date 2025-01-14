@@ -8,12 +8,9 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MD
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.openid.ClientIdScheme
-import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
-import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.AuthnResponseResult.SuccessIso
-import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt
-import at.asitplus.wallet.lib.openid.RequestOptions
-import at.asitplus.wallet.lib.openid.RequestOptionsCredential
+import at.asitplus.wallet.lib.openid.*
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
@@ -169,13 +166,13 @@ class OpenId4VpWalletTest : FunSpec() {
     private fun Map.Entry<String, String>.toIssuerSignedItem(): IssuerSignedItem =
         IssuerSignedItem(0U, Random.nextBytes(16), key, value)
 
-    private fun OpenId4VpVerifier.AuthnResponseResult.verifyReceivedAttributes(expectedAttributes: Map<String, String>) {
+    private fun AuthnResponseResult.verifyReceivedAttributes(expectedAttributes: Map<String, String>) {
         if (this.containsAllAttributes(expectedAttributes)) {
             countdownLatch.unlock()
         }
     }
 
-    private fun OpenId4VpVerifier.AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<String, String>): Boolean =
+    private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<String, String>): Boolean =
         when (this) {
             is SuccessSdJwt -> this.containsAllAttributes(expectedAttributes)
             is SuccessIso -> this.containsAllAttributes(expectedAttributes)
@@ -216,7 +213,7 @@ class OpenId4VpWalletTest : FunSpec() {
     private suspend fun setupRelyingPartyService(
         clientId: String,
         requestOptions: RequestOptions,
-        validate: (OpenId4VpVerifier.AuthnResponseResult) -> Unit,
+        validate: (AuthnResponseResult) -> Unit,
     ): Pair<HttpClientEngine, String> {
         val requestEndpointPath = "/request/${uuid4()}"
         val verifier = OpenId4VpVerifier(

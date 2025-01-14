@@ -16,9 +16,11 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
+import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.*
@@ -31,7 +33,6 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.DurationUnit
@@ -54,12 +55,6 @@ class OpenId4VpVerifier(
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
-    /**
-     * Used to store the nonce, associated to the state, to first send [at.asitplus.openid.AuthenticationRequestParameters.nonce],
-     * and then verify the challenge in the submitted verifiable presentation in
-     * [at.asitplus.openid.AuthenticationResponseParameters.vpToken].
-     */
-    private val stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
     /** Used to store issued authn requests, to verify the authn response to it */
     private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
 ) {
@@ -355,53 +350,6 @@ class OpenId4VpVerifier(
         intentToRetain = false,
         optional = optional,
     )
-
-
-    sealed class AuthnResponseResult {
-        /**
-         * Error in parsing the URL or content itself, before verifying the contents of the OpenId response
-         */
-        data class Error(val reason: String, val state: String?) : AuthnResponseResult()
-
-        /**
-         * Error when validating the `vpToken` or `idToken`
-         */
-        data class ValidationError(val field: String, val state: String?) : AuthnResponseResult()
-
-        /**
-         * Wallet provided an `id_token`, no `vp_token` (as requested by us!)
-         */
-        data class IdToken(val idToken: at.asitplus.openid.IdToken, val state: String?) : AuthnResponseResult()
-
-        /**
-         * Validation results of all returned verifiable presentations
-         */
-        data class VerifiablePresentationValidationResults(val validationResults: List<AuthnResponseResult>) :
-            AuthnResponseResult()
-
-        /**
-         * Successfully decoded and validated the response from the Wallet (W3C credential)
-         */
-        data class Success(val vp: VerifiablePresentationParsed, val state: String?) :
-            AuthnResponseResult()
-
-        /**
-         * Successfully decoded and validated the response from the Wallet (W3C credential in SD-JWT)
-         */
-        data class SuccessSdJwt(
-            val sdJwtSigned: SdJwtSigned,
-            val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
-            val reconstructed: JsonObject,
-            val disclosures: Collection<SelectiveDisclosureItem>,
-            val state: String?,
-        ) : AuthnResponseResult()
-
-        /**
-         * Successfully decoded and validated the response from the Wallet (ISO credential)
-         */
-        data class SuccessIso(val documents: Collection<IsoDocumentParsed>, val state: String?) :
-            AuthnResponseResult()
-    }
 
     /**
      * Validates the OIDC Authentication Response from the Wallet, where [content] are the HTTP POST encoded

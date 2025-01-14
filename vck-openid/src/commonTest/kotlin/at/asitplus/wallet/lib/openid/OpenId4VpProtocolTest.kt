@@ -73,7 +73,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         authnResponse.url.shouldStartWith(clientId)
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
 
         verifySecondProtocolRun(verifierOid4vp, walletUrl, holderOid4vp)
@@ -99,7 +99,7 @@ class OpenId4VpProtocolTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.ValidationError>()
+            .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
         result.field shouldBe "idToken"
     }
 
@@ -119,7 +119,7 @@ class OpenId4VpProtocolTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.ValidationError>()
+        result.shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
         result.field shouldBe "state"
     }
 
@@ -152,14 +152,14 @@ class OpenId4VpProtocolTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<AuthnResponseResult.Success>()
     }
 
     "test with direct_post" {
         val authnRequest = verifierOid4vp.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
-                credentials = setOf(OpenId4VpVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = clientId,
             )
@@ -170,7 +170,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         authnResponse.url.shouldBe(clientId)
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
 
@@ -178,7 +178,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         val authnRequest = verifierOid4vp.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
-                credentials = setOf(OpenId4VpVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = clientId,
             )
@@ -195,7 +195,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         DefaultVerifierJwsService().verifyJwsObject(jwsObject).shouldBeTrue()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
 
@@ -204,7 +204,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         val authnRequest = verifierOid4vp.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
-                credentials = setOf(OpenId4VpVerifier.RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
+                credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.Query,
                 state = expectedState
             )
@@ -218,7 +218,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         authnResponse.url.shouldStartWith(clientId)
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.state.shouldBe(expectedState)
     }
@@ -238,7 +238,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponseParams)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
 
@@ -252,7 +252,7 @@ class OpenId4VpProtocolTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
@@ -269,7 +269,7 @@ class OpenId4VpProtocolTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
@@ -296,7 +296,7 @@ class OpenId4VpProtocolTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
@@ -349,7 +349,7 @@ class OpenId4VpProtocolTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
@@ -378,7 +378,7 @@ class OpenId4VpProtocolTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
+            .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
             it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
@@ -461,7 +461,7 @@ private suspend fun verifySecondProtocolRun(
     val authnRequestUrl = verifierOid4vp.createAuthnRequestUrl(walletUrl, defaultRequestOptions)
     val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl)
     verifierOid4vp.validateAuthnResponse((authnResponse.getOrThrow() as AuthenticationResponseResult.Redirect).url)
-        .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
+        .shouldBeInstanceOf<AuthnResponseResult.Success>()
 }
 
 private val defaultRequestOptions = RequestOptions(

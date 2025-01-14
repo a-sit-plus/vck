@@ -149,7 +149,7 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-        result.shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessIso>()
+        result.shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
 
         val document = result.documents.first()
 
@@ -200,6 +200,6 @@ private suspend fun runProcess(
     authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
     val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-    result.shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessIso>()
+    result.shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
     return result.documents.first()
 }

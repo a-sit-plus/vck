@@ -1,0 +1,54 @@
+package at.asitplus.wallet.lib.openid
+
+import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
+import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.jws.SdJwtSigned
+import kotlinx.serialization.json.JsonObject
+
+sealed class AuthnResponseResult {
+    /**
+     * Error in parsing the URL or content itself, before verifying the contents of the OpenId response
+     */
+    data class Error(val reason: String, val state: String?) : AuthnResponseResult()
+
+    /**
+     * Error when validating the `vpToken` or `idToken`
+     */
+    data class ValidationError(val field: String, val state: String?) : AuthnResponseResult()
+
+    /**
+     * Wallet provided an `id_token`, no `vp_token` (as requested by us!)
+     */
+    data class IdToken(val idToken: at.asitplus.openid.IdToken, val state: String?) : AuthnResponseResult()
+
+    /**
+     * Validation results of all returned verifiable presentations
+     */
+    data class VerifiablePresentationValidationResults(val validationResults: List<AuthnResponseResult>) :
+        AuthnResponseResult()
+
+    /**
+     * Successfully decoded and validated the response from the Wallet (W3C credential)
+     */
+    data class Success(val vp: VerifiablePresentationParsed, val state: String?) :
+        AuthnResponseResult()
+
+    /**
+     * Successfully decoded and validated the response from the Wallet (W3C credential in SD-JWT)
+     */
+    data class SuccessSdJwt(
+        val sdJwtSigned: SdJwtSigned,
+        val verifiableCredentialSdJwt: VerifiableCredentialSdJwt,
+        val reconstructed: JsonObject,
+        val disclosures: Collection<SelectiveDisclosureItem>,
+        val state: String?,
+    ) : AuthnResponseResult()
+
+    /**
+     * Successfully decoded and validated the response from the Wallet (ISO credential)
+     */
+    data class SuccessIso(val documents: Collection<IsoDocumentParsed>, val state: String?) :
+        AuthnResponseResult()
+}

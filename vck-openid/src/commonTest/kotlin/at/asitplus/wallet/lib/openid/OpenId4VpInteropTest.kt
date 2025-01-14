@@ -191,7 +191,7 @@ class OpenId4VpInteropTest : FreeSpec({
         }
 
         verifierOid4vp.validateAuthnResponse(response.params)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt>()
+            .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
     }
 
     "parse JAR sample from document" {

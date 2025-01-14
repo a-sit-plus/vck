@@ -360,7 +360,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         val response = holderOid4vp.finalizeAuthorizationResponse(parameters, preparation).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         verifierOid4vp.validateAuthnResponse(response.params)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt>()
+            .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
     }
 
 })

@@ -80,7 +80,7 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-        result.shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt>()
+        result.shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
         result.reconstructed[ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME].shouldNotBeNull()
 
     }

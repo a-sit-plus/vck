@@ -83,7 +83,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
                 val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                    .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.Success>()
+                    .shouldBeInstanceOf<AuthnResponseResult.Success>()
                 result.vp.verifiableCredentials.shouldNotBeEmpty()
                 result.vp.verifiableCredentials.forEach {
                     it.vc.credentialSubject.shouldBeInstanceOf<AtomicAttribute2023>()
@@ -130,7 +130,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
                 val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                    .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt>()
+                    .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
                 result.verifiableCredentialSdJwt.verifiableCredentialType shouldBe ConstantIndex.AtomicAttribute2023.sdJwtType
             }
         }
@@ -175,7 +175,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                     .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
                 verifierOid4vp.validateAuthnResponse(authnResponse.url)
-                    .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessIso>()
+                    .shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
             }
         }
     }
@@ -201,7 +201,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val validationResults = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
+            .shouldBeInstanceOf<AuthnResponseResult.VerifiablePresentationValidationResults>()
         validationResults.validationResults.size shouldBe 2
     }
 
@@ -232,10 +232,10 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val groupedResult = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.VerifiablePresentationValidationResults>()
+            .shouldBeInstanceOf<AuthnResponseResult.VerifiablePresentationValidationResults>()
         groupedResult.validationResults.size shouldBe 2
         groupedResult.validationResults.forEach { result ->
-            result.shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt>()
+            result.shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
             result.reconstructed.entries.shouldNotBeEmpty()
             when (result.verifiableCredentialSdJwt.verifiableCredentialType) {
                 EuPidScheme.sdJwtType -> {

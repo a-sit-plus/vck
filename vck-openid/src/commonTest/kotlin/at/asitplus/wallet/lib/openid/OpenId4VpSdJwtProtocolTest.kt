@@ -64,7 +64,7 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<OpenId4VpVerifier.AuthnResponseResult.SuccessSdJwt>()
+        result.shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
         result.verifiableCredentialSdJwt.shouldNotBeNull()
         result.reconstructed[requestedClaim].shouldNotBeNull()
     }
