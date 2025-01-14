@@ -26,9 +26,11 @@ import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
+import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
@@ -90,7 +92,7 @@ internal class PresentationFactory(
      * Performs calculation of the [SessionTranscript] and [DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required in [request] (i.e. it will be encrypted)
      */
-    @Throws(PresentationException::class)
+    @Throws(PresentationException::class, CancellationException::class)
     private suspend fun calcDeviceSignature(
         responseWillBeEncrypted: Boolean,
         clientId: String?,
@@ -123,6 +125,7 @@ internal class PresentationFactory(
             docType = docType,
             namespaces = deviceNameSpaceBytes
         )
+        Napier.d("Device authentication is ${deviceAuthentication.serialize().encodeToString(Base16())}")
         coseService.createSignedCoseWithDetachedPayload(
             payload = deviceAuthentication.serialize(),
             serializer = ByteArraySerializer(),

@@ -138,7 +138,7 @@ class OidcSiopIsoProtocolTest : FreeSpec({
         document.invalidItems.shouldBeEmpty()
     }
 
-    "Selective Disclosure with mDL and encryption" {
+    "Selective Disclosure with mDL and encryption (ISO/IEC 18013-7:2024 Annex B)" {
         val requestedClaim = FAMILY_NAME
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,

@@ -7,6 +7,7 @@ import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.wallet.lib.agent.CredentialSubmission
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
@@ -65,6 +66,7 @@ class OpenId4VpWallet(
         holder = holderAgent,
         agentPublicKey = cryptoService.keyMaterial.publicKey,
         jwsService = DefaultJwsService(cryptoService),
+        coseService = DefaultCoseService(cryptoService),
         remoteResourceRetriever = { url ->
             withContext(Dispatchers.IO) {
                 client.get(url).bodyAsText()

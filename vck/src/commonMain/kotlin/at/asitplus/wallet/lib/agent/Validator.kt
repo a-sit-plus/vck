@@ -310,8 +310,8 @@ class Validator(
             throw IllegalArgumentException("issuerKey")
         }
 
-        if (verifierCoseService.verifyCose(issuerAuth, issuerKey).isFailure) {
-            Napier.w("IssuerAuth not verified: $issuerAuth")
+        verifierCoseService.verifyCose(issuerAuth, issuerKey).onFailure {
+            Napier.w("IssuerAuth not verified: $issuerAuth", it)
             throw IllegalArgumentException("issuerAuth")
         }
 
@@ -336,29 +336,27 @@ class Validator(
             val deviceAuthentication =
                 doc.calcDeviceAuthentication(challenge, mdocGeneratedNonce, clientId, responseUrl)
             Napier.d("Device authentication is ${deviceAuthentication.encodeToString(Base16())}")
-            if (verifierCoseService.verifyCose(
-                    deviceSignature,
-                    walletKey,
-                    detachedPayload = deviceAuthentication
-                ).isFailure
-            ) {
-                Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}")
+            verifierCoseService.verifyCose(
+                deviceSignature,
+                walletKey,
+                detachedPayload = deviceAuthentication
+            ).onFailure {
+                Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}", it)
                 throw IllegalArgumentException("deviceSignature")
             }
         } else {
-            if (verifierCoseService.verifyCose(deviceSignature, walletKey).isFailure) {
-                Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}")
+            verifierCoseService.verifyCose(deviceSignature, walletKey).onFailure {
+                Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}", it)
                 throw IllegalArgumentException("deviceSignature")
             }
-        }
-
-        val deviceSignaturePayload = deviceSignature.payload ?: run {
-            Napier.w("DeviceSignature does not contain challenge")
-            throw IllegalArgumentException("challenge")
-        }
-        if (!deviceSignaturePayload.contentEquals(challenge.encodeToByteArray())) {
-            Napier.w("DeviceSignature does not contain correct challenge")
-            throw IllegalArgumentException("challenge")
+            val deviceSignaturePayload = deviceSignature.payload ?: run {
+                Napier.w("DeviceSignature does not contain challenge")
+                throw IllegalArgumentException("challenge")
+            }
+            if (!deviceSignaturePayload.contentEquals(challenge.encodeToByteArray())) {
+                Napier.w("DeviceSignature does not contain correct challenge")
+                throw IllegalArgumentException("challenge")
+            }
         }
 
         val validItems = mutableListOf<IssuerSignedItem>()
@@ -539,9 +537,8 @@ class Validator(
             Napier.w("ISO: No issuer key")
             return InvalidStructure(it.serialize().encodeToString(Base16(strict = true)))
         }
-        val result = verifierCoseService.verifyCose(it.issuerAuth, issuerKey)
-        if (result.isFailure) {
-            Napier.w("ISO: Could not verify credential", result.exceptionOrNull())
+        verifierCoseService.verifyCose(it.issuerAuth, issuerKey).onFailure { ex ->
+            Napier.w("ISO: Could not verify credential", ex)
             return InvalidStructure(it.serialize().encodeToString(Base16(strict = true)))
         }
         return SuccessIso(it)

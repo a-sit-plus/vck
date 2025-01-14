@@ -22,12 +22,13 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 
 internal class AuthenticationResponseFactory(
     val jwsService: JwsService,
 ) {
-    @Throws(OAuth2Exception::class)
+    @Throws(OAuth2Exception::class, CancellationException::class)
     internal suspend fun createAuthenticationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
@@ -42,7 +43,7 @@ internal class AuthenticationResponseFactory(
     /**
      * Per OID4VP, the response may either be signed, or encrypted (never signed and encrypted!)
      */
-    @Throws(OAuth2Exception::class)
+    @Throws(OAuth2Exception::class, CancellationException::class)
     internal suspend fun authnResponseDirectPostJwt(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
@@ -101,7 +102,7 @@ internal class AuthenticationResponseFactory(
         return AuthenticationResponseResult.Redirect(url, response.params)
     }
 
-    @Throws(OAuth2Exception::class)
+    @Throws(OAuth2Exception::class, CancellationException::class)
     private suspend fun buildJarm(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
