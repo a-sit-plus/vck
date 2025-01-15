@@ -413,7 +413,7 @@ open class OidcSiopVerifier(
         ),
     )
 
-    open fun RequestOptionsCredential.toInputDescriptor(transactionData: Set<Any>? = null): InputDescriptor =
+    open fun RequestOptionsCredential.toInputDescriptor(transactionData: Set<String>? = null): InputDescriptor =
         DifInputDescriptor(
             id = buildId(),
             format = toFormatHolder(),
