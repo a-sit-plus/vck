@@ -18,12 +18,10 @@ import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
-import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
 import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
@@ -38,44 +36,38 @@ import com.benasher44.uuid.uuid4
  */
 class RqesWalletService(
     private val clientId: String = "https://wallet.a-sit.at/app",
-    redirectUrl: String = "$clientId/callback",
+    private val redirectUrl: String = "$clientId/callback",
     stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
 ) {
-    /**
-     * Initialized to common parameters
-     */
-    object SignatureProperties {
-        val signatureQualifier: SignatureQualifier = SignatureQualifier.EU_EIDAS_QES
-        var signatureFormat: SignatureFormat = SignatureFormat.PADES
-            internal set
-        var conformanceLevel: ConformanceLevel = ConformanceLevel.ADESBB
-            internal set
-        var signedEnvelopeProperty: SignedEnvelopeProperty? = null
-            internal set
-    }
+    data class SignatureProperties(
+        val signatureQualifier: SignatureQualifier = SignatureQualifier.EU_EIDAS_QES,
+        val signatureFormat: SignatureFormat = SignatureFormat.PADES,
+        val conformanceLevel: ConformanceLevel = ConformanceLevel.ADESBB,
+        val signedEnvelopeProperty: SignedEnvelopeProperty? = null,
+    )
 
-    /**
-     * Initialized to common parameters
-     */
-    object CryptoProperties {
-        var signAlgorithm: X509SignatureAlgorithm = X509SignatureAlgorithm.ES256
-            internal set
-        var signAlgoParam: Asn1Element? = null
-            internal set
-    }
+    data class CryptoProperties(
+        val signAlgorithm: X509SignatureAlgorithm = X509SignatureAlgorithm.ES256,
+        val signAlgoParam: Asn1Element? = null,
+    )
 
-    //For now just store one
     data class SigningCredential(
         val credentialId: String,
         val certificates: List<X509Certificate>,
         val supportedSigningAlgorithms: List<X509SignatureAlgorithm>,
     )
 
+    var signatureProperties = SignatureProperties()
+        private set
+
+    var cryptoProperties = CryptoProperties()
+        private set
+
     //TODO check if [CryptoProperties] align with signingCredential otw change it
     var signingCredential: SigningCredential? = null
         private set
 
-    val oauth2Client: OAuth2Client = OAuth2Client(
+    private val oauth2Client: OAuth2Client = OAuth2Client(
         clientId = clientId,
         redirectUrl = redirectUrl,
         stateToCodeStore = stateToCodeStore
@@ -109,31 +101,27 @@ class RqesWalletService(
         )
     }
 
-
     suspend fun updateSignaturePropoerties(
         signatureFormat: SignatureFormat? = null,
         conformanceLevel: ConformanceLevel? = null,
         signedEnvelopeProperty: SignedEnvelopeProperty? = null,
-    ) {
-        with(SignatureProperties) {
-            this.signatureFormat = signatureFormat ?: this.signatureFormat
-            this.conformanceLevel = conformanceLevel ?: this.conformanceLevel
-            this.signedEnvelopeProperty = signedEnvelopeProperty ?: this.signedEnvelopeProperty
-            if (this.signedEnvelopeProperty?.viableSignatureFormats?.contains(this.signatureFormat) == false) throw IllegalArgumentException(
-                "Signed envelope property ${this.signedEnvelopeProperty} is not supported by signature format ${this.signatureFormat}"
-            )
+    ) = signatureProperties.copy(
+            signatureFormat = signatureFormat ?: signatureProperties.signatureFormat,
+            conformanceLevel = conformanceLevel ?: signatureProperties.conformanceLevel,
+            signedEnvelopeProperty = signedEnvelopeProperty ?: signatureProperties.signedEnvelopeProperty
+        ).also {
+            if (it.signedEnvelopeProperty?.viableSignatureFormats?.contains(it.signatureFormat) == false)
+                throw IllegalArgumentException("Signed envelope property ${it.signedEnvelopeProperty} is not supported by signature format ${it.signatureFormat}")
+            signatureProperties = it
         }
-    }
 
     suspend fun updateCryptoProperties(
         signAlgorithm: X509SignatureAlgorithm? = null,
         signAlgoParam: Asn1Element? = null,
-    ) {
-        with(CryptoProperties) {
-            this.signAlgorithm = signAlgorithm ?: this.signAlgorithm
-            this.signAlgoParam = signAlgoParam ?: this.signAlgoParam
-        }
-    }
+    ) = cryptoProperties.copy(
+        signAlgorithm = signAlgorithm ?: cryptoProperties.signAlgorithm,
+        signAlgoParam = signAlgoParam ?: cryptoProperties.signAlgoParam
+    ).also { cryptoProperties = it }
 
     suspend fun getCscAuthenticationDetails(
         /**
@@ -144,8 +132,8 @@ class RqesWalletService(
         signingCredential?.let { signingCred ->
             CscAuthorizationDetails(
                 credentialID = signingCred.credentialId,
-                signatureQualifier = SignatureProperties.signatureQualifier,
-                hashAlgorithmOid = CryptoProperties.signAlgorithm.digest.oid,
+                signatureQualifier = signatureProperties.signatureQualifier,
+                hashAlgorithmOid = cryptoProperties.signAlgorithm.digest.oid,
                 documentDigests = documentDigests
             )
         } ?: throw Exception("Please set a signing credential before using CSC functionality.")
@@ -156,22 +144,24 @@ class RqesWalletService(
     ): CscDocumentDigest =
         CscDocumentDigest(
             hashes = documentDigests.map { it.hash },
-            signatureFormat = SignatureProperties.signatureFormat,
-            conformanceLevel = SignatureProperties.conformanceLevel,
-            signAlgoOid = CryptoProperties.signAlgorithm.oid,
-            signAlgoParams = CryptoProperties.signAlgoParam,
-            signedEnvelopeProperty = SignatureProperties.signedEnvelopeProperty
+            signatureFormat = signatureProperties.signatureFormat,
+            conformanceLevel = signatureProperties.conformanceLevel,
+            signAlgoOid = cryptoProperties.signAlgorithm.oid,
+            signAlgoParams = cryptoProperties.signAlgoParam,
+            signedEnvelopeProperty = signatureProperties.signedEnvelopeProperty
         )
 
 
     suspend fun createOAuth2AuthenticationRequest(
         scope: RqesOauthScope,
+        redirectUrl: String = this.redirectUrl,
         authorizationDetails: Collection<AuthorizationDetails>? = null,
     ): AuthenticationRequestParameters =
         oauth2Client.createCscAuthnRequest(
             state = uuid4().toString(),
             authorizationDetails = authorizationDetails?.toSet(),
             scope = scope.value,
+            redirectUrl = redirectUrl,
             credentialId = if (scope == RqesOauthScope.CREDENTIAL) signingCredential?.credentialId?.encodeToByteArray()
                 ?: throw Exception("Please set a signing credential before using CSC functionality.") else null,
         )
@@ -195,7 +185,7 @@ class RqesWalletService(
             credentialId = it,
             sad = sad,
             hashes = dtbsr,
-            signAlgoOid = CryptoProperties.signAlgorithm.oid,
+            signAlgoOid = cryptoProperties.signAlgorithm.oid,
         )
     } ?: throw Exception("Please set a signing credential before using CSC functionality.")
 }
@@ -205,6 +195,7 @@ suspend fun OAuth2Client.createCscAuthnRequest(
     authorizationDetails: Set<AuthorizationDetails>? = null,
     scope: String? = null,
     requestUri: String? = null,
+    redirectUrl: String? = this.redirectUrl,
     credentialId: ByteArray? = null,
 ) = AuthenticationRequestParameters(
     responseType = GRANT_TYPE_CODE,
