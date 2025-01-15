@@ -70,7 +70,7 @@ class OpenId4VpInteropTest : FreeSpec({
         holderOid4vp = OpenId4VpHolder(holderKeyMaterial, holderAgent)
 
         verifierKeyId = uuid4().toString()
-        verifierClientId = "https://verifier.example.com"
+        verifierClientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
         verifierKeyMaterial = EphemeralKeyWithoutCert(customKeyId = verifierKeyId)
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
