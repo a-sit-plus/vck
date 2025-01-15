@@ -3,6 +3,7 @@
 Release 5.2.3:
  - Be more lenient in parsing OpenId authentication requests
  - OpenID4VP: Use correct format of algorithms in metadata for `vp_formats.vc+sd-jwt`
+ - SD-JWT: Support creating SD-JWT with nested structures by passing `.` in the claim names, e.g. `address.region`, see `SdJwtCreator` and `ClaimToBeIssued`
 
 Release 5.2.2:
  - Remote qualified electronic signatures:

@@ -4,6 +4,7 @@ import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.wallet.lib.agent.Holder.CreatePresentationResult
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
@@ -12,6 +13,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Duration.Companion.minutes
@@ -55,7 +57,7 @@ class AgentComplexSdJwtTest : FreeSpec({
         )
 
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
-            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
@@ -84,7 +86,7 @@ class AgentComplexSdJwtTest : FreeSpec({
         )
 
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
-            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
@@ -114,7 +116,7 @@ class AgentComplexSdJwtTest : FreeSpec({
         )
 
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
-            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
@@ -125,6 +127,49 @@ class AgentComplexSdJwtTest : FreeSpec({
             ?.jsonPrimitive?.content shouldBe "Vienna"
         verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
             ?.jsonPrimitive?.content shouldBe "AT"
+    }
+
+    "with claims in address in dot-notation" {
+        listOf(
+            ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION", "Vienna"),
+            ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY", "AT"),
+        ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
+
+        val presentationDefinition = buildPresentationDefinition(
+            "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
+            "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
+        )
+
+        val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+
+        verified.disclosures.size shouldBe 3 // for address, region, country
+
+        verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+            ?.jsonPrimitive?.content shouldBe "Vienna"
+        verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+            ?.jsonPrimitive?.content shouldBe "AT"
+    }
+
+    "with array value" {
+        listOf(
+            ClaimToBeIssued(CLAIM_NATIONALITIES, listOf("AT", "XY")),
+        ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
+
+        val presentationDefinition = buildPresentationDefinition("$.$CLAIM_NATIONALITIES")
+
+        val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+        val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
+            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+
+        verified.disclosures.size shouldBe 1 // for nationalities
+
+        verified.reconstructedJsonObject[CLAIM_NATIONALITIES]?.jsonArray?.map { it.jsonPrimitive.content } shouldBe listOf("AT", "XY")
     }
 
     "simple walk-through success" {
@@ -141,7 +186,7 @@ class AgentComplexSdJwtTest : FreeSpec({
         )
 
         val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
-            .shouldBeInstanceOf<Holder.CreatePresentationResult.SdJwt>()
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
         val verified = verifier.verifyPresentation(vp.sdJwt, challenge)
             .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
@@ -162,7 +207,7 @@ private suspend fun issueAndStoreCredential(
     holder: Holder,
     issuer: Issuer,
     claims: List<ClaimToBeIssued>,
-    holderKeyMaterial: KeyMaterial
+    holderKeyMaterial: KeyMaterial,
 ) {
     holder.storeCredential(
         issuer.issueCredential(
@@ -192,7 +237,7 @@ private suspend fun createPresentation(
     holder: Holder,
     challenge: String,
     presentationDefinition: PresentationDefinition,
-    verifierId: String
+    verifierId: String,
 ) = holder.createPresentation(
     challenge = challenge,
     audienceId = verifierId,
@@ -204,3 +249,4 @@ private const val CLAIM_ALWAYS_VISIBLE = "alwaysVisible"
 private const val CLAIM_ADDRESS = "address"
 private const val CLAIM_ADDRESS_REGION = "region"
 private const val CLAIM_ADDRESS_COUNTRY = "country"
+private const val CLAIM_NATIONALITIES = "nationalities"
