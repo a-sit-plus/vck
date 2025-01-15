@@ -30,7 +30,7 @@ class VerifierAgent(
      * that shall include the [challenge] (sent by this verifier),
      * as well as the expected [identifier] (identifying this verifier).
      */
-    @Deprecated("Use specific methods instead")
+    @Deprecated("Use specific methods instead, to be deleted after 5.3.0")
     override suspend fun verifyPresentation(it: String, challenge: String): VerifyPresentationResult {
         val input = it
         val sdJwtSigned = runCatching { SdJwtSigned.parse(input) }.getOrNull()
@@ -54,7 +54,9 @@ class VerifierAgent(
             ?.let { bytes -> Document.deserialize(bytes).getOrNull() }
         if (document != null) {
             val verifiedDocument = runCatching {
-                validator.verifyDocument(document, { _, _ -> true })
+                validator.verifyDocument(document) { mso, document ->
+                    validator.verifyDocumentFallback(mso, document, challenge)
+                }
             }.getOrElse {
                 return VerifyPresentationResult.ValidationError(it)
             }
@@ -64,7 +66,9 @@ class VerifierAgent(
             ?.let { bytes -> DeviceResponse.deserialize(bytes).getOrNull() }
         if (deviceResponse != null) {
             val result = runCatching {
-                validator.verifyDeviceResponse(deviceResponse, { _, _ -> true })
+                validator.verifyDeviceResponse(deviceResponse) { mso, document ->
+                    validator.verifyDocumentFallback(mso, document, challenge)
+                }
             }.getOrElse {
                 return VerifyPresentationResult.ValidationError(it)
             }
