@@ -52,6 +52,8 @@ Release 5.3.0:
   - Move `AuthorizationResponsePreparationState` from `at.asitplus.wallet.lib.oidc.helpers` to `at.asitplus.wallet.lib.openid`
 - General cleanup:
   - Remove `SchemaIndex`
+- SD-JWT:
+  - Support creating SD-JWT with nested structures by passing `.` in the claim names, e.g. `address.region`, see `SdJwtCreator` and `ClaimToBeIssued`
 
 Release 5.2.2:
  - Remote qualified electronic signatures:

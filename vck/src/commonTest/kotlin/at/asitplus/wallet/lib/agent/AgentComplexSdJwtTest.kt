@@ -7,7 +7,6 @@ import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.jws.SdJwtSigned
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
@@ -128,6 +127,31 @@ class AgentComplexSdJwtTest : FreeSpec({
             ?.jsonPrimitive?.content shouldBe "AT"
     }
 
+    "with claims in address in dot-notation" {
+        listOf(
+            ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION", "Vienna"),
+            ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY", "AT"),
+        ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
+
+        val presentationDefinition = buildPresentationDefinition(
+            "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
+            "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
+        )
+
+        val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
+            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+        val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+
+        verified.disclosures.size shouldBe 3 // for address, region, country
+
+        verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_REGION)
+            ?.jsonPrimitive?.content shouldBe "Vienna"
+        verified.reconstructedJsonObject[CLAIM_ADDRESS]?.jsonObject?.get(CLAIM_ADDRESS_COUNTRY)
+            ?.jsonPrimitive?.content shouldBe "AT"
+    }
+
     "simple walk-through success" {
         listOf(
             ClaimToBeIssued(CLAIM_GIVEN_NAME, "Susanne"),
@@ -163,7 +187,7 @@ private suspend fun issueAndStoreCredential(
     holder: Holder,
     issuer: Issuer,
     claims: List<ClaimToBeIssued>,
-    holderKeyMaterial: KeyMaterial
+    holderKeyMaterial: KeyMaterial,
 ) {
     holder.storeCredential(
         issuer.issueCredential(
@@ -193,7 +217,7 @@ private suspend fun createPresentation(
     holder: Holder,
     challenge: String,
     presentationDefinition: PresentationDefinition,
-    verifierId: String
+    verifierId: String,
 ) = holder.createPresentation(
     request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
     presentationDefinition = presentationDefinition

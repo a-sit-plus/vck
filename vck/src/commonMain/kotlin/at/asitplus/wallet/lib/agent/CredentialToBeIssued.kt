@@ -30,9 +30,12 @@ sealed class CredentialToBeIssued {
 }
 
 /**
- * Represents a claim that shall be issued to the holder,
- * i.e. serialized into the appropriate credential format.
- * To issue nested structures in SD-JWT, pass a Collection of [ClaimToBeIssued] in [value].
+ * Represents a claim that shall be issued to the holder, i.e. serialized into the appropriate credential format.
+ *
+ * To issue nested structures in SD-JWT, pick one of two options:
+ * - Pass a collection of [ClaimToBeIssued] in [value].
+ * - Put dots `.` in [name], e.g. `address.region`
+ *
  * For each claim, one can select if the claim shall be selectively disclosable, or otherwise included plain.
  */
 data class ClaimToBeIssued(val name: String, val value: Any, val selectivelyDisclosable: Boolean = true)
