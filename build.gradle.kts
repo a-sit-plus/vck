@@ -14,6 +14,7 @@ tasks.getByName("dokkaHtmlMultiModule") {
         files(
             "vck-dark.png",
             "vck-light.png",
+            "eu.svg",
         ).files.forEach { it.copyTo(File("build/dokka/${it.name}"), overwrite = true) }
     }
 }
