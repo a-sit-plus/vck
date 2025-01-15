@@ -434,7 +434,7 @@ open class OidcSiopVerifier(
         ),
     ).also { stateToAuthnRequestStore.put(requestOptions.state, it) }
 
-    open fun RequestOptionsCredential.toInputDescriptor(transactionData: Set<Any>? = null): InputDescriptor =
+    open fun RequestOptionsCredential.toInputDescriptor(transactionData: Set<String>? = null): InputDescriptor =
         DifInputDescriptor(
             id = buildId(),
             format = toFormatHolder(),

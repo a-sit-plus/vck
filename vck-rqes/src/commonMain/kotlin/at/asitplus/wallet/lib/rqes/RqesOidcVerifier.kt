@@ -115,7 +115,7 @@ class RqesOidcVerifier(
         }
     }
 
-    override fun RequestOptionsCredential.toInputDescriptor(transactionData: Set<Any>?): InputDescriptor =
+    override fun RequestOptionsCredential.toInputDescriptor(transactionData: Set<String>?): InputDescriptor =
         if (transactionData.isNullOrEmpty()) {
             DifInputDescriptor(
                 id = buildId(),
@@ -124,7 +124,7 @@ class RqesOidcVerifier(
             )
         } else {
             val deserialized =
-                transactionData.map { vckJsonSerializer.decodeFromString(TransactionData.serializer(), it as String) }
+                transactionData.map { vckJsonSerializer.decodeFromString(TransactionData.serializer(), it) }
             QesInputDescriptor(
                 id = buildId(), format = toFormatHolder(), constraints = toConstraint(), transactionData = deserialized
             )
