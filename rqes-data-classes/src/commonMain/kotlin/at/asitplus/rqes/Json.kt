@@ -38,10 +38,6 @@ private val requestParametersModule = SerializersModule {
             AuthenticationRequestParameters::class,
             AuthenticationRequestParameters.serializer()
         )
-//        subclass(
-//            CscAuthenticationRequestParameters::class,
-//            CscAuthenticationRequestParameters.serializer()
-//        )
     }
     polymorphicDefaultSerializer(
         RequestParameters::class,
