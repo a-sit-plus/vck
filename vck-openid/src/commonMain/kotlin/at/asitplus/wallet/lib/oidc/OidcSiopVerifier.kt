@@ -15,8 +15,6 @@ import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.wallet.lib.agent.*
@@ -29,8 +27,6 @@ import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import kotlinx.datetime.Clock
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -204,61 +200,76 @@ open class OidcSiopVerifier(
             addX5c = false
         )
 
-    data class RequestOptions(
+    interface RequestOptionsInterface {
         /**
          * Requested credentials, should be at least one
          */
-        val credentials: Set<RequestOptionsCredential>,
+        val credentials: Set<RequestOptionsCredential>
+
         /**
          * Response mode to request, see [OpenIdConstants.ResponseMode],
          * by default [OpenIdConstants.ResponseMode.Fragment].
          * Setting this to any other value may require setting [responseUrl] too.
          */
-        val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
+        val responseMode: OpenIdConstants.ResponseMode
+
         /**
          * Response URL to set in the [AuthenticationRequestParameters.responseUrl],
          * required if [responseMode] is set to [OpenIdConstants.ResponseMode.DirectPost] or
          * [OpenIdConstants.ResponseMode.DirectPostJwt].
          */
-        val responseUrl: String? = null,
+        val responseUrl: String?
+
         /**
          * Response type to set in [AuthenticationRequestParameters.responseType],
          * by default only `vp_token` (as per OpenID4VP spec).
          * Be sure to separate values by a space, e.g. `vp_token id_token`.
          */
-        val responseType: String = VP_TOKEN,
+        val responseType: String
+
         /**
          * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
          */
-        val state: String = uuid4().toString(),
+        val state: String
+
         /**
          * Optional URL to include [metadata] by reference instead of by value (directly embedding in authn request)
          */
-        val clientMetadataUrl: String? = null,
+        val clientMetadataUrl: String?
+
         /**
          * Set this value to include metadata with encryption parameters set. Beware if setting this value and also
          * [clientMetadataUrl], that the URL shall point to [OidcSiopVerifier.metadataWithEncryption].
          */
-        val encryption: Boolean = false,
+        val encryption: Boolean
 
-        val rqesParameters: RqesParameters? = null,
-    )
+        val isAnyDirectPost: Boolean
 
-    /**
-     * Parameters defined in the CSC extension of [AuthenticationRequestParameters]
-     */
-    data class RqesParameters(
-        val lang: String? = null,
-        val credentialID: ByteArray? = null,
-        val signatureQualifier: SignatureQualifier? = null,
-        val numSignatures: Int? = null,
-        val hashes: Hashes? = null,
-        val hashAlgorithmOid: ObjectIdentifier? = null,
-        val description: String? = null,
-        val accountToken: JsonWebToken? = null,
-        val clientData: String? = null,
-        val transactionData: Set<String>? = null,
-    )
+        fun buildScope(): String
+    }
+
+
+    data class RequestOptions(
+        override val credentials: Set<RequestOptionsCredential>,
+        override val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
+        override val responseUrl: String? = null,
+        override val responseType: String = VP_TOKEN,
+        override val state: String = uuid4().toString(),
+        override val clientMetadataUrl: String? = null,
+        override val encryption: Boolean = false,
+    ) : RequestOptionsInterface {
+        override fun buildScope() = (
+                listOf(SCOPE_OPENID, SCOPE_PROFILE)
+                        + credentials.mapNotNull { it.credentialScheme.sdJwtType }
+                        + credentials.mapNotNull { it.credentialScheme.vcType }
+                        + credentials.mapNotNull { it.credentialScheme.isoNamespace }
+                ).joinToString(" ")
+
+        override val isAnyDirectPost
+            get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
+                    (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
+
+    }
 
     data class RequestOptionsCredential(
         /**
@@ -375,8 +386,8 @@ open class OidcSiopVerifier(
      *
      * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
      */
-    suspend fun createAuthnRequest(
-        requestOptions: RequestOptions,
+    open suspend fun createAuthnRequest(
+        requestOptions: RequestOptionsInterface,
     ) = AuthenticationRequestParameters(
         responseType = requestOptions.responseType
             .also { stateToResponseTypeStore.put(requestOptions.state, it) },
@@ -398,38 +409,16 @@ open class OidcSiopVerifier(
         state = requestOptions.state,
         presentationDefinition = PresentationDefinition(
             id = uuid4().toString(),
-            inputDescriptors = requestOptions.credentials.map {
-                it.toInputDescriptor(requestOptions.rqesParameters?.transactionData)
-            },
+            inputDescriptors = requestOptions.credentials.map { it.toInputDescriptor() },
         ),
-        lang = requestOptions.rqesParameters?.lang,
-        credentialID= requestOptions.rqesParameters?.credentialID,
-        signatureQualifier=requestOptions.rqesParameters?.signatureQualifier,
-        numSignatures=requestOptions.rqesParameters?.numSignatures,
-        hashes=requestOptions.rqesParameters?.hashes,
-        hashAlgorithmOid=requestOptions.rqesParameters?.hashAlgorithmOid,
-        description=requestOptions.rqesParameters?.description,
-        accountToken=requestOptions.rqesParameters?.accountToken,
-        clientData=requestOptions.rqesParameters?.clientData,
-        transactionData=requestOptions.rqesParameters?.transactionData
     )
 
-    private fun RequestOptions.buildScope() = (
-            listOf(SCOPE_OPENID, SCOPE_PROFILE)
-                    + credentials.mapNotNull { it.credentialScheme.sdJwtType }
-                    + credentials.mapNotNull { it.credentialScheme.vcType }
-                    + credentials.mapNotNull { it.credentialScheme.isoNamespace }
-            ).joinToString(" ")
-
-    private val RequestOptions.isAnyDirectPost
-        get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
-                (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
-
-    open fun RequestOptionsCredential.toInputDescriptor(transactionData: Set<Any>? = null): InputDescriptor = DifInputDescriptor(
-        id = buildId(),
-        format = toFormatHolder(),
-        constraints = toConstraint(),
-    )
+    open fun RequestOptionsCredential.toInputDescriptor(transactionData: Set<Any>? = null): InputDescriptor =
+        DifInputDescriptor(
+            id = buildId(),
+            format = toFormatHolder(),
+            constraints = toConstraint(),
+        )
 
     /**
      * doctype is not really an attribute that can be presented,
