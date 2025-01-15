@@ -27,7 +27,7 @@ class OAuth2Client(
     /**
      * Used to create [AuthenticationRequestParameters] and [TokenRequestParameters].
      */
-    var redirectUrl: String = "$clientId/callback",
+    val redirectUrl: String = "$clientId/callback",
     /**
      * Used to store the code, associated to the state, to first send [AuthenticationRequestParameters.codeChallenge],
      * and then [TokenRequestParameters.codeVerifier], see [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636).
