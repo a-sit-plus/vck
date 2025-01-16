@@ -61,8 +61,13 @@ class OpenId4VpVerifier(
 
     private val responseParser = ResponseParser(jwsService, verifierJwsService)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
-    private val containerJwt =
-        FormatContainerJwt(algorithmStrings = verifierJwsService.supportedAlgorithms.map { it.identifier })
+    private val supportedAlgorithms = verifierJwsService.supportedAlgorithms.map { it.identifier }
+    private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithms)
+    private val containerSdJwt = FormatContainerSdJwt(
+        algorithmStrings = supportedAlgorithms.toSet(),
+        sdJwtAlgorithmStrings = supportedAlgorithms.toSet(),
+        kbJwtAlgorithmStrings = supportedAlgorithms.toSet()
+    )
 
     /**
      * Serve this result JSON-serialized under `/.well-known/jar-issuer`
@@ -91,7 +96,7 @@ class OpenId4VpVerifier(
             vpFormats = FormatHolder(
                 msoMdoc = containerJwt,
                 jwtVp = containerJwt,
-                jwtSd = containerJwt,
+                jwtSd = containerSdJwt,
             )
         )
     }
@@ -304,7 +309,7 @@ class OpenId4VpVerifier(
 
     private fun RequestOptionsCredential.toFormatHolder() = when (representation) {
         ConstantIndex.CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
-        ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerJwt)
+        ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerSdJwt)
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
     }
 
