@@ -8,6 +8,9 @@ object ConstantIndex {
         ISO_MDOC,
     }
 
+    /**
+     * Implement this interface to provide custom credential definitions to this library.
+     */
     interface CredentialScheme {
         /**
          * Schema URL of the credential, used in protocols to map

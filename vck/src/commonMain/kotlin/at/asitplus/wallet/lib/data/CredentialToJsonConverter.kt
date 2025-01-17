@@ -8,6 +8,8 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.*
 
+private const val SD_JWT_VC_TYPE = "vct"
+
 /**
  * In OpenID4VP, the claims to be presented are described using a JSONPath, so compiling this to a JsonElement seems
  * reasonable.
@@ -40,8 +42,12 @@ object CredentialToJsonConverter {
             }.filterNotNull().toMap()
 
             buildJsonObject {
-                put("vct", JsonPrimitive(credential.scheme?.sdJwtType ?: credential.scheme?.vcType))
-                payloadVc?.forEach { put(it.key, it.value) }
+                if (payloadVc?.get(SD_JWT_VC_TYPE) == null)
+                    put(SD_JWT_VC_TYPE, JsonPrimitive(credential.scheme?.sdJwtType))
+                payloadVc?.forEach {
+                    put(it.key, it.value)
+                }
+
                 reconstructed?.forEach {
                     put(it.key, it.value)
                 } ?: simpleDisclosureMap.forEach { pair ->

@@ -16,18 +16,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_PORTR
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.mdl.DrivingPrivilege
 import at.asitplus.wallet.mdl.DrivingPrivilegeCode
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.AGE_OVER_18
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.BIRTH_DATE
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DRIVING_PRIVILEGES
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.EXPIRY_DATE
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.FAMILY_NAME
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.GIVEN_NAME
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUE_DATE
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUING_AUTHORITY
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.ISSUING_COUNTRY
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.PORTRAIT
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.UN_DISTINGUISHING_SIGN
+import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -86,32 +75,34 @@ object DummyCredentialDataProvider {
                 codes = arrayOf(DrivingPrivilegeCode(code = "B"))
             )
             var digestId = 0U
-            val issuerSignedItems = listOfNotNull(
-                if (claimNames.isNullOrContains(FAMILY_NAME))
-                    issuerSignedItem(FAMILY_NAME, "Mustermann", digestId++) else null,
-                if (claimNames.isNullOrContains(GIVEN_NAME))
-                    issuerSignedItem(GIVEN_NAME, "Max", digestId++) else null,
-                if (claimNames.isNullOrContains(BIRTH_DATE))
-                    issuerSignedItem(BIRTH_DATE, LocalDate.parse("1970-01-01"), digestId++) else null,
-                if (claimNames.isNullOrContains(DOCUMENT_NUMBER))
-                    issuerSignedItem(DOCUMENT_NUMBER, "123456789", digestId++) else null,
-                if (claimNames.isNullOrContains(ISSUE_DATE))
-                    issuerSignedItem(ISSUE_DATE, LocalDate.parse("2023-01-01"), digestId++) else null,
-                if (claimNames.isNullOrContains(EXPIRY_DATE))
-                    issuerSignedItem(EXPIRY_DATE, LocalDate.parse("2033-01-01"), digestId++) else null,
-                if (claimNames.isNullOrContains(ISSUING_COUNTRY))
-                    issuerSignedItem(ISSUING_COUNTRY, "AT", digestId++) else null,
-                if (claimNames.isNullOrContains(ISSUING_AUTHORITY))
-                    issuerSignedItem(ISSUING_AUTHORITY, "AT", digestId++) else null,
-                if (claimNames.isNullOrContains(PORTRAIT))
-                    issuerSignedItem(PORTRAIT, Random.nextBytes(32), digestId++) else null,
-                if (claimNames.isNullOrContains(UN_DISTINGUISHING_SIGN))
-                    issuerSignedItem(UN_DISTINGUISHING_SIGN, "AT", digestId++) else null,
-                if (claimNames.isNullOrContains(DRIVING_PRIVILEGES))
-                    issuerSignedItem(DRIVING_PRIVILEGES, arrayOf(drivingPrivilege), digestId++) else null,
-                if (claimNames.isNullOrContains(AGE_OVER_18))
-                    issuerSignedItem(AGE_OVER_18, true, digestId++) else null,
-            )
+            val issuerSignedItems = with(MobileDrivingLicenceDataElements) {
+                listOfNotNull(
+                    if (claimNames.isNullOrContains(FAMILY_NAME))
+                        issuerSignedItem(FAMILY_NAME, "Mustermann", digestId++) else null,
+                    if (claimNames.isNullOrContains(GIVEN_NAME))
+                        issuerSignedItem(GIVEN_NAME, "Max", digestId++) else null,
+                    if (claimNames.isNullOrContains(BIRTH_DATE))
+                        issuerSignedItem(BIRTH_DATE, LocalDate.parse("1970-01-01"), digestId++) else null,
+                    if (claimNames.isNullOrContains(DOCUMENT_NUMBER))
+                        issuerSignedItem(DOCUMENT_NUMBER, "123456789", digestId++) else null,
+                    if (claimNames.isNullOrContains(ISSUE_DATE))
+                        issuerSignedItem(ISSUE_DATE, LocalDate.parse("2023-01-01"), digestId++) else null,
+                    if (claimNames.isNullOrContains(EXPIRY_DATE))
+                        issuerSignedItem(EXPIRY_DATE, LocalDate.parse("2033-01-01"), digestId++) else null,
+                    if (claimNames.isNullOrContains(ISSUING_COUNTRY))
+                        issuerSignedItem(ISSUING_COUNTRY, "AT", digestId++) else null,
+                    if (claimNames.isNullOrContains(ISSUING_AUTHORITY))
+                        issuerSignedItem(ISSUING_AUTHORITY, "AT", digestId++) else null,
+                    if (claimNames.isNullOrContains(PORTRAIT))
+                        issuerSignedItem(PORTRAIT, Random.Default.nextBytes(32), digestId++) else null,
+                    if (claimNames.isNullOrContains(UN_DISTINGUISHING_SIGN))
+                        issuerSignedItem(UN_DISTINGUISHING_SIGN, "AT", digestId++) else null,
+                    if (claimNames.isNullOrContains(DRIVING_PRIVILEGES))
+                        issuerSignedItem(DRIVING_PRIVILEGES, arrayOf(drivingPrivilege), digestId++) else null,
+                    if (claimNames.isNullOrContains(AGE_OVER_18))
+                        issuerSignedItem(AGE_OVER_18, true, digestId++) else null,
+                )
+            }
 
             CredentialToBeIssued.Iso(
                 issuerSignedItems = issuerSignedItems,
@@ -126,21 +117,46 @@ object DummyCredentialDataProvider {
             val birthDate = LocalDate.parse("1970-01-01")
             val issuingCountry = "AT"
             val nationality = "FR"
-            val claims = listOfNotNull(
-                optionalClaim(claimNames, EuPidScheme.Attributes.FAMILY_NAME, familyName),
-                optionalClaim(claimNames, EuPidScheme.Attributes.GIVEN_NAME, givenName),
-                optionalClaim(claimNames, EuPidScheme.Attributes.BIRTH_DATE, birthDate),
-                optionalClaim(claimNames, EuPidScheme.Attributes.AGE_OVER_18, true),
-                optionalClaim(claimNames, EuPidScheme.Attributes.NATIONALITY, nationality),
-                optionalClaim(claimNames, EuPidScheme.Attributes.ISSUANCE_DATE, issuance),
-                optionalClaim(claimNames, EuPidScheme.Attributes.EXPIRY_DATE, expiration),
-                optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_COUNTRY, issuingCountry),
-                optionalClaim(claimNames, EuPidScheme.Attributes.ISSUING_AUTHORITY, issuingCountry),
-            )
+            val claims = when (representation) {
+
+                ConstantIndex.CredentialRepresentation.SD_JWT -> with(EuPidScheme.SdJwtAttributes) {
+                    listOfNotNull(
+                        optionalClaim(claimNames, FAMILY_NAME, familyName),
+                        optionalClaim(claimNames, FAMILY_NAME_BIRTH, familyName),
+                        optionalClaim(claimNames, GIVEN_NAME, givenName),
+                        optionalClaim(claimNames, GIVEN_NAME_BIRTH, givenName),
+                        optionalClaim(claimNames, BIRTH_DATE, birthDate),
+                        optionalClaim(claimNames, AGE_EQUAL_OR_OVER_18, true),
+                        optionalClaim(claimNames, NATIONALITIES, listOf(nationality)),
+                        optionalClaim(claimNames, ISSUANCE_DATE, issuance),
+                        optionalClaim(claimNames, EXPIRY_DATE, expiration),
+                        optionalClaim(claimNames, ISSUING_COUNTRY, issuingCountry),
+                        optionalClaim(claimNames, ISSUING_AUTHORITY, issuingCountry),
+                    )
+                }
+
+                ConstantIndex.CredentialRepresentation.ISO_MDOC -> with(EuPidScheme.Attributes) {
+                    listOfNotNull(
+                        optionalClaim(claimNames, FAMILY_NAME, familyName),
+                        optionalClaim(claimNames, FAMILY_NAME_BIRTH, familyName),
+                        optionalClaim(claimNames, GIVEN_NAME, givenName),
+                        optionalClaim(claimNames, GIVEN_NAME_BIRTH, givenName),
+                        optionalClaim(claimNames, BIRTH_DATE, birthDate),
+                        optionalClaim(claimNames, AGE_OVER_18, true),
+                        optionalClaim(claimNames, NATIONALITY, nationality),
+                        optionalClaim(claimNames, ISSUANCE_DATE, issuance),
+                        optionalClaim(claimNames, EXPIRY_DATE, expiration),
+                        optionalClaim(claimNames, ISSUING_COUNTRY, issuingCountry),
+                        optionalClaim(claimNames, ISSUING_AUTHORITY, issuingCountry),
+                    )
+                }
+
+                else -> null
+            }
             when (representation) {
                 ConstantIndex.CredentialRepresentation.SD_JWT ->
                     CredentialToBeIssued.VcSd(
-                        claims = claims,
+                        claims = claims!!,
                         expiration = expiration,
                         scheme = credentialScheme,
                         subjectPublicKey = subjectPublicKey,
@@ -164,7 +180,7 @@ object DummyCredentialDataProvider {
                 )
 
                 ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
-                    issuerSignedItems = claims.mapIndexed { index, claim ->
+                    issuerSignedItems = claims!!.mapIndexed { index, claim ->
                         issuerSignedItem(claim.name, claim.value, index.toUInt())
                     },
                     expiration = expiration,
@@ -182,7 +198,6 @@ object DummyCredentialDataProvider {
 
     private fun optionalClaim(claimNames: Collection<String>?, name: String, value: Any) =
         if (claimNames.isNullOrContains(name)) ClaimToBeIssued(name, value) else null
-
 
     private fun issuerSignedItem(name: String, value: Any, digestId: UInt) =
         IssuerSignedItem(
