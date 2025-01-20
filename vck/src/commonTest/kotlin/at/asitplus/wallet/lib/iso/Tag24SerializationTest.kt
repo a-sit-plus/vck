@@ -12,7 +12,7 @@ import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldHaveAtLeastSize
 import io.kotest.matchers.maps.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContainOnlyOnce
@@ -106,9 +106,10 @@ class Tag24SerializationTest : FreeSpec({
         }
         val serialized = issuedCredential.issuerSigned.serialize().encodeToString(Base16(true))
         withClue(serialized) {
-            "D818".toRegex().findAll(serialized).toList().shouldHaveSize(numberOfClaims + 1)
+            // add 1 for MSO in IssuerAuth
+            "D818".toRegex().findAll(serialized).toList().shouldHaveAtLeastSize(numberOfClaims + 1)
+            // may be more when random salt in issuer signed item contains "D818"
         }
-        // add 1 for MSO in IssuerAuth
     }
 
     "IssuerAuth" {

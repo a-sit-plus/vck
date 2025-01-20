@@ -638,13 +638,16 @@ In particular, external contributions to this project are subject to the A-SIT P
 <br>
 
 ---
-<p align="center">
-This project has received funding from the European Union’s Horizon 2020 research and innovation
-programme under grant agreement No 959072.
-</p>
-<p align="center">
-<img src="https://github.com/a-sit-plus/kmm-vc-library/assets/5648377/a236d75d-c940-401b-a60d-18c30d0c60c5" alt="EU flag">
-</p>
+
+| ![eu.svg](eu.svg)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | This project has received funding from the European Union’s Horizon 2020 research and innovation programme under grant agreement No 959072. |
+|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------|
+
+---
+
+| ![eu.svg](eu.svg) <br> Co&#8209;Funded&nbsp;by&nbsp;the<br>European&nbsp;Union |   This project has received funding from the European Union’s <a href="https://digital-strategy.ec.europa.eu/en/activities/digital-programme">Digital Europe Programme (DIGITAL)</a>, Project 101102655 — POTENTIAL.   |
+|:------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+
+---
 
 <p align="center">
 The Apache License does not apply to the logos, (including the A-SIT logo) and the project/module name(s), as these are the sole property of

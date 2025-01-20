@@ -68,7 +68,7 @@ class OpenId4VpInteropTest : FreeSpec({
         holderSiop = OidcSiopWallet(holderKeyMaterial, holderAgent)
 
         verifierKeyId = uuid4().toString()
-        verifierClientId = "https://verifier.example.com"
+        verifierClientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
         verifierKeyMaterial = EphemeralKeyWithoutCert(customKeyId = verifierKeyId)
         verifierSiop = OidcSiopVerifier(
             keyMaterial = verifierKeyMaterial,

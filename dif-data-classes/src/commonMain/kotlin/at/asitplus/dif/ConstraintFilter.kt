@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ConstraintFilter(
     @SerialName("type")
-    val type: String,
+    val type: String? = null,
     @SerialName("format")
     val format: String? = null,
     @SerialName("const")
