@@ -58,7 +58,7 @@ class CredentialIssuer(
     /**
      * Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]
      */
-    private val credentialProvider: CredentialIssuerDataProvider
+    private val credentialProvider: CredentialIssuerDataProvider,
 ) {
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`
@@ -141,7 +141,7 @@ class CredentialIssuer(
      */
     suspend fun credential(
         accessToken: String,
-        params: CredentialRequestParameters
+        params: CredentialRequestParameters,
     ): KmmResult<CredentialResponseParameters> = catching {
         val subjectPublicKey = validateProofExtractSubjectPublicKey(params)
 
@@ -196,9 +196,10 @@ class CredentialIssuer(
     }
 
     private suspend fun String.validateJwtProof(): CryptoPublicKey {
-        val jwsSigned = JwsSigned.deserialize<JsonWebToken>(JsonWebToken.serializer(), this, vckJsonSerializer).getOrNull()
-            ?: throw OAuth2Exception(Errors.INVALID_PROOF)
-                .also { Napier.w("client did provide invalid proof: $this") }
+        val jwsSigned =
+            JwsSigned.deserialize<JsonWebToken>(JsonWebToken.serializer(), this, vckJsonSerializer).getOrNull()
+                ?: throw OAuth2Exception(Errors.INVALID_PROOF)
+                    .also { Napier.w("client did provide invalid proof: $this") }
         val jwt = jwsSigned.payload
         if (jwsSigned.header.type != PROOF_JWT_TYPE)
             throw OAuth2Exception(Errors.INVALID_PROOF)
@@ -243,13 +244,16 @@ class CredentialIssuer(
 
 }
 
+@Suppress("DEPRECATION")
 private fun CredentialRequestParameters.extractCredentialScheme(format: CredentialFormatEnum) = when (format) {
     CredentialFormatEnum.JWT_VC -> credentialDefinition?.types?.firstOrNull { it != VERIFIABLE_CREDENTIAL }
         ?.let { AttributeIndex.resolveAttributeType(it) }
         ?.let { it to CredentialFormatEnum.JWT_VC }
 
-    CredentialFormatEnum.VC_SD_JWT -> sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
-        ?.let { it to CredentialFormatEnum.VC_SD_JWT }
+    CredentialFormatEnum.VC_SD_JWT,
+    CredentialFormatEnum.DC_SD_JWT,
+        -> sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
+        ?.let { it to CredentialFormatEnum.DC_SD_JWT }
 
     CredentialFormatEnum.MSO_MDOC -> docType?.let { AttributeIndex.resolveIsoDoctype(it) }
         ?.let { it to CredentialFormatEnum.MSO_MDOC }

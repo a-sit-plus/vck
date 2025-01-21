@@ -202,7 +202,7 @@ class OpenId4VciClient(
      */
     @Throws(Exception::class)
     suspend fun resumeWithAuthCode(
-        url: String
+        url: String,
     ): KmmResult<Unit> = catching {
         Napier.i("resumeWithAuthCode: $url")
         val context = loadProvisioningContext()
@@ -245,7 +245,7 @@ class OpenId4VciClient(
     private fun TokenResponseParameters.extractCredentialRequestInput(
         credentialIdentifier: String,
         requestedAttributes: Set<String>?,
-        supportedCredentialFormat: SupportedCredentialFormat
+        supportedCredentialFormat: SupportedCredentialFormat,
     ): CredentialRequestInput =
         authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.firstOrNull()?.let {
             if (it.credentialConfigurationId != null)
@@ -260,7 +260,7 @@ class OpenId4VciClient(
         credentialIssuer: String,
         tokenRequest: TokenRequestParameters,
         dpopSigningAlgValuesSupported: Set<JsonWebAlgorithm>? = null,
-        tokenAuthMethods: Set<String>? = null
+        tokenAuthMethods: Set<String>? = null,
     ): TokenResponseParameters {
         Napier.i("postToken: $tokenEndpointUrl with $tokenRequest")
         val shouldIncludeClientAttestation = tokenAuthMethods?.contains(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
@@ -298,7 +298,7 @@ class OpenId4VciClient(
         input: CredentialRequestInput,
         tokenResponse: TokenResponseParameters,
         credentialScheme: ConstantIndex.CredentialScheme,
-        credentialIssuer: String
+        credentialIssuer: String,
     ) {
         Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl with $input")
         val credentialRequest = oid4vciService.createCredentialRequest(
@@ -339,7 +339,7 @@ class OpenId4VciClient(
         credentialOffer: CredentialOffer,
         credentialIdentifierInfo: CredentialIdentifierInfo,
         transactionCode: String? = null,
-        requestedAttributes: Set<NormalizedJsonPath>?
+        requestedAttributes: Set<NormalizedJsonPath>?,
     ): KmmResult<Unit> = catching {
         Napier.i("loadCredentialWithOffer: $credentialOffer")
         val credentialIssuer = credentialOffer.credentialIssuer
@@ -422,6 +422,7 @@ class OpenId4VciClient(
         }
     }
 
+    @Suppress("DEPRECATION")
     @Throws(Exception::class)
     private fun String.toStoreCredentialInput(
         format: CredentialFormatEnum?,
@@ -429,7 +430,9 @@ class OpenId4VciClient(
     ) = when (format) {
         CredentialFormatEnum.JWT_VC -> Holder.StoreCredentialInput.Vc(this, credentialScheme)
 
-        CredentialFormatEnum.VC_SD_JWT -> Holder.StoreCredentialInput.SdJwt(this, credentialScheme)
+        CredentialFormatEnum.VC_SD_JWT,
+        CredentialFormatEnum.DC_SD_JWT,
+            -> Holder.StoreCredentialInput.SdJwt(this, credentialScheme)
 
         CredentialFormatEnum.MSO_MDOC -> kotlin.runCatching { decodeToByteArray(Base64()) }.getOrNull()
             ?.let { IssuerSigned.deserialize(it) }?.getOrNull()
@@ -455,7 +458,7 @@ class OpenId4VciClient(
         credentialIssuer: String,
         issuerState: String? = null,
         push: Boolean = false,
-        tokenAuthMethods: Set<String>? = null
+        tokenAuthMethods: Set<String>? = null,
     ) {
         val authRequest =
             oid4vciService.oauth2Client.createAuthRequest(state, authorizationDetails, issuerState = issuerState)
@@ -485,7 +488,7 @@ class OpenId4VciClient(
         state: String,
         url: String,
         credentialIssuer: String,
-        tokenAuthMethods: Set<String>?
+        tokenAuthMethods: Set<String>?,
     ): AuthenticationRequestParameters {
         val shouldIncludeClientAttestation = tokenAuthMethods?.contains(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH) == true
         val clientAttestationJwt = if (shouldIncludeClientAttestation) {
