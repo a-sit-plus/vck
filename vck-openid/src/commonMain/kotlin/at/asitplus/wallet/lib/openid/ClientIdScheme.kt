@@ -55,7 +55,11 @@ sealed class ClientIdScheme(
      */
     data class RedirectUri(
         override val clientId: String,
-    ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.RedirectUri, clientId)
+    ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.RedirectUri, clientId) {
+        init {
+            require(clientId.contains(":/"))
+        }
+    }
 
     /**
      *  This value represents the RFC6749 default behavior, i.e., the Client Identifier needs to be known to the
@@ -64,5 +68,14 @@ sealed class ClientIdScheme(
      */
     data class PreRegistered(
         override val clientId: String,
-    ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.PreRegistered, clientId)
+    ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.PreRegistered, clientId) {
+        init {
+            require(!clientId.contains(":"))
+        }
+    }
+
+    val prefix = scheme.stringRepresentation + ":"
+    val clientIdWithPrefix: String by lazy { if (clientId.startsWith(prefix)) clientId else prefix + clientId }
+    val clientIdWithoutPrefix: String by lazy { if (clientId.startsWith(prefix)) clientId.removePrefix(prefix) else clientId }
+
 }

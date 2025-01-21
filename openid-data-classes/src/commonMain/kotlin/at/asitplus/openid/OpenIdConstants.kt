@@ -68,6 +68,7 @@ object OpenIdConstants {
             if (other !is ProofType) return false
             return other.stringRepresentation == stringRepresentation
         }
+
         companion object {
             private const val STRING_JWT = "jwt"
             private const val STRING_CWT = "cwt"
@@ -123,6 +124,7 @@ object OpenIdConstants {
             if (other !is ClientIdScheme) return false
             return other.stringRepresentation == stringRepresentation
         }
+
         companion object {
             private const val STRING_PRE_REGISTERED = "pre-registered"
             private const val STRING_REDIRECT_URI = "redirect_uri"
@@ -131,6 +133,16 @@ object OpenIdConstants {
             private const val STRING_ENTITY_ID = "entity_id"
             private const val STRING_DID = "did"
             private const val STRING_VERIFIER_ATTESTATION = "verifier_attestation"
+
+            fun decodeFromClientId(clientId: String) = when (clientId.substringBefore(":")) {
+                STRING_REDIRECT_URI -> RedirectUri
+                STRING_X509_SAN_DNS -> X509SanDns
+                STRING_X509_SAN_URI -> X509SanUri
+                STRING_ENTITY_ID -> EntityId
+                STRING_DID -> Did
+                STRING_VERIFIER_ATTESTATION -> VerifierAttestation
+                else -> if (clientId.contains(":")) Other(clientId) else PreRegistered
+            }
         }
 
         /**
@@ -230,17 +242,15 @@ object OpenIdConstants {
         object Serializer : KSerializer<ClientIdScheme> {
             override val descriptor = PrimitiveSerialDescriptor("ClientIdScheme", PrimitiveKind.STRING)
 
-            override fun deserialize(decoder: Decoder): ClientIdScheme {
-                return when (val string = decoder.decodeString()) {
-                    STRING_PRE_REGISTERED -> PreRegistered
-                    STRING_REDIRECT_URI -> RedirectUri
-                    STRING_X509_SAN_DNS -> X509SanDns
-                    STRING_X509_SAN_URI -> X509SanUri
-                    STRING_ENTITY_ID -> EntityId
-                    STRING_DID -> Did
-                    STRING_VERIFIER_ATTESTATION -> VerifierAttestation
-                    else -> Other(string)
-                }
+            override fun deserialize(decoder: Decoder): ClientIdScheme = when (val string = decoder.decodeString()) {
+                STRING_PRE_REGISTERED -> PreRegistered
+                STRING_REDIRECT_URI -> RedirectUri
+                STRING_X509_SAN_DNS -> X509SanDns
+                STRING_X509_SAN_URI -> X509SanUri
+                STRING_ENTITY_ID -> EntityId
+                STRING_DID -> Did
+                STRING_VERIFIER_ATTESTATION -> VerifierAttestation
+                else -> Other(string)
             }
 
             override fun serialize(encoder: Encoder, value: ClientIdScheme) {

@@ -8,28 +8,12 @@ import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo8Bytes
 import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.ConfirmationClaim
-import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JweAlgorithm
-import at.asitplus.signum.indispensable.josef.JweDecrypted
-import at.asitplus.signum.indispensable.josef.JweEncrypted
-import at.asitplus.signum.indispensable.josef.JweEncryption
-import at.asitplus.signum.indispensable.josef.JweHeader
-import at.asitplus.signum.indispensable.josef.JwsAlgorithm
+import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
-import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
-import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
-import at.asitplus.wallet.lib.agent.EphemeralKeyHolder
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.VerifierCryptoService
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
@@ -366,6 +350,7 @@ typealias JwkSetRetrieverFunction = (String) -> JsonWebKeySet?
 /**
  * Clients get the parsed [JwsSigned] and need to provide a set of keys, which will be used for verification one-by-one.
  */
+// TODO suspending
 typealias PublicJsonWebKeyLookup = (JwsSigned<*>) -> Set<JsonWebKey>?
 
 class DefaultVerifierJwsService(

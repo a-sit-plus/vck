@@ -117,7 +117,7 @@ class OpenId4VpVerifier(
     /**
      * Create a URL to be displayed as a static QR code for Wallet initiation.
      * URL is the [walletUrl], with query parameters appended for [clientMetadataUrl], [requestUrl] and
-     * [clientIdScheme.clientId].
+     * `client_id` from [ClientIdScheme.clientId].
      */
     fun createQrCodeUrl(
         walletUrl: String,
@@ -239,21 +239,18 @@ class OpenId4VpVerifier(
      *
      * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
      */
+    @Suppress("DEPRECATION")
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions,
     ) = AuthenticationRequestParameters(
         responseType = requestOptions.responseType,
-        clientId = clientIdScheme.clientId,
-        redirectUrl = if (!requestOptions.isAnyDirectPost) clientIdScheme.clientId else null,
+        clientId = clientIdScheme.clientIdWithPrefix,
+        clientIdScheme = clientIdScheme.scheme, // still set this for our own older implementations
+        redirectUrl = if (!requestOptions.isAnyDirectPost) clientIdScheme.clientIdWithoutPrefix else null,
         responseUrl = requestOptions.responseUrl,
-        clientIdScheme = clientIdScheme.scheme,
         scope = requestOptions.buildScope(),
         nonce = nonceService.provideNonce(),
-        clientMetadata = if (requestOptions.clientMetadataUrl != null) {
-            null
-        } else {
-            if (requestOptions.encryption) metadataWithEncryption else metadata
-        },
+        clientMetadata = clientMetadata(requestOptions),
         clientMetadataUri = requestOptions.clientMetadataUrl,
         idTokenType = IdTokenType.SUBJECT_SIGNED.text,
         responseMode = requestOptions.responseMode,
@@ -263,6 +260,14 @@ class OpenId4VpVerifier(
             inputDescriptors = requestOptions.credentials.map { it.toInputDescriptor() },
         ),
     ).also { stateToAuthnRequestStore.put(requestOptions.state, it) }
+
+    // OpenID4VP: Metadata MUST be passed as parameter if client_id_scheme is "redirect_uri"
+    private fun clientMetadata(options: RequestOptions): RelyingPartyMetadata? =
+        if (options.clientMetadataUrl != null && clientIdScheme !is ClientIdScheme.RedirectUri) {
+            null
+        } else {
+            if (options.encryption) metadataWithEncryption else metadata
+        }
 
     private fun RequestOptions.buildScope() = (
             listOf(OpenIdConstants.SCOPE_OPENID, OpenIdConstants.SCOPE_PROFILE)
@@ -431,7 +436,7 @@ class OpenId4VpVerifier(
                         relatedPresentation,
                         expectedNonce,
                         input,
-                        authnRequest.clientId,
+                        authnRequest.clientIdWithoutPrefix,
                         authnRequest.responseUrl
                     )
                 }.getOrElse {

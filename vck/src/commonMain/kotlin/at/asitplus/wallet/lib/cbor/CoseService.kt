@@ -239,6 +239,7 @@ class DefaultVerifierCoseService(
             ?: publicKeyLookup(this) ?: setOf()
 }
 
+// TODO should be suspend
 typealias PublicCoseKeyLookup = (CoseSigned<*>) -> Set<CoseKey>?
 
 /**

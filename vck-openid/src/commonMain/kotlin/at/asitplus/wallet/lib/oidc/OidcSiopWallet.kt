@@ -243,7 +243,7 @@ class OidcSiopWallet(
     @Throws(OAuth2Exception::class)
     private fun RequestParametersFrom<AuthenticationRequestParameters>.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
-    ) = parameters.clientId
+    ) = parameters.clientIdWithoutPrefix
         ?: parameters.audience
         ?: clientJsonWebKeySet?.keys?.firstOrNull()
             ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }

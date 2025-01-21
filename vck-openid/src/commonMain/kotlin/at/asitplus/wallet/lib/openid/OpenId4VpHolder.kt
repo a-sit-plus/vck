@@ -235,7 +235,7 @@ class OpenId4VpHolder(
     @Throws(OAuth2Exception::class)
     private fun RequestParametersFrom<AuthenticationRequestParameters>.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
-    ) = parameters.clientId
+    ) = parameters.clientIdWithoutPrefix // TODO dependent on client_id_scheme?
         ?: parameters.audience
         ?: clientJsonWebKeySet?.keys?.firstOrNull()
             ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }

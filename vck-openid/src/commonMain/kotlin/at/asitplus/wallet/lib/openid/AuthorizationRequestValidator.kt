@@ -22,7 +22,7 @@ internal class AuthorizationRequestValidator {
         }
 
 
-        val clientIdScheme = request.parameters.clientIdScheme
+        val clientIdScheme = request.parameters.clientIdSchemeExtracted
         if (clientIdScheme == OpenIdConstants.ClientIdScheme.RedirectUri) {
             request.parameters.verifyClientMetadata()
         }
@@ -32,7 +32,6 @@ internal class AuthorizationRequestValidator {
         if (clientIdScheme.isAnyX509()) {
             request.verifyClientIdSchemeX509()
         }
-
         if (!clientIdScheme.isAnyX509()) {
             request.parameters.verifyRedirectUrl()
         }
@@ -41,7 +40,7 @@ internal class AuthorizationRequestValidator {
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyRedirectUrl() {
         if (redirectUrl != null) {
-            if (clientId != redirectUrl) {
+            if (clientIdWithoutPrefix != redirectUrl) {
                 Napier.w("client_id does not match redirect_uri")
                 throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
             }
@@ -61,7 +60,7 @@ internal class AuthorizationRequestValidator {
 
     @Throws(OAuth2Exception::class)
     private fun RequestParametersFrom<AuthenticationRequestParameters>.verifyClientIdSchemeX509() {
-        val clientIdScheme = parameters.clientIdScheme
+        val clientIdScheme = parameters.clientIdSchemeExtracted
         val responseModeIsDirectPost = parameters.responseMode.isAnyDirectPost()
         val prefix = "client_id_scheme is $clientIdScheme"
         if (this !is RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>
@@ -81,7 +80,7 @@ internal class AuthorizationRequestValidator {
                 Napier.w("$prefix, but no dnsNames were found in the leaf certificate")
                 throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
             }
-            if (!dnsNames.contains(parameters.clientId)) {
+            if (!dnsNames.contains(parameters.clientIdWithoutPrefix)) {
                 Napier.w("$prefix, but client_id does not match any dnsName in the leaf certificate")
                 throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
             }
@@ -92,7 +91,7 @@ internal class AuthorizationRequestValidator {
                 }
                 //TODO  If the Wallet can establish trust in the Client Identifier authenticated through the
                 // certificate it may allow the client to freely choose the redirect_uri value
-                if (parsedUrl.host != parameters.clientId) {
+                if (parsedUrl.host != parameters.clientIdWithoutPrefix) {
                     Napier.w("$prefix, but no redirect_url was provided")
                     throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
                 }
@@ -102,11 +101,11 @@ internal class AuthorizationRequestValidator {
                 Napier.w("$prefix, but no URIs were found in the leaf certificate")
                 throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
             }
-            if (!uris.contains(parameters.clientId)) {
+            if (!uris.contains(parameters.clientIdWithoutPrefix)) {
                 Napier.w("$prefix, but client_id does not match any URIs in the leaf certificate")
                 throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
             }
-            if (parameters.clientId != parameters.redirectUrl) {
+            if (parameters.clientIdWithoutPrefix != parameters.redirectUrl) {
                 Napier.w("$prefix, but client_id does not match redirect_uri")
                 throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
             }
