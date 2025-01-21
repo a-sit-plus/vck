@@ -265,11 +265,12 @@ class HolderAgent(
     }
 
     /** assume credential format to be supported by the verifier if no format holder is specified */
+    @Suppress("DEPRECATION")
     private fun SubjectCredentialStore.StoreEntry.isFormatSupported(supportedFormats: FormatHolder?): Boolean =
         supportedFormats?.let { formatHolder ->
             when (this) {
                 is SubjectCredentialStore.StoreEntry.Vc -> formatHolder.jwtVp != null
-                is SubjectCredentialStore.StoreEntry.SdJwt -> formatHolder.jwtSd != null
+                is SubjectCredentialStore.StoreEntry.SdJwt -> formatHolder.jwtSd != null || formatHolder.sdJwt != null
                 is SubjectCredentialStore.StoreEntry.Iso -> formatHolder.msoMdoc != null
             }
         } ?: true
@@ -289,6 +290,7 @@ class HolderAgent(
         },
     )
 
+    @Suppress("DEPRECATION")
     private fun PresentationSubmissionDescriptor.Companion.fromMatch(
         credential: SubjectCredentialStore.StoreEntry,
         inputDescriptorId: String,
@@ -297,6 +299,7 @@ class HolderAgent(
         id = inputDescriptorId,
         format = when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> ClaimFormat.JWT_VP
+            // TODO In 5.4.0, use SD_JWT instead of JWT_SD
             is SubjectCredentialStore.StoreEntry.SdJwt -> ClaimFormat.JWT_SD
             is SubjectCredentialStore.StoreEntry.Iso -> ClaimFormat.MSO_MDOC
         },

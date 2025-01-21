@@ -6,6 +6,7 @@ import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -23,7 +24,6 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult
-import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
@@ -272,6 +272,7 @@ class WalletService(
         ).getOrThrow().serialize()
     )
 
+    @Suppress("DEPRECATION")
     private fun ConstantIndex.CredentialScheme.toCredentialRequestParameters(
         credentialRepresentation: CredentialRepresentation,
         requestedAttributes: Set<String>?,
@@ -283,6 +284,7 @@ class WalletService(
             ),
         )
 
+        // TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
         credentialRepresentation == SD_JWT && supportsSdJwt -> CredentialRequestParameters(
             format = CredentialFormatEnum.VC_SD_JWT,
             sdJwtVcType = sdJwtType!!,
@@ -298,6 +300,7 @@ class WalletService(
         else -> throw IllegalArgumentException("format $credentialRepresentation not applicable to $this")
     }
 
+    @Suppress("DEPRECATION")
     private fun SupportedCredentialFormat.toCredentialRequestParameters(
         requestedAttributes: Set<String>?,
     ) = when (format) {
@@ -306,6 +309,7 @@ class WalletService(
             credentialDefinition = credentialDefinition,
         )
 
+        CredentialFormatEnum.DC_SD_JWT,
         CredentialFormatEnum.VC_SD_JWT -> CredentialRequestParameters(
             format = format,
             sdJwtVcType = sdJwtVcType,
@@ -329,6 +333,8 @@ private fun Collection<String>.toRequestedClaimsIso(isoNamespace: String) =
     mapOf(isoNamespace to this.associateWith { RequestedCredentialClaimSpecification() })
 
 
+// TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
+@Suppress("DEPRECATION")
 private fun CredentialRepresentation.toFormat() = when (this) {
     PLAIN_JWT -> CredentialFormatEnum.JWT_VC
     SD_JWT -> CredentialFormatEnum.VC_SD_JWT

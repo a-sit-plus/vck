@@ -171,6 +171,7 @@ class OidcSiopVerifier(
                 msoMdoc = containerJwt,
                 jwtVp = containerJwt,
                 jwtSd = containerSdJwt,
+                sdJwt = containerSdJwt,
             )
         )
     }
@@ -447,7 +448,7 @@ class OidcSiopVerifier(
 
     private fun RequestOptionsCredential.toFormatHolder() = when (representation) {
         ConstantIndex.CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
-        ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerSdJwt)
+        ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerSdJwt, sdJwt = containerSdJwt)
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
     }
 
@@ -685,6 +686,7 @@ class OidcSiopVerifier(
      * [OpenID for VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html),
      * as referenced by [OpenID for VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html).
      */
+    @Suppress("DEPRECATION")
     private suspend fun verifyPresentationResult(
         descriptor: PresentationSubmissionDescriptor,
         relatedPresentation: JsonElement,
@@ -693,7 +695,7 @@ class OidcSiopVerifier(
         clientId: String?,
         responseUrl: String?,
     ) = when (descriptor.format) {
-        ClaimFormat.JWT_SD -> verifier.verifyPresentationSdJwt(
+        ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
             input = SdJwtSigned.parse(relatedPresentation.jsonPrimitive.content)
                 ?: throw IllegalArgumentException("relatedPresentation"),
             challenge = expectedNonce

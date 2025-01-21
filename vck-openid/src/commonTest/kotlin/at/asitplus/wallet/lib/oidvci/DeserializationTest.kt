@@ -248,6 +248,7 @@ class DeserializationTest : FunSpec({
         val credentials = deserialized.supportedCredentialConfigurations.shouldNotBeNull()
         credentials.shouldNotBeEmpty()
         val credential = credentials["SD_JWT_VC_example_in_OpenID4VCI"].shouldNotBeNull()
+        @Suppress("DEPRECATION")
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val claims = credential.sdJwtClaims.shouldNotBeNull()
         claims.shouldNotBeEmpty()
