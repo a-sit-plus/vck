@@ -9,7 +9,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -41,62 +41,62 @@ class DCQLJsonClaimsQueryTest : FreeSpec({
         val credential = buildJsonArray {
             add(buildJsonObject {
                 put("a", buildJsonArray {
-                    add(JsonPrimitive("test"))
-                    add(JsonPrimitive("other"))
+                    add("test")
+                    add("other")
                 })
                 put("b", buildJsonArray {
-                    add(JsonPrimitive("test"))
-                    add(JsonPrimitive("other"))
+                    add("test")
+                    add("other")
                 })
             })
             add(buildJsonObject {
                 put("a", buildJsonArray {
-                    add(JsonPrimitive(0))
-                    add(JsonPrimitive(1))
+                    add(0)
+                    add(1)
                 })
                 put("b", buildJsonArray {
-                    add(JsonPrimitive(0))
-                    add(JsonPrimitive(1))
+                    add(0)
+                    add(1)
                 })
             })
             add(buildJsonObject {
                 put("a", buildJsonArray {
-                    add(JsonPrimitive(true))
-                    add(JsonPrimitive(false))
+                    add(true)
+                    add(false)
                 })
                 put("b", buildJsonArray {
-                    add(JsonPrimitive(true))
-                    add(JsonPrimitive(false))
+                    add(true)
+                    add(false)
                 })
             })
             add(buildJsonObject {
                 put("a", buildJsonArray {
-                    add(JsonPrimitive(false))
-                    add(JsonPrimitive(true))
+                    add(false)
+                    add(true)
                 })
                 put("b", buildJsonArray {
-                    add(JsonPrimitive(false))
-                    add(JsonPrimitive(true))
+                    add(false)
+                    add(true)
                 })
             })
             add(buildJsonObject {
                 put("a", buildJsonArray {
-                    add(JsonPrimitive(1))
-                    add(JsonPrimitive(0))
+                    add(1)
+                    add(0)
                 })
                 put("b", buildJsonArray {
-                    add(JsonPrimitive(1))
-                    add(JsonPrimitive(0))
+                    add(1)
+                    add(0)
                 })
             })
             add(buildJsonObject {
                 put("a", buildJsonArray {
-                    add(JsonPrimitive("other"))
-                    add(JsonPrimitive("test"))
+                    add("other")
+                    add("test")
                 })
                 put("b", buildJsonArray {
-                    add(JsonPrimitive("other"))
-                    add(JsonPrimitive("test"))
+                    add("other")
+                    add("test")
                 })
             })
         }
