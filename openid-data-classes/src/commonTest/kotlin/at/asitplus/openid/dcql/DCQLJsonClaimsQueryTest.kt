@@ -104,14 +104,14 @@ class DCQLJsonClaimsQueryTest : FreeSpec({
             id = DCQLClaimsQueryIdentifier("test"),
             path = DCQLClaimsPathPointer(null) + "a" + 0u,
             values = listOf(
-                DCQLExpectedClaimValue.DCQLExpectedClaimStringValue("test"),
-                DCQLExpectedClaimValue.DCQLExpectedClaimIntegerValue(0),
-                DCQLExpectedClaimValue.DCQLExpectedClaimBooleanValue(true),
+                DCQLExpectedClaimValue.StringValue("test"),
+                DCQLExpectedClaimValue.IntegerValue(0),
+                DCQLExpectedClaimValue.BooleanValue(true),
             )
         ).executeJsonClaimsQueryAgainstCredential(
             credential = credential,
             credentialStructureExtractor = {
-                DCQLCredentialClaimStructure.JsonBasedDCQLCredentialClaimStructure(it)
+                DCQLCredentialClaimStructure.JsonBasedStructure(it)
             },
             credentialQuery = DCQLCredentialQueryInstance(
                 id = DCQLCredentialQueryIdentifier(
@@ -119,7 +119,7 @@ class DCQLJsonClaimsQueryTest : FreeSpec({
                 ),
                 format = CredentialFormatEnum.VC_SD_JWT,
             )
-        ).getOrThrow().shouldBeInstanceOf<DCQLClaimsQueryResult.JsonClaimsQueryResult>().let {
+        ).getOrThrow().shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>().let {
             it.nodeList shouldHaveSize 3
         }
 
@@ -128,14 +128,14 @@ class DCQLJsonClaimsQueryTest : FreeSpec({
             id = DCQLClaimsQueryIdentifier("test"),
             path = DCQLClaimsPathPointer(null) + "a" + 0u,
             values = listOf(
-                DCQLExpectedClaimValue.DCQLExpectedClaimStringValue("test"),
-                DCQLExpectedClaimValue.DCQLExpectedClaimIntegerValue(0),
-                DCQLExpectedClaimValue.DCQLExpectedClaimBooleanValue(true),
+                DCQLExpectedClaimValue.StringValue("test"),
+                DCQLExpectedClaimValue.IntegerValue(0),
+                DCQLExpectedClaimValue.BooleanValue(true),
             )
         ).executeJsonClaimsQueryAgainstCredential(
             credential = credential,
             credentialStructureExtractor = {
-                DCQLCredentialClaimStructure.JsonBasedDCQLCredentialClaimStructure(it)
+                DCQLCredentialClaimStructure.JsonBasedStructure(it)
             },
             credentialQuery = DCQLCredentialQueryInstance(
                 id = DCQLCredentialQueryIdentifier(

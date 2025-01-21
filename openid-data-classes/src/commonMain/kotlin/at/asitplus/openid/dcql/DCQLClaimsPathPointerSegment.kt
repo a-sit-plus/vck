@@ -14,7 +14,7 @@ sealed interface DCQLClaimsPathPointerSegment {
     fun query(nodeList: NodeList): NodeList
 
     @JvmInline
-    value class DCQLClaimsPathPointerNameSegment(val name: String) : DCQLClaimsPathPointerSegment {
+    value class NameSegment(val name: String) : DCQLClaimsPathPointerSegment {
         override fun query(nodeList: NodeList) = nodeList.mapNotNull {
             catching {
                 NodeListEntry(
@@ -26,7 +26,7 @@ sealed interface DCQLClaimsPathPointerSegment {
     }
 
     @JvmInline
-    value class DCQLClaimsPathPointerIndexSegment(val index: UInt) : DCQLClaimsPathPointerSegment {
+    value class IndexSegment(val index: UInt) : DCQLClaimsPathPointerSegment {
         override fun query(nodeList: NodeList) = nodeList.mapNotNull {
             catching {
                 NodeListEntry(
@@ -38,7 +38,7 @@ sealed interface DCQLClaimsPathPointerSegment {
     }
 
     @Serializable(with = DCQLClaimsPathPointerNullSegmentSerializer::class)
-    data object DCQLClaimsPathPointerNullSegment : DCQLClaimsPathPointerSegment {
+    data object NullSegment : DCQLClaimsPathPointerSegment {
         override fun query(nodeList: NodeList) = nodeList.mapNotNull { claimQueryResult ->
             catching {
                 claimQueryResult.value.jsonArray.mapIndexed { index, jsonElement ->

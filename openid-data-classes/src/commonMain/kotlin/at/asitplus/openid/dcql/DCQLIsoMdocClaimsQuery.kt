@@ -70,7 +70,7 @@ data class DCQLIsoMdocClaimsQuery(
     fun <Credential : Any> executeIsoMdocClaimsQueryAgainstCredential(
         credentialQuery: DCQLCredentialQuery,
         credential: Credential,
-        credentialStructureExtractor: (Credential) -> DCQLCredentialClaimStructure.IsoMdocDCQLCredentialClaimStructure,
+        credentialStructureExtractor: (Credential) -> DCQLCredentialClaimStructure.IsoMdocStructure,
     ): KmmResult<DCQLClaimsQueryResult> = catching {
         if (credentialQuery.format != CredentialFormatEnum.MSO_MDOC) {
             throw IllegalArgumentException("Inconsistent credential format and claim query")
@@ -81,7 +81,7 @@ data class DCQLIsoMdocClaimsQuery(
         values?.any {
             catching {
                 when (it) {
-                    is DCQLExpectedClaimValue.DCQLExpectedClaimIntegerValue -> when (value) {
+                    is DCQLExpectedClaimValue.IntegerValue -> when (value) {
                         is Boolean -> value == it.long
                         is Byte -> value == it.long
                         is UByte -> value == it.long
@@ -95,8 +95,8 @@ data class DCQLIsoMdocClaimsQuery(
                         else -> false
                     }
 
-                    is DCQLExpectedClaimValue.DCQLExpectedClaimBooleanValue -> value as Boolean == it.boolean
-                    is DCQLExpectedClaimValue.DCQLExpectedClaimStringValue -> value as String == it.string
+                    is DCQLExpectedClaimValue.BooleanValue -> value as Boolean == it.boolean
+                    is DCQLExpectedClaimValue.StringValue -> value as String == it.string
                 }
             }.getOrNull() ?: false
         }?.let {
@@ -105,7 +105,7 @@ data class DCQLIsoMdocClaimsQuery(
             }
         }
 
-        DCQLClaimsQueryResult.IsoMdocClaimsQueryResult(
+        DCQLClaimsQueryResult.IsoMdocResult(
             namespace = namespace,
             claimName = claimName,
             claimValue = value,

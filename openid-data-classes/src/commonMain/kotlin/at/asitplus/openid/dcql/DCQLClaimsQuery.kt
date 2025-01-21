@@ -38,7 +38,7 @@ interface DCQLClaimsQuery {
                     credentialQuery = credentialQuery,
                     credential = credential,
                     credentialStructureExtractor = {
-                        credentialStructureExtractor(it) as DCQLCredentialClaimStructure.JsonBasedDCQLCredentialClaimStructure
+                        credentialStructureExtractor(it) as DCQLCredentialClaimStructure.JsonBasedStructure
                     }
                 ).getOrThrow()
             }
@@ -48,7 +48,7 @@ interface DCQLClaimsQuery {
                     credentialQuery = credentialQuery,
                     credential = credential,
                     credentialStructureExtractor = {
-                        credentialStructureExtractor(it) as DCQLCredentialClaimStructure.IsoMdocDCQLCredentialClaimStructure
+                        credentialStructureExtractor(it) as DCQLCredentialClaimStructure.IsoMdocStructure
                     }
                 ).getOrThrow()
             }

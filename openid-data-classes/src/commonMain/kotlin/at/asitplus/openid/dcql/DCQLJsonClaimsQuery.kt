@@ -61,11 +61,14 @@ data class DCQLJsonClaimsQuery(
     fun <Credential : Any> executeJsonClaimsQueryAgainstCredential(
         credentialQuery: DCQLCredentialQuery,
         credential: Credential,
-        credentialStructureExtractor: (Credential) -> DCQLCredentialClaimStructure.JsonBasedDCQLCredentialClaimStructure,
+        credentialStructureExtractor: (Credential) -> DCQLCredentialClaimStructure.JsonBasedStructure,
+        jsonBasedCredentialFormats: List<CredentialFormatEnum> = listOf(
+            CredentialFormatEnum.VC_SD_JWT,
+            CredentialFormatEnum.JWT_VC,
+        )
     ): KmmResult<DCQLClaimsQueryResult> = catching {
-        if (credentialQuery.format == CredentialFormatEnum.MSO_MDOC) {
-            // TODO: is this the only non-json format?
-            throw IllegalArgumentException("Inconsistent credential format and claim query")
+        if (credentialQuery.format !in jsonBasedCredentialFormats) {
+            throw IllegalArgumentException("Inconsistent credential format and claims query")
         }
 
         val credentialStructure = credentialStructureExtractor(credential)
@@ -77,9 +80,9 @@ data class DCQLJsonClaimsQuery(
                     values.any { value ->
                         catching {
                             when (value) {
-                                is DCQLExpectedClaimValue.DCQLExpectedClaimBooleanValue -> primitive.boolean == value.boolean
-                                is DCQLExpectedClaimValue.DCQLExpectedClaimIntegerValue -> primitive.long == value.long
-                                is DCQLExpectedClaimValue.DCQLExpectedClaimStringValue -> if (primitive.isString) {
+                                is DCQLExpectedClaimValue.BooleanValue -> primitive.boolean == value.boolean
+                                is DCQLExpectedClaimValue.IntegerValue -> primitive.long == value.long
+                                is DCQLExpectedClaimValue.StringValue -> if (primitive.isString) {
                                     primitive.content == value.string
                                 } else false
                             }
@@ -89,6 +92,6 @@ data class DCQLJsonClaimsQuery(
             }
         } ?: queryResults
 
-        DCQLClaimsQueryResult.JsonClaimsQueryResult(result)
+        DCQLClaimsQueryResult.JsonResult(result)
     }
 }

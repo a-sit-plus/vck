@@ -11,29 +11,19 @@ object DCQLClaimsPathPointerSegmentSerializer : KSerializer<DCQLClaimsPathPointe
     parent = JsonPrimitive.serializer(),
     encodeAs = {
         when (it) {
-            is DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNameSegment -> {
-                JsonPrimitive(it.name)
-            }
-
-            is DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerIndexSegment -> {
-                JsonPrimitive(it.index.toLong())
-            }
-
-            is DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNullSegment -> {
-                JsonNull
-            }
+            is DCQLClaimsPathPointerSegment.NameSegment -> JsonPrimitive(it.name)
+            is DCQLClaimsPathPointerSegment.IndexSegment -> JsonPrimitive(it.index.toLong())
+            is DCQLClaimsPathPointerSegment.NullSegment -> JsonNull
         }
     },
 
     decodeAs = {
         when {
-            it is JsonNull -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNullSegment
+            it is JsonNull -> DCQLClaimsPathPointerSegment.NullSegment
 
-            it.longOrNull != null -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerIndexSegment(
-                it.long.toUInt()
-            )
+            it.longOrNull != null -> DCQLClaimsPathPointerSegment.IndexSegment(it.long.toUInt())
 
-            else -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNameSegment(it.content)
+            else -> DCQLClaimsPathPointerSegment.NameSegment(it.content)
         }
     }
 )

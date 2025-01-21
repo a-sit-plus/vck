@@ -33,15 +33,15 @@ value class DCQLClaimsPathPointer(
     }
 
     constructor(startSegment: String) : this(
-        listOf(DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNameSegment(startSegment))
+        listOf(DCQLClaimsPathPointerSegment.NameSegment(startSegment))
     )
 
     constructor(startSegment: UInt) : this(
-        listOf(DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerIndexSegment(startSegment))
+        listOf(DCQLClaimsPathPointerSegment.IndexSegment(startSegment))
     )
 
     constructor(@Suppress("UNUSED_PARAMETER") nullValue: Nothing?) : this(
-        listOf(DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNullSegment)
+        listOf(DCQLClaimsPathPointerSegment.NullSegment)
     )
 
 
@@ -50,15 +50,15 @@ value class DCQLClaimsPathPointer(
     )
 
     operator fun plus(key: String) = DCQLClaimsPathPointer(
-        segments + DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNameSegment(key)
+        segments + DCQLClaimsPathPointerSegment.NameSegment(key)
     )
 
     operator fun plus(index: UInt) = DCQLClaimsPathPointer(
-        segments + DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerIndexSegment(index)
+        segments + DCQLClaimsPathPointerSegment.IndexSegment(index)
     )
 
     operator fun plus(@Suppress("UNUSED_PARAMETER") nullValue: Nothing?) = DCQLClaimsPathPointer(
-        segments + DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNullSegment
+        segments + DCQLClaimsPathPointerSegment.NullSegment
     )
 
     /**

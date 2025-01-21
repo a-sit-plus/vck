@@ -23,7 +23,7 @@ class DCQLIsoMdocClaimsQueryTest : FreeSpec({
     "instance serialization" - {
         val id = DCQLClaimsQueryIdentifier(Random.Default.nextBytes(32).encodeToString(Base64UrlStrict))
         val values = listOf<DCQLExpectedClaimValue>(
-            DCQLExpectedClaimValue.DCQLExpectedClaimStringValue("test")
+            DCQLExpectedClaimValue.StringValue("test")
         )
         val namespace = Random.Default.nextBytes(32).encodeBase64()
         val claimName = Random.Default.nextBytes(32).encodeBase64()
@@ -67,14 +67,14 @@ class DCQLIsoMdocClaimsQueryTest : FreeSpec({
             namespace = "testNamespace",
             claimName = "testClaimName",
             values = listOf(
-                DCQLExpectedClaimValue.DCQLExpectedClaimStringValue("test"),
-                DCQLExpectedClaimValue.DCQLExpectedClaimIntegerValue(0),
-                DCQLExpectedClaimValue.DCQLExpectedClaimBooleanValue(true),
+                DCQLExpectedClaimValue.StringValue("test"),
+                DCQLExpectedClaimValue.IntegerValue(0),
+                DCQLExpectedClaimValue.BooleanValue(true),
             )
         ).executeIsoMdocClaimsQueryAgainstCredential(
             credential = credential,
             credentialStructureExtractor = {
-                DCQLCredentialClaimStructure.IsoMdocDCQLCredentialClaimStructure(it)
+                DCQLCredentialClaimStructure.IsoMdocStructure(it)
             },
             credentialQuery = DCQLCredentialQueryInstance(
                 id = DCQLCredentialQueryIdentifier(
@@ -82,7 +82,7 @@ class DCQLIsoMdocClaimsQueryTest : FreeSpec({
                 ),
                 format = CredentialFormatEnum.MSO_MDOC,
             )
-        ).getOrThrow().shouldBeInstanceOf<DCQLClaimsQueryResult.IsoMdocClaimsQueryResult>().let {
+        ).getOrThrow().shouldBeInstanceOf<DCQLClaimsQueryResult.IsoMdocResult>().let {
             it.claimValue shouldBe 0
         }
 
@@ -91,14 +91,14 @@ class DCQLIsoMdocClaimsQueryTest : FreeSpec({
             namespace = "testNamespace",
             claimName = "testClaimName",
             values = listOf(
-                DCQLExpectedClaimValue.DCQLExpectedClaimStringValue("test"),
-                DCQLExpectedClaimValue.DCQLExpectedClaimIntegerValue(-1),
-                DCQLExpectedClaimValue.DCQLExpectedClaimBooleanValue(true),
+                DCQLExpectedClaimValue.StringValue("test"),
+                DCQLExpectedClaimValue.IntegerValue(-1),
+                DCQLExpectedClaimValue.BooleanValue(true),
             )
         ).executeIsoMdocClaimsQueryAgainstCredential(
             credential = credential,
             credentialStructureExtractor = {
-                DCQLCredentialClaimStructure.IsoMdocDCQLCredentialClaimStructure(it)
+                DCQLCredentialClaimStructure.IsoMdocStructure(it)
             },
             credentialQuery = DCQLCredentialQueryInstance(
                 id = DCQLCredentialQueryIdentifier(
@@ -111,16 +111,16 @@ class DCQLIsoMdocClaimsQueryTest : FreeSpec({
         DCQLIsoMdocClaimsQuery(
             id = DCQLClaimsQueryIdentifier("test"),
             values = listOf(
-                DCQLExpectedClaimValue.DCQLExpectedClaimStringValue("test"),
-                DCQLExpectedClaimValue.DCQLExpectedClaimIntegerValue(0),
-                DCQLExpectedClaimValue.DCQLExpectedClaimBooleanValue(true),
+                DCQLExpectedClaimValue.StringValue("test"),
+                DCQLExpectedClaimValue.IntegerValue(0),
+                DCQLExpectedClaimValue.BooleanValue(true),
             ),
             namespace = "testNamespace",
             claimName = "testClaimName",
         ).executeIsoMdocClaimsQueryAgainstCredential(
             credential = credential,
             credentialStructureExtractor = {
-                DCQLCredentialClaimStructure.IsoMdocDCQLCredentialClaimStructure(it)
+                DCQLCredentialClaimStructure.IsoMdocStructure(it)
             },
             credentialQuery = DCQLCredentialQueryInstance(
                 id = DCQLCredentialQueryIdentifier(

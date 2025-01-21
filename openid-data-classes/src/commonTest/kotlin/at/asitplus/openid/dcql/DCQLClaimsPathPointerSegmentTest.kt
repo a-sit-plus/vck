@@ -23,7 +23,7 @@ import kotlin.random.nextUInt
 class DCQLClaimsPathPointerSegmentTest : FreeSpec({
     "select" - {
         "null" {
-            val selection = DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNullSegment.query(
+            val selection = DCQLClaimsPathPointerSegment.NullSegment.query(
                 listOf(
                     NodeListEntry(
                         value = buildJsonArray {
@@ -56,7 +56,7 @@ class DCQLClaimsPathPointerSegmentTest : FreeSpec({
                 )
             )
             withData(keys) {
-                val selection = DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNameSegment(it)
+                val selection = DCQLClaimsPathPointerSegment.NameSegment(it)
                     .query(nodeList)
                 selection shouldHaveSize 1
                 selection.first().run {
@@ -82,7 +82,7 @@ class DCQLClaimsPathPointerSegmentTest : FreeSpec({
             withData(
                 listOf(0u, 1u, 2u)
             ) { index ->
-                val selection = DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerIndexSegment(index)
+                val selection = DCQLClaimsPathPointerSegment.IndexSegment(index)
                     .query(nodeList)
                 selection shouldHaveSize 1
                 selection.first().run {
@@ -96,7 +96,7 @@ class DCQLClaimsPathPointerSegmentTest : FreeSpec({
         }
     }
     "serialization" - {
-        val selection = DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNullSegment.query(
+        val selection = DCQLClaimsPathPointerSegment.NullSegment.query(
             listOf(
                 NodeListEntry(
                     value = buildJsonArray {
@@ -120,9 +120,9 @@ class DCQLClaimsPathPointerSegmentTest : FreeSpec({
             }
         ) {
             val segment = when (it) {
-                null -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNullSegment
-                is String -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNameSegment(it)
-                is UInt -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerIndexSegment(it)
+                null -> DCQLClaimsPathPointerSegment.NullSegment
+                is String -> DCQLClaimsPathPointerSegment.NameSegment(it)
+                is UInt -> DCQLClaimsPathPointerSegment.IndexSegment(it)
                 else -> throw IllegalStateException("Unexpected value type")
             }
 

@@ -13,22 +13,22 @@ object DCQLCredentialSetQueryPurposeSerializer : KSerializer<DCQLCredentialSetQu
     parent = JsonElement.serializer(),
     encodeAs = {
         when (it) {
-            is DCQLCredentialSetQueryPurpose.DCQLCredentialSetQueryPurposeString -> JsonPrimitive(it.string)
-            is DCQLCredentialSetQueryPurpose.DCQLCredentialSetQueryPurposeObject -> it.jsonObject
-            is DCQLCredentialSetQueryPurpose.DCQLCredentialSetQueryPurposeDouble -> JsonPrimitive(it.double)
-            is DCQLCredentialSetQueryPurpose.DCQLCredentialSetQueryPurposeLong -> JsonPrimitive(it.long)
+            is DCQLCredentialSetQueryPurpose.PurposeString -> JsonPrimitive(it.string)
+            is DCQLCredentialSetQueryPurpose.PurposeObject -> it.jsonObject
+            is DCQLCredentialSetQueryPurpose.PurposeDouble -> JsonPrimitive(it.double)
+            is DCQLCredentialSetQueryPurpose.PurposeLong -> JsonPrimitive(it.long)
         }
     },
     decodeAs = {
         when (it) {
             is JsonArray -> throw IllegalArgumentException("Value must not be an array.")
-            is JsonObject -> DCQLCredentialSetQueryPurpose.DCQLCredentialSetQueryPurposeObject(it)
+            is JsonObject -> DCQLCredentialSetQueryPurpose.PurposeObject(it)
             is JsonPrimitive -> it.longOrNull?.let {
-                DCQLCredentialSetQueryPurpose.DCQLCredentialSetQueryPurposeLong(it)
+                DCQLCredentialSetQueryPurpose.PurposeLong(it)
             } ?: it.doubleOrNull?.let {
-                DCQLCredentialSetQueryPurpose.DCQLCredentialSetQueryPurposeDouble(it)
+                DCQLCredentialSetQueryPurpose.PurposeDouble(it)
             } ?: if (it.isString) {
-                DCQLCredentialSetQueryPurpose.DCQLCredentialSetQueryPurposeString(it.content)
+                DCQLCredentialSetQueryPurpose.PurposeString(it.content)
             } else {
                 throw IllegalArgumentException("Value must be a string, a number or an object.")
             }

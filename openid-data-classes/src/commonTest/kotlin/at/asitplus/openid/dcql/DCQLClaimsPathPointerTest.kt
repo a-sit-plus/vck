@@ -29,14 +29,14 @@ class DCQLClaimsPathPointerTest : FreeSpec({
                 segments.first().run {
                     when(it) {
                         null -> {
-                            shouldBeInstanceOf<DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNullSegment>()
+                            shouldBeInstanceOf<DCQLClaimsPathPointerSegment.NullSegment>()
                         }
                         is String -> {
-                            shouldBeInstanceOf<DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNameSegment>()
+                            shouldBeInstanceOf<DCQLClaimsPathPointerSegment.NameSegment>()
                             name shouldBe it
                         }
                         else -> {
-                            shouldBeInstanceOf<DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerIndexSegment>()
+                            shouldBeInstanceOf<DCQLClaimsPathPointerSegment.IndexSegment>()
                             index shouldBe it
                         }
                     }
@@ -49,7 +49,7 @@ class DCQLClaimsPathPointerTest : FreeSpec({
             DCQLClaimsPathPointer(it).run {
                 segments shouldHaveSize 1
                 segments.first().run {
-                    shouldBeInstanceOf<DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerIndexSegment>()
+                    shouldBeInstanceOf<DCQLClaimsPathPointerSegment.IndexSegment>()
                     index shouldBe it
                 }
             }
@@ -59,12 +59,12 @@ class DCQLClaimsPathPointerTest : FreeSpec({
         "base" {
             val segments = List(1 + Random.nextInt(10)) {
                 when (Random.nextInt(3)) {
-                    0 -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNameSegment(
+                    0 -> DCQLClaimsPathPointerSegment.NameSegment(
                         Random.nextBytes(32).encodeBase64()
                     )
 
-                    1 -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerIndexSegment(Random.nextUInt())
-                    else -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNullSegment
+                    1 -> DCQLClaimsPathPointerSegment.IndexSegment(Random.nextUInt())
+                    else -> DCQLClaimsPathPointerSegment.NullSegment
                 }
             }
             DCQLClaimsPathPointer(segments) shouldBe segments.map {
@@ -82,9 +82,9 @@ class DCQLClaimsPathPointerTest : FreeSpec({
 
             DCQLClaimsPathPointer(segments.map {
                 when (it) {
-                    is String -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNameSegment(it)
-                    is UInt -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerIndexSegment(it)
-                    else -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNullSegment
+                    is String -> DCQLClaimsPathPointerSegment.NameSegment(it)
+                    is UInt -> DCQLClaimsPathPointerSegment.IndexSegment(it)
+                    else -> DCQLClaimsPathPointerSegment.NullSegment
                 }
             }) shouldBe segments.map {
                 when(it) {
@@ -98,12 +98,12 @@ class DCQLClaimsPathPointerTest : FreeSpec({
     "serialization conformance" {
         val segments = List(1 + Random.nextInt(10)) {
             when (Random.nextInt(3)) {
-                0 -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNameSegment(
+                0 -> DCQLClaimsPathPointerSegment.NameSegment(
                     Random.nextBytes(32).encodeBase64()
                 )
 
-                1 -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerIndexSegment(Random.nextUInt())
-                else -> DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNullSegment
+                1 -> DCQLClaimsPathPointerSegment.IndexSegment(Random.nextUInt())
+                else -> DCQLClaimsPathPointerSegment.NullSegment
             }
         }
         val pointer = DCQLClaimsPathPointer(segments)
@@ -111,15 +111,15 @@ class DCQLClaimsPathPointerTest : FreeSpec({
             segments.forEach {
                 add(
                     when (it) {
-                        is DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerIndexSegment -> {
+                        is DCQLClaimsPathPointerSegment.IndexSegment -> {
                             JsonPrimitive(it.index.toLong())
                         }
 
-                        is DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNameSegment -> {
+                        is DCQLClaimsPathPointerSegment.NameSegment -> {
                             JsonPrimitive(it.name)
                         }
 
-                        is DCQLClaimsPathPointerSegment.DCQLClaimsPathPointerNullSegment -> JsonNull
+                        is DCQLClaimsPathPointerSegment.NullSegment -> JsonNull
                     }
                 )
             }

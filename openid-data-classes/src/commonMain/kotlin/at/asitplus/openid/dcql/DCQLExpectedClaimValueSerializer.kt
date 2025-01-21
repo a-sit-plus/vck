@@ -12,17 +12,17 @@ object DCQLExpectedClaimValueSerializer : KSerializer<DCQLExpectedClaimValue> by
     parent = JsonPrimitive.serializer(),
     encodeAs = {
         when (it) {
-            is DCQLExpectedClaimValue.DCQLExpectedClaimBooleanValue -> JsonPrimitive(it.boolean)
-            is DCQLExpectedClaimValue.DCQLExpectedClaimIntegerValue -> JsonPrimitive(it.long)
-            is DCQLExpectedClaimValue.DCQLExpectedClaimStringValue -> JsonPrimitive(it.string)
+            is DCQLExpectedClaimValue.BooleanValue -> JsonPrimitive(it.boolean)
+            is DCQLExpectedClaimValue.IntegerValue -> JsonPrimitive(it.long)
+            is DCQLExpectedClaimValue.StringValue -> JsonPrimitive(it.string)
         }
     },
 
     decodeAs = {
         when {
-            it.booleanOrNull != null -> DCQLExpectedClaimValue.DCQLExpectedClaimBooleanValue(it.boolean)
-            it.longOrNull != null -> DCQLExpectedClaimValue.DCQLExpectedClaimIntegerValue(it.long)
-            it.isString -> DCQLExpectedClaimValue.DCQLExpectedClaimStringValue(it.content)
+            it.booleanOrNull != null -> DCQLExpectedClaimValue.BooleanValue(it.boolean)
+            it.longOrNull != null -> DCQLExpectedClaimValue.IntegerValue(it.long)
+            it.isString -> DCQLExpectedClaimValue.StringValue(it.content)
             else -> throw IllegalArgumentException("Value is not a valid expected claim value.")
         }
     }
