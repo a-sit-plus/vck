@@ -247,10 +247,10 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         parsed.shouldNotBeNull()
 
         parsed.responseUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/direct_post"
-        parsed.clientIdScheme shouldBe OpenIdConstants.ClientIdScheme.X509SanDns
+        parsed.clientIdSchemeExtracted shouldBe OpenIdConstants.ClientIdScheme.X509SanDns
         parsed.responseType shouldBe "vp_token"
         parsed.nonce shouldBe "nonce"
-        parsed.clientId shouldBe "verifier-backend.eudiw.dev"
+        parsed.clientIdWithoutPrefix shouldBe "verifier-backend.eudiw.dev"
         parsed.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPostJwt
         parsed.audience shouldBe "https://self-issued.me/v2"
         parsed.scope shouldBe ""
@@ -305,7 +305,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
 
         parsed.parameters.state shouldBe "ef391e30-bacc-4441-af5d-7f42fb682e02"
         parsed.parameters.responseUrl shouldBe "https://example.com/ef391e30-bacc-4441-af5d-7f42fb682e02"
-        parsed.parameters.clientId shouldBe parsed.parameters.responseUrl
+        parsed.parameters.clientIdWithoutPrefix shouldBe parsed.parameters.responseUrl
     }
 
     "process with cross-device flow with request_uri and x509_san_dns" {

@@ -52,6 +52,7 @@ Release 5.3.0:
   - Move `AuthorizationResponsePreparationState` from `at.asitplus.wallet.lib.oidc.helpers` to `at.asitplus.wallet.lib.openid`
 - OpenID4VP draft 23:
   - Support credential format identifier `dc+sd-jwt` in addition to `vc+sd-jwt`
+  - Drop `client_id_scheme` and encode it as a prefix to `client_id`
 - General cleanup:
   - Remove `SchemaIndex`
   - Update signum to 3.12.1

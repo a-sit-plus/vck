@@ -124,7 +124,7 @@ class OpenId4VpInteropTest : FreeSpec({
         jar.header.keyId shouldBe verifierKeyId
 
         jar.payload.issuer shouldBe verifierClientId
-        jar.payload.clientId shouldBe verifierClientId
+        jar.payload.clientIdWithoutPrefix shouldBe verifierClientId
         jar.payload.audience shouldBe "https://self-issued.me/v2"
         jar.payload.presentationDefinition.shouldNotBeNull()
         jar.payload.nonce.shouldNotBeNull()

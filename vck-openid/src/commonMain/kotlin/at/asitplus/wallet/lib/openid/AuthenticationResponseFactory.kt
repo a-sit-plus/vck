@@ -47,7 +47,7 @@ internal class AuthenticationResponseFactory(
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
-            ?: request.parameters.redirectUrl
+            ?: request.parameters.redirectUrlExtracted
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
         val responseSerialized = buildJarm(request, response)
         val jarm = AuthenticationResponseParameters(
@@ -63,7 +63,7 @@ internal class AuthenticationResponseFactory(
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
-            ?: request.parameters.redirectUrl
+            ?: request.parameters.redirectUrlExtracted
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
         return AuthenticationResponseResult.Post(url, response.params.encodeToParameters())
     }
@@ -73,7 +73,7 @@ internal class AuthenticationResponseFactory(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Redirect {
-        val url = request.parameters.redirectUrl?.let { redirectUrl ->
+        val url = request.parameters.redirectUrlExtracted?.let { redirectUrl ->
             URLBuilder(redirectUrl).apply {
                 response.params.encodeToParameters().forEach {
                     this.parameters.append(it.key, it.value)
@@ -92,7 +92,7 @@ internal class AuthenticationResponseFactory(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         response: AuthenticationResponse,
     ): AuthenticationResponseResult.Redirect {
-        val url = request.parameters.redirectUrl?.let { redirectUrl ->
+        val url = request.parameters.redirectUrlExtracted?.let { redirectUrl ->
             URLBuilder(redirectUrl).apply {
                 encodedFragment = response.params.encodeToParameters().formUrlEncode()
             }.buildString()

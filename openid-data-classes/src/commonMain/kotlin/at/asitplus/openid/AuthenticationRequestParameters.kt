@@ -30,6 +30,8 @@ data class AuthenticationRequestParameters(
 
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
+     *
+     * To use the actual `client_id` without the scheme prefix, use [clientIdWithoutPrefix].
      */
     @SerialName("client_id")
     val clientId: String? = null,
@@ -40,6 +42,8 @@ data class AuthenticationRequestParameters(
      * described in Section 6.2.1 of RFC3986 (Simple String Comparison).
      *
      * Optional when JAR (RFC9101) is used.
+     *
+     * See also [redirectUrlExtracted]
      */
     @SerialName("redirect_uri")
     val redirectUrl: String? = null,
@@ -167,6 +171,7 @@ data class AuthenticationRequestParameters(
      * Identifier schemes the Wallet supports prior to sending the Authorization Request in order to choose a supported
      * scheme.
      */
+    @Deprecated("Removed in OpenID4VP draft 22, now a prefix of `client_id`")
     @SerialName("client_id_scheme")
     val clientIdScheme: OpenIdConstants.ClientIdScheme? = null,
 
@@ -266,6 +271,33 @@ data class AuthenticationRequestParameters(
         fun deserialize(it: String) = kotlin.runCatching {
             odcJsonSerializer.decodeFromString<AuthenticationRequestParameters>(it)
         }.wrap()
+    }
+
+    /**
+     * Reads the [OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],
+     * or by extracting the prefix from [clientId] (as specified in OpenID4VP draft 22 onwards).
+     */
+    @Suppress("DEPRECATION")
+    val clientIdSchemeExtracted: OpenIdConstants.ClientIdScheme? by lazy {
+        clientIdScheme ?: clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(clientId) }
+    }
+
+    /**
+     * Reads the [clientId] and removes the prefix of the [clientIdSchemeExtracted],
+     * as specified in OpenID4VP draft 22 onwards.
+     */
+    val clientIdWithoutPrefix: String? by lazy {
+        clientId?.let { clientId ->
+            clientIdSchemeExtracted?.let { clientId.removePrefix("${it.stringRepresentation}:") }
+        }
+    }
+
+    /**
+     * Reads the [redirectUrl], or the [clientIdWithoutPrefix] if [clientIdSchemeExtracted] is
+     * [OpenIdConstants.ClientIdScheme.RedirectUri], as specified in OpenID4VP draft 22 onwards.
+     */
+    val redirectUrlExtracted: String? by lazy {
+       redirectUrl ?: (clientIdSchemeExtracted as? OpenIdConstants.ClientIdScheme.RedirectUri)?.let { clientIdWithoutPrefix }
     }
 }
 
