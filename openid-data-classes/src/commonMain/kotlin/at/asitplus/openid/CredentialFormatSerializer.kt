@@ -16,7 +16,6 @@ object CredentialFormatSerializer : KSerializer<CredentialFormatEnum> {
         encoder.encodeString(value.text)
     }
 
-    override fun deserialize(decoder: Decoder): CredentialFormatEnum {
-        return CredentialFormatEnum.parse(decoder.decodeString()) ?: CredentialFormatEnum.NONE
-    }
+    override fun deserialize(decoder: Decoder): CredentialFormatEnum =
+        CredentialFormatEnum.parse(decoder.decodeString()) ?: CredentialFormatEnum.NONE
 }

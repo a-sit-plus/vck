@@ -13,9 +13,8 @@ class NullableInstantStringSerializer : KSerializer<Instant?> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("NullableInstantStringSerializer", PrimitiveKind.STRING)
 
-    override fun deserialize(decoder: Decoder): Instant? {
-        return kotlin.runCatching { Instant.parse(decoder.decodeString()) }.getOrNull()
-    }
+    override fun deserialize(decoder: Decoder): Instant? =
+        runCatching { Instant.parse(decoder.decodeString()) }.getOrNull()
 
     override fun serialize(encoder: Encoder, value: Instant?) {
         value?.let { encoder.encodeString(it.toString()) }

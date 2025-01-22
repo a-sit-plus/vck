@@ -16,8 +16,7 @@ object SubmissionRequirementRuleEnumSerializer : KSerializer<SubmissionRequireme
         encoder.encodeString(value.text)
     }
 
-    override fun deserialize(decoder: Decoder): SubmissionRequirementRuleEnum {
-        return SubmissionRequirementRuleEnum.parse(decoder.decodeString())
+    override fun deserialize(decoder: Decoder): SubmissionRequirementRuleEnum =
+        SubmissionRequirementRuleEnum.parse(decoder.decodeString())
             ?: SubmissionRequirementRuleEnum.NONE
-    }
 }

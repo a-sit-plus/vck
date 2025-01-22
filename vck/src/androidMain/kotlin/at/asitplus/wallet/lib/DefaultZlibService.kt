@@ -13,21 +13,19 @@ actual class DefaultZlibService actual constructor() : ZlibService {
      */
     private val MAX_DECOMPRESSED_SIZE = 5 * 1024 * 1024
 
-    actual override fun compress(input: ByteArray): ByteArray? {
-        return DeflaterInputStream(input.inputStream(), Deflater(Deflater.DEFAULT_COMPRESSION)).readBytes()
-    }
+    actual override fun compress(input: ByteArray): ByteArray? =
+        DeflaterInputStream(input.inputStream(), Deflater(Deflater.DEFAULT_COMPRESSION)).readBytes()
 
     /**
      * Safely decompresses ZLIB encoded bytes, with max size [MAX_DECOMPRESSED_SIZE]
      */
-    actual override fun decompress(input: ByteArray): ByteArray? {
-        return InflaterInputStream(input.inputStream()).readBytes().also {
+    actual override fun decompress(input: ByteArray): ByteArray? =
+        InflaterInputStream(input.inputStream()).readBytes().also {
             val inflaterStream = InflaterInputStream(input.inputStream())
             val outputStream = ByteArrayOutputStream(DEFAULT_BUFFER_SIZE)
             inflaterStream.copyTo(outputStream)
             outputStream.toByteArray()
         }
-    }
 
     // Adapted from kotlin-stdblib's kotlin.io.IOStreams.kt
     private fun InflaterInputStream.copyTo(out: OutputStream, bufferSize: Int = DEFAULT_BUFFER_SIZE): Long {

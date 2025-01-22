@@ -19,7 +19,6 @@ object RequirementEnumSerializer : KSerializer<RequirementEnum> {
         encoder.encodeString(value.text)
     }
 
-    override fun deserialize(decoder: Decoder): RequirementEnum {
-        return RequirementEnum.parse(decoder.decodeString()) ?: RequirementEnum.NONE
-    }
+    override fun deserialize(decoder: Decoder): RequirementEnum =
+        RequirementEnum.parse(decoder.decodeString()) ?: RequirementEnum.NONE
 }

@@ -547,9 +547,8 @@ class OidcSiopVerifier(
      * [AuthenticationResponseParameters], e.g. `id_token=...&vp_token=...`
      */
     @Deprecated("Use validateAuthnResponse", ReplaceWith("validateAuthnResponse"))
-    suspend fun validateAuthnResponseFromPost(content: String): AuthnResponseResult {
-        return validateAuthnResponse(content)
-    }
+    suspend fun validateAuthnResponseFromPost(content: String): AuthnResponseResult =
+        validateAuthnResponse(content)
 
     /**
      * Validates an Authentication Response from the Wallet, where [input] is a map of POST parameters received.

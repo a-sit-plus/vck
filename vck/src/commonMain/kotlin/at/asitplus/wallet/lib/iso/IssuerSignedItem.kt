@@ -23,7 +23,8 @@ data class IssuerSignedItem(
     val elementValue: Any,
 ) {
 
-    fun serialize(namespace: String) = vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), this)
+    fun serialize(namespace: String) =
+        vckCborSerializer.encodeToByteArray(IssuerSignedItemSerializer(namespace, elementIdentifier), this)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -47,12 +48,10 @@ data class IssuerSignedItem(
         return result
     }
 
-    override fun toString(): String {
-        return "IssuerSignedItem(digestId=$digestId," +
-                " random=${random.encodeToString(Base16Strict)}," +
-                " elementIdentifier='$elementIdentifier'," +
-                " elementValue=${elementValue.toCustomString()})"
-    }
+    override fun toString(): String = "IssuerSignedItem(digestId=$digestId," +
+            " random=${random.encodeToString(Base16Strict)}," +
+            " elementIdentifier='$elementIdentifier'," +
+            " elementValue=${elementValue.toCustomString()})"
 
     companion object {
         fun deserialize(it: ByteArray, namespace: String, elementIdentifier: String) = kotlin.runCatching {

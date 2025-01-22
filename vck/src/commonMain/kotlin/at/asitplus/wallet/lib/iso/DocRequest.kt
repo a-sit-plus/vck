@@ -18,8 +18,7 @@ data class DocRequest(
     @SerialName("readerAuth")
     val readerAuth: CoseSigned<ByteArray>? = null,
 ) {
-    override fun toString(): String {
-        return "DocRequest(itemsRequest=${itemsRequest.value}, readerAuth=$readerAuth)"
-    }
+    override fun toString(): String =
+        "DocRequest(itemsRequest=${itemsRequest.value}, readerAuth=$readerAuth)"
 
 }

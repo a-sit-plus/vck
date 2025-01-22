@@ -98,18 +98,15 @@ object OpenIdConstants {
             override val descriptor: SerialDescriptor =
                 PrimitiveSerialDescriptor(serialName = "ProofType", PrimitiveKind.STRING)
 
-            override fun deserialize(decoder: Decoder): ProofType {
-                return when (val str = decoder.decodeString()) {
-                    STRING_JWT -> JWT
-                    STRING_CWT -> CWT
-                    else -> Other(str)
-                }
+            override fun deserialize(decoder: Decoder): ProofType = when (val str = decoder.decodeString()) {
+                STRING_JWT -> JWT
+                STRING_CWT -> CWT
+                else -> Other(str)
             }
 
             override fun serialize(encoder: Encoder, value: ProofType) {
                 encoder.encodeString(value.stringRepresentation)
             }
-
         }
     }
 
@@ -319,14 +316,12 @@ object OpenIdConstants {
 
         object Serializer : KSerializer<ResponseMode> {
             override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("ResponseMode", PrimitiveKind.STRING)
-            override fun deserialize(decoder: Decoder): ResponseMode {
-                return when (val string = decoder.decodeString()) {
-                    STRING_DIRECT_POST -> DirectPost
-                    STRING_DIRECT_POST_JWT -> DirectPostJwt
-                    STRING_QUERY -> Query
-                    STRING_FRAGMENT -> Fragment
-                    else -> Other(string)
-                }
+            override fun deserialize(decoder: Decoder): ResponseMode = when (val string = decoder.decodeString()) {
+                STRING_DIRECT_POST -> DirectPost
+                STRING_DIRECT_POST_JWT -> DirectPostJwt
+                STRING_QUERY -> Query
+                STRING_FRAGMENT -> Fragment
+                else -> Other(string)
             }
 
             override fun serialize(encoder: Encoder, value: ResponseMode) {

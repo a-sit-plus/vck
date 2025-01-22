@@ -7,11 +7,9 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
  * usage of the type `Map<String, List<ByteStringWrapper<IssuerSignedItem>>>` in [IssuerSigned.namespaces].
  */
 data class IssuerSignedList(
-    val entries: List<ByteStringWrapper<IssuerSignedItem>>
+    val entries: List<ByteStringWrapper<IssuerSignedItem>>,
 ) {
-    override fun toString(): String {
-        return "IssuerSignedList(entries=${entries.map { it.value }})"
-    }
+    override fun toString(): String = "IssuerSignedList(entries=${entries.map { it.value }})"
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -22,9 +20,7 @@ data class IssuerSignedList(
         return entries == other.entries
     }
 
-    override fun hashCode(): Int {
-        return 31 * entries.hashCode()
-    }
+    override fun hashCode(): Int = 31 * entries.hashCode()
 
     companion object {
         /**

@@ -52,13 +52,11 @@ data class SelectiveDisclosureItem(
         return result
     }
 
-    override fun toString(): String {
-        return "SelectiveDisclosureItem(" +
-                "salt=${salt.encodeToString(Base64())}, " +
-                "claimName='$claimName', " +
-                "claimValue=$claimValue" +
-                ")"
-    }
+    override fun toString(): String = "SelectiveDisclosureItem(" +
+            "salt=${salt.encodeToString(Base64())}, " +
+            "claimName='$claimName', " +
+            "claimValue=$claimValue" +
+            ")"
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
