@@ -19,7 +19,6 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.*
-import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.base16.Base16
@@ -263,7 +262,7 @@ open class OpenId4VpVerifier(
         params: AuthenticationRequestParameters,
         requestOptions: RequestOptionsInterface,
     ): AuthenticationRequestParameters = params
-    
+
     /**
      * Validates the OIDC Authentication Response from the Wallet, where [content] are the HTTP POST encoded
      * [at.asitplus.openid.AuthenticationResponseParameters], e.g. `id_token=...&vp_token=...`

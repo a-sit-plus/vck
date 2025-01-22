@@ -1,14 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.dif.Constraint
-import at.asitplus.dif.ConstraintField
-import at.asitplus.dif.ConstraintFilter
-import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.FormatContainerJwt
-import at.asitplus.dif.FormatContainerSdJwt
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.AuthenticationRequestParameters
@@ -68,8 +60,15 @@ interface RequestOptionsInterface {
     val encryption: Boolean
 
     val isAnyDirectPost: Boolean
+        get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
+                (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
 
-    fun buildScope(): String
+    fun buildScope(): String = (
+            listOf(SCOPE_OPENID, SCOPE_PROFILE)
+                    + credentials.mapNotNull { it.credentialScheme.sdJwtType }
+                    + credentials.mapNotNull { it.credentialScheme.vcType }
+                    + credentials.mapNotNull { it.credentialScheme.isoNamespace }
+            ).joinToString(" ")
 
     fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
@@ -105,19 +104,7 @@ data class RequestOptions(
     override val state: String = uuid4().toString(),
     override val clientMetadataUrl: String? = null,
     override val encryption: Boolean = false,
-) : RequestOptionsInterface {
-    override fun buildScope() = (
-            listOf(SCOPE_OPENID, SCOPE_PROFILE)
-                    + credentials.mapNotNull { it.credentialScheme.sdJwtType }
-                    + credentials.mapNotNull { it.credentialScheme.vcType }
-                    + credentials.mapNotNull { it.credentialScheme.isoNamespace }
-            ).joinToString(" ")
-
-    override val isAnyDirectPost
-        get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
-                (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
-
-}
+) : RequestOptionsInterface
 
 data class RequestOptionsCredential(
     /**
