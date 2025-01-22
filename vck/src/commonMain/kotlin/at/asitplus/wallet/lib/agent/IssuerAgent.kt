@@ -222,7 +222,7 @@ class IssuerAgent(
             verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
             selectiveDisclosureAlgorithm = "sha-256",
             confirmationClaim = cnf,
-            credentialStatus = credentialStatus,
+            statusElement = vckJsonSerializer.encodeToJsonElement(credentialStatus),
         )
         val vcSdJwtObject = vckJsonSerializer.encodeToJsonElement(vcSdJwt).jsonObject
         val entireObject = buildJsonObject {

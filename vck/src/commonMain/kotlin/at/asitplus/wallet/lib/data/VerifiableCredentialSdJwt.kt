@@ -6,6 +6,8 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.JsonElement
 
 /**
  * SD-JWT representation of a [VerifiableCredential].
@@ -80,7 +82,7 @@ data class VerifiableCredentialSdJwt(
      * included.
      */
     @SerialName("status")
-    val credentialStatus: Status? = null,
+    val statusElement: JsonElement? = null,
 
     /**
      * The claim `_sd_alg` indicates the hash algorithm used by the Issuer to generate the digests as described in
@@ -103,6 +105,13 @@ data class VerifiableCredentialSdJwt(
 ) {
 
     fun serialize() = vckJsonSerializer.encodeToString(this)
+
+    val credentialStatus: Status?
+        get() = statusElement?.let {
+            runCatching {
+                vckJsonSerializer.decodeFromJsonElement<Status>(it)
+            }.getOrNull()
+        }
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
