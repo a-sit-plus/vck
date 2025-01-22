@@ -9,7 +9,6 @@ import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.DataSourceProblem
 import at.asitplus.wallet.lib.DefaultZlibService
 import at.asitplus.wallet.lib.ZlibService
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
@@ -107,7 +106,7 @@ class IssuerAgent(
         ) ?: throw IllegalArgumentException("No statusListIndex from issuerCredentialStore")
         val deviceKeyInfo = DeviceKeyInfo(credential.subjectPublicKey.toCoseKey().getOrElse { ex ->
             Napier.w("Could not transform SubjectPublicKey to COSE Key", ex)
-            throw DataSourceProblem("SubjectPublicKey transformation failed", ex.message, ex)
+            throw IllegalArgumentException("SubjectPublicKey transformation failed", ex)
         })
         val credentialStatus = Status(
             statusList = StatusListInfo(

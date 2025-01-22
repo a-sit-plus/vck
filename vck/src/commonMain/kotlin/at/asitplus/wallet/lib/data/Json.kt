@@ -38,7 +38,6 @@ val vckJsonSerializer by lazy {
         serializersModule = SerializersModule {
             polymorphic(CredentialSubject::class) {
                 subclass(AtomicAttribute2023::class)
-                subclass(RevocationListSubject::class)
             }
             serializersModules.forEach {
                 include(it.value)
