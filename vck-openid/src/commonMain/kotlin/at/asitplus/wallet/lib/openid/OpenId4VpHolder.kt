@@ -57,6 +57,7 @@ class OpenId4VpHolder(
         remoteResourceRetriever = remoteResourceRetriever,
         requestObjectJwsVerifier = requestObjectJwsVerifier,
     )
+
     constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         holder: Holder = HolderAgent(keyMaterial),
@@ -280,6 +281,5 @@ class OpenId4VpHolder(
     }
 }
 
-private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> {
-    return certKey?.let { (this ?: listOf()) + certKey } ?: this ?: listOf()
-}
+private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> =
+    certKey?.let { (this ?: listOf()) + certKey } ?: this ?: listOf()

@@ -19,7 +19,6 @@ object StatusDirectiveEnumSerializer : KSerializer<StatusDirectiveEnum> {
         encoder.encodeString(value.text)
     }
 
-    override fun deserialize(decoder: Decoder): StatusDirectiveEnum {
-        return StatusDirectiveEnum.parse(decoder.decodeString()) ?: StatusDirectiveEnum.NONE
-    }
+    override fun deserialize(decoder: Decoder): StatusDirectiveEnum =
+        StatusDirectiveEnum.parse(decoder.decodeString()) ?: StatusDirectiveEnum.NONE
 }

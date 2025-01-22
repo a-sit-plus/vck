@@ -99,44 +99,38 @@ class Validator(
     /**
      * Checks the revocation state of the passed MDOC Credential.
      */
-    suspend fun checkRevocationStatus(issuerSigned: IssuerSigned): TokenStatus? {
-        return issuerSigned.issuerAuth.payload?.status?.let {
+    suspend fun checkRevocationStatus(issuerSigned: IssuerSigned): TokenStatus? =
+        issuerSigned.issuerAuth.payload?.status?.let {
             checkRevocationStatus(it)
         }
-    }
 
     /**
      * Checks the revocation state of the passed Verifiable Credential.
      */
-    suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws): TokenStatus? {
-        return vcJws.vc.credentialStatus?.let {
+    suspend fun checkRevocationStatus(vcJws: VerifiableCredentialJws): TokenStatus? =
+        vcJws.vc.credentialStatus?.let {
             checkRevocationStatus(it)
         }
-    }
 
     /**
      * Checks the revocation state of the passed Verifiable Credential.
      */
-    suspend fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt): TokenStatus? {
-        return sdJwt.credentialStatus?.let {
+    suspend fun checkRevocationStatus(sdJwt: VerifiableCredentialSdJwt): TokenStatus? =
+        sdJwt.credentialStatus?.let {
             checkRevocationStatus(it)
         }
-    }
 
     /**
      * Checks the revocation state using the provided status mechanisms
      */
-    private suspend fun checkRevocationStatus(status: Status): TokenStatus {
+    private suspend fun checkRevocationStatus(status: Status): TokenStatus = runCatching {
         val resolver = tokenStatusResolver ?: {
             TokenStatus.Valid
         }
-        return try {
-            resolver.invoke(status)
-        } catch (_: Throwable) {
-            // A status mechanism is specified, but no status can be retrieved, consider this to be
-            // invalid
-            TokenStatus.Invalid
-        }
+        resolver.invoke(status)
+    }.getOrElse {
+        // A status mechanism is specified, but no status can be retrieved, consider this to be invalid
+        TokenStatus.Invalid
     }
 
     /**
@@ -243,12 +237,11 @@ class Validator(
     private fun VerifiableCredentialSdJwt.verifyKeyBinding(
         jwsHeader: JwsHeader,
         keyBindingSigned: JwsSigned<KeyBindingJws>,
-    ): Boolean =
-        if (confirmationClaim != null) {
-            verifierJwsService.verifyConfirmationClaim(this.confirmationClaim, keyBindingSigned)
-        } else {
-            subject == jwsHeader.keyId
-        }
+    ): Boolean = if (confirmationClaim != null) {
+        verifierJwsService.verifyConfirmationClaim(this.confirmationClaim, keyBindingSigned)
+    } else {
+        subject == jwsHeader.keyId
+    }
 
     /**
      * Validates an ISO device response, equivalent of a Verifiable Presentation

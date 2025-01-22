@@ -84,7 +84,7 @@ internal class PresentationFactory(
 
     /**
      * Performs calculation of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
-     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required in [request] (i.e. it will be encrypted)
+     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required in [responseWillBeEncrypted] (i.e. it will be encrypted)
      */
     @Throws(PresentationException::class, CancellationException::class)
     private suspend fun calcDeviceSignature(

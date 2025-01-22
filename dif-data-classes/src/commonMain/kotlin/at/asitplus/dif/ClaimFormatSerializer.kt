@@ -16,7 +16,6 @@ object ClaimFormatSerializer : KSerializer<ClaimFormat> {
         encoder.encodeString(value.text)
     }
 
-    override fun deserialize(decoder: Decoder): ClaimFormat {
-        return ClaimFormat.parse(decoder.decodeString()) ?: ClaimFormat.NONE
-    }
+    override fun deserialize(decoder: Decoder): ClaimFormat =
+        ClaimFormat.parse(decoder.decodeString()) ?: ClaimFormat.NONE
 }

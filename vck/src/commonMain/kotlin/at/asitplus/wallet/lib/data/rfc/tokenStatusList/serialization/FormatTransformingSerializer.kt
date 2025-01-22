@@ -14,47 +14,28 @@ import kotlinx.serialization.json.JsonEncoder
  * Workaround to support serialization without type discriminator for different serialization
  * formats.
  */
-class FormatTransformingSerializerTemplate<Original, JsonSurrogate, CborSurrogate> (
+class FormatTransformingSerializerTemplate<Original, JsonSurrogate, CborSurrogate>(
     // TODO: how to specify this format-dependently?
     override val descriptor: SerialDescriptor,
     val jsonTransformer: TransformingSerializerTemplate<Original, JsonSurrogate>,
     val cborTransformer: TransformingSerializerTemplate<Original, CborSurrogate>,
 ) : KSerializer<Original> {
-    override fun deserialize(decoder: Decoder): Original {
-        return when (decoder) {
-            is JsonDecoder -> jsonTransformer
+    override fun deserialize(decoder: Decoder): Original = when (decoder) {
+        is JsonDecoder -> jsonTransformer
+        is CborDecoder -> cborTransformer
+        else -> throw IllegalArgumentException(
+            "Argument `decoder` uses an experimental format, the result may be incorrect. Supported formats: [${encoderNames()}]"
+        )
+    }.deserialize(decoder)
 
-            is CborDecoder -> cborTransformer
+    override fun serialize(encoder: Encoder, value: Original): Unit = when (encoder) {
+        is JsonEncoder -> jsonTransformer
+        is CborEncoder -> cborTransformer
+        else -> throw IllegalArgumentException(
+            "Argument `encoder` uses an experimental format, the result may be incorrect. Supported formats: [${encoderNames()}]"
+        )
+    }.serialize(encoder, value)
 
-            else -> {
-                throw IllegalArgumentException("Argument `decoder` uses an experimental format, the result may be incorrect. Supported formats: [${
-                    listOf(
-                        JsonDecoder::class,
-                        CborDecoder::class,
-                    ).joinToString(", ") {
-                        it.qualifiedName!!
-                    }
-                }]")
-            }
-        }.deserialize(decoder)
-    }
-
-    override fun serialize(encoder: Encoder, value: Original) {
-        return when (encoder) {
-            is JsonEncoder -> jsonTransformer
-
-            is CborEncoder -> cborTransformer
-
-            else -> {
-                throw IllegalArgumentException("Argument `encoder` uses an experimental format, the result may be incorrect. Supported formats: [${
-                    listOf(
-                        JsonEncoder::class,
-                        CborDecoder::class,
-                    ).joinToString(", ") {
-                        it.qualifiedName!!
-                    }
-                }]")
-            }
-        }.serialize(encoder, value)
-    }
+    private fun encoderNames(): String =
+        listOf(JsonEncoder::class, CborDecoder::class).joinToString(", ") { it.qualifiedName!! }
 }

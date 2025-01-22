@@ -67,7 +67,5 @@ data class OldJsonWebKeySet(
         return keys.contentEquals(other.keys)
     }
 
-    override fun hashCode(): Int {
-        return keys.contentHashCode()
-    }
+    override fun hashCode(): Int = keys.contentHashCode()
 }
