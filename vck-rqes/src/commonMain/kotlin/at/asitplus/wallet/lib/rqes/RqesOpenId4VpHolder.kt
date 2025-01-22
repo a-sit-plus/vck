@@ -2,13 +2,9 @@ package at.asitplus.wallet.lib.rqes
 
 import CscAuthorizationDetails
 import at.asitplus.catching
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthorizationDetails
-import at.asitplus.openid.Hashes
+import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
-import at.asitplus.openid.SignatureQualifier
-import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.rqes.CredentialInfo
 import at.asitplus.rqes.CscSignatureRequestParameters
 import at.asitplus.rqes.SignHashParameters
@@ -34,7 +30,7 @@ import com.benasher44.uuid.uuid4
  * as such currently only supports `signHash`.
  * `signDoc` is out of testing scope for now but may be added later
  */
-class RqesWalletService(
+class RqesOpenId4VpHolder(
     private val clientId: String = "https://wallet.a-sit.at/app",
     private val redirectUrl: String = "$clientId/callback",
     stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
