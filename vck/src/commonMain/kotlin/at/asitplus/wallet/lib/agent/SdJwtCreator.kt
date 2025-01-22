@@ -8,7 +8,7 @@ import kotlinx.serialization.json.*
 import kotlin.random.Random
 
 /**
- * See [Selective Disclosure for JWTs (SD-JWT)](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-13.html#name-simple-structured-sd-jwt)
+ * See [Selective Disclosure for JWTs (SD-JWT)](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-13.html)
  */
 object SdJwtCreator {
 
@@ -26,7 +26,7 @@ object SdJwtCreator {
     fun Collection<ClaimToBeIssued>.toSdJsonObject()
             : Pair<JsonObject, Collection<String>> = mutableListOf<String>().let { disclosures ->
         buildJsonObject {
-            with(customPartition()) {
+            with(honorNotDisclosableClaims().customPartition()) {
                 val objectClaimDigests: Collection<String> = recursiveClaims.mapNotNull { claim ->
                     claim.value as Collection<*>
                     (claim.value.filterIsInstance<ClaimToBeIssued>()).toSdJsonObject().let {
@@ -113,6 +113,28 @@ object SdJwtCreator {
         val dotNotationPlain: Collection<ClaimToBeIssued>,
         val claimsWithSimpleValue: Collection<ClaimToBeIssued>,
     )
+
+    /**
+     * See [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html#section-3.2.2.2)
+     */
+    private val disallowedNames = listOf(
+        "iss", "nbf", "exp", "cnf", "vct", "status"
+    )
+
+    /**
+     * Honors list of [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html#section-3.2.2.2)
+     * and prevents claims of that names to be selectively disclosed.
+     */
+    private fun Collection<ClaimToBeIssued>.honorNotDisclosableClaims(): Collection<ClaimToBeIssued> =
+        this.map {
+            if (it.name in disallowedNames) {
+                it.copy(it.name, it.value, false)
+            } else if (it.name.contains(".") && it.name.split(":").first() in disallowedNames) {
+                it.copy(it.name, it.value, false)
+            } else {
+                it
+            }
+        }
 
     /**
      * Partitions the claims to be issued into four categories, for easy use in [toSdJsonObject]

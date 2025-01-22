@@ -53,10 +53,11 @@ Many classes define several constructor parameters, some of them with default va
 
 Credentials may be represented as plain JWTs in the [W3C VC Data Model](https://w3c.github.io/vc-data-model/), as ISO mDoc credentials according to [ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html), or simply as a list of claims and values for [SD-JWT](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/).
 
+For SD-JWT, we're implementing [SD-JWT VC](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html), including features like key binding JWT, and JWT VC issuer metadata. Not supported are SD-JWT VC type metadata, document integrity, display metadata and claim metadata.
+
 When using the plain JWT representation, the single credential itself is an instance of `CredentialSubject`. For ISO mDoc claims see `IssuerSignedItems` and related classes like `Document` and `MobileSecurityObject`. For SD-JWT claims see `SelectiveDisclosureItem` and `SdJwtSigned`.
 
 Other libraries implementing credential schemes may call `LibraryInitializer.registerExtensionLibrary()` to register with this library. See our implementation of the [EU PID credential](https://github.com/a-sit-plus/eu-pid-credential) or our implementation of the [Mobile Driving Licence](https://github.com/a-sit-plus/mobile-driving-licence-credential/) for examples. We also maintain a comprehensive list of [all credentials powered by this library](https://github.com/a-sit-plus/credentials-collection).
-
 
 For the OpenID protocol family, issuing is implemented using [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), see `WalletService` and `CredentialIssuer`. This library supports several features of the OpenID4VCI draft 14: Pre-authorized code grants, authorization code flow, selecting credentials with authorization details and scopes, pushed authorization requests. Not supported are the deferred credential endpoint and the notification endpoint.
 
