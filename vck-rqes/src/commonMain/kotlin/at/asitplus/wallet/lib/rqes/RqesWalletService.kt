@@ -14,6 +14,7 @@ import at.asitplus.rqes.CscSignatureRequestParameters
 import at.asitplus.rqes.SignHashParameters
 import at.asitplus.rqes.collection_entries.CscCertificateParameters
 import at.asitplus.rqes.collection_entries.CscDocumentDigest
+import at.asitplus.rqes.collection_entries.CscKeyParameters
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
@@ -21,11 +22,13 @@ import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
 import at.asitplus.signum.indispensable.asn1.Asn1Element
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
 import com.benasher44.uuid.uuid4
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
 /**
  * Wallet service that implements generation of all data classes necessary
@@ -84,23 +87,30 @@ class RqesWalletService(
     suspend fun setSigningCredential(credentialInfo: CredentialInfo) {
         require(credentialInfo.credentialID != null)
         require(credentialInfo.certParameters != null)
-        require(credentialInfo.certParameters!!.certificates != null)
-        require(credentialInfo.certParameters!!.certificates!!.isNotEmpty())
-        require(credentialInfo.certParameters!!.status == CscCertificateParameters.CertStatus.VALID)
+        with(credentialInfo.certParameters!!) {
+            require(!this.certificates.isNullOrEmpty())
+            require(this.status == CscCertificateParameters.CertStatus.VALID)
+        }
+
+        with(credentialInfo.keyParameters) {
+            require(status == CscKeyParameters.KeyStatusOptions.ENABLED)
+        }
 
         val signingAlgos =
             credentialInfo.keyParameters.algo.mapNotNull { oid -> catching { entries.first { it.oid == oid } }.getOrNull() }
 
         require(signingAlgos.isNotEmpty())
 
+        updateCryptoProperties(signingAlgos.first(), null) //TODO find way to set crypto param if necessary
+
         signingCredential = SigningCredential(
             credentialId = credentialInfo.credentialID!!,
             certificates = credentialInfo.certParameters!!.certificates!!,
-            supportedSigningAlgorithms = signingAlgos
-
+            supportedSigningAlgorithms = signingAlgos,
         )
     }
 
+    @Suppress("unused")
     suspend fun updateSignaturePropoerties(
         signatureFormat: SignatureFormat? = null,
         conformanceLevel: ConformanceLevel? = null,
@@ -162,8 +172,10 @@ class RqesWalletService(
             authorizationDetails = authorizationDetails?.toSet(),
             scope = scope.value,
             redirectUrl = redirectUrl,
-            credentialId = if (scope == RqesOauthScope.CREDENTIAL) signingCredential?.credentialId?.encodeToByteArray()
+            credentialId = if (scope == RqesOauthScope.CREDENTIAL) signingCredential?.credentialId?.decodeToByteArray(Base64UrlStrict)
                 ?: throw Exception("Please set a signing credential before using CSC functionality.") else null,
+            signatureQualifier = if (scope == RqesOauthScope.CREDENTIAL) signatureProperties.signatureQualifier else null,
+            numSignatures = if (scope == RqesOauthScope.CREDENTIAL) 1 else null //TODO count #signatures
         )
 
     suspend fun createOAuth2TokenRequest(
@@ -197,6 +209,8 @@ suspend fun OAuth2Client.createCscAuthnRequest(
     requestUri: String? = null,
     redirectUrl: String? = this.redirectUrl,
     credentialId: ByteArray? = null,
+    signatureQualifier: SignatureQualifier? = null,
+    numSignatures: Int? = null,
 ) = AuthenticationRequestParameters(
     responseType = GRANT_TYPE_CODE,
     state = state,
@@ -207,5 +221,7 @@ suspend fun OAuth2Client.createCscAuthnRequest(
     codeChallenge = generateCodeVerifier(state),
     codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
     requestUri = requestUri,
-    credentialID = credentialId
+    credentialID = credentialId,
+    signatureQualifier = signatureQualifier,
+    numSignatures = numSignatures,
 )
