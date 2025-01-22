@@ -4,8 +4,6 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.*
 import at.asitplus.jsonpath.JsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -16,9 +14,6 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
-import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
@@ -45,7 +40,7 @@ import kotlin.time.toDuration
  *
  * This class creates the Authentication Request, [verifier] verifies the response. See [at.asitplus.wallet.lib.oidc.OidcSiopWallet] for the holder.
  */
-class OpenId4VpVerifier(
+open class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
@@ -116,7 +111,7 @@ class OpenId4VpVerifier(
     /**
      * Create a URL to be displayed as a static QR code for Wallet initiation.
      * URL is the [walletUrl], with query parameters appended for [clientMetadataUrl], [requestUrl] and
-     * [clientIdScheme.clientId].
+     * [ClientIdScheme.clientId].
      */
     fun createQrCodeUrl(
         walletUrl: String,
@@ -259,102 +254,20 @@ class OpenId4VpVerifier(
         state = requestOptions.state,
         presentationDefinition = PresentationDefinition(
             id = uuid4().toString(),
-            inputDescriptors = requestOptions.credentials.map { it.toInputDescriptor() },
+            inputDescriptors = requestOptions.toInputDescriptor(containerJwt, containerSdJwt),
         ),
-    ).also { stateToAuthnRequestStore.put(requestOptions.state, it) }
-
-    private fun RequestOptions.buildScope() = (
-            listOf(OpenIdConstants.SCOPE_OPENID, OpenIdConstants.SCOPE_PROFILE)
-                    + credentials.mapNotNull { it.credentialScheme.sdJwtType }
-                    + credentials.mapNotNull { it.credentialScheme.vcType }
-                    + credentials.mapNotNull { it.credentialScheme.isoNamespace }
-            ).joinToString(" ")
-
-    private val RequestOptions.isAnyDirectPost
-        get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
-                (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
-
-    //TODO extend for InputDescriptor interface in case QES
-    private fun RequestOptionsCredential.toInputDescriptor() = DifInputDescriptor(
-        id = buildId(),
-        format = toFormatHolder(),
-        constraints = toConstraint(),
-    )
-
-    /**
-     * doctype is not really an attribute that can be presented,
-     * encoding it into the descriptor id as in the following non-normative example fow now:
-     * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
-     */
-    private fun RequestOptionsCredential.buildId() =
-        if (credentialScheme.isoDocType != null && representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-            credentialScheme.isoDocType!! else uuid4().toString()
-
-    private fun RequestOptionsCredential.toConstraint() =
-        Constraint(fields = (requiredAttributes() + optionalAttributes() + toTypeConstraint()).filterNotNull())
-
-    private fun RequestOptionsCredential.requiredAttributes() =
-        requestedAttributes?.createConstraints(representation, credentialScheme, false)?.toSet()
-            ?: setOf()
-
-    private fun RequestOptionsCredential.optionalAttributes() =
-        requestedOptionalAttributes?.createConstraints(representation, credentialScheme, true)
-            ?: listOf()
-
-    private fun RequestOptionsCredential.toTypeConstraint() = when (representation) {
-        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> this.credentialScheme.toVcConstraint()
-        ConstantIndex.CredentialRepresentation.SD_JWT -> this.credentialScheme.toSdJwtConstraint()
-        ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
+    ).let {
+        enrichAuthnRequest(it, requestOptions)
+    }.also {
+        stateToAuthnRequestStore.put(requestOptions.state, it)
     }
 
-    private fun RequestOptionsCredential.toFormatHolder() = when (representation) {
-        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
-        ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerSdJwt)
-        ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
-    }
+    open suspend fun enrichAuthnRequest(
+        params: AuthenticationRequestParameters,
+        requestOptions: RequestOptionsInterface,
+    ): AuthenticationRequestParameters = params
 
-    private fun ConstantIndex.CredentialScheme.toVcConstraint() = if (supportsVcJwt)
-        ConstraintField(
-            path = listOf("$.type"),
-            filter = ConstraintFilter(
-                type = "string",
-                pattern = vcType,
-            )
-        ) else null
 
-    private fun ConstantIndex.CredentialScheme.toSdJwtConstraint() = if (supportsSdJwt)
-        ConstraintField(
-            path = listOf("$.vct"),
-            filter = ConstraintFilter(
-                type = "string",
-                pattern = sdJwtType!!
-            )
-        ) else null
-
-    private fun Set<String>.createConstraints(
-        representation: ConstantIndex.CredentialRepresentation,
-        credentialScheme: ConstantIndex.CredentialScheme?,
-        optional: Boolean,
-    ): Collection<ConstraintField> = map {
-        if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-            credentialScheme.toConstraintField(it, optional)
-        else
-            ConstraintField(path = listOf("\$[${it.quote()}]"), optional = optional)
-    }
-
-    private fun ConstantIndex.CredentialScheme?.toConstraintField(
-        attributeType: String,
-        optional: Boolean,
-    ) = ConstraintField(
-        path = listOf(
-            NormalizedJsonPath(
-                NormalizedJsonPathSegment.NameSegment(this?.isoNamespace ?: "mdoc"),
-                NormalizedJsonPathSegment.NameSegment(attributeType),
-            ).toString()
-        ),
-        intentToRetain = false,
-        optional = optional,
-    )
 
     /**
      * Validates the OIDC Authentication Response from the Wallet, where [content] are the HTTP POST encoded

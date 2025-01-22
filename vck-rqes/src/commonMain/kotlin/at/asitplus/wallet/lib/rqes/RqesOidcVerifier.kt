@@ -1,8 +1,9 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.dif.DifInputDescriptor
+import at.asitplus.dif.FormatContainerJwt
+import at.asitplus.dif.FormatContainerSdJwt
 import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.Hashes
 import at.asitplus.openid.SignatureQualifier
@@ -10,7 +11,12 @@ import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.TransactionData
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -18,12 +24,14 @@ import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.DefaultNonceService
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.NonceService
-import com.benasher44.uuid.uuid4
+import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
+import at.asitplus.wallet.lib.openid.RequestOptions
+import at.asitplus.wallet.lib.openid.RequestOptionsInterface
 import kotlinx.datetime.Clock
 
 /**
@@ -32,16 +40,16 @@ import kotlinx.datetime.Clock
 class RqesOidcVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
-    private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
-    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
+    verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
+    jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+    verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
+    verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
     timeLeewaySeconds: Long = 300L,
-    private val clock: Clock = Clock.System,
-    private val nonceService: NonceService = DefaultNonceService(),
+    clock: Clock = Clock.System,
+    nonceService: NonceService = DefaultNonceService(),
     /** Used to store issued authn requests, to verify the authn response to it */
-    private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
-) : OidcSiopVerifier(
+    stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
+) : OpenId4VpVerifier(
     clientIdScheme,
     keyMaterial,
     verifier,
@@ -58,34 +66,37 @@ class RqesOidcVerifier(
         val baseRequestOptions: RequestOptions,
         val rqesParameters: RqesParameters?,
     ) : RequestOptionsInterface by baseRequestOptions {
-        override fun toPresentationDefinition(): PresentationDefinition? =
-            PresentationDefinition(
-                id = uuid4().toString(),
-                inputDescriptors = this.credentials.map {
-                    it.toInputDescriptor1(this.rqesParameters?.transactionData)
-                },
-            )
-
-        fun RequestOptionsCredential.toInputDescriptor1(transactionData: Set<String>?): InputDescriptor =
-            if (transactionData.isNullOrEmpty()) {
-                DifInputDescriptor(
-                    id = buildId(),
-                    format = toFormatHolder(),
-                    constraints = toConstraint(),
-                )
-            } else {
+        override fun toInputDescriptor(
+            containerJwt: FormatContainerJwt,
+            containerSdJwt: FormatContainerSdJwt,
+        ): List<InputDescriptor> = credentials.map { requestOptionCredential ->
+            rqesParameters?.let { parameter ->
                 val deserialized =
-                    transactionData.map { vckJsonSerializer.decodeFromString(TransactionData.serializer(), it) }
+                    parameter.transactionData.map {
+                        vckJsonSerializer.decodeFromString(
+                            TransactionData.serializer(),
+                            it
+                        )
+                    }
                 QesInputDescriptor(
-                    id = buildId(), format = toFormatHolder(), constraints = toConstraint(), transactionData = deserialized
+                    id = requestOptionCredential.buildId(),
+                    format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
+                    constraints = requestOptionCredential.toConstraint(),
+                    transactionData = deserialized
                 )
-            }
+            } ?: DifInputDescriptor(
+                id = requestOptionCredential.buildId(),
+                format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
+                constraints = requestOptionCredential.toConstraint(),
+            )
+        }
     }
 
     /**
      * Parameters defined in the CSC extension of [AuthenticationRequestParameters]
      */
     data class RqesParameters(
+        val transactionData: Set<String>,
         val lang: String? = null,
         val credentialID: ByteArray? = null,
         val signatureQualifier: SignatureQualifier? = null,
@@ -95,7 +106,6 @@ class RqesOidcVerifier(
         val description: String? = null,
         val accountToken: JsonWebToken? = null,
         val clientData: String? = null,
-        val transactionData: Set<String>? = null,
     ) {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -134,7 +144,6 @@ class RqesOidcVerifier(
             return result
         }
     }
-
 
     override suspend fun enrichAuthnRequest(
         params: AuthenticationRequestParameters,
