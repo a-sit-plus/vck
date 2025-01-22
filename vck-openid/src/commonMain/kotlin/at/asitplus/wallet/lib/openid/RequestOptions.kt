@@ -75,10 +75,7 @@ interface RequestOptionsInterface {
         containerSdJwt: FormatContainerSdJwt,
     ): PresentationDefinition? = PresentationDefinition(
         id = uuid4().toString(),
-        inputDescriptors = this.toInputDescriptor(
-            containerJwt,
-            containerSdJwt
-        )
+        inputDescriptors = this.toInputDescriptor(containerJwt, containerSdJwt)
     )
 
     fun toInputDescriptor(
@@ -87,10 +84,7 @@ interface RequestOptionsInterface {
     ): List<InputDescriptor> = credentials.map {
         DifInputDescriptor(
             id = it.buildId(),
-            format = it.toFormatHolder(
-                containerJwt,
-                containerSdJwt
-            ),
+            format = it.toFormatHolder(containerJwt, containerSdJwt),
             constraints = it.toConstraint(),
         )
     }

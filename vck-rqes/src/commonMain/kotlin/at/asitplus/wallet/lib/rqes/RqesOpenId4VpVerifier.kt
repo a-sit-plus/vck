@@ -66,18 +66,13 @@ class RqesOpenId4VpVerifier(
             containerSdJwt: FormatContainerSdJwt,
         ): List<InputDescriptor> = credentials.map { requestOptionCredential ->
             rqesParameters?.let { parameter ->
-                val deserialized =
-                    parameter.transactionData.map {
-                        vckJsonSerializer.decodeFromString(
-                            TransactionData.serializer(),
-                            it
-                        )
-                    }
                 QesInputDescriptor(
                     id = requestOptionCredential.buildId(),
                     format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
                     constraints = requestOptionCredential.toConstraint(),
-                    transactionData = deserialized
+                    transactionData = parameter.transactionData.map {
+                        vckJsonSerializer.decodeFromString(TransactionData.serializer(), it)
+                    }
                 )
             } ?: DifInputDescriptor(
                 id = requestOptionCredential.buildId(),
