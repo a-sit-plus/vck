@@ -1,5 +1,8 @@
 # Changelog
 
+Release 5.2.4:
+ - SD-JWT: Be more lenient in parsing `status` information from credentials
+
 Release 5.2.3:
  - Be more lenient in parsing OpenId authentication requests
  - OpenID4VP: Use correct format of algorithms in metadata for `vp_formats.vc+sd-jwt`

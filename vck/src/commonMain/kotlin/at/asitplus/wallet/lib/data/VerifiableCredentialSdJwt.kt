@@ -6,6 +6,8 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.JsonElement
 
 /**
  * SD-JWT representation of a [VerifiableCredential].
@@ -75,7 +77,7 @@ data class VerifiableCredentialSdJwt(
      */
     @SerialName("status")
     // TODO Implement correct draft: draft-ietf-oauth-status-list-05
-    val credentialStatus: CredentialStatus? = null,
+    val statusElement: JsonElement? = null,
 
     /**
      * The claim `_sd_alg` indicates the hash algorithm used by the Issuer to generate the digests as described in
@@ -98,6 +100,13 @@ data class VerifiableCredentialSdJwt(
 ) {
 
     fun serialize() = vckJsonSerializer.encodeToString(this)
+
+    val credentialStatus: CredentialStatus?
+        get() = statusElement?.let {
+            runCatching {
+                vckJsonSerializer.decodeFromJsonElement<CredentialStatus>(it)
+            }.getOrNull()
+        }
 
     companion object {
         fun deserialize(it: String) = kotlin.runCatching {
