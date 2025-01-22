@@ -5,18 +5,12 @@ import at.asitplus.dif.InputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.Hashes
-import at.asitplus.openid.IdTokenType
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.TransactionData
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -63,7 +57,30 @@ class RqesOidcVerifier(
     data class ExtendedRequestOptions(
         val baseRequestOptions: RequestOptions,
         val rqesParameters: RqesParameters?,
-    ) : RequestOptionsInterface by baseRequestOptions
+    ) : RequestOptionsInterface by baseRequestOptions {
+        override fun toPresentationDefinition(): PresentationDefinition? =
+            PresentationDefinition(
+                id = uuid4().toString(),
+                inputDescriptors = this.credentials.map {
+                    it.toInputDescriptor1(this.rqesParameters?.transactionData)
+                },
+            )
+
+        fun RequestOptionsCredential.toInputDescriptor1(transactionData: Set<String>?): InputDescriptor =
+            if (transactionData.isNullOrEmpty()) {
+                DifInputDescriptor(
+                    id = buildId(),
+                    format = toFormatHolder(),
+                    constraints = toConstraint(),
+                )
+            } else {
+                val deserialized =
+                    transactionData.map { vckJsonSerializer.decodeFromString(TransactionData.serializer(), it) }
+                QesInputDescriptor(
+                    id = buildId(), format = toFormatHolder(), constraints = toConstraint(), transactionData = deserialized
+                )
+            }
+    }
 
     /**
      * Parameters defined in the CSC extension of [AuthenticationRequestParameters]
@@ -118,53 +135,12 @@ class RqesOidcVerifier(
         }
     }
 
-    override fun RequestOptionsCredential.toInputDescriptor(transactionData: Set<String>?): InputDescriptor =
-        if (transactionData.isNullOrEmpty()) {
-            DifInputDescriptor(
-                id = buildId(),
-                format = toFormatHolder(),
-                constraints = toConstraint(),
-            )
-        } else {
-            val deserialized =
-                transactionData.map { vckJsonSerializer.decodeFromString(TransactionData.serializer(), it) }
-            QesInputDescriptor(
-                id = buildId(), format = toFormatHolder(), constraints = toConstraint(), transactionData = deserialized
-            )
-        }
 
-    /**
-     * Creates [AuthenticationRequestParameters], to be encoded as query params appended to the URL of the Wallet,
-     * e.g. `https://example.com?repsonse_type=...` (see [createAuthnRequestUrl])
-     *
-     * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
-     */
-    override suspend fun createAuthnRequest(
+    override suspend fun enrichAuthnRequest(
+        params: AuthenticationRequestParameters,
         requestOptions: RequestOptionsInterface,
     ): AuthenticationRequestParameters = with(requestOptions as ExtendedRequestOptions) {
-        AuthenticationRequestParameters(
-            responseType = this.responseType,
-            clientId = clientIdScheme.clientId,
-            redirectUrl = if (!this.isAnyDirectPost) clientIdScheme.clientId else null,
-            responseUrl = this.responseUrl,
-            clientIdScheme = clientIdScheme.scheme,
-            scope = this.buildScope(),
-            nonce = nonceService.provideNonce(),
-            clientMetadata = if (this.clientMetadataUrl != null) {
-                null
-            } else {
-                if (this.encryption) metadataWithEncryption else metadata
-            },
-            clientMetadataUri = this.clientMetadataUrl,
-            idTokenType = IdTokenType.SUBJECT_SIGNED.text,
-            responseMode = this.responseMode,
-            state = this.state,
-            presentationDefinition = PresentationDefinition(
-                id = uuid4().toString(),
-                inputDescriptors = this.credentials.map {
-                    it.toInputDescriptor(this.rqesParameters?.transactionData)
-                },
-            ),
+        params.copy(
             lang = this.rqesParameters?.lang,
             credentialID = this.rqesParameters?.credentialID,
             signatureQualifier = this.rqesParameters?.signatureQualifier,
@@ -174,7 +150,8 @@ class RqesOidcVerifier(
             description = this.rqesParameters?.description,
             accountToken = this.rqesParameters?.accountToken,
             clientData = this.rqesParameters?.clientData,
-            transactionData = this.rqesParameters?.transactionData
-        ).also { stateToAuthnRequestStore.put(this.state, it) }
+            transactionData = this.rqesParameters?.transactionData,
+        )
     }
+
 }

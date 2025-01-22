@@ -5,7 +5,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.wallet.lib.data.ConstantIndex
 import com.benasher44.uuid.uuid4
 
-data class RequestOptions(
+open class RequestOptions(
     /**
      * Requested credentials, should be at least one
      */
