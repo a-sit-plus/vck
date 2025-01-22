@@ -139,9 +139,6 @@ class RqesOidcVerifier(
      *
      * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
      */
-
-
-
     override suspend fun createAuthnRequest(
         requestOptions: RequestOptionsInterface,
     ): AuthenticationRequestParameters = with(requestOptions as ExtendedRequestOptions) {
@@ -164,7 +161,9 @@ class RqesOidcVerifier(
             state = this.state,
             presentationDefinition = PresentationDefinition(
                 id = uuid4().toString(),
-                inputDescriptors = this.credentials.map { it.toInputDescriptor() },
+                inputDescriptors = this.credentials.map {
+                    it.toInputDescriptor(this.rqesParameters?.transactionData)
+                },
             ),
             lang = this.rqesParameters?.lang,
             credentialID = this.rqesParameters?.credentialID,
