@@ -53,7 +53,7 @@ Many classes define several constructor parameters, some of them with default va
 
 Credentials may be represented as plain JWTs in the [W3C VC Data Model](https://w3c.github.io/vc-data-model/), as ISO mDoc credentials according to [ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html), or simply as a list of claims and values for [SD-JWT](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/).
 
-For SD-JWT, we're implementing [SD-JWT VC](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html), including features like key binding JWT, and JWT VC issuer metadata. Not supported are SD-JWT VC type metadata, document integrity, display metadata and claim metadata.
+For SD-JWT, we're implementing [SD-JWT VC](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html), including features like key binding JWT, and JWT VC issuer metadata. Not supported are SD-JWT VC type metadata, document integrity, display metadata and claim metadata. We're also following [SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-15.html), including features like key binding JWT, nested structures. 
 
 When using the plain JWT representation, the single credential itself is an instance of `CredentialSubject`. For ISO mDoc claims see `IssuerSignedItems` and related classes like `Document` and `MobileSecurityObject`. For SD-JWT claims see `SelectiveDisclosureItem` and `SdJwtSigned`.
 

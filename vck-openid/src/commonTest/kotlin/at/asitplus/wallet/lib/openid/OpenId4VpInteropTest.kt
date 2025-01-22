@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.SdJwtConstants
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -173,7 +174,7 @@ class OpenId4VpInteropTest : FreeSpec({
                 it.issuedAt.shouldNotBeNull()
                 it.expiration.shouldNotBeNull()
                 it.verifiableCredentialType.shouldNotBeNull()
-                it.selectiveDisclosureAlgorithm shouldBe "sha-256"
+                it.selectiveDisclosureAlgorithm shouldBe SdJwtConstants.SHA_256
                 it.confirmationClaim.shouldNotBeNull().also {
                     it.jsonWebKey.shouldNotBeNull()
                 }
@@ -252,7 +253,7 @@ class OpenId4VpInteropTest : FreeSpec({
             it.getPayloadAsVerifiableCredentialSdJwt().getOrThrow().also {
                 it.issuer shouldBe "https://rvig.nl/jwk"
                 it.verifiableCredentialType shouldBe "urn:eu.europa.ec.eudi:pid:1"
-                it.selectiveDisclosureAlgorithm shouldBe "sha-256"
+                it.selectiveDisclosureAlgorithm shouldBe SdJwtConstants.SHA_256
             }
         }
 
