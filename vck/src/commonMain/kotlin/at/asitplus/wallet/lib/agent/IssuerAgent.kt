@@ -226,10 +226,10 @@ class IssuerAgent(
         )
         val vcSdJwtObject = vckJsonSerializer.encodeToJsonElement(vcSdJwt).jsonObject
         val entireObject = buildJsonObject {
-            vcSdJwtObject.forEach {
+            sdJwt.forEach {
                 put(it.key, it.value)
             }
-            sdJwt.forEach {
+            vcSdJwtObject.forEach {
                 put(it.key, it.value)
             }
         }
