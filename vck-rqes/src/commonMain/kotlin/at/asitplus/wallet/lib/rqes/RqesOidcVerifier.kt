@@ -17,6 +17,8 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
+import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
@@ -39,22 +41,23 @@ class RqesOidcVerifier(
     private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
-    private val timeLeewaySeconds: Long = 300L,
+    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
+    timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
-    private val stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
-    private val stateToResponseTypeStore: MapStore<String, String> = DefaultMapStore(),
+    /** Used to store issued authn requests, to verify the authn response to it */
+    private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
 ) : OidcSiopVerifier(
     clientIdScheme,
     keyMaterial,
     verifier,
     jwsService,
     verifierJwsService,
+    verifierCoseService,
     timeLeewaySeconds,
     clock,
     nonceService,
-    stateToNonceStore,
-    stateToResponseTypeStore,
+    stateToAuthnRequestStore
 ) {
 
     data class ExtendedRequestOptions(
@@ -136,17 +139,20 @@ class RqesOidcVerifier(
      *
      * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
      */
+
+
+
     override suspend fun createAuthnRequest(
         requestOptions: RequestOptionsInterface,
     ): AuthenticationRequestParameters = with(requestOptions as ExtendedRequestOptions) {
         AuthenticationRequestParameters(
-            responseType = this.responseType.also { stateToResponseTypeStore.put(this.state, it) },
+            responseType = this.responseType,
             clientId = clientIdScheme.clientId,
             redirectUrl = if (!this.isAnyDirectPost) clientIdScheme.clientId else null,
             responseUrl = this.responseUrl,
             clientIdScheme = clientIdScheme.scheme,
             scope = this.buildScope(),
-            nonce = nonceService.provideNonce().also { stateToNonceStore.put(this.state, it) },
+            nonce = nonceService.provideNonce(),
             clientMetadata = if (this.clientMetadataUrl != null) {
                 null
             } else {
@@ -158,9 +164,7 @@ class RqesOidcVerifier(
             state = this.state,
             presentationDefinition = PresentationDefinition(
                 id = uuid4().toString(),
-                inputDescriptors = this.credentials.map {
-                    it.toInputDescriptor(this.rqesParameters?.transactionData)
-                },
+                inputDescriptors = this.credentials.map { it.toInputDescriptor() },
             ),
             lang = this.rqesParameters?.lang,
             credentialID = this.rqesParameters?.credentialID,
@@ -172,6 +176,6 @@ class RqesOidcVerifier(
             accountToken = this.rqesParameters?.accountToken,
             clientData = this.rqesParameters?.clientData,
             transactionData = this.rqesParameters?.transactionData
-        )
+        ).also { stateToAuthnRequestStore.put(this.state, it) }
     }
 }
