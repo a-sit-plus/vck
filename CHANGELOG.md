@@ -41,7 +41,7 @@ Release 5.3.0:
   - In `Verifier` and `VerifierAgent` add methods `verifyPresentationVcJwt()`, `verifyPresentationSdJwt()` and `verifyPresentationIsoMdoc()` to directly verify typed objects
   - For verification of credentials and presentations add `ValidationError` cases to sealed classes
   - In `OidcSiopVerifier` replace `stateToNonceStore` and `stateToResponseTypeStore` with `stateToAuthnRequestStore`
- - OpenID4VP in general:
+- OpenID4VP in general:
   - Deprecate `OidcSiopVerifier`, use `at.asitplus.wallet.lib.openid.OpenId4VpVerifier` instead
   - Move classes `ClientIdScheme`, `RequestOptions`, `AuthResponseResult` out of `OpenId4VpVerifier`
   - Change type of `RequestOptionsCredential.requestedAttributes` from `List` to `Set`
@@ -55,6 +55,8 @@ Release 5.3.0:
   - Drop `client_id_scheme` and encode it as a prefix to `client_id`
 - General cleanup:
   - Remove `SchemaIndex`
+  - Remove `VcLibException`
+- Dependency updates:
   - Update signum to 3.12.1
 - Add isolated DCQL implementation 
 
