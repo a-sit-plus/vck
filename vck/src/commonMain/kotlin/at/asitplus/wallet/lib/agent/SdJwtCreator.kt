@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.wallet.lib.agent.SdJwtCreator.disallowedNames
 import at.asitplus.wallet.lib.agent.SdJwtCreator.toSdJsonObject
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
@@ -117,24 +118,29 @@ object SdJwtCreator {
     /**
      * See [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html#section-3.2.2.2)
      */
-    private val disallowedNames = listOf(
+    private val notDisclosableClaims = listOf(
         "iss", "nbf", "exp", "cnf", "vct", "status"
+    )
+
+    private val disallowedNames = listOf(
+        "_sd_alg", "..."
     )
 
     /**
      * Honors list of [registered JWT claims](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html#section-3.2.2.2)
-     * and prevents claims of that names to be selectively disclosed.
+     * and prevents claims of that names to be selectively disclosed,
+     * as well as [disallowedNames] which covers constants used in the SD-JWT VC itself.
      */
     private fun Collection<ClaimToBeIssued>.honorNotDisclosableClaims(): Collection<ClaimToBeIssued> =
         this.map {
-            if (it.name in disallowedNames) {
+            if (it.name in notDisclosableClaims) {
                 it.copy(it.name, it.value, false)
-            } else if (it.name.contains(".") && it.name.split(":").first() in disallowedNames) {
+            } else if (it.name.contains(".") && it.name.split(":").first() in notDisclosableClaims) {
                 it.copy(it.name, it.value, false)
             } else {
                 it
             }
-        }
+        }.filterNot { it.name in disallowedNames }
 
     /**
      * Partitions the claims to be issued into four categories, for easy use in [toSdJsonObject]

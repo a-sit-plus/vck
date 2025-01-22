@@ -220,7 +220,7 @@ class IssuerAgent(
             issuedAt = issuanceDate,
             jwtId = vcId,
             verifiableCredentialType = credential.scheme.sdJwtType ?: credential.scheme.schemaUri,
-            selectiveDisclosureAlgorithm = "sha-256",
+            selectiveDisclosureAlgorithm = SdJwtConstants.SHA_256,
             confirmationClaim = cnf,
             statusElement = vckJsonSerializer.encodeToJsonElement(credentialStatus),
         )

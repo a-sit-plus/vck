@@ -38,6 +38,15 @@ class SdJwtCreatorTest : FreeSpec({
         }
     }
 
+    "several names are disallowed" {
+        listOfClaims("_sd_alg", "...").toSdJsonObject().apply {
+            second.shouldHaveSize(0)
+            first["_sd"] shouldBe null
+            first["_sd_alg"] shouldBe null
+            first["..."] shouldBe null
+        }
+    }
+
 })
 
 private fun listOfClaims(vararg claimName: String): List<ClaimToBeIssued> =
