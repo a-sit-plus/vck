@@ -62,9 +62,10 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
         )
     }
 
-    "test with Fragment" {
-        val authnRequest = verifierOid4vp.createAuthnRequestAsSignedRequestObject(
-            requestOptions = RequestOptions(
+    "test with request object" {
+        val requestUrl = "https://example.com/request"
+        val (walletUrl, jar) = verifierOid4vp.createAuthnRequest(
+            RequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023,
@@ -74,10 +75,16 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
                 ),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = "https://example.com/response",
-            )
+            ),
+            OpenId4VpVerifier.CreationOptions.SignedRequestByReference("haip://", requestUrl)
         ).getOrThrow()
 
-        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest.serialize()).getOrThrow()
+        holderOid4vp = OpenId4VpHolder(
+            holderKeyMaterial,
+            holderAgent,
+            remoteResourceRetriever = { if (it == requestUrl) jar else null })
+
+        val authnResponse = holderOid4vp.createAuthnResponse(walletUrl).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
         val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())

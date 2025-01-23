@@ -95,10 +95,8 @@ class OpenId4VpInteropTest : FreeSpec({
         val responseNonce = uuid4().toString()
         val requestNonce = uuid4().toString()
         val requestUrl = "https://verifier.example.com/request/$requestNonce"
-        val (requestUrlForWallet, requestObject) = verifierOid4vp.createAuthnRequestUrlWithRequestObjectByReference(
-            walletUrl = "haip://",
-            requestUrl = requestUrl,
-            requestOptions = RequestOptions(
+        val (requestUrlForWallet, requestObject) = verifierOid4vp.createAuthnRequest(
+            RequestOptions(
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://verifier.example.com/response/$responseNonce",
                 credentials = setOf(
@@ -108,7 +106,8 @@ class OpenId4VpInteropTest : FreeSpec({
                         setOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
                     )
                 )
-            )
+            ),
+            OpenId4VpVerifier.CreationOptions.SignedRequestByReference("haip://", requestUrl)
         ).getOrThrow()
 
         requestUrlForWallet shouldContain "request_uri="
@@ -116,7 +115,7 @@ class OpenId4VpInteropTest : FreeSpec({
         requestUrlForWallet shouldStartWith "haip://"
 
         val jar = JwsSigned.Companion.deserialize<AuthenticationRequestParameters>(
-            AuthenticationRequestParameters.Companion.serializer(), requestObject,
+            AuthenticationRequestParameters.Companion.serializer(), requestObject!!,
             vckJsonSerializer
         ).getOrThrow()
 

@@ -42,10 +42,11 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         )
 
         "URL test $representation" {
-            val authnRequest = verifierOid4vp.createAuthnRequestUrl(
-                walletUrl = walletUrl,
-                requestOptions = reqOptions
-            )
+            val authnRequest = verifierOid4vp.createAuthnRequest(
+                reqOptions,
+                OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+            ).getOrThrow().url
+
             val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest).getOrThrow()
                 .shouldBeInstanceOf<RequestParametersFrom.Uri<AuthenticationRequestParameters>>()
 
@@ -64,10 +65,9 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         }
 
         "JwsSigned test $representation" {
-            val authnRequestUrl = verifierOid4vp.createAuthnRequestUrlWithRequestObject(
-                walletUrl = walletUrl,
-                requestOptions = reqOptions
-            ).getOrThrow()
+            val authnRequestUrl = verifierOid4vp.createAuthnRequest(
+                reqOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)
+            ).getOrThrow().url
             val interim1: AuthenticationRequestParameters =
                 Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
             interim1.clientId shouldBe clientId

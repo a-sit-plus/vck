@@ -30,8 +30,8 @@ import kotlinx.serialization.json.buildJsonArray
 
 /**
  * Combines Verifiable Presentations with OpenId Connect.
- * Implements [OIDC for VP](https://openid.net/specs/openid-connect-4-verifiable-presentations-1_0.html) (2023-04-21)
- * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (2023-01-01).
+ * Implements [OpenID for VP](https://openid.net/specs/openid-connect-4-verifiable-presentations-1_0.html) (2024-12-02)
+ * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (2023-11-28).
  *
  * The [holder] creates the Authentication Response, see [OpenId4VpVerifier] for the verifier.
  */

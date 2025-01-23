@@ -140,10 +140,9 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
             responseUrl = "https://example.com/response",
             encryption = true
         )
-        val authnRequest = verifierOid4vp.createAuthnRequestUrl(
-            walletUrl = walletUrl,
-            requestOptions = requestOptions
-        )
+        val authnRequest = verifierOid4vp.createAuthnRequest(
+            requestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+        ).getOrThrow().url
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
@@ -191,10 +190,9 @@ private suspend fun runProcess(
     requestOptions: RequestOptions,
     holderOid4vp: OpenId4VpHolder,
 ): IsoDocumentParsed {
-    val authnRequest = verifierOid4vp.createAuthnRequestUrl(
-        walletUrl = walletUrl,
-        requestOptions = requestOptions
-    )
+    val authnRequest = verifierOid4vp.createAuthnRequest(
+        requestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+    ).getOrThrow().url
 
     val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
     authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()

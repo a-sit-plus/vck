@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.openid.*
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
@@ -220,15 +221,14 @@ class OpenId4VpWalletTest : FunSpec() {
             clientIdScheme = ClientIdScheme.PreRegistered(clientId),
         )
         val responseEndpointPath = "/response"
-        val (url, jar) = verifier.createAuthnRequestUrlWithRequestObjectByReference(
-            walletUrl = "http://wallet.example.com/",
-            requestUrl = "http://rp.example.com$requestEndpointPath",
-            requestOptions = requestOptions.copy(responseUrl = responseEndpointPath)
+        val (url, jar) = verifier.createAuthnRequest(
+            requestOptions.copy(responseUrl = responseEndpointPath),
+            CreationOptions.SignedRequestByReference("http://wallet.example.com/", "http://rp.example.com$requestEndpointPath")
         ).getOrThrow()
 
         return MockEngine { request ->
             when {
-                request.url.fullPath == requestEndpointPath -> respond(jar)
+                request.url.fullPath == requestEndpointPath -> respond(jar!!)
 
                 request.url.fullPath.startsWith(responseEndpointPath) or request.url.fullPath.startsWith("/$clientId") -> {
                     val requestBody = request.body.toByteArray().decodeToString()

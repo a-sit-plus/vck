@@ -54,6 +54,11 @@ Release 5.3.0:
   - Support credential format identifier `dc+sd-jwt` in addition to `vc+sd-jwt`
   - Drop `client_id_scheme` and encode it as a prefix to `client_id`
   - Set `vp_formats_supported` in wallet's metadata
+  - Remove `OpenId4VpVerifier.createSignedMetadata()`, as signed metadata is not covered by any spec
+  - Remove `OpenId4VpVerifier.createQrCodeUrl()`, replace with `createAutnRequest(requestOptions, creationOptions)` and `CreationOptions.RequestByReference`
+  - Remove `OpenId4VpVerifier.createAuthnRequestUrl()`, replace with `createAutnRequest(requestOptions, creationOptions)` and `CreationOptions.Query`
+  - Remove `OpenId4VpVerifier.createAuthnRequestUrlWithRequestObject()`, replace with `createAutnRequest(requestOptions, creationOptions)` and `CreationOptions.RequestByValue`
+  - Remove `OpenId4VpVerifier.createAuthnRequestUrlWithRequestObjectByReference()`, replace with `createAutnRequest(requestOptions, creationOptions)` and `CreationOptions.RequestByReference`
 - General cleanup:
   - Remove `SchemaIndex`
   - Remove `VcLibException`

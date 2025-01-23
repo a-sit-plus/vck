@@ -309,33 +309,32 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
     }
 
     "process with cross-device flow with request_uri and x509_san_dns" {
+        val clientId = "example.com"
         val extensions = listOf(
             X509CertificateExtension(
-            KnownOIDs.subjectAltName_2_5_29_17,
-            critical = false,
-            Asn1EncapsulatingOctetString(
-                listOf(
-                Asn1.Sequence {
-                    +Asn1Primitive(
-                        SubjectAltNameImplicitTags.dNSName,
-                        Asn1String.UTF8("example.com").encodeToTlv().content
-                    )
-                }
-            ))))
+                KnownOIDs.subjectAltName_2_5_29_17,
+                critical = false,
+                Asn1EncapsulatingOctetString(
+                    listOf(
+                        Asn1.Sequence {
+                            +Asn1Primitive(
+                                SubjectAltNameImplicitTags.dNSName,
+                                Asn1String.UTF8(clientId).encodeToTlv().content
+                            )
+                        }
+                    ))))
         verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.CertificateSanDns(
                 listOf(verifierKeyMaterial.getCertificate()!!),
-                "example.com"
+                clientId
             ),
         )
         val nonce = uuid4().toString()
         val requestUrl = "https://example.com/request/$nonce"
-        val requestUrlForWallet = verifierOid4vp.createAuthnRequestUrlWithRequestObjectByReference(
-            walletUrl = "https://wallet.a-sit.at/mobile",
-            requestUrl = requestUrl,
-            requestOptions = RequestOptions(
+        val (walletUrl, jar) = verifierOid4vp.createAuthnRequest(
+            RequestOptions(
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://example.com/response",
                 credentials = setOf(
@@ -345,16 +344,17 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                         setOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
                     )
                 )
-            )
+            ),
+            OpenId4VpVerifier.CreationOptions.SignedRequestByReference("https://wallet.a-sit.at/mobile", requestUrl)
         ).getOrThrow()
 
 
         holderOid4vp = OpenId4VpHolder(
             holderKeyMaterial,
             holderAgent,
-            remoteResourceRetriever = { if (it == requestUrl) requestUrlForWallet.second else null })
+            remoteResourceRetriever = { if (it == requestUrl) jar else null })
 
-        val parameters = holderOid4vp.parseAuthenticationRequestParameters(requestUrlForWallet.first).getOrThrow()
+        val parameters = holderOid4vp.parseAuthenticationRequestParameters(walletUrl).getOrThrow()
         val preparation = holderOid4vp.startAuthorizationResponsePreparation(parameters).getOrThrow()
         val response = holderOid4vp.finalizeAuthorizationResponse(parameters, preparation).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()

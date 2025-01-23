@@ -40,8 +40,8 @@ import kotlin.time.toDuration
 
 /**
  * Combines Verifiable Presentations with OpenId Connect.
- * Implements [OIDC for VP](https://openid.net/specs/openid-connect-4-verifiable-presentations-1_0.html) (2023-04-21)
- * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (2023-01-01).
+ * Implements [OpenID for VP](https://openid.net/specs/openid-connect-4-verifiable-presentations-1_0.html) (2024-12-02)
+ * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (2023-11-28).
  *
  * This class creates the Authentication Request, [verifier] verifies the response. See [at.asitplus.wallet.lib.oidc.OidcSiopWallet] for the holder.
  */
@@ -114,90 +114,83 @@ class OpenId4VpVerifier(
         )
     }
 
-    /**
-     * Create a URL to be displayed as a static QR code for Wallet initiation.
-     * URL is the [walletUrl], with query parameters appended for [clientMetadataUrl], [requestUrl] and
-     * `client_id` from [ClientIdScheme.clientId].
-     */
-    fun createQrCodeUrl(
-        walletUrl: String,
-        clientMetadataUrl: String,
-        requestUrl: String,
-    ): String {
-        val urlBuilder = URLBuilder(walletUrl)
-        AuthenticationRequestParameters(
-            clientId = clientIdScheme.clientId,
-            clientMetadataUri = clientMetadataUrl,
-            requestUri = requestUrl,
-        ).encodeToParameters()
-            .forEach { urlBuilder.parameters.append(it.key, it.value) }
-        return urlBuilder.buildString()
+    // TODO signing may be required depending on the client_id_scheme
+    // redirect_uri: must not be signed
+    // x509_san_dns: must be signed, client_id mist be DNS name
+    // x509_san_uri: must be signed, client_id must be URI
+
+    // verifier_attestation: redirect_uris in the attestation -> redirect_uri in authnrequest must be included there
+    // x509_* -> redirect_uri must match with cert or freely chosen, see 5.10
+
+    sealed class CreationOptions {
+        /** Creates authentication request with parameters encoded as URL query parameters to [walletUrl] */
+        data class Query(val walletUrl: String) : CreationOptions()
+
+        /** Appends [requestUrl] to [walletUrl], callers need to serve [CreatedRequest.requestObject] there.  */
+        data class RequestByReference(val walletUrl: String, val requestUrl: String) : CreationOptions()
+
+        /** Appends authentication request as signed object to [walletUrl] */
+        data class SignedRequestByValue(val walletUrl: String) : CreationOptions()
+
+        /** Appends [requestUrl] to [walletUrl], callers need to serve [CreatedRequest.requestObject] (which is signed) there. */
+        data class SignedRequestByReference(val walletUrl: String, val requestUrl: String) : CreationOptions()
     }
 
-    /**
-     * Creates a JWS containing signed [RelyingPartyMetadata],
-     * to be served under a `client_metadata_uri` at the Verifier.
-     */
-    suspend fun createSignedMetadata(): KmmResult<JwsSigned<RelyingPartyMetadata>> =
-        jwsService.createSignedJwsAddingParams(
-            payload = metadata,
-            serializer = RelyingPartyMetadata.Companion.serializer(),
-            addKeyId = true,
-            addX5c = false
-        )
 
-    /**
-     * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl].
-     */
-    suspend fun createAuthnRequestUrl(
-        walletUrl: String,
+    // TODO provide a callback to include the received "wallet_nonce" in the Signed Authn Request Option, see OpenId4VP 5.11.
+    data class CreatedRequest(
+        /** URL to invoke the wallet/holder */
+        val url: String,
+        /**
+         *  Optional content that needs to be served under the previously passed in `requestUrl`
+         *  with content type `application/oauth-authz-req+jwt`
+         */
+        val requestObject: String? = null,
+    )
+
+    suspend fun createAuthnRequest(
         requestOptions: RequestOptions,
-    ): String {
-        val urlBuilder = URLBuilder(walletUrl)
-        createAuthnRequest(requestOptions).encodeToParameters()
-            .forEach { urlBuilder.parameters.append(it.key, it.value) }
-        return urlBuilder.buildString()
+        creationOptions: CreationOptions,
+    ): KmmResult<CreatedRequest> = catching {
+        when (creationOptions) {
+            is CreationOptions.Query -> URLBuilder(creationOptions.walletUrl).apply {
+                createAuthnRequest(requestOptions).encodeToParameters()
+                    .forEach { parameters.append(it.key, it.value) }
+            }.buildString().toCreatedRequest()
+
+            is CreationOptions.RequestByReference -> URLBuilder(creationOptions.walletUrl).apply {
+                AuthenticationRequestParameters(
+                    clientId = clientIdScheme.clientId,
+                    requestUri = creationOptions.requestUrl,
+                ).encodeToParameters()
+                    .forEach { parameters.append(it.key, it.value) }
+            }.buildString().toCreatedRequest(createAuthnRequest(requestOptions).serialize())
+
+            is CreationOptions.SignedRequestByValue -> URLBuilder(creationOptions.walletUrl).apply {
+                AuthenticationRequestParameters(
+                    clientId = clientIdScheme.clientId,
+                    request = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize(),
+                ).encodeToParameters()
+                    .forEach { parameters.append(it.key, it.value) }
+            }.buildString().toCreatedRequest()
+
+            is CreationOptions.SignedRequestByReference -> URLBuilder(creationOptions.walletUrl).apply {
+                AuthenticationRequestParameters(
+                    clientId = clientIdScheme.clientId,
+                    requestUri = creationOptions.requestUrl,
+                ).encodeToParameters()
+                    .forEach { parameters.append(it.key, it.value) }
+            }.buildString()
+                .toCreatedRequest(createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize())
+        }
     }
 
-    /**
-     * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl],
-     * containing a JWS Authorization Request (JAR, RFC9101) in `request`, containing the request parameters itself.
-     */
-    suspend fun createAuthnRequestUrlWithRequestObject(
-        walletUrl: String,
-        requestOptions: RequestOptions,
-    ): KmmResult<String> = catching {
-        val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow()
-        val urlBuilder = URLBuilder(walletUrl)
-        AuthenticationRequestParameters(
-            clientId = clientIdScheme.clientId,
-            request = jar.serialize(),
-        ).encodeToParameters()
-            .forEach { urlBuilder.parameters.append(it.key, it.value) }
-        urlBuilder.buildString()
+    private fun String.toCreatedRequest(): CreatedRequest {
+        return CreatedRequest(this)
     }
 
-    /**
-     * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl],
-     * containing a reference (`request_uri`, see [AuthenticationRequestParameters.requestUri]) to the
-     * JWS Authorization Request (JAR, RFC9101), containing the request parameters itself.
-     *
-     * @param requestUrl the URL where the request itself can be loaded by the client
-     * @return The URL to display to the Wallet, and the JWS that shall be made accessible under [requestUrl]
-     */
-    suspend fun createAuthnRequestUrlWithRequestObjectByReference(
-        walletUrl: String,
-        requestUrl: String,
-        requestOptions: RequestOptions,
-    ): KmmResult<Pair<String, String>> = catching {
-        val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow()
-        val urlBuilder = URLBuilder(walletUrl)
-        AuthenticationRequestParameters(
-            clientId = clientIdScheme.clientId,
-            requestUri = requestUrl,
-        ).encodeToParameters()
-            .forEach { urlBuilder.parameters.append(it.key, it.value) }
-        urlBuilder.buildString() to jar.serialize()
+    private fun String.toCreatedRequest(requestObject: String): CreatedRequest {
+        return CreatedRequest(this, requestObject)
     }
 
     /**
@@ -234,10 +227,8 @@ class OpenId4VpVerifier(
     }
 
     /**
-     * Creates [AuthenticationRequestParameters], to be encoded as query params appended to the URL of the Wallet,
-     * e.g. `https://example.com?repsonse_type=...` (see [createAuthnRequestUrl])
-     *
-     * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
+     * Creates [AuthenticationRequestParameters], to be encoded in the URL of the wallet somehow,
+     * see [createAuthnRequest]
      */
     @Suppress("DEPRECATION")
     suspend fun createAuthnRequest(
@@ -269,12 +260,8 @@ class OpenId4VpVerifier(
             if (options.encryption) metadataWithEncryption else metadata
         }
 
-    private fun RequestOptions.buildScope() = (
-            listOf(OpenIdConstants.SCOPE_OPENID, OpenIdConstants.SCOPE_PROFILE)
-                    + credentials.mapNotNull { it.credentialScheme.sdJwtType }
-                    + credentials.mapNotNull { it.credentialScheme.vcType }
-                    + credentials.mapNotNull { it.credentialScheme.isoNamespace }
-            ).joinToString(" ")
+    private fun RequestOptions.buildScope() =
+        listOf(OpenIdConstants.SCOPE_OPENID, OpenIdConstants.SCOPE_PROFILE).joinToString(" ")
 
     private val RequestOptions.isAnyDirectPost
         get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
@@ -363,7 +350,7 @@ class OpenId4VpVerifier(
     )
 
     /**
-     * Validates the OIDC Authentication Response from the Wallet, where [content] are the HTTP POST encoded
+     * Validates the OpenID Authentication Response from the Wallet, where [content] are the HTTP POST encoded
      * [at.asitplus.openid.AuthenticationResponseParameters], e.g. `id_token=...&vp_token=...`
      */
     @Deprecated("Use validateAuthnResponse", ReplaceWith("validateAuthnResponse"))

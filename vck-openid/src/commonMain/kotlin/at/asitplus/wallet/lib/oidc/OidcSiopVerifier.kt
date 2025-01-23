@@ -287,6 +287,7 @@ class OidcSiopVerifier(
     /**
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl].
      */
+    @Deprecated("Replace with new class", ReplaceWith("createAuthnRequest(requestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl)).getOrThrow().url"))
     suspend fun createAuthnRequestUrl(
         walletUrl: String,
         requestOptions: RequestOptions,
@@ -301,6 +302,7 @@ class OidcSiopVerifier(
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl],
      * containing a JWS Authorization Request (JAR, RFC9101) in `request`, containing the request parameters itself.
      */
+    @Deprecated("Replace with new class", ReplaceWith("createAuthnRequest(requestOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)).url"))
     suspend fun createAuthnRequestUrlWithRequestObject(
         walletUrl: String,
         requestOptions: RequestOptions,
@@ -323,6 +325,7 @@ class OidcSiopVerifier(
      * @param requestUrl the URL where the request itself can be loaded by the client
      * @return The URL to display to the Wallet, and the JWS that shall be made accessible under [requestUrl]
      */
+    @Deprecated("Replace with new class", ReplaceWith("createAuthnRequest(requestOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByReference(walletUrl, requestUrl))"))
     suspend fun createAuthnRequestUrlWithRequestObjectByReference(
         walletUrl: String,
         requestUrl: String,
@@ -351,6 +354,7 @@ class OidcSiopVerifier(
      * // on an GET to requestUrl, return `jar.serialize()`
      * ```
      */
+    @Deprecated("Replace with new class", ReplaceWith("createAuthnRequest(requestOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByReference(walletUrl, requestUrl))"))
     suspend fun createAuthnRequestAsSignedRequestObject(
         requestOptions: RequestOptions,
     ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {

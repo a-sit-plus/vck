@@ -52,14 +52,15 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
 
     "Selective Disclosure with custom credential" {
         val requestedClaim = AtomicAttribute2023.CLAIM_GIVEN_NAME
-        val authnRequest = verifierOid4vp.createAuthnRequestUrl(
-            walletUrl = walletUrl,
-            requestOptions = RequestOptions(
-                credentials = setOf(
+        val authnRequest = verifierOid4vp.createAuthnRequest(
+            RequestOptions(
+                setOf(
                     RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(requestedClaim))
                 )
-            )
-        )
+            ),
+            OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+        ).getOrThrow().url
+
         authnRequest shouldContain requestedClaim
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
@@ -78,14 +79,14 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
             EuPidScheme.SdJwtAttributes.FAMILY_NAME_BIRTH, // "birth_family_name" instead of "family_name_birth"
             EuPidScheme.SdJwtAttributes.GIVEN_NAME_BIRTH, // "birth_given_name" instead of "given_name_birth"
         )
-        val authnRequest = verifierOid4vp.createAuthnRequestUrl(
-            walletUrl = walletUrl,
-            requestOptions = RequestOptions(
+        val authnRequest = verifierOid4vp.createAuthnRequest(
+            RequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(EuPidScheme, SD_JWT, requestedClaims)
                 )
-            )
-        )
+            ),
+            OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+        ).getOrThrow().url
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
