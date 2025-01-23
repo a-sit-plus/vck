@@ -9,11 +9,12 @@ import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
+import kotlin.coroutines.cancellation.CancellationException
 
 internal class AuthorizationRequestValidator(
     private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
 ) {
-    @Throws(OAuth2Exception::class)
+    @Throws(OAuth2Exception::class, CancellationException::class)
     suspend fun validateAuthorizationRequest(request: RequestParametersFrom<AuthenticationRequestParameters>) {
         request.parameters.responseType?.let {
             if (!it.contains(OpenIdConstants.ID_TOKEN) && !it.contains(OpenIdConstants.VP_TOKEN)) {
