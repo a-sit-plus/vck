@@ -31,7 +31,7 @@ data class AuthenticationRequestParameters(
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      *
-     * To use the actual `client_id` without the scheme prefix, use [clientIdWithoutPrefix].
+     * See also [clientIdWithoutPrefix] and the notes there.
      */
     @SerialName("client_id")
     val clientId: String? = null,
@@ -119,6 +119,8 @@ data class AuthenticationRequestParameters(
      * If this parameter is present in the authorization request, `request` MUST NOT be present.
      */
     @SerialName("request_uri")
+    // TODO OpenId4VP 5. new "request_uri_method"?
+    // TODO 5.11. "wallet_metadata" and "wallet_nonce"
     val requestUri: String? = null,
 
     /**
@@ -285,6 +287,7 @@ data class AuthenticationRequestParameters(
     /**
      * Reads the [clientId] and removes the prefix of the [clientIdSchemeExtracted],
      * as specified in OpenID4VP draft 22 onwards.
+     * OpenID4VP states that the *full* [clientId] must be used for presentations and anything else.
      */
     val clientIdWithoutPrefix: String? by lazy {
         clientId?.let { clientId ->

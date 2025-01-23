@@ -59,7 +59,7 @@ internal class PresentationFactory(
         )
 
         val responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsEncryption() == true
-        val clientId = request.parameters.clientIdWithoutPrefix
+        val clientId = request.parameters.clientId
         val responseUrl = request.parameters.responseUrl
         val vpRequestParams = PresentationRequestParameters(
             nonce = nonce,
@@ -154,8 +154,8 @@ internal class PresentationFactory(
         val now = clock.now()
         // we'll assume jwk-thumbprint
         val agentJsonWebKey = agentPublicKey.toJsonWebKey()
-        val audience = request.parameters.redirectUrlExtracted
-            ?: request.parameters.clientIdWithoutPrefix
+        val audience = request.parameters.clientId
+            ?: request.parameters.redirectUrlExtracted
             ?: agentJsonWebKey.jwkThumbprint
         val idToken = IdToken(
             issuer = agentJsonWebKey.jwkThumbprint,

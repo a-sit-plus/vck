@@ -100,8 +100,6 @@ sealed class ClientIdScheme(
     }
 
     val prefix = scheme.stringRepresentation + ":"
-    // TODO use this as `aud` any anything else
     val clientIdWithPrefix: String by lazy { if (clientId.startsWith(prefix)) clientId else prefix + clientId }
-    val clientIdWithoutPrefix: String by lazy { if (clientId.startsWith(prefix)) clientId.removePrefix(prefix) else clientId }
 
 }

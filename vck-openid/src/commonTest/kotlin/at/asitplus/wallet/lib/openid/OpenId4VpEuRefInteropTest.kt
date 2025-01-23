@@ -250,6 +250,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         parsed.clientIdSchemeExtracted shouldBe OpenIdConstants.ClientIdScheme.X509SanDns
         parsed.responseType shouldBe "vp_token"
         parsed.nonce shouldBe "nonce"
+        parsed.clientId shouldBe "verifier-backend.eudiw.dev"
         parsed.clientIdWithoutPrefix shouldBe "verifier-backend.eudiw.dev"
         parsed.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPostJwt
         parsed.audience shouldBe "https://self-issued.me/v2"

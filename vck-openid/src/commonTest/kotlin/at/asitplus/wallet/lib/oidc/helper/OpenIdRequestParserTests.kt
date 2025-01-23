@@ -92,6 +92,7 @@ class OpenIdRequestParserTests : FreeSpec({
         val fields = params.presentationDefinition!!.inputDescriptors.first().constraints!!.fields!!
 
         params.responseUrl shouldBe "https://verifier.funke.wwwallet.org/verification/direct_post"
+        params.clientId shouldBe "verifier.funke.wwwallet.org"
         params.clientIdWithoutPrefix shouldBe "verifier.funke.wwwallet.org"
         fields shouldHaveSize 20
         val vctField = fields.first { it.path == listOf("$.vct") }

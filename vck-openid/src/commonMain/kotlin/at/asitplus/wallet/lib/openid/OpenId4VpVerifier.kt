@@ -48,7 +48,7 @@ import kotlin.time.toDuration
 class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
+    private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientIdWithPrefix),
     private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
     private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
@@ -427,7 +427,7 @@ class OpenId4VpVerifier(
                         relatedPresentation,
                         expectedNonce,
                         input,
-                        authnRequest.clientIdWithoutPrefix,
+                        authnRequest.clientId,
                         authnRequest.responseUrl
                     )
                 }.getOrElse {

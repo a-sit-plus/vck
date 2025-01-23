@@ -74,11 +74,12 @@ class OpenId4VpInteropTest : FreeSpec({
         verifierKeyId = uuid4().toString()
         verifierClientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
         verifierRedirectUrl = "https://verifier.example.com/cb"
+        val clientIdScheme = ClientIdScheme.PreRegistered(verifierClientId, verifierRedirectUrl)
         verifierKeyMaterial = EphemeralKeyWithoutCert(customKeyId = verifierKeyId)
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             verifier = VerifierAgent(
-                identifier = verifierClientId,
+                identifier = clientIdScheme.clientIdWithPrefix,
                 validator = Validator(
                     verifierJwsService = DefaultVerifierJwsService(publicKeyLookup = {
                         setOf(
@@ -88,7 +89,7 @@ class OpenId4VpInteropTest : FreeSpec({
                     })
                 )
             ),
-            clientIdScheme = ClientIdScheme.PreRegistered(verifierClientId, verifierRedirectUrl),
+            clientIdScheme = clientIdScheme,
         )
     }
 
@@ -160,7 +161,7 @@ class OpenId4VpInteropTest : FreeSpec({
                 }
                 it.payload.also {
                     it.issuedAt.shouldNotBeNull()
-                    it.audience shouldBe verifierClientId
+                    it.audience shouldBe jar.payload.clientId
                     it.challenge shouldBe jar.payload.nonce
                     it.sdHash.shouldNotBeNull()
                 }
