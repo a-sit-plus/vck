@@ -16,7 +16,8 @@ import kotlinx.serialization.encodeToString
 
 class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
 
-    val clientId = "https://example.com/rp/${uuid4()}"
+    val clientId = "PRE-REGISTERED-CLIENT"
+    val redirectUrl = "https://example.com/rp/${uuid4()}"
     val walletUrl = "https://example.com/wallet/${uuid4()}"
     val holderKeyMaterial = EphemeralKeyWithoutCert()
     val holderOid4vp = OpenId4VpHolder(
@@ -24,7 +25,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         holder = HolderAgent(holderKeyMaterial),
     )
     val verifierOid4vp = OpenId4VpVerifier(
-        clientIdScheme = ClientIdScheme.RedirectUri(clientId),
+        clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUrl),
     )
     val representations = listOf(
         ConstantIndex.CredentialRepresentation.PLAIN_JWT,

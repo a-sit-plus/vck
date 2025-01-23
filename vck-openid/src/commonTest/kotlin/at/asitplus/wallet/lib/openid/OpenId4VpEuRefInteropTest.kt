@@ -328,6 +328,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.CertificateSanDns(
                 listOf(verifierKeyMaterial.getCertificate()!!),
+                clientId,
                 clientId
             ),
         )

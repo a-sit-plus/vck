@@ -59,6 +59,8 @@ Release 5.3.0:
   - Remove `OpenId4VpVerifier.createAuthnRequestUrl()`, replace with `createAutnRequest(requestOptions, creationOptions)` and `CreationOptions.Query`
   - Remove `OpenId4VpVerifier.createAuthnRequestUrlWithRequestObject()`, replace with `createAutnRequest(requestOptions, creationOptions)` and `CreationOptions.RequestByValue`
   - Remove `OpenId4VpVerifier.createAuthnRequestUrlWithRequestObjectByReference()`, replace with `createAutnRequest(requestOptions, creationOptions)` and `CreationOptions.RequestByReference`
+  - Add explicit `redirect_uri` to all `ClientIdSchemes` for `OpenId4VpVerifier`
+  - Verify requirements whether requests must or must not be signed acc. to the client identifier scheme
 - General cleanup:
   - Remove `SchemaIndex`
   - Remove `VcLibException`

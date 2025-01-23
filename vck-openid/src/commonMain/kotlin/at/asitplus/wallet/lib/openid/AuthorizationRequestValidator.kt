@@ -32,9 +32,10 @@ internal class AuthorizationRequestValidator {
         if (clientIdScheme.isAnyX509()) {
             request.verifyClientIdSchemeX509()
         }
-        if (!clientIdScheme.isAnyX509()) {
+        if (clientIdScheme is OpenIdConstants.ClientIdScheme.RedirectUri) {
             request.parameters.verifyRedirectUrl()
         }
+        // TODO Verifier Attestation JWT from OpenId4VP 11. also redirect_uri in there
     }
 
     @Throws(OAuth2Exception::class)
@@ -122,6 +123,7 @@ internal class AuthorizationRequestValidator {
             throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
         }
         if (responseUrl == null) {
+            // TODO Verify according to rules of redirect_uri from section 5.10 (this is defined in 7.2)
             Napier.w("response_mode is $responseMode, but response_url is not set")
             throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
         }

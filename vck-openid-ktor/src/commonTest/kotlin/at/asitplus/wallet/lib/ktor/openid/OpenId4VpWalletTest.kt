@@ -218,7 +218,7 @@ class OpenId4VpWalletTest : FunSpec() {
     ): Pair<HttpClientEngine, String> {
         val requestEndpointPath = "/request/${uuid4()}"
         val verifier = OpenId4VpVerifier(
-            clientIdScheme = ClientIdScheme.PreRegistered(clientId),
+            clientIdScheme = ClientIdScheme.PreRegistered(clientId, "http://rp.example.com/cb"),
         )
         val responseEndpointPath = "/response"
         val (url, jar) = verifier.createAuthnRequest(

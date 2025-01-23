@@ -58,7 +58,11 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
         )
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!), clientId),
+            clientIdScheme = ClientIdScheme.CertificateSanDns(
+                listOf(verifierKeyMaterial.getCertificate()!!),
+                clientId,
+                clientId
+            ),
         )
     }
 

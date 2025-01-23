@@ -114,13 +114,6 @@ class OpenId4VpVerifier(
         )
     }
 
-    // TODO signing may be required depending on the client_id_scheme
-    // redirect_uri: must not be signed
-    // x509_san_dns: must be signed, client_id mist be DNS name
-    // x509_san_uri: must be signed, client_id must be URI
-
-    // verifier_attestation: redirect_uris in the attestation -> redirect_uri in authnrequest must be included there
-    // x509_* -> redirect_uri must match with cert or freely chosen, see 5.10
 
     sealed class CreationOptions {
         /** Creates authentication request with parameters encoded as URL query parameters to [walletUrl] */
@@ -153,35 +146,47 @@ class OpenId4VpVerifier(
         creationOptions: CreationOptions,
     ): KmmResult<CreatedRequest> = catching {
         when (creationOptions) {
-            is CreationOptions.Query -> URLBuilder(creationOptions.walletUrl).apply {
-                createAuthnRequest(requestOptions).encodeToParameters()
-                    .forEach { parameters.append(it.key, it.value) }
-            }.buildString().toCreatedRequest()
+            is CreationOptions.Query -> {
+                require(clientIdScheme !is ClientIdScheme.CertificateSanDns) // per OpenID4VP d23 5.10.4
+                URLBuilder(creationOptions.walletUrl).apply {
+                    createAuthnRequest(requestOptions).encodeToParameters()
+                        .forEach { parameters.append(it.key, it.value) }
+                }.buildString().toCreatedRequest()
+            }
 
-            is CreationOptions.RequestByReference -> URLBuilder(creationOptions.walletUrl).apply {
-                AuthenticationRequestParameters(
-                    clientId = clientIdScheme.clientId,
-                    requestUri = creationOptions.requestUrl,
-                ).encodeToParameters()
-                    .forEach { parameters.append(it.key, it.value) }
-            }.buildString().toCreatedRequest(createAuthnRequest(requestOptions).serialize())
+            is CreationOptions.RequestByReference -> {
+                require(clientIdScheme !is ClientIdScheme.CertificateSanDns) // per OpenID4VP d23 5.10.4
+                URLBuilder(creationOptions.walletUrl).apply {
+                    AuthenticationRequestParameters(
+                        clientId = clientIdScheme.clientId,
+                        requestUri = creationOptions.requestUrl,
+                    ).encodeToParameters()
+                        .forEach { parameters.append(it.key, it.value) }
+                }.buildString().toCreatedRequest(createAuthnRequest(requestOptions).serialize())
+            }
 
-            is CreationOptions.SignedRequestByValue -> URLBuilder(creationOptions.walletUrl).apply {
-                AuthenticationRequestParameters(
-                    clientId = clientIdScheme.clientId,
-                    request = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize(),
-                ).encodeToParameters()
-                    .forEach { parameters.append(it.key, it.value) }
-            }.buildString().toCreatedRequest()
+            is CreationOptions.SignedRequestByValue -> {
+                require(clientIdScheme !is ClientIdScheme.RedirectUri) // per OpenID4VP d23 5.10.4
+                URLBuilder(creationOptions.walletUrl).apply {
+                    AuthenticationRequestParameters(
+                        clientId = clientIdScheme.clientId,
+                        request = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize(),
+                    ).encodeToParameters()
+                        .forEach { parameters.append(it.key, it.value) }
+                }.buildString().toCreatedRequest()
+            }
 
-            is CreationOptions.SignedRequestByReference -> URLBuilder(creationOptions.walletUrl).apply {
-                AuthenticationRequestParameters(
-                    clientId = clientIdScheme.clientId,
-                    requestUri = creationOptions.requestUrl,
-                ).encodeToParameters()
-                    .forEach { parameters.append(it.key, it.value) }
-            }.buildString()
-                .toCreatedRequest(createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize())
+            is CreationOptions.SignedRequestByReference -> {
+                require(clientIdScheme !is ClientIdScheme.RedirectUri) // per OpenID4VP d23 5.10.4
+                URLBuilder(creationOptions.walletUrl).apply {
+                    AuthenticationRequestParameters(
+                        clientId = clientIdScheme.clientId,
+                        requestUri = creationOptions.requestUrl,
+                    ).encodeToParameters()
+                        .forEach { parameters.append(it.key, it.value) }
+                }.buildString()
+                    .toCreatedRequest(createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize())
+            }
         }
     }
 
@@ -237,7 +242,7 @@ class OpenId4VpVerifier(
         responseType = requestOptions.responseType,
         clientId = clientIdScheme.clientIdWithPrefix,
         clientIdScheme = clientIdScheme.scheme, // still set this for our own older implementations
-        redirectUrl = if (!requestOptions.isAnyDirectPost) clientIdScheme.clientIdWithoutPrefix else null,
+        redirectUrl = if (!requestOptions.isAnyDirectPost) clientIdScheme.redirectUri else null,
         responseUrl = requestOptions.responseUrl,
         scope = requestOptions.buildScope(),
         nonce = nonceService.provideNonce(),

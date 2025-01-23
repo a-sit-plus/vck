@@ -8,6 +8,7 @@ import at.asitplus.signum.indispensable.pki.CertificateChain
 sealed class ClientIdScheme(
     val scheme: OpenIdConstants.ClientIdScheme,
     open val clientId: String,
+    open val redirectUri: String,
 ) {
     /**
      * This Client Identifier Scheme allows the Verifier to authenticate using a JWT that is bound to a certain
@@ -25,7 +26,16 @@ sealed class ClientIdScheme(
     data class VerifierAttestation(
         val attestationJwt: JwsSigned<JsonWebToken>,
         override val clientId: String,
-    ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.VerifierAttestation, attestationJwt.payload.subject!!)
+        override val redirectUri: String,
+    ) : ClientIdScheme(
+        scheme = OpenIdConstants.ClientIdScheme.VerifierAttestation,
+        clientId = attestationJwt.payload.subject!!,
+        redirectUri = redirectUri
+    ) {
+        init {
+            require(redirectUri.contains(":/"))
+        }
+    }
 
     /**
      * When the Client Identifier Scheme is x509_san_dns, the Client Identifier MUST be a DNS name and match a
@@ -44,7 +54,12 @@ sealed class ClientIdScheme(
     data class CertificateSanDns(
         val chain: CertificateChain,
         override val clientId: String,
-    ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.X509SanDns, clientId)
+        override val redirectUri: String,
+    ) : ClientIdScheme(
+        scheme = OpenIdConstants.ClientIdScheme.X509SanDns,
+        clientId = clientId,
+        redirectUri = redirectUri
+    )
 
     /**
      * This value indicates that the Verifier's Redirect URI (or Response URI when Response Mode `direct_post` is
@@ -55,7 +70,11 @@ sealed class ClientIdScheme(
      */
     data class RedirectUri(
         override val clientId: String,
-    ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.RedirectUri, clientId) {
+    ) : ClientIdScheme(
+        scheme = OpenIdConstants.ClientIdScheme.RedirectUri,
+        clientId = clientId,
+        redirectUri = clientId
+    ) {
         init {
             require(clientId.contains(":/"))
         }
@@ -68,13 +87,20 @@ sealed class ClientIdScheme(
      */
     data class PreRegistered(
         override val clientId: String,
-    ) : ClientIdScheme(OpenIdConstants.ClientIdScheme.PreRegistered, clientId) {
+        override val redirectUri: String,
+    ) : ClientIdScheme(
+        scheme = OpenIdConstants.ClientIdScheme.PreRegistered,
+        clientId = clientId,
+        redirectUri = redirectUri
+    ) {
         init {
             require(!clientId.contains(":"))
+            require(redirectUri.contains(":/"))
         }
     }
 
     val prefix = scheme.stringRepresentation + ":"
+    // TODO use this as `aud` any anything else
     val clientIdWithPrefix: String by lazy { if (clientId.startsWith(prefix)) clientId else prefix + clientId }
     val clientIdWithoutPrefix: String by lazy { if (clientId.startsWith(prefix)) clientId.removePrefix(prefix) else clientId }
 

@@ -36,6 +36,7 @@ class OpenId4VpInteropTest : FreeSpec({
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierClientId: String
+    lateinit var verifierRedirectUrl: String
     lateinit var verifierKeyId: String
     lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var verifierOid4vp: OpenId4VpVerifier
@@ -72,6 +73,7 @@ class OpenId4VpInteropTest : FreeSpec({
 
         verifierKeyId = uuid4().toString()
         verifierClientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
+        verifierRedirectUrl = "https://verifier.example.com/cb"
         verifierKeyMaterial = EphemeralKeyWithoutCert(customKeyId = verifierKeyId)
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
@@ -86,7 +88,7 @@ class OpenId4VpInteropTest : FreeSpec({
                     })
                 )
             ),
-            clientIdScheme = ClientIdScheme.PreRegistered(verifierClientId),
+            clientIdScheme = ClientIdScheme.PreRegistered(verifierClientId, verifierRedirectUrl),
         )
     }
 
