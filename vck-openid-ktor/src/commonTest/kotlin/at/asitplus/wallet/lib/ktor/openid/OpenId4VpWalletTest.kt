@@ -15,6 +15,7 @@ import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.ktor.client.*
 import io.ktor.client.engine.*
@@ -217,20 +218,22 @@ class OpenId4VpWalletTest : FunSpec() {
         validate: (AuthnResponseResult) -> Unit,
     ): Pair<HttpClientEngine, String> {
         val requestEndpointPath = "/request/${uuid4()}"
+        val redirectUri = "http://rp.example.com/cb"
         val verifier = OpenId4VpVerifier(
-            clientIdScheme = ClientIdScheme.PreRegistered(clientId, "http://rp.example.com/cb"),
+            clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUri),
         )
         val responseEndpointPath = "/response"
         val (url, jar) = verifier.createAuthnRequest(
             requestOptions.copy(responseUrl = responseEndpointPath),
             CreationOptions.SignedRequestByReference("http://wallet.example.com/", "http://rp.example.com$requestEndpointPath")
         ).getOrThrow()
+        jar.shouldNotBeNull()
 
         return MockEngine { request ->
             when {
-                request.url.fullPath == requestEndpointPath -> respond(jar!!)
+                request.url.fullPath == requestEndpointPath -> respond(jar.invoke(null).getOrThrow())
 
-                request.url.fullPath.startsWith(responseEndpointPath) or request.url.fullPath.startsWith("/$clientId") -> {
+                request.url.fullPath.startsWith(responseEndpointPath) or request.url.toString().startsWith(redirectUri) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val queryParameters: Map<String, String> =
                         request.url.parameters.toMap().entries.associate { it.key to it.value.first() }

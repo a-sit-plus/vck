@@ -15,13 +15,17 @@ import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
+import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
+import at.asitplus.wallet.lib.oidvci.DefaultMapStore
+import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -54,6 +58,7 @@ class OpenId4VpHolder(
      * which may be signed with a pre-registered key (see [ClientIdScheme.PreRegistered]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
+    private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
 ) {
     constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
@@ -74,6 +79,7 @@ class OpenId4VpHolder(
          * which may be signed with a pre-registered key (see [ClientIdScheme.PreRegistered]).
          */
         requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
+        walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
     ) : this(
         holder = holder,
         agentPublicKey = keyMaterial.publicKey,
@@ -83,14 +89,12 @@ class OpenId4VpHolder(
         clientId = clientId,
         remoteResourceRetriever = remoteResourceRetriever,
         requestObjectJwsVerifier = requestObjectJwsVerifier,
+        walletNonceMapStore = walletNonceMapStore
     )
 
-    /**
-     * Used to resolve [at.asitplus.openid.RequestParameters] by reference and also matches them to the correct [at.asitplus.openid.RequestParametersFrom]
-     */
-    private val requestParser: RequestParser = RequestParser(remoteResourceRetriever, requestObjectJwsVerifier)
-    private val authenticationResponseFactory = AuthenticationResponseFactory(jwsService)
     private val supportedAlgorithmsStrings = setOf(jwsService.algorithm.identifier)
+    private val authorizationRequestValidator = AuthorizationRequestValidator(walletNonceMapStore)
+    private val authenticationResponseFactory = AuthenticationResponseFactory(jwsService)
 
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
@@ -122,6 +126,13 @@ class OpenId4VpHolder(
                 ),
             )
         )
+    }
+
+    /**
+     * Used to resolve [at.asitplus.openid.RequestParameters] by reference and also matches them to the correct [at.asitplus.openid.RequestParametersFrom]
+     */
+    private val requestParser: RequestParser = RequestParser(remoteResourceRetriever, requestObjectJwsVerifier) {
+        RequestObjectParameters(metadata, uuid4().toString().also { walletNonceMapStore.put(it, it) })
     }
 
     /**
@@ -184,7 +195,7 @@ class OpenId4VpHolder(
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         val clientMetadata = params.parameters.loadClientMetadata()
         val presentationDefinition = params.parameters.loadPresentationDefinition()
-        AuthorizationRequestValidator().validateAuthorizationRequest(params)
+        authorizationRequestValidator.validateAuthorizationRequest(params)
         AuthorizationResponsePreparationState(presentationDefinition, clientMetadata)
     }
 
@@ -261,23 +272,26 @@ class OpenId4VpHolder(
             .also { Napier.w("Could not parse audience") }
 
     private suspend fun RelyingPartyMetadata.loadJsonWebKeySet() =
-        this.jsonWebKeySet ?: jsonWebKeySetUrl?.let { remoteResourceRetriever.invoke(it) }
-            ?.let { JsonWebKeySet.Companion.deserialize(it).getOrNull() }
-
+        jsonWebKeySet
+            ?: jsonWebKeySetUrl?.let {
+                remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it))
+                    ?.let { JsonWebKeySet.deserialize(it).getOrNull() }
+            }
 
     private suspend fun AuthenticationRequestParameters.loadPresentationDefinition() =
         if (responseType?.contains(OpenIdConstants.VP_TOKEN) == true) {
             presentationDefinition
                 ?: presentationDefinitionUrl
-                    ?.let { remoteResourceRetriever.invoke(it) }
-                    ?.let { PresentationDefinition.Companion.deserialize(it).getOrNull() }
+                    ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
+                    ?.let { PresentationDefinition.deserialize(it).getOrNull() }
         } else null
 
     private suspend fun AuthenticationRequestParameters.loadClientMetadata() =
-        clientMetadata ?: clientMetadataUri?.let { uri ->
-            remoteResourceRetriever.invoke(uri)
-                ?.let { RelyingPartyMetadata.Companion.deserialize(it).getOrNull() }
-        }
+        clientMetadata
+            ?: clientMetadataUri?.let {
+                remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it))
+                    ?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
+            }
 
     /**
      * Source for logic:  Appendix A. Credential Format Profiles in

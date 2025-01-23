@@ -61,6 +61,7 @@ Release 5.3.0:
   - Remove `OpenId4VpVerifier.createAuthnRequestUrlWithRequestObjectByReference()`, replace with `createAutnRequest(requestOptions, creationOptions)` and `CreationOptions.RequestByReference`
   - Add explicit `redirect_uri` to all `ClientIdSchemes` for `OpenId4VpVerifier`
   - Verify requirements whether requests must or must not be signed acc. to the client identifier scheme
+  - Support `wallet_nonce` and `request_uri_method` for replay detection on Wallet side
 - General cleanup:
   - Remove `SchemaIndex`
   - Remove `VcLibException`

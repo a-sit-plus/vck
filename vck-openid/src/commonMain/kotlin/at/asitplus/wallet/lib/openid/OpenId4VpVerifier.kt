@@ -116,29 +116,44 @@ class OpenId4VpVerifier(
 
 
     sealed class CreationOptions {
-        /** Creates authentication request with parameters encoded as URL query parameters to [walletUrl] */
+        /**
+         * Creates authentication request with parameters encoded as URL query parameters to [walletUrl].
+         */
         data class Query(val walletUrl: String) : CreationOptions()
 
-        /** Appends [requestUrl] to [walletUrl], callers need to serve [CreatedRequest.requestObject] there.  */
-        data class RequestByReference(val walletUrl: String, val requestUrl: String) : CreationOptions()
+        /**
+         * Appends [requestUrl] to [walletUrl], callers need to call [CreatedRequest.loadRequestObject] with the
+         * Wallet's request to actually create the authn request object.
+         **/
+        data class RequestByReference(
+            val walletUrl: String,
+            val requestUrl: String,
+            val requestUrlMethod: String = "post",
+        ) : CreationOptions()
 
         /** Appends authentication request as signed object to [walletUrl] */
         data class SignedRequestByValue(val walletUrl: String) : CreationOptions()
 
-        /** Appends [requestUrl] to [walletUrl], callers need to serve [CreatedRequest.requestObject] (which is signed) there. */
-        data class SignedRequestByReference(val walletUrl: String, val requestUrl: String) : CreationOptions()
+        /**
+         * Appends [requestUrl] to [walletUrl], callers need to call [CreatedRequest.loadRequestObject] with the
+         * Wallet's request to actually create the authn request object (which will be signed).
+         */
+        data class SignedRequestByReference(
+            val walletUrl: String,
+            val requestUrl: String,
+            val requestUrlMethod: String = "post",
+        ) : CreationOptions()
     }
 
-
-    // TODO provide a callback to include the received "wallet_nonce" in the Signed Authn Request Option, see OpenId4VP 5.11.
     data class CreatedRequest(
         /** URL to invoke the wallet/holder */
         val url: String,
         /**
          *  Optional content that needs to be served under the previously passed in `requestUrl`
          *  with content type `application/oauth-authz-req+jwt`
+         *  Pass in the [RequestObjectParameters] that the Wallet may have sent when requesting the request object.
          */
-        val requestObject: String? = null,
+        val loadRequestObject: (suspend (RequestObjectParameters?) -> KmmResult<String>)? = null,
     )
 
     suspend fun createAuthnRequest(
@@ -160,9 +175,14 @@ class OpenId4VpVerifier(
                     AuthenticationRequestParameters(
                         clientId = clientIdScheme.clientId,
                         requestUri = creationOptions.requestUrl,
+                        requestUriMethod = creationOptions.requestUrlMethod,
                     ).encodeToParameters()
                         .forEach { parameters.append(it.key, it.value) }
-                }.buildString().toCreatedRequest(createAuthnRequest(requestOptions).serialize())
+                }.buildString().toCreatedRequest {
+                    catching {
+                        createAuthnRequest(requestOptions, it).serialize()
+                    }
+                }
             }
 
             is CreationOptions.SignedRequestByValue -> {
@@ -182,21 +202,23 @@ class OpenId4VpVerifier(
                     AuthenticationRequestParameters(
                         clientId = clientIdScheme.clientId,
                         requestUri = creationOptions.requestUrl,
+                        requestUriMethod = creationOptions.requestUrlMethod,
                     ).encodeToParameters()
                         .forEach { parameters.append(it.key, it.value) }
                 }.buildString()
-                    .toCreatedRequest(createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow().serialize())
+                    .toCreatedRequest {
+                        catching {
+                            createAuthnRequestAsSignedRequestObject(requestOptions, it).getOrThrow().serialize()
+                        }
+                    }
             }
         }
     }
 
-    private fun String.toCreatedRequest(): CreatedRequest {
-        return CreatedRequest(this)
-    }
+    private fun String.toCreatedRequest(): CreatedRequest = CreatedRequest(this)
+    private fun String.toCreatedRequest(loadRequestObject: suspend (RequestObjectParameters?) -> KmmResult<String>): CreatedRequest =
+        CreatedRequest(this, loadRequestObject)
 
-    private fun String.toCreatedRequest(requestObject: String): CreatedRequest {
-        return CreatedRequest(this, requestObject)
-    }
 
     /**
      * Creates an JWS Authorization Request (JAR, RFC9101), wrapping the usual [AuthenticationRequestParameters].
@@ -213,11 +235,13 @@ class OpenId4VpVerifier(
      */
     suspend fun createAuthnRequestAsSignedRequestObject(
         requestOptions: RequestOptions,
+        requestObjectParameters: RequestObjectParameters? = null,
     ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
-        val requestObject = createAuthnRequest(requestOptions)
+        val requestObject = createAuthnRequest(requestOptions, requestObjectParameters)
         val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
         val certificateChain = (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain
-        val issuer = (clientIdScheme as? ClientIdScheme.PreRegistered)?.clientId ?: "https://self-issued.me/v2"
+        val siopClientId = "https://self-issued.me/v2"
+        val issuer = (clientIdScheme as? ClientIdScheme.PreRegistered)?.clientId ?: siopClientId
         jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 algorithm = jwsService.algorithm,
@@ -225,7 +249,10 @@ class OpenId4VpVerifier(
                 certificateChain = certificateChain,
                 type = JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST
             ),
-            payload = requestObject.copy(audience = "https://self-issued.me/v2", issuer = issuer),
+            payload = requestObject.copy(
+                audience = siopClientId,
+                issuer = issuer,
+            ),
             serializer = AuthenticationRequestParameters.Companion.serializer(),
             addJsonWebKey = certificateChain == null,
         ).getOrThrow()
@@ -238,6 +265,7 @@ class OpenId4VpVerifier(
     @Suppress("DEPRECATION")
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions,
+        requestObjectParameters: RequestObjectParameters? = null,
     ) = AuthenticationRequestParameters(
         responseType = requestOptions.responseType,
         clientId = clientIdScheme.clientIdWithPrefix,
@@ -246,6 +274,7 @@ class OpenId4VpVerifier(
         responseUrl = requestOptions.responseUrl,
         scope = requestOptions.buildScope(),
         nonce = nonceService.provideNonce(),
+        walletNonce = requestObjectParameters?.walletNonce,
         clientMetadata = clientMetadata(requestOptions),
         clientMetadataUri = requestOptions.clientMetadataUrl,
         idTokenType = IdTokenType.SUBJECT_SIGNED.text,

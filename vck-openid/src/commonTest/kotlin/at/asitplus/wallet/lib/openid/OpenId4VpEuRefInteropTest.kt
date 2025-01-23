@@ -171,7 +171,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
             remoteResourceRetriever = {
-                if (it == jwksUrl) jwkset else if (it == requestUrl) requestObject else null
+                if (it.url == jwksUrl) jwkset else if (it.url == requestUrl) requestObject else null
             }
         )
 
@@ -297,8 +297,8 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         ).getOrThrow().serialize()
 
         val wallet = OpenId4VpHolder(
-            remoteResourceRetriever = { url ->
-                if (url == "https://example.com/d15b5b6f-7821-4031-9a18-ebe491b720a6") jws else null
+            remoteResourceRetriever = {
+                if (it.url == "https://example.com/d15b5b6f-7821-4031-9a18-ebe491b720a6") jws else null
             }
         )
 
@@ -349,12 +349,13 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
             ),
             OpenId4VpVerifier.CreationOptions.SignedRequestByReference("https://wallet.a-sit.at/mobile", requestUrl)
         ).getOrThrow()
-
+        jar.shouldNotBeNull()
 
         holderOid4vp = OpenId4VpHolder(
             holderKeyMaterial,
             holderAgent,
-            remoteResourceRetriever = { if (it == requestUrl) jar else null })
+            remoteResourceRetriever = { if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null }
+        )
 
         val parameters = holderOid4vp.parseAuthenticationRequestParameters(walletUrl).getOrThrow()
         val preparation = holderOid4vp.startAuthorizationResponsePreparation(parameters).getOrThrow()

@@ -7,6 +7,7 @@ import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
+import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -121,7 +122,7 @@ class WalletService(
             params.credentialOffer?.let {
                 CredentialOffer.deserialize(it).getOrThrow()
             } ?: params.credentialOfferUrl?.let { uri ->
-                remoteResourceRetriever.invoke(uri)
+                remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(uri))
                     ?.let { parseCredentialOffer(it).getOrNull() }
             }
         }.getOrNull() ?: catching {

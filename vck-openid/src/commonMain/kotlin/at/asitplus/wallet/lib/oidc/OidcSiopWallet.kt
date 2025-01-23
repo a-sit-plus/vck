@@ -17,6 +17,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
+import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
@@ -252,7 +253,7 @@ class OidcSiopWallet(
             .also { Napier.w("Could not parse audience") }
 
     private suspend fun RelyingPartyMetadata.loadJsonWebKeySet() =
-        this.jsonWebKeySet ?: jsonWebKeySetUrl?.let { remoteResourceRetriever.invoke(it) }
+        this.jsonWebKeySet ?: jsonWebKeySetUrl?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
             ?.let { JsonWebKeySet.deserialize(it).getOrNull() }
 
 
@@ -260,13 +261,13 @@ class OidcSiopWallet(
         if (responseType?.contains(VP_TOKEN) == true) {
             presentationDefinition
                 ?: presentationDefinitionUrl
-                    ?.let { remoteResourceRetriever.invoke(it) }
+                    ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
                     ?.let { PresentationDefinition.deserialize(it).getOrNull() }
         } else null
 
     private suspend fun AuthenticationRequestParameters.loadClientMetadata() =
         clientMetadata ?: clientMetadataUri?.let { uri ->
-            remoteResourceRetriever.invoke(uri)
+            remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(uri))
                 ?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
         }
 

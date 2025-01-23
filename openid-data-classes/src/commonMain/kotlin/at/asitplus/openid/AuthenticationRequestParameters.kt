@@ -74,6 +74,14 @@ data class AuthenticationRequestParameters(
     val nonce: String? = null,
 
     /**
+     * OpenID4VP: When received in [RequestObjectParameters.walletNonce], the Verifier MUST use it as the [walletNonce]
+     * value in the signed authorization request object.
+     * Value can be a base64url-encoded, fresh, cryptographically random number with sufficient entropy.
+     */
+    @SerialName("wallet_nonce")
+    val walletNonce: String? = null,
+
+    /**
      * OIDC: OPTIONAL. This parameter is used to request that specific Claims be returned. The value is a JSON object
      * listing the requested Claims.
      */
@@ -119,9 +127,20 @@ data class AuthenticationRequestParameters(
      * If this parameter is present in the authorization request, `request` MUST NOT be present.
      */
     @SerialName("request_uri")
-    // TODO OpenId4VP 5. new "request_uri_method"?
-    // TODO 5.11. "wallet_metadata" and "wallet_nonce"
     val requestUri: String? = null,
+
+    /**
+     * OpenID4VP: OPTIONAL. A string determining the HTTP method to be used when the [requestUri] parameter is included
+     * in the same request. Two case-sensitive valid values are defined in this specification: `get` and `post`.
+     * If [requestUriMethod] value is `get`, the Wallet MUST send the request to retrieve the Request Object using the
+     * HTTP GET method, i.e., as defined in RFC9101. If [requestUriMethod] value is `post`, a supporting Wallet MUST
+     * send the request using the HTTP POST method as detailed in Section 5.11. If the [requestUriMethod] parameter is
+     * not present, the Wallet MUST process the [requestUri] parameter as defined in RFC9101. Wallets not supporting
+     * the post method will send a GET request to the Request URI (default behavior as defined in RFC9101).
+     * [requestUriMethod] parameter MUST NOT be present if a [requestUri] parameter is not present.
+     */
+    @SerialName("request_uri_method")
+    val requestUriMethod: String? = null,
 
     /**
      * OIDC SIOPv2: OPTIONAL. Space-separated string that specifies the types of ID Token the RP wants to obtain, with

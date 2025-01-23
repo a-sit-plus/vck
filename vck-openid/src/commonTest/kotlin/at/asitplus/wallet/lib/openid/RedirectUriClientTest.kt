@@ -264,7 +264,7 @@ class RedirectUriClientTest : FreeSpec({
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
             remoteResourceRetriever = {
-                if (it == requestUrl) authnRequest else null
+                if (it.url == requestUrl) authnRequest else null
             }
         )
 

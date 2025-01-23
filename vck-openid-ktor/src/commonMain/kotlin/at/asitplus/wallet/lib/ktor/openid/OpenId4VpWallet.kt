@@ -10,8 +10,9 @@ import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
+import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -67,9 +68,21 @@ class OpenId4VpWallet(
         agentPublicKey = cryptoService.keyMaterial.publicKey,
         jwsService = DefaultJwsService(cryptoService),
         coseService = DefaultCoseService(cryptoService),
-        remoteResourceRetriever = { url ->
+        remoteResourceRetriever = { data ->
             withContext(Dispatchers.IO) {
-                client.get(url).bodyAsText()
+                if (data.method == HttpMethod.Post) {
+                    client.submitForm(
+                        url = data.url,
+                        formParameters = parameters {
+                            data.requestObjectParameters?.encodeToParameters()?.forEach { append(it.key, it.value) }
+                        }
+                    ).bodyAsText()
+                } else {
+                    client.get(URLBuilder(data.url).apply {
+                        data.requestObjectParameters?.encodeToParameters()
+                            ?.forEach { parameters.append(it.key, it.value) }
+                    }.build()).bodyAsText()
+                }
             }
         },
         requestObjectJwsVerifier = { _ -> true }, // unsure about this one?

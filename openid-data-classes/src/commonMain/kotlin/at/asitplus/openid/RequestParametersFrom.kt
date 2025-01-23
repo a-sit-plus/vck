@@ -13,20 +13,32 @@ sealed class RequestParametersFrom<S : RequestParameters> {
         @Serializable(JwsSignedSerializer::class)
         val jwsSigned: at.asitplus.signum.indispensable.josef.JwsSigned<T>,
         override val parameters: T,
-    ) : RequestParametersFrom<T>()
+    ) : RequestParametersFrom<T>() {
+        override fun toString(): String {
+            return "JwsSigned(jwsSigned=${jwsSigned.serialize()}, parameters=$parameters)"
+        }
+    }
 
     @Serializable
     data class Uri<T : RequestParameters>(
         @Serializable(UrlSerializer::class)
         val url: Url,
         override val parameters: T,
-    ) : RequestParametersFrom<T>()
+    ) : RequestParametersFrom<T>() {
+        override fun toString(): String {
+            return "Uri(url=$url, parameters=$parameters)"
+        }
+    }
 
     @Serializable
     data class Json<T : RequestParameters>(
         val jsonString: String,
         override val parameters: T,
-    ) : RequestParametersFrom<T>()
+    ) : RequestParametersFrom<T>() {
+        override fun toString(): String {
+            return "Json(jsonString='$jsonString', parameters=$parameters)"
+        }
+    }
 }
 
 

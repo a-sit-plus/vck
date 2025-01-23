@@ -4,13 +4,17 @@ import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.pki.leaf
+import at.asitplus.wallet.lib.oidvci.DefaultMapStore
+import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 
-internal class AuthorizationRequestValidator {
+internal class AuthorizationRequestValidator(
+    private val walletNonceMapStore: MapStore<String, String> = DefaultMapStore(),
+) {
     @Throws(OAuth2Exception::class)
-    fun validateAuthorizationRequest(request: RequestParametersFrom<AuthenticationRequestParameters>) {
+    suspend fun validateAuthorizationRequest(request: RequestParametersFrom<AuthenticationRequestParameters>) {
         request.parameters.responseType?.let {
             if (!it.contains(OpenIdConstants.ID_TOKEN) && !it.contains(OpenIdConstants.VP_TOKEN)) {
                 Napier.w("createAuthnResponse: Unknown response_type $it")
@@ -35,8 +39,21 @@ internal class AuthorizationRequestValidator {
         if (clientIdScheme is OpenIdConstants.ClientIdScheme.RedirectUri) {
             request.parameters.verifyRedirectUrl()
         }
+        if (request.isFromRequestObject()) {
+            request.parameters.walletNonce?.let {
+                if (walletNonceMapStore.remove(it) != it) {
+                    throw OAuth2Exception(
+                        OpenIdConstants.Errors.INVALID_REQUEST,
+                        "wallet_nonce from request not known to us: $it"
+                    )
+                }
+            }
+        }
         // TODO Verifier Attestation JWT from OpenId4VP 11. also redirect_uri in there
     }
+
+    private fun RequestParametersFrom<AuthenticationRequestParameters>.isFromRequestObject(): Boolean =
+        this is RequestParametersFrom.Json || this is RequestParametersFrom.JwsSigned
 
     @Throws(OAuth2Exception::class)
     private fun AuthenticationRequestParameters.verifyRedirectUrl() {

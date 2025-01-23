@@ -54,6 +54,10 @@ data class SdJwtSigned(
     fun getPayloadAsJsonObject(): KmmResult<JsonObject> =
         runCatching { jws.payload as JsonObject }.wrap()
 
+    override fun toString(): String {
+        return "SdJwtSigned(jws=${jws.serialize()}, rawDisclosures=$rawDisclosures, keyBindingJws=${keyBindingJws?.serialize()}, hashInput='$hashInput')"
+    }
+
     companion object {
         fun parse(input: String): SdJwtSigned? {
             if (!input.contains("~"))

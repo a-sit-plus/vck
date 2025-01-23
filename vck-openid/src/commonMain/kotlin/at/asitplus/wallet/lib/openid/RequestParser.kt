@@ -2,12 +2,10 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
+import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
@@ -29,9 +27,13 @@ class RequestParser(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
     /**
      * Need to verify the request object serialized as a JWS,
-     * which may be signed with a pre-registered key (see [at.asitplus.openid.OpenIdConstants.ClientIdScheme.PreRegistered]).
+     * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _: Any -> true },
+    /**
+     * Callback to load [RequestObjectParameters] when loading a request object by reference (e.g. from `request_uri`)
+     */
+    private val buildRequestObjectParameters: suspend () -> RequestObjectParameters? = { null },
 ) {
     /**
      * Pass in the URL sent by the Verifier (containing the [at.asitplus.openid.RequestParameters] as query parameters),
@@ -67,9 +69,17 @@ class RequestParser(
         params.request?.let { requestObject ->
             parseRequestObjectJws(requestObject)
         } ?: params.requestUri?.let { uri ->
-            remoteResourceRetriever.invoke(uri)
+            remoteResourceRetriever.invoke(params.resourceRetrieverInput(uri))
                 ?.let { parseRequestParameters(it).getOrNull() }
         }
+
+    private suspend fun AuthenticationRequestParameters.resourceRetrieverInput(
+        uri: String,
+    ): RemoteResourceRetrieverInput = RemoteResourceRetrieverInput(
+        url = uri,
+        method = requestUriMethod.toHttpMethod(),
+        requestObjectParameters = buildRequestObjectParameters.invoke()
+    )
 
     private fun parseRequestObjectJws(requestObject: String): RequestParametersFrom<*>? =
         JwsSigned.deserialize<RequestParameters>(
@@ -99,4 +109,9 @@ class RequestParser(
 
             else -> throw NotImplementedError("matchRequestParameterCases: ${params::class.simpleName} not implemented")
         }
+}
+
+private fun String?.toHttpMethod(): HttpMethod = when (this) {
+    "post" -> HttpMethod.Post
+    else -> HttpMethod.Get
 }

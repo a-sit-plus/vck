@@ -82,11 +82,12 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
             ),
             OpenId4VpVerifier.CreationOptions.SignedRequestByReference("haip://", requestUrl)
         ).getOrThrow()
+        jar.shouldNotBeNull()
 
         holderOid4vp = OpenId4VpHolder(
             holderKeyMaterial,
             holderAgent,
-            remoteResourceRetriever = { if (it == requestUrl) jar else null })
+            remoteResourceRetriever = { if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null })
 
         val authnResponse = holderOid4vp.createAuthnResponse(walletUrl).getOrThrow()
         authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()

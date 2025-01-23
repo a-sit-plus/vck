@@ -1,9 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
@@ -304,7 +301,7 @@ class PreRegisteredClientTest : FreeSpec({
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
             remoteResourceRetriever = {
-                if (it == requestUrl) authnRequest else null
+                if (it.url == requestUrl) authnRequest else null
             }
         )
 
@@ -325,11 +322,12 @@ class PreRegisteredClientTest : FreeSpec({
             requestOptionsAtomicAttribute(),
             OpenId4VpVerifier.CreationOptions.SignedRequestByReference(walletUrl, requestUrl)
         ).getOrThrow()
+        jar.shouldNotBeNull()
 
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
             remoteResourceRetriever = {
-                if (it == requestUrl) jar else null
+                if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
             }
         )
 
@@ -344,17 +342,55 @@ class PreRegisteredClientTest : FreeSpec({
         }
     }
 
+    "test with request object from request_uri contains wallet_nonce, but not in store should fail" {
+        val requestUrl = "https://www.example.com/request/${uuid4()}"
+        val (authRequestUrlWithRequestUri, jar) = verifierOid4vp.createAuthnRequest(
+            requestOptionsAtomicAttribute(),
+            OpenId4VpVerifier.CreationOptions.RequestByReference(walletUrl, requestUrl)
+        ).getOrThrow()
+        jar.shouldNotBeNull()
+
+        val nonceMap = mutableMapOf<String, String>()
+        val walletNonceMapStore = object : MapStore<String, String> {
+            override suspend fun put(key: String, value: String) {
+                nonceMap[key] = value.reversed()
+            }
+
+            override suspend fun get(key: String): String? = nonceMap[key]
+            override suspend fun remove(key: String): String? = nonceMap.remove(key)
+        }
+        holderOid4vp = OpenId4VpHolder(
+            holder = holderAgent,
+            remoteResourceRetriever = {
+                if (it.url == requestUrl) {
+                    jar.invoke(it.requestObjectParameters).getOrThrow().also {
+                        odcJsonSerializer.decodeFromString<AuthenticationRequestParameters>(it).walletNonce.also {
+                            it.shouldNotBeNull()
+                            nonceMap.contains(it).shouldBeTrue()
+                        }
+                    }
+                } else null
+            },
+            walletNonceMapStore = walletNonceMapStore
+        )
+
+        shouldThrow<OAuth2Exception> {
+            holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
+        }
+    }
+
     "test with request object not verified" {
         val requestUrl = "https://www.example.com/request/${uuid4()}"
         val (authRequestUrlWithRequestUri, jar) = verifierOid4vp.createAuthnRequest(
             requestOptionsAtomicAttribute(),
             OpenId4VpVerifier.CreationOptions.SignedRequestByReference(walletUrl, requestUrl)
         ).getOrThrow()
+        jar.shouldNotBeNull()
 
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
             remoteResourceRetriever = {
-                if (it == requestUrl) jar else null
+                if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
             },
             requestObjectJwsVerifier = { _ -> false }
         )
