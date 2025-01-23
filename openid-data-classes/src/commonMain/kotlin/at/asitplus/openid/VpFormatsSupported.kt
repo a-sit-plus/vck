@@ -23,9 +23,28 @@ data class VpFormatsSupported(
     val vcJsonLd: SupportedAlgorithmsContainer? = null,
 
     /**
+     * See [CredentialFormatEnum.VC_SD_JWT]
+     */
+    @Deprecated("Deprecated in SD-JWT VC since draft 06", replaceWith = ReplaceWith("dcSdJwt"))
+    @SerialName("vc+sd-jwt")
+    val vcSdJwt: SupportedAlgorithmsContainer? = null,
+
+    /**
+     * See [CredentialFormatEnum.DC_SD_JWT]
+     */
+    @SerialName("dc+sd-jwt")
+    val dcSdJwt: SupportedAlgorithmsContainer? = null,
+
+    /**
      * See [CredentialFormatEnum.JSON_LD]
      */
     @SerialName("ldp_vc")
     val jsonLinkedData: SupportedAlgorithmsContainer? = null,
+
+    /**
+     * See [CredentialFormatEnum.MSO_MDOC]
+     */
+    @SerialName("mso_mdoc")
+    val msoMdoc: SupportedAlgorithmsContainer? = null,
 )
 

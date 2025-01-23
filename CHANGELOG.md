@@ -53,6 +53,7 @@ Release 5.3.0:
 - OpenID4VP draft 23:
   - Support credential format identifier `dc+sd-jwt` in addition to `vc+sd-jwt`
   - Drop `client_id_scheme` and encode it as a prefix to `client_id`
+  - Set `vp_formats_supported` in wallet's metadata
 - General cleanup:
   - Remove `SchemaIndex`
   - Remove `VcLibException`
