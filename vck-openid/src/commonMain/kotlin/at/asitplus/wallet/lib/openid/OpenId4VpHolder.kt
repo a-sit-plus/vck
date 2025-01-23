@@ -4,11 +4,16 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.*
+import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
+import at.asitplus.openid.OpenIdConstants.ClientIdScheme
+import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
+import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseService
@@ -46,18 +51,10 @@ class OpenId4VpHolder(
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction,
     /**
      * Need to verify the request object serialized as a JWS,
-     * which may be signed with a pre-registered key (see [at.asitplus.openid.OpenIdConstants.ClientIdScheme.PreRegistered]).
+     * which may be signed with a pre-registered key (see [ClientIdScheme.PreRegistered]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
 ) {
-    /**
-     * Used to resolve [at.asitplus.openid.RequestParameters] by reference and also matches them to the correct [at.asitplus.openid.RequestParametersFrom]
-     */
-    private val requestParser: RequestParser = RequestParser(
-        remoteResourceRetriever = remoteResourceRetriever,
-        requestObjectJwsVerifier = requestObjectJwsVerifier,
-    )
-
     constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         holder: Holder = HolderAgent(keyMaterial),
@@ -74,7 +71,7 @@ class OpenId4VpHolder(
         remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
         /**
          * Need to verify the request object serialized as a JWS,
-         * which may be signed with a pre-registered key (see [at.asitplus.openid.OpenIdConstants.ClientIdScheme.PreRegistered]).
+         * which may be signed with a pre-registered key (see [ClientIdScheme.PreRegistered]).
          */
         requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
     ) : this(
@@ -88,6 +85,13 @@ class OpenId4VpHolder(
         requestObjectJwsVerifier = requestObjectJwsVerifier,
     )
 
+    /**
+     * Used to resolve [at.asitplus.openid.RequestParameters] by reference and also matches them to the correct [at.asitplus.openid.RequestParametersFrom]
+     */
+    private val requestParser: RequestParser = RequestParser(remoteResourceRetriever, requestObjectJwsVerifier)
+    private val authenticationResponseFactory = AuthenticationResponseFactory(jwsService)
+    private val supportedAlgorithmsStrings = setOf(jwsService.algorithm.identifier)
+
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
         OAuth2AuthorizationServerMetadata(
             issuer = clientId,
@@ -95,15 +99,28 @@ class OpenId4VpHolder(
             responseTypesSupported = setOf(OpenIdConstants.ID_TOKEN),
             scopesSupported = setOf(OpenIdConstants.SCOPE_OPENID),
             subjectTypesSupported = setOf("pairwise", "public"),
-            idTokenSigningAlgorithmsSupportedStrings = setOf(jwsService.algorithm.identifier),
-            requestObjectSigningAlgorithmsSupportedStrings = setOf(jwsService.algorithm.identifier),
-            subjectSyntaxTypesSupported = setOf(
-                OpenIdConstants.URN_TYPE_JWK_THUMBPRINT,
-                OpenIdConstants.PREFIX_DID_KEY,
-                OpenIdConstants.BINDING_METHOD_JWK
-            ),
+            idTokenSigningAlgorithmsSupportedStrings = supportedAlgorithmsStrings,
+            requestObjectSigningAlgorithmsSupportedStrings = supportedAlgorithmsStrings,
+            subjectSyntaxTypesSupported = setOf(URN_TYPE_JWK_THUMBPRINT, PREFIX_DID_KEY, BINDING_METHOD_JWK),
             idTokenTypesSupported = setOf(IdTokenType.SUBJECT_SIGNED),
             presentationDefinitionUriSupported = false,
+            clientIdSchemesSupported = listOf(
+                ClientIdScheme.PreRegistered,
+                ClientIdScheme.RedirectUri,
+                ClientIdScheme.VerifierAttestation,
+                ClientIdScheme.X509SanDns,
+                ClientIdScheme.X509SanUri,
+            ).map { it.stringRepresentation }.toSet(),
+            vpFormatsSupported = VpFormatsSupported(
+                vcJwt = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
+                vcSdJwt = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
+                dcSdJwt = SupportedAlgorithmsContainer(supportedAlgorithmsStrings = supportedAlgorithmsStrings),
+                msoMdoc = SupportedAlgorithmsContainer(
+                    supportedAlgorithmsStrings = setOfNotNull(
+                        coseService.algorithm.toJwsAlgorithm().getOrNull()?.identifier
+                    )
+                ),
+            )
         )
     }
 
@@ -136,7 +153,7 @@ class OpenId4VpHolder(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponseResult> =
         createAuthnResponseParams(request).map {
-            AuthenticationResponseFactory(jwsService).createAuthenticationResponse(request, it)
+            authenticationResponseFactory.createAuthenticationResponse(request, it)
         }
 
     /**
@@ -184,7 +201,7 @@ class OpenId4VpHolder(
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponseResult> =
         finalizeAuthorizationResponseParameters(request, preparationState, inputDescriptorSubmissions).map {
-            AuthenticationResponseFactory(jwsService).createAuthenticationResponse(request, it)
+            authenticationResponseFactory.createAuthenticationResponse(request, it)
         }
 
     /**

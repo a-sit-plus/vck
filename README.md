@@ -61,7 +61,7 @@ Other libraries implementing credential schemes may call `LibraryInitializer.reg
 
 For the OpenID protocol family, issuing is implemented using [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), see `WalletService` and `CredentialIssuer`. This library supports several features of the OpenID4VCI draft 14: Pre-authorized code grants, authorization code flow, selecting credentials with authorization details and scopes, pushed authorization requests. Not supported are the deferred credential endpoint and the notification endpoint.
 
-Presentation of credentials is implemented using [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), supporting [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), see `OpenId4VpVerifier` and `OpenId4VpHolder`. This library supports several features of the OpenID4VP draft 23: Same device and cross device flows, response mode `direct_post` and `direct_post.jwt`, request objects by value or reference, presentation definitions and submissions, verifier attestations, signed and/or encrypted responses, client identifier schemes embedded in the client identifier. Not supported are the Digital Credential Query Language and embedded transaction data.
+Presentation of credentials is implemented using [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), supporting [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), see `OpenId4VpVerifier` and `OpenId4VpHolder`. This library supports several features of the OpenID4VP draft 23: Same device and cross device flows, response mode `direct_post` and `direct_post.jwt`, request objects by value or reference, presentation definitions and submissions, verifier attestations, signed and/or encrypted responses, client identifier schemes embedded in the client identifier. Not supported are the Digital Credential Query Language, using scopes for referencing presentation definitions, client identifier schemes OpenID Federation and DID, and embedded transaction data.
 
 ## Usage
 
@@ -73,8 +73,9 @@ The library is made up of three artifact which build on each other.
 
  - Several parts of the W3C VC Data Model have not been fully implemented, i.e. everything around resolving cryptographic key material.
  - Anything related to ledgers (e.g. resolving DID documents) is out of scope.
+ - JSON-LD is not supported for W3C credentials.
  - Trust relationships are mostly up to clients using this library.
- - The `PlatformCryptoShim` for iOS should not be used in production as it does not implement encryption, decryption, key agreement and message digests correctly. See the [Swift Package](https://github.com/a-sit-plus/swift-package-kmm-vc-library) for details on a more correct iOS implementation, or track the progress for [Signum milestone 1](https://github.com/a-sit-plus/signum/milestone/1).
+ - The `PlatformCryptoShim` for iOS should not be used in production as it does not implement encryption, decryption, key agreement and message digests correctly. Track the progress for [Signum milestone 1](https://github.com/a-sit-plus/signum/milestone/1) for an update on this issue.
 
 ## Dataflow for OID4VCI
 
