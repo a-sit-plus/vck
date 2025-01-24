@@ -5,6 +5,11 @@ import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.SignatureQualifier
+import at.asitplus.rqes.Method
+import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
+import at.asitplus.rqes.collection_entries.TransactionData
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -30,6 +35,9 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.wallet.lib.rqes.DummyCredentialDataProvider
+import at.asitplus.wallet.lib.rqes.RqesOidcVerifier
+import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
@@ -46,7 +54,10 @@ import io.ktor.http.*
 import kotlinx.datetime.Clock
 import kotlin.time.Duration.Companion.seconds
 
-class OpenId4VpProtocolTest : FreeSpec({
+/**
+ * Tests copied from [OpenId4VpProtocolTest] then extended
+ */
+class RqesOidcVerifierTest : FreeSpec({
 
     lateinit var clientId: String
     lateinit var walletUrl: String
@@ -54,7 +65,7 @@ class OpenId4VpProtocolTest : FreeSpec({
     lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
-    lateinit var verifierOid4vp: OpenId4VpVerifier
+    lateinit var rqesOidcVerifier: RqesOidcVerifier
 
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -76,14 +87,14 @@ class OpenId4VpProtocolTest : FreeSpec({
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
         )
-        verifierOid4vp = OpenId4VpVerifier(
+        rqesOidcVerifier = RqesOidcVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
         )
     }
 
     "test with Fragment" {
-        val authnRequest = verifierOid4vp.createAuthnRequestUrl(walletUrl, defaultRequestOptions)
+        val authnRequest = rqesOidcVerifier.createAuthnRequestUrl(walletUrl, defaultExtendedRequestOptions)
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -92,15 +103,15 @@ class OpenId4VpProtocolTest : FreeSpec({
         authnResponse.url.shouldContain("#")
         authnResponse.url.shouldStartWith(clientId)
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        val result = rqesOidcVerifier.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
 
-        verifySecondProtocolRun(verifierOid4vp, walletUrl, holderOid4vp)
+        verifySecondProtocolRun(rqesOidcVerifier, walletUrl, holderOid4vp)
     }
 
     "wrong client nonce in id_token should lead to error" {
-        verifierOid4vp = OpenId4VpVerifier(
+        rqesOidcVerifier = RqesOidcVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
             nonceService = object : NonceService {
@@ -113,18 +124,19 @@ class OpenId4VpProtocolTest : FreeSpec({
             credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
             responseType = OpenIdConstants.ID_TOKEN
         )
-        val authnRequest = verifierOid4vp.createAuthnRequestUrl(walletUrl, requestOptions)
+
+        val authnRequest = rqesOidcVerifier.createAuthnRequestUrl(walletUrl, requestOptions)
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        val result = rqesOidcVerifier.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
         result.field shouldBe "idToken"
     }
 
     "wrong client nonce in vp_token should lead to error" {
-        verifierOid4vp = OpenId4VpVerifier(
+        rqesOidcVerifier = RqesOidcVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
             stateToAuthnRequestStore = object : MapStore<String, AuthenticationRequestParameters> {
@@ -133,12 +145,12 @@ class OpenId4VpProtocolTest : FreeSpec({
                 override suspend fun remove(key: String): AuthenticationRequestParameters? = null
             },
         )
-        val authnRequest = verifierOid4vp.createAuthnRequestUrl(walletUrl, defaultRequestOptions)
+        val authnRequest = rqesOidcVerifier.createAuthnRequestUrl(walletUrl, defaultExtendedRequestOptions)
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        val result = rqesOidcVerifier.validateAuthnResponse(authnResponse.url)
         result.shouldBeInstanceOf<AuthnResponseResult.ValidationError>()
         result.field shouldBe "state"
     }
@@ -148,22 +160,23 @@ class OpenId4VpProtocolTest : FreeSpec({
         val metadataUrl = "https://example.com/$metadataUrlNonce"
         val requestUrlNonce = uuid4().toString()
         val requestUrl = "https://example.com/$requestUrlNonce"
-        val qrcode = verifierOid4vp.createQrCodeUrl(walletUrl, metadataUrl, requestUrl)
+        val qrcode = rqesOidcVerifier.createQrCodeUrl(walletUrl, metadataUrl, requestUrl)
         qrcode shouldContain metadataUrlNonce
         qrcode shouldContain requestUrlNonce
 
-        val metadataObject = verifierOid4vp.createSignedMetadata().getOrThrow()
+        val metadataObject = rqesOidcVerifier.createSignedMetadata().getOrThrow()
         DefaultVerifierJwsService().verifyJwsObject(metadataObject).shouldBeTrue()
 
-        val authnRequestUrl = verifierOid4vp.createAuthnRequestUrlWithRequestObject(walletUrl, defaultRequestOptions)
-            .getOrThrow()
+        val authnRequestUrl =
+            rqesOidcVerifier.createAuthnRequestUrlWithRequestObject(walletUrl, defaultExtendedRequestOptions)
+                .getOrThrow()
         val authnRequest: AuthenticationRequestParameters =
             Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
         authnRequest.clientId shouldBe clientId
         val jar = authnRequest.request
             .shouldNotBeNull()
-        val jwsObject = JwsSigned.Companion.deserialize<AuthenticationRequestParameters>(
-            AuthenticationRequestParameters.Companion.serializer(), jar,
+        val jwsObject = JwsSigned.deserialize<AuthenticationRequestParameters>(
+            AuthenticationRequestParameters.serializer(), jar,
             vckJsonSerializer
         ).getOrThrow()
         DefaultVerifierJwsService().verifyJwsObject(jwsObject).shouldBeTrue()
@@ -171,12 +184,12 @@ class OpenId4VpProtocolTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(jar).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        rqesOidcVerifier.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
     }
 
     "test with direct_post" {
-        val authnRequest = verifierOid4vp.createAuthnRequestUrl(
+        val authnRequest = rqesOidcVerifier.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
@@ -189,13 +202,13 @@ class OpenId4VpProtocolTest : FreeSpec({
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
         authnResponse.url.shouldBe(clientId)
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+        val result = rqesOidcVerifier.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
 
     "test with direct_post_jwt" {
-        val authnRequest = verifierOid4vp.createAuthnRequestUrl(
+        val authnRequest = rqesOidcVerifier.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
@@ -209,19 +222,19 @@ class OpenId4VpProtocolTest : FreeSpec({
         authnResponse.url.shouldBe(clientId)
         authnResponse.params.shouldHaveSize(2)
         val jarmResponse = authnResponse.params.entries.first { it.key == "response" }.value
-        val jwsObject = JwsSigned.Companion.deserialize<AuthenticationResponseParameters>(
-            AuthenticationResponseParameters.Companion.serializer(), jarmResponse
+        val jwsObject = JwsSigned.deserialize<AuthenticationResponseParameters>(
+            AuthenticationResponseParameters.serializer(), jarmResponse
         ).getOrThrow()
         DefaultVerifierJwsService().verifyJwsObject(jwsObject).shouldBeTrue()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+        val result = rqesOidcVerifier.validateAuthnResponse(authnResponse.params.formUrlEncode())
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
 
     "test with Query" {
         val expectedState = uuid4().toString()
-        val authnRequest = verifierOid4vp.createAuthnRequestUrl(
+        val authnRequest = rqesOidcVerifier.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = RequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
@@ -237,14 +250,14 @@ class OpenId4VpProtocolTest : FreeSpec({
         authnResponse.url.shouldNotContain("#")
         authnResponse.url.shouldStartWith(clientId)
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        val result = rqesOidcVerifier.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.state.shouldBe(expectedState)
     }
 
     "test with deserializing" {
-        val authnRequest = verifierOid4vp.createAuthnRequest(defaultRequestOptions)
+        val authnRequest = rqesOidcVerifier.createAuthnRequest(defaultExtendedRequestOptions)
         val authnRequestUrlParams = authnRequest.encodeToParameters().formUrlEncode()
 
         val parsedAuthnRequest: AuthenticationRequestParameters =
@@ -257,13 +270,13 @@ class OpenId4VpProtocolTest : FreeSpec({
         ).getOrThrow().params
         val authnResponseParams = authnResponse.encodeToParameters().formUrlEncode()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponseParams)
+        val result = rqesOidcVerifier.validateAuthnResponse(authnResponseParams)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
     }
 
     "test specific credential" {
-        val authnRequest = verifierOid4vp.createAuthnRequestUrl(
+        val authnRequest = rqesOidcVerifier.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = requestOptionsAtomicAttribute()
         )
@@ -271,7 +284,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        val result = rqesOidcVerifier.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
@@ -280,7 +293,7 @@ class OpenId4VpProtocolTest : FreeSpec({
     }
 
     "test with request object" {
-        val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequestUrlWithRequestObject(
+        val authnRequestWithRequestObject = rqesOidcVerifier.createAuthnRequestUrlWithRequestObject(
             walletUrl = walletUrl,
             requestOptions = requestOptionsAtomicAttribute()
         ).getOrThrow()
@@ -288,7 +301,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        val result = rqesOidcVerifier.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
@@ -299,11 +312,11 @@ class OpenId4VpProtocolTest : FreeSpec({
     "test with request object and Attestation JWT" {
         val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithoutCert())
         val attestationJwt = buildAttestationJwt(sprsCryptoService, clientId, verifierKeyMaterial)
-        verifierOid4vp = OpenId4VpVerifier(
+        rqesOidcVerifier = RqesOidcVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, clientId),
         )
-        val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequestUrlWithRequestObject(
+        val authnRequestWithRequestObject = rqesOidcVerifier.createAuthnRequestUrlWithRequestObject(
             walletUrl = walletUrl,
             requestOptions = requestOptionsAtomicAttribute()
         ).getOrThrow()
@@ -315,7 +328,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequestWithRequestObject).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        val result = rqesOidcVerifier.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
@@ -326,11 +339,11 @@ class OpenId4VpProtocolTest : FreeSpec({
         val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithoutCert())
         val attestationJwt = buildAttestationJwt(sprsCryptoService, clientId, verifierKeyMaterial)
 
-        verifierOid4vp = OpenId4VpVerifier(
+        rqesOidcVerifier = RqesOidcVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, clientId)
         )
-        val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequestUrlWithRequestObject(
+        val authnRequestWithRequestObject = rqesOidcVerifier.createAuthnRequestUrlWithRequestObject(
             walletUrl = walletUrl,
             requestOptions = requestOptionsAtomicAttribute()
         ).getOrThrow()
@@ -345,7 +358,7 @@ class OpenId4VpProtocolTest : FreeSpec({
     }
 
     "test with request object from request_uri as URL query parameters" {
-        val authnRequest = verifierOid4vp.createAuthnRequestUrl(
+        val authnRequest = rqesOidcVerifier.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = requestOptionsAtomicAttribute()
         )
@@ -368,7 +381,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        val result = rqesOidcVerifier.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
@@ -377,7 +390,7 @@ class OpenId4VpProtocolTest : FreeSpec({
     }
 
     "test with request object from request_uri as JWS" {
-        val jar = verifierOid4vp.createAuthnRequestAsSignedRequestObject(
+        val jar = rqesOidcVerifier.createAuthnRequestAsSignedRequestObject(
             requestOptions = requestOptionsAtomicAttribute()
         ).getOrThrow()
 
@@ -397,7 +410,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         val authnResponse = holderOid4vp.createAuthnResponse(authRequestUrlWithRequestUri).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        val result = rqesOidcVerifier.validateAuthnResponse(authnResponse.url)
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
         result.vp.verifiableCredentials.forEach {
@@ -406,7 +419,7 @@ class OpenId4VpProtocolTest : FreeSpec({
     }
 
     "test with request object not verified" {
-        val jar = verifierOid4vp.createAuthnRequestAsSignedRequestObject(
+        val jar = rqesOidcVerifier.createAuthnRequestAsSignedRequestObject(
             requestOptions = requestOptionsAtomicAttribute()
         ).getOrThrow()
 
@@ -452,15 +465,15 @@ private suspend fun buildAttestationJwt(
         notBefore = Clock.System.now(),
         confirmationClaim = ConfirmationClaim(jsonWebKey = verifierKeyMaterial.jsonWebKey),
     ),
-    serializer = JsonWebToken.Companion.serializer(),
+    serializer = JsonWebToken.serializer(),
 ).getOrThrow()
 
 private fun attestationJwtVerifier(trustedKey: JsonWebKey) =
     object : RequestObjectJwsVerifier {
         override fun invoke(jws: JwsSigned<RequestParameters>): Boolean {
             val attestationJwt = jws.header.attestationJwt?.let {
-                JwsSigned.Companion.deserialize<JsonWebToken>(
-                    JsonWebToken.Companion.serializer(), it
+                JwsSigned.deserialize<JsonWebToken>(
+                    JsonWebToken.serializer(), it
                 ).getOrThrow()
             }
                 ?: return false
@@ -478,14 +491,46 @@ private suspend fun verifySecondProtocolRun(
     walletUrl: String,
     holderOid4vp: OpenId4VpHolder,
 ) {
-    val authnRequestUrl = verifierOid4vp.createAuthnRequestUrl(walletUrl, defaultRequestOptions)
+    val authnRequestUrl = verifierOid4vp.createAuthnRequestUrl(walletUrl, defaultExtendedRequestOptions)
     val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl)
     verifierOid4vp.validateAuthnResponse((authnResponse.getOrThrow() as AuthenticationResponseResult.Redirect).url)
         .shouldBeInstanceOf<AuthnResponseResult.Success>()
 }
 
-private val defaultRequestOptions = RequestOptions(
-    credentials = setOf(
-        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-    )
+private val defaultDocumentDigests: List<RqesDocumentDigestEntry> = listOf(
+    RqesDocumentDigestEntry.create(
+        label = uuid4().toString(),
+        hash = uuid4().bytes,
+        documentLocationUri = uuid4().toString(),
+        documentLocationMethod = RqesDocumentDigestEntry.DocumentLocationMethod(
+            method = Method.Oauth2
+        ),
+        hashAlgorithmOID = Digest.entries.random().oid,
+    ).getOrThrow()
+)
+
+private val defaultTransactionData = setOf(
+    TransactionData.QesAuthorization.create(
+        documentDigest = defaultDocumentDigests,
+        signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
+        credentialId = uuid4().toString(),
+    ).getOrThrow()
+)
+
+private val defaultRqesParameters = RqesOidcVerifier.RqesParameters(
+    transactionData = defaultTransactionData.map { vckJsonSerializer.encodeToString(TransactionData.serializer(), it) }.toSet(),
+    credentialID = uuid4().bytes,
+    signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
+    numSignatures = 1,
+    hashes = listOf(uuid4().bytes),
+    hashAlgorithmOid = Digest.SHA256.oid,
+)
+
+private val defaultExtendedRequestOptions = RqesOidcVerifier.ExtendedRequestOptions(
+    baseRequestOptions = RequestOptions(
+        credentials = setOf(
+            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+        )
+    ),
+    rqesParameters = defaultRqesParameters,
 )

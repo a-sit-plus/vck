@@ -145,7 +145,7 @@ open class OpenId4VpVerifier(
      */
     suspend fun createAuthnRequestUrl(
         walletUrl: String,
-        requestOptions: RequestOptions,
+        requestOptions: RequestOptionsInterface,
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
         createAuthnRequest(requestOptions).encodeToParameters()
@@ -159,7 +159,7 @@ open class OpenId4VpVerifier(
      */
     suspend fun createAuthnRequestUrlWithRequestObject(
         walletUrl: String,
-        requestOptions: RequestOptions,
+        requestOptions: RequestOptionsInterface,
     ): KmmResult<String> = catching {
         val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow()
         val urlBuilder = URLBuilder(walletUrl)
@@ -182,7 +182,7 @@ open class OpenId4VpVerifier(
     suspend fun createAuthnRequestUrlWithRequestObjectByReference(
         walletUrl: String,
         requestUrl: String,
-        requestOptions: RequestOptions,
+        requestOptions: RequestOptionsInterface,
     ): KmmResult<Pair<String, String>> = catching {
         val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow()
         val urlBuilder = URLBuilder(walletUrl)
@@ -208,7 +208,7 @@ open class OpenId4VpVerifier(
      * ```
      */
     suspend fun createAuthnRequestAsSignedRequestObject(
-        requestOptions: RequestOptions,
+        requestOptions: RequestOptionsInterface,
     ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
         val requestObject = createAuthnRequest(requestOptions)
         val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
@@ -234,7 +234,7 @@ open class OpenId4VpVerifier(
      * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
      */
     suspend fun createAuthnRequest(
-        requestOptions: RequestOptions,
+        requestOptions: RequestOptionsInterface,
     ) = AuthenticationRequestParameters(
         responseType = requestOptions.responseType,
         clientId = clientIdScheme.clientId,

@@ -51,7 +51,7 @@ data class CredentialInfo(
      * Details about the authentication method
      */
     @SerialName("auth")
-    val authParameters: CscAuthParameter,
+    val authParameters: CscAuthParameter? = null,
 
     /**
      * Specifies if the RSSP will generate for this credential a signature

@@ -161,12 +161,12 @@ data class RqesDocumentDigestEntry private constructor(
          */
         fun create(
             label: String,
-            hash: ByteArray?,
-            hashAlgorithmOID: ObjectIdentifier?,
-            documentLocationUri: String?,
-            documentLocationMethod: DocumentLocationMethod?,
-            dtbsr: ByteArray?,
-            dtbsrHashAlgorithmOID: ObjectIdentifier?,
+            hash: ByteArray? = null,
+            hashAlgorithmOID: ObjectIdentifier? = null,
+            documentLocationUri: String? = null,
+            documentLocationMethod: DocumentLocationMethod? = null,
+            dtbsr: ByteArray? = null,
+            dtbsrHashAlgorithmOID: ObjectIdentifier? = null,
         ): KmmResult<RqesDocumentDigestEntry> =
             kotlin.runCatching {
                 RqesDocumentDigestEntry(

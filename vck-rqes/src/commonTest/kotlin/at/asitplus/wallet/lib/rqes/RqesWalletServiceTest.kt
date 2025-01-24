@@ -28,8 +28,6 @@ import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import io.ktor.util.*
-import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.PolymorphicSerializer
@@ -133,7 +131,7 @@ class RqesWalletServiceTest : FreeSpec({
             conformanceLevel = ConformanceLevel.entries.random(),
         )
     }
-    "placeholder" - {
+    "RqesWalletService Tests" - {
         repeat(3) {
             "Certificates can be parsed" {
                 newCredential = dummyValueProvider.getSigningCredential()
@@ -224,7 +222,7 @@ class RqesWalletServiceTest : FreeSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(uuid4().toString()),
                 authorizationDetails = authDetails.toSet()
             )
-            request.authorizationDetails?.withIndex()?.forEach { (i,v) ->
+            request.authorizationDetails?.withIndex()?.forEach { (i, v) ->
                 v shouldBe authDetails[i]
             }
 

@@ -41,6 +41,13 @@ kotlin {
                 commonImplementationDependencies()
             }
         }
+
+        commonTest {
+            dependencies {
+                implementation("at.asitplus.wallet:eupidcredential:${VcLibVersions.eupidcredential}")
+                implementation("at.asitplus.wallet:mobiledrivinglicence:${VcLibVersions.mdl}")
+            }
+        }
     }
 }
 

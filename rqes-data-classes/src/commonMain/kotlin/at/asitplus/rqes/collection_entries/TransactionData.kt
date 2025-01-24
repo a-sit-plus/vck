@@ -78,10 +78,10 @@ sealed class TransactionData {
              * Safe way to construct the object as init throws
              */
             fun create(
-                signatureQualifier: SignatureQualifier?,
-                credentialId: String?,
                 documentDigest: List<RqesDocumentDigestEntry>,
-                processID: String?,
+                signatureQualifier: SignatureQualifier? = null,
+                credentialId: String? = null,
+                processID: String? = null,
             ): KmmResult<TransactionData> =
                 runCatching {
                     QesAuthorization(

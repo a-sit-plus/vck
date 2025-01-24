@@ -64,7 +64,7 @@ class RqesOidcVerifier(
 
     data class ExtendedRequestOptions(
         val baseRequestOptions: RequestOptions,
-        val rqesParameters: RqesParameters?,
+        val rqesParameters: RqesParameters? = null,
     ) : RequestOptionsInterface by baseRequestOptions {
         override fun toInputDescriptor(
             containerJwt: FormatContainerJwt,
@@ -148,18 +148,18 @@ class RqesOidcVerifier(
     override suspend fun enrichAuthnRequest(
         params: AuthenticationRequestParameters,
         requestOptions: RequestOptionsInterface,
-    ): AuthenticationRequestParameters = with(requestOptions as ExtendedRequestOptions) {
+    ): AuthenticationRequestParameters = with(requestOptions as? ExtendedRequestOptions) {
         params.copy(
-            lang = this.rqesParameters?.lang,
-            credentialID = this.rqesParameters?.credentialID,
-            signatureQualifier = this.rqesParameters?.signatureQualifier,
-            numSignatures = this.rqesParameters?.numSignatures,
-            hashes = this.rqesParameters?.hashes,
-            hashAlgorithmOid = this.rqesParameters?.hashAlgorithmOid,
-            description = this.rqesParameters?.description,
-            accountToken = this.rqesParameters?.accountToken,
-            clientData = this.rqesParameters?.clientData,
-            transactionData = this.rqesParameters?.transactionData,
+            lang = this?.rqesParameters?.lang,
+            credentialID = this?.rqesParameters?.credentialID,
+            signatureQualifier = this?.rqesParameters?.signatureQualifier,
+            numSignatures = this?.rqesParameters?.numSignatures,
+            hashes = this?.rqesParameters?.hashes,
+            hashAlgorithmOid = this?.rqesParameters?.hashAlgorithmOid,
+            description = this?.rqesParameters?.description,
+            accountToken = this?.rqesParameters?.accountToken,
+            clientData = this?.rqesParameters?.clientData,
+            transactionData = this?.rqesParameters?.transactionData,
         )
     }
 
