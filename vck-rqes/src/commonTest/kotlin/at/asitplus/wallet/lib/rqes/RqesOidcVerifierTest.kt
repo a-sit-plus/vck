@@ -1,4 +1,4 @@
-package at.asitplus.wallet.lib.openid
+package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
@@ -10,6 +10,7 @@ import at.asitplus.rqes.Method
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
 import at.asitplus.rqes.collection_entries.TransactionData
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.josef.ConfirmationClaim
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -35,8 +36,15 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
-import at.asitplus.wallet.lib.rqes.DummyCredentialDataProvider
-import at.asitplus.wallet.lib.rqes.RqesOidcVerifier
+import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.AuthnResponseResult
+import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.OpenId4VpHolder
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
+import at.asitplus.wallet.lib.openid.RequestOptions
+import at.asitplus.wallet.lib.openid.RequestOptionsCredential
+import at.asitplus.wallet.lib.openid.RequestOptionsInterface
+import at.asitplus.wallet.lib.rqes.helper.RqesParameters
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
@@ -51,8 +59,80 @@ import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlin.random.Random
+import kotlin.random.nextInt
 import kotlin.time.Duration.Companion.seconds
+
+
+private val defaultRequestOption = RequestOptions(
+    credentials = setOf(
+        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+    )
+)
+
+class DummyRequestOptionsService {
+    /**
+     * Returns either [RequestOptions] and [RqesOidcVerifier.ExtendedRequestOptions]
+     * via [RqesParameters.CscRqesParameters] or [RqesParameters.Oid4VpRqesParameters]
+     * with equal probability
+     */
+    fun getRequestOptions(): RequestOptionsInterface {
+        val rnd = Random.nextInt(0..2)
+        return when (rnd % 3) {
+            0 -> defaultRequestOption
+
+            1 -> RqesOidcVerifier.ExtendedRequestOptions(
+                baseRequestOptions = defaultRequestOption,
+                rqesParameters = getRqesParameters(isCsc = true)
+            )
+
+            2 -> RqesOidcVerifier.ExtendedRequestOptions(
+                baseRequestOptions = defaultRequestOption,
+                rqesParameters = getRqesParameters(isCsc = false)
+            )
+
+            else -> throw AssertionError("Kotlin does not know mod")
+        }
+    }
+
+    private fun getRqesParameters(isCsc: Boolean): RqesParameters =
+        if (isCsc) {
+            RqesParameters.CscRqesParameters(
+                credentialID = uuid4().bytes,
+                signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
+                numSignatures = 1,
+                hashes = listOf(uuid4().bytes.encodeToString(Base64Strict).decodeToByteArray(Base64Strict)),
+                hashAlgorithmOid = Digest.entries.random().oid
+            )
+        } else {
+            RqesParameters.Oid4VpRqesParameters(
+                transactionData = setOf(getTransactionData())
+            )
+        }
+
+    private fun getTransactionData(): TransactionData =
+        TransactionData.QesAuthorization.create(
+            documentDigest = listOf(getDocumentDigests()),
+            signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
+            credentialId = uuid4().toString(),
+        ).getOrThrow()
+
+    private fun getDocumentDigests(): RqesDocumentDigestEntry =
+        RqesDocumentDigestEntry.create(
+            label = uuid4().toString(),
+            hash = uuid4().bytes,
+            documentLocationUri = uuid4().toString(),
+            documentLocationMethod = RqesDocumentDigestEntry.DocumentLocationMethod(
+                method = Method.Oauth2
+            ),
+            hashAlgorithmOID = Digest.entries.random().oid,
+        ).getOrThrow()
+}
+
+val dummyRequestOptionsService = DummyRequestOptionsService()
 
 /**
  * Tests copied from [OpenId4VpProtocolTest] then extended
@@ -94,7 +174,8 @@ class RqesOidcVerifierTest : FreeSpec({
     }
 
     "test with Fragment" {
-        val authnRequest = rqesOidcVerifier.createAuthnRequestUrl(walletUrl, defaultExtendedRequestOptions)
+        val requestOptions = dummyRequestOptionsService.getRequestOptions()
+        val authnRequest = rqesOidcVerifier.createAuthnRequestUrl(walletUrl, requestOptions)
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -107,7 +188,7 @@ class RqesOidcVerifierTest : FreeSpec({
             .shouldBeInstanceOf<AuthnResponseResult.Success>()
         result.vp.verifiableCredentials.shouldNotBeEmpty()
 
-        verifySecondProtocolRun(rqesOidcVerifier, walletUrl, holderOid4vp)
+        verifySecondProtocolRun(rqesOidcVerifier, walletUrl, holderOid4vp, requestOptions)
     }
 
     "wrong client nonce in id_token should lead to error" {
@@ -145,7 +226,8 @@ class RqesOidcVerifierTest : FreeSpec({
                 override suspend fun remove(key: String): AuthenticationRequestParameters? = null
             },
         )
-        val authnRequest = rqesOidcVerifier.createAuthnRequestUrl(walletUrl, defaultExtendedRequestOptions)
+        val authnRequest =
+            rqesOidcVerifier.createAuthnRequestUrl(walletUrl, dummyRequestOptionsService.getRequestOptions())
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -168,8 +250,10 @@ class RqesOidcVerifierTest : FreeSpec({
         DefaultVerifierJwsService().verifyJwsObject(metadataObject).shouldBeTrue()
 
         val authnRequestUrl =
-            rqesOidcVerifier.createAuthnRequestUrlWithRequestObject(walletUrl, defaultExtendedRequestOptions)
-                .getOrThrow()
+            rqesOidcVerifier.createAuthnRequestUrlWithRequestObject(
+                walletUrl,
+                dummyRequestOptionsService.getRequestOptions()
+            ).getOrThrow()
         val authnRequest: AuthenticationRequestParameters =
             Url(authnRequestUrl).encodedQuery.decodeFromUrlQuery()
         authnRequest.clientId shouldBe clientId
@@ -257,7 +341,7 @@ class RqesOidcVerifierTest : FreeSpec({
     }
 
     "test with deserializing" {
-        val authnRequest = rqesOidcVerifier.createAuthnRequest(defaultExtendedRequestOptions)
+        val authnRequest = rqesOidcVerifier.createAuthnRequest(dummyRequestOptionsService.getRequestOptions())
         val authnRequestUrlParams = authnRequest.encodeToParameters().formUrlEncode()
 
         val parsedAuthnRequest: AuthenticationRequestParameters =
@@ -490,47 +574,10 @@ private suspend fun verifySecondProtocolRun(
     verifierOid4vp: OpenId4VpVerifier,
     walletUrl: String,
     holderOid4vp: OpenId4VpHolder,
+    previousRequestOption: RequestOptionsInterface,
 ) {
-    val authnRequestUrl = verifierOid4vp.createAuthnRequestUrl(walletUrl, defaultExtendedRequestOptions)
+    val authnRequestUrl = verifierOid4vp.createAuthnRequestUrl(walletUrl, previousRequestOption)
     val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl)
     verifierOid4vp.validateAuthnResponse((authnResponse.getOrThrow() as AuthenticationResponseResult.Redirect).url)
         .shouldBeInstanceOf<AuthnResponseResult.Success>()
 }
-
-private val defaultDocumentDigests: List<RqesDocumentDigestEntry> = listOf(
-    RqesDocumentDigestEntry.create(
-        label = uuid4().toString(),
-        hash = uuid4().bytes,
-        documentLocationUri = uuid4().toString(),
-        documentLocationMethod = RqesDocumentDigestEntry.DocumentLocationMethod(
-            method = Method.Oauth2
-        ),
-        hashAlgorithmOID = Digest.entries.random().oid,
-    ).getOrThrow()
-)
-
-private val defaultTransactionData = setOf(
-    TransactionData.QesAuthorization.create(
-        documentDigest = defaultDocumentDigests,
-        signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
-        credentialId = uuid4().toString(),
-    ).getOrThrow()
-)
-
-private val defaultRqesParameters = RqesOidcVerifier.Oid4VpRqesParameters(
-    transactionData = defaultTransactionData.map { vckJsonSerializer.encodeToString(TransactionData.serializer(), it) }.toSet(),
-    credentialID = uuid4().bytes,
-    signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
-    numSignatures = 1,
-    hashes = listOf(uuid4().bytes),
-    hashAlgorithmOid = Digest.SHA256.oid,
-)
-
-private val defaultExtendedRequestOptions = RqesOidcVerifier.ExtendedRequestOptions(
-    baseRequestOptions = RequestOptions(
-        credentials = setOf(
-            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
-        )
-    ),
-    rqesParameters = defaultRqesParameters,
-)
