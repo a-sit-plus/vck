@@ -2,9 +2,9 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.data.collections.NonEmptyList
-import at.asitplus.data.collections.NonEmptyList.Companion.nonEmptyListOf
-import at.asitplus.data.collections.NonEmptyList.Companion.toNonEmptyList
+import at.asitplus.data.NonEmptyList
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

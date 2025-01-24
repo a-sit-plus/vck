@@ -1,6 +1,6 @@
 package at.asitplus.openid.dcql
 
-import at.asitplus.data.collections.NonEmptyList.Companion.nonEmptyListOf
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import io.kotest.core.spec.style.FreeSpec

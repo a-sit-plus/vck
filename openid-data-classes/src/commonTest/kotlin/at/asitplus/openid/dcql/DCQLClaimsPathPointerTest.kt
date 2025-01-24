@@ -1,7 +1,7 @@
 package at.asitplus.openid.dcql
 
-import at.asitplus.data.collections.NonEmptyList.Companion.nonEmptyListOf
-import at.asitplus.data.collections.NonEmptyList.Companion.toNonEmptyList
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.collections.shouldHaveSize

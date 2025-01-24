@@ -1,4 +1,4 @@
-package at.asitplus.data.collections
+package at.asitplus.data
 
 import at.asitplus.data.validation.third_party.kotlin.collections.requireIsNotEmpty
 import kotlinx.serialization.Serializable

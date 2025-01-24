@@ -1,6 +1,6 @@
 package at.asitplus.openid.dcql
 
-import at.asitplus.data.collections.NonEmptyList
+import at.asitplus.data.NonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

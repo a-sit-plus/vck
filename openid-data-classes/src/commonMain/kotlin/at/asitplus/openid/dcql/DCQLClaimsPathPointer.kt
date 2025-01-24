@@ -1,7 +1,7 @@
 package at.asitplus.openid.dcql
 
-import at.asitplus.data.collections.NonEmptyList
-import at.asitplus.data.collections.NonEmptyList.Companion.toNonEmptyList
+import at.asitplus.data.NonEmptyList
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NodeListEntry
 import at.asitplus.jsonpath.core.NormalizedJsonPath
