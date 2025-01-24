@@ -1,6 +1,6 @@
 package at.asitplus.data.collections
 
-import at.asitplus.data.validation.third_party.kotlin.collections.Collection.requireIsNotEmpty
+import at.asitplus.data.validation.third_party.kotlin.collections.requireIsNotEmpty
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 

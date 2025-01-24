@@ -2,7 +2,7 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.data.collections.NonEmptyList
 import at.asitplus.data.collections.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.data.validation.third_party.kotlin.collections.Iterable.requireDistinctNotNull
+import at.asitplus.data.validation.third_party.kotlin.collections.requireDistinctNotNull
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
