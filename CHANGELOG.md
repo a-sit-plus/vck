@@ -1,39 +1,38 @@
 # Changelog
 
 Release 5.3.0:
-- Add draft token-status-list-06 from https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html
-- `Holder`:
-  - Remove `setRevocationList`
-  - Change `StoredCredential` revocation status to token status
-- `InMemoryIssuerCredentialStore`:
-  - Change `revoke` semantics to `token status` semantics
-  - Add token status bitsize
-  - Change iso credential identifier to make it deterministic
-- `Issuer`:
-  - Change `buildRevocationList` to `buildStatusList` 
-  - Add functions for issuing status lists and status list tokens
-  - Remove `compileCurrentRevocationLists`
-  - Add inheritance from token status agent interfaces
-- `IssuerAgent`
-  - Add revocation status for iso credentials
-  - Change revocation status to token status
-- `IssuerCredentialStore`
-  - Change revocation status semantics to token status semantics
-- `Validator`:
-  - Change revocation status to token status
-  - Change revocation check to token status invalid check by using new status mechanism
-  - Add validation for status list tokens
-- `Verifier`: 
-  - Remove `setRevocationList`
-  - Add `verifyRevocationStatusListJwtIntegrity` and `verifyRevocationStatusListCwtIntegrity`
-- `CoseService`: 
-  - Add check without specifying signer (using cose signed public key or trust store)
-- `VerifiableCredential`: Change `credentialStatus` to `status` and using new status mechanism
-- `VerifiableCredentialSdJwt`: Change `credentialStatus` to use new status mechanism
-- `MobileSecurityObject`: Add status mechanism
-- `iosMain/DefaultZlibService`: Verify compression method was deflate when inflating
-- OpenID4VP for mdocs:
-  - Implement device response including session transcript and handover structure acc. to ISO/IEC 18013-7 Annex B for mDoc responses
+- Implement [token-status-list-06](https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html), replacing implementation of Revocation List 2020:
+  - `Holder`:
+    - Remove `setRevocationList`
+    - Change `StoredCredential` revocation status to token status
+  - `InMemoryIssuerCredentialStore`:
+    - Change `revoke` semantics to `token status` semantics
+    - Add token status bitsize
+    - Change iso credential identifier to make it deterministic
+  - `Issuer`:
+    - Change `buildRevocationList` to `buildStatusList` 
+    - Add functions for issuing status lists and status list tokens
+    - Remove `compileCurrentRevocationLists`
+    - Add inheritance from token status agent interfaces
+  - `IssuerAgent`
+    - Add revocation status for iso credentials
+    - Change revocation status to token status
+  - `IssuerCredentialStore`
+    - Change revocation status semantics to token status semantics
+  - `Validator`:
+    - Change revocation status to token status
+    - Change revocation check to token status invalid check by using new status mechanism
+    - Add validation for status list tokens
+  - `Verifier`: 
+    - Remove `setRevocationList`
+    - Add `verifyRevocationStatusListJwtIntegrity` and `verifyRevocationStatusListCwtIntegrity`
+  - `CoseService`: 
+    - Add check without specifying signer (using cose signed public key or trust store)
+  - `VerifiableCredential`: Change `credentialStatus` to `status` and using new status mechanism
+  - `VerifiableCredentialSdJwt`: Change `credentialStatus` to use new status mechanism
+  - `MobileSecurityObject`: Add status mechanism
+  - `iosMain/DefaultZlibService`: Verify compression method was deflate when inflating
+- Implement device response including session transcript and handover structure acc. to ISO/IEC 18013-7 Annex B for mDoc responses:
   - `CoseService` adds method `createSignedCoseWithDetachedPayload` to not serialize the payload in the `CoseSigned` structure
   - Move `at.asitplus.wallet.lib.agent.Holder.PresentationResponseParameters` to `at.asitplus.wallet.lib.agent.PresentationResponseParameters`
   - Move `at.asitplus.wallet.lib.agent.Holder.CreatePresentationResult` to `at.asitplus.wallet.lib.agent.CreatePresentationResult`
@@ -41,7 +40,7 @@ Release 5.3.0:
   - In `Verifier` and `VerifierAgent` add methods `verifyPresentationVcJwt()`, `verifyPresentationSdJwt()` and `verifyPresentationIsoMdoc()` to directly verify typed objects
   - For verification of credentials and presentations add `ValidationError` cases to sealed classes
   - In `OidcSiopVerifier` replace `stateToNonceStore` and `stateToResponseTypeStore` with `stateToAuthnRequestStore`
-- OpenID4VP in general:
+- OpenID4VP refactorings:
   - Deprecate `OidcSiopVerifier`, use `at.asitplus.wallet.lib.openid.OpenId4VpVerifier` instead
   - Move classes `ClientIdScheme`, `RequestOptions`, `AuthResponseResult` out of `OpenId4VpVerifier`
   - Change type of `RequestOptionsCredential.requestedAttributes` from `List` to `Set`
@@ -50,7 +49,7 @@ Release 5.3.0:
   - Move `RequestObjectJwsVerifier` from `at.asitplus.wallet.lib.oidc` to `at.asitplus.wallet.lib.openid`
   - Move `RemoteResourceRetrieverFunction` from `at.asitplus.wallet.lib.oidc` to `at.asitplus.wallet.lib`
   - Move `AuthorizationResponsePreparationState` from `at.asitplus.wallet.lib.oidc.helpers` to `at.asitplus.wallet.lib.openid`
-- OpenID4VP draft 23:
+- Update implementation of OpenID4VP to draft 23:
   - Support credential format identifier `dc+sd-jwt` in addition to `vc+sd-jwt`
   - Drop `client_id_scheme` and encode it as a prefix to `client_id`
   - Set `vp_formats_supported` in wallet's metadata
