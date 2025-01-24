@@ -2,6 +2,9 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.data.collections.NonEmptyList
+import at.asitplus.data.collections.NonEmptyList.Companion.nonEmptyListOf
+import at.asitplus.data.collections.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -11,13 +14,9 @@ data class DCQLQuery(
     /**
      * OID4VP draft 23: REQUIRED. A non-empty array of Credential Queries as defined in Section 6.1 that
      * specify the requested Verifiable Credentials.
-     *
-     * Relevant references:
-     * - DCQLCredentialQuery: Within the Authorization Request, the same id MUST NOT be present
-     *  more than once.
      */
     @SerialName(SerialNames.CREDENTIALS)
-    val credentials: List<DCQLCredentialQuery>,
+    val credentials: DCQLCredentialQueryList<DCQLCredentialQuery>,
 
     /**
      * OID4VP draft 23: OPTIONAL. A non-empty array of credential set queries as defined in Section
@@ -25,29 +24,19 @@ data class DCQLQuery(
      * to return.
      */
     @SerialName(SerialNames.CREDENTIAL_SETS)
-    val credentialSets: List<DCQLCredentialSetQuery>?
+    val credentialSets: NonEmptyList<DCQLCredentialSetQuery>? = null,
 ) {
-    init {
-        validate(this)
-    }
+    val requestedCredentialSetQueries: NonEmptyList<DCQLCredentialSetQuery>
+        get() = credentialSets ?: nonEmptyListOf(
+            DCQLCredentialSetQuery(
+                required = true,
+                options = nonEmptyListOf(credentials.map { it.id }),
+            )
+        )
 
     object SerialNames {
         const val CREDENTIALS = "credentials"
         const val CREDENTIAL_SETS = "credential_sets"
-    }
-
-    companion object {
-        fun validate(query: DCQLQuery) = query.run {
-            if (credentials.isEmpty()) {
-                throw IllegalArgumentException("Value of `credentials` must not be the empty list.")
-            }
-            if (credentialSets?.isEmpty() == true) {
-                throw IllegalArgumentException("Value of `credential_sets` must not be empty if it exists.")
-            }
-            if (credentials.distinctBy { it.id }.size != credentials.size) {
-                throw IllegalArgumentException("Value of `credentials` contains multiple credential queries with the same id.")
-            }
-        }
     }
 
     /**
@@ -75,12 +64,7 @@ data class DCQLQuery(
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
     ): KmmResult<DCQLQueryResult<Credential>> = Procedures.executeQuery(
         credentials = credentials,
-        requiredCredentialSets = credentialSets ?: listOf(
-            DCQLCredentialSetQuery(
-                required = true,
-                options = listOf(credentials.map { it.id }),
-            )
-        ),
+        requestedCredentialSetQueries = requestedCredentialSetQueries,
         availableCredentials = availableCredentials,
         credentialFormatExtractor = credentialFormatExtractor,
         mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
@@ -124,7 +108,7 @@ data class DCQLQuery(
          */
         fun <Credential : Any> executeQuery(
             credentials: List<DCQLCredentialQuery>,
-            requiredCredentialSets: List<DCQLCredentialSetQuery>,
+            requestedCredentialSetQueries: List<DCQLCredentialSetQuery>,
             availableCredentials: List<Credential>,
             credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
             mdocCredentialDoctypeExtractor: (Credential) -> String,
@@ -140,14 +124,16 @@ data class DCQLQuery(
                 credentialClaimStructureExtractor = credentialClaimStructureExtractor,
             )
 
-            val satisfiableCredentialSetQueries = findSatisfactoryCredentialSetQueries(
+            val satisfiableCredentialSetQueryOptions = findSatisfactoryCredentialSetQueryOptions(
                 credentialQueryMatches = credentialQueryMatches,
-                request = requiredCredentialSets
-            ).getOrThrow()
+                requestedCredentialSetQueries = requestedCredentialSetQueries
+            ).getOrElse {
+                throw IllegalArgumentException("Submission requirements cannot be satisfied.", it)
+            }
 
             DCQLQueryResult(
                 credentialQueryMatches = credentialQueryMatches,
-                satisfiableCredentialSetQueries = satisfiableCredentialSetQueries
+                satisfiableCredentialSetQueries = satisfiableCredentialSetQueryOptions
             )
         }
 
@@ -177,22 +163,34 @@ data class DCQLQuery(
             }
         }
 
-        fun <Credential : Any> findSatisfactoryCredentialSetQueries(
+        fun <Credential : Any> findSatisfactoryCredentialSetQueryOptions(
             credentialQueryMatches: Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>>,
-            request: List<DCQLCredentialSetQuery>,
+            requestedCredentialSetQueries: List<DCQLCredentialSetQuery>,
         ): KmmResult<List<DCQLCredentialSetQuery>> = catching {
-            request.map { credentialSetQuery ->
-                credentialSetQuery.copy(
-                    options = credentialSetQuery.options.filter { option ->
-                        option.all {
-                            it in credentialQueryMatches
-                        }
+            requestedCredentialSetQueries.mapNotNull { credentialSetQuery ->
+                catching<DCQLCredentialSetQuery?> {
+                    credentialSetQuery.copy(
+                        options = credentialSetQuery.options.filter { option ->
+                            option.all {
+                                it in credentialQueryMatches
+                            }
+                        }.toNonEmptyList()
+                    )
+                }.getOrElse {
+                    if(credentialSetQuery.required) {
+                        throw IllegalArgumentException("Required credential set query is not satisfiable.", it)
                     }
-                ).also {
-                    if (it.required && it.options.isEmpty()) {
-                        throw IllegalArgumentException("Presentation requirements cannot be satisfied.")
-                    }
+                    null
                 }
+            }
+        }
+
+        fun isSatisfactoryCredentialSubmission(
+            credentialSubmissions: Set<DCQLCredentialQueryIdentifier>,
+            requestedCredentialSetQueries: List<DCQLCredentialSetQuery>,
+        ): Boolean = requestedCredentialSetQueries.all {
+            !it.required || it.options.any {
+                credentialSubmissions.containsAll(it)
             }
         }
     }

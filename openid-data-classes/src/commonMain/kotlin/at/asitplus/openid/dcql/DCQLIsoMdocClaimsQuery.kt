@@ -82,7 +82,6 @@ data class DCQLIsoMdocClaimsQuery(
             catching {
                 when (it) {
                     is DCQLExpectedClaimValue.IntegerValue -> when (value) {
-                        is Boolean -> value == it.long
                         is Byte -> value == it.long
                         is UByte -> value == it.long
                         is Short -> value == it.long

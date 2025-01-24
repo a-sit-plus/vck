@@ -30,7 +30,7 @@ class DCQLCredentialQueryTest : FreeSpec({
                 Random.nextBytes(32).encodeToString(Base64UrlStrict)
             ),
             format = CredentialFormatEnum.VC_SD_JWT,
-            claims = listOf(
+            claims = DCQLClaimsQueryList(
                 DCQLJsonClaimsQuery(
                     path = DCQLClaimsPathPointer(null)
                 )

@@ -7,12 +7,10 @@ import kotlin.jvm.JvmInline
 @Serializable(with = DCQLCredentialSetQueryPurposeSerializer::class)
 sealed interface DCQLCredentialSetQueryPurpose {
     @JvmInline
-    value class PurposeObject(val jsonObject: JsonObject) :
-        DCQLCredentialSetQueryPurpose
+    value class PurposeObject(val jsonObject: JsonObject) : DCQLCredentialSetQueryPurpose
 
     @JvmInline
-    value class PurposeString(val string: String) :
-        DCQLCredentialSetQueryPurpose
+    value class PurposeString(val string: String) : DCQLCredentialSetQueryPurpose
 
     sealed interface PurposeNumber : DCQLCredentialSetQueryPurpose
 

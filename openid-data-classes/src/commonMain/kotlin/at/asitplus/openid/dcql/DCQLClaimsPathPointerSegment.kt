@@ -37,7 +37,6 @@ sealed interface DCQLClaimsPathPointerSegment {
         }
     }
 
-    @Serializable(with = DCQLClaimsPathPointerNullSegmentSerializer::class)
     data object NullSegment : DCQLClaimsPathPointerSegment {
         override fun query(nodeList: NodeList) = nodeList.mapNotNull { claimQueryResult ->
             catching {

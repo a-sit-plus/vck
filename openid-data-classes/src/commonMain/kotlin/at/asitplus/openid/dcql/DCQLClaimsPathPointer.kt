@@ -1,11 +1,12 @@
 package at.asitplus.openid.dcql
 
+import at.asitplus.data.collections.NonEmptyList
+import at.asitplus.data.collections.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NodeListEntry
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
-import kotlin.jvm.JvmInline
 
 /**
  *  6.4. Claims Path Pointer
@@ -23,43 +24,54 @@ import kotlin.jvm.JvmInline
  * MUST NOT point to the same claim more than once in a single query. Wallets SHOULD ignore such
  * duplicate claim queries.
  */
-@Serializable
-@JvmInline
-value class DCQLClaimsPathPointer(
-    val segments: List<DCQLClaimsPathPointerSegment>,
-) {
-    init {
-        validate()
-    }
+@Serializable(with = DCQLClaimsPathPointerInlineSerializer::class)
+class DCQLClaimsPathPointer(
+    val segments: NonEmptyList<DCQLClaimsPathPointerSegment>,
+): List<DCQLClaimsPathPointerSegment> by segments {
+    constructor(vararg segments: DCQLClaimsPathPointerSegment) : this(segments.toList().toNonEmptyList())
 
     constructor(startSegment: String) : this(
-        listOf(DCQLClaimsPathPointerSegment.NameSegment(startSegment))
+        DCQLClaimsPathPointerSegment.NameSegment(startSegment)
     )
 
     constructor(startSegment: UInt) : this(
-        listOf(DCQLClaimsPathPointerSegment.IndexSegment(startSegment))
+        DCQLClaimsPathPointerSegment.IndexSegment(startSegment)
     )
 
     constructor(@Suppress("UNUSED_PARAMETER") nullValue: Nothing?) : this(
-        listOf(DCQLClaimsPathPointerSegment.NullSegment)
+        DCQLClaimsPathPointerSegment.NullSegment
     )
 
 
     operator fun plus(other: DCQLClaimsPathPointer) = DCQLClaimsPathPointer(
-        segments + other.segments
+        (segments + other.segments).toNonEmptyList()
     )
 
     operator fun plus(key: String) = DCQLClaimsPathPointer(
-        segments + DCQLClaimsPathPointerSegment.NameSegment(key)
+        (segments + DCQLClaimsPathPointerSegment.NameSegment(key)).toNonEmptyList()
     )
 
     operator fun plus(index: UInt) = DCQLClaimsPathPointer(
-        segments + DCQLClaimsPathPointerSegment.IndexSegment(index)
+        (segments + DCQLClaimsPathPointerSegment.IndexSegment(index)).toNonEmptyList()
     )
 
     operator fun plus(@Suppress("UNUSED_PARAMETER") nullValue: Nothing?) = DCQLClaimsPathPointer(
-        segments + DCQLClaimsPathPointerSegment.NullSegment
+        (segments + DCQLClaimsPathPointerSegment.NullSegment).toNonEmptyList()
     )
+
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as DCQLClaimsPathPointer
+
+        return segments == other.segments
+    }
+
+    override fun hashCode(): Int {
+        return segments.hashCode()
+    }
 
     /**
      *  6.4.1. Processing
@@ -89,10 +101,5 @@ value class DCQLClaimsPathPointer(
         }
         return nodeList
     }
-
-    private fun validate() {
-        if (segments.isEmpty()) {
-            throw IllegalArgumentException("Value must not be the empty list.")
-        }
-    }
 }
+
