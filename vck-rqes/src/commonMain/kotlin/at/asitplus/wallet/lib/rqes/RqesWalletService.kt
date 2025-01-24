@@ -5,8 +5,6 @@ import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.Hashes
-import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
-import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.rqes.CredentialInfo
@@ -19,15 +17,17 @@ import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
-import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
+import at.asitplus.wallet.lib.rqes.helper.OAuth2RqesParameters
 import com.benasher44.uuid.uuid4
+import io.ktor.util.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
 /**
@@ -49,11 +49,6 @@ class RqesWalletService(
         val signedEnvelopeProperty: SignedEnvelopeProperty? = null,
     )
 
-    data class CryptoProperties(
-        val signAlgorithm: X509SignatureAlgorithm = X509SignatureAlgorithm.ES256,
-        val signAlgoParam: Asn1Element? = null,
-    )
-
     data class SigningCredential(
         val credentialId: String,
         val certificates: List<X509Certificate>,
@@ -61,9 +56,6 @@ class RqesWalletService(
     )
 
     var signatureProperties = SignatureProperties()
-        private set
-
-    var cryptoProperties = CryptoProperties()
         private set
 
     //TODO check if [CryptoProperties] align with signingCredential otw change it
@@ -101,8 +93,6 @@ class RqesWalletService(
 
         require(signingAlgos.isNotEmpty())
 
-        updateCryptoProperties(signingAlgos.first(), null) //TODO find way to set crypto param if necessary
-
         signingCredential = SigningCredential(
             credentialId = credentialInfo.credentialID!!,
             certificates = credentialInfo.certParameters!!.certificates!!,
@@ -116,34 +106,27 @@ class RqesWalletService(
         conformanceLevel: ConformanceLevel? = null,
         signedEnvelopeProperty: SignedEnvelopeProperty? = null,
     ) = signatureProperties.copy(
-            signatureFormat = signatureFormat ?: signatureProperties.signatureFormat,
-            conformanceLevel = conformanceLevel ?: signatureProperties.conformanceLevel,
-            signedEnvelopeProperty = signedEnvelopeProperty ?: signatureProperties.signedEnvelopeProperty
-        ).also {
-            if (it.signedEnvelopeProperty?.viableSignatureFormats?.contains(it.signatureFormat) == false)
-                throw IllegalArgumentException("Signed envelope property ${it.signedEnvelopeProperty} is not supported by signature format ${it.signatureFormat}")
-            signatureProperties = it
-        }
+        signatureFormat = signatureFormat ?: signatureProperties.signatureFormat,
+        conformanceLevel = conformanceLevel ?: signatureProperties.conformanceLevel,
+        signedEnvelopeProperty = signedEnvelopeProperty ?: signatureProperties.signedEnvelopeProperty
+    ).also {
+        if (it.signedEnvelopeProperty?.viableSignatureFormats?.contains(it.signatureFormat) == false)
+            throw IllegalArgumentException("Signed envelope property ${it.signedEnvelopeProperty} is not supported by signature format ${it.signatureFormat}")
+        signatureProperties = it
+    }
 
-    suspend fun updateCryptoProperties(
-        signAlgorithm: X509SignatureAlgorithm? = null,
-        signAlgoParam: Asn1Element? = null,
-    ) = cryptoProperties.copy(
-        signAlgorithm = signAlgorithm ?: cryptoProperties.signAlgorithm,
-        signAlgoParam = signAlgoParam ?: cryptoProperties.signAlgoParam
-    ).also { cryptoProperties = it }
-
+    /**
+     * Here [OAuthDocumentDigest.hash] is the DTBS/R and will be hashed again with [hashAlgorithmOid]
+     */
     suspend fun getCscAuthenticationDetails(
-        /**
-         * Here [OAuthDocumentDigest.hash] is the DTBS/R
-         */
         documentDigests: Collection<OAuthDocumentDigest>,
+        hashAlgorithm: Digest,
     ): AuthorizationDetails =
         signingCredential?.let { signingCred ->
             CscAuthorizationDetails(
                 credentialID = signingCred.credentialId,
                 signatureQualifier = signatureProperties.signatureQualifier,
-                hashAlgorithmOid = cryptoProperties.signAlgorithm.digest.oid,
+                hashAlgorithmOid = hashAlgorithm.oid,
                 documentDigests = documentDigests
             )
         } ?: throw Exception("Please set a signing credential before using CSC functionality.")
@@ -151,31 +134,51 @@ class RqesWalletService(
 
     suspend fun getCscDocumentDigests(
         documentDigests: Collection<OAuthDocumentDigest>,
+        signatureAlgorithm: X509SignatureAlgorithm,
     ): CscDocumentDigest =
         CscDocumentDigest(
             hashes = documentDigests.map { it.hash },
             signatureFormat = signatureProperties.signatureFormat,
             conformanceLevel = signatureProperties.conformanceLevel,
-            signAlgoOid = cryptoProperties.signAlgorithm.oid,
-            signAlgoParams = cryptoProperties.signAlgoParam,
+            signAlgoOid = signatureAlgorithm.oid,
             signedEnvelopeProperty = signatureProperties.signedEnvelopeProperty
         )
 
-
-    suspend fun createOAuth2AuthenticationRequest(
-        scope: RqesOauthScope,
+    suspend fun createServiceAuthenticationRequest(
         redirectUrl: String = this.redirectUrl,
-        authorizationDetails: Collection<AuthorizationDetails>? = null,
+        optionalParameters: OAuth2RqesParameters.Optional? = null,
     ): AuthenticationRequestParameters =
-        oauth2Client.createCscAuthnRequest(
+        oauth2Client.createAuthRequest(
             state = uuid4().toString(),
-            authorizationDetails = authorizationDetails?.toSet(),
-            scope = scope.value,
+            scope = RqesOauthScope.SERVICE.value,
+        ).enrichAuthRequest(
             redirectUrl = redirectUrl,
-            credentialId = if (scope == RqesOauthScope.CREDENTIAL) signingCredential?.credentialId?.decodeToByteArray(Base64UrlStrict)
-                ?: throw Exception("Please set a signing credential before using CSC functionality.") else null,
-            signatureQualifier = if (scope == RqesOauthScope.CREDENTIAL) signatureProperties.signatureQualifier else null,
-            numSignatures = if (scope == RqesOauthScope.CREDENTIAL) 1 else null //TODO count #signatures
+            optionalParameters = optionalParameters
+        )
+
+    suspend fun createCredentialAuthenticationRequest(
+        documentDigests: Collection<OAuthDocumentDigest>,
+        redirectUrl: String = this.redirectUrl,
+        hashAlgorithm: Digest,
+        numSignatures: Int,
+        hashes: Hashes,
+        optionalParameters: OAuth2RqesParameters.Optional? = null,
+    ): AuthenticationRequestParameters =
+        oauth2Client.createAuthRequest(
+            state = uuid4().toString(),
+            authorizationDetails = setOf(getCscAuthenticationDetails(documentDigests, hashAlgorithm)),
+            scope = RqesOauthScope.CREDENTIAL.value,
+        ).enrichAuthRequest(
+            redirectUrl = redirectUrl,
+            requiredParameters = OAuth2RqesParameters.CredentialRequired(
+                credentialID = signingCredential?.credentialId?.decodeToByteArray(Base64UrlStrict)
+                    ?: throw Exception("Please set a signing credential before using CSC functionality."),
+                signatureQualifier = signatureProperties.signatureQualifier,
+                numSignatures = numSignatures,
+                hashes = hashes,
+                hashAlgorithmOid = hashAlgorithm.oid,
+            ),
+            optionalParameters = optionalParameters
         )
 
     suspend fun createOAuth2TokenRequest(
@@ -192,36 +195,32 @@ class RqesWalletService(
     suspend fun createSignHashRequestParameters(
         dtbsr: Hashes,
         sad: String,
-    ): CscSignatureRequestParameters = signingCredential?.credentialId?.let {
+        signatureAlgorithm: X509SignatureAlgorithm,
+    ): CscSignatureRequestParameters = signingCredential?.let {
+        require(it.supportedSigningAlgorithms.contains(signatureAlgorithm))
         SignHashParameters(
-            credentialId = it,
+            credentialId = it.credentialId,
             sad = sad,
             hashes = dtbsr,
-            signAlgoOid = cryptoProperties.signAlgorithm.oid,
+            signAlgoOid = signatureAlgorithm.oid,
         )
     } ?: throw Exception("Please set a signing credential before using CSC functionality.")
 }
 
-suspend fun OAuth2Client.createCscAuthnRequest(
-    state: String,
-    authorizationDetails: Set<AuthorizationDetails>? = null,
-    scope: String? = null,
-    requestUri: String? = null,
-    redirectUrl: String? = this.redirectUrl,
-    credentialId: ByteArray? = null,
-    signatureQualifier: SignatureQualifier? = null,
-    numSignatures: Int? = null,
-) = AuthenticationRequestParameters(
-    responseType = GRANT_TYPE_CODE,
-    state = state,
-    clientId = clientId,
-    authorizationDetails = authorizationDetails,
-    scope = scope,
-    redirectUrl = redirectUrl,
-    codeChallenge = generateCodeVerifier(state),
-    codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256,
-    requestUri = requestUri,
-    credentialID = credentialId,
-    signatureQualifier = signatureQualifier,
-    numSignatures = numSignatures,
-)
+private suspend fun AuthenticationRequestParameters.enrichAuthRequest(
+    redirectUrl: String?,
+    requiredParameters: OAuth2RqesParameters.CredentialRequired? = null,
+    optionalParameters: OAuth2RqesParameters.Optional? = null,
+): AuthenticationRequestParameters =
+    this.copy(
+        redirectUrl = redirectUrl,
+        lang = optionalParameters?.lang,
+        credentialID = requiredParameters?.credentialID,
+        signatureQualifier = requiredParameters?.signatureQualifier,
+        numSignatures = requiredParameters?.numSignatures,
+        hashes = requiredParameters?.hashes,
+        hashAlgorithmOid = requiredParameters?.hashAlgorithmOid,
+        description = optionalParameters?.description,
+        accountToken = optionalParameters?.accountToken,
+        clientData = optionalParameters?.clientData,
+    )

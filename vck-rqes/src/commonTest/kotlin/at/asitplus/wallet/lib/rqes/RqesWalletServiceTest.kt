@@ -17,8 +17,10 @@ import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.serializers.Base64X509CertificateSerializer
 import at.asitplus.rqes.serializers.CscSignatureRequestParameterSerializer
+import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
+import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -26,6 +28,7 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -149,7 +152,7 @@ class RqesWalletServiceTest : FreeSpec({
 
         "CscAuthDetails respects SigningCredential" {
             val digests = dummyValueProvider.getDocumentDigests()
-            val testAuthDetails = rqesWalletService.getCscAuthenticationDetails(digests)
+            val testAuthDetails = rqesWalletService.getCscAuthenticationDetails(digests, validSigningAlgo.digest)
             with(testAuthDetails as? CscAuthorizationDetails) {
                 this shouldNotBe null
                 this!!.credentialID shouldBe validCert.credentialID
@@ -167,7 +170,10 @@ class RqesWalletServiceTest : FreeSpec({
 
         "CscDocumentDigest respects SigningCredential" {
             val digests = dummyValueProvider.getDocumentDigests()
-            val testDocumentDigests = rqesWalletService.getCscDocumentDigests(digests)
+            val testDocumentDigests = rqesWalletService.getCscDocumentDigests(
+                digests,
+                rqesWalletService.signingCredential!!.supportedSigningAlgorithms.first()
+            )
             with(testDocumentDigests as? CscDocumentDigest) {
                 this shouldNotBe null
                 this!!.signAlgoOid shouldBe validSigningAlgo.oid
@@ -183,7 +189,7 @@ class RqesWalletServiceTest : FreeSpec({
         }
 
         "AuthenticationRequest SERVICE" {
-            val request = rqesWalletService.createOAuth2AuthenticationRequest(RqesWalletService.RqesOauthScope.SERVICE)
+            val request = rqesWalletService.createServiceAuthenticationRequest()
             request.credentialID shouldBe null
             request.signatureQualifier shouldBe null
             request.numSignatures shouldBe null
@@ -196,16 +202,28 @@ class RqesWalletServiceTest : FreeSpec({
         }
 
         "AuthenticationRequest CREDENTIAL" {
-            val authDetails =
-                (1..10).map { rqesWalletService.getCscAuthenticationDetails(dummyValueProvider.getDocumentDigests()) }
-            val request = rqesWalletService.createOAuth2AuthenticationRequest(
-                RqesWalletService.RqesOauthScope.CREDENTIAL, "someOtherURL", authDetails
+            val documentDigests = dummyValueProvider.getDocumentDigests()
+            val request = rqesWalletService.createCredentialAuthenticationRequest(
+                documentDigests = documentDigests,
+                redirectUrl = "someOtherURL",
+                hashAlgorithm = Digest.entries.random(),
+                numSignatures = 1,
+                hashes = listOf(uuid4().bytes),
+                optionalParameters = null
             )
             request.credentialID?.encodeToString(Base64UrlStrict) shouldBe validCert.credentialID
+
             request.signatureQualifier shouldBe SignatureQualifier.EU_EIDAS_QES
             request.numSignatures shouldNotBe null
             request.redirectUrl shouldBe "someOtherURL"
-            request.authorizationDetails shouldBe authDetails
+            request.authorizationDetails shouldNotBe null
+
+            request.authorizationDetails?.onEach {
+                with(it as? CscAuthorizationDetails) {
+                    this shouldNotBe null
+                    this?.documentDigests shouldBe documentDigests
+                }
+            }
 
             val serialized = vckJsonSerializer.encodeToString(AuthenticationRequestParameters.serializer(), request)
             val deserialized =
@@ -215,16 +233,19 @@ class RqesWalletServiceTest : FreeSpec({
         }
 
         "TokenRequest" {
-            val authDetails =
-                (1..10).map { rqesWalletService.getCscAuthenticationDetails(dummyValueProvider.getDocumentDigests()) }
+            val documentDigests = dummyValueProvider.getDocumentDigests()
             val request = rqesWalletService.createOAuth2TokenRequest(
                 state = uuid4().toString(),
                 authorization = OAuth2Client.AuthorizationForToken.Code(uuid4().toString()),
-                authorizationDetails = authDetails.toSet()
+                authorizationDetails = setOf(
+                    rqesWalletService.getCscAuthenticationDetails(
+                        documentDigests,
+                        Digest.entries.random(),
+                    )
+                )
             )
-            request.authorizationDetails?.withIndex()?.forEach { (i, v) ->
-                v shouldBe authDetails[i]
-            }
+
+            request.authorizationDetails shouldNotBe null
 
             val serialized = vckJsonSerializer.encodeToString(TokenRequestParameters.serializer(), request)
             val deserialized = vckJsonSerializer.decodeFromString(TokenRequestParameters.serializer(), serialized)
@@ -236,7 +257,9 @@ class RqesWalletServiceTest : FreeSpec({
             val request = rqesWalletService.createSignHashRequestParameters(
                 dtbsr = listOf(uuid4().bytes),
                 sad = uuid4().toString(),
+                signatureAlgorithm = rqesWalletService.signingCredential!!.supportedSigningAlgorithms.first(),
             )
+
             with(request as? SignHashParameters) {
                 this shouldNotBe null
                 this!!.credentialId shouldBe validCert.credentialID

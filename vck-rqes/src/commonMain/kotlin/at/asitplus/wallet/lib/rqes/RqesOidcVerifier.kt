@@ -27,7 +27,7 @@ import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptionsInterface
-import at.asitplus.wallet.lib.rqes.helper.RqesParameters
+import at.asitplus.wallet.lib.rqes.helper.Oid4VpRqesParameters
 import kotlinx.datetime.Clock
 
 /**
@@ -62,7 +62,7 @@ class RqesOidcVerifier(
      */
     data class ExtendedRequestOptions(
         val baseRequestOptions: RequestOptions,
-        val rqesParameters: RqesParameters,
+        val rqesParameters: Oid4VpRqesParameters,
     ) : RequestOptionsInterface by baseRequestOptions {
         override fun toInputDescriptor(
             containerJwt: FormatContainerJwt,
@@ -72,7 +72,7 @@ class RqesOidcVerifier(
                 id = requestOptionCredential.buildId(),
                 format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
                 constraints = requestOptionCredential.toConstraint(),
-                transactionData = if (rqesParameters is RqesParameters.CscRqesParameters) listOf(rqesParameters.toTransactionData()) else null
+                transactionData = rqesParameters.transactionData.toList()
             )
         }
     }
@@ -83,28 +83,14 @@ class RqesOidcVerifier(
     ): AuthenticationRequestParameters = with(requestOptions) {
         when (this) {
             is RequestOptions -> params
-            is ExtendedRequestOptions -> when (this.rqesParameters) {
-                is RqesParameters.CscRqesParameters -> params.copy(
-                    lang = this.rqesParameters.lang,
-                    credentialID = this.rqesParameters.credentialID,
-                    signatureQualifier = this.rqesParameters.signatureQualifier,
-                    numSignatures = this.rqesParameters.numSignatures,
-                    hashes = this.rqesParameters.hashes,
-                    hashAlgorithmOid = this.rqesParameters.hashAlgorithmOid,
-                    description = this.rqesParameters.description,
-                    accountToken = this.rqesParameters.accountToken,
-                    clientData = this.rqesParameters.clientData,
-                )
-
-                is RqesParameters.Oid4VpRqesParameters -> params.copy(
-                    transactionData = this.rqesParameters.transactionData.map {
-                        vckJsonSerializer.encodeToString(
-                            TransactionData.serializer(),
-                            it
-                        )
-                    }.toSet()
-                )
-            }
+            is ExtendedRequestOptions -> params.copy(
+                transactionData = this.rqesParameters.transactionData.map {
+                    vckJsonSerializer.encodeToString(
+                        TransactionData.serializer(),
+                        it
+                    )
+                }.toSet()
+            )
 
             else -> throw NotImplementedError("Unknown RequestOption class: ${this::class}")
         }
