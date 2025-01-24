@@ -1,16 +1,11 @@
 package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.Hashes
-import at.asitplus.openid.SignatureQualifier
 import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.TransactionData
-import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
-import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -32,6 +27,7 @@ import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptionsInterface
+import at.asitplus.wallet.lib.rqes.helper.RqesParameters
 import kotlinx.datetime.Clock
 
 /**
@@ -61,106 +57,56 @@ class RqesOidcVerifier(
     nonceService,
     stateToAuthnRequestStore
 ) {
-
+    /**
+     * ExtendedRequestOptions cannot generate DifInputDescriptors!
+     */
     data class ExtendedRequestOptions(
         val baseRequestOptions: RequestOptions,
-        val rqesParameters: RqesParameters? = null,
+        val rqesParameters: RqesParameters,
     ) : RequestOptionsInterface by baseRequestOptions {
         override fun toInputDescriptor(
             containerJwt: FormatContainerJwt,
             containerSdJwt: FormatContainerSdJwt,
         ): List<InputDescriptor> = credentials.map { requestOptionCredential ->
-            rqesParameters?.let { parameter ->
-                val deserialized =
-                    parameter.transactionData.map {
-                        vckJsonSerializer.decodeFromString(
-                            TransactionData.serializer(),
-                            it
-                        )
-                    }
-                QesInputDescriptor(
-                    id = requestOptionCredential.buildId(),
-                    format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
-                    constraints = requestOptionCredential.toConstraint(),
-                    transactionData = deserialized
-                )
-            } ?: DifInputDescriptor(
+            QesInputDescriptor(
                 id = requestOptionCredential.buildId(),
                 format = requestOptionCredential.toFormatHolder(containerJwt, containerSdJwt),
                 constraints = requestOptionCredential.toConstraint(),
+                transactionData = if (rqesParameters is RqesParameters.CscRqesParameters) listOf(rqesParameters.toTransactionData()) else null
             )
-        }
-    }
-
-    /**
-     * Parameters defined in the CSC extension of [AuthenticationRequestParameters]
-     */
-    data class RqesParameters(
-        val transactionData: Set<String>,
-        val lang: String? = null,
-        val credentialID: ByteArray? = null,
-        val signatureQualifier: SignatureQualifier? = null,
-        val numSignatures: Int? = null,
-        val hashes: Hashes? = null,
-        val hashAlgorithmOid: ObjectIdentifier? = null,
-        val description: String? = null,
-        val accountToken: JsonWebToken? = null,
-        val clientData: String? = null,
-    ) {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other == null || this::class != other::class) return false
-
-            other as RqesParameters
-
-            if (numSignatures != other.numSignatures) return false
-            if (lang != other.lang) return false
-            if (credentialID != null) {
-                if (other.credentialID == null) return false
-                if (!credentialID.contentEquals(other.credentialID)) return false
-            } else if (other.credentialID != null) return false
-            if (signatureQualifier != other.signatureQualifier) return false
-            if (hashes != other.hashes) return false
-            if (hashAlgorithmOid != other.hashAlgorithmOid) return false
-            if (description != other.description) return false
-            if (accountToken != other.accountToken) return false
-            if (clientData != other.clientData) return false
-            if (transactionData != other.transactionData) return false
-
-            return true
-        }
-
-        override fun hashCode(): Int {
-            var result = numSignatures ?: 0
-            result = 31 * result + (lang?.hashCode() ?: 0)
-            result = 31 * result + (credentialID?.contentHashCode() ?: 0)
-            result = 31 * result + (signatureQualifier?.hashCode() ?: 0)
-            result = 31 * result + (hashes?.hashCode() ?: 0)
-            result = 31 * result + (hashAlgorithmOid?.hashCode() ?: 0)
-            result = 31 * result + (description?.hashCode() ?: 0)
-            result = 31 * result + (accountToken?.hashCode() ?: 0)
-            result = 31 * result + (clientData?.hashCode() ?: 0)
-            result = 31 * result + (transactionData?.hashCode() ?: 0)
-            return result
         }
     }
 
     override suspend fun enrichAuthnRequest(
         params: AuthenticationRequestParameters,
         requestOptions: RequestOptionsInterface,
-    ): AuthenticationRequestParameters = with(requestOptions as? ExtendedRequestOptions) {
-        params.copy(
-            lang = this?.rqesParameters?.lang,
-            credentialID = this?.rqesParameters?.credentialID,
-            signatureQualifier = this?.rqesParameters?.signatureQualifier,
-            numSignatures = this?.rqesParameters?.numSignatures,
-            hashes = this?.rqesParameters?.hashes,
-            hashAlgorithmOid = this?.rqesParameters?.hashAlgorithmOid,
-            description = this?.rqesParameters?.description,
-            accountToken = this?.rqesParameters?.accountToken,
-            clientData = this?.rqesParameters?.clientData,
-            transactionData = this?.rqesParameters?.transactionData,
-        )
-    }
+    ): AuthenticationRequestParameters = with(requestOptions) {
+        when (this) {
+            is RequestOptions -> params
+            is ExtendedRequestOptions -> when (this.rqesParameters) {
+                is RqesParameters.CscRqesParameters -> params.copy(
+                    lang = this.rqesParameters.lang,
+                    credentialID = this.rqesParameters.credentialID,
+                    signatureQualifier = this.rqesParameters.signatureQualifier,
+                    numSignatures = this.rqesParameters.numSignatures,
+                    hashes = this.rqesParameters.hashes,
+                    hashAlgorithmOid = this.rqesParameters.hashAlgorithmOid,
+                    description = this.rqesParameters.description,
+                    accountToken = this.rqesParameters.accountToken,
+                    clientData = this.rqesParameters.clientData,
+                )
 
+                is RqesParameters.Oid4VpRqesParameters -> params.copy(
+                    transactionData = this.rqesParameters.transactionData.map {
+                        vckJsonSerializer.encodeToString(
+                            TransactionData.serializer(),
+                            it
+                        )
+                    }.toSet()
+                )
+            }
+
+            else -> throw NotImplementedError("Unknown RequestOption class: ${this::class}")
+        }
+    }
 }

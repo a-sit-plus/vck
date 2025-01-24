@@ -517,7 +517,7 @@ private val defaultTransactionData = setOf(
     ).getOrThrow()
 )
 
-private val defaultRqesParameters = RqesOidcVerifier.RqesParameters(
+private val defaultRqesParameters = RqesOidcVerifier.Oid4VpRqesParameters(
     transactionData = defaultTransactionData.map { vckJsonSerializer.encodeToString(TransactionData.serializer(), it) }.toSet(),
     credentialID = uuid4().bytes,
     signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
