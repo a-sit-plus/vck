@@ -14,9 +14,7 @@ import kotlin.jvm.JvmInline
 value class DCQLClaimsQueryIdentifier(val string: String) {
     init {
         string.requireIsNotEmpty()
-        require(string.all {
-            it == '_' || it == '-' || it.isLetterOrDigit()
-        }) {
+        require(string.all { it == '_' || it == '-' || it.isLetterOrDigit() }) {
             "Claims query identifier must only contain alphanumeric, underscore (_) or hyphen (-) characters."
         }
     }

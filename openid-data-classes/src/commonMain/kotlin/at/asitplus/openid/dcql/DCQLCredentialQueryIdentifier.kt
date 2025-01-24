@@ -15,9 +15,7 @@ import kotlin.jvm.JvmInline
 value class DCQLCredentialQueryIdentifier(val string: String) {
     init {
         string.requireIsNotEmpty()
-        require(string.all {
-            it == '_' || it == '-' || it.isLetterOrDigit()
-        }) {
+        require(string.all { it == '_' || it == '-' || it.isLetterOrDigit() }) {
             "Credential query identifier must only contain alphanumeric, underscore (_) or hyphen (-) characters."
         }
     }
