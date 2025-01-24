@@ -56,7 +56,7 @@ class VerifierAttestationTest : FreeSpec({
         val attestationJwt = buildAttestationJwt(sprsCryptoService, clientId, verifierKeyMaterial)
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, clientId, redirectUrl),
+            clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, redirectUrl),
         )
         val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequest(
             requestOptionsAtomicAttribute(), OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)
@@ -82,7 +82,7 @@ class VerifierAttestationTest : FreeSpec({
 
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
-            clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, clientId, redirectUrl)
+            clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, redirectUrl)
         )
         val authnRequestWithRequestObject = verifierOid4vp.createAuthnRequest(
             requestOptionsAtomicAttribute(), OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)

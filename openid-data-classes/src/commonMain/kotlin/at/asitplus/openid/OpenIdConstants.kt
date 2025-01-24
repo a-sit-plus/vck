@@ -115,7 +115,11 @@ object OpenIdConstants {
      */
     @Serializable(with = ClientIdScheme.Serializer::class)
     sealed class ClientIdScheme(val stringRepresentation: String) {
+
+        val prefix = "$stringRepresentation:"
+
         override fun toString(): String = this::class.simpleName + "(" + stringRepresentation + ")"
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is ClientIdScheme) return false

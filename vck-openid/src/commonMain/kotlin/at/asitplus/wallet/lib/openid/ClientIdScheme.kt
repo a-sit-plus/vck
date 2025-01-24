@@ -7,8 +7,8 @@ import at.asitplus.signum.indispensable.pki.CertificateChain
 
 sealed class ClientIdScheme(
     val scheme: OpenIdConstants.ClientIdScheme,
-    open val clientId: String,
-    open val redirectUri: String,
+    val clientId: String,
+    val redirectUri: String,
 ) {
     /**
      * This Client Identifier Scheme allows the Verifier to authenticate using a JWT that is bound to a certain
@@ -23,13 +23,12 @@ sealed class ClientIdScheme(
      * parameter value exactly matches one of the `redirect_uris` claim entries. All Verifier metadata other than
      * the public key MUST be obtained from the `client_metadata` parameter.
      */
-    data class VerifierAttestation(
+    class VerifierAttestation(
         val attestationJwt: JwsSigned<JsonWebToken>,
-        override val clientId: String,
-        override val redirectUri: String,
+        redirectUri: String,
     ) : ClientIdScheme(
         scheme = OpenIdConstants.ClientIdScheme.VerifierAttestation,
-        clientId = attestationJwt.payload.subject!!,
+        clientId = OpenIdConstants.ClientIdScheme.VerifierAttestation.prefix + attestationJwt.payload.subject!!,
         redirectUri = redirectUri
     ) {
         init {
@@ -51,15 +50,19 @@ sealed class ClientIdScheme(
      * to freely choose the `redirect_uri` value. If not, the FQDN of the `redirect_uri` value MUST match the
      * Client Identifier.
      */
-    data class CertificateSanDns(
+    class CertificateSanDns(
         val chain: CertificateChain,
-        override val clientId: String,
-        override val redirectUri: String,
+        clientIdDnsName: String,
+        redirectUri: String,
     ) : ClientIdScheme(
         scheme = OpenIdConstants.ClientIdScheme.X509SanDns,
-        clientId = clientId,
+        clientId = OpenIdConstants.ClientIdScheme.X509SanDns.prefix + clientIdDnsName,
         redirectUri = redirectUri
-    )
+    ) {
+        init {
+            require(chain.first().tbsCertificate.subjectAlternativeNames?.dnsNames?.contains(clientIdDnsName) == true)
+        }
+    }
 
     /**
      * This value indicates that the Verifier's Redirect URI (or Response URI when Response Mode `direct_post` is
@@ -68,15 +71,15 @@ sealed class ClientIdScheme(
      * Mode `direct_post` is used). All Verifier metadata parameters MUST be passed using the `client_metadata`
      * parameter.
      */
-    data class RedirectUri(
-        override val clientId: String,
+    class RedirectUri(
+        redirectUri: String,
     ) : ClientIdScheme(
         scheme = OpenIdConstants.ClientIdScheme.RedirectUri,
-        clientId = clientId,
-        redirectUri = clientId
+        clientId = OpenIdConstants.ClientIdScheme.RedirectUri.prefix + redirectUri,
+        redirectUri = redirectUri
     ) {
         init {
-            require(clientId.contains(":/"))
+            require(redirectUri.contains(":/"))
         }
     }
 
@@ -85,9 +88,9 @@ sealed class ClientIdScheme(
      *  Wallet in advance of the Authorization Request. The Verifier metadata is obtained using RFC7591 or through
      *  out-of-band mechanisms.
      */
-    data class PreRegistered(
-        override val clientId: String,
-        override val redirectUri: String,
+    class PreRegistered(
+        clientId: String,
+        redirectUri: String,
     ) : ClientIdScheme(
         scheme = OpenIdConstants.ClientIdScheme.PreRegistered,
         clientId = clientId,
@@ -98,8 +101,4 @@ sealed class ClientIdScheme(
             require(redirectUri.contains(":/"))
         }
     }
-
-    val prefix = scheme.stringRepresentation + ":"
-    val clientIdWithPrefix: String by lazy { if (clientId.startsWith(prefix)) clientId else prefix + clientId }
-
 }

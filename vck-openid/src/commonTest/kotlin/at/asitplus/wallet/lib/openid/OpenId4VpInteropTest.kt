@@ -80,7 +80,7 @@ class OpenId4VpInteropTest : FreeSpec({
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             verifier = VerifierAgent(
-                identifier = clientIdScheme.clientIdWithPrefix,
+                identifier = clientIdScheme.clientId,
                 validator = Validator(
                     verifierJwsService = DefaultVerifierJwsService(publicKeyLookup = {
                         setOf(

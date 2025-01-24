@@ -48,7 +48,7 @@ import kotlin.time.toDuration
 class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientIdWithPrefix),
+    private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
     private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
@@ -86,7 +86,7 @@ class OpenId4VpVerifier(
      */
     val metadata by lazy {
         RelyingPartyMetadata(
-            redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.clientId),
+            redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
             jsonWebKeySet = JsonWebKeySet(listOf(keyMaterial.publicKey.toJsonWebKey())),
             subjectSyntaxTypesSupported = setOf(
                 OpenIdConstants.URN_TYPE_JWK_THUMBPRINT,
@@ -268,7 +268,7 @@ class OpenId4VpVerifier(
         requestObjectParameters: RequestObjectParameters? = null,
     ) = AuthenticationRequestParameters(
         responseType = requestOptions.responseType,
-        clientId = clientIdScheme.clientIdWithPrefix,
+        clientId = clientIdScheme.clientId,
         clientIdScheme = clientIdScheme.scheme, // still set this for our own older implementations
         redirectUrl = if (!requestOptions.isAnyDirectPost) clientIdScheme.redirectUri else null,
         responseUrl = requestOptions.responseUrl,
