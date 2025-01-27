@@ -14,6 +14,8 @@ enum class CredentialFormatEnum(val text: String) {
     JSON_LD("ldp_vc"),
     MSO_MDOC("mso_mdoc");
 
+    fun coerce() = if(this == VC_SD_JWT) DC_SD_JWT else this
+
     companion object {
         fun parse(text: String) = entries.firstOrNull { it.text == text }
     }

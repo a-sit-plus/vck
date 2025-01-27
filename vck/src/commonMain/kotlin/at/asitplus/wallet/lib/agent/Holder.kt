@@ -1,10 +1,18 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.dif.*
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.PresentationSubmission
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.CredentialPresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.iso.IssuerSigned
 
@@ -75,6 +83,28 @@ interface Holder {
     }
 
     /**
+     * Creates [PresentationResponseParameters] as specified using the parameter
+     * `credentialDisclosure`
+     *
+     * Fails in case the submission is not valid submission.
+     */
+    suspend fun createPresentation(
+        request: PresentationRequestParameters,
+        credentialPresentation: CredentialPresentation,
+    ): KmmResult<PresentationResponseParameters>
+
+    /**
+     * Creates [PresentationResponseParameters] using the default submission
+     *
+     * Fails in case the default submission is not valid submission.
+     */
+    suspend fun createDefaultPresentation(
+        request: PresentationRequestParameters,
+        credentialPresentationRequest: CredentialPresentationRequest,
+    ): KmmResult<PresentationResponseParameters>
+
+
+    /**
      * Creates [PresentationResponseParameters] (that is a list of [CreatePresentationResult] and a
      * [PresentationSubmission]) to match the [presentationDefinition].
      *
@@ -86,13 +116,13 @@ interface Holder {
      * @param pathAuthorizationValidator Provides the user of this library with a way to enforce
      *  authorization rules.
      */
+    @Deprecated("Replace with more general implementation due to increasing number of presentation mechanisms")
     suspend fun createPresentation(
         request: PresentationRequestParameters,
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder? = null,
         pathAuthorizationValidator: PathAuthorizationValidator? = null,
-    ): KmmResult<PresentationResponseParameters>
-
+    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters>
 
     /**
      * Creates [PresentationResponseParameters] (that is a list of [CreatePresentationResult] and a
@@ -105,11 +135,12 @@ interface Holder {
      * @param presentationSubmissionSelection a selection of input descriptors by `id` and
      *  corresponding credentials along with a description of the fields to be disclosed
      */
+    @Deprecated("Replace with more general implementation due to increasing number of presentation mechanisms")
     suspend fun createPresentation(
         request: PresentationRequestParameters,
         presentationDefinitionId: String?,
         presentationSubmissionSelection: Map<String, CredentialSubmission>,
-    ): KmmResult<PresentationResponseParameters>
+    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters>
 
     /**
      * Creates a mapping from the input descriptors of the presentation definition to matching
@@ -143,5 +174,10 @@ interface Holder {
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
     ): KmmResult<Map<ConstraintField, NodeList>>
 
+    /**
+     * Creates a mapping from the dcql credential query identifiers of the dcql query to matching
+     * credentials and the claims credential set queries to be satisfied.
+     */
+    suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>>
 }
 

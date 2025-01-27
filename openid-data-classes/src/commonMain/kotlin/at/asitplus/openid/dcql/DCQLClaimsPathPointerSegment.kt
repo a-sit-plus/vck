@@ -23,6 +23,10 @@ sealed interface DCQLClaimsPathPointerSegment {
                 )
             }.getOrNull()
         }
+
+        override fun toString(): String {
+            return super.toString() + "($name)"
+        }
     }
 
     @JvmInline
@@ -34,6 +38,10 @@ sealed interface DCQLClaimsPathPointerSegment {
                     value = it.value.jsonArray[index.toInt()]
                 )
             }.getOrNull()
+        }
+
+        override fun toString(): String {
+            return super.toString() + "($index)"
         }
     }
 

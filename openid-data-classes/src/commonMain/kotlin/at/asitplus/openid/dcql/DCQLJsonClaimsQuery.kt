@@ -63,11 +63,11 @@ data class DCQLJsonClaimsQuery(
         credential: Credential,
         credentialStructureExtractor: (Credential) -> DCQLCredentialClaimStructure.JsonBasedStructure,
         jsonBasedCredentialFormats: List<CredentialFormatEnum> = listOf(
-            CredentialFormatEnum.VC_SD_JWT,
+            CredentialFormatEnum.DC_SD_JWT,
             CredentialFormatEnum.JWT_VC,
         )
-    ): KmmResult<DCQLClaimsQueryResult> = catching {
-        if (credentialQuery.format !in jsonBasedCredentialFormats) {
+    ): KmmResult<DCQLClaimsQueryResult.JsonResult> = catching {
+        if (credentialQuery.format.coerce() !in jsonBasedCredentialFormats) {
             throw IllegalArgumentException("Inconsistent credential format and claims query")
         }
 

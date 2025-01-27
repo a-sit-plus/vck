@@ -1,5 +1,7 @@
 package at.asitplus.openid.dcql
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -15,5 +17,11 @@ data class DCQLIsoMdocCredentialMetadataAndValidityConstraints(
 ) : DCQLCredentialMetadataAndValidityConstraints {
     object SerialNames {
         const val DOCTYPE_VALUE = "doctype_value"
+    }
+
+    fun validate(actualDoctypeValue: String?): KmmResult<Unit> = catching {
+        if(doctypeValue != null && actualDoctypeValue != doctypeValue) {
+            throw IllegalArgumentException("Incompatible MDOC document type.")
+        }
     }
 }

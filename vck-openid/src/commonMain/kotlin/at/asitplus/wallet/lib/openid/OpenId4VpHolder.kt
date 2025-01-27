@@ -3,22 +3,39 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.IdTokenType
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenIdConstants.ClientIdScheme
 import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
+import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.RequestObjectParameters
+import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.SupportedAlgorithmsContainer
+import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CredentialSubmission
+import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.PresentationExchangeCredentialDisclosure
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
+import at.asitplus.wallet.lib.data.CredentialPresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
@@ -27,10 +44,7 @@ import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
 
 /**
  * Combines Verifiable Presentations with OpenId Connect.
@@ -194,7 +208,7 @@ class OpenId4VpHolder(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         val clientMetadata = params.parameters.loadClientMetadata()
-        val presentationDefinition = params.parameters.loadPresentationDefinition()
+        val presentationDefinition = params.parameters.loadCredentialRequest()
         authorizationRequestValidator.validateAuthorizationRequest(params)
         AuthorizationResponsePreparationState(presentationDefinition, clientMetadata)
     }
@@ -204,8 +218,9 @@ class OpenId4VpHolder(
      *
      * @param request the parsed authentication request
      * @param preparationState The preparation state from [startAuthorizationResponsePreparation]
-     * @param inputDescriptorSubmissions Map from input descriptor ids to [at.asitplus.wallet.lib.agent.CredentialSubmission]
+     * @param inputDescriptorSubmissions Map from input descriptor ids to [CredentialSubmission]
      */
+    @Deprecated("Use more general method.")
     suspend fun finalizeAuthorizationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         preparationState: AuthorizationResponsePreparationState,
@@ -222,11 +237,60 @@ class OpenId4VpHolder(
      * @param preparationState The preparation state from [startAuthorizationResponsePreparation]
      * @param inputDescriptorSubmissions Map from input descriptor ids to [CredentialSubmission]
      */
+    @Deprecated("Use more general method.")
     suspend fun <T : RequestParameters> finalizeAuthorizationResponseParameters(
         request: RequestParametersFrom<T>,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
-    ): KmmResult<AuthenticationResponse> = preparationState.catching {
+    ): KmmResult<AuthenticationResponse> = finalizeAuthorizationResponseParameters(
+        request = request,
+        clientMetadata = preparationState.clientMetadata,
+        credentialPresentation = preparationState.credentialPresentationRequest?.let {
+            when (it) {
+                is CredentialPresentationRequest.DCQLRequest -> CredentialPresentation.DCQLPresentation(
+                    presentationRequest = it,
+                    credentialQuerySubmissions = inputDescriptorSubmissions?.let {
+                        throw IllegalStateException("Invalid API call, try non-deprecated methods.")
+                    },
+                )
+
+                is CredentialPresentationRequest.PresentationExchangeRequest -> CredentialPresentation.PresentationExchangePresentation(
+                    presentationRequest = it,
+                    inputDescriptorSubmissions = inputDescriptorSubmissions?.mapValues {
+                        PresentationExchangeCredentialDisclosure(
+                            credential = it.value.credential,
+                            disclosedAttributes = it.value.disclosedAttributes,
+                        )
+                    },
+                )
+            }
+        }
+    )
+
+    /**
+     * Finalize the authorization response
+     *
+     * @param request the parsed authentication request
+     */
+    suspend fun <T : RequestParameters> finalizeAuthorizationResponseParameters(
+        request: RequestParametersFrom<T>,
+        clientMetadata: RelyingPartyMetadata?,
+        credentialPresentation: CredentialPresentation?,
+    ): KmmResult<AuthenticationResponseResult> =
+        finalizeAuthorizationResponseParameters(request, clientMetadata, credentialPresentation).map {
+            authenticationResponseFactory.createAuthenticationResponse(request, it)
+        }
+
+    /**
+     * Finalize the authorization response parameters
+     *
+     * @param request the parsed authentication request
+     */
+    suspend fun finalizeAuthorizationResponseParameters(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        clientMetadata: RelyingPartyMetadata?,
+        credentialPresentation: CredentialPresentation?,
+    ): KmmResult<AuthenticationResponse> = catching {
         val certKey = (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
             ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
@@ -235,31 +299,29 @@ class OpenId4VpHolder(
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
         val idToken = presentationFactory.createSignedIdToken(clock, agentPublicKey, request).getOrNull()?.serialize()
 
-        val resultContainer = presentationDefinition?.let {
-            presentationFactory.createPresentationExchangePresentation(
+        val resultContainer = credentialPresentation?.let {
+            presentationFactory.createPresentation(
                 holder = holder,
                 request = request.parameters,
                 audience = audience,
-                nonce = request.parameters.nonce!!,
-                presentationDefinition = presentationDefinition,
+                credentialPresentation = credentialPresentation,
                 clientMetadata = clientMetadata,
                 jsonWebKeys = jsonWebKeys,
-                inputDescriptorSubmissions = inputDescriptorSubmissions
             ).getOrThrow()
         }
-        val vpToken = resultContainer?.presentationResults?.map { it.toJsonPrimitive() }?.singleOrArray()
-        val presentationSubmission = resultContainer?.presentationSubmission
-        val mdocGeneratedNonce = resultContainer?.presentationResults
-            ?.filterIsInstance<CreatePresentationResult.DeviceResponse>()
-            ?.singleOrNull()
-            ?.mdocGeneratedNonce
+
         val parameters = AuthenticationResponseParameters(
             state = request.parameters.state,
             idToken = idToken,
-            vpToken = vpToken,
-            presentationSubmission = presentationSubmission,
+            vpToken = resultContainer?.vpToken,
+            presentationSubmission = resultContainer?.presentationSubmission,
         )
-        AuthenticationResponse(parameters, clientMetadata, jsonWebKeys, mdocGeneratedNonce)
+        AuthenticationResponse(
+            parameters,
+            clientMetadata,
+            jsonWebKeys,
+            resultContainer?.mdocGeneratedNonce
+        )
     }
 
     @Throws(OAuth2Exception::class)
@@ -279,12 +341,15 @@ class OpenId4VpHolder(
                     ?.let { JsonWebKeySet.deserialize(it).getOrNull() }
             }
 
-    private suspend fun AuthenticationRequestParameters.loadPresentationDefinition() =
-        if (responseType?.contains(OpenIdConstants.VP_TOKEN) == true) {
-            presentationDefinition
-                ?: presentationDefinitionUrl
+    private suspend fun AuthenticationRequestParameters.loadCredentialRequest(): CredentialPresentationRequest? =
+        if (responseType?.contains(VP_TOKEN) == true) {
+            run {
+                presentationDefinition ?: presentationDefinitionUrl
                     ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
                     ?.let { PresentationDefinition.deserialize(it).getOrNull() }
+            }?.let {
+                CredentialPresentationRequest.PresentationExchangeRequest(it)
+            } ?: dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
         } else null
 
     private suspend fun AuthenticationRequestParameters.loadClientMetadata() =
@@ -293,24 +358,6 @@ class OpenId4VpHolder(
                 remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it))
                     ?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
             }
-
-    /**
-     * Source for logic:  Appendix A. Credential Format Profiles in
-     * [OID4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A)
-     */
-    private fun CreatePresentationResult.toJsonPrimitive() = when (this) {
-        is CreatePresentationResult.Signed -> JsonPrimitive(serialized)
-        is CreatePresentationResult.SdJwt -> JsonPrimitive(serialized)
-        is CreatePresentationResult.DeviceResponse -> JsonPrimitive(
-            deviceResponse.serialize().encodeToString(Base64UrlStrict)
-        )
-    }
-
-    private fun List<JsonPrimitive>.singleOrArray() = if (size == 1) {
-        this[0]
-    } else buildJsonArray {
-        forEach { add(it) }
-    }
 }
 
 private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> =

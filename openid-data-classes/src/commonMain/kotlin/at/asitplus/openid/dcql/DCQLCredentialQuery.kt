@@ -109,7 +109,7 @@ sealed interface DCQLCredentialQuery {
         sdJwtCredentialTypeExtractor: (Credential) -> String,
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
     ): KmmResult<DCQLCredentialQueryMatchingResult> = catching {
-        if (credentialFormatExtractor(credential) != format) {
+        if (credentialFormatExtractor(credential).coerce() != format.coerce()) {
             throw IllegalArgumentException("Incompatible credential format")
         }
 
@@ -120,7 +120,7 @@ sealed interface DCQLCredentialQuery {
                 credentialMetadataAndValidityConstraints = it,
                 mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
                 sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
-            )
+            ).getOrThrow()
         }
 
         val claimQueries = claims
@@ -160,23 +160,20 @@ sealed interface DCQLCredentialQuery {
             credentialMetadataAndValidityConstraints: DCQLCredentialMetadataAndValidityConstraints?,
             mdocCredentialDoctypeExtractor: (Credential) -> String,
             sdJwtCredentialTypeExtractor: (Credential) -> String,
-        ) {
-            when (credentialFormatIdentifier) {
+        ): KmmResult<Unit> = catching {
+            when (credentialFormatIdentifier.coerce()) {
                 CredentialFormatEnum.MSO_MDOC -> {
-                    val meta =
-                        credentialMetadataAndValidityConstraints as DCQLIsoMdocCredentialMetadataAndValidityConstraints
-                    if (meta.doctypeValue != null && mdocCredentialDoctypeExtractor(credential) != meta.doctypeValue) {
-                        throw IllegalArgumentException("Incompatible MDOC document type")
-                    }
+                    credentialMetadataAndValidityConstraints as DCQLIsoMdocCredentialMetadataAndValidityConstraints
+                    credentialMetadataAndValidityConstraints.validate(
+                        mdocCredentialDoctypeExtractor(credential)
+                    ).getOrThrow()
                 }
 
-                CredentialFormatEnum.VC_SD_JWT -> {
-                    val meta =
-                        credentialMetadataAndValidityConstraints as DCQLSdJwtCredentialMetadataAndValidityConstraints
-                    val allowedTypes = meta.vctValues
-                    if (allowedTypes != null && sdJwtCredentialTypeExtractor(credential) !in allowedTypes) {
-                        throw IllegalArgumentException("Incompatible SD-JWT credential type")
-                    }
+                CredentialFormatEnum.DC_SD_JWT -> {
+                    credentialMetadataAndValidityConstraints as DCQLSdJwtCredentialMetadataAndValidityConstraints
+                    credentialMetadataAndValidityConstraints.validate(
+                        sdJwtCredentialTypeExtractor(credential)
+                    ).getOrThrow()
                 }
 
                 else -> {}

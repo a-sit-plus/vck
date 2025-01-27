@@ -40,7 +40,11 @@ interface DCQLClaimsQuery {
                     credentialStructureExtractor = {
                         credentialStructureExtractor(it) as DCQLCredentialClaimStructure.JsonBasedStructure
                     }
-                ).getOrThrow()
+                ).getOrThrow().also {
+                    if(it.nodeList.isEmpty()) {
+                        throw IllegalStateException("Credential does not satisfy claims query.")
+                    }
+                }
             }
 
             is DCQLIsoMdocClaimsQuery -> {
