@@ -17,8 +17,8 @@ import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialPresentation
-import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSubmission
@@ -76,7 +76,10 @@ class HolderAgent(
             }
 
             is Holder.StoreCredentialInput.SdJwt -> {
-                val sdJwt = validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, keyPair.publicKey)
+                val sdJwt = validator.verifySdJwt(
+                    SdJwtSigned.parse(credential.vcSdJwt)!!,
+                    keyPair.publicKey
+                )
                 if (sdJwt !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
                     throw VerificationError(sdJwt.toString())
                 }
@@ -156,6 +159,7 @@ class HolderAgent(
                 inputDescriptorSubmissions = null
             ),
         )
+
         is CredentialPresentationRequest.DCQLRequest -> createPresentation(
             request = request,
             credentialPresentation = CredentialPresentation.DCQLPresentation(
@@ -225,18 +229,8 @@ class HolderAgent(
                 fallbackFormatHolder = credentialPresentation.presentationRequest.fallbackFormatHolder,
             ).getOrThrow().toDefaultSubmission()
 
-        val validator = PresentationSubmissionValidator.createInstance(
-            submissionRequirements = presentationDefinition.submissionRequirements,
-            inputDescriptors = presentationDefinition.inputDescriptors,
-        ).getOrThrow()
-
-        if (!validator.isValidSubmission(presentationCredentialSelection.keys)) {
-            val missingInputDescriptors = presentationDefinition.inputDescriptors
-                .map { it.id }.toSet() - presentationCredentialSelection.keys
-
-            throw PresentationException(
-                "Submission requirements are unsatisfied: No credentials were submitted for input descriptors: $missingInputDescriptors"
-            )
+        credentialPresentation.presentationRequest.validateSubmission(presentationCredentialSelection).onFailure {
+            throw PresentationException(it)
         }
 
         createPresentation(
@@ -266,12 +260,7 @@ class HolderAgent(
 
         val presentationSubmission = PresentationSubmission.fromMatches(
             presentationId = presentationDefinitionId,
-            matches = submissionList.map {
-                it.first to PresentationExchangeCredentialDisclosure(
-                    credential = it.second.credential,
-                    disclosedAttributes = it.second.disclosedAttributes
-                )
-            },
+            matches = submissionList,
         )
 
         val verifiablePresentations = submissionList.map { match ->
@@ -449,4 +438,52 @@ class HolderAgent(
         // where n is the index to select.
         path = index?.let { "\$[$it]" } ?: "\$",
     )
+
+
+    private fun CredentialPresentationRequest.PresentationExchangeRequest.validateSubmission(
+        credentialSubmissions: Map<String, PresentationExchangeCredentialDisclosure>,
+    ) = catching {
+        val validator =
+            PresentationSubmissionValidator.createInstance(presentationDefinition).getOrThrow()
+        if (!validator.isValidSubmission(credentialSubmissions.keys)) {
+            Napier.w("submission requirements are not satisfied")
+            throw IllegalArgumentException("Submission requirements are not satisfied")
+        }
+
+        // making sure, that all the submissions actually match the corresponding input descriptor requirements
+        credentialSubmissions.forEach { submission ->
+            val inputDescriptor = presentationDefinition.inputDescriptors.firstOrNull {
+                it.id == submission.key
+            } ?: run {
+                Napier.w("Invalid input descriptor id")
+                throw IllegalArgumentException("Invalid input descriptor id")
+            }
+
+            val constraintFieldMatches = evaluateInputDescriptorAgainstCredential(
+                inputDescriptor = inputDescriptor,
+                credential = submission.value.credential,
+                fallbackFormatHolder = fallbackFormatHolder,
+                pathAuthorizationValidator = { true },
+            ).getOrThrow()
+
+            val disclosedAttributes = submission.value.disclosedAttributes.map { it.toString() }
+
+            // find a matching path for each constraint field
+            constraintFieldMatches.filter {
+                // only need to validate non-optional constraint fields
+                it.key.optional != true
+            }.forEach { constraintField ->
+                val allowedPaths = constraintField.value.map {
+                    it.normalizedJsonPath.toString()
+                }
+                disclosedAttributes.firstOrNull { allowedPaths.contains(it) } ?: run {
+                    val keyId = constraintField.key.id?.let { " Missing field: $it" }
+                    Napier.w("Input descriptor constraints are not satisfied: ${inputDescriptor.id}.$keyId")
+                    throw IllegalArgumentException("Input descriptor constraints are not satisfied: ${inputDescriptor.id}.$keyId")
+                }
+            }
+            // TODO: maybe we also want to validate, whether there are any redundant disclosed attributes?
+            //  this would be the case if there is only one constraint field with path "$['name']", but two attributes are disclosed
+        }
+    }
 }
