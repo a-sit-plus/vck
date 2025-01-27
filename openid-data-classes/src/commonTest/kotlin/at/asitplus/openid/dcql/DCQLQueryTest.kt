@@ -1,5 +1,6 @@
 package at.asitplus.openid.dcql
 
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import io.kotest.core.spec.style.FreeSpec
@@ -24,15 +25,15 @@ class DCQLQueryTest : FreeSpec({
         )
         val serialized = Json.encodeToJsonElement(
             DCQLQuery(
-                credentials = listOf(
+                credentials = DCQLCredentialQueryList(
                     DCQLCredentialQueryInstance(
                         id = queryId1,
                         format = CredentialFormatEnum.MSO_MDOC,
                     )
                 ),
-                credentialSets = listOf(
+                credentialSets = nonEmptyListOf(
                     DCQLCredentialSetQuery(
-                        options = listOf(listOf(queryId1))
+                        options = nonEmptyListOf(listOf(queryId1))
                     )
                 ),
             )

@@ -2,6 +2,9 @@ package at.asitplus.openid.dcql
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
+import at.asitplus.data.NonEmptyList
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
 import kotlinx.serialization.Serializable
 
@@ -38,14 +41,14 @@ sealed interface DCQLCredentialQuery {
      * - DCQLClaimQuery: Within the particular claims array, the same id MUST NOT be present more
      *  than once.
      */
-    val claims: List<DCQLClaimsQuery>?
+    val claims: DCQLClaimsQueryList<DCQLClaimsQuery>?
 
     /**
      * OID4VP draft 23: claim_sets: OPTIONAL. A non-empty array containing arrays of identifiers
      * for elements in claims that specifies which combinations of claims for the Credential are
      * requested. The rules for selecting claims to send are defined in Section 6.3.1.1.
      */
-    val claimSets: List<List<DCQLClaimsQueryIdentifier>>?
+    val claimSets: NonEmptyList<List<DCQLClaimsQueryIdentifier>>?
 
 
     object SerialNames {
@@ -59,19 +62,10 @@ sealed interface DCQLCredentialQuery {
 
     companion object {
         fun validate(query: DCQLCredentialQuery) = query.run {
-            if (claims?.isEmpty() == true) {
-                throw IllegalArgumentException("Value of `claims` must not be the empty list.")
-            }
-            if (claimSets?.isEmpty() == true) {
-                throw IllegalArgumentException("Value of `claim_sets` must not be the empty list.")
-            }
-            if ((claims ?: listOf()).mapNotNull { it.id }.let { it.distinct().size != it.size }) {
-                throw IllegalArgumentException("Value of `credentials` contains multiple credential queries with the same id.")
-            }
             if (claimSets != null) {
                 claims?.forEach {
                     if (it.id == null) {
-                        throw IllegalArgumentException("Value for `id` in claims is REQUIRED if claim_sets is present in the Credential Query.")
+                        throw IllegalArgumentException("Value of `id` in claims is REQUIRED if claim_sets is present in the Credential Query.")
                     }
                 }
             }
@@ -119,42 +113,33 @@ sealed interface DCQLCredentialQuery {
             throw IllegalArgumentException("Incompatible credential format")
         }
 
-        val credentialFormatInstance = credentialFormatExtractor(credential)
-        when(credentialFormatInstance) {
-            CredentialFormatEnum.MSO_MDOC -> {
-                val meta = meta as DCQLIsoMdocCredentialMetadataAndValidityConstraints
-                if (meta.doctypeValue != null && mdocCredentialDoctypeExtractor(credential) != meta.doctypeValue) {
-                    throw IllegalArgumentException("Incompatible MDOC document type")
-                }
-            }
-
-            CredentialFormatEnum.VC_SD_JWT -> {
-                val meta = meta as DCQLSdJwtCredentialMetadataAndValidityConstraints
-                val allowedTypes = meta.vctValues
-                if (allowedTypes != null && sdJwtCredentialTypeExtractor(credential) !in allowedTypes) {
-                    throw IllegalArgumentException("Incompatible SD-JWT credential type")
-                }
-            }
-
-            else -> {}
+        meta?.let {
+            Procedures.validateCredentialMetadataAndValidityConstraints(
+                credential = credential,
+                credentialFormatIdentifier = credentialFormatExtractor(credential),
+                credentialMetadataAndValidityConstraints = it,
+                mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
+                sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
+            )
         }
 
         val claimQueries = claims
             ?: return KmmResult.success(DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult)
 
-        val requestedClaimSets = claimSets?.let {
+        val requestedClaimsQueryCombinations = claimSets?.let {
             val claimQueryLookup = claimQueries.associateBy {
-                it.id!!
+                it.id
+                    ?: throw IllegalArgumentException("Claim query identifier is missing despite the presence of `claim_sets`.")
             }
             it.map {
                 it.map {
                     claimQueryLookup[it]
                         ?: throw IllegalArgumentException("Claim specified in `claim_sets` was not found in `claims`.")
                 }
-            }
-        } ?: listOf(claimQueries)
+            }.toNonEmptyList()
+        } ?: nonEmptyListOf(claimQueries)
 
-        val result = requestedClaimSets.firstNotNullOf { claimQueryCombination ->
+        val result = requestedClaimsQueryCombinations.firstNotNullOf { claimQueryCombination ->
             catching {
                 claimQueryCombination.map { claimQuery ->
                     claimQuery.executeClaimsQueryAgainstCredential(
@@ -166,5 +151,36 @@ sealed interface DCQLCredentialQuery {
             }.getOrNull()
         }
         DCQLCredentialQueryMatchingResult.ClaimsQueryResults(result)
+    }
+
+    object Procedures {
+        fun <Credential : Any> validateCredentialMetadataAndValidityConstraints(
+            credential: Credential,
+            credentialFormatIdentifier: CredentialFormatEnum,
+            credentialMetadataAndValidityConstraints: DCQLCredentialMetadataAndValidityConstraints?,
+            mdocCredentialDoctypeExtractor: (Credential) -> String,
+            sdJwtCredentialTypeExtractor: (Credential) -> String,
+        ) {
+            when (credentialFormatIdentifier) {
+                CredentialFormatEnum.MSO_MDOC -> {
+                    val meta =
+                        credentialMetadataAndValidityConstraints as DCQLIsoMdocCredentialMetadataAndValidityConstraints
+                    if (meta.doctypeValue != null && mdocCredentialDoctypeExtractor(credential) != meta.doctypeValue) {
+                        throw IllegalArgumentException("Incompatible MDOC document type")
+                    }
+                }
+
+                CredentialFormatEnum.VC_SD_JWT -> {
+                    val meta =
+                        credentialMetadataAndValidityConstraints as DCQLSdJwtCredentialMetadataAndValidityConstraints
+                    val allowedTypes = meta.vctValues
+                    if (allowedTypes != null && sdJwtCredentialTypeExtractor(credential) !in allowedTypes) {
+                        throw IllegalArgumentException("Incompatible SD-JWT credential type")
+                    }
+                }
+
+                else -> {}
+            }
+        }
     }
 }

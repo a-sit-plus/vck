@@ -1,5 +1,6 @@
 package at.asitplus.openid.dcql
 
+import at.asitplus.data.validation.third_party.kotlin.requireIsNotEmpty
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
@@ -12,17 +13,9 @@ import kotlin.jvm.JvmInline
 @JvmInline
 value class DCQLClaimsQueryIdentifier(val string: String) {
     init {
-        validate()
-    }
-
-    private fun validate() {
-        if(string.isEmpty()) {
-            throw IllegalArgumentException("Value must not be the empty string.")
-        }
-        string.forEach {
-            if(it != '_' && it != '-' && !it.isLetterOrDigit()) {
-                throw IllegalArgumentException("Value must only consist of alphanumeric, underscore (_) or hyphen (-) characters.")
-            }
+        string.requireIsNotEmpty()
+        require(string.all { it == '_' || it == '-' || it.isLetterOrDigit() }) {
+            "Claims query identifier must only contain alphanumeric, underscore (_) or hyphen (-) characters."
         }
     }
 }

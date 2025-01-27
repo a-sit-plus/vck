@@ -1,5 +1,6 @@
 package at.asitplus.openid.dcql
 
+import at.asitplus.data.NonEmptyList
 import at.asitplus.openid.CredentialFormatEnum
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -19,9 +20,9 @@ data class DCQLSdJwtCredentialQuery(
     @SerialName(DCQLCredentialQuery.SerialNames.META)
     override val meta: DCQLSdJwtCredentialMetadataAndValidityConstraints? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.CLAIMS)
-    override val claims: List<DCQLJsonClaimsQuery>? = null,
+    override val claims: DCQLClaimsQueryList<DCQLJsonClaimsQuery>? = null,
     @SerialName(DCQLCredentialQuery.SerialNames.CLAIM_SETS)
-    override val claimSets: List<List<DCQLClaimsQueryIdentifier>>? = null,
+    override val claimSets: NonEmptyList<List<DCQLClaimsQueryIdentifier>>? = null,
 ) : DCQLCredentialQuery {
     init {
         validate(this)

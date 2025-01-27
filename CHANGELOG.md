@@ -53,6 +53,7 @@ Release 5.3.0:
 - General cleanup:
   - Remove `SchemaIndex`
   - Update signum to 3.12.1
+- Add isolated DCQL implementation 
 
 Release 5.2.3:
  - Be more lenient in parsing OpenId authentication requests

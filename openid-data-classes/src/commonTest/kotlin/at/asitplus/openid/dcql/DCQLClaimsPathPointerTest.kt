@@ -1,5 +1,7 @@
 package at.asitplus.openid.dcql
 
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.collections.shouldHaveSize
@@ -20,21 +22,23 @@ class DCQLClaimsPathPointerTest : FreeSpec({
         withData(
             listOf("test", 0u, null)
         ) {
-            when(it) {
+            when (it) {
                 null -> DCQLClaimsPathPointer(it)
                 is String -> DCQLClaimsPathPointer(it)
                 else -> DCQLClaimsPathPointer(it as UInt)
             }.run {
                 segments shouldHaveSize 1
                 segments.first().run {
-                    when(it) {
+                    when (it) {
                         null -> {
                             shouldBeInstanceOf<DCQLClaimsPathPointerSegment.NullSegment>()
                         }
+
                         is String -> {
                             shouldBeInstanceOf<DCQLClaimsPathPointerSegment.NameSegment>()
                             name shouldBe it
                         }
+
                         else -> {
                             shouldBeInstanceOf<DCQLClaimsPathPointerSegment.IndexSegment>()
                             index shouldBe it
@@ -67,8 +71,8 @@ class DCQLClaimsPathPointerTest : FreeSpec({
                     else -> DCQLClaimsPathPointerSegment.NullSegment
                 }
             }
-            DCQLClaimsPathPointer(segments) shouldBe segments.map {
-                DCQLClaimsPathPointer(listOf(it))
+            DCQLClaimsPathPointer(segments.toNonEmptyList()) shouldBe segments.map {
+                DCQLClaimsPathPointer(nonEmptyListOf(it))
             }.reduce { acc, it -> acc + it }
         }
         "values" {
@@ -86,8 +90,8 @@ class DCQLClaimsPathPointerTest : FreeSpec({
                     is UInt -> DCQLClaimsPathPointerSegment.IndexSegment(it)
                     else -> DCQLClaimsPathPointerSegment.NullSegment
                 }
-            }) shouldBe segments.map {
-                when(it) {
+            }.toNonEmptyList()) shouldBe segments.map {
+                when (it) {
                     null -> DCQLClaimsPathPointer(it)
                     is String -> DCQLClaimsPathPointer(it)
                     else -> DCQLClaimsPathPointer(it as UInt)
@@ -106,7 +110,7 @@ class DCQLClaimsPathPointerTest : FreeSpec({
                 else -> DCQLClaimsPathPointerSegment.NullSegment
             }
         }
-        val pointer = DCQLClaimsPathPointer(segments)
+        val pointer = DCQLClaimsPathPointer(segments.toNonEmptyList())
         val jsonElement = buildJsonArray {
             segments.forEach {
                 add(
