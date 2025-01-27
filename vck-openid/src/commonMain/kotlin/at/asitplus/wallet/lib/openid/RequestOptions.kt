@@ -38,8 +38,8 @@ interface RequestOptions {
 
     /**
      * Response type to set in [AuthenticationRequestParameters.responseType],
-     * by default only `vp_token` (as per OpenID4VP spec).
-     * Be sure to separate values by a space, e.g. `vp_token id_token`.
+     * by default only `vp_token` (as per OpenID4VP spec, see [OpenIdConstants.VP_TOKEN]).
+     * Be sure to separate values by a space, e.g. `vp_token id_token` (see [OpenIdConstants.ID_TOKEN]).
      */
     val responseType: String
 
@@ -49,7 +49,8 @@ interface RequestOptions {
     val state: String
 
     /**
-     * Optional URL to include [metadata] by reference instead of by value (directly embedding in authn request)
+     * Optional URL to include metadata by reference (see [AuthenticationRequestParameters.clientMetadataUri])
+     * instead of by value (see [AuthenticationRequestParameters.clientMetadata])
      */
     val clientMetadataUrl: String?
 

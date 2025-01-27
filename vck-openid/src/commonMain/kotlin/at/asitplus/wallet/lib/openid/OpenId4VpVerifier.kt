@@ -70,7 +70,7 @@ open class OpenId4VpVerifier(
      */
     val jarMetadata: JwtVcIssuerMetadata by lazy {
         JwtVcIssuerMetadata(
-            issuer = clientIdScheme.clientId,
+            issuer = clientIdScheme.issuerUri ?: clientIdScheme.clientId,
             jsonWebKeySet = JsonWebKeySet(setOf(jwsService.keyMaterial.jsonWebKey))
         )
     }
@@ -235,7 +235,10 @@ open class OpenId4VpVerifier(
         val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
         val certificateChain = (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain
         val siopClientId = "https://self-issued.me/v2"
-        val issuer = (clientIdScheme as? ClientIdScheme.PreRegistered)?.clientId ?: siopClientId
+        val issuer = when (clientIdScheme) {
+            is ClientIdScheme.PreRegistered -> clientIdScheme.issuerUri ?: clientIdScheme.clientId
+            else -> siopClientId
+        }
         jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 algorithm = jwsService.algorithm,
