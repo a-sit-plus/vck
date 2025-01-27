@@ -2,6 +2,7 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
@@ -170,6 +171,12 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("presentation_definition_uri")
     val presentationDefinitionUrl: String? = null,
+
+    /**
+     * OID4VP: dcql_query: A string containing a JSON-encoded DCQL query as defined in Section 6.
+     */
+    @SerialName("dcql_query")
+    val dcqlQuery: DCQLQuery? = null,
 
     /**
      * RFC9396: The request parameter `authorization_details` contains, in JSON notation, an array of objects.

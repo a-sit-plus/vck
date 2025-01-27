@@ -109,7 +109,7 @@ sealed interface DCQLCredentialQuery {
         sdJwtCredentialTypeExtractor: (Credential) -> String,
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
     ): KmmResult<DCQLCredentialQueryMatchingResult> = catching {
-        if (credentialFormatExtractor(credential) != format) {
+        if (credentialFormatExtractor(credential).coerce() != format.coerce()) {
             throw IllegalArgumentException("Incompatible credential format")
         }
 
@@ -161,7 +161,7 @@ sealed interface DCQLCredentialQuery {
             mdocCredentialDoctypeExtractor: (Credential) -> String,
             sdJwtCredentialTypeExtractor: (Credential) -> String,
         ) {
-            when (credentialFormatIdentifier) {
+            when (credentialFormatIdentifier.coerce()) {
                 CredentialFormatEnum.MSO_MDOC -> {
                     val meta =
                         credentialMetadataAndValidityConstraints as DCQLIsoMdocCredentialMetadataAndValidityConstraints
@@ -170,7 +170,7 @@ sealed interface DCQLCredentialQuery {
                     }
                 }
 
-                CredentialFormatEnum.VC_SD_JWT -> {
+                CredentialFormatEnum.DC_SD_JWT -> {
                     val meta =
                         credentialMetadataAndValidityConstraints as DCQLSdJwtCredentialMetadataAndValidityConstraints
                     val allowedTypes = meta.vctValues

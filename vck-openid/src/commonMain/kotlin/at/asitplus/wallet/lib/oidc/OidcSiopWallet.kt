@@ -3,7 +3,11 @@ package at.asitplus.wallet.lib.oidc
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.IdTokenType
+import at.asitplus.openid.OAuth2AuthorizationServerMetadata
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ID_TOKEN
@@ -11,8 +15,10 @@ import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -21,15 +27,20 @@ import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
+import at.asitplus.wallet.lib.data.CredentialPresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.openid.*
+import at.asitplus.wallet.lib.openid.AuthenticationResponse
+import at.asitplus.wallet.lib.openid.AuthenticationResponseFactory
+import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.AuthorizationRequestValidator
+import at.asitplus.wallet.lib.openid.AuthorizationResponsePreparationState
+import at.asitplus.wallet.lib.openid.PresentationFactory
+import at.asitplus.wallet.lib.openid.RequestParser
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
 
 
 /**
@@ -175,9 +186,9 @@ class OidcSiopWallet(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthorizationResponsePreparationState> = catching {
         val clientMetadata = params.parameters.loadClientMetadata()
-        val presentationDefinition = params.parameters.loadPresentationDefinition()
+        val presentationRequest = params.parameters.loadCredentialRequest()
         AuthorizationRequestValidator().validateAuthorizationRequest(params)
-        AuthorizationResponsePreparationState(presentationDefinition, clientMetadata)
+        AuthorizationResponsePreparationState(presentationRequest, clientMetadata)
     }
 
     /**
@@ -185,14 +196,19 @@ class OidcSiopWallet(
      *
      * @param request the parsed authentication request
      * @param preparationState The preparation state from [startAuthorizationResponsePreparation]
-     * @param inputDescriptorSubmissions Map from input descriptor ids to [CredentialSubmission]
+     * @param inputDescriptorSubmissions Map from input descriptor ids to [PresentationExchangeCredentialDisclosure]
      */
+    @Deprecated("Use more general method with the same name.", replaceWith = ReplaceWith("finalizeAuthorizationResponse"))
     suspend fun finalizeAuthorizationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponseResult> =
-        finalizeAuthorizationResponseParameters(request, preparationState, inputDescriptorSubmissions).map {
+        finalizeAuthorizationResponseParameters(
+            request,
+            preparationState,
+            inputDescriptorSubmissions,
+        ).map {
             AuthenticationResponseFactory(jwsService).createAuthenticationResponse(request, it)
         }
 
@@ -203,43 +219,103 @@ class OidcSiopWallet(
      * @param preparationState The preparation state from [startAuthorizationResponsePreparation]
      * @param inputDescriptorSubmissions Map from input descriptor ids to [CredentialSubmission]
      */
+    @Deprecated("Use more general method with the same name.", replaceWith = ReplaceWith("finalizeAuthorizationResponseParameters"))
     suspend fun finalizeAuthorizationResponseParameters(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
-    ): KmmResult<AuthenticationResponse> = preparationState.catching {
+    ): KmmResult<AuthenticationResponse> = finalizeAuthorizationResponseParameters(
+        request = request,
+        clientMetadata = preparationState.clientMetadata,
+        credentialPresentation = when (preparationState.credentialPresentationRequest) {
+            null -> null
+            is CredentialPresentationRequest.DCQLRequest -> {
+                if(inputDescriptorSubmissions != null) {
+                    throw IllegalStateException("Invalid API call. Cannot convert input descriptor submissions to DCQL submissions.")
+                }
+                CredentialPresentation.DCQLPresentation(preparationState.credentialPresentationRequest, null)
+            }
+
+            is CredentialPresentationRequest.PresentationExchangeRequest -> {
+                CredentialPresentation.PresentationExchangePresentation(
+                    preparationState.credentialPresentationRequest,
+                    inputDescriptorSubmissions?.mapValues {
+                        PresentationExchangeCredentialDisclosure(
+                            it.value.credential,
+                            it.value.disclosedAttributes
+                        )
+                    },
+                )
+            }
+        }
+    )
+
+
+    /**
+     * Finalize the authorization response
+     *
+     * @param request the parsed authentication request
+     * @param preparationState The preparation state from [startAuthorizationResponsePreparation]
+     * @param inputDescriptorSubmissions Map from input descriptor ids to [PresentationExchangeCredentialDisclosure]
+     */
+    suspend fun finalizeAuthorizationResponse(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        clientMetadata: RelyingPartyMetadata?,
+        credentialPresentation: CredentialPresentation?,
+    ): KmmResult<AuthenticationResponseResult> =
+        finalizeAuthorizationResponseParameters(
+            request,
+            clientMetadata,
+            credentialPresentation
+        ).map {
+            AuthenticationResponseFactory(jwsService).createAuthenticationResponse(request, it)
+        }
+
+    /**
+     * Finalize the authorization response parameters
+     *
+     * @param request the parsed authentication request
+     * @param preparationState The preparation state from [startAuthorizationResponsePreparation]
+     * @param credentialSubmissions Map from input descriptor ids to [PresentationExchangeCredentialDisclosure]
+     */
+    suspend fun finalizeAuthorizationResponseParameters(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        clientMetadata: RelyingPartyMetadata?,
+        credentialPresentation: CredentialPresentation?,
+    ): KmmResult<AuthenticationResponse> = catching {
         val certKey = (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
             ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val audience = request.extractAudience(clientJsonWebKeySet)
         val presentationFactory = PresentationFactory(jwsService, coseService)
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
-        val idToken = presentationFactory.createSignedIdToken(clock, agentPublicKey, request).getOrNull()?.serialize()
+        val idToken =
+            presentationFactory.createSignedIdToken(clock, agentPublicKey, request).getOrNull()
+                ?.serialize()
 
-        val resultContainer = presentationDefinition?.let {
-            presentationFactory.createPresentationExchangePresentation(
+        val resultContainer = credentialPresentation?.let {
+            presentationFactory.createPresentation(
                 holder = holder,
                 request = request,
                 audience = audience,
-                presentationDefinition = presentationDefinition,
+                credentialPresentation = credentialPresentation,
                 clientMetadata = clientMetadata,
                 jsonWebKeys = jsonWebKeys,
-                inputDescriptorSubmissions = inputDescriptorSubmissions
             ).getOrThrow()
         }
-        val vpToken = resultContainer?.presentationResults?.map { it.toJsonPrimitive() }?.singleOrArray()
-        val presentationSubmission = resultContainer?.presentationSubmission
-        val mdocGeneratedNonce = resultContainer?.presentationResults
-            ?.filterIsInstance<CreatePresentationResult.DeviceResponse>()
-            ?.singleOrNull()
-            ?.mdocGeneratedNonce
+
         val parameters = AuthenticationResponseParameters(
             state = request.parameters.state,
             idToken = idToken,
-            vpToken = vpToken,
-            presentationSubmission = presentationSubmission,
+            vpToken = resultContainer?.vpToken,
+            presentationSubmission = resultContainer?.presentationSubmission,
         )
-        AuthenticationResponse(parameters, clientMetadata, jsonWebKeys, mdocGeneratedNonce)
+        AuthenticationResponse(
+            parameters,
+            clientMetadata,
+            jsonWebKeys,
+            resultContainer?.mdocGeneratedNonce
+        )
     }
 
     @Throws(OAuth2Exception::class)
@@ -253,16 +329,25 @@ class OidcSiopWallet(
             .also { Napier.w("Could not parse audience") }
 
     private suspend fun RelyingPartyMetadata.loadJsonWebKeySet() =
-        this.jsonWebKeySet ?: jsonWebKeySetUrl?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
+        this.jsonWebKeySet ?: jsonWebKeySetUrl?.let {
+            remoteResourceRetriever.invoke(
+                RemoteResourceRetrieverInput(it)
+            )
+        }
             ?.let { JsonWebKeySet.deserialize(it).getOrNull() }
 
 
-    private suspend fun AuthenticationRequestParameters.loadPresentationDefinition() =
+    private suspend fun AuthenticationRequestParameters.loadCredentialRequest(): CredentialPresentationRequest? =
         if (responseType?.contains(VP_TOKEN) == true) {
-            presentationDefinition
-                ?: presentationDefinitionUrl
-                    ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
-                    ?.let { PresentationDefinition.deserialize(it).getOrNull() }
+            presentationDefinition?.let {
+                CredentialPresentationRequest.PresentationExchangeRequest(it)
+            } ?: presentationDefinitionUrl
+                ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
+                ?.let { PresentationDefinition.deserialize(it).getOrNull() }
+                ?.let {
+                    CredentialPresentationRequest.PresentationExchangeRequest(it)
+                }
+            ?: dcqlQuery?.let { CredentialPresentationRequest.DCQLRequest(it) }
         } else null
 
     private suspend fun AuthenticationRequestParameters.loadClientMetadata() =
@@ -270,25 +355,8 @@ class OidcSiopWallet(
             remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(uri))
                 ?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
         }
-
-    /**
-     * Source for logic:  Appendix A. Credential Format Profiles in
-     * [OID4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A)
-     */
-    private fun CreatePresentationResult.toJsonPrimitive() = when (this) {
-        is CreatePresentationResult.Signed -> JsonPrimitive(serialized)
-        is CreatePresentationResult.SdJwt -> JsonPrimitive(serialized)
-        is CreatePresentationResult.DeviceResponse -> JsonPrimitive(
-            deviceResponse.serialize().encodeToString(Base64UrlStrict)
-        )
-    }
-
-    private fun List<JsonPrimitive>.singleOrArray() = if (size == 1) {
-        this[0]
-    } else buildJsonArray {
-        forEach { add(it) }
-    }
 }
 
 private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> =
     certKey?.let { (this ?: listOf()) + certKey } ?: this ?: listOf()
+

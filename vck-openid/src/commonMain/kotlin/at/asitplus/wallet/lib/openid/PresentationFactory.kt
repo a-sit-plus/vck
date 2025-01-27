@@ -5,7 +5,11 @@ import at.asitplus.catching
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.IdToken
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
@@ -13,10 +17,22 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CreatePresentationResult
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.PresentationException
+import at.asitplus.wallet.lib.agent.PresentationExchangeCredentialDisclosure
+import at.asitplus.wallet.lib.agent.PresentationRequestParameters
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters
 import at.asitplus.wallet.lib.cbor.CoseService
+import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
-import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.iso.ClientIdToHash
+import at.asitplus.wallet.lib.iso.DeviceAuthentication
+import at.asitplus.wallet.lib.iso.DeviceNameSpaces
+import at.asitplus.wallet.lib.iso.OID4VPHandover
+import at.asitplus.wallet.lib.iso.ResponseUriToHash
+import at.asitplus.wallet.lib.iso.SessionTranscript
+import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
@@ -32,33 +48,22 @@ internal class PresentationFactory(
     private val jwsService: JwsService,
     private val coseService: CoseService,
 ) {
-    suspend fun createPresentationExchangePresentation(
+    suspend fun createPresentation(
         holder: Holder,
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         audience: String,
-        presentationDefinition: PresentationDefinition,
         clientMetadata: RelyingPartyMetadata?,
-        inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
         jsonWebKeys: Collection<JsonWebKey>?,
+        credentialPresentation: CredentialPresentation,
     ): KmmResult<PresentationResponseParameters> = catching {
         request.parameters.verifyResponseType()
         val nonce = request.parameters.nonce ?: run {
             Napier.w("nonce is null in ${request.parameters}")
             throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
         }
-        val credentialSubmissions = inputDescriptorSubmissions
-            ?: holder.matchInputDescriptorsAgainstCredentialStore(
-                inputDescriptors = presentationDefinition.inputDescriptors,
-                fallbackFormatHolder = clientMetadata?.vpFormats,
-            ).getOrThrow().toDefaultSubmission()
 
-        presentationDefinition.validateSubmission(
-            holder = holder,
-            clientMetadata = clientMetadata,
-            credentialSubmissions = credentialSubmissions
-        )
-
-        val responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsEncryption() == true
+        val responseWillBeEncrypted =
+            jsonWebKeys != null && clientMetadata?.requestsEncryption() == true
         val clientId = request.parameters.clientId
         val responseUrl = request.parameters.responseUrl
         val vpRequestParams = PresentationRequestParameters(
@@ -68,16 +73,24 @@ internal class PresentationFactory(
                 calcDeviceSignature(responseWillBeEncrypted, clientId, responseUrl, nonce, docType)
             }
         )
+
         holder.createPresentation(
             request = vpRequestParams,
-            presentationDefinitionId = presentationDefinition.id,
-            presentationSubmissionSelection = credentialSubmissions,
+            credentialPresentation = credentialPresentation,
         ).getOrElse {
             Napier.w("Could not create presentation", it)
             throw OAuth2Exception(OpenIdConstants.Errors.USER_CANCELLED)
-        }.also { container ->
+        }.also { presentation ->
             clientMetadata?.vpFormats?.let {
-                container.verifyFormatSupport(it)
+                when (presentation) {
+                    is PresentationResponseParameters.DCQLParameters -> presentation.verifyFormatSupport(
+                        it
+                    )
+
+                    is PresentationResponseParameters.PresentationExchangeParameters -> presentation.verifyFormatSupport(
+                        it
+                    )
+                }
             }
         }
     }
@@ -93,51 +106,56 @@ internal class PresentationFactory(
         responseUrl: String?,
         nonce: String,
         docType: String,
-    ): Pair<CoseSigned<ByteArray>, String?> = if (responseWillBeEncrypted && clientId != null && responseUrl != null) {
-        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-        val mdocGeneratedNonce = Random.Default.nextBytes(16).encodeToString(Base16Strict)
-        val clientIdToHash =
-            ClientIdToHash(clientId = clientId, mdocGeneratedNonce = mdocGeneratedNonce)
-        val responseUriToHash = ResponseUriToHash(
-            responseUri = responseUrl,
-            mdocGeneratedNonce = mdocGeneratedNonce
-        )
-        val sessionTranscript = SessionTranscript(
-            deviceEngagementBytes = null,
-            eReaderKeyBytes = null,
-            handover = ByteStringWrapper(
-                OID4VPHandover(
-                    clientIdHash = clientIdToHash.serialize().sha256(),
-                    responseUriHash = responseUriToHash.serialize().sha256(),
-                    nonce = nonce
-                )
-            ),
-        )
-        val deviceAuthentication = DeviceAuthentication(
-            type = "DeviceAuthentication",
-            sessionTranscript = sessionTranscript,
-            docType = docType,
-            namespaces = deviceNameSpaceBytes
-        )
-        Napier.d("Device authentication is ${deviceAuthentication.serialize().encodeToString(Base16())}")
-        coseService.createSignedCoseWithDetachedPayload(
-            payload = deviceAuthentication.serialize(),
-            serializer = ByteArraySerializer(),
-            addKeyId = false
-        ).getOrElse {
-            Napier.w("Could not create DeviceAuth for presentation", it)
-            throw PresentationException(it)
-        } to mdocGeneratedNonce
-    } else {
-        coseService.createSignedCose(
-            payload = nonce.encodeToByteArray(),
-            serializer = ByteArraySerializer(),
-            addKeyId = false
-        ).getOrElse {
-            Napier.w("Could not create DeviceAuth for presentation", it)
-            throw PresentationException(it)
-        } to null
-    }
+    ): Pair<CoseSigned<ByteArray>, String?> =
+        if (responseWillBeEncrypted && clientId != null && responseUrl != null) {
+            val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
+            val mdocGeneratedNonce = Random.Default.nextBytes(16).encodeToString(Base16Strict)
+            val clientIdToHash =
+                ClientIdToHash(clientId = clientId, mdocGeneratedNonce = mdocGeneratedNonce)
+            val responseUriToHash = ResponseUriToHash(
+                responseUri = responseUrl,
+                mdocGeneratedNonce = mdocGeneratedNonce
+            )
+            val sessionTranscript = SessionTranscript(
+                deviceEngagementBytes = null,
+                eReaderKeyBytes = null,
+                handover = ByteStringWrapper(
+                    OID4VPHandover(
+                        clientIdHash = clientIdToHash.serialize().sha256(),
+                        responseUriHash = responseUriToHash.serialize().sha256(),
+                        nonce = nonce
+                    )
+                ),
+            )
+            val deviceAuthentication = DeviceAuthentication(
+                type = "DeviceAuthentication",
+                sessionTranscript = sessionTranscript,
+                docType = docType,
+                namespaces = deviceNameSpaceBytes
+            )
+            Napier.d(
+                "Device authentication is ${
+                    deviceAuthentication.serialize().encodeToString(Base16())
+                }"
+            )
+            coseService.createSignedCoseWithDetachedPayload(
+                payload = deviceAuthentication.serialize(),
+                serializer = ByteArraySerializer(),
+                addKeyId = false
+            ).getOrElse {
+                Napier.w("Could not create DeviceAuth for presentation", it)
+                throw PresentationException(it)
+            } to mdocGeneratedNonce
+        } else {
+            coseService.createSignedCose(
+                payload = nonce.encodeToByteArray(),
+                serializer = ByteArraySerializer(),
+                addKeyId = false
+            ).getOrElse {
+                Napier.w("Could not create DeviceAuth for presentation", it)
+                throw PresentationException(it)
+            } to null
+        }
 
     suspend fun createSignedIdToken(
         clock: Clock,
@@ -188,7 +206,7 @@ internal class PresentationFactory(
     private fun PresentationDefinition.validateSubmission(
         holder: Holder,
         clientMetadata: RelyingPartyMetadata?,
-        credentialSubmissions: Map<String, CredentialSubmission>,
+        credentialSubmissions: Map<String, PresentationExchangeCredentialDisclosure>,
     ) {
         val validator = PresentationSubmissionValidator.Companion.createInstance(this).getOrThrow()
         if (!validator.isValidSubmission(credentialSubmissions.keys)) {
@@ -198,10 +216,11 @@ internal class PresentationFactory(
 
         // making sure, that all the submissions actually match the corresponding input descriptor requirements
         credentialSubmissions.forEach { submission ->
-            val inputDescriptor = this.inputDescriptors.firstOrNull { it.id == submission.key } ?: run {
-                Napier.w("Invalid input descriptor id")
-                throw OAuth2Exception(OpenIdConstants.Errors.USER_CANCELLED)
-            }
+            val inputDescriptor =
+                this.inputDescriptors.firstOrNull { it.id == submission.key } ?: run {
+                    Napier.w("Invalid input descriptor id")
+                    throw OAuth2Exception(OpenIdConstants.Errors.USER_CANCELLED)
+                }
 
             val constraintFieldMatches = holder.evaluateInputDescriptorAgainstCredential(
                 inputDescriptor = inputDescriptor,
@@ -232,7 +251,9 @@ internal class PresentationFactory(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun PresentationResponseParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
+    private fun PresentationResponseParameters.PresentationExchangeParameters.verifyFormatSupport(
+        supportedFormats: FormatHolder,
+    ) =
         presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
             if (supportedFormats.isMissingFormatSupport(descriptor.format)) {
                 Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
@@ -240,10 +261,26 @@ internal class PresentationFactory(
             }
         }
 
+    @Throws(OAuth2Exception::class)
+    private fun PresentationResponseParameters.DCQLParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
+        verifiablePresentations.entries.mapIndexed { _, descriptor ->
+            val format = when (verifiablePresentations.entries.first().value) {
+                is CreatePresentationResult.DeviceResponse -> ClaimFormat.MSO_MDOC
+                is CreatePresentationResult.SdJwt -> ClaimFormat.JWT_SD
+                is CreatePresentationResult.Signed -> ClaimFormat.JWT_VP
+            }
+            if (supportedFormats.isMissingFormatSupport(format)) {
+                Napier.w("Incompatible JWT algorithms for claim format $format: $supportedFormats")
+                throw OAuth2Exception(OpenIdConstants.Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
+            }
+        }
+
     @Suppress("DEPRECATION")
     private fun FormatHolder.isMissingFormatSupport(claimFormat: ClaimFormat): Boolean {
         return when (claimFormat) {
-            ClaimFormat.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm) } ?: false
+            ClaimFormat.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm) }
+                ?: false
+
             ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> {
                 if (jwtSd?.algorithms?.contains(jwsService.algorithm) == false) return true
                 if (jwtSd?.sdJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
@@ -254,7 +291,9 @@ internal class PresentationFactory(
                 return false
             }
 
-            ClaimFormat.MSO_MDOC -> msoMdoc?.algorithms?.let { !it.contains(jwsService.algorithm) } ?: false
+            ClaimFormat.MSO_MDOC -> msoMdoc?.algorithms?.let { !it.contains(jwsService.algorithm) }
+                ?: false
+
             else -> false
         }
     }
