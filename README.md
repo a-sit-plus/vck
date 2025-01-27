@@ -53,16 +53,18 @@ Many classes define several constructor parameters, some of them with default va
 
 Credentials may be represented as plain JWTs in the [W3C VC Data Model](https://w3c.github.io/vc-data-model/), as ISO mDoc credentials according to [ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html), or simply as a list of claims and values for [SD-JWT](https://datatracker.ietf.org/doc/draft-ietf-oauth-selective-disclosure-jwt/).
 
+For SD-JWT, we're implementing [SD-JWT VC](https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-08.html), including features like key binding JWT, and JWT VC issuer metadata. Not supported are SD-JWT VC type metadata, document integrity, display metadata and claim metadata. We're also following [SD-JWT](https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-15.html), including features like key binding JWT and nested structures. 
+
 When using the plain JWT representation, the single credential itself is an instance of `CredentialSubject`. For ISO mDoc claims see `IssuerSignedItems` and related classes like `Document` and `MobileSecurityObject`. For SD-JWT claims see `SelectiveDisclosureItem` and `SdJwtSigned`.
 
-Other libraries implementing credential schemes may call `LibraryInitializer.registerExtensionLibrary()` to register with this library. See our implementation of the [EU PID credential](https://github.com/a-sit-plus/eu-pid-credential) or our implementation of the [Mobile Driving Licence](https://github.com/a-sit-plus/mobile-driving-licence-credential/) for examples. We also maintain a comprehensive list of [all credentials powered by this library](https://github.com/a-sit-plus/credentials-collection).
-
+Other libraries implementing credential schemes may call `LibraryInitializer.registerExtensionLibrary()` to register with this library. See our implementation of the [EU PID credential](https://github.com/a-sit-plus/eu-pid-credential) and our implementation of the [Mobile Driving Licence](https://github.com/a-sit-plus/mobile-driving-licence-credential/) for examples. We also maintain a comprehensive list of [all credentials powered by this library](https://github.com/a-sit-plus/credentials-collection).
 
 For the OpenID protocol family, issuing is implemented using [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html), see `WalletService` and `CredentialIssuer`. This library supports several features of the OpenID4VCI draft 14: Pre-authorized code grants, authorization code flow, selecting credentials with authorization details and scopes, pushed authorization requests. Not supported are the deferred credential endpoint and the notification endpoint.
 
-Presentation of credentials is implemented using [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), supporting [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), see `OidcSiopVerifier` and `OidcSiopWallet`. This library supports several features of the OpenID4VP draft 23: Same device and cross device flows, response mode `direct_post` and `direct_post.jwt`, request objects by value or reference, presentation definitions and submissions, verifier attestations, signed and/or encrypted responses. Not supported are client identifier schemes embedded in the client identifier, Digital Credential Query Language, embedded transaction data.
+Presentation of credentials is implemented using [Self-Issued OpenID Provider v2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), supporting [OpenID for Verifiable Presentations](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), see `OpenId4VpVerifier` and `OpenId4VpHolder`. This library supports several features of the OpenID4VP draft 23: Same device and cross device flows, response mode `direct_post` and `direct_post.jwt`, request objects by value or reference, presentation definitions and submissions, verifier attestations, signed and/or encrypted responses, client identifier schemes embedded in the client identifier. Not supported are the Digital Credential Query Language, using scopes for referencing presentation definitions, client identifier schemes OpenID Federation and DID, and embedded transaction data.
 
 ## Usage
+
 The library is made up of three artifact which build on each other.
 - In order to use `vck-openid` please call `Initializer.initOpenIdModule()` at the start of your project.
 - In order to use `vck-rqes` please call `Initializer.initRqesModule()` at the start of your project. This initializer fully overrides `Initializer.initOpenIdModule()` which does not need to be called if `vck-rqes` is used.
@@ -71,8 +73,9 @@ The library is made up of three artifact which build on each other.
 
  - Several parts of the W3C VC Data Model have not been fully implemented, i.e. everything around resolving cryptographic key material.
  - Anything related to ledgers (e.g. resolving DID documents) is out of scope.
+ - JSON-LD is not supported for W3C credentials.
  - Trust relationships are mostly up to clients using this library.
- - The `PlatformCryptoShim` for iOS should not be used in production as it does not implement encryption, decryption, key agreement and message digests correctly. See the [Swift Package](https://github.com/a-sit-plus/swift-package-kmm-vc-library) for details on a more correct iOS implementation, or track the progress for [Signum milestone 1](https://github.com/a-sit-plus/signum/milestone/1).
+ - The `PlatformCryptoShim` for iOS should not be used in production as it does not implement encryption, decryption, key agreement and message digests correctly. Track the progress for [Signum milestone 1](https://github.com/a-sit-plus/signum/milestone/1) for an update on this issue.
 
 ## Dataflow for OID4VCI
 
@@ -389,9 +392,9 @@ and
 
 
 
-## Dataflow for SIOPv2/OpenID4VP
+## Dataflow for OpenID4VP
 
-We'll present a presentation process according to [SIOPv2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html), along with [OID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), with all terms taken from there.
+We'll present a presentation process according to [OID4VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html), with all terms taken from there.
 
 <details>
 <summary>The verifier creates a URL to be displayed to the wallet, containing a reference to the authentication request itself:</summary>

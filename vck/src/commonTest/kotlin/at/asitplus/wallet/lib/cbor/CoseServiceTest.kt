@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.iso.*
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -111,7 +112,7 @@ class CoseServiceTest : FreeSpec({
         verifierCoseService.verifyCose(parsed, coseKey).isSuccess shouldBe true
     }
 
-    "signed object without payload can be verified" {
+    "signed object with null payload can be verified" {
         val parameterSerializer = NothingSerializer()
         val signed = coseService.createSignedCose(
             unprotectedHeader = null,
@@ -121,11 +122,44 @@ class CoseServiceTest : FreeSpec({
 
         signed.payload shouldBe null
         signed.signature.shouldNotBeNull()
+        val serialized = signed.serialize(parameterSerializer).apply {
+            // A0 = empty map (unprotected header)
+            // F6 = CBOR Null (payload)
+            // 58 40 = 64 bytes (signature)
+            encodeToString(Base16()) shouldContain "A0F65840"
+        }
 
-        val parsed = CoseSigned.deserialize(parameterSerializer, signed.serialize(parameterSerializer)).getOrThrow()
+        val parsed = CoseSigned.deserialize(parameterSerializer, serialized).getOrThrow()
             .shouldBe(signed)
 
         verifierCoseService.verifyCose(parsed, coseKey).isSuccess shouldBe true
+    }
+
+    "signed object with random bytes, transported detached, can be verified" {
+        val parameterSerializer = ByteArraySerializer()
+        val signed = coseService.createSignedCoseWithDetachedPayload(
+            payload = randomPayload,
+            serializer = parameterSerializer,
+        ).getOrThrow()
+
+        signed.payload shouldBe null
+        signed.signature.shouldNotBeNull()
+
+        val serialized = signed.serialize(parameterSerializer).apply {
+            // A0 = empty map (unprotected header)
+            // F6 = CBOR Null (payload)
+            // 58 40 = 64 bytes (signature)
+            encodeToString(Base16()) shouldContain "A0F65840"
+        }
+
+        val parsed = CoseSigned.deserialize(parameterSerializer, serialized).getOrThrow()
+            .shouldBe(signed)
+
+        with(verifierCoseService) {
+            verifyCose(parsed, coseKey, detachedPayload = randomPayload).isSuccess shouldBe true
+            verifyCose(parsed, coseKey, detachedPayload = randomPayload + byteArrayOf(0)).isSuccess shouldBe false
+            verifyCose(parsed, coseKey).isSuccess shouldBe false
+        }
     }
 
     // https://github.com/cose-wg/Examples/tree/master/sign1-tests
@@ -138,7 +172,8 @@ class CoseServiceTest : FreeSpec({
         val signed = CoseSigned.deserialize(ByteArraySerializer(), input.decodeToByteArray(Base16())).getOrThrow()
 
         signed.payload shouldBe "546869732069732074686520636F6E74656E742E".decodeToByteArray(Base16())
-        signed.prepareCoseSignatureInput().encodeToString(Base16Strict) shouldBe "846A5369676E617475726531404054546869732069732074686520636F6E74656E742E"
+        signed.prepareCoseSignatureInput()
+            .encodeToString(Base16Strict) shouldBe "846A5369676E617475726531404054546869732069732074686520636F6E74656E742E"
     }
 
     // https://github.com/cose-wg/Examples/tree/master/sign1-tests
@@ -151,7 +186,8 @@ class CoseServiceTest : FreeSpec({
         val signed = CoseSigned.deserialize(ByteArraySerializer(), input.decodeToByteArray(Base16())).getOrThrow()
 
         signed.payload shouldBe "546869732069732074686520636F6E74656E742E".decodeToByteArray(Base16())
-        signed.prepareCoseSignatureInput(externalAad = "11aa22bb33cc44dd55006699".decodeToByteArray(Base16())).encodeToString(Base16Strict) shouldBe "846A5369676E61747572653143A101264C11AA22BB33CC44DD5500669954546869732069732074686520636F6E74656E742E"
+        signed.prepareCoseSignatureInput(externalAad = "11aa22bb33cc44dd55006699".decodeToByteArray(Base16()))
+            .encodeToString(Base16Strict) shouldBe "846A5369676E61747572653143A101264C11AA22BB33CC44DD5500669954546869732069732074686520636F6E74656E742E"
     }
 
     // https://github.com/cose-wg/Examples/tree/master/sign1-tests
@@ -164,7 +200,9 @@ class CoseServiceTest : FreeSpec({
         val signed = CoseSigned.deserialize(ByteArraySerializer(), input.decodeToByteArray(Base16())).getOrThrow()
 
         signed.payload shouldBe "546869732069732074686520636F6E74656E742E".decodeToByteArray(Base16())
-        signed.prepareCoseSignatureInput() shouldBe "846A5369676E61747572653143A101264054546869732069732074686520636F6E74656E742E".decodeToByteArray(Base16())
+        signed.prepareCoseSignatureInput() shouldBe "846A5369676E61747572653143A101264054546869732069732074686520636F6E74656E742E".decodeToByteArray(
+            Base16()
+        )
     }
 })
 

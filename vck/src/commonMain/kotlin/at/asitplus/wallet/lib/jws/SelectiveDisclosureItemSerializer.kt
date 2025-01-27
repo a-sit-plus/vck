@@ -37,8 +37,8 @@ object SelectiveDisclosureItemSerializer : KSerializer<SelectiveDisclosureItem> 
         )
     }
 
-    override fun deserialize(decoder: Decoder): SelectiveDisclosureItem {
-        return with(decoder.decodeSerializableValue(listSerializer)) {
+    override fun deserialize(decoder: Decoder): SelectiveDisclosureItem =
+        with(decoder.decodeSerializableValue(listSerializer)) {
             when (size) {
                 3 -> SelectiveDisclosureItem(
                     salt = get(0).jsonPrimitive.content.decodeToByteArray(Base64UrlStrict),
@@ -55,6 +55,5 @@ object SelectiveDisclosureItemSerializer : KSerializer<SelectiveDisclosureItem> 
                 else -> throw IllegalArgumentException("Neither 2 nor 3 elements")
             }
         }
-    }
 
 }

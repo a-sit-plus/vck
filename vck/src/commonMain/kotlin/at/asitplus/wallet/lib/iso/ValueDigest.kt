@@ -27,9 +27,8 @@ data class ValueDigest(
         return result
     }
 
-    override fun toString(): String {
-        return "ValueDigest(key=$key, value=${value.encodeToString(Base16(strict = true))})"
-    }
+    override fun toString(): String =
+        "ValueDigest(key=$key, value=${value.encodeToString(Base16(strict = true))})"
 
     companion object {
         /**

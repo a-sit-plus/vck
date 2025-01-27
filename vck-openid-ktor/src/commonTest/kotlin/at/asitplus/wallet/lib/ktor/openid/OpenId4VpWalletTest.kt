@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.ktor.openid
 
-import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
@@ -9,14 +8,14 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MD
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult.SuccessIso
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt
-import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
+import at.asitplus.wallet.lib.openid.*
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.ktor.client.*
 import io.ktor.client.engine.*
@@ -106,12 +105,12 @@ class OpenId4VpWalletTest : FunSpec() {
         responseMode: ResponseMode,
         clientId: String,
     ): Pair<OpenId4VpWallet, String> {
-        val requestOptions = OidcSiopVerifier.RequestOptions(
+        val requestOptions = RequestOptions(
             credentials = setOf(
-                OidcSiopVerifier.RequestOptionsCredential(
+                RequestOptionsCredential(
                     credentialScheme = scheme,
                     representation = representation,
-                    requestedAttributes = attributes.keys.toList()
+                    requestedAttributes = attributes.keys
                 )
             ),
             responseMode = responseMode,
@@ -169,13 +168,13 @@ class OpenId4VpWalletTest : FunSpec() {
     private fun Map.Entry<String, String>.toIssuerSignedItem(): IssuerSignedItem =
         IssuerSignedItem(0U, Random.nextBytes(16), key, value)
 
-    private fun OidcSiopVerifier.AuthnResponseResult.verifyReceivedAttributes(expectedAttributes: Map<String, String>) {
+    private fun AuthnResponseResult.verifyReceivedAttributes(expectedAttributes: Map<String, String>) {
         if (this.containsAllAttributes(expectedAttributes)) {
             countdownLatch.unlock()
         }
     }
 
-    private fun OidcSiopVerifier.AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<String, String>): Boolean =
+    private fun AuthnResponseResult.containsAllAttributes(expectedAttributes: Map<String, String>): Boolean =
         when (this) {
             is SuccessSdJwt -> this.containsAllAttributes(expectedAttributes)
             is SuccessIso -> this.containsAllAttributes(expectedAttributes)
@@ -215,32 +214,31 @@ class OpenId4VpWalletTest : FunSpec() {
      */
     private suspend fun setupRelyingPartyService(
         clientId: String,
-        requestOptions: OidcSiopVerifier.RequestOptions,
-        validate: (OidcSiopVerifier.AuthnResponseResult) -> Unit,
+        requestOptions: RequestOptions,
+        validate: (AuthnResponseResult) -> Unit,
     ): Pair<HttpClientEngine, String> {
         val requestEndpointPath = "/request/${uuid4()}"
-        val verifier = OidcSiopVerifier(
-            clientIdScheme = OidcSiopVerifier.ClientIdScheme.PreRegistered(clientId),
+        val redirectUri = "http://rp.example.com/cb"
+        val verifier = OpenId4VpVerifier(
+            clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUri),
         )
         val responseEndpointPath = "/response"
-        val (url, jar) = verifier.createAuthnRequestUrlWithRequestObjectByReference(
-            walletUrl = "http://wallet.example.com/",
-            requestUrl = "http://rp.example.com$requestEndpointPath",
-            requestOptions = requestOptions.copy(responseUrl = responseEndpointPath)
+        val (url, jar) = verifier.createAuthnRequest(
+            requestOptions.copy(responseUrl = responseEndpointPath),
+            CreationOptions.SignedRequestByReference("http://wallet.example.com/", "http://rp.example.com$requestEndpointPath")
         ).getOrThrow()
+        jar.shouldNotBeNull()
 
         return MockEngine { request ->
             when {
-                request.url.fullPath == requestEndpointPath -> respond(jar)
+                request.url.fullPath == requestEndpointPath -> respond(jar.invoke(null).getOrThrow())
 
-                request.url.fullPath.startsWith(responseEndpointPath) or request.url.fullPath.startsWith("/$clientId") -> {
+                request.url.fullPath.startsWith(responseEndpointPath) or request.url.toString().startsWith(redirectUri) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val queryParameters: Map<String, String> =
                         request.url.parameters.toMap().entries.associate { it.key to it.value.first() }
-                    val authnRequest: AuthenticationResponseParameters =
-                        if (requestBody.isEmpty()) queryParameters.decodeFromUrlQuery()
-                        else requestBody.decodeFromPostBody()
-                    val result = verifier.validateAuthnResponse(authnRequest)
+                    val result = if (requestBody.isNotEmpty()) verifier.validateAuthnResponse(requestBody)
+                    else verifier.validateAuthnResponse(queryParameters)
                     validate(result)
                     respondOk()
                 }

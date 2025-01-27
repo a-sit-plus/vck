@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.catching
 import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
@@ -15,6 +14,7 @@ import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
+import at.asitplus.wallet.lib.jws.SdJwtSigned
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 
@@ -47,19 +47,8 @@ class HolderAgent(
     )
 
     /**
-     * Sets the revocation list ot use for further processing of Verifiable Credentials
-     *
-     * @return `true` if the revocation list has been validated and set, `false` otherwise
-     */
-    override fun setRevocationList(it: String): Boolean {
-        return validator.setRevocationList(it)
-    }
-
-    /**
      * Stores the verifiable credential in [credential] if it parses and validates,
      * and returns it for future reference.
-     *
-     * Note: Revocation credentials should not be stored, but set with [setRevocationList].
      */
     override suspend fun storeCredential(credential: Holder.StoreCredentialInput) = catching {
         when (credential) {
@@ -76,7 +65,7 @@ class HolderAgent(
             }
 
             is Holder.StoreCredentialInput.SdJwt -> {
-                val sdJwt = validator.verifySdJwt(credential.vcSdJwt, keyPair.publicKey)
+                val sdJwt = validator.verifySdJwt(SdJwtSigned.parse(credential.vcSdJwt)!!, keyPair.publicKey)
                 if (sdJwt !is Verifier.VerifyCredentialResult.SuccessSdJwt) {
                     throw VerificationError(sdJwt.toString())
                 }
@@ -107,9 +96,6 @@ class HolderAgent(
 
     /**
      * Gets a list of all stored credentials, with a revocation status.
-     *
-     * Note that the revocation status may be [Validator.RevocationStatus.UNKNOWN] if no revocation list
-     * has been set with [setRevocationList]
      */
     override suspend fun getCredentials(): Collection<Holder.StoredCredential>? {
         val credentials = subjectCredentialStore.getCredentials().getOrNull()
@@ -117,9 +103,10 @@ class HolderAgent(
         return credentials.map { it.toStoredCredential() }
     }
 
-    private fun SubjectCredentialStore.StoreEntry.toStoredCredential() = when (this) {
+    private suspend fun SubjectCredentialStore.StoreEntry.toStoredCredential() = when (this) {
         is SubjectCredentialStore.StoreEntry.Iso -> Holder.StoredCredential.Iso(
-            this, Validator.RevocationStatus.UNKNOWN
+            this,
+            validator.checkRevocationStatus(issuerSigned),
         )
 
         is SubjectCredentialStore.StoreEntry.Vc -> Holder.StoredCredential.Vc(
@@ -135,7 +122,7 @@ class HolderAgent(
      * Gets a list of all valid stored credentials sorted by preference
      */
     private suspend fun getValidCredentialsByPriority() = getCredentials()
-        ?.filter { it.status != Validator.RevocationStatus.REVOKED }
+        ?.filter { it.status?.isInvalid != true }
         ?.map { it.storeEntry }
         ?.sortedBy {
             // prefer iso credentials and sd jwt credentials over plain vc credentials
@@ -149,12 +136,11 @@ class HolderAgent(
 
 
     override suspend fun createPresentation(
-        challenge: String,
-        audienceId: String,
+        request: PresentationRequestParameters,
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
-    ): KmmResult<Holder.PresentationResponseParameters> = runCatching {
+    ): KmmResult<PresentationResponseParameters> = catching {
         val submittedCredentials = matchInputDescriptorsAgainstCredentialStore(
             inputDescriptors = presentationDefinition.inputDescriptors,
             fallbackFormatHolder = fallbackFormatHolder,
@@ -176,19 +162,17 @@ class HolderAgent(
         }
 
         createPresentation(
-            challenge = challenge,
-            audienceId = audienceId,
+            request = request,
             presentationDefinitionId = presentationDefinition.id,
             presentationSubmissionSelection = submittedCredentials,
         ).getOrThrow()
-    }.wrap()
+    }
 
     override suspend fun createPresentation(
-        challenge: String,
-        audienceId: String,
+        request: PresentationRequestParameters,
         presentationDefinitionId: String?,
         presentationSubmissionSelection: Map<String, CredentialSubmission>,
-    ): KmmResult<Holder.PresentationResponseParameters> = runCatching {
+    ): KmmResult<PresentationResponseParameters> = catching {
         val submissionList = presentationSubmissionSelection.toList()
         val presentationSubmission = PresentationSubmission.fromMatches(
             presentationId = presentationDefinitionId,
@@ -199,37 +183,33 @@ class HolderAgent(
             val credential = match.second.credential
             val disclosedAttributes = match.second.disclosedAttributes
             verifiablePresentationFactory.createVerifiablePresentation(
-                challenge = challenge,
-                audienceId = audienceId,
+                request = request,
                 credential = credential,
                 disclosedAttributes = disclosedAttributes,
             ).getOrThrow()
         }
 
-        Holder.PresentationResponseParameters(
+        PresentationResponseParameters(
             presentationSubmission = presentationSubmission,
             presentationResults = verifiablePresentations,
         )
-    }.wrap()
+    }
 
     suspend fun createVcPresentation(
         validCredentials: List<String>,
-        challenge: String,
-        audienceId: String,
-    ): KmmResult<Holder.CreatePresentationResult> = runCatching {
+        request: PresentationRequestParameters,
+    ): KmmResult<CreatePresentationResult> = catching {
         verifiablePresentationFactory.createVcPresentation(
             validCredentials = validCredentials,
-            challenge = challenge,
-            audienceId = audienceId,
+            request = request,
         )
-    }.wrap()
-
+    }
 
     override suspend fun matchInputDescriptorsAgainstCredentialStore(
         inputDescriptors: Collection<InputDescriptor>,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
-    ) = runCatching {
+    ) = catching {
         findInputDescriptorMatches(
             inputDescriptors = inputDescriptors,
             credentials = getValidCredentialsByPriority()
@@ -237,7 +217,7 @@ class HolderAgent(
             fallbackFormatHolder = fallbackFormatHolder,
             pathAuthorizationValidator = pathAuthorizationValidator,
         )
-    }.wrap()
+    }
 
     private fun findInputDescriptorMatches(
         inputDescriptors: Collection<InputDescriptor>,
@@ -285,11 +265,12 @@ class HolderAgent(
     }
 
     /** assume credential format to be supported by the verifier if no format holder is specified */
+    @Suppress("DEPRECATION")
     private fun SubjectCredentialStore.StoreEntry.isFormatSupported(supportedFormats: FormatHolder?): Boolean =
         supportedFormats?.let { formatHolder ->
             when (this) {
                 is SubjectCredentialStore.StoreEntry.Vc -> formatHolder.jwtVp != null
-                is SubjectCredentialStore.StoreEntry.SdJwt -> formatHolder.jwtSd != null
+                is SubjectCredentialStore.StoreEntry.SdJwt -> formatHolder.jwtSd != null || formatHolder.sdJwt != null
                 is SubjectCredentialStore.StoreEntry.Iso -> formatHolder.msoMdoc != null
             }
         } ?: true
@@ -309,6 +290,7 @@ class HolderAgent(
         },
     )
 
+    @Suppress("DEPRECATION")
     private fun PresentationSubmissionDescriptor.Companion.fromMatch(
         credential: SubjectCredentialStore.StoreEntry,
         inputDescriptorId: String,
@@ -317,6 +299,7 @@ class HolderAgent(
         id = inputDescriptorId,
         format = when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> ClaimFormat.JWT_VP
+            // TODO In 5.4.0, use SD_JWT instead of JWT_SD
             is SubjectCredentialStore.StoreEntry.SdJwt -> ClaimFormat.JWT_SD
             is SubjectCredentialStore.StoreEntry.Iso -> ClaimFormat.MSO_MDOC
         },

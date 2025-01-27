@@ -1,21 +1,23 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.KmmResult.Companion.wrap
+import at.asitplus.catching
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.cbor.CoseService
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.KeyBindingJws
+import at.asitplus.wallet.lib.data.VerifiablePresentation
+import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
 import io.github.aakira.napier.Napier
 import kotlinx.datetime.Clock
-import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.json.JsonElement
 
 class VerifiablePresentationFactory(
@@ -24,46 +26,36 @@ class VerifiablePresentationFactory(
     private val identifier: String,
 ) {
     suspend fun createVerifiablePresentation(
-        challenge: String,
-        audienceId: String,
+        request: PresentationRequestParameters,
         credential: SubjectCredentialStore.StoreEntry,
         disclosedAttributes: Collection<NormalizedJsonPath>,
-    ): KmmResult<Holder.CreatePresentationResult> = runCatching {
+    ): KmmResult<CreatePresentationResult> = catching {
         when (credential) {
             is SubjectCredentialStore.StoreEntry.Vc -> createVcPresentation(
-                challenge = challenge,
-                audienceId = audienceId,
+                request = request,
                 validCredentials = listOf(credential.vcSerialized),
             )
 
             is SubjectCredentialStore.StoreEntry.SdJwt -> createSdJwtPresentation(
-                challenge = challenge,
-                audienceId = audienceId,
+                request = request,
                 validSdJwtCredential = credential,
                 requestedClaims = disclosedAttributes,
             )
 
             is SubjectCredentialStore.StoreEntry.Iso -> createIsoPresentation(
-                challenge = challenge,
+                request = request,
                 credential = credential,
                 requestedClaims = disclosedAttributes,
             )
         }
-    }.wrap()
+    }
 
     private suspend fun createIsoPresentation(
-        challenge: String,
+        request: PresentationRequestParameters,
         credential: SubjectCredentialStore.StoreEntry.Iso,
-        requestedClaims: Collection<NormalizedJsonPath>
-    ): Holder.CreatePresentationResult.DeviceResponse {
-        val deviceSignature = coseService.createSignedCose(
-            payload = challenge.encodeToByteArray(),
-            serializer = ByteArraySerializer(),
-            addKeyId = false
-        ).getOrElse {
-            Napier.w("Could not create DeviceAuth for presentation", it)
-            throw PresentationException(it)
-        }
+        requestedClaims: Collection<NormalizedJsonPath>,
+    ): CreatePresentationResult.DeviceResponse {
+        Napier.d("createIsoPresentation with $request and $requestedClaims for $credential")
 
         // allows disclosure of attributes from different namespaces
         val namespaceToAttributesMap = requestedClaims.mapNotNull { normalizedJsonPath ->
@@ -101,18 +93,22 @@ class VerifiablePresentationFactory(
                     ?: throw PresentationException("Attribute not available in credential: $['$namespace']['$attributeName']")
             }
         }
-        return Holder.CreatePresentationResult.DeviceResponse(
-            DeviceResponse(
+        val docType = credential.scheme?.isoDocType!!
+        val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
+        val (deviceSignature, mDocGeneratedNonce) = request.calcIsoDeviceSignature.invoke(docType)
+            ?: throw PresentationException("CalculateChallengeResponse not implemented")
+        return CreatePresentationResult.DeviceResponse(
+            deviceResponse = DeviceResponse(
                 version = "1.0",
                 documents = arrayOf(
                     Document(
-                        docType = credential.scheme?.isoDocType!!,
+                        docType = docType,
                         issuerSigned = IssuerSigned.fromIssuerSignedItems(
                             namespacedItems = disclosedItems,
                             issuerAuth = credential.issuerSigned.issuerAuth
                         ),
                         deviceSigned = DeviceSigned(
-                            namespaces = ByteStringWrapper(DeviceNameSpaces(mapOf())),
+                            namespaces = deviceNameSpaceBytes,
                             deviceAuth = DeviceAuth(
                                 deviceSignature = deviceSignature
                             )
@@ -120,16 +116,16 @@ class VerifiablePresentationFactory(
                     )
                 ),
                 status = 0U,
-            )
+            ),
+            mdocGeneratedNonce = mDocGeneratedNonce
         )
     }
 
     private suspend fun createSdJwtPresentation(
-        audienceId: String,
-        challenge: String,
+        request: PresentationRequestParameters,
         validSdJwtCredential: SubjectCredentialStore.StoreEntry.SdJwt,
         requestedClaims: Collection<NormalizedJsonPath>,
-    ): Holder.CreatePresentationResult.SdJwt {
+    ): CreatePresentationResult.SdJwt {
         val filteredDisclosures = requestedClaims
             .flatMap { it.segments }
             .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
@@ -138,19 +134,20 @@ class VerifiablePresentationFactory(
             }.toSet()
 
         val issuerJwtPlusDisclosures = SdJwtSigned.sdHashInput(validSdJwtCredential, filteredDisclosures)
-        val keyBinding = createKeyBindingJws(audienceId, challenge, issuerJwtPlusDisclosures)
+        val keyBinding = createKeyBindingJws(request, issuerJwtPlusDisclosures)
         val issuerSignedJwsSerialized = validSdJwtCredential.vcSerialized.substringBefore("~")
-        val issuerSignedJws = JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer).getOrElse {
-            Napier.w("Could not re-create JWS from stored SD-JWT", it)
-            throw PresentationException(it)
-        }
+        val issuerSignedJws =
+            JwsSigned.deserialize<JsonElement>(JsonElement.serializer(), issuerSignedJwsSerialized, vckJsonSerializer)
+                .getOrElse {
+                    Napier.w("Could not re-create JWS from stored SD-JWT", it)
+                    throw PresentationException(it)
+                }
         val sdJwt = SdJwtSigned.serializePresentation(issuerSignedJws, filteredDisclosures, keyBinding)
-        return Holder.CreatePresentationResult.SdJwt(sdJwt)
+        return CreatePresentationResult.SdJwt(sdJwt)
     }
 
     private suspend fun createKeyBindingJws(
-        audienceId: String,
-        challenge: String,
+        request: PresentationRequestParameters,
         issuerJwtPlusDisclosures: String,
     ): JwsSigned<KeyBindingJws> = jwsService.createSignedJwsAddingParams(
         header = JwsHeader(
@@ -159,8 +156,8 @@ class VerifiablePresentationFactory(
         ),
         payload = KeyBindingJws(
             issuedAt = Clock.System.now(),
-            audience = audienceId,
-            challenge = challenge,
+            audience = request.audience,
+            challenge = request.nonce,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
         ),
         serializer = KeyBindingJws.serializer(),
@@ -172,13 +169,6 @@ class VerifiablePresentationFactory(
         throw PresentationException(it)
     }
 
-    private fun Map.Entry<String, SelectiveDisclosureItem?>.discloseItem(requestedClaims: Collection<String>?) =
-        if (requestedClaims == null) {
-            false // do not disclose by default
-        } else {
-            value?.let { it.claimName in requestedClaims } ?: false
-        }
-
     /**
      * Creates a [VerifiablePresentation] with the given [validCredentials].
      *
@@ -186,13 +176,12 @@ class VerifiablePresentationFactory(
      */
     suspend fun createVcPresentation(
         validCredentials: List<String>,
-        challenge: String,
-        audienceId: String,
-    ): Holder.CreatePresentationResult = Holder.CreatePresentationResult.Signed(
+        request: PresentationRequestParameters,
+    ) = CreatePresentationResult.Signed(
         jwsService.createSignedJwt(
             type = JwsContentTypeConstants.JWT,
             payload = VerifiablePresentation(validCredentials)
-                .toJws(challenge, identifier, audienceId),
+                .toJws(request.nonce, identifier, request.audience),
             serializer = VerifiablePresentationJws.serializer(),
         ).getOrElse {
             Napier.w("Could not create JWS for presentation", it)

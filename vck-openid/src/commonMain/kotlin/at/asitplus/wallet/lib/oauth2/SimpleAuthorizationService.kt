@@ -6,7 +6,7 @@ import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidvci.*
 import io.github.aakira.napier.Napier
 import io.ktor.http.*

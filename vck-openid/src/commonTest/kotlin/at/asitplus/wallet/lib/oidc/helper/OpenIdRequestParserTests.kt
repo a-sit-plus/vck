@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.oidc.helper
 
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.wallet.lib.openid.RequestParser
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
@@ -92,6 +93,7 @@ class OpenIdRequestParserTests : FreeSpec({
 
         params.responseUrl shouldBe "https://verifier.funke.wwwallet.org/verification/direct_post"
         params.clientId shouldBe "verifier.funke.wwwallet.org"
+        params.clientIdWithoutPrefix shouldBe "verifier.funke.wwwallet.org"
         fields shouldHaveSize 20
         val vctField = fields.first { it.path == listOf("$.vct") }
         vctField.filter!!.enum!! shouldContain "urn:eu.europa.ec.eudi:pid:1"

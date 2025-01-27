@@ -15,17 +15,16 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
+import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.cbor.CoseService
+import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.oidc.helper.AuthenticationResponseFactory
-import at.asitplus.wallet.lib.oidc.helper.AuthorizationRequestValidator
-import at.asitplus.wallet.lib.oidc.helper.PresentationFactory
-import at.asitplus.wallet.lib.oidc.helper.RequestParser
-import at.asitplus.wallet.lib.oidc.helpers.AuthorizationResponsePreparationState
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import at.asitplus.wallet.lib.openid.*
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
@@ -38,12 +37,17 @@ import kotlinx.serialization.json.buildJsonArray
  * Implements [OIDC for VP](https://openid.net/specs/openid-connect-4-verifiable-presentations-1_0.html) (2023-04-21)
  * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (2023-01-01).
  *
- * The [holder] creates the Authentication Response, see [OidcSiopVerifier] for the verifier.
+ * The [holder] creates the Authentication Response, see [at.asitplus.wallet.lib.openid.OpenId4VpVerifier] for the verifier.
  */
+@Deprecated(
+    message = "Replace with OpenId4VpHolder",
+    ReplaceWith("OpenId4VpHolder", "at.asitplus.wallet.lib.openid")
+)
 class OidcSiopWallet(
     private val holder: Holder,
     private val agentPublicKey: CryptoPublicKey,
     private val jwsService: JwsService,
+    private val coseService: CoseService,
     private val clock: Clock = Clock.System,
     private val clientId: String = "https://wallet.a-sit.at/",
     /**
@@ -58,18 +62,20 @@ class OidcSiopWallet(
      * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
      */
     private val requestObjectJwsVerifier: RequestObjectJwsVerifier,
+) {
     /**
      * Used to resolve [RequestParameters] by reference and also matches them to the correct [RequestParametersFrom]
      */
     private val requestParser: RequestParser = RequestParser(
         remoteResourceRetriever = remoteResourceRetriever,
         requestObjectJwsVerifier = requestObjectJwsVerifier,
-    ),
-) {
+    )
+
     constructor(
         keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
         holder: Holder = HolderAgent(keyMaterial),
         jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
+        coseService: CoseService = DefaultCoseService(DefaultCryptoService(keyMaterial)),
         clock: Clock = Clock.System,
         clientId: String = "https://wallet.a-sit.at/",
         /**
@@ -84,22 +90,15 @@ class OidcSiopWallet(
          * which may be signed with a pre-registered key (see [OpenIdConstants.ClientIdScheme.PreRegistered]).
          */
         requestObjectJwsVerifier: RequestObjectJwsVerifier = RequestObjectJwsVerifier { _ -> true },
-        /**
-         * Used to resolve [RequestParameters] by reference and also matches them to the correct [RequestParametersFrom]
-         */
-        requestParser: RequestParser = RequestParser(
-            remoteResourceRetriever = remoteResourceRetriever,
-            requestObjectJwsVerifier = requestObjectJwsVerifier,
-        ),
     ) : this(
         holder = holder,
         agentPublicKey = keyMaterial.publicKey,
         jwsService = jwsService,
+        coseService = coseService,
         clock = clock,
         clientId = clientId,
         remoteResourceRetriever = remoteResourceRetriever,
         requestObjectJwsVerifier = requestObjectJwsVerifier,
-        requestParser = requestParser,
     )
 
     val metadata: OAuth2AuthorizationServerMetadata by lazy {
@@ -119,8 +118,8 @@ class OidcSiopWallet(
 
     /**
      * Pass in the URL sent by the Verifier (containing the [AuthenticationRequestParameters] as query parameters),
-     * to create [AuthenticationResponseResult] that can be sent back to the Verifier, see
-     * [AuthenticationResponseResult].
+     * to create [at.asitplus.wallet.lib.openid.AuthenticationResponseResult] that can be sent back to the Verifier, see
+     * [at.asitplus.wallet.lib.openid.AuthenticationResponseResult].
      */
     suspend fun createAuthnResponse(input: String): KmmResult<AuthenticationResponseResult> =
         catching {
@@ -133,7 +132,10 @@ class OidcSiopWallet(
      * [AuthenticationResponseResult].
      */
     suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
-        catching { requestParser.parseRequestParameters(input).getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters> }
+        catching {
+            requestParser.parseRequestParameters(input)
+                .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
+        }
 
     /**
      * Pass in the deserialized [AuthenticationRequestParameters], which were either encoded as query params,
@@ -151,12 +153,10 @@ class OidcSiopWallet(
      */
     suspend fun createAuthnResponseParams(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
-    ): KmmResult<AuthenticationResponse> = startAuthorizationResponsePreparation(params).map {
-        finalizeAuthorizationResponseParameters(
-            request = params,
-            preparationState = it,
-        ).getOrThrow()
-    }
+    ): KmmResult<AuthenticationResponse> =
+        startAuthorizationResponsePreparation(params).map {
+            finalizeAuthorizationResponseParameters(request = params, preparationState = it).getOrThrow()
+        }
 
     /**
      * Starts the authorization response building process from the RP's authentication request in [input]
@@ -191,17 +191,10 @@ class OidcSiopWallet(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
-    ): KmmResult<AuthenticationResponseResult> = finalizeAuthorizationResponseParameters(
-        request,
-        preparationState,
-        inputDescriptorSubmissions,
-    ).map { responseParameters ->
-        AuthenticationResponseFactory(jwsService).createAuthenticationResponse(
-            request,
-            responseParameters,
-        )
-    }
-
+    ): KmmResult<AuthenticationResponseResult> =
+        finalizeAuthorizationResponseParameters(request, preparationState, inputDescriptorSubmissions).map {
+            AuthenticationResponseFactory(jwsService).createAuthenticationResponse(request, it)
+        }
 
     /**
      * Finalize the authorization response parameters
@@ -219,12 +212,9 @@ class OidcSiopWallet(
             ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val audience = request.extractAudience(clientJsonWebKeySet)
-        val presentationFactory = PresentationFactory(jwsService)
-        val idToken = presentationFactory.createSignedIdToken(
-            clock = clock,
-            agentPublicKey = agentPublicKey,
-            request = request,
-        ).getOrNull()?.serialize()
+        val presentationFactory = PresentationFactory(jwsService, coseService)
+        val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
+        val idToken = presentationFactory.createSignedIdToken(clock, agentPublicKey, request).getOrNull()?.serialize()
 
         val resultContainer = presentationDefinition?.let {
             presentationFactory.createPresentationExchangePresentation(
@@ -233,19 +223,23 @@ class OidcSiopWallet(
                 audience = audience,
                 presentationDefinition = presentationDefinition,
                 clientMetadata = clientMetadata,
+                jsonWebKeys = jsonWebKeys,
                 inputDescriptorSubmissions = inputDescriptorSubmissions
             ).getOrThrow()
         }
         val vpToken = resultContainer?.presentationResults?.map { it.toJsonPrimitive() }?.singleOrArray()
         val presentationSubmission = resultContainer?.presentationSubmission
+        val mdocGeneratedNonce = resultContainer?.presentationResults
+            ?.filterIsInstance<CreatePresentationResult.DeviceResponse>()
+            ?.singleOrNull()
+            ?.mdocGeneratedNonce
         val parameters = AuthenticationResponseParameters(
             state = request.parameters.state,
             idToken = idToken,
             vpToken = vpToken,
             presentationSubmission = presentationSubmission,
         )
-        val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
-        AuthenticationResponse(parameters, clientMetadata, jsonWebKeys)
+        AuthenticationResponse(parameters, clientMetadata, jsonWebKeys, mdocGeneratedNonce)
     }
 
     @Throws(OAuth2Exception::class)
@@ -259,7 +253,7 @@ class OidcSiopWallet(
             .also { Napier.w("Could not parse audience") }
 
     private suspend fun RelyingPartyMetadata.loadJsonWebKeySet() =
-        this.jsonWebKeySet ?: jsonWebKeySetUrl?.let { remoteResourceRetriever.invoke(it) }
+        this.jsonWebKeySet ?: jsonWebKeySetUrl?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
             ?.let { JsonWebKeySet.deserialize(it).getOrNull() }
 
 
@@ -267,13 +261,13 @@ class OidcSiopWallet(
         if (responseType?.contains(VP_TOKEN) == true) {
             presentationDefinition
                 ?: presentationDefinitionUrl
-                    ?.let { remoteResourceRetriever.invoke(it) }
+                    ?.let { remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(it)) }
                     ?.let { PresentationDefinition.deserialize(it).getOrNull() }
         } else null
 
     private suspend fun AuthenticationRequestParameters.loadClientMetadata() =
         clientMetadata ?: clientMetadataUri?.let { uri ->
-            remoteResourceRetriever.invoke(uri)
+            remoteResourceRetriever.invoke(RemoteResourceRetrieverInput(uri))
                 ?.let { RelyingPartyMetadata.deserialize(it).getOrNull() }
         }
 
@@ -281,11 +275,12 @@ class OidcSiopWallet(
      * Source for logic:  Appendix A. Credential Format Profiles in
      * [OID4VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A)
      */
-    private fun Holder.CreatePresentationResult.toJsonPrimitive() = when (this) {
-        is Holder.CreatePresentationResult.Signed -> JsonPrimitive(jws)
-        is Holder.CreatePresentationResult.SdJwt -> JsonPrimitive(sdJwt)
-        is Holder.CreatePresentationResult.DeviceResponse ->
-            JsonPrimitive(deviceResponse.serialize().encodeToString(Base64UrlStrict))
+    private fun CreatePresentationResult.toJsonPrimitive() = when (this) {
+        is CreatePresentationResult.Signed -> JsonPrimitive(serialized)
+        is CreatePresentationResult.SdJwt -> JsonPrimitive(serialized)
+        is CreatePresentationResult.DeviceResponse -> JsonPrimitive(
+            deviceResponse.serialize().encodeToString(Base64UrlStrict)
+        )
     }
 
     private fun List<JsonPrimitive>.singleOrArray() = if (size == 1) {
@@ -295,19 +290,5 @@ class OidcSiopWallet(
     }
 }
 
-/**
- * Implementations need to fetch the url passed in, and return either the body, if there is one,
- * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
- */
-typealias RemoteResourceRetrieverFunction = suspend (String) -> String?
-
-/**
- * Implementations need to verify the passed [JwsSigned] and return its result
- */
-fun interface RequestObjectJwsVerifier {
-    operator fun invoke(jws: JwsSigned<RequestParameters>): Boolean
-}
-
-private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> {
-    return certKey?.let { (this ?: listOf()) + certKey } ?: this ?: listOf()
-}
+private fun Collection<JsonWebKey>?.combine(certKey: JsonWebKey?): Collection<JsonWebKey> =
+    certKey?.let { (this ?: listOf()) + certKey } ?: this ?: listOf()

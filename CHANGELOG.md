@@ -1,5 +1,74 @@
 # Changelog
 
+Release 5.3.0:
+- Implement [token-status-list-06](https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html), replacing implementation of Revocation List 2020:
+  - `Holder`:
+    - Remove `setRevocationList`
+    - Change `StoredCredential` revocation status to token status
+  - `InMemoryIssuerCredentialStore`:
+    - Change `revoke` semantics to `token status` semantics
+    - Add token status bitsize
+    - Change iso credential identifier to make it deterministic
+  - `Issuer`:
+    - Change `buildRevocationList` to `buildStatusList` 
+    - Add functions for issuing status lists and status list tokens
+    - Remove `compileCurrentRevocationLists`
+    - Add inheritance from token status agent interfaces
+  - `IssuerAgent`
+    - Add revocation status for iso credentials
+    - Change revocation status to token status
+  - `IssuerCredentialStore`
+    - Change revocation status semantics to token status semantics
+  - `Validator`:
+    - Change revocation status to token status
+    - Change revocation check to token status invalid check by using new status mechanism
+    - Add validation for status list tokens
+  - `Verifier`: 
+    - Remove `setRevocationList`
+    - Add `verifyRevocationStatusListJwtIntegrity` and `verifyRevocationStatusListCwtIntegrity`
+  - `CoseService`: 
+    - Add check without specifying signer (using cose signed public key or trust store)
+  - `VerifiableCredential`: Change `credentialStatus` to `status` and using new status mechanism
+  - `VerifiableCredentialSdJwt`: Change `credentialStatus` to use new status mechanism
+  - `MobileSecurityObject`: Add status mechanism
+  - `iosMain/DefaultZlibService`: Verify compression method was deflate when inflating
+- Implement device response including session transcript and handover structure acc. to ISO/IEC 18013-7 Annex B for mDoc responses:
+  - `CoseService` adds method `createSignedCoseWithDetachedPayload` to not serialize the payload in the `CoseSigned` structure
+  - Move `at.asitplus.wallet.lib.agent.Holder.PresentationResponseParameters` to `at.asitplus.wallet.lib.agent.PresentationResponseParameters`
+  - Move `at.asitplus.wallet.lib.agent.Holder.CreatePresentationResult` to `at.asitplus.wallet.lib.agent.CreatePresentationResult`
+  - In `Holder.createPresentation()` replace parameters `challenge` and `audience` with `PresentationRequestParameters`, extending the possible inputs for calculating the verifiable presentation
+  - In `Verifier` and `VerifierAgent` add methods `verifyPresentationVcJwt()`, `verifyPresentationSdJwt()` and `verifyPresentationIsoMdoc()` to directly verify typed objects
+  - For verification of credentials and presentations add `ValidationError` cases to sealed classes
+  - In `OidcSiopVerifier` replace `stateToNonceStore` and `stateToResponseTypeStore` with `stateToAuthnRequestStore`
+- OpenID4VP refactorings:
+  - Deprecate `OidcSiopVerifier`, use `at.asitplus.wallet.lib.openid.OpenId4VpVerifier` instead
+  - Move classes `ClientIdScheme`, `RequestOptions`, `AuthResponseResult` out of `OpenId4VpVerifier`
+  - Change type of `RequestOptionsCredential.requestedAttributes` from `List` to `Set`
+  - Change type of `RequestOptionsCredential.requestedOptionalAttributes` from `List` to `Set`
+  - Deprecate `OidcSiopWallet`, use `at.asitplus.wallet.lib.openid.OpenId4VpHolder` instead
+  - Move `RequestObjectJwsVerifier` from `at.asitplus.wallet.lib.oidc` to `at.asitplus.wallet.lib.openid`
+  - Move `RemoteResourceRetrieverFunction` from `at.asitplus.wallet.lib.oidc` to `at.asitplus.wallet.lib`
+  - Move `AuthorizationResponsePreparationState` from `at.asitplus.wallet.lib.oidc.helpers` to `at.asitplus.wallet.lib.openid`
+- Update implementation of OpenID4VP to draft 23:
+  - Support credential format identifier `dc+sd-jwt` in addition to `vc+sd-jwt`
+  - Drop `client_id_scheme` and encode it as a prefix to `client_id`
+  - Set `vp_formats_supported` in wallet's metadata
+  - Remove `OpenId4VpVerifier.createSignedMetadata()`, as signed metadata is not covered by any spec
+  - Remove `OpenId4VpVerifier.createQrCodeUrl()`, replace with `createAutnRequest(requestOptions, creationOptions)` and `CreationOptions.RequestByReference`
+  - Remove `OpenId4VpVerifier.createAuthnRequestUrl()`, replace with `createAutnRequest(requestOptions, creationOptions)` and `CreationOptions.Query`
+  - Remove `OpenId4VpVerifier.createAuthnRequestUrlWithRequestObject()`, replace with `createAutnRequest(requestOptions, creationOptions)` and `CreationOptions.RequestByValue`
+  - Remove `OpenId4VpVerifier.createAuthnRequestUrlWithRequestObjectByReference()`, replace with `createAutnRequest(requestOptions, creationOptions)` and `CreationOptions.RequestByReference`
+  - Add explicit `redirect_uri` to all `ClientIdSchemes` for `OpenId4VpVerifier`
+  - Sub classes of `ClientIdScheme` are not data classes, to allow passing parameters with the same names as the sealed base class
+  - Verify requirements whether requests must or must not be signed acc. to the client identifier scheme
+  - Support `wallet_nonce` and `request_uri_method` for replay detection on Wallet side
+- General cleanup:
+  - Remove `SchemaIndex`
+  - Remove `VcLibException`
+- Dependency updates:
+  - Update signum to 3.12.1
+- Add isolated DCQL implementation 
+
 Release 5.2.3:
  - Be more lenient in parsing OpenId authentication requests
  - OpenID4VP: Use correct format of algorithms in metadata for `vp_formats.vc+sd-jwt`

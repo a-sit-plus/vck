@@ -30,6 +30,8 @@ data class AuthenticationRequestParameters(
 
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
+     *
+     * See also [clientIdWithoutPrefix] and the notes there.
      */
     @SerialName("client_id")
     val clientId: String? = null,
@@ -40,6 +42,8 @@ data class AuthenticationRequestParameters(
      * described in Section 6.2.1 of RFC3986 (Simple String Comparison).
      *
      * Optional when JAR (RFC9101) is used.
+     *
+     * See also [redirectUrlExtracted]
      */
     @SerialName("redirect_uri")
     val redirectUrl: String? = null,
@@ -68,6 +72,14 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("nonce")
     val nonce: String? = null,
+
+    /**
+     * OpenID4VP: When received in [RequestObjectParameters.walletNonce], the Verifier MUST use it as the [walletNonce]
+     * value in the signed authorization request object.
+     * Value can be a base64url-encoded, fresh, cryptographically random number with sufficient entropy.
+     */
+    @SerialName("wallet_nonce")
+    val walletNonce: String? = null,
 
     /**
      * OIDC: OPTIONAL. This parameter is used to request that specific Claims be returned. The value is a JSON object
@@ -116,6 +128,19 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("request_uri")
     val requestUri: String? = null,
+
+    /**
+     * OpenID4VP: OPTIONAL. A string determining the HTTP method to be used when the [requestUri] parameter is included
+     * in the same request. Two case-sensitive valid values are defined in this specification: `get` and `post`.
+     * If [requestUriMethod] value is `get`, the Wallet MUST send the request to retrieve the Request Object using the
+     * HTTP GET method, i.e., as defined in RFC9101. If [requestUriMethod] value is `post`, a supporting Wallet MUST
+     * send the request using the HTTP POST method as detailed in Section 5.11. If the [requestUriMethod] parameter is
+     * not present, the Wallet MUST process the [requestUri] parameter as defined in RFC9101. Wallets not supporting
+     * the post method will send a GET request to the Request URI (default behavior as defined in RFC9101).
+     * [requestUriMethod] parameter MUST NOT be present if a [requestUri] parameter is not present.
+     */
+    @SerialName("request_uri_method")
+    val requestUriMethod: String? = null,
 
     /**
      * OIDC SIOPv2: OPTIONAL. Space-separated string that specifies the types of ID Token the RP wants to obtain, with
@@ -167,6 +192,7 @@ data class AuthenticationRequestParameters(
      * Identifier schemes the Wallet supports prior to sending the Authorization Request in order to choose a supported
      * scheme.
      */
+    @Deprecated("Removed in OpenID4VP draft 22, now a prefix of `client_id`")
     @SerialName("client_id_scheme")
     val clientIdScheme: OpenIdConstants.ClientIdScheme? = null,
 
@@ -266,6 +292,34 @@ data class AuthenticationRequestParameters(
         fun deserialize(it: String) = kotlin.runCatching {
             odcJsonSerializer.decodeFromString<AuthenticationRequestParameters>(it)
         }.wrap()
+    }
+
+    /**
+     * Reads the [OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],
+     * or by extracting the prefix from [clientId] (as specified in OpenID4VP draft 22 onwards).
+     */
+    @Suppress("DEPRECATION")
+    val clientIdSchemeExtracted: OpenIdConstants.ClientIdScheme? by lazy {
+        clientIdScheme ?: clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(clientId) }
+    }
+
+    /**
+     * Reads the [clientId] and removes the prefix of the [clientIdSchemeExtracted],
+     * as specified in OpenID4VP draft 22 onwards.
+     * OpenID4VP states that the *full* [clientId] must be used for presentations and anything else.
+     */
+    val clientIdWithoutPrefix: String? by lazy {
+        clientId?.let { clientId ->
+            clientIdSchemeExtracted?.let { clientId.removePrefix("${it.stringRepresentation}:") }
+        }
+    }
+
+    /**
+     * Reads the [redirectUrl], or the [clientIdWithoutPrefix] if [clientIdSchemeExtracted] is
+     * [OpenIdConstants.ClientIdScheme.RedirectUri], as specified in OpenID4VP draft 22 onwards.
+     */
+    val redirectUrlExtracted: String? by lazy {
+       redirectUrl ?: (clientIdSchemeExtracted as? OpenIdConstants.ClientIdScheme.RedirectUri)?.let { clientIdWithoutPrefix }
     }
 }
 

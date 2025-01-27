@@ -34,30 +34,20 @@ open class IssuerSignedListSerializer(private val namespace: String) : KSerializ
         override val serialName: String = "kotlin.collections.ArrayList"
 
         @ExperimentalSerializationApi
-        override fun getElementAnnotations(index: Int): List<Annotation> {
-            @OptIn(ExperimentalUnsignedTypes::class)
-            return listOf(ValueTags(24U))
-        }
+        @OptIn(ExperimentalUnsignedTypes::class)
+        override fun getElementAnnotations(index: Int): List<Annotation> = listOf(ValueTags(24U))
 
         @ExperimentalSerializationApi
-        override fun getElementDescriptor(index: Int): SerialDescriptor {
-            return Byte.serializer().descriptor
-        }
+        override fun getElementDescriptor(index: Int): SerialDescriptor = Byte.serializer().descriptor
 
         @ExperimentalSerializationApi
-        override fun getElementIndex(name: String): Int {
-            return name.toInt()
-        }
+        override fun getElementIndex(name: String): Int = name.toInt()
 
         @ExperimentalSerializationApi
-        override fun getElementName(index: Int): String {
-            return index.toString()
-        }
+        override fun getElementName(index: Int): String = index.toString()
 
         @ExperimentalSerializationApi
-        override fun isElementOptional(index: Int): Boolean {
-            return false
-        }
+        override fun isElementOptional(index: Int): Boolean = false
     }
 
 

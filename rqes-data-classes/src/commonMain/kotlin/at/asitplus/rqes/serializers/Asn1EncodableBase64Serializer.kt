@@ -14,9 +14,8 @@ import kotlinx.serialization.encoding.Encoder
 object Asn1EncodableBase64Serializer : KSerializer<Asn1Element> {
     override val descriptor = PrimitiveSerialDescriptor("Asn1Encodable", PrimitiveKind.STRING)
 
-    override fun deserialize(decoder: Decoder): Asn1Element {
-        return Asn1Element.parse(decoder.decodeString().decodeToByteArray(Base64()))
-    }
+    override fun deserialize(decoder: Decoder): Asn1Element =
+        Asn1Element.parse(decoder.decodeString().decodeToByteArray(Base64()))
 
     override fun serialize(encoder: Encoder, value: Asn1Element) {
         encoder.encodeString(value.derEncoded.encodeToString(Base64()))

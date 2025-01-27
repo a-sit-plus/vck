@@ -13,9 +13,8 @@ class NullableInstantLongSerializer : KSerializer<Instant?> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("NullableInstantLongSerializer", PrimitiveKind.LONG)
 
-    override fun deserialize(decoder: Decoder): Instant? {
-        return kotlin.runCatching { Instant.fromEpochSeconds(decoder.decodeLong()) }.getOrNull()
-    }
+    override fun deserialize(decoder: Decoder): Instant? =
+        runCatching { Instant.fromEpochSeconds(decoder.decodeLong()) }.getOrNull()
 
     override fun serialize(encoder: Encoder, value: Instant?) {
         value?.let { encoder.encodeLong(it.epochSeconds) }

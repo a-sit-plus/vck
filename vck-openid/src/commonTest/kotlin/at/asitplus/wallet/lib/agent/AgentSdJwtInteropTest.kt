@@ -11,6 +11,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlinx.datetime.Instant
 
 class AgentSdJwtInteropTest : FreeSpec({
 
@@ -40,6 +41,7 @@ class AgentSdJwtInteropTest : FreeSpec({
                 verifierJwsService = DefaultVerifierJwsService(
                     publicKeyLookup = { setOf(publicKey.toJsonWebKey()) }
                 ),
+                parser = Parser(clock = FixedTimeClock(Instant.parse("2025-01-01T07:48:04Z").toEpochMilliseconds()))
             )
         )
     }
@@ -78,7 +80,7 @@ class AgentSdJwtInteropTest : FreeSpec({
             Holder.StoreCredentialInput.SdJwt(input, EuPidScheme)
         ).getOrThrow()
 
-        stored.status shouldBe Validator.RevocationStatus.UNKNOWN
+        stored.status shouldBe null
         val entry = stored.storeEntry
         entry.shouldBeInstanceOf<SubjectCredentialStore.StoreEntry.SdJwt>()
         entry.disclosures.size shouldBe 9

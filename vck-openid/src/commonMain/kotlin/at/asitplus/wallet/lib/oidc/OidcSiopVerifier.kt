@@ -15,21 +15,31 @@ import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
+import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.*
+import at.asitplus.wallet.lib.openid.ResponseParser
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -42,26 +52,31 @@ import kotlin.time.toDuration
  *
  * This class creates the Authentication Request, [verifier] verifies the response. See [OidcSiopWallet] for the holder.
  */
+@Deprecated(
+    message = "Replace with OpenId4VpVerifier",
+    ReplaceWith("OpenId4VpVerifier", "at.asitplus.wallet.lib.openid")
+)
 class OidcSiopVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
+    private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
     timeLeewaySeconds: Long = 300L,
     private val clock: Clock = Clock.System,
     private val nonceService: NonceService = DefaultNonceService(),
-    /**
-     * Used to store the nonce, associated to the state, to first send [AuthenticationRequestParameters.nonce],
-     * and then verify the challenge in the submitted verifiable presentation in
-     * [AuthenticationResponseParameters.vpToken].
-     */
-    private val stateToNonceStore: MapStore<String, String> = DefaultMapStore(),
-    private val stateToResponseTypeStore: MapStore<String, String> = DefaultMapStore(),
+    /** Used to store issued authn requests, to verify the authn response to it */
+    private val stateToAuthnRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
 ) {
 
+    private val responseParser = ResponseParser(jwsService, verifierJwsService)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
 
+    @Deprecated(
+        message = "Replace with external class",
+        ReplaceWith("ClientIdScheme", "at.asitplus.wallet.lib.openid")
+    )
     sealed class ClientIdScheme(
         val scheme: OpenIdConstants.ClientIdScheme,
         open val clientId: String,
@@ -156,6 +171,7 @@ class OidcSiopVerifier(
                 msoMdoc = containerJwt,
                 jwtVp = containerJwt,
                 jwtSd = containerSdJwt,
+                sdJwt = containerSdJwt,
             )
         )
     }
@@ -204,6 +220,10 @@ class OidcSiopVerifier(
             addX5c = false
         )
 
+    @Deprecated(
+        message = "Replace with external class",
+        ReplaceWith("RequestOptions", "at.asitplus.wallet.lib.openid")
+    )
     data class RequestOptions(
         /**
          * Requested credentials, should be at least one
@@ -267,6 +287,7 @@ class OidcSiopVerifier(
     /**
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl].
      */
+    @Deprecated("Replace with new class", ReplaceWith("createAuthnRequest(requestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl)).getOrThrow().url"))
     suspend fun createAuthnRequestUrl(
         walletUrl: String,
         requestOptions: RequestOptions,
@@ -281,6 +302,7 @@ class OidcSiopVerifier(
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl],
      * containing a JWS Authorization Request (JAR, RFC9101) in `request`, containing the request parameters itself.
      */
+    @Deprecated("Replace with new class", ReplaceWith("createAuthnRequest(requestOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByValue(walletUrl)).url"))
     suspend fun createAuthnRequestUrlWithRequestObject(
         walletUrl: String,
         requestOptions: RequestOptions,
@@ -303,6 +325,7 @@ class OidcSiopVerifier(
      * @param requestUrl the URL where the request itself can be loaded by the client
      * @return The URL to display to the Wallet, and the JWS that shall be made accessible under [requestUrl]
      */
+    @Deprecated("Replace with new class", ReplaceWith("createAuthnRequest(requestOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByReference(walletUrl, requestUrl))"))
     suspend fun createAuthnRequestUrlWithRequestObjectByReference(
         walletUrl: String,
         requestUrl: String,
@@ -331,6 +354,7 @@ class OidcSiopVerifier(
      * // on an GET to requestUrl, return `jar.serialize()`
      * ```
      */
+    @Deprecated("Replace with new class", ReplaceWith("createAuthnRequest(requestOptions, OpenId4VpVerifier.CreationOptions.SignedRequestByReference(walletUrl, requestUrl))"))
     suspend fun createAuthnRequestAsSignedRequestObject(
         requestOptions: RequestOptions,
     ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
@@ -360,15 +384,13 @@ class OidcSiopVerifier(
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions,
     ) = AuthenticationRequestParameters(
-        responseType = requestOptions.responseType
-            .also { stateToResponseTypeStore.put(requestOptions.state, it) },
+        responseType = requestOptions.responseType,
         clientId = clientIdScheme.clientId,
         redirectUrl = if (!requestOptions.isAnyDirectPost) clientIdScheme.clientId else null,
         responseUrl = requestOptions.responseUrl,
         clientIdScheme = clientIdScheme.scheme,
         scope = requestOptions.buildScope(),
-        nonce = nonceService.provideNonce()
-            .also { stateToNonceStore.put(requestOptions.state, it) },
+        nonce = nonceService.provideNonce(),
         clientMetadata = if (requestOptions.clientMetadataUrl != null) {
             null
         } else {
@@ -380,11 +402,9 @@ class OidcSiopVerifier(
         state = requestOptions.state,
         presentationDefinition = PresentationDefinition(
             id = uuid4().toString(),
-            inputDescriptors = requestOptions.credentials.map {
-                it.toInputDescriptor()
-            },
+            inputDescriptors = requestOptions.credentials.map { it.toInputDescriptor() },
         ),
-    )
+    ).also { stateToAuthnRequestStore.put(requestOptions.state, it) }
 
     private fun RequestOptions.buildScope() = (
             listOf(SCOPE_OPENID, SCOPE_PROFILE)
@@ -432,7 +452,7 @@ class OidcSiopVerifier(
 
     private fun RequestOptionsCredential.toFormatHolder() = when (representation) {
         ConstantIndex.CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
-        ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerSdJwt)
+        ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerSdJwt, sdJwt = containerSdJwt)
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
     }
 
@@ -530,74 +550,54 @@ class OidcSiopVerifier(
      * Validates the OIDC Authentication Response from the Wallet, where [content] are the HTTP POST encoded
      * [AuthenticationResponseParameters], e.g. `id_token=...&vp_token=...`
      */
-    suspend fun validateAuthnResponseFromPost(content: String): AuthnResponseResult {
-        val params: AuthenticationResponseParameters = content.decodeFromPostBody()
-            ?: return AuthnResponseResult.Error("content", null)
-                .also { Napier.w("Could not parse authentication response: $it") }
-        return validateAuthnResponse(params)
+    @Deprecated("Use validateAuthnResponse", ReplaceWith("validateAuthnResponse"))
+    suspend fun validateAuthnResponseFromPost(content: String): AuthnResponseResult =
+        validateAuthnResponse(content)
+
+    /**
+     * Validates an Authentication Response from the Wallet, where [input] is a map of POST parameters received.
+     */
+    suspend fun validateAuthnResponse(input: Map<String, String>): AuthnResponseResult {
+        val paramsFrom = runCatching {
+            ResponseParametersFrom.Post(input.decode<AuthenticationResponseParameters>())
+        }.getOrElse {
+            Napier.w("Could not parse authentication response: $input", it)
+            return AuthnResponseResult.Error("Can't parse input", null)
+        }
+        return validateAuthnResponse(paramsFrom)
     }
 
     /**
-     * Validates the OIDC Authentication Response from the Wallet, where [url] is the whole URL, containing the
-     * [AuthenticationResponseParameters] as the fragment, e.g. `https://example.com#id_token=...`
+     * Validates an Authentication Response from the Wallet, where [input] is either:
+     * - a URL, containing parameters in the fragment, e.g. `https://example.com#id_token=...`
+     * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
+     * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
      */
-    suspend fun validateAuthnResponse(url: String): AuthnResponseResult {
-        val params = kotlin.runCatching {
-            val parsedUrl = Url(url)
-            if (parsedUrl.fragment.isNotEmpty())
-                parsedUrl.fragment.decodeFromPostBody<AuthenticationResponseParameters>()
-            else
-                parsedUrl.encodedQuery.decodeFromUrlQuery<AuthenticationResponseParameters>()
-        }.getOrNull()
-            ?: return AuthnResponseResult.Error("url not parsable", null)
-                .also { Napier.w("Could not parse authentication response: $url") }
-        return validateAuthnResponse(params)
+    suspend fun validateAuthnResponse(input: String): AuthnResponseResult {
+        val paramsFrom = runCatching {
+            responseParser.parseAuthnResponse(input)
+        }.getOrElse {
+            Napier.w("Could not parse authentication response: $input", it)
+            return AuthnResponseResult.Error("Can't parse input", null)
+        }
+        return validateAuthnResponse(paramsFrom)
     }
 
     /**
      * Validates [AuthenticationResponseParameters] from the Wallet
      */
-    suspend fun validateAuthnResponse(params: AuthenticationResponseParameters): AuthnResponseResult {
+    suspend fun validateAuthnResponse(input: ResponseParametersFrom): AuthnResponseResult {
+        val params = input.parameters
         val state = params.state
             ?: return AuthnResponseResult.ValidationError("state", params.state)
                 .also { Napier.w("Invalid state: ${params.state}") }
-        params.response?.let { response ->
-            JwsSigned.deserialize<AuthenticationResponseParameters>(
-                AuthenticationResponseParameters.serializer(),
-                response,
-                vckJsonSerializer
-            ).getOrNull()
-                ?.let { jarmResponse ->
-                    if (!verifierJwsService.verifyJwsObject(jarmResponse)) {
-                        return AuthnResponseResult.ValidationError("response", state)
-                            .also { Napier.w { "JWS of response not verified: ${params.response}" } }
-                    }
-                    return validateAuthnResponse(jarmResponse.payload)
-                }
-            JweEncrypted.deserialize(response).getOrNull()?.let { jarmResponse ->
-                jwsService.decryptJweObject(jarmResponse, response, AuthenticationResponseParameters.serializer())
-                    .getOrNull()?.let { decrypted ->
-                        return validateAuthnResponse(decrypted.payload)
-                    }
-            }
-        }
-        val responseType = stateToResponseTypeStore.get(state)
+        val authnRequest = stateToAuthnRequestStore.get(state)
             ?: return AuthnResponseResult.ValidationError("state", state)
-                .also { Napier.w("State not associated with response type: $state") }
+                .also { Napier.w("State not associated with authn request: $state") }
 
-        val idToken: IdToken? = if (responseType.contains(ID_TOKEN)) {
-            params.idToken?.let { idToken ->
-                catching {
-                    extractValidatedIdToken(idToken)
-                }.getOrElse {
-                    return AuthnResponseResult.ValidationError("idToken", state)
-                }
-            } ?: return AuthnResponseResult.ValidationError("idToken", state)
-                .also { Napier.w("State not associated with response type: $state") }
-        } else null
-
-        if (responseType.contains(VP_TOKEN)) {
-            val expectedNonce = stateToNonceStore.get(state)
+        val responseType = authnRequest.responseType
+        if (responseType?.contains(VP_TOKEN) == true) {
+            val expectedNonce = authnRequest.nonce
                 ?: return AuthnResponseResult.ValidationError("state", state)
                     .also { Napier.w("State not associated with nonce: $state") }
             val presentationSubmission = params.presentationSubmission
@@ -611,26 +611,44 @@ class OidcSiopVerifier(
                     .also { Napier.w("No VP in response") }
 
             val validationResults = descriptors.map { descriptor ->
-                val relatedPresentation =
-                    JsonPath(descriptor.cumulativeJsonPath).query(verifiablePresentation).first().value
+                val relatedPresentation = JsonPath(descriptor.cumulativeJsonPath)
+                    .query(verifiablePresentation).first().value
                 val result = runCatching {
-                    verifyPresentationResult(descriptor, relatedPresentation, expectedNonce)
+                    verifyPresentationResult(
+                        descriptor,
+                        relatedPresentation,
+                        expectedNonce,
+                        input,
+                        authnRequest.clientId,
+                        authnRequest.responseUrl
+                    )
                 }.getOrElse {
-                    return AuthnResponseResult.ValidationError("Invalid presentation format", state)
-                        .also { Napier.w("Invalid presentation format: $relatedPresentation") }
+                    Napier.w("Invalid presentation format: $relatedPresentation", it)
+                    return AuthnResponseResult.ValidationError("Invalid presentation", state)
                 }
                 result.mapToAuthnResponseResult(state)
             }
-
-            return if (validationResults.size != 1) {
-                AuthnResponseResult.VerifiablePresentationValidationResults(validationResults)
-            } else validationResults[0]
+            return validationResults.firstOrList()
         }
 
-        return idToken?.let { AuthnResponseResult.IdToken(it, state) }
-            ?: AuthnResponseResult.Error("Neither id_token nor vp_token", state)
+        if (responseType?.contains(ID_TOKEN) == true) {
+            val idToken = params.idToken?.let { idToken ->
+                catching {
+                    extractValidatedIdToken(idToken)
+                }.getOrElse {
+                    return AuthnResponseResult.ValidationError("idToken", state)
+                }
+            } ?: return AuthnResponseResult.ValidationError("idToken", state)
+                .also { Napier.w("State not associated with response type: $state") }
+            return AuthnResponseResult.IdToken(idToken, state)
+        }
+
+        return AuthnResponseResult.Error("Neither id_token nor vp_token", state)
     }
 
+    private fun List<AuthnResponseResult>.firstOrList(): AuthnResponseResult =
+        if (size == 1) this[0]
+        else AuthnResponseResult.VerifiablePresentationValidationResults(this)
 
     @Throws(IllegalArgumentException::class, CancellationException::class)
     private suspend fun extractValidatedIdToken(idTokenJws: String): IdToken {
@@ -671,24 +689,120 @@ class OidcSiopVerifier(
      * [OpenID for VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html),
      * as referenced by [OpenID for VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html).
      */
-    private fun verifyPresentationResult(
+    @Suppress("DEPRECATION")
+    private suspend fun verifyPresentationResult(
         descriptor: PresentationSubmissionDescriptor,
         relatedPresentation: JsonElement,
-        challenge: String,
+        expectedNonce: String,
+        input: ResponseParametersFrom,
+        clientId: String?,
+        responseUrl: String?,
     ) = when (descriptor.format) {
-        ClaimFormat.JWT_SD,
-        ClaimFormat.MSO_MDOC,
-        ClaimFormat.JWT_VP,
-            -> when (relatedPresentation) {
-            is JsonPrimitive -> verifier.verifyPresentation(
-                relatedPresentation.content,
-                challenge
-            )
+        ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
+            input = SdJwtSigned.parse(relatedPresentation.jsonPrimitive.content)
+                ?: throw IllegalArgumentException("relatedPresentation"),
+            challenge = expectedNonce
+        )
 
-            else -> throw IllegalArgumentException()
+        ClaimFormat.JWT_VP -> verifier.verifyPresentationVcJwt(
+            input = JwsSigned.deserialize<VerifiablePresentationJws>(
+                VerifiablePresentationJws.serializer(),
+                relatedPresentation.jsonPrimitive.content,
+                vckJsonSerializer
+            ).getOrThrow(),
+            challenge = expectedNonce
+        )
+
+        ClaimFormat.MSO_MDOC -> {
+            val mdocGeneratedNonce = (input as? ResponseParametersFrom.JweDecrypted)?.jweDecrypted
+                ?.header?.agreementPartyUInfo?.decodeToByteArrayOrNull(Base64UrlStrict)?.decodeToString()
+            verifier.verifyPresentationIsoMdoc(
+                input = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
+                    .let { DeviceResponse.deserialize(it).getOrThrow() },
+                challenge = expectedNonce,
+                verifyDocument = verifyDocument(mdocGeneratedNonce, clientId, responseUrl, expectedNonce)
+            )
         }
 
-        else -> throw IllegalArgumentException()
+        else -> throw IllegalArgumentException("descriptor.format")
+    }
+
+    /**
+     * Performs verification of the [SessionTranscript] and [DeviceAuthentication],
+     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required (i.e. response is encrypted)
+     */
+    @Throws(IllegalArgumentException::class)
+    private fun verifyDocument(
+        mdocGeneratedNonce: String?,
+        clientId: String?,
+        responseUrl: String?,
+        expectedNonce: String,
+    ): (MobileSecurityObject, Document) -> Boolean = { mso, document ->
+        val deviceSignature = document.deviceSigned.deviceAuth.deviceSignature ?: run {
+            Napier.w("DeviceSignature is null: ${document.deviceSigned.deviceAuth}")
+            throw IllegalArgumentException("deviceSignature")
+        }
+
+        val walletKey = mso.deviceKeyInfo.deviceKey
+        if (mdocGeneratedNonce != null && clientId != null && responseUrl != null) {
+            val deviceAuthentication =
+                document.calcDeviceAuthentication(expectedNonce, mdocGeneratedNonce, clientId, responseUrl)
+            Napier.d("Device authentication is ${deviceAuthentication.encodeToString(Base16())}")
+            verifierCoseService.verifyCose(
+                deviceSignature,
+                walletKey,
+                detachedPayload = deviceAuthentication
+            ).onFailure {
+                Napier.w("DeviceSignature not verified: ${document.deviceSigned.deviceAuth}", it)
+                throw IllegalArgumentException("deviceSignature")
+            }
+        } else {
+            verifierCoseService.verifyCose(deviceSignature, walletKey).onFailure {
+                Napier.w("DeviceSignature not verified: ${document.deviceSigned.deviceAuth}", it)
+                throw IllegalArgumentException("deviceSignature")
+            }
+            val deviceSignaturePayload = deviceSignature.payload ?: run {
+                Napier.w("DeviceSignature does not contain challenge")
+                throw IllegalArgumentException("challenge")
+            }
+            if (!deviceSignaturePayload.contentEquals(expectedNonce.encodeToByteArray())) {
+                Napier.w("DeviceSignature does not contain correct challenge")
+                throw IllegalArgumentException("challenge")
+            }
+        }
+        true
+    }
+
+    /**
+     * Performs calculation of the [SessionTranscript] and [DeviceAuthentication],
+     * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024
+     */
+    private fun Document.calcDeviceAuthentication(
+        challenge: String,
+        mdocGeneratedNonce: String,
+        clientId: String,
+        responseUrl: String,
+    ): ByteArray {
+        val clientIdToHash = ClientIdToHash(clientId = clientId, mdocGeneratedNonce = mdocGeneratedNonce)
+        val responseUriToHash = ResponseUriToHash(responseUri = responseUrl, mdocGeneratedNonce = mdocGeneratedNonce)
+        val sessionTranscript = SessionTranscript(
+            deviceEngagementBytes = null,
+            eReaderKeyBytes = null,
+            handover = ByteStringWrapper(
+                OID4VPHandover(
+                    clientIdHash = clientIdToHash.serialize().sha256(),
+                    responseUriHash = responseUriToHash.serialize().sha256(),
+                    nonce = challenge
+                )
+            ),
+        )
+        val deviceAuthentication = DeviceAuthentication(
+            type = "DeviceAuthentication",
+            sessionTranscript = sessionTranscript,
+            docType = docType,
+            namespaces = deviceSigned.namespaces
+        )
+        return deviceAuthentication.serialize()
     }
 
     private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
@@ -696,7 +810,7 @@ class OidcSiopVerifier(
             AuthnResponseResult.Error("parse vp failed", state)
                 .also { Napier.w("VP error: $this") }
 
-        is Verifier.VerifyPresentationResult.NotVerified ->
+        is Verifier.VerifyPresentationResult.ValidationError ->
             AuthnResponseResult.ValidationError("vpToken", state)
                 .also { Napier.w("VP error: $this") }
 

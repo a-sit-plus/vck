@@ -1,6 +1,5 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.wallet.lib.data.VcDataModelConstants.REVOCATION_LIST_2020
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -26,8 +25,8 @@ data class VerifiableCredential(
     @Serializable(with = NullableInstantStringSerializer::class)
     @SerialName("expirationDate")
     val expirationDate: Instant?,
-    @SerialName("credentialStatus")
-    val credentialStatus: CredentialStatus? = null,
+    @SerialName("status")
+    val credentialStatus: Status? = null,
     @Polymorphic
     @SerialName("credentialSubject")
     val credentialSubject: CredentialSubject,
@@ -36,7 +35,7 @@ data class VerifiableCredential(
         id: String,
         issuer: String,
         lifetime: Duration,
-        credentialStatus: CredentialStatus,
+        credentialStatus: Status,
         credentialSubject: CredentialSubject,
         credentialType: String,
         issuanceDate: Instant = Clock.System.now(),
@@ -56,7 +55,7 @@ data class VerifiableCredential(
         issuer: String,
         issuanceDate: Instant,
         expirationDate: Instant?,
-        credentialStatus: CredentialStatus,
+        credentialStatus: Status,
         credentialSubject: CredentialSubject,
         credentialType: String,
     ) : this(
@@ -66,22 +65,6 @@ data class VerifiableCredential(
         issuanceDate = issuanceDate,
         expirationDate = expirationDate,
         credentialStatus = credentialStatus,
-        credentialSubject = credentialSubject,
-    )
-
-    constructor(
-        id: String,
-        issuer: String,
-        issuanceDate: Instant,
-        lifetime: Duration,
-        credentialSubject: RevocationListSubject,
-    ) : this(
-        id = id,
-        type = listOf(VERIFIABLE_CREDENTIAL, REVOCATION_LIST_2020),
-        issuer = issuer,
-        issuanceDate = issuanceDate,
-        expirationDate = issuanceDate + lifetime,
-        credentialStatus = null,
         credentialSubject = credentialSubject,
     )
 }

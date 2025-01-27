@@ -39,21 +39,59 @@ interface CoseService {
         addKeyId: Boolean = true,
         addCertificate: Boolean = false,
     ): KmmResult<CoseSigned<P>>
+
+    /**
+     * Creates and signs a new [CoseSigned] object with detached payload,
+     * meaning the signature is calculated over the signature, but not included in the [CoseSigned] structure.
+     * It will set the correct value for [CoseHeader.algorithm] in [protectedHeader].
+     *
+     * @param addKeyId whether to set [CoseHeader.kid] in [protectedHeader]
+     * @param addCertificate whether to set [CoseHeader.certificateChain] in [unprotectedHeader]
+     */
+    suspend fun <P : Any> createSignedCoseWithDetachedPayload(
+        protectedHeader: CoseHeader? = null,
+        unprotectedHeader: CoseHeader? = null,
+        payload: P,
+        serializer: KSerializer<P>,
+        addKeyId: Boolean = false,
+        addCertificate: Boolean = false,
+    ): KmmResult<CoseSigned<P>>
 }
 
 interface VerifierCoseService {
 
+    /**
+     * Verifiers the signature of [coseSigned] by using [signer].
+     *
+     * @param externalAad optional authenticated data
+     * @param detachedPayload optional payload, if it has been transported seperately, and [coseSigned.payload] is null
+     */
     fun <P : Any> verifyCose(
         coseSigned: CoseSigned<P>,
         signer: CoseKey,
         externalAad: ByteArray = byteArrayOf(),
+        detachedPayload: ByteArray? = null,
     ): KmmResult<Verifier.Success>
 
+    /**
+     * Verifiers the signature of [coseSigned] by extracting the public key from it's headers,
+     * or by using [publicKeyLookup].
+     *
+     * @param externalAad optional authenticated data
+     * @param detachedPayload optional payload, if it has been transported seperately, and [coseSigned.payload] is null
+     */
+    fun <P : Any> verifyCose(
+        coseSigned: CoseSigned<P>,
+        serializer: KSerializer<P>,
+        externalAad: ByteArray = byteArrayOf(),
+        detachedPayload: ByteArray? = null,
+    ): KmmResult<Verifier.Success>
 }
 
 class DefaultCoseService(private val cryptoService: CryptoService) : CoseService {
 
-    override val algorithm: CoseAlgorithm = cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
+    override val algorithm: CoseAlgorithm =
+        cryptoService.keyMaterial.signatureAlgorithm.toCoseAlgorithm().getOrThrow()
 
     override suspend fun <P : Any> createSignedCose(
         protectedHeader: CoseHeader?,
@@ -69,6 +107,27 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
                     protectedHeader = coseHeader,
                     unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
                     payload = payload,
+                    signature = signature,
+                    payloadSerializer = serializer,
+                )
+            }
+        }
+    }
+
+    override suspend fun <P : Any> createSignedCoseWithDetachedPayload(
+        protectedHeader: CoseHeader?,
+        unprotectedHeader: CoseHeader?,
+        payload: P,
+        serializer: KSerializer<P>,
+        addKeyId: Boolean,
+        addCertificate: Boolean,
+    ): KmmResult<CoseSigned<P>> = catching {
+        protectedHeader.withAlgorithmAndKeyId(addKeyId).let { coseHeader ->
+            calcSignature(coseHeader, payload, serializer).let { signature ->
+                CoseSigned.create(
+                    protectedHeader = coseHeader,
+                    unprotectedHeader = unprotectedHeader.withCertificateIfExists(addCertificate),
+                    payload = null,
                     signature = signature,
                     payloadSerializer = serializer,
                 )
@@ -124,17 +183,23 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
 
 class DefaultVerifierCoseService(
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
+    /** Need to implement if valid keys for CoseSigned are transported somehow out-of-band, e.g. provided by a trust store */
+    private val publicKeyLookup: PublicCoseKeyLookup = { null },
 ) : VerifierCoseService {
 
     /**
      * Verifiers the signature of [coseSigned] by using [signer].
+     *
+     * @param externalAad optional authenticated data
+     * @param detachedPayload optional payload, if it has been transported seperately, and [coseSigned.payload] is null
      */
     override fun <P : Any> verifyCose(
         coseSigned: CoseSigned<P>,
         signer: CoseKey,
         externalAad: ByteArray,
+        detachedPayload: ByteArray?,
     ) = catching {
-        val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad = externalAad)
+        val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad, detachedPayload)
         val algorithm = coseSigned.protectedHeader.algorithm
             ?: throw IllegalArgumentException("Algorithm not specified")
         val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
@@ -148,7 +213,44 @@ class DefaultVerifierCoseService(
             publicKey = publicKey
         ).getOrThrow()
     }
+
+    /**
+     * Verifiers the signature of [coseSigned] by extracting the public key from it's headers,
+     * or by using [publicKeyLookup].
+     *
+     * @param externalAad optional authenticated data
+     * @param detachedPayload optional payload, if it has been transported seperately, and [coseSigned.payload] is null
+     */
+    override fun <P : Any> verifyCose(
+        coseSigned: CoseSigned<P>,
+        serializer: KSerializer<P>,
+        externalAad: ByteArray,
+        detachedPayload: ByteArray?,
+    ): KmmResult<Verifier.Success> = catching {
+        coseSigned.loadPublicKeys().also {
+            Napier.d("Public keys available: ${it.size}")
+        }.firstNotNullOf { coseKey ->
+            verifyCose(coseSigned, coseKey, externalAad, detachedPayload).getOrNull()
+        }
+    }
+
+    fun CoseSigned<*>.loadPublicKeys(): Set<CoseKey> =
+        (protectedHeader.publicKey ?: unprotectedHeader?.publicKey)?.let { setOf(it) }
+            ?: publicKeyLookup(this) ?: setOf()
 }
 
+// TODO should be suspend
+typealias PublicCoseKeyLookup = (CoseSigned<*>) -> Set<CoseKey>?
 
-
+/**
+ * Tries to compute a public key in order from [coseKey], [kid] or
+ * [certificateChain], and takes the first success or null.
+ */
+val CoseHeader.publicKey: CoseKey?
+    get() = coseKey?.let { CoseKey.deserialize(it).getOrNull() }
+        ?: kid?.let { CoseKey.fromDid(it.decodeToString()) }?.getOrNull()
+        ?: certificateChain?.let {
+            runCatching {
+                X509Certificate.decodeFromDer(it)
+            }.getOrNull()?.publicKey?.toCoseKey()?.getOrThrow()
+        }

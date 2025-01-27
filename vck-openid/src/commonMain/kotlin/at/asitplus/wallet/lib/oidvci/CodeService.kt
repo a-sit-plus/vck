@@ -14,11 +14,9 @@ class DefaultCodeService : CodeService {
 
     private val validCodes = mutableListOf<String>()
 
-    override fun provideCode(): String {
-        return uuid4().toString().also { validCodes += it }
-    }
+    override fun provideCode(): String =
+        uuid4().toString().also { validCodes += it }
 
-    override fun verifyAndRemove(it: String): Boolean {
-        return validCodes.remove(it)
-    }
+    override fun verifyAndRemove(it: String): Boolean =
+        validCodes.remove(it)
 }

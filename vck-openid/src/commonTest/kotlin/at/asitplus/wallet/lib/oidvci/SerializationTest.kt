@@ -1,20 +1,11 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.CredentialFormatEnum
-import at.asitplus.openid.CredentialRequestParameters
-import at.asitplus.openid.CredentialRequestProof
-import at.asitplus.openid.CredentialResponseParameters
-import at.asitplus.openid.OpenIdAuthorizationDetails
-import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_BEARER
-import at.asitplus.openid.SupportedCredentialFormatDefinition
-import at.asitplus.openid.TokenRequestParameters
-import at.asitplus.openid.TokenResponseParameters
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
-import at.asitplus.wallet.lib.oidc.jsonSerializer
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -127,36 +118,36 @@ class SerializationTest : FunSpec({
     test("createTokenResponse as JSON") {
         val params = createTokenResponse()
 
-        val json = jsonSerializer.encodeToString(params)
+        val json = vckJsonSerializer.encodeToString(params)
 
         json shouldContain "\"access_token\":"
         json shouldContain "\"token_type\":"
         json shouldContain "\"expires_in\":"
         json shouldContain "\"c_nonce\":"
         json shouldContain "\"c_nonce_expires_in\":"
-        val parsed: TokenResponseParameters = jsonSerializer.decodeFromString(json)
+        val parsed: TokenResponseParameters = vckJsonSerializer.decodeFromString(json)
         parsed shouldBe params
     }
 
     test("createCredentialRequest as JSON") {
         val params = createCredentialRequest()
 
-        val json = jsonSerializer.encodeToString(params)
+        val json = vckJsonSerializer.encodeToString(params)
 
         json shouldContain "\"type\":["
         json shouldContain "\"${params.credentialDefinition?.types?.first()}\""
         val parsed: CredentialRequestParameters =
-            jsonSerializer.decodeFromString<CredentialRequestParameters>(json)
+            vckJsonSerializer.decodeFromString<CredentialRequestParameters>(json)
         parsed shouldBe params
     }
 
     test("createCredentialResponse as JSON") {
         val params = createCredentialResponse()
 
-        val json = jsonSerializer.encodeToString(params)
+        val json = vckJsonSerializer.encodeToString(params)
 
         json shouldContain "\"format\":"
-        val parsed = jsonSerializer.decodeFromString<CredentialResponseParameters>(json)
+        val parsed = vckJsonSerializer.decodeFromString<CredentialResponseParameters>(json)
         parsed shouldBe params
     }
 })

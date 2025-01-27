@@ -68,6 +68,7 @@ object OpenIdConstants {
             if (other !is ProofType) return false
             return other.stringRepresentation == stringRepresentation
         }
+
         companion object {
             private const val STRING_JWT = "jwt"
             private const val STRING_CWT = "cwt"
@@ -97,18 +98,15 @@ object OpenIdConstants {
             override val descriptor: SerialDescriptor =
                 PrimitiveSerialDescriptor(serialName = "ProofType", PrimitiveKind.STRING)
 
-            override fun deserialize(decoder: Decoder): ProofType {
-                return when (val str = decoder.decodeString()) {
-                    STRING_JWT -> JWT
-                    STRING_CWT -> CWT
-                    else -> Other(str)
-                }
+            override fun deserialize(decoder: Decoder): ProofType = when (val str = decoder.decodeString()) {
+                STRING_JWT -> JWT
+                STRING_CWT -> CWT
+                else -> Other(str)
             }
 
             override fun serialize(encoder: Encoder, value: ProofType) {
                 encoder.encodeString(value.stringRepresentation)
             }
-
         }
     }
 
@@ -117,12 +115,17 @@ object OpenIdConstants {
      */
     @Serializable(with = ClientIdScheme.Serializer::class)
     sealed class ClientIdScheme(val stringRepresentation: String) {
+
+        val prefix = "$stringRepresentation:"
+
         override fun toString(): String = this::class.simpleName + "(" + stringRepresentation + ")"
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is ClientIdScheme) return false
             return other.stringRepresentation == stringRepresentation
         }
+
         companion object {
             private const val STRING_PRE_REGISTERED = "pre-registered"
             private const val STRING_REDIRECT_URI = "redirect_uri"
@@ -131,6 +134,16 @@ object OpenIdConstants {
             private const val STRING_ENTITY_ID = "entity_id"
             private const val STRING_DID = "did"
             private const val STRING_VERIFIER_ATTESTATION = "verifier_attestation"
+
+            fun decodeFromClientId(clientId: String) = when (clientId.substringBefore(":")) {
+                STRING_REDIRECT_URI -> RedirectUri
+                STRING_X509_SAN_DNS -> X509SanDns
+                STRING_X509_SAN_URI -> X509SanUri
+                STRING_ENTITY_ID -> EntityId
+                STRING_DID -> Did
+                STRING_VERIFIER_ATTESTATION -> VerifierAttestation
+                else -> if (clientId.contains(":")) Other(clientId) else PreRegistered
+            }
         }
 
         /**
@@ -230,17 +243,15 @@ object OpenIdConstants {
         object Serializer : KSerializer<ClientIdScheme> {
             override val descriptor = PrimitiveSerialDescriptor("ClientIdScheme", PrimitiveKind.STRING)
 
-            override fun deserialize(decoder: Decoder): ClientIdScheme {
-                return when (val string = decoder.decodeString()) {
-                    STRING_PRE_REGISTERED -> PreRegistered
-                    STRING_REDIRECT_URI -> RedirectUri
-                    STRING_X509_SAN_DNS -> X509SanDns
-                    STRING_X509_SAN_URI -> X509SanUri
-                    STRING_ENTITY_ID -> EntityId
-                    STRING_DID -> Did
-                    STRING_VERIFIER_ATTESTATION -> VerifierAttestation
-                    else -> Other(string)
-                }
+            override fun deserialize(decoder: Decoder): ClientIdScheme = when (val string = decoder.decodeString()) {
+                STRING_PRE_REGISTERED -> PreRegistered
+                STRING_REDIRECT_URI -> RedirectUri
+                STRING_X509_SAN_DNS -> X509SanDns
+                STRING_X509_SAN_URI -> X509SanUri
+                STRING_ENTITY_ID -> EntityId
+                STRING_DID -> Did
+                STRING_VERIFIER_ATTESTATION -> VerifierAttestation
+                else -> Other(string)
             }
 
             override fun serialize(encoder: Encoder, value: ClientIdScheme) {
@@ -309,14 +320,12 @@ object OpenIdConstants {
 
         object Serializer : KSerializer<ResponseMode> {
             override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("ResponseMode", PrimitiveKind.STRING)
-            override fun deserialize(decoder: Decoder): ResponseMode {
-                return when (val string = decoder.decodeString()) {
-                    STRING_DIRECT_POST -> DirectPost
-                    STRING_DIRECT_POST_JWT -> DirectPostJwt
-                    STRING_QUERY -> Query
-                    STRING_FRAGMENT -> Fragment
-                    else -> Other(string)
-                }
+            override fun deserialize(decoder: Decoder): ResponseMode = when (val string = decoder.decodeString()) {
+                STRING_DIRECT_POST -> DirectPost
+                STRING_DIRECT_POST_JWT -> DirectPostJwt
+                STRING_QUERY -> Query
+                STRING_FRAGMENT -> Fragment
+                else -> Other(string)
             }
 
             override fun serialize(encoder: Encoder, value: ResponseMode) {

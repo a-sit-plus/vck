@@ -15,9 +15,7 @@ object DurationSecondsIntSerializer : KSerializer<Duration> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("DurationSecondsIntSerializer", PrimitiveKind.LONG)
 
-    override fun deserialize(decoder: Decoder): Duration {
-        return decoder.decodeInt().seconds
-    }
+    override fun deserialize(decoder: Decoder): Duration = decoder.decodeInt().seconds
 
     override fun serialize(encoder: Encoder, value: Duration) {
         encoder.encodeInt(value.inWholeSeconds.toInt())

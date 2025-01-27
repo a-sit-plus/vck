@@ -62,7 +62,7 @@ class OpenId4VciClientTest : FunSpec() {
                 val credentialIdentifierInfos = client.loadCredentialMetadata("http://localhost").getOrThrow()
                 // just pick the first credential in SD-JWT that is available
                 val selectedCredential = credentialIdentifierInfos
-                    .first { it.supportedCredentialFormat.format == CredentialFormatEnum.VC_SD_JWT }
+                    .first { it.supportedCredentialFormat.format == CredentialFormatEnum.DC_SD_JWT }
                 // client will call clientBrowser.openUrlExternally
                 client.startProvisioningWithAuthRequest(
                     credentialIssuer = "http://localhost",

@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 
+@Suppress("DEPRECATION")
 fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<SignatureAlgorithm>? = null)
         : Map<String, SupportedCredentialFormat> {
     val iso = if (supportsIso) {
@@ -47,6 +48,7 @@ fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<Signature
                 ?.toSet(),
         )
     } else null
+    // Uses "vc+sd-jwt", defined in SD-JWT VC up until draft 06
     val sdJwt = if (supportsSdJwt) {
         encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT) to SupportedCredentialFormat.forSdJwt(
             format = CredentialFormatEnum.VC_SD_JWT,
@@ -59,15 +61,32 @@ fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<Signature
             sdJwtClaims = claimNames.associateWith { RequestedCredentialClaimSpecification() }
         )
     } else null
-    return listOfNotNull(iso, jwtVc, sdJwt).toMap()
+    // Uses "dc+sd-jwt", supported since SD-JWT VC draft 06
+    val sdJwtNewIdentifier = if (supportsSdJwt) {
+        encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.DC_SD_JWT) to SupportedCredentialFormat.forSdJwt(
+            format = CredentialFormatEnum.DC_SD_JWT,
+            scope = sdJwtType!!,
+            sdJwtVcType = sdJwtType!!,
+            supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
+            supportedSigningAlgorithms = cryptoAlgorithms
+                ?.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
+                ?.toSet(),
+            sdJwtClaims = claimNames.associateWith { RequestedCredentialClaimSpecification() }
+        )
+    } else null
+    return listOfNotNull(iso, jwtVc, sdJwt, sdJwtNewIdentifier).toMap()
 }
 
+// TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
+@Suppress("DEPRECATION")
 fun CredentialScheme.toCredentialIdentifier() = listOfNotNull(
     if (supportsIso) isoNamespace!! else null,
     if (supportsVcJwt) encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC) else null,
     if (supportsSdJwt) encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT) else null
 )
 
+// TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
+@Suppress("DEPRECATION")
 fun CredentialScheme.toCredentialIdentifier(rep: CredentialRepresentation) = when (rep) {
     CredentialRepresentation.PLAIN_JWT -> encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC)
     CredentialRepresentation.SD_JWT -> encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT)
@@ -104,12 +123,16 @@ fun decodeFromCredentialIdentifier(input: String): Pair<CredentialScheme, Creden
     }
 }
 
+@Suppress("DEPRECATION")
 fun CredentialFormatEnum.toRepresentation() = when (this) {
     CredentialFormatEnum.VC_SD_JWT -> CredentialRepresentation.SD_JWT
+    CredentialFormatEnum.DC_SD_JWT -> CredentialRepresentation.SD_JWT
     CredentialFormatEnum.MSO_MDOC -> CredentialRepresentation.ISO_MDOC
     else -> CredentialRepresentation.PLAIN_JWT
 }
 
+@Suppress("DEPRECATION")
+// TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
 fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
     is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
         format = CredentialFormatEnum.MSO_MDOC,
@@ -127,6 +150,10 @@ fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
     )
 }
 
-class OAuth2Exception(val error: String, val errorDescription: String? = null) : Throwable(error) {
+class OAuth2Exception : Throwable {
+    constructor(error: String) : super(error)
+    constructor(error: String, errorDescription: String) : super("$error: $errorDescription")
+    constructor(error: String, cause: Throwable) : super(error, cause)
+    constructor(error: String, errorDescription: String, cause: Throwable) : super("$error: $errorDescription", cause)
 
 }

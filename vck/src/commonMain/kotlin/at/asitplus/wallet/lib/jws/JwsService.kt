@@ -350,7 +350,8 @@ typealias JwkSetRetrieverFunction = (String) -> JsonWebKeySet?
 /**
  * Clients get the parsed [JwsSigned] and need to provide a set of keys, which will be used for verification one-by-one.
  */
-typealias PublicKeyLookup = (JwsSigned<*>) -> Set<JsonWebKey>?
+// TODO suspending
+typealias PublicJsonWebKeyLookup = (JwsSigned<*>) -> Set<JsonWebKey>?
 
 class DefaultVerifierJwsService(
     private val cryptoService: VerifierCryptoService = DefaultVerifierCryptoService(),
@@ -360,7 +361,7 @@ class DefaultVerifierJwsService(
      */
     private val jwkSetRetriever: JwkSetRetrieverFunction = { null },
     /** Need to implement if valid keys for JWS are transported somehow out-of-band, e.g. provided by a trust store */
-    private val publicKeyLookup: PublicKeyLookup = { null },
+    private val publicKeyLookup: PublicJsonWebKeyLookup = { null },
 ) : VerifierJwsService {
 
     override val supportedAlgorithms: List<JwsAlgorithm> =
