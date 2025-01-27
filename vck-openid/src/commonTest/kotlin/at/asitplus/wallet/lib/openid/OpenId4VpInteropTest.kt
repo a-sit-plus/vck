@@ -38,6 +38,7 @@ class OpenId4VpInteropTest : FreeSpec({
     lateinit var holderOid4vp: OpenId4VpHolder
     lateinit var verifierClientId: String
     lateinit var verifierRedirectUrl: String
+    lateinit var verifierIssuerUrl: String
     lateinit var verifierKeyId: String
     lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var verifierOid4vp: OpenId4VpVerifier
@@ -63,10 +64,7 @@ class OpenId4VpInteropTest : FreeSpec({
                     holderKeyMaterial.publicKey,
                     ConstantIndex.AtomicAttribute2023,
                     ConstantIndex.CredentialRepresentation.SD_JWT,
-                    listOf(
-                        CLAIM_FAMILY_NAME,
-                        CLAIM_GIVEN_NAME
-                    )
+                    listOf(CLAIM_FAMILY_NAME, CLAIM_GIVEN_NAME)
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
@@ -75,7 +73,8 @@ class OpenId4VpInteropTest : FreeSpec({
         verifierKeyId = uuid4().toString()
         verifierClientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
         verifierRedirectUrl = "https://verifier.example.com/cb"
-        val clientIdScheme = ClientIdScheme.PreRegistered(verifierClientId, verifierRedirectUrl)
+        verifierIssuerUrl = "https://verifier.example.com/"
+        val clientIdScheme = ClientIdScheme.PreRegistered(verifierClientId, verifierRedirectUrl, verifierIssuerUrl)
         verifierKeyMaterial = EphemeralKeyWithoutCert(customKeyId = verifierKeyId)
         verifierOid4vp = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
@@ -132,11 +131,11 @@ class OpenId4VpInteropTest : FreeSpec({
         val jar = parameters.jwsSigned
         jar.header.algorithm shouldBe JwsAlgorithm.ES256
         jar.header.type shouldBe "oauth-authz-req+jwt"
-        jar.header.keyId shouldBe verifierKeyId
 
-        jar.payload.issuer shouldBe verifierClientId
-        jar.payload.clientIdWithoutPrefix shouldBe verifierClientId
+        jar.payload.issuer shouldBe verifierIssuerUrl
         jar.payload.audience shouldBe "https://self-issued.me/v2"
+        jar.payload.clientId shouldBe verifierClientId
+        jar.payload.clientIdWithoutPrefix shouldBe verifierClientId
         jar.payload.presentationDefinition.shouldNotBeNull()
         jar.payload.nonce.shouldNotBeNull()
         jar.payload.state.shouldNotBeNull()
@@ -144,7 +143,7 @@ class OpenId4VpInteropTest : FreeSpec({
         jar.payload.responseMode shouldBe OpenIdConstants.ResponseMode.DirectPost
         jar.payload.responseUrl.shouldNotBeNull()
 
-        verifierJarMetadata.issuer shouldBe verifierClientId
+        verifierJarMetadata.issuer shouldBe verifierIssuerUrl
         val verifierJwks = verifierJarMetadata.jsonWebKeySet.shouldNotBeNull()
         val verifierRequestSigningKey = verifierJwks.keys.first { it.keyId == jar.header.keyId }
 
