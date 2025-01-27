@@ -20,13 +20,10 @@ import kotlin.time.toDuration
  */
 class Parser(
     timeLeewaySeconds: Long = 300L,
-    epochMillisecondsForValidation: Long? = null,
+    private val clock: Clock = Clock.System,
 ) {
 
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
-    private val clock: Clock = epochMillisecondsForValidation?.let {
-        FixedTimeClock(epochMillisecondsForValidation)
-    } ?: Clock.System
 
     /**
      * Parses a Verifiable Presentation in JWS format

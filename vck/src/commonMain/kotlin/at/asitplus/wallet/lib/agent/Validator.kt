@@ -69,9 +69,9 @@ class Validator(
         verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(
             DefaultVerifierCryptoService(),
         ),
-        parser: Parser = Parser(),
         zlibService: ZlibService = DefaultZlibService(),
         clock: Clock = Clock.System,
+        parser: Parser = Parser(clock = clock),
     ) : this(
         verifierJwsService = verifierJwsService,
         verifierCoseService = verifierCoseService,
