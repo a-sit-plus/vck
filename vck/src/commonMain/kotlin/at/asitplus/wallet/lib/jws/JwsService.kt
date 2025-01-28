@@ -6,7 +6,6 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo8Bytes
-import at.asitplus.signum.indispensable.equalsCryptographically
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
@@ -51,7 +50,7 @@ interface JwsService {
         type: String,
         payload: T,
         serializer: SerializationStrategy<T>,
-        contentType: String? = null
+        contentType: String? = null,
     ): KmmResult<JwsSigned<T>>
 
     suspend fun <T : Any> createSignedJws(
@@ -71,29 +70,29 @@ interface JwsService {
         serializer: SerializationStrategy<T>,
         addKeyId: Boolean = true,
         addJsonWebKey: Boolean = true,
-        addX5c: Boolean = false
+        addX5c: Boolean = false,
     ): KmmResult<JwsSigned<T>>
 
-    suspend fun <T: Any> encryptJweObject(
+    suspend fun <T : Any> encryptJweObject(
         header: JweHeader? = null,
         payload: T,
         serializer: SerializationStrategy<T>,
         recipientKey: JsonWebKey,
         jweAlgorithm: JweAlgorithm,
-        jweEncryption: JweEncryption
+        jweEncryption: JweEncryption,
     ): KmmResult<JweEncrypted>
 
-    fun <T: Any> encryptJweObject(
+    fun <T : Any> encryptJweObject(
         type: String,
         payload: T,
         serializer: SerializationStrategy<T>,
         recipientKey: JsonWebKey,
         contentType: String? = null,
         jweAlgorithm: JweAlgorithm,
-        jweEncryption: JweEncryption
+        jweEncryption: JweEncryption,
     ): KmmResult<JweEncrypted>
 
-    suspend fun <T: Any> decryptJweObject(
+    suspend fun <T : Any> decryptJweObject(
         jweObject: JweEncrypted,
         serialized: String,
         deserializer: DeserializationStrategy<T>,
@@ -109,7 +108,7 @@ interface VerifierJwsService {
 
     fun verifyJws(jwsObject: JwsSigned<*>, signer: JsonWebKey): Boolean
 
-    fun verifyConfirmationClaim(cnf: ConfirmationClaim, jwsSigned: JwsSigned<*>): Boolean
+    fun verifyJws(jwsObject: JwsSigned<*>, cnf: ConfirmationClaim): Boolean
 
 }
 
@@ -130,7 +129,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         type: String,
         payload: T,
         serializer: SerializationStrategy<T>,
-        contentType: String?
+        contentType: String?,
     ): KmmResult<JwsSigned<T>> = createSignedJws(
         JwsHeader(
             algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
@@ -164,7 +163,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         serializer: SerializationStrategy<T>,
         addKeyId: Boolean,
         addJsonWebKey: Boolean,
-        addX5c: Boolean
+        addX5c: Boolean,
     ): KmmResult<JwsSigned<T>> = catching {
         var copy = header?.copy(
             algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow()
@@ -181,7 +180,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         createSignedJws(copy, payload, serializer).getOrThrow()
     }
 
-    override suspend fun <T: Any> decryptJweObject(
+    override suspend fun <T : Any> decryptJweObject(
         jweObject: JweEncrypted,
         serialized: String,
         deserializer: DeserializationStrategy<T>,
@@ -219,7 +218,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         JweDecrypted(header, plainObject)
     }
 
-    override suspend fun <T: Any> encryptJweObject(
+    override suspend fun <T : Any> encryptJweObject(
         header: JweHeader?,
         payload: T,
         serializer: SerializationStrategy<T>,
@@ -239,14 +238,14 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         encryptJwe(ephemeralKeyPair, recipientKey, jweAlgorithm, jweEncryption, jweHeader, payload, serializer)
     }
 
-    override fun <T: Any> encryptJweObject(
+    override fun <T : Any> encryptJweObject(
         type: String,
         payload: T,
         serializer: SerializationStrategy<T>,
         recipientKey: JsonWebKey,
         contentType: String?,
         jweAlgorithm: JweAlgorithm,
-        jweEncryption: JweEncryption
+        jweEncryption: JweEncryption,
     ): KmmResult<JweEncrypted> = catching {
         val crv = recipientKey.curve
             ?: throw IllegalArgumentException("No curve in recipient key")
@@ -262,7 +261,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         encryptJwe(ephemeralKeyPair, recipientKey, jweAlgorithm, jweEncryption, jweHeader, payload, serializer)
     }
 
-    private fun <T: Any> encryptJwe(
+    private fun <T : Any> encryptJwe(
         ephemeralKeyPair: EphemeralKeyHolder,
         recipientKey: JsonWebKey,
         jweAlgorithm: JweAlgorithm,
@@ -313,7 +312,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     private fun hmacInput(
         aadForCipher: ByteArray,
         iv: ByteArray,
-        ciphertext: ByteArray
+        ciphertext: ByteArray,
     ) = aadForCipher + iv + ciphertext + (aadForCipher.size * 8L).encodeTo8Bytes()
 
     /**
@@ -326,7 +325,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         jweEncryption: JweEncryption,
         apu: ByteArray?,
         apv: ByteArray?,
-        encryptionKeyLengthBits: Int
+        encryptionKeyLengthBits: Int,
     ): ByteArray {
         val digest = Digest.SHA256
         val repetitions = (encryptionKeyLengthBits.toUInt() + digest.outputLength.bits - 1U) / digest.outputLength.bits
@@ -378,9 +377,14 @@ class DefaultVerifierJwsService(
      * Either take the single key from the JSON Web Key Set, or the one matching the keyId
      */
     private fun retrieveJwkFromKeySetUrl(jku: String, keyId: String?): CryptoPublicKey? =
+        retrieveFromKeySetUrl(jku, keyId)?.toCryptoPublicKey()?.getOrNull()
+
+    /**
+     * Either take the single key from the JSON Web Key Set, or the one matching the keyId
+     */
+    private fun retrieveFromKeySetUrl(jku: String, keyId: String?): JsonWebKey? =
         jwkSetRetriever(jku)?.keys?.let { keys ->
             (keys.firstOrNull { it.keyId == keyId } ?: keys.singleOrNull())
-                ?.toCryptoPublicKey()?.getOrNull()
         }
 
     /**
@@ -394,6 +398,12 @@ class DefaultVerifierJwsService(
     }
 
     /**
+     * Verifiers the signature of [jwsObject] by using keys from [cnf].
+     */
+    override fun verifyJws(jwsObject: JwsSigned<*>, cnf: ConfirmationClaim): Boolean =
+        cnf.loadPublicKeys().any { verify(jwsObject, it) }
+
+    /**
      * Returns a list of public keys that may have been used to sign this [JwsSigned]
      * by evaluating its header values (see [JwsHeader.jsonWebKey], [JwsHeader.jsonWebKeySetUrl])
      * as well as out-of-band transmitted keys from [publicKeyLookup].
@@ -402,32 +412,15 @@ class DefaultVerifierJwsService(
         header.publicKey?.let { setOf(it) }
             ?: header.jsonWebKeySetUrl?.let {
                 retrieveJwkFromKeySetUrl(it, header.keyId)?.let { setOf(it) }
-            } ?: publicKeyLookup(this)?.let { jwks ->
-                jwks.mapNotNull { jwk -> jwk.toCryptoPublicKey().getOrNull() }.toSet()
-            } ?: setOf()
+            } ?: publicKeyLookup(this)?.mapNotNull { jwk -> jwk.toCryptoPublicKey().getOrNull() }?.toSet() ?: setOf()
 
     /**
-     * Verifies that the confirmation in [cnf] matches the key from [jwsSigned]
+     * Loads all referenced [JsonWebKey]s, i.e. from [ConfirmationClaim.jsonWebKey] and [ConfirmationClaim.jsonWebKeySetUrl].
      */
-    override fun verifyConfirmationClaim(cnf: ConfirmationClaim, jwsSigned: JwsSigned<*>): Boolean {
-        val jwsPublicKeys = jwsSigned.loadPublicKeys()
-        return if (cnf.jsonWebKey != null) {
-            jwsPublicKeys.any { it.equalsCryptographically(cnf.jsonWebKey!!) }
-        } else if (cnf.jsonWebKeyThumbprint != null) {
-            jwsPublicKeys.any {
-                it.toJsonWebKey().let {
-                    it.jwkThumbprint == cnf.jsonWebKeyThumbprint!!
-                            || it.jwkThumbprintWithoutPrefix == cnf.jsonWebKeyThumbprint!!
-                }
-            }
-        } else if (cnf.jsonWebKeySetUrl != null) {
-            retrieveJwkFromKeySetUrl(cnf.jsonWebKeySetUrl!!, cnf.keyId)?.let { cnfKey ->
-                jwsPublicKeys.any { it.equalsCryptographically(cnfKey) }
-            } ?: false
-        } else {
-            false
-        }
-    }
+    fun ConfirmationClaim.loadPublicKeys(): Set<CryptoPublicKey> = setOfNotNull(
+        jsonWebKey?.toCryptoPublicKey()?.getOrNull(),
+        jsonWebKeySetUrl?.let { retrieveJwkFromKeySetUrl(it, keyId) }
+    )
 
     private fun verify(jwsObject: JwsSigned<*>, publicKey: CryptoPublicKey): Boolean = catching {
         cryptoService.verify(
@@ -468,7 +461,3 @@ private data class CompositeKey(
         return result
     }
 }
-
-
-private val JsonWebKey.jwkThumbprintWithoutPrefix: String
-    get() = jwkThumbprint.replace("urn:ietf:params:oauth:jwk-thumbprint:sha256:", "")
