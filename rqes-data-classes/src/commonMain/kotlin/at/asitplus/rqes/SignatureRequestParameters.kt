@@ -1,24 +1,15 @@
 package at.asitplus.rqes
 
-import CscAuthorizationDetails
-import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.SignatureQualifier
-import at.asitplus.rqes.collection_entries.CscDocumentDigest
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
-import at.asitplus.rqes.enums.ConformanceLevel
-import at.asitplus.rqes.enums.SignatureFormat
-import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
-import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlinx.serialization.json.JsonObject
 
 /**
  * In the Wallet centric model this is the request
