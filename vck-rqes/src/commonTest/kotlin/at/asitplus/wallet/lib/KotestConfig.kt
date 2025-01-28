@@ -10,7 +10,6 @@ class KotestConfig : AbstractProjectConfig() {
         Napier.takeLogarithm()
         Napier.base(DebugAntilog())
         initRqesModule()
-        at.asitplus.wallet.mdl.Initializer.initWithVCK()
         at.asitplus.wallet.eupid.Initializer.initWithVCK()
     }
 }

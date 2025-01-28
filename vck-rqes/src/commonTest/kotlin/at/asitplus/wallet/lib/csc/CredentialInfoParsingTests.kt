@@ -7,8 +7,8 @@ import at.asitplus.rqes.collection_entries.CscCertificateParameters
 import at.asitplus.rqes.collection_entries.CscKeyParameters
 import at.asitplus.rqes.enums.CertificateOptions
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 
@@ -117,23 +117,22 @@ class CredentialInfoParsingTests : FreeSpec({
 
 
     "credential/list request can be parsed" {
-        val requestDecoded = vckJsonSerializer.decodeFromString<CscCredentialListRequest>(credentialListRequestJson)
-        Napier.d("Parsed request is $requestDecoded")
-        requestDecoded.credentialInfo shouldBe true
-        requestDecoded.certificates shouldBe CertificateOptions.CHAIN
+        val decoded = vckJsonSerializer.decodeFromString<CscCredentialListRequest>(credentialListRequestJson)
+        decoded.credentialInfo shouldBe true
+        decoded.certificates shouldBe CertificateOptions.CHAIN
 
     }
     "credential/list response can be parsed" {
-        val responseDecoded = vckJsonSerializer.decodeFromString<CscCredentialListResponse>(credentialListResponseJson)
-        Napier.d("Parsed response is $responseDecoded")
-        responseDecoded.credentialIDs.size shouldBe 1
-        responseDecoded.credentialInfos shouldNotBe null
-        responseDecoded.credentialInfos?.size shouldBe 1
-        with(responseDecoded.credentialInfos?.first()) {
-            this?.credentialID shouldBe responseDecoded.credentialIDs.first()
-            this?.keyParameters?.status shouldBe CscKeyParameters.KeyStatusOptions.ENABLED
-            this?.certParameters?.status shouldBe CscCertificateParameters.CertStatus.VALID
-            this?.authParameters?.mode shouldBe CscAuthParameter.AuthMode.EXPLICIT
+        val decoded = vckJsonSerializer.decodeFromString<CscCredentialListResponse>(credentialListResponseJson)
+
+        decoded.credentialIDs.size shouldBe 1
+        decoded.credentialInfos shouldNotBe null
+        decoded.credentialInfos?.size shouldBe 1
+        with(decoded.credentialInfos?.first().shouldNotBeNull()) {
+            this.credentialID shouldBe decoded.credentialIDs.first()
+            this.keyParameters.status shouldBe CscKeyParameters.KeyStatusOptions.ENABLED
+            this.certParameters?.status shouldBe CscCertificateParameters.CertStatus.VALID
+            this.authParameters?.mode shouldBe CscAuthParameter.AuthMode.EXPLICIT
         }
 
     }

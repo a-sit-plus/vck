@@ -16,50 +16,10 @@ import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-
-private val requestedClaims = setOf(
-    EuPidScheme.SdJwtAttributes.FAMILY_NAME,
-    EuPidScheme.SdJwtAttributes.GIVEN_NAME,
-)
-
-private val defaultRequestOption = RequestOptions(
-    credentials = setOf(
-        RequestOptionsCredential(EuPidScheme, SD_JWT, requestedClaims)
-    )
-)
-
-class DummyRequestOptionsService {
-    fun getRequestOptions(): RqesOpenId4VpVerifier.ExtendedRequestOptions =
-        RqesOpenId4VpVerifier.ExtendedRequestOptions(
-            baseRequestOptions = defaultRequestOption, rqesParameters = Oid4VpRqesParameters(
-                transactionData = setOf(getTransactionData())
-            )
-        )
-
-    //TODO other transactionData
-    private fun getTransactionData(): TransactionData = TransactionData.QesAuthorization.create(
-        documentDigest = listOf(getDocumentDigests()),
-        signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
-        credentialId = uuid4().toString(),
-    ).getOrThrow()
-
-    private fun getDocumentDigests(): RqesDocumentDigestEntry = RqesDocumentDigestEntry.create(
-        label = uuid4().toString(),
-        hash = uuid4().bytes,
-        documentLocationUri = uuid4().toString(),
-        documentLocationMethod = RqesDocumentDigestEntry.DocumentLocationMethod(
-            method = Method.Oauth2
-        ),
-        hashAlgorithmOID = Digest.entries.random().oid,
-    ).getOrThrow()
-}
-
-val dummyRequestOptionsService = DummyRequestOptionsService()
 
 /**
  * Tests copied from [OpenId4VpProtocolTest] then extended
@@ -98,29 +58,26 @@ class RqesOpenId4VpVerifierTest : FreeSpec({
     }
 
     "Rqes Request with EU PID credential" {
-
-        val requestOptions = dummyRequestOptionsService.getRequestOptions()
-
-        val authnRequest = rqesOpenId4VpVerifier.createAuthnRequest(
-            requestOptions = requestOptions,
-        )
+        val requestOptions = DummyRequestOptionsService.getRequestOptions()
+        val authnRequest = rqesOpenId4VpVerifier.createAuthnRequest(requestOptions = requestOptions)
         authnRequest.transactionData shouldNotBe null
-        authnRequest.presentationDefinition shouldNotBe null
-        (authnRequest.presentationDefinition!!.inputDescriptors.first() is QesInputDescriptor) shouldBe true
-        (authnRequest.presentationDefinition!!.inputDescriptors.first() as QesInputDescriptor).transactionData shouldNotBe null
+        authnRequest.presentationDefinition.shouldNotBeNull()
+        val first = authnRequest.presentationDefinition!!.inputDescriptors.first()
+        first.shouldBeInstanceOf<QesInputDescriptor>()
+        first.transactionData.shouldNotBeNull()
 
         val authnRequestUrl = rqesOpenId4VpVerifier.createAuthnRequestUrl(
             walletUrl = walletUrl,
             requestOptions = requestOptions
         )
-
         authnRequestUrl shouldContain "transaction_data"
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
         val result = rqesOpenId4VpVerifier.validateAuthnResponse(authnResponse.url)
-        result.shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+
         result.verifiableCredentialSdJwt.shouldNotBeNull()
         requestedClaims.forEach {
             it.shouldBeIn(result.reconstructed.keys)
@@ -128,3 +85,40 @@ class RqesOpenId4VpVerifierTest : FreeSpec({
         }
     }
 })
+
+
+private val requestedClaims = setOf(
+    EuPidScheme.SdJwtAttributes.FAMILY_NAME,
+    EuPidScheme.SdJwtAttributes.GIVEN_NAME,
+)
+
+object DummyRequestOptionsService {
+    fun getRequestOptions(): RqesOpenId4VpVerifier.ExtendedRequestOptions =
+        RqesOpenId4VpVerifier.ExtendedRequestOptions(
+            baseRequestOptions = RequestOptions(
+                credentials = setOf(
+                    RequestOptionsCredential(EuPidScheme, SD_JWT, requestedClaims)
+                )
+            ),
+            rqesParameters = Oid4VpRqesParameters(
+                transactionData = setOf(getTransactionData())
+            )
+        )
+
+    //TODO other transactionData
+    private fun getTransactionData(): TransactionData = TransactionData.QesAuthorization.create(
+        documentDigest = listOf(getDocumentDigests()),
+        signatureQualifier = SignatureQualifier.EU_EIDAS_QES,
+        credentialId = uuid4().toString(),
+    ).getOrThrow()
+
+    private fun getDocumentDigests(): RqesDocumentDigestEntry = RqesDocumentDigestEntry.create(
+        label = uuid4().toString(),
+        hash = uuid4().bytes,
+        documentLocationUri = uuid4().toString(),
+        documentLocationMethod = RqesDocumentDigestEntry.DocumentLocationMethod(
+            method = Method.Oauth2
+        ),
+        hashAlgorithmOID = Digest.entries.random().oid,
+    ).getOrThrow()
+}

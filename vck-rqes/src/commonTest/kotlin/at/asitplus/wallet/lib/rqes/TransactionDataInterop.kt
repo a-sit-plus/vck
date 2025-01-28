@@ -9,20 +9,15 @@ import at.asitplus.rqes.serializers.Base64URLTransactionDataSerializer
 import at.asitplus.signum.indispensable.asn1.KnownOIDs.sha_256
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.*
 
 /**
  * Test vectors taken from "Transaction Data entries as defined in D3.1: UC Specification WP3"
@@ -73,30 +68,28 @@ class TransactionDataInterop : FreeSpec({
 
     "Serialization is stable" {
         val encoded = rdcJsonSerializer.encodeToString<TransactionData>(transactionDataTest)
-        val decoded = rdcJsonSerializer.decodeFromString<TransactionData>(encoded)
-        decoded shouldBe transactionDataTest
+        rdcJsonSerializer.decodeFromString<TransactionData>(encoded)
+            .shouldBe(transactionDataTest)
     }
 
     "InputDescriptor serialize" {
-        val test = QesInputDescriptor(
+        val input = QesInputDescriptor(
             id = "123",
             transactionData = listOf(transactionDataTest)
         )
-        val serialized = rdcJsonSerializer.encodeToString(test)
-        val deserialized = rdcJsonSerializer.decodeFromString(PolymorphicSerializer(InputDescriptor::class), serialized)
-        deserialized shouldBe test
+        val serialized = rdcJsonSerializer.encodeToString(input)
+        rdcJsonSerializer.decodeFromString(PolymorphicSerializer(InputDescriptor::class), serialized)
+            .shouldBe(input)
     }
 
     "TransactionDataEntry.QesAuthorization can be parsed" {
         val testVector =
             "ewogICJ0eXBlIjogInFlc19hdXRob3JpemF0aW9uIiwKICAic2lnbmF0dXJlUXVhbGlmaWVyIjogImV1X2VpZGFzX3FlcyIsCiAgImNyZWRlbnRpYWxJRCI6ICJvRW92QzJFSEZpRUZyRHBVeDhtUjBvN3llR0hrMmg3NGIzWHl3a05nQkdvPSIsCiAgImRvY3VtZW50RGlnZXN0cyI6IFsKICAgIHsKICAgICAgImxhYmVsIjogIkV4YW1wbGUgQ29udHJhY3QiLAogICAgICAiaGFzaCI6ICJzVE9nd09tKzQ3NGdGajBxMHgxaVNOc3BLcWJjc2U0SWVpcWxEZy9IV3VJPSIsCiAgICAgICJoYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiLAogICAgICAiZG9jdW1lbnRMb2NhdGlvbl91cmkiOiAiaHR0cHM6Ly9wcm90ZWN0ZWQucnAuZXhhbXBsZS9jb250cmFjdC0wMS5wZGY_dG9rZW49SFM5bmFKS1d3cDkwMWhCY0szNDhJVUhpdUg4Mzc0IiwKICAgICAgImRvY3VtZW50TG9jYXRpb25fbWV0aG9kIjogewogICAgICAgICJtZXRob2QiOiB7CiAgICAgICAgICAidHlwZSI6ICJwdWJsaWMiCiAgICAgICAgfQogICAgICB9LAogICAgICAiZHRic3IiOiAiVllEbDRvVGVKNVRtSVBDWEtkVFgxTVNXUkxJOUNLWWN5TVJ6NnhsYUdnIiwKICAgICAgImR0YnNySGFzaEFsZ29yaXRobU9JRCI6ICIyLjE2Ljg0MC4xLjEwMS4zLjQuMi4xIgogICAgfQogIF0sCiAgInByb2Nlc3NJRCI6ICJlT1o2VXdYeWVGTEs5OERvNTF4MzNmbXV2NE9xQXo1WmM0bHNoS050RWdRPSIKfQ"
-        val transactionData = runCatching {
-            rdcJsonSerializer.decodeFromString(
-                Base64URLTransactionDataSerializer,
-                rdcJsonSerializer.encodeToString(testVector)
-            )
-        }.getOrNull()
-        transactionData shouldNotBe null
+        val transactionData = rdcJsonSerializer.decodeFromString(
+            Base64URLTransactionDataSerializer,
+            rdcJsonSerializer.encodeToString(testVector)
+        )
+
         val expected = rdcJsonSerializer.decodeFromString<JsonElement>(
             testVector.decodeToByteArray(Base64UrlStrict).decodeToString()
         ).canonicalize() as JsonObject
@@ -116,56 +109,45 @@ class TransactionDataInterop : FreeSpec({
 
         //In order to deal with padding we deserialize and compare the bytearrays
         actualDocumentDigest["dtbsr"]?.let {
-            rdcJsonSerializer.decodeFromJsonElement(
-                ByteArrayBase64Serializer,
-                it
-            )
+            rdcJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it)
         } shouldBe expectedDocumentDigest["dtbsr"]?.let {
-            rdcJsonSerializer.decodeFromJsonElement(
-                ByteArrayBase64Serializer,
-                it
-            )
+            rdcJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it)
         }
         actualDocumentDigest["dtbsrHashAlgorithmOID"] shouldBe expectedDocumentDigest["dtbsrHashAlgorithmOID"]
         //In order to deal with padding we deserialize and compare the bytearrays
         actualDocumentDigest["hash"]?.let {
-            rdcJsonSerializer.decodeFromJsonElement(
-                ByteArrayBase64Serializer,
-                it
-            )
+            rdcJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it)
         } shouldBe expectedDocumentDigest["hash"]?.let {
-            rdcJsonSerializer.decodeFromJsonElement(
-                ByteArrayBase64Serializer,
-                it
-            )
+            rdcJsonSerializer.decodeFromJsonElement(ByteArrayBase64Serializer, it)
         }
         actualDocumentDigest["hashHashAlgorithmOID"] shouldBe expectedDocumentDigest["hashHashAlgorithmOID"]
-
     }
 
     "TransactionDataEntry.QCertCreationAcceptance can be parsed" {
         val testVector =
             "ewogICJ0eXBlIjogInFjZXJ0X2NyZWF0aW9uX2FjY2VwdGFuY2UiLAogICJRQ190ZXJtc19jb25kaXRpb25zX3VyaSI6ICJodHRwczovL2V4YW1wbGUuY29tL3RvcyIsCiAgIlFDX2hhc2giOiAia1hBZ3dEY2RBZTNvYnhwbzhVb0RrQytEK2I3T0NyRG84SU9HWmpTWDgvTT0iLAogICJRQ19oYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiCn0="
+
         val transactionData = runCatching {
             rdcJsonSerializer.decodeFromString(
                 Base64URLTransactionDataSerializer,
                 rdcJsonSerializer.encodeToString(testVector)
             )
-        }.getOrNull()
-        transactionData shouldNotBe null
+        }.getOrThrow()
+
         val expected = rdcJsonSerializer.decodeFromString<JsonElement>(
             testVector.decodeToByteArray(Base64UrlStrict).decodeToString()
         ).canonicalize()
-        val actual = rdcJsonSerializer.encodeToJsonElement(transactionData).canonicalize()
-        actual shouldBe expected
+
+        rdcJsonSerializer.encodeToJsonElement(transactionData).canonicalize()
+            .shouldBe(expected)
     }
 
     "The presentation Definition can be parsed" {
         val presentationDefinition =
-            runCatching { rdcJsonSerializer.decodeFromString<PresentationDefinition>(presentationDefinitionAsJsonString) }.getOrNull()
-        Napier.d(presentationDefinition.toString())
-        presentationDefinition shouldNotBe null
-        (presentationDefinition?.inputDescriptors?.first() as QesInputDescriptor).transactionData shouldNotBe null
+            rdcJsonSerializer.decodeFromString<PresentationDefinition>(presentationDefinitionAsJsonString)
+        val first = presentationDefinition.inputDescriptors.first()
+            .shouldBeInstanceOf<QesInputDescriptor>()
+        first.transactionData shouldNotBe null
     }
 })
 

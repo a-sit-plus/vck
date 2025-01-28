@@ -1,4 +1,8 @@
-import at.asitplus.gradle.*
+
+import at.asitplus.gradle.commonImplementationDependencies
+import at.asitplus.gradle.exportIosFramework
+import at.asitplus.gradle.setupAndroid
+import at.asitplus.gradle.setupDokka
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
@@ -45,7 +49,6 @@ kotlin {
         commonTest {
             dependencies {
                 implementation("at.asitplus.wallet:eupidcredential:${VcLibVersions.eupidcredential}")
-                implementation("at.asitplus.wallet:mobiledrivinglicence:${VcLibVersions.mdl}")
             }
         }
     }
