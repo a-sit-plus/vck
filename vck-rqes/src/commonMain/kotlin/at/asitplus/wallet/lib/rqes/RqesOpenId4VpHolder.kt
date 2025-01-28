@@ -17,18 +17,26 @@ import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.cbor.CoseService
+import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
+import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
+import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.rqes.helper.OAuth2RqesParameters
 import com.benasher44.uuid.uuid4
 import io.ktor.util.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlinx.datetime.Clock
 
 /**
  * Wallet service that implements generation of all data classes necessary

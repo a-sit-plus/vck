@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.rqes
 import at.asitplus.dif.FormatContainerJwt
 import at.asitplus.dif.FormatContainerSdJwt
 import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.TransactionData
@@ -28,6 +29,7 @@ import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptionsInterface
 import at.asitplus.wallet.lib.rqes.helper.Oid4VpRqesParameters
+import com.benasher44.uuid.uuid4
 import kotlinx.datetime.Clock
 
 /**
@@ -64,6 +66,15 @@ class RqesOpenId4VpVerifier(
         val baseRequestOptions: RequestOptions,
         val rqesParameters: Oid4VpRqesParameters,
     ) : RequestOptionsInterface by baseRequestOptions {
+
+        override fun toPresentationDefinition(
+            containerJwt: FormatContainerJwt,
+            containerSdJwt: FormatContainerSdJwt
+        ): PresentationDefinition = PresentationDefinition(
+            id = uuid4().toString(),
+            inputDescriptors = this.toInputDescriptor(containerJwt, containerSdJwt)
+        )
+
         override fun toInputDescriptor(
             containerJwt: FormatContainerJwt,
             containerSdJwt: FormatContainerSdJwt,

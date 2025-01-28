@@ -34,7 +34,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.PolymorphicSerializer
 import kotlin.random.Random
 
-class RqesWalletServiceTest : FreeSpec({
+class RqesOpenId4VpHolderTest : FreeSpec({
 
     val rawCert = """"MIIFajCCBPGgAwIBAgIQDNCovsYyz+ZF7KCpsIT7HDAKBggqhkjOPQQDAzBWMQsw
     CQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMTAwLgYDVQQDEydEaWdp
@@ -91,9 +91,9 @@ class RqesWalletServiceTest : FreeSpec({
                 keyParameters = CscKeyParameters(
                     status = if (isValid) CscKeyParameters.KeyStatusOptions.ENABLED else CscKeyParameters.KeyStatusOptions.entries.random(),
                     algo = listOf(signatureAlgo.oid),
-                    len = signatureAlgo.digest.outputLength.bits, //TODO easiest way of accessing key length??
+                    len = signatureAlgo.digest.outputLength.bits,
                     curve = if (signatureAlgo.isEc) signatureAlgo.algorithm.toJwsAlgorithm()
-                        .getOrThrow().ecCurve!!.oid else null //TODO easiest way of accessing curve??
+                        .getOrThrow().ecCurve!!.oid else null
                 ),
                 certParameters = CscCertificateParameters(
                     status = if (isValid) CscCertificateParameters.CertStatus.VALID else CscCertificateParameters.CertStatus.entries.random(),

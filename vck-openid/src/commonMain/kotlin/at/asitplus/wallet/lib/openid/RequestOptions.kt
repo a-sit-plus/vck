@@ -73,21 +73,12 @@ interface RequestOptionsInterface {
     fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-    ): PresentationDefinition? = PresentationDefinition(
-        id = uuid4().toString(),
-        inputDescriptors = this.toInputDescriptor(containerJwt, containerSdJwt)
-    )
+    ): PresentationDefinition?
 
     fun toInputDescriptor(
         containerJwt: FormatContainerJwt,
         containerSdJwt: FormatContainerSdJwt,
-    ): List<InputDescriptor> = credentials.map {
-        DifInputDescriptor(
-            id = it.buildId(),
-            format = it.toFormatHolder(containerJwt, containerSdJwt),
-            constraints = it.toConstraint(),
-        )
-    }
+    ): List<InputDescriptor>
 }
 
 data class RequestOptions(
@@ -98,7 +89,27 @@ data class RequestOptions(
     override val state: String = uuid4().toString(),
     override val clientMetadataUrl: String? = null,
     override val encryption: Boolean = false,
-) : RequestOptionsInterface
+) : RequestOptionsInterface {
+
+    override fun toPresentationDefinition(
+        containerJwt: FormatContainerJwt,
+        containerSdJwt: FormatContainerSdJwt
+    ): PresentationDefinition = PresentationDefinition(
+        id = uuid4().toString(),
+        inputDescriptors = this.toInputDescriptor(containerJwt, containerSdJwt)
+    )
+
+    override fun toInputDescriptor(
+        containerJwt: FormatContainerJwt,
+        containerSdJwt: FormatContainerSdJwt,
+    ): List<InputDescriptor> = credentials.map {
+        DifInputDescriptor(
+            id = it.buildId(),
+            format = it.toFormatHolder(containerJwt, containerSdJwt),
+            constraints = it.toConstraint(),
+        )
+    }
+}
 
 data class RequestOptionsCredential(
     /**
