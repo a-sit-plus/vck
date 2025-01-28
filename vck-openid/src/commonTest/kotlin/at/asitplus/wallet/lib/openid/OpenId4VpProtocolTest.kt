@@ -1,35 +1,15 @@
 package at.asitplus.wallet.lib.openid
 
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.signum.indispensable.josef.ConfirmationClaim
-import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JsonWebToken
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.openid.*
+import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
-import at.asitplus.wallet.lib.oidvci.MapStore
-import at.asitplus.wallet.lib.oidvci.NonceService
-import at.asitplus.wallet.lib.oidvci.OAuth2Exception
-import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.oidvci.formUrlEncode
+import at.asitplus.wallet.lib.oidvci.*
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
@@ -109,7 +89,7 @@ class OpenId4VpProtocolTest : FreeSpec({
                 override suspend fun verifyAndRemoveNonce(it: String) = false
             }
         )
-        val requestOptions = RequestOptions(
+        val requestOptions = OpenIdRequestOptions(
             credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
             responseType = OpenIdConstants.ID_TOKEN
         )
@@ -178,7 +158,7 @@ class OpenId4VpProtocolTest : FreeSpec({
     "test with direct_post" {
         val authnRequest = verifierOid4vp.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = RequestOptions(
+            requestOptions = OpenIdRequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = clientId,
@@ -197,7 +177,7 @@ class OpenId4VpProtocolTest : FreeSpec({
     "test with direct_post_jwt" {
         val authnRequest = verifierOid4vp.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = RequestOptions(
+            requestOptions = OpenIdRequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = clientId,
@@ -223,7 +203,7 @@ class OpenId4VpProtocolTest : FreeSpec({
         val expectedState = uuid4().toString()
         val authnRequest = verifierOid4vp.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = RequestOptions(
+            requestOptions = OpenIdRequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.Query,
                 state = expectedState
@@ -430,7 +410,7 @@ class OpenId4VpProtocolTest : FreeSpec({
     }
 })
 
-private fun requestOptionsAtomicAttribute() = RequestOptions(
+private fun requestOptionsAtomicAttribute() = OpenIdRequestOptions(
     credentials = setOf(
         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
     ),
@@ -484,7 +464,7 @@ private suspend fun verifySecondProtocolRun(
         .shouldBeInstanceOf<AuthnResponseResult.Success>()
 }
 
-private val defaultRequestOptions = RequestOptions(
+private val defaultRequestOptions = OpenIdRequestOptions(
     credentials = setOf(
         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
     )

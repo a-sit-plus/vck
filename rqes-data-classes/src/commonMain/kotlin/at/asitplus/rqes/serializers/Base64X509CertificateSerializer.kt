@@ -16,15 +16,11 @@ object Base64X509CertificateSerializer : KSerializer<X509Certificate> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("Base64X509CertificateSerializer", PrimitiveKind.STRING)
 
-    override fun deserialize(decoder: Decoder): X509Certificate {
-        val jsonString = decoder.decodeString()
-        val decoded = jsonString.decodeToByteArray(Base64Strict)
-        return X509Certificate.decodeFromByteArray(decoded) ?: throw Exception("Invalid Base64 String")
-    }
+    override fun deserialize(decoder: Decoder): X509Certificate =
+        X509Certificate.decodeFromByteArray(decoder.decodeString().decodeToByteArray(Base64Strict))
+            ?: throw Exception("Invalid Base64 String")
 
     override fun serialize(encoder: Encoder, value: X509Certificate) {
-        val encoded = value.encodeToDer()
-        val base64String = encoded.encodeToString(Base64Strict)
-        encoder.encodeString(base64String)
+        encoder.encodeString(value.encodeToDer().encodeToString(Base64Strict))
     }
 }

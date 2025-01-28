@@ -33,7 +33,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
     )
 
     representations.forEach { representation ->
-        val reqOptions = RequestOptions(
+        val reqOptions = OpenIdRequestOptions(
             credentials = setOf(
                 RequestOptionsCredential(
                     ConstantIndex.AtomicAttribute2023, representation

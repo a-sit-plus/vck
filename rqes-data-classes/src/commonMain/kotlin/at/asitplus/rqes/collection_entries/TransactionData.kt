@@ -82,15 +82,14 @@ sealed class TransactionData {
                 signatureQualifier: SignatureQualifier? = null,
                 credentialId: String? = null,
                 processID: String? = null,
-            ): KmmResult<TransactionData> =
-                runCatching {
-                    QesAuthorization(
-                        signatureQualifier = signatureQualifier,
-                        credentialID = credentialId,
-                        documentDigests = documentDigest,
-                        processID = processID,
-                    )
-                }.wrap()
+            ): KmmResult<TransactionData> = runCatching {
+                QesAuthorization(
+                    signatureQualifier = signatureQualifier,
+                    credentialID = credentialId,
+                    documentDigests = documentDigest,
+                    processID = processID,
+                )
+            }.wrap()
         }
     }
 

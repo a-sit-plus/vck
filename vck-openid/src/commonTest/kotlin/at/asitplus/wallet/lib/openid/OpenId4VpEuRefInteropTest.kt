@@ -335,7 +335,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         val requestUrlForWallet = verifierOid4vp.createAuthnRequestUrlWithRequestObjectByReference(
             walletUrl = "https://wallet.a-sit.at/mobile",
             requestUrl = requestUrl,
-            requestOptions = RequestOptions(
+            requestOptions = OpenIdRequestOptions(
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://example.com/response",
                 credentials = setOf(

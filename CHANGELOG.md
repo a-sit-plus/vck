@@ -1,5 +1,11 @@
 # Changelog
 
+NEXT:
+- Add support for POTENTIAL UC5: Remote qualified electronic signatures
+  - See main classes `RqesOpenId4VpHolder` and `RqesOpenId4VpVerifier` in `vck-rqes`  
+- Refactorings:
+  - Rename `RequestOptions` to `OpenIdRequestOptions`
+
 Release 5.3.0:
 - Add draft token-status-list-06 from https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html
 - `Holder`:

@@ -147,7 +147,6 @@ data class RqesDocumentDigestEntry private constructor(
      * information how to access
      * [documentLocationUri].
      */
-    @ConsistentCopyVisibility
     @Serializable
     @SerialName("documentLocation_method")
     data class DocumentLocationMethod(
@@ -166,18 +165,17 @@ data class RqesDocumentDigestEntry private constructor(
             documentLocationMethod: DocumentLocationMethod? = null,
             dtbsr: ByteArray? = null,
             dtbsrHashAlgorithmOID: ObjectIdentifier? = null,
-        ): KmmResult<RqesDocumentDigestEntry> =
-            kotlin.runCatching {
-                RqesDocumentDigestEntry(
-                    label = label,
-                    hash = hash,
-                    hashAlgorithmOid = hashAlgorithmOID,
-                    documentLocationUri = documentLocationUri,
-                    documentLocationMethod = documentLocationMethod,
-                    dataToBeSignedRepresentation = dtbsr,
-                    dtbsrHashAlgorithmOid = dtbsrHashAlgorithmOID,
-                )
-            }.wrap()
+        ): KmmResult<RqesDocumentDigestEntry> = kotlin.runCatching {
+            RqesDocumentDigestEntry(
+                label = label,
+                hash = hash,
+                hashAlgorithmOid = hashAlgorithmOID,
+                documentLocationUri = documentLocationUri,
+                documentLocationMethod = documentLocationMethod,
+                dataToBeSignedRepresentation = dtbsr,
+                dtbsrHashAlgorithmOid = dtbsrHashAlgorithmOID,
+            )
+        }.wrap()
 
     }
 }

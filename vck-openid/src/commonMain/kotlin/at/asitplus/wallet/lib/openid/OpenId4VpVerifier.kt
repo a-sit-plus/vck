@@ -178,7 +178,7 @@ open class OpenId4VpVerifier(
      */
     suspend fun createAuthnRequestUrl(
         walletUrl: String,
-        requestOptions: RequestOptionsInterface,
+        requestOptions: RequestOptions,
     ): String {
         val urlBuilder = URLBuilder(walletUrl)
         createAuthnRequest(requestOptions).encodeToParameters()
@@ -192,7 +192,7 @@ open class OpenId4VpVerifier(
      */
     suspend fun createAuthnRequestUrlWithRequestObject(
         walletUrl: String,
-        requestOptions: RequestOptionsInterface,
+        requestOptions: RequestOptions,
     ): KmmResult<String> = catching {
         val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow()
         val urlBuilder = URLBuilder(walletUrl)
@@ -215,7 +215,7 @@ open class OpenId4VpVerifier(
     suspend fun createAuthnRequestUrlWithRequestObjectByReference(
         walletUrl: String,
         requestUrl: String,
-        requestOptions: RequestOptionsInterface,
+        requestOptions: RequestOptions,
     ): KmmResult<Pair<String, String>> = catching {
         val jar = createAuthnRequestAsSignedRequestObject(requestOptions).getOrThrow()
         val urlBuilder = URLBuilder(walletUrl)
@@ -241,7 +241,7 @@ open class OpenId4VpVerifier(
      * ```
      */
     suspend fun createAuthnRequestAsSignedRequestObject(
-        requestOptions: RequestOptionsInterface,
+        requestOptions: RequestOptions,
     ): KmmResult<JwsSigned<AuthenticationRequestParameters>> = catching {
         val requestObject = createAuthnRequest(requestOptions)
         val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
@@ -267,7 +267,7 @@ open class OpenId4VpVerifier(
      * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
      */
     suspend fun createAuthnRequest(
-        requestOptions: RequestOptionsInterface,
+        requestOptions: RequestOptions,
     ) = AuthenticationRequestParameters(
         responseType = requestOptions.responseType,
         clientId = clientIdScheme.clientId,
@@ -294,7 +294,7 @@ open class OpenId4VpVerifier(
 
     open suspend fun enrichAuthnRequest(
         params: AuthenticationRequestParameters,
-        requestOptions: RequestOptionsInterface,
+        requestOptions: RequestOptions,
     ): AuthenticationRequestParameters = params
 
     /**

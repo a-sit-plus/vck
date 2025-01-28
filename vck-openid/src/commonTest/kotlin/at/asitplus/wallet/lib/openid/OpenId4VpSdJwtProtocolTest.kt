@@ -54,7 +54,7 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
         val requestedClaim = AtomicAttribute2023.CLAIM_GIVEN_NAME
         val authnRequest = verifierOid4vp.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = RequestOptions(
+            requestOptions = OpenIdRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(requestedClaim))
                 )
@@ -80,7 +80,7 @@ class OpenId4VpSdJwtProtocolTest : FreeSpec({
         )
         val authnRequest = verifierOid4vp.createAuthnRequestUrl(
             walletUrl = walletUrl,
-            requestOptions = RequestOptions(
+            requestOptions = OpenIdRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(EuPidScheme, SD_JWT, requestedClaims)
                 )

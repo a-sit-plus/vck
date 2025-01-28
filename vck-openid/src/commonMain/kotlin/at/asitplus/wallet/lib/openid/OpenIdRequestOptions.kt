@@ -16,7 +16,7 @@ import io.ktor.http.*
 
 typealias RequestedAttributes = Set<String>
 
-interface RequestOptionsInterface {
+interface RequestOptions {
     /**
      * Requested credentials, should be at least one
      */
@@ -81,7 +81,7 @@ interface RequestOptionsInterface {
     ): List<InputDescriptor>
 }
 
-data class RequestOptions(
+data class OpenIdRequestOptions(
     override val credentials: Set<RequestOptionsCredential>,
     override val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
     override val responseUrl: String? = null,
@@ -89,7 +89,7 @@ data class RequestOptions(
     override val state: String = uuid4().toString(),
     override val clientMetadataUrl: String? = null,
     override val encryption: Boolean = false,
-) : RequestOptionsInterface {
+) : RequestOptions {
 
     override fun toPresentationDefinition(
         containerJwt: FormatContainerJwt,

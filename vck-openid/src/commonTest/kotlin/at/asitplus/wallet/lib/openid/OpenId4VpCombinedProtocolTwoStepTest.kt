@@ -45,7 +45,7 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
             holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
             val authnRequest = verifierOid4vp.createAuthnRequest(
-                requestOptions = RequestOptions(
+                requestOptions = OpenIdRequestOptions(
                     credentials = setOf(
                         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
                     )
@@ -75,7 +75,7 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                 holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val authnRequest = verifierOid4vp.createAuthnRequest(
-                    requestOptions = RequestOptions(
+                    requestOptions = OpenIdRequestOptions(
                         credentials = setOf(
                             RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
                         )
@@ -121,7 +121,7 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
                 val sdJwtMatches = run {
                     val authnRequestSdJwt = verifierOid4vp.createAuthnRequest(
-                        requestOptions = RequestOptions(
+                        requestOptions = OpenIdRequestOptions(
                             credentials = setOf(
                                 RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, SD_JWT)
                             )
@@ -148,7 +148,7 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
 
                 val authnRequest = verifierOid4vp.createAuthnRequest(
-                    requestOptions = RequestOptions(
+                    requestOptions = OpenIdRequestOptions(
                         credentials = setOf(
                             RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
                         )

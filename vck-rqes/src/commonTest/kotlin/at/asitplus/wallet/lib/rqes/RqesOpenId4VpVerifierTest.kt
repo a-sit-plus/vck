@@ -10,7 +10,7 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.openid.*
-import at.asitplus.wallet.lib.rqes.helper.Oid4VpRqesParameters
+import at.asitplus.wallet.lib.rqes.helper.OpenIdRqesParameters
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -95,12 +95,12 @@ private val requestedClaims = setOf(
 object DummyRequestOptionsService {
     fun getRequestOptions(): RqesOpenId4VpVerifier.ExtendedRequestOptions =
         RqesOpenId4VpVerifier.ExtendedRequestOptions(
-            baseRequestOptions = RequestOptions(
+            baseRequestOptions = OpenIdRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(EuPidScheme, SD_JWT, requestedClaims)
                 )
             ),
-            rqesParameters = Oid4VpRqesParameters(
+            rqesParameters = OpenIdRqesParameters(
                 transactionData = setOf(getTransactionData())
             )
         )

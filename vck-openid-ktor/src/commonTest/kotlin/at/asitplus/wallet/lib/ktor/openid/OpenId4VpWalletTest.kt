@@ -103,7 +103,7 @@ class OpenId4VpWalletTest : FunSpec() {
         responseMode: ResponseMode,
         clientId: String,
     ): Pair<OpenId4VpWallet, String> {
-        val requestOptions = RequestOptions(
+        val requestOptions = OpenIdRequestOptions(
             credentials = setOf(
                 RequestOptionsCredential(
                     credentialScheme = scheme,
@@ -212,7 +212,7 @@ class OpenId4VpWalletTest : FunSpec() {
      */
     private suspend fun setupRelyingPartyService(
         clientId: String,
-        requestOptions: RequestOptions,
+        requestOptions: OpenIdRequestOptions,
         validate: (AuthnResponseResult) -> Unit,
     ): Pair<HttpClientEngine, String> {
         val requestEndpointPath = "/request/${uuid4()}"

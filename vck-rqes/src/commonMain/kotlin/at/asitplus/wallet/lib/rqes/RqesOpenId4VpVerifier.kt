@@ -21,9 +21,9 @@ import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.NonceService
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
+import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptions
-import at.asitplus.wallet.lib.openid.RequestOptionsInterface
-import at.asitplus.wallet.lib.rqes.helper.Oid4VpRqesParameters
+import at.asitplus.wallet.lib.rqes.helper.OpenIdRqesParameters
 import com.benasher44.uuid.uuid4
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
@@ -59,9 +59,9 @@ class RqesOpenId4VpVerifier(
      * ExtendedRequestOptions cannot generate DifInputDescriptors!
      */
     data class ExtendedRequestOptions(
-        val baseRequestOptions: RequestOptions,
-        val rqesParameters: Oid4VpRqesParameters,
-    ) : RequestOptionsInterface by baseRequestOptions {
+        val baseRequestOptions: OpenIdRequestOptions,
+        val rqesParameters: OpenIdRqesParameters,
+    ) : RequestOptions by baseRequestOptions {
 
         override fun toPresentationDefinition(
             containerJwt: FormatContainerJwt,
@@ -86,10 +86,10 @@ class RqesOpenId4VpVerifier(
 
     override suspend fun enrichAuthnRequest(
         params: AuthenticationRequestParameters,
-        requestOptions: RequestOptionsInterface,
+        requestOptions: RequestOptions,
     ): AuthenticationRequestParameters = with(requestOptions) {
         when (this) {
-            is RequestOptions -> params
+            is OpenIdRequestOptions -> params
             is ExtendedRequestOptions -> params.copy(
                 transactionData = this.rqesParameters.transactionData.map {
                     vckJsonSerializer.encodeToString(it)

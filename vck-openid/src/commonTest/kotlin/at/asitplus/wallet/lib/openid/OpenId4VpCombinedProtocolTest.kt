@@ -49,7 +49,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                 holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val authnRequest = verifierOid4vp.createAuthnRequest(
-                    requestOptions = RequestOptions(
+                    requestOptions = OpenIdRequestOptions(
                         credentials = setOf(
                             RequestOptionsCredential(
                                 ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -69,7 +69,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                 holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val authnRequest = verifierOid4vp.createAuthnRequest(
-                    requestOptions = RequestOptions(
+                    requestOptions = OpenIdRequestOptions(
                         credentials = setOf(
                             RequestOptionsCredential(
                                 ConstantIndex.AtomicAttribute2023,
@@ -98,7 +98,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                 holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val authnRequest = verifierOid4vp.createAuthnRequest(
-                    requestOptions = RequestOptions(
+                    requestOptions = OpenIdRequestOptions(
                         credentials = setOf(
                             RequestOptionsCredential(
                                 ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.SD_JWT
@@ -118,7 +118,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                 holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
                 val authnRequest = verifierOid4vp.createAuthnRequest(
-                    requestOptions = RequestOptions(
+                    requestOptions = OpenIdRequestOptions(
                         credentials = setOf(
                             RequestOptionsCredential(
                                 ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.SD_JWT
@@ -142,7 +142,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                 holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
                 val authnRequest = verifierOid4vp.createAuthnRequest(
-                    requestOptions = RequestOptions(
+                    requestOptions = OpenIdRequestOptions(
                         credentials = setOf(
                             RequestOptionsCredential(
                                 ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.ISO_MDOC
@@ -162,7 +162,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
                 holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
                 val authnRequest = verifierOid4vp.createAuthnRequest(
-                    requestOptions = RequestOptions(
+                    requestOptions = OpenIdRequestOptions(
                         credentials = setOf(
                             RequestOptionsCredential(
                                 ConstantIndex.AtomicAttribute2023,
@@ -186,7 +186,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
         holderAgent.storeIsoCredential(holderKeyMaterial, MobileDrivingLicenceScheme)
 
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            requestOptions = RequestOptions(
+            requestOptions = OpenIdRequestOptions(
                 credentials = setOf(
                     RequestOptionsCredential(
                         ConstantIndex.AtomicAttribute2023, ConstantIndex.CredentialRepresentation.PLAIN_JWT
@@ -209,7 +209,7 @@ class OpenId4VpCombinedProtocolTest : FreeSpec({
         holderAgent.storeSdJwtCredential(holderKeyMaterial, EuPidScheme)
         holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
 
-        val requestOptions = RequestOptions(
+        val requestOptions = OpenIdRequestOptions(
             credentials = setOf(
                 RequestOptionsCredential(
                     credentialScheme = ConstantIndex.AtomicAttribute2023,

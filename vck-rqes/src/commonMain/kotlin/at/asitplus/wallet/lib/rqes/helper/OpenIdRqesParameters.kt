@@ -5,7 +5,7 @@ import at.asitplus.rqes.collection_entries.TransactionData
 /**
  * Wrapper to distinguish RQES related [AuthenticationRequestParameter] members better
  */
-data class Oid4VpRqesParameters(
+data class OpenIdRqesParameters(
     val transactionData: Set<TransactionData>,
 )
 
