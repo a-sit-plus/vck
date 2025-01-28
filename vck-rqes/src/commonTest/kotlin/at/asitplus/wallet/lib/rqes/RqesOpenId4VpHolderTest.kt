@@ -3,17 +3,16 @@ package at.asitplus.wallet.lib.rqes
 import CscAuthorizationDetails
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.SignatureQualifier
 import at.asitplus.openid.TokenRequestParameters
 import at.asitplus.rqes.CredentialInfo
+import at.asitplus.rqes.CscSignatureRequestParameters
 import at.asitplus.rqes.SignHashParameters
 import at.asitplus.rqes.collection_entries.CscCertificateParameters
 import at.asitplus.rqes.collection_entries.CscDocumentDigest
 import at.asitplus.rqes.collection_entries.CscKeyParameters
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
-import at.asitplus.rqes.serializers.CscSignatureRequestParameterSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -22,17 +21,17 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.PolymorphicSerializer
+import kotlinx.serialization.encodeToString
 
 class RqesOpenId4VpHolderTest : FreeSpec({
 
-
     val dummyValueProvider = DummyValueProvider()
     val rqesWalletService = RqesOpenId4VpHolder()
-    var newCredential: CredentialInfo
 
     fun CredentialInfo.isValid(): Boolean =
         this.keyParameters.status == CscKeyParameters.KeyStatusOptions.ENABLED && this.certParameters!!.status == CscCertificateParameters.CertStatus.VALID
@@ -46,11 +45,14 @@ class RqesOpenId4VpHolderTest : FreeSpec({
     "RqesWalletService Tests" - {
         repeat(3) {
             "Certificates can be parsed" {
-                newCredential = dummyValueProvider.getSigningCredential()
+                val newCredential = dummyValueProvider.getSigningCredential()
                 val walletWithCredential =
                     kotlin.runCatching { rqesWalletService.setSigningCredential(newCredential) }.getOrNull()
-                if (newCredential.isValid()) walletWithCredential shouldNotBe null
-                else walletWithCredential shouldBe null
+                if (newCredential.isValid()) {
+                    walletWithCredential shouldNotBe null
+                } else {
+                    walletWithCredential shouldBe null
+                }
             }
         }
 
@@ -61,20 +63,16 @@ class RqesOpenId4VpHolderTest : FreeSpec({
 
         "CscAuthDetails respects SigningCredential" {
             val digests = dummyValueProvider.buildDocumentDigests()
-            val testAuthDetails = rqesWalletService.getCscAuthenticationDetails(digests, validSigningAlgo.digest)
-            with(testAuthDetails as? CscAuthorizationDetails) {
-                this shouldNotBe null
-                this!!.credentialID shouldBe validCert.credentialID
+            val authDetails = rqesWalletService.getCscAuthenticationDetails(digests, validSigningAlgo.digest)
+            authDetails.shouldBeInstanceOf<CscAuthorizationDetails>().apply {
+                this.credentialID shouldBe validCert.credentialID
                 this.signatureQualifier shouldBe SignatureQualifier.EU_EIDAS_QES
                 this.documentDigests.size shouldBe digests.size
                 this.hashAlgorithmOid shouldBe validSigningAlgo.digest.oid
             }
-            val serialized =
-                vckJsonSerializer.encodeToString(PolymorphicSerializer(AuthorizationDetails::class), testAuthDetails)
-            val deserialized =
-                vckJsonSerializer.decodeFromString(PolymorphicSerializer(AuthorizationDetails::class), serialized)
-            deserialized shouldNotBe null
-            deserialized shouldBe testAuthDetails
+            val serialized = vckJsonSerializer.encodeToString(authDetails)
+            vckJsonSerializer.decodeFromString<CscAuthorizationDetails>(serialized)
+                .shouldBe(authDetails)
         }
 
         "CscDocumentDigest respects SigningCredential" {
@@ -103,11 +101,9 @@ class RqesOpenId4VpHolderTest : FreeSpec({
             request.signatureQualifier shouldBe null
             request.numSignatures shouldBe null
 
-            val serialized = vckJsonSerializer.encodeToString(AuthenticationRequestParameters.serializer(), request)
-            val deserialized =
-                vckJsonSerializer.decodeFromString(AuthenticationRequestParameters.serializer(), serialized)
-            deserialized shouldNotBe null
-            deserialized shouldBe request
+            val serialized = vckJsonSerializer.encodeToString(request)
+            vckJsonSerializer.decodeFromString<AuthenticationRequestParameters>(serialized)
+                .shouldBe(request)
         }
 
         "AuthenticationRequest CREDENTIAL" {
@@ -120,46 +116,37 @@ class RqesOpenId4VpHolderTest : FreeSpec({
                 hashes = listOf(uuid4().bytes),
                 optionalParameters = null
             )
-            request.credentialID?.encodeToString(Base64UrlStrict) shouldBe validCert.credentialID
 
+            request.credentialID?.encodeToString(Base64UrlStrict) shouldBe validCert.credentialID
             request.signatureQualifier shouldBe SignatureQualifier.EU_EIDAS_QES
             request.numSignatures shouldNotBe null
             request.redirectUrl shouldBe "someOtherURL"
-            request.authorizationDetails shouldNotBe null
-
-            request.authorizationDetails?.onEach {
-                with(it as? CscAuthorizationDetails) {
-                    this shouldNotBe null
-                    this?.documentDigests shouldBe documentDigests
-                }
+            request.authorizationDetails.shouldNotBeNull().forEach {
+                it.shouldBeInstanceOf<CscAuthorizationDetails>()
+                it.documentDigests shouldBe documentDigests
             }
 
-            val serialized = vckJsonSerializer.encodeToString(AuthenticationRequestParameters.serializer(), request)
-            val deserialized =
-                vckJsonSerializer.decodeFromString(AuthenticationRequestParameters.serializer(), serialized)
-            deserialized shouldNotBe null
-            deserialized shouldBe request
+            val serialized = vckJsonSerializer.encodeToString(request)
+            vckJsonSerializer.decodeFromString<AuthenticationRequestParameters>(serialized)
+                .shouldBe(request)
         }
 
         "TokenRequest" {
-            val documentDigests = dummyValueProvider.buildDocumentDigests()
             val request = rqesWalletService.createOAuth2TokenRequest(
                 state = uuid4().toString(),
                 authorization = OAuth2Client.AuthorizationForToken.Code(uuid4().toString()),
                 authorizationDetails = setOf(
                     rqesWalletService.getCscAuthenticationDetails(
-                        documentDigests,
+                        dummyValueProvider.buildDocumentDigests(),
                         Digest.entries.random(),
                     )
                 )
             )
-
             request.authorizationDetails shouldNotBe null
 
-            val serialized = vckJsonSerializer.encodeToString(TokenRequestParameters.serializer(), request)
-            val deserialized = vckJsonSerializer.decodeFromString(TokenRequestParameters.serializer(), serialized)
-            deserialized shouldNotBe null
-            deserialized shouldBe request
+            val serialized = vckJsonSerializer.encodeToString(request)
+            vckJsonSerializer.decodeFromString<TokenRequestParameters>(serialized)
+                .shouldBe(request)
         }
 
         "SignHash" {
@@ -167,18 +154,14 @@ class RqesOpenId4VpHolderTest : FreeSpec({
                 dtbsr = listOf(uuid4().bytes),
                 sad = uuid4().toString(),
                 signatureAlgorithm = rqesWalletService.signingCredential!!.supportedSigningAlgorithms.first(),
-            )
+            ).shouldBeInstanceOf<SignHashParameters>()
 
-            with(request as? SignHashParameters) {
-                this shouldNotBe null
-                this!!.credentialId shouldBe validCert.credentialID
-                this.signAlgoOid shouldBe validSigningAlgo.oid
-            }
-            val serialized = vckJsonSerializer.encodeToString(CscSignatureRequestParameterSerializer, request)
-            val deserialized = vckJsonSerializer.decodeFromString(CscSignatureRequestParameterSerializer, serialized)
-            deserialized shouldNotBe null
-            deserialized shouldBe request
+            request.credentialId shouldBe validCert.credentialID
+            request.signAlgoOid shouldBe validSigningAlgo.oid
+
+            val serialized = vckJsonSerializer.encodeToString(request)
+            vckJsonSerializer.decodeFromString<CscSignatureRequestParameters>(serialized)
+                .shouldBe(request)
         }
-
     }
 })
