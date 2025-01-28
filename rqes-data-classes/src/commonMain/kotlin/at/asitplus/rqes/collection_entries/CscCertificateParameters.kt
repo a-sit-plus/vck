@@ -1,7 +1,10 @@
 package at.asitplus.rqes.collection_entries
 
+import at.asitplus.rqes.serializers.Base64X509CertificateSerializer
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+
 
 /**
  * JsonObject which is part of [CredentialInfo]
@@ -23,9 +26,8 @@ data class CscCertificateParameters(
      * certificate SHALL be returned. If the certificates parameter is “none”, this
      * value SHALL NOT be returned.
      */
-    //TODO base64 certificate serializer
     @SerialName("certificates")
-    val certificates: List<String>? = null,
+    val certificates: List<@Serializable(with = Base64X509CertificateSerializer::class) X509Certificate>? = null,
 
     /**
      * The Issuer Distinguished Name from the X.509v3 end entity certificate as

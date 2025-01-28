@@ -5,7 +5,6 @@ import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.InputDescriptor
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthorizationDetails
-import at.asitplus.openid.CscAuthenticationRequestParameters
 import at.asitplus.openid.OpenIdAuthorizationDetails
 import at.asitplus.openid.RequestParameters
 import at.asitplus.rqes.serializers.InputDescriptorSerializer
@@ -31,14 +30,13 @@ private val inputDescriptorModule = SerializersModule {
 
 private val requestParametersModule = SerializersModule {
     polymorphic(RequestParameters::class) {
-        subclass(SignatureRequestParameters::class, SignatureRequestParameters.serializer())
+        subclass(
+            SignatureRequestParameters::class,
+            SignatureRequestParameters.serializer()
+        )
         subclass(
             AuthenticationRequestParameters::class,
             AuthenticationRequestParameters.serializer()
-        )
-        subclass(
-            CscAuthenticationRequestParameters::class,
-            CscAuthenticationRequestParameters.serializer()
         )
     }
     polymorphicDefaultSerializer(

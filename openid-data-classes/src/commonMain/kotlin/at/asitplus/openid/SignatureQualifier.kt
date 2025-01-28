@@ -1,4 +1,4 @@
-package at.asitplus.rqes.enums
+package at.asitplus.openid
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

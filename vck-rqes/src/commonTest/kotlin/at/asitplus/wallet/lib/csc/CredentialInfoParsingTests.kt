@@ -7,8 +7,8 @@ import at.asitplus.rqes.collection_entries.CscCertificateParameters
 import at.asitplus.rqes.collection_entries.CscKeyParameters
 import at.asitplus.rqes.enums.CertificateOptions
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import io.github.aakira.napier.Napier
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 
@@ -48,8 +48,35 @@ class CredentialInfoParsingTests : FreeSpec({
                         "status": "valid",
                         "certificates":
                         [
-                            "<Base64-encoded_X.509_end_entity_certificate>","<Base64-encoded_X.509_intermediate_CA_certificate>",
-                            "<Base64-encoded_X.509_root_CA_certificate>"
+                            "MIIFajCCBPGgAwIBAgIQDNCovsYyz+ZF7KCpsIT7HDAKBggqhkjOPQQDAzBWMQsw
+                            CQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMTAwLgYDVQQDEydEaWdp
+                            Q2VydCBUTFMgSHlicmlkIEVDQyBTSEEzODQgMjAyMCBDQTEwHhcNMjMwMjE0MDAw
+                            MDAwWhcNMjQwMzE0MjM1OTU5WjBmMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2Fs
+                            aWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEVMBMGA1UEChMMR2l0SHVi
+                            LCBJbmMuMRMwEQYDVQQDEwpnaXRodWIuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0D
+                            AQcDQgAEo6QDRgPfRlFWy8k5qyLN52xZlnqToPu5QByQMog2xgl2nFD1Vfd2Xmgg
+                            nO4i7YMMFTAQQUReMqyQodWq8uVDs6OCA48wggOLMB8GA1UdIwQYMBaAFAq8CCkX
+                            jKU5bXoOzjPHLrPt+8N6MB0GA1UdDgQWBBTHByd4hfKdM8lMXlZ9XNaOcmfr3jAl
+                            BgNVHREEHjAcggpnaXRodWIuY29tgg53d3cuZ2l0aHViLmNvbTAOBgNVHQ8BAf8E
+                            BAMCB4AwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMIGbBgNVHR8EgZMw
+                            gZAwRqBEoEKGQGh0dHA6Ly9jcmwzLmRpZ2ljZXJ0LmNvbS9EaWdpQ2VydFRMU0h5
+                            YnJpZEVDQ1NIQTM4NDIwMjBDQTEtMS5jcmwwRqBEoEKGQGh0dHA6Ly9jcmw0LmRp
+                            Z2ljZXJ0LmNvbS9EaWdpQ2VydFRMU0h5YnJpZEVDQ1NIQTM4NDIwMjBDQTEtMS5j
+                            cmwwPgYDVR0gBDcwNTAzBgZngQwBAgIwKTAnBggrBgEFBQcCARYbaHR0cDovL3d3
+                            dy5kaWdpY2VydC5jb20vQ1BTMIGFBggrBgEFBQcBAQR5MHcwJAYIKwYBBQUHMAGG
+                            GGh0dHA6Ly9vY3NwLmRpZ2ljZXJ0LmNvbTBPBggrBgEFBQcwAoZDaHR0cDovL2Nh
+                            Y2VydHMuZGlnaWNlcnQuY29tL0RpZ2lDZXJ0VExTSHlicmlkRUNDU0hBMzg0MjAy
+                            MENBMS0xLmNydDAJBgNVHRMEAjAAMIIBgAYKKwYBBAHWeQIEAgSCAXAEggFsAWoA
+                            dwDuzdBk1dsazsVct520zROiModGfLzs3sNRSFlGcR+1mwAAAYZQ3Rv6AAAEAwBI
+                            MEYCIQDkFq7T4iy6gp+pefJLxpRS7U3gh8xQymmxtI8FdzqU6wIhALWfw/nLD63Q
+                            YPIwG3EFchINvWUfB6mcU0t2lRIEpr8uAHYASLDja9qmRzQP5WoC+p0w6xxSActW
+                            3SyB2bu/qznYhHMAAAGGUN0cKwAABAMARzBFAiAePGAyfiBR9dbhr31N9ZfESC5G
+                            V2uGBTcyTyUENrH3twIhAPwJfsB8A4MmNr2nW+sdE1n2YiCObW+3DTHr2/UR7lvU
+                            AHcAO1N3dT4tuYBOizBbBv5AO2fYT8P0x70ADS1yb+H61BcAAAGGUN0cOgAABAMA
+                            SDBGAiEAzOBr9OZ0+6OSZyFTiywN64PysN0FLeLRyL5jmEsYrDYCIQDu0jtgWiMI
+                            KU6CM0dKcqUWLkaFE23c2iWAhYAHqrFRRzAKBggqhkjOPQQDAwNnADBkAjAE3A3U
+                            3jSZCpwfqOHBdlxi9ASgKTU+wg0qw3FqtfQ31OwLYFdxh0MlNk/HwkjRSWgCMFbQ
+                            vMkXEPvNvv4t30K6xtpG26qmZ+6OiISBIIXMljWnsiYR1gyZnTzIg3AQSw4Vmw=="
                         ],
                         "issuerDN":"AAAAFFFF",
                         "serialNumber": "5AAC41CD8FA22B953640",
@@ -90,23 +117,22 @@ class CredentialInfoParsingTests : FreeSpec({
 
 
     "credential/list request can be parsed" {
-        val requestDecoded = vckJsonSerializer.decodeFromString<CscCredentialListRequest>(credentialListRequestJson)
-        Napier.d("Parsed request is $requestDecoded")
-        requestDecoded.credentialInfo shouldBe true
-        requestDecoded.certificates shouldBe CertificateOptions.CHAIN
+        val decoded = vckJsonSerializer.decodeFromString<CscCredentialListRequest>(credentialListRequestJson)
+        decoded.credentialInfo shouldBe true
+        decoded.certificates shouldBe CertificateOptions.CHAIN
 
     }
     "credential/list response can be parsed" {
-        val responseDecoded = vckJsonSerializer.decodeFromString<CscCredentialListResponse>(credentialListResponseJson)
-        Napier.d("Parsed response is $responseDecoded")
-        responseDecoded.credentialIDs.size shouldBe 1
-        responseDecoded.credentialInfos shouldNotBe null
-        responseDecoded.credentialInfos?.size shouldBe 1
-        with(responseDecoded.credentialInfos?.first()) {
-            this?.credentialID shouldBe responseDecoded.credentialIDs.first()
-            this?.keyParameters?.status shouldBe CscKeyParameters.KeyStatusOptions.ENABLED
-            this?.certParameters?.status shouldBe CscCertificateParameters.CertStatus.VALID
-            this?.authParameters?.mode shouldBe CscAuthParameter.AuthMode.EXPLICIT
+        val decoded = vckJsonSerializer.decodeFromString<CscCredentialListResponse>(credentialListResponseJson)
+
+        decoded.credentialIDs.size shouldBe 1
+        decoded.credentialInfos shouldNotBe null
+        decoded.credentialInfos?.size shouldBe 1
+        with(decoded.credentialInfos?.first().shouldNotBeNull()) {
+            this.credentialID shouldBe decoded.credentialIDs.first()
+            this.keyParameters.status shouldBe CscKeyParameters.KeyStatusOptions.ENABLED
+            this.certParameters?.status shouldBe CscCertificateParameters.CertStatus.VALID
+            this.authParameters?.mode shouldBe CscAuthParameter.AuthMode.EXPLICIT
         }
 
     }

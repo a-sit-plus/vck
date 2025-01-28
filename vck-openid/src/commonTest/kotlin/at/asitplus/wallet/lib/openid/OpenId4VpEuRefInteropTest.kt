@@ -336,7 +336,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         val nonce = uuid4().toString()
         val requestUrl = "https://example.com/request/$nonce"
         val (walletUrl, jar) = verifierOid4vp.createAuthnRequest(
-            RequestOptions(
+            OpenIdRequestOptions(
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://example.com/response",
                 credentials = setOf(

@@ -2,7 +2,7 @@ package at.asitplus.rqes.collection_entries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.rqes.enums.SignatureQualifier
+import at.asitplus.openid.SignatureQualifier
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
@@ -78,19 +78,18 @@ sealed class TransactionData {
              * Safe way to construct the object as init throws
              */
             fun create(
-                signatureQualifier: SignatureQualifier?,
-                credentialId: String?,
                 documentDigest: List<RqesDocumentDigestEntry>,
-                processID: String?,
-            ): KmmResult<TransactionData> =
-                runCatching {
-                    QesAuthorization(
-                        signatureQualifier = signatureQualifier,
-                        credentialID = credentialId,
-                        documentDigests = documentDigest,
-                        processID = processID,
-                    )
-                }.wrap()
+                signatureQualifier: SignatureQualifier? = null,
+                credentialId: String? = null,
+                processID: String? = null,
+            ): KmmResult<TransactionData> = runCatching {
+                QesAuthorization(
+                    signatureQualifier = signatureQualifier,
+                    credentialID = credentialId,
+                    documentDigests = documentDigest,
+                    processID = processID,
+                )
+            }.wrap()
         }
     }
 
