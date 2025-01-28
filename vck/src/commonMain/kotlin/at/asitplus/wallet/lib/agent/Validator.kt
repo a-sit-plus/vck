@@ -4,7 +4,6 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.toCoseKey
-import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.DefaultZlibService
@@ -199,9 +198,17 @@ class Validator(
             Napier.w("verifyVpSdJwt: No key binding JWT")
             return VerifyPresentationResult.ValidationError("No key binding JWT")
         }
-        if (!verifierJwsService.verifyJwsObject(keyBindingSigned)) {
-            Napier.w("verifyVpSdJwt: Key binding JWT not verified")
-            return VerifyPresentationResult.ValidationError("Key binding JWT not verified")
+        val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt
+        if (vcSdJwt.confirmationClaim != null) {
+            if (!verifierJwsService.verifyJws(keyBindingSigned, vcSdJwt.confirmationClaim)) {
+                Napier.w("verifyVpSdJwt: Key binding JWT not verified with keys from cnf")
+                return VerifyPresentationResult.ValidationError("Key binding JWT not verified (from cnf)")
+            }
+        } else {
+            if (!verifierJwsService.verifyJwsObject(keyBindingSigned)) {
+                Napier.w("verifyVpSdJwt: Key binding JWT not verified")
+                return VerifyPresentationResult.ValidationError("Key binding JWT not verified")
+            }
         }
         val keyBinding = keyBindingSigned.payload
 
@@ -213,12 +220,6 @@ class Validator(
             Napier.w("verifyVpSdJwt: Audience not correct: ${keyBinding.audience}, expected $clientId")
             return VerifyPresentationResult.ValidationError("Audience not correct: ${keyBinding.audience}")
         }
-        val vcSdJwt = sdJwtResult.verifiableCredentialSdJwt
-        if (!vcSdJwt.verifyKeyBinding(keyBindingSigned.header, keyBindingSigned)) {
-            Napier.w("verifyVpSdJwt: Key Binding $keyBindingSigned does not prove possession of subject")
-            return VerifyPresentationResult.ValidationError("Key Binding does not prove possession of subject")
-        }
-
         if (!keyBinding.sdHash.contentEquals(input.hashInput.encodeToByteArray().sha256())) {
             Napier.w("verifyVpSdJwt: Key Binding does not contain correct sd_hash")
             return VerifyPresentationResult.ValidationError("Key Binding does not contain correct sd_hash")
@@ -232,15 +233,6 @@ class Validator(
             disclosures = sdJwtResult.disclosures.values,
             isRevoked = sdJwtResult.isRevoked,
         )
-    }
-
-    private fun VerifiableCredentialSdJwt.verifyKeyBinding(
-        jwsHeader: JwsHeader,
-        keyBindingSigned: JwsSigned<KeyBindingJws>,
-    ): Boolean = if (confirmationClaim != null) {
-        verifierJwsService.verifyConfirmationClaim(this.confirmationClaim, keyBindingSigned)
-    } else {
-        subject == jwsHeader.keyId
     }
 
     /**
