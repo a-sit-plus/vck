@@ -7,6 +7,7 @@ Release 5.4.0:
   - Still open: Combination with OpenID4VP Draft 23
 - Refactorings:
   - Rename `RequestOptions` to `OpenIdRequestOptions`
+  - Remove elements marked as deprecated in 5.3.0: `OidcSiopVerifier`, `OidcSiopWallet`, `Verifier.verifyPresentation()`, `OpenId4VpVerifier.validateAuthnResponseFromPost()`
 
 Release 5.3.0:
 - Implement [token-status-list-06](https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html), replacing implementation of Revocation List 2020:

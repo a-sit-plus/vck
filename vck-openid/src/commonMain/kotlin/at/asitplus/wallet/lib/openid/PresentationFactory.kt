@@ -245,10 +245,8 @@ internal class PresentationFactory(
         return when (claimFormat) {
             ClaimFormat.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm) } ?: false
             ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> {
-                if (jwtSd?.algorithms?.contains(jwsService.algorithm) == false) return true
                 if (jwtSd?.sdJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
                 if (jwtSd?.kbJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
-                if (sdJwt?.algorithms?.contains(jwsService.algorithm) == false) return true
                 if (sdJwt?.sdJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
                 if (sdJwt?.kbJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
                 return false

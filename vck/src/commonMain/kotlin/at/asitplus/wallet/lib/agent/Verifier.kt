@@ -20,13 +20,6 @@ import kotlinx.serialization.json.JsonObject
  */
 interface Verifier {
     /**
-     * Verifies a presentation of some credentials from a holder,
-     * that shall include the [challenge] (sent by this verifier).
-     */
-    @Deprecated("Use specific methods instead")
-    suspend fun verifyPresentation(it: String, challenge: String): VerifyPresentationResult
-
-    /**
      * Verifies a presentation of some credentials in [ConstantIndex.CredentialRepresentation.SD_JWT] from a holder,
      * that shall include the [challenge] (sent by this verifier).
      */
