@@ -59,8 +59,6 @@ import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.datetime.Clock
-import kotlin.random.Random
-import kotlin.random.nextInt
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -75,7 +73,7 @@ class DummyRequestOptionsService {
 //        val rnd = Random.nextInt(0..1)
 //        return if (rnd == 0) defaultRequestOption
 //        else
-            return RqesOidcVerifier.ExtendedRequestOptions(
+        return RqesOpenId4VpVerifier.ExtendedRequestOptions(
             baseRequestOptions = defaultRequestOption, rqesParameters = Oid4VpRqesParameters(
                 transactionData = setOf(getTransactionData())
             )
@@ -113,7 +111,7 @@ class RqesOidcVerifierTest : FreeSpec({
     lateinit var verifierKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
     lateinit var holderOid4vp: OpenId4VpHolder
-    lateinit var rqesOidcVerifier: RqesOidcVerifier
+    lateinit var rqesOidcVerifier: RqesOpenId4VpVerifier
 
     beforeEach {
         holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -135,7 +133,7 @@ class RqesOidcVerifierTest : FreeSpec({
         holderOid4vp = OpenId4VpHolder(
             holder = holderAgent,
         )
-        rqesOidcVerifier = RqesOidcVerifier(
+        rqesOidcVerifier = RqesOpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
         )
@@ -160,7 +158,7 @@ class RqesOidcVerifierTest : FreeSpec({
     }
 
     "wrong client nonce in id_token should lead to error" {
-        rqesOidcVerifier = RqesOidcVerifier(
+        rqesOidcVerifier = RqesOpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
             nonceService = object : NonceService {
@@ -184,7 +182,7 @@ class RqesOidcVerifierTest : FreeSpec({
     }
 
     "wrong client nonce in vp_token should lead to error" {
-        rqesOidcVerifier = RqesOidcVerifier(
+        rqesOidcVerifier = RqesOpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.RedirectUri(clientId),
             stateToAuthnRequestStore = object : MapStore<String, AuthenticationRequestParameters> {
@@ -350,7 +348,7 @@ class RqesOidcVerifierTest : FreeSpec({
     "test with request object and Attestation JWT" {
         val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithoutCert())
         val attestationJwt = buildAttestationJwt(sprsCryptoService, clientId, verifierKeyMaterial)
-        rqesOidcVerifier = RqesOidcVerifier(
+        rqesOidcVerifier = RqesOpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, clientId),
         )
@@ -376,7 +374,7 @@ class RqesOidcVerifierTest : FreeSpec({
         val sprsCryptoService = DefaultCryptoService(EphemeralKeyWithoutCert())
         val attestationJwt = buildAttestationJwt(sprsCryptoService, clientId, verifierKeyMaterial)
 
-        rqesOidcVerifier = RqesOidcVerifier(
+        rqesOidcVerifier = RqesOpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.VerifierAttestation(attestationJwt, clientId)
         )

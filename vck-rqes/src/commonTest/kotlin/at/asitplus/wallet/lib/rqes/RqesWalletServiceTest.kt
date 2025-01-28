@@ -20,7 +20,6 @@ import at.asitplus.rqes.serializers.CscSignatureRequestParameterSerializer
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
-import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -28,7 +27,6 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
@@ -122,7 +120,7 @@ class RqesWalletServiceTest : FreeSpec({
     }
 
     val dummyValueProvider = DummyValueProvider()
-    val rqesWalletService = RqesWalletService()
+    val rqesWalletService = RqesOpenId4VpHolder()
     var newCredential: CredentialInfo
 
     fun CredentialInfo.isValid(): Boolean =

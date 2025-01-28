@@ -37,7 +37,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
  * as such currently only supports `signHash`.
  * `signDoc` is out of testing scope for now but may be added later
  */
-class RqesWalletService(
+class RqesOpenId4VpHolder(
     private val clientId: String = "https://wallet.a-sit.at/app",
     private val redirectUrl: String = "$clientId/callback",
     stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
@@ -100,7 +100,6 @@ class RqesWalletService(
         )
     }
 
-    @Suppress("unused")
     suspend fun updateSignaturePropoerties(
         signatureFormat: SignatureFormat? = null,
         conformanceLevel: ConformanceLevel? = null,

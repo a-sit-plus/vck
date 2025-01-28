@@ -252,10 +252,7 @@ open class OpenId4VpVerifier(
         idTokenType = IdTokenType.SUBJECT_SIGNED.text,
         responseMode = requestOptions.responseMode,
         state = requestOptions.state,
-        presentationDefinition = PresentationDefinition(
-            id = uuid4().toString(),
-            inputDescriptors = requestOptions.toInputDescriptor(containerJwt, containerSdJwt),
-        ),
+        presentationDefinition = requestOptions.toPresentationDefinition(containerJwt, containerSdJwt)
     ).let {
         enrichAuthnRequest(it, requestOptions)
     }.also {
@@ -266,8 +263,6 @@ open class OpenId4VpVerifier(
         params: AuthenticationRequestParameters,
         requestOptions: RequestOptionsInterface,
     ): AuthenticationRequestParameters = params
-
-
 
     /**
      * Validates the OIDC Authentication Response from the Wallet, where [content] are the HTTP POST encoded

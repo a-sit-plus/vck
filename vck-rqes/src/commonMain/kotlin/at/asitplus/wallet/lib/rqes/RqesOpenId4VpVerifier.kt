@@ -33,7 +33,7 @@ import kotlinx.datetime.Clock
 /**
  * Verifier with access to [TransactionData] class can now generate requests containing [TransactionData]
  */
-class RqesOidcVerifier(
+class RqesOpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),

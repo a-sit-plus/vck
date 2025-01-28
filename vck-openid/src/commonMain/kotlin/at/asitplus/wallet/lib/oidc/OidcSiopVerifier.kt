@@ -40,7 +40,6 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.collections.plus
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -57,7 +56,7 @@ import kotlin.time.toDuration
     message = "Replace with OpenId4VpVerifier",
     ReplaceWith("OpenId4VpVerifier", "at.asitplus.wallet.lib.openid")
 )
-open class OidcSiopVerifier(
+class OidcSiopVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
@@ -220,87 +219,47 @@ open class OidcSiopVerifier(
             addX5c = false
         )
 
-
-    interface RequestOptionsInterface {
-        /**
-         * Requested credentials, should be at least one
-         */
-        val credentials: Set<RequestOptionsCredential>
-
-        /**
-         * Response mode to request, see [OpenIdConstants.ResponseMode],
-         * by default [OpenIdConstants.ResponseMode.Fragment].
-         * Setting this to any other value may require setting [responseUrl] too.
-         */
-        val responseMode: OpenIdConstants.ResponseMode
-
-        /**
-         * Response URL to set in the [AuthenticationRequestParameters.responseUrl],
-         * required if [responseMode] is set to [OpenIdConstants.ResponseMode.DirectPost] or
-         * [OpenIdConstants.ResponseMode.DirectPostJwt].
-         */
-        val responseUrl: String?
-
-        /**
-         * Response type to set in [AuthenticationRequestParameters.responseType],
-         * by default only `vp_token` (as per OpenID4VP spec).
-         * Be sure to separate values by a space, e.g. `vp_token id_token`.
-         */
-        val responseType: String
-
-        /**
-         * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
-         */
-        val state: String
-
-        /**
-         * Optional URL to include [metadata] by reference instead of by value (directly embedding in authn request)
-         */
-        val clientMetadataUrl: String?
-
-        /**
-         * Set this value to include metadata with encryption parameters set. Beware if setting this value and also
-         * [clientMetadataUrl], that the URL shall point to [OidcSiopVerifier.metadataWithEncryption].
-         */
-        val encryption: Boolean
-
-        val isAnyDirectPost: Boolean
-
-        fun buildScope(): String
-
-        fun toPresentationDefinition(): PresentationDefinition? = PresentationDefinition(
-            id = uuid4().toString(),
-            inputDescriptors = this.credentials.map {
-                it.toInputDescriptor()
-            },
-        )
-    }
-
     @Deprecated(
         message = "Replace with external class",
         ReplaceWith("RequestOptions", "at.asitplus.wallet.lib.openid")
     )
     data class RequestOptions(
-        override val credentials: Set<RequestOptionsCredential>,
-        override val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
-        override val responseUrl: String? = null,
-        override val responseType: String = VP_TOKEN,
-        override val state: String = uuid4().toString(),
-        override val clientMetadataUrl: String? = null,
-        override val encryption: Boolean = false,
-    ) : RequestOptionsInterface {
-        override fun buildScope() = (
-                listOf(SCOPE_OPENID, SCOPE_PROFILE)
-                        + credentials.mapNotNull { it.credentialScheme.sdJwtType }
-                        + credentials.mapNotNull { it.credentialScheme.vcType }
-                        + credentials.mapNotNull { it.credentialScheme.isoNamespace }
-                ).joinToString(" ")
-
-        override val isAnyDirectPost
-            get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
-                    (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
-
-    }
+        /**
+         * Requested credentials, should be at least one
+         */
+        val credentials: Set<RequestOptionsCredential>,
+        /**
+         * Response mode to request, see [OpenIdConstants.ResponseMode],
+         * by default [OpenIdConstants.ResponseMode.Fragment].
+         * Setting this to any other value may require setting [responseUrl] too.
+         */
+        val responseMode: OpenIdConstants.ResponseMode = OpenIdConstants.ResponseMode.Fragment,
+        /**
+         * Response URL to set in the [AuthenticationRequestParameters.responseUrl],
+         * required if [responseMode] is set to [OpenIdConstants.ResponseMode.DirectPost] or
+         * [OpenIdConstants.ResponseMode.DirectPostJwt].
+         */
+        val responseUrl: String? = null,
+        /**
+         * Response type to set in [AuthenticationRequestParameters.responseType],
+         * by default only `vp_token` (as per OpenID4VP spec).
+         * Be sure to separate values by a space, e.g. `vp_token id_token`.
+         */
+        val responseType: String = VP_TOKEN,
+        /**
+         * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
+         */
+        val state: String = uuid4().toString(),
+        /**
+         * Optional URL to include [metadata] by reference instead of by value (directly embedding in authn request)
+         */
+        val clientMetadataUrl: String? = null,
+        /**
+         * Set this value to include metadata with encryption parameters set. Beware if setting this value and also
+         * [clientMetadataUrl], that the URL shall point to [OidcSiopVerifier.metadataWithEncryption].
+         */
+        val encryption: Boolean = false,
+    )
 
     data class RequestOptionsCredential(
         /**
@@ -322,98 +281,7 @@ open class OidcSiopVerifier(
          * or `null` to make no restrictions
          */
         val requestedOptionalAttributes: List<String>? = null,
-    ) {
-
-        fun toInputDescriptor(): InputDescriptor = DifInputDescriptor(
-            id = buildId(),
-            format = toFormatHolder(),
-            constraints = toConstraint(),
-        )
-
-        /**
-         * doctype is not really an attribute that can be presented,
-         * encoding it into the descriptor id as in the following non-normative example fow now:
-         * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
-         */
-        fun buildId() =
-            if (credentialScheme.isoDocType != null && representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-                credentialScheme.isoDocType!! else uuid4().toString()
-
-        fun toConstraint() =
-            Constraint(fields = (requiredAttributes() + optionalAttributes() + toTypeConstraint()).filterNotNull())
-
-        private fun requiredAttributes() =
-            requestedAttributes?.createConstraints(representation, credentialScheme, false)
-                ?: listOf()
-
-        private fun optionalAttributes() =
-            requestedOptionalAttributes?.createConstraints(representation, credentialScheme, true)
-                ?: listOf()
-
-        private val supportedAlgorithms = listOf(JwsAlgorithm.ES256.identifier) //TODO verifierJwsService.supportedAlgorithms.map { it.identifier }
-        private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithms)
-        private val containerSdJwt = FormatContainerSdJwt(
-            algorithmStrings = supportedAlgorithms.toSet(),
-            sdJwtAlgorithmStrings = supportedAlgorithms.toSet(),
-            kbJwtAlgorithmStrings = supportedAlgorithms.toSet()
-        )
-
-        private fun toTypeConstraint() = when (representation) {
-            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> this.credentialScheme.toVcConstraint()
-            ConstantIndex.CredentialRepresentation.SD_JWT -> this.credentialScheme.toSdJwtConstraint()
-            ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
-        }
-
-        fun toFormatHolder() = when (representation) {
-            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
-            ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerSdJwt)
-            ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
-        }
-
-        private fun ConstantIndex.CredentialScheme.toVcConstraint() = if (supportsVcJwt)
-            ConstraintField(
-                path = listOf("$.type"),
-                filter = ConstraintFilter(
-                    type = "string",
-                    pattern = vcType,
-                )
-            ) else null
-
-        private fun ConstantIndex.CredentialScheme.toSdJwtConstraint() = if (supportsSdJwt)
-            ConstraintField(
-                path = listOf("$.vct"),
-                filter = ConstraintFilter(
-                    type = "string",
-                    pattern = sdJwtType!!
-                )
-            ) else null
-
-        private fun List<String>.createConstraints(
-            representation: ConstantIndex.CredentialRepresentation,
-            credentialScheme: ConstantIndex.CredentialScheme?,
-            optional: Boolean,
-        ): Collection<ConstraintField> = map {
-            if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-                credentialScheme.toConstraintField(it, optional)
-            else
-                ConstraintField(path = listOf("\$[${it.quote()}]"), optional = optional)
-        }
-
-        private fun ConstantIndex.CredentialScheme?.toConstraintField(
-            attributeType: String,
-            optional: Boolean,
-        ) = ConstraintField(
-            path = listOf(
-                NormalizedJsonPath(
-                    NormalizedJsonPathSegment.NameSegment(this?.isoNamespace ?: "mdoc"),
-                    NormalizedJsonPathSegment.NameSegment(attributeType),
-                ).toString()
-            ),
-            intentToRetain = false,
-            optional = optional,
-        )
-
-    }
+    )
 
     /**
      * Creates an OIDC Authentication Request, encoded as query parameters to the [walletUrl].
@@ -508,8 +376,8 @@ open class OidcSiopVerifier(
      *
      * Callers may serialize the result with `result.encodeToParameters().formUrlEncode()`
      */
-    open suspend fun createAuthnRequest(
-        requestOptions: RequestOptionsInterface,
+    suspend fun createAuthnRequest(
+        requestOptions: RequestOptions,
     ) = AuthenticationRequestParameters(
         responseType = requestOptions.responseType,
         clientId = clientIdScheme.clientId,
@@ -527,17 +395,104 @@ open class OidcSiopVerifier(
         idTokenType = IdTokenType.SUBJECT_SIGNED.text,
         responseMode = requestOptions.responseMode,
         state = requestOptions.state,
-        presentationDefinition = requestOptions.toPresentationDefinition()
-    ).let {
-        enrichAuthnRequest(it, requestOptions)
-    }.also {
-        stateToAuthnRequestStore.put(requestOptions.state, it)
+        presentationDefinition = PresentationDefinition(
+            id = uuid4().toString(),
+            inputDescriptors = requestOptions.credentials.map { it.toInputDescriptor() },
+        ),
+    ).also { stateToAuthnRequestStore.put(requestOptions.state, it) }
+
+    private fun RequestOptions.buildScope() = (
+            listOf(SCOPE_OPENID, SCOPE_PROFILE)
+                    + credentials.mapNotNull { it.credentialScheme.sdJwtType }
+                    + credentials.mapNotNull { it.credentialScheme.vcType }
+                    + credentials.mapNotNull { it.credentialScheme.isoNamespace }
+            ).joinToString(" ")
+
+    private val RequestOptions.isAnyDirectPost
+        get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
+                (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
+
+    //TODO extend for InputDescriptor interface in case QES
+    private fun RequestOptionsCredential.toInputDescriptor() = DifInputDescriptor(
+        id = buildId(),
+        format = toFormatHolder(),
+        constraints = toConstraint(),
+    )
+
+    /**
+     * doctype is not really an attribute that can be presented,
+     * encoding it into the descriptor id as in the following non-normative example fow now:
+     * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
+     */
+    private fun RequestOptionsCredential.buildId() =
+        if (credentialScheme.isoDocType != null && representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
+            credentialScheme.isoDocType!! else uuid4().toString()
+
+    private fun RequestOptionsCredential.toConstraint() =
+        Constraint(fields = (requiredAttributes() + optionalAttributes() + toTypeConstraint()).filterNotNull())
+
+    private fun RequestOptionsCredential.requiredAttributes() =
+        requestedAttributes?.createConstraints(representation, credentialScheme, false)
+            ?: listOf()
+
+    private fun RequestOptionsCredential.optionalAttributes() =
+        requestedOptionalAttributes?.createConstraints(representation, credentialScheme, true)
+            ?: listOf()
+
+    private fun RequestOptionsCredential.toTypeConstraint() = when (representation) {
+        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> this.credentialScheme.toVcConstraint()
+        ConstantIndex.CredentialRepresentation.SD_JWT -> this.credentialScheme.toSdJwtConstraint()
+        ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
     }
 
-    open suspend fun enrichAuthnRequest(
-        params: AuthenticationRequestParameters,
-        requestOptions: RequestOptionsInterface,
-    ): AuthenticationRequestParameters = params
+    private fun RequestOptionsCredential.toFormatHolder() = when (representation) {
+        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
+        ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerSdJwt)
+        ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
+    }
+
+    private fun ConstantIndex.CredentialScheme.toVcConstraint() = if (supportsVcJwt)
+        ConstraintField(
+            path = listOf("$.type"),
+            filter = ConstraintFilter(
+                type = "string",
+                pattern = vcType,
+            )
+        ) else null
+
+    private fun ConstantIndex.CredentialScheme.toSdJwtConstraint() = if (supportsSdJwt)
+        ConstraintField(
+            path = listOf("$.vct"),
+            filter = ConstraintFilter(
+                type = "string",
+                pattern = sdJwtType!!
+            )
+        ) else null
+
+    private fun List<String>.createConstraints(
+        representation: ConstantIndex.CredentialRepresentation,
+        credentialScheme: ConstantIndex.CredentialScheme?,
+        optional: Boolean,
+    ): Collection<ConstraintField> = map {
+        if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
+            credentialScheme.toConstraintField(it, optional)
+        else
+            ConstraintField(path = listOf("\$[${it.quote()}]"), optional = optional)
+    }
+
+    private fun ConstantIndex.CredentialScheme?.toConstraintField(
+        attributeType: String,
+        optional: Boolean,
+    ) = ConstraintField(
+        path = listOf(
+            NormalizedJsonPath(
+                NormalizedJsonPathSegment.NameSegment(this?.isoNamespace ?: "mdoc"),
+                NormalizedJsonPathSegment.NameSegment(attributeType),
+            ).toString()
+        ),
+        intentToRetain = false,
+        optional = optional,
+    )
 
 
     sealed class AuthnResponseResult {
