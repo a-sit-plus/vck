@@ -37,7 +37,7 @@ class RqesOpenId4VpHolderTest : FreeSpec({
         this.keyParameters.status == CscKeyParameters.KeyStatusOptions.ENABLED && this.certParameters!!.status == CscCertificateParameters.CertStatus.VALID
 
     beforeEach {
-        rqesWalletService.updateSignaturePropoerties(
+        rqesWalletService.updateSignatureProperties(
             signatureFormat = SignatureFormat.entries.random(),
             conformanceLevel = ConformanceLevel.entries.random(),
         )

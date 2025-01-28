@@ -2,11 +2,7 @@ package at.asitplus.wallet.lib.rqes
 
 import CscAuthorizationDetails
 import at.asitplus.catching
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthorizationDetails
-import at.asitplus.openid.Hashes
-import at.asitplus.openid.SignatureQualifier
-import at.asitplus.openid.TokenRequestParameters
+import at.asitplus.openid.*
 import at.asitplus.rqes.CredentialInfo
 import at.asitplus.rqes.CscSignatureRequestParameters
 import at.asitplus.rqes.SignHashParameters
@@ -17,26 +13,17 @@ import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
 import at.asitplus.rqes.enums.SignedEnvelopeProperty
-import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.cbor.CoseService
-import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
-import at.asitplus.wallet.lib.oidc.RequestObjectJwsVerifier
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
-import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.rqes.helper.OAuth2RqesParameters
 import com.benasher44.uuid.uuid4
-import io.ktor.util.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import kotlinx.datetime.Clock
 
 /**
  * Wallet service that implements generation of all data classes necessary
@@ -108,7 +95,7 @@ class RqesOpenId4VpHolder(
         )
     }
 
-    suspend fun updateSignaturePropoerties(
+    suspend fun updateSignatureProperties(
         signatureFormat: SignatureFormat? = null,
         conformanceLevel: ConformanceLevel? = null,
         signedEnvelopeProperty: SignedEnvelopeProperty? = null,
@@ -128,40 +115,36 @@ class RqesOpenId4VpHolder(
     suspend fun getCscAuthenticationDetails(
         documentDigests: Collection<OAuthDocumentDigest>,
         hashAlgorithm: Digest,
-    ): AuthorizationDetails =
-        signingCredential?.let { signingCred ->
-            CscAuthorizationDetails(
-                credentialID = signingCred.credentialId,
-                signatureQualifier = signatureProperties.signatureQualifier,
-                hashAlgorithmOid = hashAlgorithm.oid,
-                documentDigests = documentDigests
-            )
-        } ?: throw Exception("Please set a signing credential before using CSC functionality.")
-
+    ): AuthorizationDetails = signingCredential?.let { signingCred ->
+        CscAuthorizationDetails(
+            credentialID = signingCred.credentialId,
+            signatureQualifier = signatureProperties.signatureQualifier,
+            hashAlgorithmOid = hashAlgorithm.oid,
+            documentDigests = documentDigests
+        )
+    } ?: throw Exception("Please set a signing credential before using CSC functionality.")
 
     suspend fun getCscDocumentDigests(
         documentDigests: Collection<OAuthDocumentDigest>,
         signatureAlgorithm: X509SignatureAlgorithm,
-    ): CscDocumentDigest =
-        CscDocumentDigest(
-            hashes = documentDigests.map { it.hash },
-            signatureFormat = signatureProperties.signatureFormat,
-            conformanceLevel = signatureProperties.conformanceLevel,
-            signAlgoOid = signatureAlgorithm.oid,
-            signedEnvelopeProperty = signatureProperties.signedEnvelopeProperty
-        )
+    ): CscDocumentDigest = CscDocumentDigest(
+        hashes = documentDigests.map { it.hash },
+        signatureFormat = signatureProperties.signatureFormat,
+        conformanceLevel = signatureProperties.conformanceLevel,
+        signAlgoOid = signatureAlgorithm.oid,
+        signedEnvelopeProperty = signatureProperties.signedEnvelopeProperty
+    )
 
     suspend fun createServiceAuthenticationRequest(
         redirectUrl: String = this.redirectUrl,
         optionalParameters: OAuth2RqesParameters.Optional? = null,
-    ): AuthenticationRequestParameters =
-        oauth2Client.createAuthRequest(
-            state = uuid4().toString(),
-            scope = RqesOauthScope.SERVICE.value,
-        ).enrichAuthRequest(
-            redirectUrl = redirectUrl,
-            optionalParameters = optionalParameters
-        )
+    ): AuthenticationRequestParameters = oauth2Client.createAuthRequest(
+        state = uuid4().toString(),
+        scope = RqesOauthScope.SERVICE.value,
+    ).enrichAuthRequest(
+        redirectUrl = redirectUrl,
+        optionalParameters = optionalParameters
+    )
 
     suspend fun createCredentialAuthenticationRequest(
         documentDigests: Collection<OAuthDocumentDigest>,
@@ -170,34 +153,32 @@ class RqesOpenId4VpHolder(
         numSignatures: Int,
         hashes: Hashes,
         optionalParameters: OAuth2RqesParameters.Optional? = null,
-    ): AuthenticationRequestParameters =
-        oauth2Client.createAuthRequest(
-            state = uuid4().toString(),
-            authorizationDetails = setOf(getCscAuthenticationDetails(documentDigests, hashAlgorithm)),
-            scope = RqesOauthScope.CREDENTIAL.value,
-        ).enrichAuthRequest(
-            redirectUrl = redirectUrl,
-            requiredParameters = OAuth2RqesParameters.CredentialRequired(
-                credentialID = signingCredential?.credentialId?.decodeToByteArray(Base64UrlStrict)
-                    ?: throw Exception("Please set a signing credential before using CSC functionality."),
-                signatureQualifier = signatureProperties.signatureQualifier,
-                numSignatures = numSignatures,
-                hashes = hashes,
-                hashAlgorithmOid = hashAlgorithm.oid,
-            ),
-            optionalParameters = optionalParameters
-        )
+    ): AuthenticationRequestParameters = oauth2Client.createAuthRequest(
+        state = uuid4().toString(),
+        authorizationDetails = setOf(getCscAuthenticationDetails(documentDigests, hashAlgorithm)),
+        scope = RqesOauthScope.CREDENTIAL.value,
+    ).enrichAuthRequest(
+        redirectUrl = redirectUrl,
+        requiredParameters = OAuth2RqesParameters.CredentialRequired(
+            credentialID = signingCredential?.credentialId?.decodeToByteArray(Base64UrlStrict)
+                ?: throw Exception("Please set a signing credential before using CSC functionality."),
+            signatureQualifier = signatureProperties.signatureQualifier,
+            numSignatures = numSignatures,
+            hashes = hashes,
+            hashAlgorithmOid = hashAlgorithm.oid,
+        ),
+        optionalParameters = optionalParameters
+    )
 
     suspend fun createOAuth2TokenRequest(
         state: String,
         authorization: OAuth2Client.AuthorizationForToken,
         authorizationDetails: Set<AuthorizationDetails>? = null,
-    ): TokenRequestParameters =
-        oauth2Client.createTokenRequestParameters(
-            state = state,
-            authorization = authorization,
-            authorizationDetails = authorizationDetails,
-        )
+    ): TokenRequestParameters = oauth2Client.createTokenRequestParameters(
+        state = state,
+        authorization = authorization,
+        authorizationDetails = authorizationDetails,
+    )
 
     suspend fun createSignHashRequestParameters(
         dtbsr: Hashes,
@@ -218,16 +199,15 @@ private suspend fun AuthenticationRequestParameters.enrichAuthRequest(
     redirectUrl: String?,
     requiredParameters: OAuth2RqesParameters.CredentialRequired? = null,
     optionalParameters: OAuth2RqesParameters.Optional? = null,
-): AuthenticationRequestParameters =
-    this.copy(
-        redirectUrl = redirectUrl,
-        lang = optionalParameters?.lang,
-        credentialID = requiredParameters?.credentialID,
-        signatureQualifier = requiredParameters?.signatureQualifier,
-        numSignatures = requiredParameters?.numSignatures,
-        hashes = requiredParameters?.hashes,
-        hashAlgorithmOid = requiredParameters?.hashAlgorithmOid,
-        description = optionalParameters?.description,
-        accountToken = optionalParameters?.accountToken,
-        clientData = optionalParameters?.clientData,
-    )
+): AuthenticationRequestParameters = this.copy(
+    redirectUrl = redirectUrl,
+    lang = optionalParameters?.lang,
+    credentialID = requiredParameters?.credentialID,
+    signatureQualifier = requiredParameters?.signatureQualifier,
+    numSignatures = requiredParameters?.numSignatures,
+    hashes = requiredParameters?.hashes,
+    hashAlgorithmOid = requiredParameters?.hashAlgorithmOid,
+    description = optionalParameters?.description,
+    accountToken = optionalParameters?.accountToken,
+    clientData = optionalParameters?.clientData,
+)

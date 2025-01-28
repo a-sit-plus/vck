@@ -7,12 +7,7 @@ import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.TransactionData
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -31,6 +26,7 @@ import at.asitplus.wallet.lib.openid.RequestOptionsInterface
 import at.asitplus.wallet.lib.rqes.helper.Oid4VpRqesParameters
 import com.benasher44.uuid.uuid4
 import kotlinx.datetime.Clock
+import kotlinx.serialization.encodeToString
 
 /**
  * Verifier with access to [TransactionData] class can now generate requests containing [TransactionData]
@@ -96,14 +92,12 @@ class RqesOpenId4VpVerifier(
             is RequestOptions -> params
             is ExtendedRequestOptions -> params.copy(
                 transactionData = this.rqesParameters.transactionData.map {
-                    vckJsonSerializer.encodeToString(
-                        TransactionData.serializer(),
-                        it
-                    )
+                    vckJsonSerializer.encodeToString(it)
                 }.toSet()
             )
 
             else -> throw NotImplementedError("Unknown RequestOption class: ${this::class}")
         }
     }
+
 }
