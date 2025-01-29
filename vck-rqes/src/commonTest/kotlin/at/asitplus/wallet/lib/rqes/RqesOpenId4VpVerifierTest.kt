@@ -6,9 +6,13 @@ import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
 import at.asitplus.rqes.collection_entries.TransactionData
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.openid.*
 import at.asitplus.wallet.lib.rqes.helper.OpenIdRqesParameters
 import com.benasher44.uuid.bytes
@@ -16,9 +20,12 @@ import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
+import kotlinx.serialization.encodeToString
 
 
 /**
@@ -57,31 +64,40 @@ class RqesOpenId4VpVerifierTest : FreeSpec({
         )
     }
 
-    "Rqes Request with EU PID credential" {
-        val requestOptions = DummyRequestOptionsService.getRequestOptions()
-        val authnRequest = rqesOpenId4VpVerifier.createAuthnRequest(requestOptions = requestOptions)
-        authnRequest.transactionData shouldNotBe null
-        authnRequest.presentationDefinition.shouldNotBeNull()
-        val first = authnRequest.presentationDefinition!!.inputDescriptors.first()
-        first.shouldBeInstanceOf<QesInputDescriptor>()
-        first.transactionData.shouldNotBeNull()
+    "Rqes Request with EU PID credential" - {
 
-        val authnRequestUrl =
-            rqesOpenId4VpVerifier.createAuthnRequest(requestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl))
-                .getOrThrow().url
+        "Authentication request contains transaction data" {
+            val requestOptions = DummyRequestOptionsService.getRequestOptions()
+            val authnRequest = rqesOpenId4VpVerifier.createAuthnRequest(requestOptions = requestOptions)
+            authnRequest.transactionData shouldNotBe null
+            authnRequest.presentationDefinition.shouldNotBeNull()
+            val first = authnRequest.presentationDefinition!!.inputDescriptors.first()
+            first.shouldBeInstanceOf<QesInputDescriptor>()
+            first.transactionData.shouldNotBeNull()
+        }
 
-        authnRequestUrl shouldContain "transaction_data"
+        "KeybindingJws contains transaction data" {
+            val requestOptions = DummyRequestOptionsService.getRequestOptions()
+            val transactionDataEncoded =
+                vckJsonSerializer.encodeToString(requestOptions.rqesParameters.transactionData.first()).encodeToByteArray()
+            val authnRequestUrl = rqesOpenId4VpVerifier.createAuthnRequest(
+                requestOptions,
+                OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+            ).getOrThrow().url
+            authnRequestUrl shouldContain "transaction_data"
 
-        val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
-            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+            val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-        val result = rqesOpenId4VpVerifier.validateAuthnResponse(authnResponse.url)
-            .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            val result = rqesOpenId4VpVerifier.validateAuthnResponse(authnResponse.url)
+                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
 
-        result.verifiableCredentialSdJwt.shouldNotBeNull()
-        requestedClaims.forEach {
-            it.shouldBeIn(result.reconstructed.keys)
-            result.reconstructed[it].shouldNotBeNull()
+            val keyBinding = result.sdJwtSigned.keyBindingJws
+            keyBinding shouldNotBe null
+            keyBinding!!.payload.transactionData shouldNotBe null
+            keyBinding.payload.transactionData!!.first() shouldBe transactionDataEncoded
+            keyBinding.payload.transactionDataHashes shouldNotBe null
+            keyBinding.payload.transactionDataHashesAlgorithm shouldNotBe null
         }
     }
 })
