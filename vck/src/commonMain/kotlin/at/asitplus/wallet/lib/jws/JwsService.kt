@@ -8,6 +8,7 @@ import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo8Bytes
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
+import at.asitplus.signum.indispensable.josef.JweEncryption.*
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
 import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
@@ -280,7 +281,12 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             jweEncryption.encryptionKeyLength
         )
         val key = compositeKey(jweEncryption, intermediateKey)
-        val iv = Random.nextBytes(jweEncryption.ivLengthBits / 8)
+        // Pending fix in signum
+        val ivLengthBits = when (jweEncryption) {
+            A128GCM, A192GCM, A256GCM -> 96
+            else -> 128
+        }
+        val iv = Random.nextBytes(ivLengthBits / 8)
         val headerSerialized = jweHeader.serialize()
         val aad = headerSerialized.encodeToByteArray()
         val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
