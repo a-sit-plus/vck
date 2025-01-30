@@ -1,5 +1,9 @@
 # Changelog
 
+Release 5.3.1:
+- Add optional parameter `issuerUri` to `ClientIdScheme.PreRegistered`
+- Fix validation of KB-JWT for SD-JWT presentations
+
 Release 5.3.0:
 - Implement [token-status-list-06](https://www.ietf.org/archive/id/draft-ietf-oauth-status-list-06.html), replacing implementation of Revocation List 2020:
   - `Holder`:

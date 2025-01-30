@@ -48,7 +48,7 @@ import kotlin.time.toDuration
 class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
-    private val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
+    val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
     private val jwsService: JwsService = DefaultJwsService(DefaultCryptoService(keyMaterial)),
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(DefaultVerifierCryptoService()),
     private val verifierCoseService: VerifierCoseService = DefaultVerifierCoseService(DefaultVerifierCryptoService()),
@@ -76,7 +76,7 @@ class OpenId4VpVerifier(
      */
     val jarMetadata: JwtVcIssuerMetadata by lazy {
         JwtVcIssuerMetadata(
-            issuer = clientIdScheme.clientId,
+            issuer = clientIdScheme.issuerUri ?: clientIdScheme.clientId,
             jsonWebKeySet = JsonWebKeySet(setOf(jwsService.keyMaterial.jsonWebKey))
         )
     }
@@ -241,7 +241,10 @@ class OpenId4VpVerifier(
         val attestationJwt = (clientIdScheme as? ClientIdScheme.VerifierAttestation)?.attestationJwt?.serialize()
         val certificateChain = (clientIdScheme as? ClientIdScheme.CertificateSanDns)?.chain
         val siopClientId = "https://self-issued.me/v2"
-        val issuer = (clientIdScheme as? ClientIdScheme.PreRegistered)?.clientId ?: siopClientId
+        val issuer = when (clientIdScheme) {
+            is ClientIdScheme.PreRegistered -> clientIdScheme.issuerUri ?: clientIdScheme.clientId
+            else -> siopClientId
+        }
         jwsService.createSignedJwsAddingParams(
             header = JwsHeader(
                 algorithm = jwsService.algorithm,

@@ -9,6 +9,8 @@ sealed class ClientIdScheme(
     val scheme: OpenIdConstants.ClientIdScheme,
     val clientId: String,
     val redirectUri: String,
+    /** Optional parameter, to be used as `iss` for signed authorization requests */
+    val issuerUri: String? = clientId
 ) {
     /**
      * This Client Identifier Scheme allows the Verifier to authenticate using a JWT that is bound to a certain
@@ -91,14 +93,18 @@ sealed class ClientIdScheme(
     class PreRegistered(
         clientId: String,
         redirectUri: String,
+        /** Optional parameter, to be used as `iss` for signed authorization requests */
+        issuerUri: String? = null,
     ) : ClientIdScheme(
         scheme = OpenIdConstants.ClientIdScheme.PreRegistered,
         clientId = clientId,
-        redirectUri = redirectUri
+        redirectUri = redirectUri,
+        issuerUri = issuerUri
     ) {
         init {
             require(!clientId.contains(":"))
             require(redirectUri.contains(":/"))
+            issuerUri?.let { require(it.contains(":/")) }
         }
     }
 }
