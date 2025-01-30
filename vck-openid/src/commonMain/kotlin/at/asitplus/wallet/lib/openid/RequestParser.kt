@@ -56,7 +56,7 @@ class RequestParser(
                 val params = vckJsonSerializer.decodeFromString(PolymorphicSerializer(RequestParameters::class), input)
                 matchRequestParameterCases(input, params)
             }.getOrNull()
-            ?: throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
+            ?: throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST, "parse error")
                 .also { Napier.w("Could not parse authentication request: $input") }
 
         (parsedParams.parameters as? AuthenticationRequestParameters)?.let {

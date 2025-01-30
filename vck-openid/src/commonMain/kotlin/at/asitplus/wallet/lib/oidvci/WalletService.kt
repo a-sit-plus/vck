@@ -126,7 +126,7 @@ class WalletService(
             }
         }.getOrNull() ?: catching {
             CredentialOffer.deserialize(input).getOrThrow()
-        }.getOrNull() ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+        }.getOrNull() ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "could not parse credential offer")
             .also { Napier.w("Could not parse credential offer from $input") }
     }
 

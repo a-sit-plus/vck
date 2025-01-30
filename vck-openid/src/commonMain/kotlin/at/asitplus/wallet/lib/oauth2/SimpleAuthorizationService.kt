@@ -6,8 +6,8 @@ import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.oidvci.*
+import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -86,7 +86,7 @@ class SimpleAuthorizationService(
 
         val code = codeService.provideCode().also { code ->
             val userInfo = strategy.loadUserInfo(request, code)
-                ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+                ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "Could not load user info for code=$code")
                     .also { Napier.w("authorize: could not load user info from $request") }
             codeToUserInfoStore.put(code, userInfo)
         }
@@ -113,38 +113,13 @@ class SimpleAuthorizationService(
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun token(params: TokenRequestParameters) = catching {
-        val userInfo: OidcUserInfoExtended = when (params.grantType) {
-            OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
-                if (params.code == null || !codeService.verifyAndRemove(params.code!!))
-                    throw OAuth2Exception(Errors.INVALID_CODE)
-                        .also { Napier.w("token: client did not provide correct code") }
-                params.code?.let { codeToUserInfoStore.remove(it) }
-            }
-
-            OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
-                if (params.preAuthorizedCode == null || !codeService.verifyAndRemove(params.preAuthorizedCode!!))
-                    throw OAuth2Exception(Errors.INVALID_GRANT)
-                        .also { Napier.w("token: client did not provide pre authorized code") }
-                params.preAuthorizedCode?.let { codeToUserInfoStore.remove(it) }
-            }
-
-            else -> {
-                throw OAuth2Exception(Errors.INVALID_REQUEST, "No valid grant_type")
-                    .also { Napier.w("token: client did not provide valid grant_type: ${params.grantType}") }
-            }
-        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
-            .also { Napier.w("token: could not load user info for $params}") }
+        val userInfo: OidcUserInfoExtended = params.loadUserInfo()
+            ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "could not load user info for $params")
+                .also { Napier.w("token: could not load user info for $params}") }
 
         params.codeVerifier?.let { codeVerifier ->
             params.code?.let { code ->
-                codeToCodeChallengeStore.remove(code)?.let { codeChallenge ->
-                    val codeChallengeCalculated =
-                        codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
-                    if (codeChallenge != codeChallengeCalculated) {
-                        throw OAuth2Exception(Errors.INVALID_GRANT)
-                            .also { Napier.w("token: client did not provide correct code verifier: $codeVerifier") }
-                    }
-                }
+                validateCodeChallenge(code, codeVerifier)
             }
         }
 
@@ -164,6 +139,35 @@ class SimpleAuthorizationService(
         ).also { Napier.i("token returns $it") }
     }
 
+    private suspend fun validateCodeChallenge(code: String, codeVerifier: String) {
+        codeToCodeChallengeStore.remove(code)?.let { codeChallenge ->
+            val codeChallengeCalculated = codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
+            if (codeChallenge != codeChallengeCalculated) {
+                Napier.w("token: client did not provide correct code verifier: $codeVerifier for $code")
+                throw OAuth2Exception(Errors.INVALID_GRANT, "code verifier invalid: $codeVerifier for $code")
+            }
+        }
+    }
+
+    private suspend fun TokenRequestParameters.loadUserInfo(): OidcUserInfoExtended? = when (grantType) {
+        OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
+            if (code == null || !codeService.verifyAndRemove(code!!))
+                throw OAuth2Exception(Errors.INVALID_CODE, "code not valid: $code")
+                    .also { Napier.w("token: client did not provide correct code: $code") }
+            code?.let { codeToUserInfoStore.remove(it) }
+        }
+
+        OpenIdConstants.GRANT_TYPE_PRE_AUTHORIZED_CODE -> {
+            if (preAuthorizedCode == null || !codeService.verifyAndRemove(preAuthorizedCode!!))
+                throw OAuth2Exception(Errors.INVALID_GRANT, "pre-authorized code not valid: $preAuthorizedCode")
+                    .also { Napier.w("token: pre-authorized code not valid: $preAuthorizedCode") }
+            preAuthorizedCode?.let { codeToUserInfoStore.remove(it) }
+        }
+
+        else -> throw OAuth2Exception(Errors.INVALID_REQUEST, "grant_type invalid")
+            .also { Napier.w("token: client did not provide valid grant_type: ${grantType}") }
+    }
+
     override suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String =
         codeService.provideCode().also {
             codeToUserInfoStore.put(it, user)
@@ -174,11 +178,11 @@ class SimpleAuthorizationService(
 
     override suspend fun getUserInfo(accessToken: String): KmmResult<OidcUserInfoExtended> = catching {
         if (!tokenService.verifyNonce(accessToken)) {
-            throw OAuth2Exception(Errors.INVALID_TOKEN)
+            throw OAuth2Exception(Errors.INVALID_TOKEN, "access token not valid: $accessToken")
                 .also { Napier.w("getUserInfo: client did not provide correct token: $accessToken") }
         }
         val result = accessTokenToUserInfoStore.get(accessToken)
-            ?: throw OAuth2Exception(Errors.INVALID_TOKEN)
+            ?: throw OAuth2Exception(Errors.INVALID_TOKEN, "could not load user info for access token $accessToken")
                 .also { Napier.w("getUserInfo: could not load user info for $accessToken") }
 
         result

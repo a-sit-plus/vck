@@ -82,7 +82,7 @@ internal class PresentationFactory(
             presentationSubmissionSelection = credentialSubmissions,
         ).getOrElse {
             Napier.w("Could not create presentation", it)
-            throw OAuth2Exception(Errors.USER_CANCELLED)
+            throw OAuth2Exception(Errors.USER_CANCELLED, it)
         }.also { container ->
             clientMetadata?.vpFormats?.let {
                 container.verifyFormatSupport(it)
@@ -174,7 +174,7 @@ internal class PresentationFactory(
         }
         val nonce = request.parameters.nonce ?: run {
             Napier.w("nonce is null in ${request.parameters}")
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
+            throw OAuth2Exception(Errors.INVALID_REQUEST, "nonce is null")
         }
         val now = clock.now()
         // we'll assume jwk-thumbprint
@@ -197,7 +197,7 @@ internal class PresentationFactory(
             addX5c = false
         ).getOrElse {
             Napier.w("Could not sign id_token", it)
-            throw OAuth2Exception(Errors.USER_CANCELLED)
+            throw OAuth2Exception(Errors.USER_CANCELLED, it)
         }
     }
 
@@ -205,7 +205,7 @@ internal class PresentationFactory(
     private fun RequestParameters.verifyResponseType() {
         if (responseType == null || !responseType!!.contains(VP_TOKEN)) {
             Napier.w("vp_token not requested in response_type='$responseType'")
-            throw OAuth2Exception(Errors.INVALID_REQUEST)
+            throw OAuth2Exception(Errors.INVALID_REQUEST, "response_type invalid")
         }
     }
 
@@ -218,14 +218,14 @@ internal class PresentationFactory(
         val validator = PresentationSubmissionValidator.createInstance(this).getOrThrow()
         if (!validator.isValidSubmission(credentialSubmissions.keys)) {
             Napier.w("submission requirements are not satisfied")
-            throw OAuth2Exception(Errors.USER_CANCELLED)
+            throw OAuth2Exception(Errors.USER_CANCELLED, "submission requirements not satisfied")
         }
 
         // making sure, that all the submissions actually match the corresponding input descriptor requirements
         credentialSubmissions.forEach { submission ->
             val inputDescriptor = this.inputDescriptors.firstOrNull { it.id == submission.key } ?: run {
-                Napier.w("Invalid input descriptor id")
-                throw OAuth2Exception(Errors.USER_CANCELLED)
+                Napier.w("Invalid input descriptor id: ${submission.key}")
+                throw OAuth2Exception(Errors.USER_CANCELLED, "invalid input_descriptor_id")
             }
 
             val constraintFieldMatches = holder.evaluateInputDescriptorAgainstCredential(
@@ -248,7 +248,7 @@ internal class PresentationFactory(
                 disclosedAttributes.firstOrNull { allowedPaths.contains(it) } ?: run {
                     val keyId = constraintField.key.id?.let { " Missing field: $it" }
                     Napier.w("Input descriptor constraints not satisfied: ${inputDescriptor.id}.$keyId")
-                    throw OAuth2Exception(Errors.USER_CANCELLED)
+                    throw OAuth2Exception(Errors.USER_CANCELLED, "constraints not satisfied")
                 }
             }
             // TODO: maybe we also want to validate, whether there are any redundant disclosed attributes?
@@ -261,7 +261,7 @@ internal class PresentationFactory(
         presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
             if (supportedFormats.isMissingFormatSupport(descriptor.format)) {
                 Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
-                throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
+                throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED, "incompatible algorithms")
             }
         }
 
