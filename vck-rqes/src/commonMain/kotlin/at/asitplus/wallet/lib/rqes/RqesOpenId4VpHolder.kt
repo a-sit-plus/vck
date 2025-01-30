@@ -16,14 +16,12 @@ import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm.entries
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.rqes.helper.OAuth2RqesParameters
 import com.benasher44.uuid.uuid4
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 
 /**
  * Wallet service that implements generation of all data classes necessary
@@ -135,6 +133,10 @@ class RqesOpenId4VpHolder(
         signedEnvelopeProperty = signatureProperties.signedEnvelopeProperty
     )
 
+    /**
+     * CSC API v2.0.0.2
+     * Authorization to access `/credentials/info` and `/credentials/list` endpoints
+     */
     suspend fun createServiceAuthenticationRequest(
         redirectUrl: String = this.redirectUrl,
         optionalParameters: OAuth2RqesParameters.Optional? = null,
@@ -146,27 +148,20 @@ class RqesOpenId4VpHolder(
         optionalParameters = optionalParameters
     )
 
+    /**
+     * CSC API v2.0.0.2
+     * Authorization to access `/credentials/signHash` and `/credentials/signDoc` endpoints
+     */
     suspend fun createCredentialAuthenticationRequest(
         documentDigests: Collection<OAuthDocumentDigest>,
         redirectUrl: String = this.redirectUrl,
         hashAlgorithm: Digest,
-        numSignatures: Int,
-        hashes: Hashes,
         optionalParameters: OAuth2RqesParameters.Optional? = null,
     ): AuthenticationRequestParameters = oauth2Client.createAuthRequest(
         state = uuid4().toString(),
         authorizationDetails = setOf(getCscAuthenticationDetails(documentDigests, hashAlgorithm)),
-        scope = RqesOauthScope.CREDENTIAL.value,
     ).enrichAuthRequest(
         redirectUrl = redirectUrl,
-        requiredParameters = OAuth2RqesParameters.CredentialRequired(
-            credentialID = signingCredential?.credentialId?.decodeToByteArray(Base64UrlStrict)
-                ?: throw Exception("Please set a signing credential before using CSC functionality."),
-            signatureQualifier = signatureProperties.signatureQualifier,
-            numSignatures = numSignatures,
-            hashes = hashes,
-            hashAlgorithmOid = hashAlgorithm.oid,
-        ),
         optionalParameters = optionalParameters
     )
 
