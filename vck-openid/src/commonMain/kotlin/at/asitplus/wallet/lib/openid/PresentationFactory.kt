@@ -6,13 +6,9 @@ import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.jsonpath.JsonPath
-import at.asitplus.openid.IdToken
-import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
@@ -21,22 +17,11 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.CredentialSubmission
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.PresentationException
-import at.asitplus.wallet.lib.agent.PresentationRequestParameters
-import at.asitplus.wallet.lib.agent.PresentationResponseParameters
-import at.asitplus.wallet.lib.agent.toDefaultSubmission
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.ClientIdToHash
-import at.asitplus.wallet.lib.iso.DeviceAuthentication
-import at.asitplus.wallet.lib.iso.DeviceNameSpaces
-import at.asitplus.wallet.lib.iso.OID4VPHandover
-import at.asitplus.wallet.lib.iso.ResponseUriToHash
-import at.asitplus.wallet.lib.iso.SessionTranscript
-import at.asitplus.wallet.lib.iso.sha256
+import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
@@ -105,25 +90,22 @@ internal class PresentationFactory(
         }
     }
 
-    private fun parseTransactionData(request: RequestParameters): List<ByteArray>? {
-        val requestJson =
-            vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), request)
-        val queryResults = JsonPath("$..transaction_data").query(requestJson).map { it.value }
-        val transactionData: MutableList<ByteArray> = mutableListOf()
-        for (queryResult in queryResults) {
-            for (entry in queryResult.jsonArray) {
-                val deserialized = vckJsonSerializer.decodeFromJsonElement<String>(entry)
-
-                //Check if transactionData was already encoded
-                val dataEntry =
-                    if (!deserialized.contains(",")) deserialized.decodeToByteArray(Base64UrlStrict)
-                    else deserialized.encodeToByteArray()
-
-                if (!transactionData.any {dataEntry.contentEquals(it) }) transactionData.add(dataEntry)
-            }
+    /**
+     * Parses all `transaction_data` fields from the request, with a JsonPath, because
+     * ... for OpenID4VP Draft 23, that's encoded in the AuthnRequest
+     * ... but for Potential UC 5, that's encoded in the input descriptor,
+     *     and we don't have access to that class from the module vck-rqes
+     */
+    private fun parseTransactionData(request: RequestParameters): Set<ByteArray>? =
+        with(vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), request)) {
+            JsonPath("$..transaction_data").query(this)
+                .flatMap { it.value.jsonArray }
+                .map { vckJsonSerializer.decodeFromJsonElement<String>(it) }
+                .filter { it.isNotEmpty() }
+                .map { if (it.contains(",")) it.encodeToByteArray() else it.decodeToByteArray(Base64UrlStrict) }
+                .toSet()
+                .ifEmpty { null }
         }
-        return transactionData.ifEmpty { null }
-    }
 
     /**
      * Performs calculation of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
