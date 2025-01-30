@@ -4,9 +4,10 @@ Release 5.4.0:
 - Extend support for POTENTIAL UC5: Remote qualified electronic signatures
   - Update data classes in `rqes-data-classes`
   - See main classes `RqesOpenId4VpHolder` and `RqesOpenId4VpVerifier` in `vck-rqes`
-  - Still open: Combination with OpenID4VP Draft 23
+  - OpenID4VP: Update implementation to draft 23, adding transaction data hashes to the response of the Wallet
 - Refactorings:
   - Rename `RequestOptions` to `OpenIdRequestOptions`
+  - Add `transactionData` to `PresentationRequestParameters`
   - Remove elements marked as deprecated in 5.3.0: `OidcSiopVerifier`, `OidcSiopWallet`, `Verifier.verifyPresentation()`, `OpenId4VpVerifier.validateAuthnResponseFromPost()`
 
 Release 5.3.1:

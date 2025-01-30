@@ -9,7 +9,6 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 
 /**
  * In the Wallet centric model this is the request
@@ -68,7 +67,7 @@ data class SignatureRequestParameters(
      * `invalid_request` Authorization Response error.
      */
     @SerialName("response_uri")
-    val responseUrl: String? = null,
+    override val responseUrl: String? = null,
 
     /**
      * OIDC: OPTIONAL. String value used to associate a Client session with an ID Token, and to mitigate replay attacks.
@@ -127,13 +126,18 @@ data class SignatureRequestParameters(
      */
     @SerialName("clientData")
     val clientData: String?,
+
+    /**
+     * OID4VP: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed
+     * parameter set with details about the transaction that the Verifier is requesting the End-User to authorize.
+     * The Wallet MUST return an error if a request contains even one unrecognized transaction data type or transaction
+     * data not conforming to the respective type definition.
+     */
+    @SerialName("transaction_data")
+    override val transactionData: Set<String>? = null,
 ) : RequestParameters {
 
-    @Transient
-    val hashAlgorithm: Digest = hashAlgorithmOid.getHashAlgorithm()
-
-    @Transient
-    override val transactionData: Set<String>? = null
     override val redirectUrl: String? = null
     override val audience: String? = null
+
 }

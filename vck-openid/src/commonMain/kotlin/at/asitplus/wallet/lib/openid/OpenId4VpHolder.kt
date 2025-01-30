@@ -222,15 +222,15 @@ class OpenId4VpHolder(
      * @param preparationState The preparation state from [startAuthorizationResponsePreparation]
      * @param inputDescriptorSubmissions Map from input descriptor ids to [CredentialSubmission]
      */
-    suspend fun finalizeAuthorizationResponseParameters(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+    suspend fun <T : RequestParameters> finalizeAuthorizationResponseParameters(
+        request: RequestParametersFrom<T>,
         preparationState: AuthorizationResponsePreparationState,
         inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponse> = preparationState.catching {
         val certKey = (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
             ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
-        val audience = request.extractAudience(clientJsonWebKeySet)
+        val audience = request.parameters.extractAudience(clientJsonWebKeySet)
         val presentationFactory = PresentationFactory(jwsService, coseService)
         val jsonWebKeys = clientJsonWebKeySet?.keys?.combine(certKey)
         val idToken = presentationFactory.createSignedIdToken(clock, agentPublicKey, request).getOrNull()?.serialize()
@@ -238,8 +238,9 @@ class OpenId4VpHolder(
         val resultContainer = presentationDefinition?.let {
             presentationFactory.createPresentationExchangePresentation(
                 holder = holder,
-                request = request,
+                request = request.parameters,
                 audience = audience,
+                nonce = request.parameters.nonce!!,
                 presentationDefinition = presentationDefinition,
                 clientMetadata = clientMetadata,
                 jsonWebKeys = jsonWebKeys,
@@ -262,10 +263,10 @@ class OpenId4VpHolder(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun RequestParametersFrom<AuthenticationRequestParameters>.extractAudience(
+    private fun RequestParameters.extractAudience(
         clientJsonWebKeySet: JsonWebKeySet?,
-    ) = parameters.clientId
-        ?: parameters.audience
+    ) = clientId
+        ?: audience
         ?: clientJsonWebKeySet?.keys?.firstOrNull()
             ?.let { it.keyId ?: it.didEncoded ?: it.jwkThumbprint }
         ?: throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)

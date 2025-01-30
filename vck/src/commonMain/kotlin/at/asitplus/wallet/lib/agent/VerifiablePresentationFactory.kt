@@ -149,7 +149,6 @@ class VerifiablePresentationFactory(
     private suspend fun createKeyBindingJws(
         request: PresentationRequestParameters,
         issuerJwtPlusDisclosures: String,
-        transactionData: Collection<ByteArray>? = null, //TODO check
     ): JwsSigned<KeyBindingJws> = jwsService.createSignedJwsAddingParams(
         header = JwsHeader(
             type = JwsContentTypeConstants.KB_JWT,
@@ -160,9 +159,9 @@ class VerifiablePresentationFactory(
             audience = request.audience,
             challenge = request.nonce,
             sdHash = issuerJwtPlusDisclosures.encodeToByteArray().sha256(),
-            transactionData =  transactionData,
-            transactionDataHashes = transactionData?.map { it.sha256() }?.toSet(),
-            transactionDataHashesAlgorithm = transactionData?.let { "sha-256" }
+            transactionData = request.transactionData,
+            transactionDataHashes = request.transactionData?.map { it.sha256() }?.toSet(),
+            transactionDataHashesAlgorithm = request.transactionData?.let { "sha-256" }
         ),
         serializer = KeyBindingJws.serializer(),
         addKeyId = false,
