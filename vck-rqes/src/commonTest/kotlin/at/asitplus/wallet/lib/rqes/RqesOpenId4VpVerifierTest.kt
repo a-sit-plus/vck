@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.DefaultJwsService
+import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.*
 import at.asitplus.wallet.lib.rqes.helper.OpenIdRqesParameters
 import com.benasher44.uuid.bytes
@@ -24,6 +25,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.ktor.http.*
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import kotlinx.serialization.encodeToString
 
@@ -96,6 +98,37 @@ class RqesOpenId4VpVerifierTest : FreeSpec({
             keyBinding shouldNotBe null
             keyBinding!!.payload.transactionData shouldNotBe null
             keyBinding.payload.transactionData!!.first() shouldBe transactionDataEncoded
+            keyBinding.payload.transactionDataHashes shouldNotBe null
+            keyBinding.payload.transactionDataHashesAlgorithm shouldNotBe null
+        }
+
+        "UC5-Specific Flow: KeyBindingJws contains transaction data".config(enabled = false) {
+            val requestOptions = DummyRequestOptionsService.getRequestOptions()
+            val transactionDataEncoded =
+                vckJsonSerializer.encodeToString(requestOptions.rqesParameters.transactionData.first()).encodeToByteArray()
+
+            //Do not use [AuthenticationRequestParameters.transactionData] introduced in OpenID4VP
+            val authnRequest = rqesOpenId4VpVerifier.createAuthnRequest(
+                requestOptions,
+            ).copy(transactionData = null)
+
+            val authnRequestUrl = URLBuilder(walletUrl).apply {
+                authnRequest.encodeToParameters()
+                    .forEach { parameters.append(it.key, it.value) }
+            }.buildString()
+
+            val authnResponse = holderOid4vp.createAuthnResponse(authnRequestUrl).getOrThrow()
+                .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+
+            val result = rqesOpenId4VpVerifier.validateAuthnResponse(authnResponse.url)
+                .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+
+            val keyBinding = result.sdJwtSigned.keyBindingJws
+            keyBinding shouldNotBe null
+            keyBinding!!.payload.transactionData shouldNotBe null
+            keyBinding.payload.transactionData!!.first() shouldBe transactionDataEncoded
+
+            //TODO maybe introduce strict separation of the two flows
             keyBinding.payload.transactionDataHashes shouldNotBe null
             keyBinding.payload.transactionDataHashesAlgorithm shouldNotBe null
         }
