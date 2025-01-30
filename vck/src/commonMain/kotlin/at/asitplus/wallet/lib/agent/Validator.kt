@@ -322,29 +322,6 @@ class Validator(
         return IsoDocumentParsed(mso = mso, validItems = validItems, invalidItems = invalidItems)
     }
 
-    @Deprecated("This is just here to keep functionality implemented before, to be deleted after 5.3.0")
-    fun verifyDocumentFallback(mso: MobileSecurityObject, doc: Document, challenge: String): Boolean {
-        val walletKey = mso.deviceKeyInfo.deviceKey
-        val deviceSignature = doc.deviceSigned.deviceAuth.deviceSignature ?: run {
-            Napier.w("DeviceSignature is null: ${doc.deviceSigned.deviceAuth}")
-            throw IllegalArgumentException("deviceSignature")
-        }
-
-        verifierCoseService.verifyCose(deviceSignature, walletKey).onFailure {
-            Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}", it)
-            throw IllegalArgumentException("deviceSignature")
-        }
-        val deviceSignaturePayload = deviceSignature.payload ?: run {
-            Napier.w("DeviceSignature does not contain challenge")
-            throw IllegalArgumentException("challenge")
-        }
-        if (!deviceSignaturePayload.contentEquals(challenge.encodeToByteArray())) {
-            Napier.w("DeviceSignature does not contain correct challenge")
-            throw IllegalArgumentException("challenge")
-        }
-        return true
-    }
-
     /**
      * Verify that calculated digests equal the corresponding digest values in the MSO.
      *

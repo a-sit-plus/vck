@@ -186,20 +186,6 @@ data class AuthenticationRequestParameters(
     val authorizationDetails: Set<AuthorizationDetails>? = null,
 
     /**
-     * OID4VP: OPTIONAL. A string identifying the scheme of the value in the `client_id` Authorization Request parameter
-     * (Client Identifier scheme). The [clientIdScheme] parameter namespaces the respective Client Identifier. If an
-     * Authorization Request uses the [clientIdScheme] parameter, the Wallet MUST interpret the Client Identifier of
-     * the Verifier in the context of the Client Identifier scheme. If the parameter is not present, the Wallet MUST
-     * behave as specified in RFC6749. If the same Client Identifier is used with different Client Identifier schemes,
-     * those occurrences MUST be treated as different Verifiers. Note that the Verifier needs to determine which Client
-     * Identifier schemes the Wallet supports prior to sending the Authorization Request in order to choose a supported
-     * scheme.
-     */
-    @Deprecated("Removed in OpenID4VP draft 22, now a prefix of `client_id`")
-    @SerialName("client_id_scheme")
-    val clientIdScheme: OpenIdConstants.ClientIdScheme? = null,
-
-    /**
      * OID4VP: OPTIONAL. String containing the Wallet's identifier. The Credential Issuer can use the discovery process
      * defined in SIOPv2 to determine the Wallet's capabilities and endpoints, using the `wallet_issuer` value as the
      * Issuer Identifier referred to in SIOPv2. This is RECOMMENDED in Dynamic Credential Requests.
@@ -398,7 +384,6 @@ data class AuthenticationRequestParameters(
         if (presentationDefinition != other.presentationDefinition) return false
         if (presentationDefinitionUrl != other.presentationDefinitionUrl) return false
         if (authorizationDetails != other.authorizationDetails) return false
-        if (clientIdScheme != other.clientIdScheme) return false
         if (walletIssuer != other.walletIssuer) return false
         if (userHint != other.userHint) return false
         if (issuerState != other.issuerState) return false
@@ -444,7 +429,6 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (presentationDefinition?.hashCode() ?: 0)
         result = 31 * result + (presentationDefinitionUrl?.hashCode() ?: 0)
         result = 31 * result + (authorizationDetails?.hashCode() ?: 0)
-        result = 31 * result + (clientIdScheme?.hashCode() ?: 0)
         result = 31 * result + (walletIssuer?.hashCode() ?: 0)
         result = 31 * result + (userHint?.hashCode() ?: 0)
         result = 31 * result + (issuerState?.hashCode() ?: 0)
@@ -478,9 +462,8 @@ data class AuthenticationRequestParameters(
      * Reads the [OpenIdConstants.ClientIdScheme] of this request either directly from [clientIdScheme],
      * or by extracting the prefix from [clientId] (as specified in OpenID4VP draft 22 onwards).
      */
-    @Suppress("DEPRECATION")
     val clientIdSchemeExtracted: OpenIdConstants.ClientIdScheme? by lazy {
-        clientIdScheme ?: clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(clientId) }
+        clientId?.let { OpenIdConstants.ClientIdScheme.decodeFromClientId(clientId) }
     }
 
     /**

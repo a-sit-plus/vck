@@ -1,6 +1,5 @@
 package at.asitplus.dif
 
-import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
 import at.asitplus.signum.indispensable.josef.JwsAlgorithm
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -13,19 +12,11 @@ import kotlinx.serialization.Transient
  */
 @Serializable
 data class FormatContainerSdJwt(
-    @Deprecated("Use other properties in this class")
-    @SerialName("alg")
-    val algorithmStrings: Collection<String>? = null,
     @SerialName("sd-jwt_alg_values")
     val sdJwtAlgorithmStrings: Set<String>? = null,
     @SerialName("kb-jwt_alg_values")
     val kbJwtAlgorithmStrings: Set<String>? = null,
 ) {
-    @Deprecated("Use other properties in this class")
-    @Transient
-    val algorithms: Set<JsonWebAlgorithm>? = algorithmStrings
-        ?.mapNotNull { s -> JsonWebAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()
-
     @Transient
     val sdJwtAlgorithms: Set<JwsAlgorithm>? = sdJwtAlgorithmStrings
         ?.mapNotNull { s -> JwsAlgorithm.entries.firstOrNull { it.identifier == s } }?.toSet()

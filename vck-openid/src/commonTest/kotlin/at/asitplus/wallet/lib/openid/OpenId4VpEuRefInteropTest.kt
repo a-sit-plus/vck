@@ -247,7 +247,6 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         parsed.shouldNotBeNull()
 
         parsed.responseUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/direct_post"
-        parsed.clientIdSchemeExtracted shouldBe OpenIdConstants.ClientIdScheme.X509SanDns
         parsed.responseType shouldBe "vp_token"
         parsed.nonce shouldBe "nonce"
         parsed.clientId shouldBe "verifier-backend.eudiw.dev"

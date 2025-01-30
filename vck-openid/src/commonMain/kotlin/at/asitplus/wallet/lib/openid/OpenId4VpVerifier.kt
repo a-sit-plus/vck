@@ -37,7 +37,7 @@ import kotlin.time.toDuration
  * Implements [OpenID for VP](https://openid.net/specs/openid-connect-4-verifiable-presentations-1_0.html) (2024-12-02)
  * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (2023-11-28).
  *
- * This class creates the Authentication Request, [verifier] verifies the response. See [at.asitplus.wallet.lib.oidc.OidcSiopWallet] for the holder.
+ * This class creates the Authentication Request, [verifier] verifies the response. See [OpenId4VpHolder] for the holder.
  */
 open class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
@@ -58,7 +58,6 @@ open class OpenId4VpVerifier(
     private val supportedAlgorithms = verifierJwsService.supportedAlgorithms.map { it.identifier }
     private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithms)
     private val containerSdJwt = FormatContainerSdJwt(
-        algorithmStrings = supportedAlgorithms.toSet(),
         sdJwtAlgorithmStrings = supportedAlgorithms.toSet(),
         kbJwtAlgorithmStrings = supportedAlgorithms.toSet()
     )
@@ -266,7 +265,6 @@ open class OpenId4VpVerifier(
     ) = AuthenticationRequestParameters(
         responseType = requestOptions.responseType,
         clientId = clientIdScheme.clientId,
-        clientIdScheme = clientIdScheme.scheme, // still set this for our own older implementations
         redirectUrl = if (!requestOptions.isAnyDirectPost) clientIdScheme.redirectUri else null,
         responseUrl = requestOptions.responseUrl,
         scope = requestOptions.buildScope(),
@@ -296,14 +294,6 @@ open class OpenId4VpVerifier(
         } else {
             if (options.encryption) metadataWithEncryption else metadata
         }
-
-    /**
-     * Validates the OpenID Authentication Response from the Wallet, where [content] are the HTTP POST encoded
-     * [at.asitplus.openid.AuthenticationResponseParameters], e.g. `id_token=...&vp_token=...`
-     */
-    @Deprecated("Use validateAuthnResponse", ReplaceWith("validateAuthnResponse"))
-    suspend fun validateAuthnResponseFromPost(content: String): AuthnResponseResult =
-        validateAuthnResponse(content)
 
     /**
      * Validates an Authentication Response from the Wallet, where [input] is a map of POST parameters received.
