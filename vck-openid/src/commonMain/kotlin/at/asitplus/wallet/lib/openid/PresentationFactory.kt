@@ -5,27 +5,49 @@ import at.asitplus.catching
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.openid.*
+import at.asitplus.jsonpath.JsonPath
+import at.asitplus.openid.IdToken
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
+import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CredentialSubmission
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.PresentationException
+import at.asitplus.wallet.lib.agent.PresentationRequestParameters
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters
+import at.asitplus.wallet.lib.agent.toDefaultSubmission
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
-import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.iso.ClientIdToHash
+import at.asitplus.wallet.lib.iso.DeviceAuthentication
+import at.asitplus.wallet.lib.iso.DeviceNameSpaces
+import at.asitplus.wallet.lib.iso.OID4VPHandover
+import at.asitplus.wallet.lib.iso.ResponseUriToHash
+import at.asitplus.wallet.lib.iso.SessionTranscript
+import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonArray
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
@@ -60,11 +82,11 @@ internal class PresentationFactory(
         val responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsEncryption() == true
         val clientId = request.clientId
         val responseUrl = request.responseUrl
+        val transactionData = parseTransactionData(request)
         val vpRequestParams = PresentationRequestParameters(
             nonce = nonce,
             audience = audience,
-            // TODO Exact encoding is not specified
-            transactionData = request.transactionData?.map { it.encodeToByteArray() },
+            transactionData = transactionData,
             calcIsoDeviceSignature = { docType ->
                 calcDeviceSignature(responseWillBeEncrypted, clientId, responseUrl, nonce, docType)
             }
@@ -83,6 +105,26 @@ internal class PresentationFactory(
         }
     }
 
+    private fun parseTransactionData(request: RequestParameters): List<ByteArray>? {
+        val requestJson =
+            vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), request)
+        val queryResults = JsonPath("$..transaction_data").query(requestJson).map { it.value }
+        val transactionData: MutableList<ByteArray> = mutableListOf()
+        for (queryResult in queryResults) {
+            for (entry in queryResult.jsonArray) {
+                val deserialized = vckJsonSerializer.decodeFromJsonElement<String>(entry)
+
+                //Check if transactionData was already encoded
+                val dataEntry =
+                    if (!deserialized.contains(",")) deserialized.decodeToByteArray(Base64UrlStrict)
+                    else deserialized.encodeToByteArray()
+
+                if (!transactionData.any {dataEntry.contentEquals(it) }) transactionData.add(dataEntry)
+            }
+        }
+        return transactionData.ifEmpty { null }
+    }
+
     /**
      * Performs calculation of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
      * acc. to ISO/IEC 18013-5:2021 and ISO/IEC 18013-7:2024, if required in [responseWillBeEncrypted] (i.e. it will be encrypted)
@@ -96,7 +138,7 @@ internal class PresentationFactory(
         docType: String,
     ): Pair<CoseSigned<ByteArray>, String?> = if (responseWillBeEncrypted && clientId != null && responseUrl != null) {
         val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-        val mdocGeneratedNonce = Random.Default.nextBytes(16).encodeToString(Base16Strict)
+        val mdocGeneratedNonce = Random.nextBytes(16).encodeToString(Base16Strict)
         val clientIdToHash =
             ClientIdToHash(clientId = clientId, mdocGeneratedNonce = mdocGeneratedNonce)
         val responseUriToHash = ResponseUriToHash(
@@ -169,7 +211,7 @@ internal class PresentationFactory(
         )
         jwsService.createSignedJwsAddingParams(
             payload = idToken,
-            serializer = IdToken.Companion.serializer(),
+            serializer = IdToken.serializer(),
             addX5c = false
         ).getOrElse {
             Napier.w("Could not sign id_token", it)
@@ -191,7 +233,7 @@ internal class PresentationFactory(
         clientMetadata: RelyingPartyMetadata?,
         credentialSubmissions: Map<String, CredentialSubmission>,
     ) {
-        val validator = PresentationSubmissionValidator.Companion.createInstance(this).getOrThrow()
+        val validator = PresentationSubmissionValidator.createInstance(this).getOrThrow()
         if (!validator.isValidSubmission(credentialSubmissions.keys)) {
             Napier.w("submission requirements are not satisfied")
             throw OAuth2Exception(Errors.USER_CANCELLED)

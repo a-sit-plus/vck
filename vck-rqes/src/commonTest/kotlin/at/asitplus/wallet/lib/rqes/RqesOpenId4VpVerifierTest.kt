@@ -22,6 +22,7 @@ import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNot
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -102,7 +103,7 @@ class RqesOpenId4VpVerifierTest : FreeSpec({
             keyBinding.payload.transactionDataHashesAlgorithm shouldNotBe null
         }
 
-        "UC5-Specific Flow: KeyBindingJws contains transaction data".config(enabled = false) {
+        "UC5-Specific Flow: KeyBindingJws contains transaction data" {
             val requestOptions = DummyRequestOptionsService.getRequestOptions()
             val transactionDataEncoded =
                 vckJsonSerializer.encodeToString(requestOptions.rqesParameters.transactionData.first()).encodeToByteArray()
