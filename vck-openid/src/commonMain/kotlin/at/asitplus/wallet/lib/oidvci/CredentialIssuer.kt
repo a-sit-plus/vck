@@ -156,14 +156,12 @@ class CredentialIssuer(
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "credential scheme not known")
                 .also { Napier.w("credential: client did not provide correct credential scheme: $params") }
 
-        val claimNames = params.claims?.map { it.value.keys }?.flatten()?.ifEmpty { null }
-
         val credentialToBeIssued = credentialProvider.getCredential(
             userInfo = userInfo,
             subjectPublicKey = subjectPublicKey,
             credentialScheme = credentialScheme,
             representation = representation.toRepresentation(),
-            claimNames = claimNames
+            claimNames = null // OID4VCI: Always issue all claims that are available
         ).getOrElse {
             throw OAuth2Exception(Errors.INVALID_REQUEST, it)
                 .also { Napier.w("credential: did not get any credential from provideUserInfo", it) }

@@ -99,6 +99,7 @@ class WalletService(
          * List of attributes that shall be requested explicitly (selective disclosure),
          * or `null` to make no restrictions
          */
+        @Deprecated("Removed in OID4VCI draft 15")
         val requestedAttributes: Set<String>? = null,
         /**
          * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
@@ -169,7 +170,7 @@ class WalletService(
      */
     fun buildScope(
         requestOptions: RequestOptions,
-        metadata: IssuerMetadata
+        metadata: IssuerMetadata,
     ) = metadata.supportedCredentialConfigurations?.values?.filter {
         it.format.toRepresentation() == requestOptions.representation
     }?.firstOrNull {
@@ -187,9 +188,12 @@ class WalletService(
          */
         data class CredentialIdentifier(val id: String) : CredentialRequestInput()
         data class RequestOptions(val requestOptions: WalletService.RequestOptions) : CredentialRequestInput()
+
+        // TODO Should this also be removed?
         data class Format(
             val supportedCredentialFormat: SupportedCredentialFormat,
-            val requestedAttributes: Set<String>? = null
+            @Deprecated("Removed in OID4VCI draft 15")
+            val requestedAttributes: Set<String>? = null,
         ) : CredentialRequestInput()
     }
 
@@ -237,10 +241,10 @@ class WalletService(
                 CredentialRequestParameters(credentialIdentifier = input.id)
 
             is CredentialRequestInput.Format ->
-                input.supportedCredentialFormat.toCredentialRequestParameters(input.requestedAttributes)
+                input.supportedCredentialFormat.toCredentialRequestParameters()
 
             is CredentialRequestInput.RequestOptions -> with(input.requestOptions) {
-                credentialScheme.toCredentialRequestParameters(representation, requestedAttributes)
+                credentialScheme.toCredentialRequestParameters(representation)
             }
         }.copy(
             proof = createCredentialRequestProof(clientNonce, credentialIssuer, clock)
@@ -275,7 +279,6 @@ class WalletService(
     @Suppress("DEPRECATION")
     private fun ConstantIndex.CredentialScheme.toCredentialRequestParameters(
         credentialRepresentation: CredentialRepresentation,
-        requestedAttributes: Set<String>?,
     ) = when {
         credentialRepresentation == PLAIN_JWT && supportsVcJwt -> CredentialRequestParameters(
             format = CredentialFormatEnum.JWT_VC,
@@ -288,57 +291,35 @@ class WalletService(
         credentialRepresentation == SD_JWT && supportsSdJwt -> CredentialRequestParameters(
             format = CredentialFormatEnum.VC_SD_JWT,
             sdJwtVcType = sdJwtType!!,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtType!!),
         )
 
         credentialRepresentation == ISO_MDOC && supportsIso -> CredentialRequestParameters(
             format = CredentialFormatEnum.MSO_MDOC,
             docType = isoDocType,
-            claims = requestedAttributes?.toRequestedClaimsIso(isoNamespace!!),
         )
 
         else -> throw IllegalArgumentException("format $credentialRepresentation not applicable to $this")
     }
 
     @Suppress("DEPRECATION")
-    private fun SupportedCredentialFormat.toCredentialRequestParameters(
-        requestedAttributes: Set<String>?,
-    ) = when (format) {
+    private fun SupportedCredentialFormat.toCredentialRequestParameters() = when (format) {
         CredentialFormatEnum.JWT_VC -> CredentialRequestParameters(
             format = format,
             credentialDefinition = credentialDefinition,
         )
 
-        CredentialFormatEnum.DC_SD_JWT,
-        CredentialFormatEnum.VC_SD_JWT -> CredentialRequestParameters(
+        CredentialFormatEnum.DC_SD_JWT, CredentialFormatEnum.VC_SD_JWT -> CredentialRequestParameters(
             format = format,
             sdJwtVcType = sdJwtVcType,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
         )
 
         CredentialFormatEnum.MSO_MDOC -> CredentialRequestParameters(
             format = format,
             docType = docType,
-            claims = requestedAttributes?.toRequestedClaimsIso(isoClaims?.keys?.firstOrNull() ?: docType!!),
         )
 
         else -> throw IllegalArgumentException("format $format not applicable to create credential request")
     }
-}
-
-private fun Collection<String>.toRequestedClaimsSdJwt(sdJwtType: String) =
-    mapOf(sdJwtType to this.associateWith { RequestedCredentialClaimSpecification() })
-
-private fun Collection<String>.toRequestedClaimsIso(isoNamespace: String) =
-    mapOf(isoNamespace to this.associateWith { RequestedCredentialClaimSpecification() })
-
-
-// TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
-@Suppress("DEPRECATION")
-private fun CredentialRepresentation.toFormat() = when (this) {
-    PLAIN_JWT -> CredentialFormatEnum.JWT_VC
-    SD_JWT -> CredentialFormatEnum.VC_SD_JWT
-    ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
 }
 
 /**
@@ -348,7 +329,7 @@ private fun CredentialRepresentation.toFormat() = when (this) {
 suspend fun JwsService.buildDPoPHeader(
     url: String,
     httpMethod: String = "POST",
-    accessToken: String? = null
+    accessToken: String? = null,
 ) = createSignedJwsAddingParams(
     header = JwsHeader(
         algorithm = algorithm,
@@ -428,7 +409,7 @@ suspend fun JwsService.buildClientAttestationPoPJwt(
     audience: String,
     nonce: String? = null,
     lifetime: Duration = 10.minutes,
-    clockSkew: Duration = 5.minutes
+    clockSkew: Duration = 5.minutes,
 ) = createSignedJwsAddingParams(
     header = JwsHeader(
         algorithm = algorithm,

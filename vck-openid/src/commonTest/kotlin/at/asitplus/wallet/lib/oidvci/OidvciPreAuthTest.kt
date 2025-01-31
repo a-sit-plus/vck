@@ -92,8 +92,7 @@ class OidvciPreAuthTest : FreeSpec({
             it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
             // Not supporting different credential datasets for one credential configuration at the moment,
             // so we'll just use the credential identifier, see OID4VCI 6.2
-            val credentialIdentifier = it.credentialIdentifiers?.first()
-                ?: throw IllegalArgumentException("credential_identifiers")
+            val credentialIdentifier = it.credentialIdentifiers.first()
             val credentialRequest = client.createCredentialRequest(
                 input = WalletService.CredentialRequestInput.CredentialIdentifier(credentialIdentifier),
                 clientNonce = token.clientNonce,

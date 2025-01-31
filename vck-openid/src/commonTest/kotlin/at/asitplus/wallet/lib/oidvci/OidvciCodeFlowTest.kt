@@ -4,7 +4,6 @@ import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
@@ -13,11 +12,10 @@ import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
+import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.DummyOAuth2DataProvider
 import at.asitplus.wallet.lib.openid.DummyOAuth2IssuerCredentialDataProvider
-import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
-import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements.DOCUMENT_NUMBER
 import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
@@ -234,23 +232,6 @@ class OidvciCodeFlowTest : FreeSpec({
             .size shouldBeGreaterThan 1
     }
 
-    "request credential in SD-JWT with just one claim, using scope" {
-        val requestOptions = RequestOptions(AtomicAttribute2023, SD_JWT, setOf(CLAIM_FAMILY_NAME))
-        val scope = client.buildScope(requestOptions, issuer.metadata)
-        val token = getToken(scope)
-
-        val credential = issueCredential(requestOptions, token)
-        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
-        val serializedCredential = credential.credential.shouldNotBeNull()
-
-        val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(VerifiableCredentialSdJwt.serializer(), serializedCredential.substringBefore("~"))
-            .getOrThrow().payload
-
-        sdJwt.disclosureDigests
-            .shouldNotBeNull()
-            .size shouldBe 1
-    }
-
     "request credential in ISO MDOC, using scope" {
         val requestOptions = RequestOptions(MobileDrivingLicenceScheme, ISO_MDOC)
         val scope = client.buildScope(requestOptions, issuer.metadata)
@@ -268,23 +249,6 @@ class OidvciCodeFlowTest : FreeSpec({
         namespaces.keys.first() shouldBe MobileDrivingLicenceScheme.isoNamespace
         val numberOfClaims = namespaces.values.firstOrNull()?.entries?.size.shouldNotBeNull()
         numberOfClaims shouldBeGreaterThan 1
-    }
-
-    "request credential in ISO MDOC with just one claim, using scope" {
-        val requestOptions = RequestOptions(MobileDrivingLicenceScheme, ISO_MDOC, setOf(DOCUMENT_NUMBER))
-        val scope = client.buildScope(requestOptions, issuer.metadata)
-        val token = getToken(scope)
-        val credential = issueCredential(requestOptions, token)
-        credential.format shouldBe CredentialFormatEnum.MSO_MDOC
-        val serializedCredential = credential.credential.shouldNotBeNull()
-
-        val issuerSigned = IssuerSigned.deserialize(serializedCredential.decodeToByteArray(Base64())).getOrThrow()
-
-        val namespaces = issuerSigned.namespaces
-        namespaces.shouldNotBeNull()
-        namespaces.keys.first() shouldBe MobileDrivingLicenceScheme.isoNamespace
-        val numberOfClaims = namespaces.values.firstOrNull()?.entries?.size.shouldNotBeNull()
-        numberOfClaims shouldBe 1
     }
 
 })

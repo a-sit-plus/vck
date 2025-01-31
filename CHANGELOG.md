@@ -1,7 +1,12 @@
 # Changelog
 
 Release 5.5.0:
- - tbd
+- Update implementation of [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) to draft 15:
+  - Remove functionality to request issuance of certain claims only, as this has been dropped from OpenID4VCI entirely
+  - Deprecate `WalletService.RequestOptions.requestedAttributes`
+  - Deprecate methods in `OpenId4VciClient` containing parameter for `requestedAttributes`
+  - In `OpenId4VciClient.startProvisioningWithAuthRequest()` remove parameter `requestedAttributes`
+  - In `OpenId4VciClient.loadCredentialWithOffer()` remove parameter `requestedAttributes`
 
 Release 5.4.0:
 - Extend support for POTENTIAL UC5: Remote qualified electronic signatures
