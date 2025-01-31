@@ -112,14 +112,9 @@ class RqesOpenId4VpHolderTest : FreeSpec({
                 documentDigests = documentDigests,
                 redirectUrl = "someOtherURL",
                 hashAlgorithm = Digest.entries.random(),
-                numSignatures = 1,
-                hashes = listOf(uuid4().bytes),
                 optionalParameters = null
             )
 
-            request.credentialID?.encodeToString(Base64UrlStrict) shouldBe validCert.credentialID
-            request.signatureQualifier shouldBe SignatureQualifier.EU_EIDAS_QES
-            request.numSignatures shouldNotBe null
             request.redirectUrl shouldBe "someOtherURL"
             request.authorizationDetails.shouldNotBeNull().forEach {
                 it.shouldBeInstanceOf<CscAuthorizationDetails>()
