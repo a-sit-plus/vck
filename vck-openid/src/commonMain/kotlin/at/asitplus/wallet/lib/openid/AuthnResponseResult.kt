@@ -1,5 +1,6 @@
 package at.asitplus.wallet.lib.openid
 
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -27,6 +28,12 @@ sealed class AuthnResponseResult {
      * Validation results of all returned verifiable presentations
      */
     data class VerifiablePresentationValidationResults(val validationResults: List<AuthnResponseResult>) :
+        AuthnResponseResult()
+
+    /**
+     * Validation results of all returned verifiable presentations
+     */
+    data class VerifiableDCQLPresentationValidationResults(val validationResults: Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>) :
         AuthnResponseResult()
 
     /**

@@ -3,7 +3,11 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants.Errors
-import at.asitplus.openid.OpenIdConstants.ResponseMode.*
+import at.asitplus.openid.OpenIdConstants.ResponseMode.DirectPost
+import at.asitplus.openid.OpenIdConstants.ResponseMode.DirectPostJwt
+import at.asitplus.openid.OpenIdConstants.ResponseMode.Fragment
+import at.asitplus.openid.OpenIdConstants.ResponseMode.Other
+import at.asitplus.openid.OpenIdConstants.ResponseMode.Query
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
@@ -16,7 +20,7 @@ import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
-import io.ktor.http.*
+import io.ktor.http.URLBuilder
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray

@@ -9,6 +9,32 @@ Release 5.4.0:
   - Rename `RequestOptions` to `OpenIdRequestOptions`
   - Add `transactionData` to `PresentationRequestParameters`
   - Remove elements marked as deprecated in 5.3.0: `OidcSiopVerifier`, `OidcSiopWallet`, `Verifier.verifyPresentation()`, `OpenId4VpVerifier.validateAuthnResponseFromPost()`
+- Add DCQL Query library in module `openid-data-classes`
+  - module `vck` now depends on this module because of dcql queries
+- `AuthenticationRequestParameters`:
+  - Add member `dcqlQuery
+- `CredentialFormatEnum`:
+  - Add method `coerceDeprecations` to coerce deprecated `VC_SD_JWT` to `DC_SD_JWT`
+- `Holder`
+  - Deprecated previous methods for creating presentations
+  - Added new methods for creating presentations supporting DCQL and presentation exchange
+- Added class `CredentialPresentation`
+- Added class `CredentialPresentationRequest`
+- `PresentationResponseParameters`
+  - Changed to directly reveal the parameters necessary for creating a response
+  - Added subclasses for working with raw presentation results
+- Added subclass `VerifiableDCQLPresentationValidationResults` of `AuthnResponseResult` to preserve credential query identifiers
+- `AuthorizationResponsePreparationState`
+  - Now holds general credential presentation request
+- `OpenId4VpHolder`:
+  - Added presentation methods supporting both presentation mechanisms
+  - Deprecated previously existing presentation methods
+- `OpenId4VpVerifier`:
+  - Added `prepareAuthnRequest` and `submitAuthnRequest` to allow customization of presentation request
+  - Added validation support for DCQL presentations
+- `RequestOptions`:
+  - Added member `presentationMechanism` to explicitly select DCQL or PresentationExchange
+  - 
 
 Release 5.3.1:
 - Add optional parameter `issuerUri` to `ClientIdScheme.PreRegistered`

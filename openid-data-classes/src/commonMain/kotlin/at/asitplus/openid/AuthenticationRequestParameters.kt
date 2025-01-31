@@ -2,6 +2,7 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult.Companion.wrap
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
@@ -173,6 +174,12 @@ data class AuthenticationRequestParameters(
      */
     @SerialName("presentation_definition_uri")
     val presentationDefinitionUrl: String? = null,
+
+    /**
+     * OID4VP: dcql_query: A string containing a JSON-encoded DCQL query as defined in Section 6.
+     */
+    @SerialName("dcql_query")
+    val dcqlQuery: DCQLQuery? = null,
 
     /**
      * RFC9396: The request parameter `authorization_details` contains, in JSON notation, an array of objects.
@@ -367,22 +374,24 @@ data class AuthenticationRequestParameters(
 
         other as AuthenticationRequestParameters
 
-        if (numSignatures != other.numSignatures) return false
         if (responseType != other.responseType) return false
         if (clientId != other.clientId) return false
         if (redirectUrl != other.redirectUrl) return false
         if (scope != other.scope) return false
         if (state != other.state) return false
         if (nonce != other.nonce) return false
+        if (walletNonce != other.walletNonce) return false
         if (claims != other.claims) return false
         if (clientMetadata != other.clientMetadata) return false
         if (clientMetadataUri != other.clientMetadataUri) return false
         if (idTokenHint != other.idTokenHint) return false
         if (request != other.request) return false
         if (requestUri != other.requestUri) return false
+        if (requestUriMethod != other.requestUriMethod) return false
         if (idTokenType != other.idTokenType) return false
         if (presentationDefinition != other.presentationDefinition) return false
         if (presentationDefinitionUrl != other.presentationDefinitionUrl) return false
+        if (dcqlQuery != other.dcqlQuery) return false
         if (authorizationDetails != other.authorizationDetails) return false
         if (walletIssuer != other.walletIssuer) return false
         if (userHint != other.userHint) return false
@@ -401,6 +410,7 @@ data class AuthenticationRequestParameters(
             if (!credentialID.contentEquals(other.credentialID)) return false
         } else if (other.credentialID != null) return false
         if (signatureQualifier != other.signatureQualifier) return false
+        if (numSignatures != other.numSignatures) return false
         if (!hashes.contentEquals(other.hashes)) return false
         if (hashAlgorithmOid != other.hashAlgorithmOid) return false
         if (description != other.description) return false
@@ -412,22 +422,24 @@ data class AuthenticationRequestParameters(
     }
 
     override fun hashCode(): Int {
-        var result = numSignatures ?: 0
-        result = 31 * result + (responseType?.hashCode() ?: 0)
+        var result = responseType?.hashCode() ?: 0
         result = 31 * result + (clientId?.hashCode() ?: 0)
         result = 31 * result + (redirectUrl?.hashCode() ?: 0)
         result = 31 * result + (scope?.hashCode() ?: 0)
         result = 31 * result + (state?.hashCode() ?: 0)
         result = 31 * result + (nonce?.hashCode() ?: 0)
+        result = 31 * result + (walletNonce?.hashCode() ?: 0)
         result = 31 * result + (claims?.hashCode() ?: 0)
         result = 31 * result + (clientMetadata?.hashCode() ?: 0)
         result = 31 * result + (clientMetadataUri?.hashCode() ?: 0)
         result = 31 * result + (idTokenHint?.hashCode() ?: 0)
         result = 31 * result + (request?.hashCode() ?: 0)
         result = 31 * result + (requestUri?.hashCode() ?: 0)
+        result = 31 * result + (requestUriMethod?.hashCode() ?: 0)
         result = 31 * result + (idTokenType?.hashCode() ?: 0)
         result = 31 * result + (presentationDefinition?.hashCode() ?: 0)
         result = 31 * result + (presentationDefinitionUrl?.hashCode() ?: 0)
+        result = 31 * result + (dcqlQuery?.hashCode() ?: 0)
         result = 31 * result + (authorizationDetails?.hashCode() ?: 0)
         result = 31 * result + (walletIssuer?.hashCode() ?: 0)
         result = 31 * result + (userHint?.hashCode() ?: 0)
@@ -443,6 +455,7 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (lang?.hashCode() ?: 0)
         result = 31 * result + (credentialID?.contentHashCode() ?: 0)
         result = 31 * result + (signatureQualifier?.hashCode() ?: 0)
+        result = 31 * result + (numSignatures ?: 0)
         result = 31 * result + (hashes?.contentHashCode() ?: 0)
         result = 31 * result + (hashAlgorithmOid?.hashCode() ?: 0)
         result = 31 * result + (description?.hashCode() ?: 0)

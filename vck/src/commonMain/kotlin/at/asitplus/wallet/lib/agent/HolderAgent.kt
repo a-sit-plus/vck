@@ -2,19 +2,30 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.*
+import at.asitplus.dif.ClaimFormat
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.PresentationSubmission
+import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.signum.indispensable.cosef.CoseKey
 import at.asitplus.signum.indispensable.cosef.toCoseKey
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
+import at.asitplus.wallet.lib.data.CredentialPresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
 import at.asitplus.wallet.lib.data.dif.InputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
+import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSubmission
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
+import at.asitplus.wallet.lib.procedures.dcql.DCQLQueryAdapter
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 
@@ -134,46 +145,115 @@ class HolderAgent(
             }
         }
 
+    override suspend fun createDefaultPresentation(
+        request: PresentationRequestParameters,
+        credentialPresentationRequest: CredentialPresentationRequest,
+    ): KmmResult<PresentationResponseParameters> = when (credentialPresentationRequest) {
+        is CredentialPresentationRequest.PresentationExchangeRequest -> createPresentation(
+            request = request,
+            credentialPresentation = CredentialPresentation.PresentationExchangePresentation(
+                presentationRequest = credentialPresentationRequest,
+                inputDescriptorSubmissions = null
+            ),
+        )
 
+        is CredentialPresentationRequest.DCQLRequest -> createPresentation(
+            request = request,
+            credentialPresentation = CredentialPresentation.DCQLPresentation(
+                presentationRequest = credentialPresentationRequest,
+                credentialQuerySubmissions = null
+            ),
+        )
+    }
+
+    override suspend fun createPresentation(
+        request: PresentationRequestParameters,
+        credentialPresentation: CredentialPresentation,
+    ): KmmResult<PresentationResponseParameters> = when (credentialPresentation) {
+        is CredentialPresentation.DCQLPresentation -> createDCQLPresentation(
+            request = request,
+            credentialPresentation = credentialPresentation,
+        )
+
+        is CredentialPresentation.PresentationExchangePresentation -> createPresentationExchangePresentation(
+            request = request,
+            credentialPresentation = credentialPresentation
+        )
+    }
+
+    @Deprecated(
+        "Replace with more general implementation due to increasing number of presentation mechanisms",
+        replaceWith = ReplaceWith("createDefaultPresentationExchangePresentation")
+    )
     override suspend fun createPresentation(
         request: PresentationRequestParameters,
         presentationDefinition: PresentationDefinition,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: PathAuthorizationValidator?,
-    ): KmmResult<PresentationResponseParameters> = catching {
-        val submittedCredentials = matchInputDescriptorsAgainstCredentialStore(
-            inputDescriptors = presentationDefinition.inputDescriptors,
+    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters> =
+        createDefaultPresentationExchangePresentation(
+            request = request,
+            presentationDefinition = presentationDefinition,
             fallbackFormatHolder = fallbackFormatHolder,
-            pathAuthorizationValidator = pathAuthorizationValidator,
-        ).getOrThrow().toDefaultSubmission()
+        )
 
-        val validator = PresentationSubmissionValidator.createInstance(
-            submissionRequirements = presentationDefinition.submissionRequirements,
-            inputDescriptors = presentationDefinition.inputDescriptors,
-        ).getOrThrow()
-
-        if (!validator.isValidSubmission(submittedCredentials.keys)) {
-            val missingInputDescriptors = presentationDefinition.inputDescriptors
-                .map { it.id }.toSet() - submittedCredentials.keys
-
-            throw PresentationException(
-                "Submission requirements are unsatisfied: No credentials were submitted for input descriptors: $missingInputDescriptors"
+    private suspend fun createDefaultPresentationExchangePresentation(
+        request: PresentationRequestParameters,
+        presentationDefinition: PresentationDefinition,
+        fallbackFormatHolder: FormatHolder?,
+    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters> =
+        createPresentationExchangePresentation(
+            request = request,
+            credentialPresentation = CredentialPresentation.PresentationExchangePresentation(
+                presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest(
+                    presentationDefinition,
+                    fallbackFormatHolder,
+                ),
+                inputDescriptorSubmissions = null,
             )
+        )
+
+    private suspend fun createPresentationExchangePresentation(
+        request: PresentationRequestParameters,
+        credentialPresentation: CredentialPresentation.PresentationExchangePresentation,
+    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters> = catching {
+        val presentationDefinition = credentialPresentation.presentationRequest.presentationDefinition
+
+        val presentationCredentialSelection = credentialPresentation.inputDescriptorSubmissions
+            ?: matchInputDescriptorsAgainstCredentialStore(
+                inputDescriptors = presentationDefinition.inputDescriptors,
+                fallbackFormatHolder = credentialPresentation.presentationRequest.fallbackFormatHolder,
+            ).getOrThrow().toDefaultSubmission()
+
+        credentialPresentation.presentationRequest.validateSubmission(presentationCredentialSelection).onFailure {
+            throw PresentationException(it)
         }
 
         createPresentation(
             request = request,
             presentationDefinitionId = presentationDefinition.id,
-            presentationSubmissionSelection = submittedCredentials,
+            presentationSubmissionSelection = presentationCredentialSelection.mapValues {
+                CredentialSubmission(
+                    credential = it.value.credential,
+                    disclosedAttributes = it.value.disclosedAttributes
+                )
+            },
         ).getOrThrow()
     }
 
+    @Suppress("OVERRIDE_DEPRECATION") // TODO: make private after removing from interface and change selection value type
     override suspend fun createPresentation(
         request: PresentationRequestParameters,
         presentationDefinitionId: String?,
         presentationSubmissionSelection: Map<String, CredentialSubmission>,
-    ): KmmResult<PresentationResponseParameters> = catching {
-        val submissionList = presentationSubmissionSelection.toList()
+    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters> = catching {
+        val submissionList = presentationSubmissionSelection.mapValues {
+            PresentationExchangeCredentialDisclosure(
+                credential = it.value.credential,
+                disclosedAttributes = it.value.disclosedAttributes
+            )
+        }.toList()
+
         val presentationSubmission = PresentationSubmission.fromMatches(
             presentationId = presentationDefinitionId,
             matches = submissionList,
@@ -189,9 +269,46 @@ class HolderAgent(
             ).getOrThrow()
         }
 
-        PresentationResponseParameters(
+        PresentationResponseParameters.PresentationExchangeParameters(
             presentationSubmission = presentationSubmission,
             presentationResults = verifiablePresentations,
+        )
+    }
+
+
+    private suspend fun createDCQLPresentation(
+        request: PresentationRequestParameters,
+        credentialPresentation: CredentialPresentation.DCQLPresentation,
+    ): KmmResult<PresentationResponseParameters.DCQLParameters> = catching {
+        val dcqlQuery = credentialPresentation.presentationRequest.dcqlQuery
+
+        val requestedCredentialSetQueries =
+            credentialPresentation.presentationRequest.dcqlQuery.requestedCredentialSetQueries
+        val credentialSubmissions = credentialPresentation.credentialQuerySubmissions
+            ?: matchDCQLQueryAgainstCredentialStore(dcqlQuery).getOrThrow()
+                .toDefaultSubmission().getOrThrow()
+
+        DCQLQuery.Procedures.isSatisfactoryCredentialSubmission(
+            credentialSubmissions = credentialSubmissions.keys,
+            requestedCredentialSetQueries = requestedCredentialSetQueries,
+        ).let {
+            if (!it) {
+                throw IllegalArgumentException("Submission does not satisfy requested credential set queries.")
+            }
+        }
+
+        val verifiablePresentations = credentialSubmissions.mapValues { match ->
+            val credential = match.value.credential
+            val disclosedAttributes = match.value.matchingResult
+            verifiablePresentationFactory.createVerifiablePresentation(
+                request = request,
+                credential = credential,
+                disclosedAttributes = disclosedAttributes,
+            ).getOrThrow()
+        }
+
+        PresentationResponseParameters.DCQLParameters(
+            verifiablePresentations = verifiablePresentations,
         )
     }
 
@@ -264,6 +381,13 @@ class HolderAgent(
         }
     }
 
+    override suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>> {
+        return DCQLQueryAdapter(dcqlQuery).select(
+            credentials = getValidCredentialsByPriority()
+                ?: throw PresentationException("Credentials could not be retrieved from the store"),
+        )
+    }
+
     /** assume credential format to be supported by the verifier if no format holder is specified */
     @Suppress("DEPRECATION")
     private fun SubjectCredentialStore.StoreEntry.isFormatSupported(supportedFormats: FormatHolder?): Boolean =
@@ -277,7 +401,7 @@ class HolderAgent(
 
     private fun PresentationSubmission.Companion.fromMatches(
         presentationId: String?,
-        matches: List<Pair<String, CredentialSubmission>>,
+        matches: List<Pair<String, PresentationExchangeCredentialDisclosure>>,
     ) = PresentationSubmission(
         id = uuid4().toString(),
         definitionId = presentationId,
@@ -310,4 +434,51 @@ class HolderAgent(
         // where n is the index to select.
         path = index?.let { "\$[$it]" } ?: "\$",
     )
+
+
+    private fun CredentialPresentationRequest.PresentationExchangeRequest.validateSubmission(
+        credentialSubmissions: Map<String, PresentationExchangeCredentialDisclosure>,
+    ) = catching {
+        val validator = PresentationSubmissionValidator.createInstance(presentationDefinition).getOrThrow()
+        if (!validator.isValidSubmission(credentialSubmissions.keys)) {
+            Napier.w("submission requirements are not satisfied")
+            throw IllegalArgumentException("Submission requirements are not satisfied")
+        }
+
+        // making sure, that all the submissions actually match the corresponding input descriptor requirements
+        credentialSubmissions.forEach { submission ->
+            val inputDescriptor = presentationDefinition.inputDescriptors.firstOrNull {
+                it.id == submission.key
+            } ?: run {
+                Napier.w("Invalid input descriptor id")
+                throw IllegalArgumentException("Invalid input descriptor id")
+            }
+
+            val constraintFieldMatches = evaluateInputDescriptorAgainstCredential(
+                inputDescriptor = inputDescriptor,
+                credential = submission.value.credential,
+                fallbackFormatHolder = fallbackFormatHolder,
+                pathAuthorizationValidator = { true },
+            ).getOrThrow()
+
+            val disclosedAttributes = submission.value.disclosedAttributes.map { it.toString() }
+
+            // find a matching path for each constraint field
+            constraintFieldMatches.filter {
+                // only need to validate non-optional constraint fields
+                it.key.optional != true
+            }.forEach { constraintField ->
+                val allowedPaths = constraintField.value.map {
+                    it.normalizedJsonPath.toString()
+                }
+                disclosedAttributes.firstOrNull { allowedPaths.contains(it) } ?: run {
+                    val keyId = constraintField.key.id?.let { " Missing field: $it" }
+                    Napier.w("Input descriptor constraints are not satisfied: ${inputDescriptor.id}.$keyId")
+                    throw IllegalArgumentException("Input descriptor constraints are not satisfied: ${inputDescriptor.id}.$keyId")
+                }
+            }
+            // TODO: maybe we also want to validate, whether there are any redundant disclosed attributes?
+            //  this would be the case if there is only one constraint field with path "$['name']", but two attributes are disclosed
+        }
+    }
 }

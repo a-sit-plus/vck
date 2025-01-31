@@ -117,7 +117,7 @@ class DCQLJsonClaimsQueryTest : FreeSpec({
                 id = DCQLCredentialQueryIdentifier(
                     Random.nextBytes(32).encodeToString(Base64UrlStrict),
                 ),
-                format = CredentialFormatEnum.VC_SD_JWT,
+                format = CredentialFormatEnum.DC_SD_JWT,
             )
         ).getOrThrow().shouldBeInstanceOf<DCQLClaimsQueryResult.JsonResult>().let {
             it.nodeList shouldHaveSize 3

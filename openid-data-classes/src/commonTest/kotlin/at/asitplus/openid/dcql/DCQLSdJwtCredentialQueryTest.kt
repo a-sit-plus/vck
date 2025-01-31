@@ -20,7 +20,7 @@ class DCQLSdJwtCredentialQueryTest : FreeSpec({
             id = DCQLCredentialQueryIdentifier(
                 Random.nextBytes(32).encodeToString(Base64UrlStrict)
             ),
-            format = CredentialFormatEnum.VC_SD_JWT,
+            format = CredentialFormatEnum.DC_SD_JWT,
             claims = DCQLClaimsQueryList(
                 DCQLJsonClaimsQuery(
                     path = DCQLClaimsPathPointer(null)
@@ -32,7 +32,7 @@ class DCQLSdJwtCredentialQueryTest : FreeSpec({
             put(DCQLCredentialQuery.SerialNames.ID, JsonPrimitive(value.id.string))
             put(
                 DCQLCredentialQuery.SerialNames.FORMAT,
-                JsonPrimitive(CredentialFormatEnum.VC_SD_JWT.text)
+                JsonPrimitive(CredentialFormatEnum.DC_SD_JWT.text)
             )
             put(DCQLCredentialQuery.SerialNames.CLAIMS, buildJsonArray {
                 add(buildJsonObject {
