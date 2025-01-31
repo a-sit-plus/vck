@@ -14,6 +14,7 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
@@ -74,7 +75,7 @@ class OidvciPreAuthTest : FreeSpec({
 
         val credential = issuer.credential(token.accessToken, credentialRequest)
             .getOrThrow()
-        credential.credential.shouldNotBeNull()
+        credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }
 
     "process with pre-authorized code, credential offer, and authorization details for all credentials" {
@@ -99,9 +100,8 @@ class OidvciPreAuthTest : FreeSpec({
                 credentialIssuer = issuer.metadata.credentialIssuer
             ).getOrThrow()
 
-            val credential = issuer.credential(token.accessToken, credentialRequest)
-                .getOrThrow()
-            credential.credential.shouldNotBeNull()
+            issuer.credential(token.accessToken, credentialRequest)
+                .getOrThrow().credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
         }
     }
 
@@ -130,9 +130,8 @@ class OidvciPreAuthTest : FreeSpec({
             credentialIssuer = issuer.metadata.credentialIssuer
         ).getOrThrow()
 
-        val credential = issuer.credential(token.accessToken, credentialRequest)
-            .getOrThrow()
-        credential.credential.shouldNotBeNull()
+        issuer.credential(token.accessToken, credentialRequest)
+            .getOrThrow().credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }
 
 })

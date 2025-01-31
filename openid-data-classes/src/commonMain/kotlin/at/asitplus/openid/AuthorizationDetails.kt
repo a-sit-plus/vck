@@ -17,6 +17,8 @@ data class OpenIdAuthorizationDetails(
     /**
      * OID4VCI: REQUIRED when [format] parameter is not present. String specifying a unique identifier of the
      * Credential being described in [IssuerMetadata.supportedCredentialConfigurations].
+     * The referenced object in [IssuerMetadata.supportedCredentialConfigurations] conveys the details, such as the
+     * format, for issuance of the requested Credential.
      */
     @SerialName("credential_configuration_id")
     val credentialConfigurationId: String? = null,
