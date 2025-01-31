@@ -50,8 +50,8 @@ fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<Signature
     } else null
     // Uses "vc+sd-jwt", defined in SD-JWT VC up until draft 06
     val sdJwt = if (supportsSdJwt) {
-        encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT) to SupportedCredentialFormat.forSdJwt(
-            format = CredentialFormatEnum.VC_SD_JWT,
+        encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.DC_SD_JWT) to SupportedCredentialFormat.forSdJwt(
+            format = CredentialFormatEnum.DC_SD_JWT,
             scope = sdJwtType!!,
             sdJwtVcType = sdJwtType!!,
             supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
@@ -82,14 +82,14 @@ fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<Signature
 fun CredentialScheme.toCredentialIdentifier() = listOfNotNull(
     if (supportsIso) isoNamespace!! else null,
     if (supportsVcJwt) encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC) else null,
-    if (supportsSdJwt) encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT) else null
+    if (supportsSdJwt) encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.DC_SD_JWT) else null
 )
 
 // TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
 @Suppress("DEPRECATION")
 fun CredentialScheme.toCredentialIdentifier(rep: CredentialRepresentation) = when (rep) {
     CredentialRepresentation.PLAIN_JWT -> encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC)
-    CredentialRepresentation.SD_JWT -> encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT)
+    CredentialRepresentation.SD_JWT -> encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.DC_SD_JWT)
     CredentialRepresentation.ISO_MDOC -> isoNamespace!!
 }
 
@@ -125,7 +125,6 @@ fun decodeFromCredentialIdentifier(input: String): Pair<CredentialScheme, Creden
 
 @Suppress("DEPRECATION")
 fun CredentialFormatEnum.toRepresentation() = when (this) {
-    CredentialFormatEnum.VC_SD_JWT -> CredentialRepresentation.SD_JWT
     CredentialFormatEnum.DC_SD_JWT -> CredentialRepresentation.SD_JWT
     CredentialFormatEnum.MSO_MDOC -> CredentialRepresentation.ISO_MDOC
     else -> CredentialRepresentation.PLAIN_JWT
@@ -145,7 +144,7 @@ fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
     )
 
     is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
-        format = CredentialFormatEnum.VC_SD_JWT,
+        format = CredentialFormatEnum.DC_SD_JWT,
         credential = vcSdJwt,
     )
 }

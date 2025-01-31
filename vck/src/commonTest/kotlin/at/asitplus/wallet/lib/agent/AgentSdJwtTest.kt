@@ -283,7 +283,7 @@ private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuer
     credentials = DCQLCredentialQueryList(
         DCQLSdJwtCredentialQuery(
             id = DCQLCredentialQueryIdentifier(uuid4().toString()),
-            format = CredentialFormatEnum.VC_SD_JWT,
+            format = CredentialFormatEnum.DC_SD_JWT,
             claims = DCQLClaimsQueryList(
                 claimsQueries.toList().toNonEmptyList(),
             )

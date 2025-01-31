@@ -522,7 +522,6 @@ open class OpenId4VpVerifier(
                     when (credentialQuery.format) {
                         CredentialFormatEnum.JWT_VC -> ClaimFormat.JWT_VP
 
-                        CredentialFormatEnum.VC_SD_JWT,
                         CredentialFormatEnum.DC_SD_JWT -> ClaimFormat.SD_JWT
 
                         CredentialFormatEnum.MSO_MDOC -> ClaimFormat.MSO_MDOC

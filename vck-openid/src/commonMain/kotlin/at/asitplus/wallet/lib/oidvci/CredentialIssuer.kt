@@ -2,7 +2,21 @@ package at.asitplus.wallet.lib.oidvci
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.*
+import at.asitplus.openid.BatchCredentialIssuanceMetadata
+import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.CredentialOffer
+import at.asitplus.openid.CredentialOfferGrants
+import at.asitplus.openid.CredentialOfferGrantsAuthCode
+import at.asitplus.openid.CredentialOfferGrantsPreAuthCode
+import at.asitplus.openid.CredentialOfferUrlParameters
+import at.asitplus.openid.CredentialRequestParameters
+import at.asitplus.openid.CredentialRequestProof
+import at.asitplus.openid.CredentialRequestProofContainer
+import at.asitplus.openid.CredentialResponseParameters
+import at.asitplus.openid.IssuerMetadata
+import at.asitplus.openid.JwtVcIssuerMetadata
+import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.PROOF_CWT_TYPE
 import at.asitplus.openid.OpenIdConstants.PROOF_JWT_TYPE
@@ -260,9 +274,7 @@ private fun CredentialRequestParameters.extractCredentialScheme(format: Credenti
         ?.let { AttributeIndex.resolveAttributeType(it) }
         ?.let { it to CredentialFormatEnum.JWT_VC }
 
-    CredentialFormatEnum.VC_SD_JWT,
-    CredentialFormatEnum.DC_SD_JWT,
-        -> sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
+    CredentialFormatEnum.DC_SD_JWT -> sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
         ?.let { it to CredentialFormatEnum.DC_SD_JWT }
 
     CredentialFormatEnum.MSO_MDOC -> docType?.let { AttributeIndex.resolveIsoDoctype(it) }
