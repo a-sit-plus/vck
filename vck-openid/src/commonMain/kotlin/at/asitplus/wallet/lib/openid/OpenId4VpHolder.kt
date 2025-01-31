@@ -15,6 +15,7 @@ import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.openid.RequestObjectParameters
+import at.asitplus.openid.RequestParameters
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.openid.SupportedAlgorithmsContainer
 import at.asitplus.openid.VpFormatsSupported
@@ -272,8 +273,8 @@ class OpenId4VpHolder(
      *
      * @param request the parsed authentication request
      */
-    suspend fun <T : RequestParameters> finalizeAuthorizationResponseParameters(
-        request: RequestParametersFrom<T>,
+    suspend fun finalizeAuthorizationResponse(
+        request: RequestParametersFrom<AuthenticationRequestParameters>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation?,
     ): KmmResult<AuthenticationResponseResult> =
@@ -286,8 +287,8 @@ class OpenId4VpHolder(
      *
      * @param request the parsed authentication request
      */
-    suspend fun finalizeAuthorizationResponseParameters(
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+    suspend fun <T : RequestParameters> finalizeAuthorizationResponseParameters(
+        request: RequestParametersFrom<T>,
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation?,
     ): KmmResult<AuthenticationResponse> = catching {
@@ -304,6 +305,7 @@ class OpenId4VpHolder(
                 holder = holder,
                 request = request.parameters,
                 audience = audience,
+                nonce = request.parameters.nonce!!,
                 credentialPresentation = credentialPresentation,
                 clientMetadata = clientMetadata,
                 jsonWebKeys = jsonWebKeys,
