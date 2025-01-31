@@ -19,6 +19,7 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
@@ -62,6 +63,10 @@ class CredentialIssuer(
      */
     private val credentialProvider: CredentialIssuerDataProvider,
 ) {
+    private val supportedCredentialConfigurations = credentialSchemes
+        .flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).entries }
+        .associate { it.key to it.value }
+
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`
      * (see [OpenIdConstants.PATH_WELL_KNOWN_CREDENTIAL_ISSUER])
@@ -72,9 +77,7 @@ class CredentialIssuer(
             credentialIssuer = publicContext,
             authorizationServers = setOf(authorizationService.publicContext),
             credentialEndpointUrl = "$publicContext$credentialEndpointPath",
-            supportedCredentialConfigurations = credentialSchemes
-                .flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).entries }
-                .associate { it.key to it.value },
+            supportedCredentialConfigurations = supportedCredentialConfigurations,
             batchCredentialIssuance = BatchCredentialIssuanceMetadata(1)
         )
     }
@@ -153,6 +156,7 @@ class CredentialIssuer(
 
         val (credentialScheme, representation) = params.format?.let { params.extractCredentialScheme(it) }
             ?: params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
+            ?: params.credentialConfigurationId?.let { extractFromCredentialConfigurationId(it) }
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "credential scheme not known")
                 .also { Napier.w("credential: client did not provide correct credential scheme: $params") }
 
@@ -249,7 +253,10 @@ class CredentialIssuer(
                 .also { Napier.w("client did provide no valid key in header in CWT in proof: $header") }
     }
 
-
+    private fun extractFromCredentialConfigurationId(credentialConfigurationId: String): Pair<CredentialScheme, CredentialFormatEnum>? =
+        supportedCredentialConfigurations[credentialConfigurationId]?.let {
+            decodeFromCredentialIdentifier(credentialConfigurationId)
+        }
 }
 
 @Suppress("DEPRECATION")

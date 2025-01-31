@@ -18,7 +18,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsIso
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
-import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -108,6 +107,7 @@ class WalletService(
         /**
          * Modify clock for testing specific scenarios
          */
+        @Deprecated("Not used in production code")
         val clock: Clock = Clock.System,
     )
 
@@ -187,6 +187,8 @@ class WalletService(
          * and [OpenIdcredentialConfigurationId]
          */
         data class CredentialIdentifier(val id: String) : CredentialRequestInput()
+
+        @Deprecated("Use another type to specify credential in request to issuer")
         data class RequestOptions(val requestOptions: WalletService.RequestOptions) : CredentialRequestInput()
 
         // TODO Should this also be removed?
@@ -234,8 +236,8 @@ class WalletService(
         input: CredentialRequestInput,
         clientNonce: String?,
         credentialIssuer: String?,
+        clock: Clock = Clock.System,
     ): KmmResult<CredentialRequestParameters> = catching {
-        val clock = (input as? CredentialRequestInput.RequestOptions)?.requestOptions?.clock ?: Clock.System
         when (input) {
             is CredentialRequestInput.CredentialIdentifier ->
                 CredentialRequestParameters(credentialIdentifier = input.id)
@@ -276,50 +278,29 @@ class WalletService(
         ).getOrThrow().serialize()
     )
 
-    @Suppress("DEPRECATION")
+    // TODO verify setting this is the correct value
     private fun ConstantIndex.CredentialScheme.toCredentialRequestParameters(
         credentialRepresentation: CredentialRepresentation,
     ) = when {
         credentialRepresentation == PLAIN_JWT && supportsVcJwt -> CredentialRequestParameters(
-            format = CredentialFormatEnum.JWT_VC,
-            credentialDefinition = SupportedCredentialFormatDefinition(
-                types = setOf(VERIFIABLE_CREDENTIAL, vcType!!),
-            ),
+            credentialConfigurationId = toCredentialIdentifier(credentialRepresentation)
         )
 
-        // TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
         credentialRepresentation == SD_JWT && supportsSdJwt -> CredentialRequestParameters(
-            format = CredentialFormatEnum.VC_SD_JWT,
-            sdJwtVcType = sdJwtType!!,
+            credentialConfigurationId = toCredentialIdentifier(credentialRepresentation)
         )
 
         credentialRepresentation == ISO_MDOC && supportsIso -> CredentialRequestParameters(
-            format = CredentialFormatEnum.MSO_MDOC,
-            docType = isoDocType,
+            credentialConfigurationId = toCredentialIdentifier(credentialRepresentation)
         )
 
         else -> throw IllegalArgumentException("format $credentialRepresentation not applicable to $this")
     }
 
-    @Suppress("DEPRECATION")
-    private fun SupportedCredentialFormat.toCredentialRequestParameters() = when (format) {
-        CredentialFormatEnum.JWT_VC -> CredentialRequestParameters(
-            format = format,
-            credentialDefinition = credentialDefinition,
+    private fun SupportedCredentialFormat.toCredentialRequestParameters() =
+        CredentialRequestParameters(
+            credentialConfigurationId = scope, // TODO verify
         )
-
-        CredentialFormatEnum.DC_SD_JWT, CredentialFormatEnum.VC_SD_JWT -> CredentialRequestParameters(
-            format = format,
-            sdJwtVcType = sdJwtVcType,
-        )
-
-        CredentialFormatEnum.MSO_MDOC -> CredentialRequestParameters(
-            format = format,
-            docType = docType,
-        )
-
-        else -> throw IllegalArgumentException("format $format not applicable to create credential request")
-    }
 }
 
 /**
