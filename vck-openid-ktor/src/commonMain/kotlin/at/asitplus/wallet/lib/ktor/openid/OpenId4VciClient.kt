@@ -143,15 +143,19 @@ class OpenId4VciClient(
             ?: sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
             ?: docType?.let { AttributeIndex.resolveIsoDoctype(it) })
 
-    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("startProvisioningWithAuthRequest(credentialIssuer, credentialIdentifierInfo)"))
+    @Deprecated(
+        "Removed in OID4VCI draft 15",
+        ReplaceWith("startProvisioningWithAuthRequest(credentialIssuer, credentialIdentifierInfo)")
+    )
     suspend fun startProvisioningWithAuthRequest(
         credentialIssuer: String,
         credentialIdentifierInfo: CredentialIdentifierInfo,
-        requestedAttributes: Set<NormalizedJsonPath>?
+        requestedAttributes: Set<NormalizedJsonPath>?,
     ) = startProvisioningWithAuthRequest(
         credentialIssuer = credentialIssuer,
         credentialIdentifierInfo = credentialIdentifierInfo
     )
+
     /**
      * Starts the issuing process at [credentialIssuer]
      */
@@ -321,14 +325,24 @@ class OpenId4VciClient(
             }
         }.body()
 
-        val storeCredentialInput = credentialResponse.credential
-            ?.toStoreCredentialInput(credentialResponse.format, credentialScheme)
-            ?: throw Exception("No credential was received")
+        // TODO do we know the format? Because that parameter is removed in draft 15
+        credentialResponse.extractCredentials()
+            .ifEmpty { throw Exception("No credential was received") }
+            .forEach {
+                val storeCredentialInput = it.toStoreCredentialInput(credentialResponse.format, credentialScheme)
+                holderAgent.storeCredential(storeCredentialInput).getOrThrow()
+            }
 
-        holderAgent.storeCredential(storeCredentialInput).getOrThrow()
     }
 
-    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("loadCredentialWithOffer(credentialOffer, credentialIdentifierInfo, transactionCode)"))
+    @Suppress("DEPRECATION")
+    private fun CredentialResponseParameters.extractCredentials(): List<String> =
+        credentials?.let { it.mapNotNull { it.credentialString } } ?: listOfNotNull(credential)
+
+    @Deprecated(
+        "Removed in OID4VCI draft 15",
+        ReplaceWith("loadCredentialWithOffer(credentialOffer, credentialIdentifierInfo, transactionCode)")
+    )
     suspend fun loadCredentialWithOffer(
         credentialOffer: CredentialOffer,
         credentialIdentifierInfo: CredentialIdentifierInfo,

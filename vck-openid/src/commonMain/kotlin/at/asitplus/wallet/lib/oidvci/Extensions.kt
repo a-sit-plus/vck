@@ -16,6 +16,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VcDataModelConstants
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.json.JsonPrimitive
 
 @Suppress("DEPRECATION")
 fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<SignatureAlgorithm>? = null)
@@ -133,25 +134,36 @@ fun CredentialFormatEnum.toRepresentation() = when (this) {
 
 @Suppress("DEPRECATION")
 // TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
+// TODO After 5.5.0, drop "credential", use only "credentials"
 fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
     is Issuer.IssuedCredential.Iso -> CredentialResponseParameters(
         format = CredentialFormatEnum.MSO_MDOC,
         credential = issuerSigned.serialize().encodeToString(Base64UrlStrict),
+        credentials = setOf(
+            CredentialResponseSingleCredential(
+                JsonPrimitive(issuerSigned.serialize().encodeToString(Base64UrlStrict))
+            )
+        ),
     )
 
     is Issuer.IssuedCredential.VcJwt -> CredentialResponseParameters(
         format = CredentialFormatEnum.JWT_VC,
         credential = vcJws,
+        credentials = setOf(
+            CredentialResponseSingleCredential(JsonPrimitive(vcJws))
+        ),
     )
 
     is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseParameters(
         format = CredentialFormatEnum.VC_SD_JWT,
         credential = vcSdJwt,
+        credentials = setOf(
+            CredentialResponseSingleCredential(JsonPrimitive(vcSdJwt))
+        ),
     )
 }
 
 class OAuth2Exception : Throwable {
     constructor(error: String, errorDescription: String) : super("$error: $errorDescription")
     constructor(error: String, cause: Throwable) : super(error, cause)
-
 }
