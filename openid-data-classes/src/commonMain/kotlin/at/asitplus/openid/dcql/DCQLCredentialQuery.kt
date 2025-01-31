@@ -109,7 +109,7 @@ sealed interface DCQLCredentialQuery {
         sdJwtCredentialTypeExtractor: (Credential) -> String,
         credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
     ): KmmResult<DCQLCredentialQueryMatchingResult> = catching {
-        if (credentialFormatExtractor(credential).coerce() != format.coerce()) {
+        if (credentialFormatExtractor(credential).coerceDeprecations() != format.coerceDeprecations()) {
             throw IllegalArgumentException("Incompatible credential format")
         }
 
@@ -161,7 +161,7 @@ sealed interface DCQLCredentialQuery {
             mdocCredentialDoctypeExtractor: (Credential) -> String,
             sdJwtCredentialTypeExtractor: (Credential) -> String,
         ): KmmResult<Unit> = catching {
-            when (credentialFormatIdentifier.coerce()) {
+            when (credentialFormatIdentifier.coerceDeprecations()) {
                 CredentialFormatEnum.MSO_MDOC -> {
                     credentialMetadataAndValidityConstraints as DCQLIsoMdocCredentialMetadataAndValidityConstraints
                     credentialMetadataAndValidityConstraints.validate(

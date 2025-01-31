@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.openid.CredentialFormatEnum.entries
 import kotlinx.serialization.Serializable
 
 @Serializable(with = CredentialFormatSerializer::class)
@@ -14,7 +13,11 @@ enum class CredentialFormatEnum(val text: String) {
     JSON_LD("ldp_vc"),
     MSO_MDOC("mso_mdoc");
 
-    fun coerce() = if(this == VC_SD_JWT) DC_SD_JWT else this
+    @Deprecated("To be removed along with VC_SD_JWT")
+    fun coerceDeprecations() = when(this) {
+        VC_SD_JWT -> DC_SD_JWT
+        else -> this
+    }
 
     companion object {
         fun parse(text: String) = entries.firstOrNull { it.text == text }

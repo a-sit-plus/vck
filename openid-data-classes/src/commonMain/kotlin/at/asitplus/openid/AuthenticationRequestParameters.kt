@@ -456,7 +456,7 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (credentialID?.contentHashCode() ?: 0)
         result = 31 * result + (signatureQualifier?.hashCode() ?: 0)
         result = 31 * result + (numSignatures ?: 0)
-        result = 31 * result + (hashes?.hashCode() ?: 0)
+        result = 31 * result + (hashes?.contentHashCode() ?: 0)
         result = 31 * result + (hashAlgorithmOid?.hashCode() ?: 0)
         result = 31 * result + (description?.hashCode() ?: 0)
         result = 31 * result + (accountToken?.hashCode() ?: 0)

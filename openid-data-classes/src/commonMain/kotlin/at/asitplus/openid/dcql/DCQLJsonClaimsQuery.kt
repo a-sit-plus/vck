@@ -67,7 +67,7 @@ data class DCQLJsonClaimsQuery(
             CredentialFormatEnum.JWT_VC,
         )
     ): KmmResult<DCQLClaimsQueryResult.JsonResult> = catching {
-        if (credentialQuery.format.coerce() !in jsonBasedCredentialFormats) {
+        if (credentialQuery.format.coerceDeprecations() !in jsonBasedCredentialFormats) {
             throw IllegalArgumentException("Inconsistent credential format and claims query")
         }
 
