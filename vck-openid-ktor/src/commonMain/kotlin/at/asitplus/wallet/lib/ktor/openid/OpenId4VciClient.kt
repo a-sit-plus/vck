@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT
@@ -144,13 +143,21 @@ class OpenId4VciClient(
             ?: sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
             ?: docType?.let { AttributeIndex.resolveIsoDoctype(it) })
 
+    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("startProvisioningWithAuthRequest(credentialIssuer, credentialIdentifierInfo)"))
+    suspend fun startProvisioningWithAuthRequest(
+        credentialIssuer: String,
+        credentialIdentifierInfo: CredentialIdentifierInfo,
+        requestedAttributes: Set<NormalizedJsonPath>?
+    ) = startProvisioningWithAuthRequest(
+        credentialIssuer = credentialIssuer,
+        credentialIdentifierInfo = credentialIdentifierInfo
+    )
     /**
      * Starts the issuing process at [credentialIssuer]
      */
     suspend fun startProvisioningWithAuthRequest(
         credentialIssuer: String,
         credentialIdentifierInfo: CredentialIdentifierInfo,
-        requestedAttributes: Set<NormalizedJsonPath>?,
     ): KmmResult<Unit> = catching {
         Napier.i("startProvisioningWithAuthRequest: $credentialIssuer with $credentialIdentifierInfo")
         // Load certificate, might trigger biometric prompt?
@@ -165,15 +172,9 @@ class OpenId4VciClient(
             .body<OAuth2AuthorizationServerMetadata>()
 
         val state = uuid4().toString()
-        // for now the attribute name is encoded at the first part
-        val requestedAttributeStrings = requestedAttributes
-            ?.map { (it.segments.first() as NormalizedJsonPathSegment.NameSegment).memberName }
-            ?.toSet()
-
         ProvisioningContext(
             state = state,
             credential = credentialIdentifierInfo,
-            requestedAttributes = requestedAttributeStrings,
             oauthMetadata = oauthMetadata,
             issuerMetadata = issuerMetadata
         ).let {
@@ -233,7 +234,7 @@ class OpenId4VciClient(
             credentialEndpointUrl = context.issuerMetadata.credentialEndpointUrl,
             input = tokenResponse.extractCredentialRequestInput(
                 credentialIdentifier = context.credential.credentialIdentifier,
-                requestedAttributes = context.requestedAttributes,
+                requestedAttributes = null,
                 supportedCredentialFormat = context.credential.supportedCredentialFormat
             ),
             tokenResponse = tokenResponse,
@@ -249,7 +250,7 @@ class OpenId4VciClient(
     ): CredentialRequestInput =
         authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.firstOrNull()?.let {
             if (it.credentialConfigurationId != null)
-                CredentialRequestInput.CredentialIdentifier(credentialIdentifier) // TODO What about requested attributes?
+                CredentialRequestInput.CredentialIdentifier(credentialIdentifier)
             else
                 CredentialRequestInput.Format(supportedCredentialFormat, requestedAttributes)
         } ?: CredentialRequestInput.Format(supportedCredentialFormat, requestedAttributes)
@@ -327,6 +328,18 @@ class OpenId4VciClient(
         holderAgent.storeCredential(storeCredentialInput).getOrThrow()
     }
 
+    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("loadCredentialWithOffer(credentialOffer, credentialIdentifierInfo, transactionCode)"))
+    suspend fun loadCredentialWithOffer(
+        credentialOffer: CredentialOffer,
+        credentialIdentifierInfo: CredentialIdentifierInfo,
+        transactionCode: String? = null,
+        requestedAttributes: Set<NormalizedJsonPath>?,
+    ) = loadCredentialWithOffer(
+        credentialOffer = credentialOffer,
+        credentialIdentifierInfo = credentialIdentifierInfo,
+        transactionCode = transactionCode
+    )
+
     /**
      * Loads a user-selected credential with pre-authorized code from the OID4VCI credential issuer
      *
@@ -339,7 +352,6 @@ class OpenId4VciClient(
         credentialOffer: CredentialOffer,
         credentialIdentifierInfo: CredentialIdentifierInfo,
         transactionCode: String? = null,
-        requestedAttributes: Set<NormalizedJsonPath>?,
     ): KmmResult<Unit> = catching {
         Napier.i("loadCredentialWithOffer: $credentialOffer")
         val credentialIssuer = credentialOffer.credentialIssuer
@@ -353,10 +365,6 @@ class OpenId4VciClient(
         val tokenEndpointUrl = oauthMetadata.tokenEndpoint
             ?: throw Exception("no tokenEndpoint in $oauthMetadata")
         val state = uuid4().toString()
-        // for now the attribute name is encoded at the first part
-        val requestedAttributeStrings = requestedAttributes
-            ?.map { (it.segments.first() as NormalizedJsonPathSegment.NameSegment).memberName }
-            ?.toSet()
 
         credentialOffer.grants?.preAuthorizedCode?.let {
             val credentialScheme = credentialIdentifierInfo.supportedCredentialFormat.resolveCredentialScheme()
@@ -384,7 +392,7 @@ class OpenId4VciClient(
                 credentialEndpointUrl = issuerMetadata.credentialEndpointUrl,
                 input = tokenResponse.extractCredentialRequestInput(
                     credentialIdentifier = credentialIdentifierInfo.credentialIdentifier,
-                    requestedAttributes = requestedAttributeStrings,
+                    requestedAttributes = null,
                     supportedCredentialFormat = credentialIdentifierInfo.supportedCredentialFormat
                 ),
                 tokenResponse = tokenResponse,
@@ -395,7 +403,6 @@ class OpenId4VciClient(
             ProvisioningContext(
                 state = state,
                 credential = credentialIdentifierInfo,
-                requestedAttributes = requestedAttributeStrings,
                 oauthMetadata = oauthMetadata,
                 issuerMetadata = issuerMetadata
             ).let {
@@ -540,7 +547,6 @@ class OpenId4VciClient(
 data class ProvisioningContext(
     val state: String,
     val credential: CredentialIdentifierInfo,
-    val requestedAttributes: Set<String>?,
     val oauthMetadata: OAuth2AuthorizationServerMetadata,
     val issuerMetadata: IssuerMetadata,
 )

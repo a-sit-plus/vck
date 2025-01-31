@@ -67,7 +67,6 @@ class OpenId4VciClientTest : FunSpec() {
                 client.startProvisioningWithAuthRequest(
                     credentialIssuer = "http://localhost",
                     credentialIdentifierInfo = selectedCredential,
-                    requestedAttributes = null,
                 ).apply {
                     this.isSuccess shouldBe true
                 }
@@ -93,7 +92,7 @@ class OpenId4VciClientTest : FunSpec() {
                     .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
 
                 val offer = credentialIssuer.credentialOfferWithPreAuthnForUser(dummyUser())
-                client.loadCredentialWithOffer(offer, selectedCredential, null, null).apply {
+                client.loadCredentialWithOffer(offer, selectedCredential, null).apply {
                     this.isSuccess shouldBe true
                 }
                 assertCorrectCredentialIssued()
