@@ -430,9 +430,7 @@ class OpenId4VciClient(
     ) = when (format) {
         CredentialFormatEnum.JWT_VC -> Holder.StoreCredentialInput.Vc(this, credentialScheme)
 
-        CredentialFormatEnum.VC_SD_JWT,
-        CredentialFormatEnum.DC_SD_JWT,
-            -> Holder.StoreCredentialInput.SdJwt(this, credentialScheme)
+        CredentialFormatEnum.DC_SD_JWT -> Holder.StoreCredentialInput.SdJwt(this, credentialScheme)
 
         CredentialFormatEnum.MSO_MDOC -> kotlin.runCatching { decodeToByteArray(Base64()) }.getOrNull()
             ?.let { IssuerSigned.deserialize(it) }?.getOrNull()

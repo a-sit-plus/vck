@@ -286,7 +286,7 @@ class WalletService(
 
         // TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
         credentialRepresentation == SD_JWT && supportsSdJwt -> CredentialRequestParameters(
-            format = CredentialFormatEnum.VC_SD_JWT,
+            format = CredentialFormatEnum.DC_SD_JWT,
             sdJwtVcType = sdJwtType!!,
             claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtType!!),
         )
@@ -309,8 +309,7 @@ class WalletService(
             credentialDefinition = credentialDefinition,
         )
 
-        CredentialFormatEnum.DC_SD_JWT,
-        CredentialFormatEnum.VC_SD_JWT -> CredentialRequestParameters(
+        CredentialFormatEnum.DC_SD_JWT -> CredentialRequestParameters(
             format = format,
             sdJwtVcType = sdJwtVcType,
             claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
@@ -337,7 +336,7 @@ private fun Collection<String>.toRequestedClaimsIso(isoNamespace: String) =
 @Suppress("DEPRECATION")
 private fun CredentialRepresentation.toFormat() = when (this) {
     PLAIN_JWT -> CredentialFormatEnum.JWT_VC
-    SD_JWT -> CredentialFormatEnum.VC_SD_JWT
+    SD_JWT -> CredentialFormatEnum.DC_SD_JWT
     ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
 }
 

@@ -203,7 +203,7 @@ class OidvciInteropTest : FunSpec({
 
         val credential = credentialConfig.second
         @Suppress("DEPRECATION")
-        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
+        credential.format shouldBe CredentialFormatEnum.DC_SD_JWT
         credential.scope shouldBe "eu.europa.ec.eudi.pid_vc_sd_jwt"
         credential.supportedBindingMethods!!.shouldHaveSingleElement("jwk")
         credential.supportedSigningAlgorithms!!.shouldHaveSingleElement("ES256")

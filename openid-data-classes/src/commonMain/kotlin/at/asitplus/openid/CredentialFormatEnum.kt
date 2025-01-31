@@ -6,20 +6,26 @@ import kotlinx.serialization.Serializable
 enum class CredentialFormatEnum(val text: String) {
     NONE("none"),
     JWT_VC("jwt_vc_json"),
-    @Deprecated("Deprecated in SD-JWT VC since draft 06", replaceWith = ReplaceWith("DC_SD_JWT"))
-    VC_SD_JWT("vc+sd-jwt"),
     DC_SD_JWT("dc+sd-jwt"),
     JWT_VC_JSON_LD("jwt_vc_json-ld"),
     JSON_LD("ldp_vc"),
     MSO_MDOC("mso_mdoc");
 
-    @Deprecated("To be removed along with VC_SD_JWT")
-    fun coerceDeprecations() = when(this) {
-        VC_SD_JWT -> DC_SD_JWT
-        else -> this
-    }
-
     companion object {
-        fun parse(text: String) = entries.firstOrNull { it.text == text }
+        /**
+         * Supporting deprecated credential formats as long as necessary.
+         */
+        @Deprecated(
+            "Supporting deprecated credential formats as long as necessary",
+            replaceWith = ReplaceWith("null"),
+        )
+        private fun coerceDeprecations(text: String) = when (text) {
+            "vc+sd-jwt" -> DC_SD_JWT
+            else -> null
+        }
+
+        fun parse(text: String) = entries.firstOrNull {
+            it.text == text
+        } ?: coerceDeprecations(text)
     }
 }

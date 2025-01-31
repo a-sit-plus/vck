@@ -203,7 +203,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(scope)
 
         val credential = issueCredential(requestOptions, token)
-        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
+        credential.format shouldBe CredentialFormatEnum.DC_SD_JWT
         val serializedCredential = credential.credential.shouldNotBeNull()
 
         val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(VerifiableCredentialSdJwt.serializer(), serializedCredential.substringBefore("~"))
@@ -223,7 +223,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(authorizationDetails)
 
         val credential = issueCredential(credentialIdToRequest, token)
-        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
+        credential.format shouldBe CredentialFormatEnum.DC_SD_JWT
         val serializedCredential = credential.credential.shouldNotBeNull()
 
         val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(VerifiableCredentialSdJwt.serializer(), serializedCredential.substringBefore("~"))
@@ -240,7 +240,7 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(scope)
 
         val credential = issueCredential(requestOptions, token)
-        credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
+        credential.format shouldBe CredentialFormatEnum.DC_SD_JWT
         val serializedCredential = credential.credential.shouldNotBeNull()
 
         val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(VerifiableCredentialSdJwt.serializer(), serializedCredential.substringBefore("~"))
