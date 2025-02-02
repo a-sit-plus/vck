@@ -139,6 +139,7 @@ class CredentialIssuer(
      * and issues credentials to the client.
      *
      * Callers need to send the result JSON-serialized back to the client.
+     * HTTP status code MUST be 202.
      *
      * @param accessToken The value of HTTP header `Authorization` sent by the client,
      *                    with the prefix `Bearer ` removed, so the plain access token
@@ -177,7 +178,6 @@ class CredentialIssuer(
             throw OAuth2Exception(Errors.INVALID_REQUEST, it)
                 .also { Napier.w("credential: issuer did not issue credential", it) }
         }
-
         issuedCredential.toCredentialResponseParameters()
             .also { Napier.i("credential returns $it") }
     }

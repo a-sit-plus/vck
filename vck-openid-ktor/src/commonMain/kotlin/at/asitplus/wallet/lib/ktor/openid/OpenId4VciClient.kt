@@ -126,17 +126,18 @@ class OpenId4VciClient(
         supported.mapNotNull {
             CredentialIdentifierInfo(
                 credentialIdentifier = it.key,
-                attributes = it.value.resolveAttributes()
-                    ?: listOf(),
+                attributes = it.value.resolveAttributes() ?: listOf(),
                 supportedCredentialFormat = it.value
             )
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun SupportedCredentialFormat.resolveAttributes(): Collection<String>? =
-        (credentialDefinition?.credentialSubject?.keys
+        credentialDefinition?.credentialSubject?.keys
             ?: sdJwtClaims?.keys
-            ?: isoClaims?.flatMap { it.value.keys })
+            ?: isoClaims?.flatMap { it.value.keys }
+            ?: claimDescription?.let { it.map { it.path.filter { it != scope }.joinToString(".") } }
 
     private fun SupportedCredentialFormat.resolveCredentialScheme(): ConstantIndex.CredentialScheme? =
         (credentialDefinition?.types?.firstNotNullOfOrNull { AttributeIndex.resolveAttributeType(it) }
