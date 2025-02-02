@@ -4,17 +4,12 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.Errors
-import at.asitplus.openid.OpenIdConstants.PROOF_CWT_TYPE
 import at.asitplus.openid.OpenIdConstants.PROOF_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.ProofType
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.cosef.CborWebToken
-import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -24,10 +19,6 @@ import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
-import io.matthewnelson.encoding.base16.Base16
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.serialization.builtins.ByteArraySerializer
 
 /**
  * Server implementation to issue credentials using OID4VCI.
@@ -48,7 +39,7 @@ class CredentialIssuer(
     /**
      * List of supported schemes.
      */
-    private val credentialSchemes: Set<ConstantIndex.CredentialScheme>,
+    private val credentialSchemes: Set<CredentialScheme>,
     /**
      * Used in several fields in [IssuerMetadata], to provide endpoint URLs to clients.
      */
@@ -178,6 +169,7 @@ class CredentialIssuer(
             throw OAuth2Exception(Errors.INVALID_REQUEST, it)
                 .also { Napier.w("credential: issuer did not issue credential", it) }
         }
+        // TODO Encrypt optionally
         issuedCredential.toCredentialResponseParameters()
             .also { Napier.i("credential returns $it") }
     }
@@ -190,7 +182,6 @@ class CredentialIssuer(
 
     private suspend fun CredentialRequestProof.validateProof() = when (proofType) {
         ProofType.JWT -> jwt?.validateJwtProof()
-        ProofType.CWT -> cwt?.validateCwtProof()
         else -> null
     }
 
@@ -220,37 +211,6 @@ class CredentialIssuer(
         return jwsSigned.header.publicKey
             ?: throw OAuth2Exception(Errors.INVALID_PROOF, "could not extract public key")
                 .also { Napier.w("client did provide no valid key in header in JWT in proof: ${jwsSigned.header}") }
-    }
-
-    /**
-     * Removed in OID4VCI Draft 14, kept here for a bit of backwards-compatibility
-     */
-    private suspend fun String.validateCwtProof(): CryptoPublicKey {
-        val coseSigned = CoseSigned.deserialize(ByteArraySerializer(), decodeToByteArray(Base64UrlStrict)).getOrElse {
-            Napier.w("client did provide invalid proof: $this", it)
-            throw OAuth2Exception(Errors.INVALID_PROOF, it)
-        }
-        if (coseSigned.payload == null) {
-            Napier.w("client did provide invalid proof: null")
-            throw OAuth2Exception(Errors.INVALID_PROOF, "payload is null")
-        }
-        val cwt = CborWebToken.deserialize(coseSigned.payload!!).getOrElse {
-            Napier.w("client did provide invalid CWT in proof: ${coseSigned.payload?.encodeToString(Base16())}", it)
-            throw OAuth2Exception(Errors.INVALID_PROOF, it)
-        }
-        if (cwt.nonce == null || !authorizationService.verifyClientNonce(cwt.nonce!!.decodeToString()))
-            throw OAuth2Exception(Errors.INVALID_PROOF, "invalid nonce: ${cwt.nonce?.encodeToString(Base16())}")
-                .also { Napier.w("client did provide invalid nonce in CWT in proof: ${cwt.nonce}") }
-        val header = coseSigned.protectedHeader
-        if (header.contentType != PROOF_CWT_TYPE)
-            throw OAuth2Exception(Errors.INVALID_PROOF, "content type invalid: ${header.contentType}")
-                .also { Napier.w("client did provide invalid header type in CWT in proof: $header") }
-        if (cwt.audience == null || cwt.audience != publicContext)
-            throw OAuth2Exception(Errors.INVALID_PROOF, "audience invalid: ${cwt.audience}")
-                .also { Napier.w("client did provide invalid audience in CWT in proof: $header") }
-        return header.certificateChain?.firstOrNull()?.let { X509Certificate.decodeFromByteArray(it)?.publicKey }
-            ?: throw OAuth2Exception(Errors.INVALID_PROOF, "could not extract public key")
-                .also { Napier.w("client did provide no valid key in header in CWT in proof: $header") }
     }
 
     private fun extractFromCredentialConfigurationId(credentialConfigurationId: String): Pair<CredentialScheme, CredentialFormatEnum>? =
@@ -289,7 +249,7 @@ fun interface CredentialIssuerDataProvider {
     fun getCredential(
         userInfo: OidcUserInfoExtended,
         subjectPublicKey: CryptoPublicKey,
-        credentialScheme: ConstantIndex.CredentialScheme,
+        credentialScheme: CredentialScheme,
         representation: ConstantIndex.CredentialRepresentation,
         claimNames: Collection<String>?,
     ): KmmResult<CredentialToBeIssued>

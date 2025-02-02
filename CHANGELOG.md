@@ -18,6 +18,7 @@ Release 5.5.0:
    - Deprecate methods in `OpenId4VciClient` containing parameter for `requestedAttributes`
    - In `OpenId4VciClient.startProvisioningWithAuthRequest()` remove parameter `requestedAttributes`
    - In `OpenId4VciClient.loadCredentialWithOffer()` remove parameter `requestedAttributes`
+   - Remove proof type `cwt`, which has been removed from draft 14
 
 Release 5.4.3:
  - Fix property names for serialized RQES data classes
