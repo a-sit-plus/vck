@@ -11,7 +11,9 @@ Release 5.5.0:
  - Update implementation of [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) to draft 15:
    - Remove functionality to request issuance of certain claims only, as this has been dropped from OpenID4VCI entirely
    - Remove format-specific parameters in credential request, replacing with `credential_configuration_id`
-   - In credential response, replace single `credential` with array `credentials`, containing the `credential` itself, but issue both variants for now
+   - In the credential response (`CredentialResponseParameters`), replace single `credential` with array `credentials`, containing the `credential` itself, but issue both variants for now
+   - In the supported credential formats (`SupportedCredentialFormat`) of the issuer, use the new format for claim names
+   - In the authorization details (`OpenIdAuthorizationDetails`), use the new format for claim names
    - Deprecate `WalletService.RequestOptions.requestedAttributes`
    - Deprecate methods in `OpenId4VciClient` containing parameter for `requestedAttributes`
    - In `OpenId4VciClient.startProvisioningWithAuthRequest()` remove parameter `requestedAttributes`

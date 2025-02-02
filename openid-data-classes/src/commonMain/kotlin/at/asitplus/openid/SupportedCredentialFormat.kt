@@ -107,6 +107,8 @@ data class SupportedCredentialFormat private constructor(
     @SerialName("display")
     val display: Set<DisplayProperties>? = null,
 ) {
+    @Suppress("DEPRECATION")
+    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("claimDescription"))
     val isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>?
         get() = claims?.let {
             runCatching {
@@ -114,10 +116,19 @@ data class SupportedCredentialFormat private constructor(
             }.getOrNull()
         }
 
+    @Suppress("DEPRECATION")
+    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("claimDescription"))
     val sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>?
         get() = claims?.let {
             runCatching {
                 odcJsonSerializer.decodeFromJsonElement<Map<String, RequestedCredentialClaimSpecification>>(it)
+            }.getOrNull()
+        }
+
+    val claimDescription: Set<ClaimDescription>?
+        get() = claims?.let {
+            runCatching {
+                odcJsonSerializer.decodeFromJsonElement<Set<ClaimDescription>>(it)
             }.getOrNull()
         }
 
@@ -131,7 +142,7 @@ data class SupportedCredentialFormat private constructor(
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
             credentialDefinition: SupportedCredentialFormatDefinition? = null,
             docType: String,
-            isoClaims: Map<String, Map<String, RequestedCredentialClaimSpecification>>,
+            isoClaims: Set<ClaimDescription>,
             order: Set<String>? = null,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
@@ -155,7 +166,7 @@ data class SupportedCredentialFormat private constructor(
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
             credentialDefinition: SupportedCredentialFormatDefinition? = null,
             sdJwtVcType: String,
-            sdJwtClaims: Map<String, RequestedCredentialClaimSpecification>,
+            sdJwtClaims: Set<ClaimDescription>,
             order: Set<String>? = null,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(

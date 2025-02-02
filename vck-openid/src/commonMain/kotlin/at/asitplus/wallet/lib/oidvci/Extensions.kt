@@ -30,9 +30,9 @@ fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<Signature
             supportedSigningAlgorithms = cryptoAlgorithms
                 ?.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
                 ?.toSet(),
-            isoClaims = mapOf(
-                isoNamespace!! to claimNames.associateWith { RequestedCredentialClaimSpecification() }
-            )
+            isoClaims = claimNames.map {
+                ClaimDescription(path = listOf(isoNamespace!!) + it.split("."))
+            }.toSet()
         )
     } else null
     val jwtVc = if (supportsVcJwt) {
@@ -59,7 +59,9 @@ fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<Signature
             supportedSigningAlgorithms = cryptoAlgorithms
                 ?.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
                 ?.toSet(),
-            sdJwtClaims = claimNames.associateWith { RequestedCredentialClaimSpecification() }
+            sdJwtClaims = claimNames.map {
+                ClaimDescription(path = it.split("."))
+            }.toSet(),
         )
     } else null
     // Uses "dc+sd-jwt", supported since SD-JWT VC draft 06
@@ -72,7 +74,9 @@ fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<Signature
             supportedSigningAlgorithms = cryptoAlgorithms
                 ?.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
                 ?.toSet(),
-            sdJwtClaims = claimNames.associateWith { RequestedCredentialClaimSpecification() }
+            sdJwtClaims = claimNames.map {
+                ClaimDescription(path = it.split("."))
+            }.toSet(),
         )
     } else null
     return listOfNotNull(iso, jwtVc, sdJwt, sdJwtNewIdentifier).toMap()
