@@ -10,10 +10,13 @@ import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlin.random.Random
@@ -21,20 +24,70 @@ import kotlin.random.nextUInt
 
 class IssuerSignedItemSerializationTest : FreeSpec({
 
+    lateinit var elementId: String
+    lateinit var namespace: String
+
+    beforeEach {
+        namespace = uuid4().toString()
+        elementId = uuid4().toString()
+    }
+
     "serialization with String" {
-        val namespace = uuid4().toString()
-        val elementIdentifier = uuid4().toString()
         val item = IssuerSignedItem(
             digestId = Random.nextUInt(),
             random = Random.nextBytes(16),
-            elementIdentifier = elementIdentifier,
+            elementIdentifier = elementId,
             elementValue = uuid4().toString(),
         )
         val serialized = item.serialize(namespace)
         serialized.encodeToString(Base16(true)).shouldNotContain("D903EC")
-        val parsed = IssuerSignedItem.deserialize(serialized, "", elementIdentifier).getOrThrow()
+        val parsed = IssuerSignedItem.deserialize(serialized, "", elementId).getOrThrow()
 
         parsed shouldBe item
+    }
+
+    "serialization with Instant" {
+        CborCredentialSerializer.register(mapOf(elementId to Instant.serializer()), namespace)
+        val item = IssuerSignedItem(
+            digestId = Random.nextUInt(),
+            random = Random.nextBytes(16),
+            elementIdentifier = elementId,
+            elementValue = Clock.System.now(),
+        )
+
+        val serialized = item.serialize(namespace).also {
+            it.encodeToString(Base16()).shouldContain(
+                "656C656D656E7456616C7565" // "elementValue"
+                        + "C0" // tag(0)
+                        + "78" // text(..)
+            )
+        }
+
+        IssuerSignedItem.deserialize(serialized, namespace, elementId).getOrThrow().also {
+            it shouldBe item
+        }
+    }
+
+    "serialization with LocalDate" {
+        CborCredentialSerializer.register(mapOf(elementId to LocalDate.serializer()), namespace)
+        val item = IssuerSignedItem(
+            digestId = Random.nextUInt(),
+            random = Random.nextBytes(16),
+            elementIdentifier = elementId,
+            elementValue =  LocalDate.fromEpochDays(Random.nextInt(32768))
+        )
+
+        val serialized = item.serialize(namespace).also {
+            it.encodeToString(Base16()).shouldContain(
+                "656C656D656E7456616C7565" // "elementValue"
+                        + "D903EC" // tag(1004)
+                        + "6A" // text(10)
+            )
+        }
+
+        IssuerSignedItem.deserialize(serialized, namespace, elementId).getOrThrow().also {
+            it shouldBe item
+        }
     }
 
     "document serialization with ByteArray" {

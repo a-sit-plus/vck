@@ -12,7 +12,7 @@ Release 5.4.0:
 - Add DCQL Query library in module `openid-data-classes`
   - module `vck` now depends on this module because of dcql queries
 - `AuthenticationRequestParameters`:
-  - Add member `dcqlQuery
+  - Add member `dcqlQuery`
 - `CredentialFormatEnum`:
   - Add method `coerceDeprecations` to coerce deprecated `VC_SD_JWT` to `DC_SD_JWT`
 - `Holder`
@@ -34,7 +34,8 @@ Release 5.4.0:
   - Added validation support for DCQL presentations
 - `RequestOptions`:
   - Added member `presentationMechanism` to explicitly select DCQL or PresentationExchange
-  - 
+- Improve support for ISO mDocs:
+  - In `IssuerSignedItem`, tag `Instant` values with CBOR tag `0`, and `LocalDate` with CBOR tag `1004`
 
 Release 5.3.1:
 - Add optional parameter `issuerUri` to `ClientIdScheme.PreRegistered`
