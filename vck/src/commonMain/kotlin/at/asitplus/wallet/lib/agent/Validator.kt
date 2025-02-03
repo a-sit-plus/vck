@@ -26,6 +26,7 @@ import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -330,7 +331,7 @@ class Validator(
     private fun ByteStringWrapper<IssuerSignedItem>.verify(mdlItems: ValueDigestList?): Boolean {
         val issuerHash = mdlItems?.entries?.firstOrNull { it.key == value.digestId }
             ?: return false
-        val verifierHash = serialized.wrapInCborTag(24).sha256()
+        val verifierHash = vckCborSerializer.encodeToByteArray(ByteArraySerializer(), serialized).wrapInCborTag(24).sha256()
         if (!verifierHash.contentEquals(issuerHash.value)) {
             Napier.w("Could not verify hash of value for ${value.elementIdentifier}")
             return false

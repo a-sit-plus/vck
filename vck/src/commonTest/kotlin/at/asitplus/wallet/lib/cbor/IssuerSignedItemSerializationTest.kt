@@ -1,9 +1,7 @@
 package at.asitplus.wallet.lib.cbor
 
 import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.cosef.CoseAlgorithm
-import at.asitplus.signum.indispensable.cosef.CoseHeader
-import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.wallet.lib.iso.*
 import com.benasher44.uuid.uuid4
@@ -18,10 +16,12 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
+@OptIn(ExperimentalSerializationApi::class)
 class IssuerSignedItemSerializationTest : FreeSpec({
 
     lateinit var elementId: String
@@ -40,7 +40,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             elementValue = uuid4().toString(),
         )
         val serialized = item.serialize(namespace)
-        serialized.encodeToString(Base16(true)).shouldNotContain("D903EC")
+        serialized.encodeToString(Base16()).shouldNotContain("D903EC")
         val parsed = IssuerSignedItem.deserialize(serialized, "", elementId).getOrThrow()
 
         parsed shouldBe item
@@ -57,7 +57,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
 
         val serialized = item.serialize(namespace).also {
             it.encodeToString(Base16()).shouldContain(
-                "656C656D656E7456616C7565" // "elementValue"
+                "elementValue".toHex()
                         + "C0" // tag(0)
                         + "78" // text(..)
             )
@@ -74,12 +74,12 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             digestId = Random.nextUInt(),
             random = Random.nextBytes(16),
             elementIdentifier = elementId,
-            elementValue =  LocalDate.fromEpochDays(Random.nextInt(32768))
+            elementValue = LocalDate.fromEpochDays(Random.nextInt(32768))
         )
 
         val serialized = item.serialize(namespace).also {
             it.encodeToString(Base16()).shouldContain(
-                "656C656D656E7456616C7565" // "elementValue"
+                "elementValue".toHex()
                         + "D903EC" // tag(1004)
                         + "6A" // text(10)
             )
@@ -91,20 +91,36 @@ class IssuerSignedItemSerializationTest : FreeSpec({
     }
 
     "document serialization with ByteArray" {
-        val elementId = uuid4().toString()
-        val namespace = uuid4().toString()
         CborCredentialSerializer.register(mapOf(elementId to ByteArraySerializer()), namespace)
+        val digestId = 13u
         val item = IssuerSignedItem(
-            digestId = Random.nextUInt(),
+            digestId = digestId,
             random = Random.nextBytes(16),
             elementIdentifier = elementId,
             elementValue = Random.nextBytes(32),
         )
         val protectedHeader = CoseHeader(algorithm = CoseAlgorithm.RS256)
+        val mso = MobileSecurityObject(
+            version = "1.0",
+            digestAlgorithm = "SHA-256",
+            valueDigests = mapOf(
+                namespace to ValueDigestList(
+                    listOf(ValueDigest.fromIssuerSignedItem(item, namespace))
+                )
+            ),
+            deviceKeyInfo = DeviceKeyInfo(
+                CoseKey(
+                    CoseKeyType.EC2,
+                    keyParams = CoseKeyParams.EcYBoolParams(CoseEllipticCurve.P256)
+                )
+            ),
+            docType = namespace,
+            validityInfo = ValidityInfo(Clock.System.now(), Clock.System.now(), Clock.System.now()),
+        )
         val issuerAuth = CoseSigned.create(
             protectedHeader,
             null,
-            null,
+            mso,
             CryptoSignature.RSAorHMAC(byteArrayOf()),
             MobileSecurityObject.serializer()
         )
@@ -119,12 +135,37 @@ class IssuerSignedItemSerializationTest : FreeSpec({
                 DeviceAuth()
             )
         )
-        val serialized = doc.serialize()
-        serialized.encodeToString(Base16(true)).shouldNotContain("D903EC")
+        val serialized = doc.serialize().also {
+            it.encodeToString(Base16()).also {
+                println(it)
+                it.shouldNotContain("D903EC")
+                val itemBytes = vckCborSerializer
+                    .encodeToByteArray(ByteArraySerializer(), item.serialize(namespace))
+                it.shouldContain( // inside the document
+                    "nameSpaces".toHex()
+                            + "A1" // map(1)
+                            + "7824" // text(36)
+                            + namespace.toHex()
+                            + "81" // array(1)
+                            + "D818" // tag(24)
+                            + itemBytes.encodeToString(Base16())
+                )
+                // important here is wrapping in D818 before hashing it!
+                val itemHash = itemBytes
+                    .wrapInCborTag(24).sha256()
+                it.shouldContain( // inside the mso
+                    namespace.toHex()
+                            + "A1" // map(1)
+                            + "0D" // unsigned 13, the digestId
+                            + "5820" // bytes(32)
+                            + itemHash.encodeToString(Base16())
+                )
+            }
+        }
 
-        val parsed = Document.deserialize(serialized).getOrThrow()
-
-        parsed shouldBe doc
+        Document.deserialize(serialized).getOrThrow().also {
+            it shouldBe doc
+        }
     }
 
     "deserialize IssuerSigned from EUDI Ref Impl" {
@@ -194,3 +235,5 @@ class IssuerSignedItemSerializationTest : FreeSpec({
     }
 
 })
+
+private fun String.toHex(): String = encodeToByteArray().encodeToString(Base16())
