@@ -17,8 +17,14 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CreatePresentationResult
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.PresentationException
+import at.asitplus.wallet.lib.agent.PresentationExchangeCredentialDisclosure
+import at.asitplus.wallet.lib.agent.PresentationRequestParameters
+import at.asitplus.wallet.lib.agent.PresentationResponseParameters
 import at.asitplus.wallet.lib.cbor.CoseService
+import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
@@ -41,28 +47,16 @@ internal class PresentationFactory(
     private val jwsService: JwsService,
     private val coseService: CoseService,
 ) {
-    suspend fun createPresentationExchangePresentation(
+    suspend fun createPresentation(
         holder: Holder,
         request: RequestParameters,
         nonce: String,
         audience: String,
-        presentationDefinition: PresentationDefinition,
         clientMetadata: RelyingPartyMetadata?,
-        inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
         jsonWebKeys: Collection<JsonWebKey>?,
+        credentialPresentation: CredentialPresentation,
     ): KmmResult<PresentationResponseParameters> = catching {
         request.verifyResponseType()
-        val credentialSubmissions = inputDescriptorSubmissions
-            ?: holder.matchInputDescriptorsAgainstCredentialStore(
-                inputDescriptors = presentationDefinition.inputDescriptors,
-                fallbackFormatHolder = clientMetadata?.vpFormats,
-            ).getOrThrow().toDefaultSubmission()
-
-        presentationDefinition.validateSubmission(
-            holder = holder,
-            clientMetadata = clientMetadata,
-            credentialSubmissions = credentialSubmissions
-        )
 
         val responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsEncryption() == true
         val clientId = request.clientId
@@ -76,16 +70,22 @@ internal class PresentationFactory(
                 calcDeviceSignature(responseWillBeEncrypted, clientId, responseUrl, nonce, docType)
             }
         )
+
         holder.createPresentation(
             request = vpRequestParams,
-            presentationDefinitionId = presentationDefinition.id,
-            presentationSubmissionSelection = credentialSubmissions,
+            credentialPresentation = credentialPresentation,
         ).getOrElse {
             Napier.w("Could not create presentation", it)
             throw OAuth2Exception(Errors.USER_CANCELLED, it)
-        }.also { container ->
+        }.also { presentation ->
             clientMetadata?.vpFormats?.let {
-                container.verifyFormatSupport(it)
+                when (presentation) {
+                    is PresentationResponseParameters.DCQLParameters -> presentation.verifyFormatSupport(it)
+
+                    is PresentationResponseParameters.PresentationExchangeParameters -> {
+                        presentation.verifyFormatSupport(it)
+                    }
+                }
             }
         }
     }
@@ -213,7 +213,7 @@ internal class PresentationFactory(
     private fun PresentationDefinition.validateSubmission(
         holder: Holder,
         clientMetadata: RelyingPartyMetadata?,
-        credentialSubmissions: Map<String, CredentialSubmission>,
+        credentialSubmissions: Map<String, PresentationExchangeCredentialDisclosure>,
     ) {
         val validator = PresentationSubmissionValidator.createInstance(this).getOrThrow()
         if (!validator.isValidSubmission(credentialSubmissions.keys)) {
@@ -257,11 +257,27 @@ internal class PresentationFactory(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun PresentationResponseParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
+    private fun PresentationResponseParameters.PresentationExchangeParameters.verifyFormatSupport(
+        supportedFormats: FormatHolder,
+    ) =
         presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
             if (supportedFormats.isMissingFormatSupport(descriptor.format)) {
                 Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
                 throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED, "incompatible algorithms")
+            }
+        }
+
+    @Throws(OAuth2Exception::class)
+    private fun PresentationResponseParameters.DCQLParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
+        verifiablePresentations.entries.mapIndexed { _, descriptor ->
+            val format = when (verifiablePresentations.entries.first().value) {
+                is CreatePresentationResult.DeviceResponse -> ClaimFormat.MSO_MDOC
+                is CreatePresentationResult.SdJwt -> ClaimFormat.JWT_SD
+                is CreatePresentationResult.Signed -> ClaimFormat.JWT_VP
+            }
+            if (supportedFormats.isMissingFormatSupport(format)) {
+                Napier.w("Incompatible JWT algorithms for claim format $format: $supportedFormats")
+                throw OAuth2Exception(OpenIdConstants.Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
             }
         }
 

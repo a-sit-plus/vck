@@ -1,7 +1,8 @@
-import at.asitplus.gradle.*
+
 
 import at.asitplus.gradle.commonImplementationAndApiDependencies
 import at.asitplus.gradle.exportIosFramework
+import at.asitplus.gradle.setupAndroid
 import at.asitplus.gradle.setupDokka
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
@@ -36,6 +37,7 @@ kotlin {
         commonMain {
             dependencies {
                 api(project(":dif-data-classes"))
+                api(project(":openid-data-classes"))
                 commonImplementationAndApiDependencies()
             }
         }

@@ -1,5 +1,7 @@
 package at.asitplus.openid.dcql
 
+import at.asitplus.KmmResult
+import at.asitplus.catching
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -18,5 +20,11 @@ data class DCQLSdJwtCredentialMetadataAndValidityConstraints(
 ) : DCQLCredentialMetadataAndValidityConstraints {
     object SerialNames {
         const val VCT_VALUES = "vct_values"
+    }
+
+    fun validate(actualCredentialType: String?): KmmResult<Unit> = catching {
+        if(vctValues != null && actualCredentialType !in vctValues) {
+            throw IllegalArgumentException("Incompatible MDOC document type.")
+        }
     }
 }

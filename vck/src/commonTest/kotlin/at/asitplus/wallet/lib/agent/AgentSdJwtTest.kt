@@ -1,14 +1,24 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dif.Constraint
 import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.openid.CredentialFormatEnum
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
+import at.asitplus.openid.dcql.DCQLClaimsQueryList
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
+import at.asitplus.openid.dcql.DCQLQuery
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
@@ -83,26 +93,6 @@ class AgentSdJwtTest : FreeSpec({
         ).getOrThrow()
     }
 
-    "simple walk-through success" {
-        val presentationParameters = holder.createPresentation(
-            request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-            presentationDefinition = buildPresentationDefinition(
-                CLAIM_GIVEN_NAME,
-                CLAIM_DATE_OF_BIRTH
-            )
-        ).getOrThrow()
-
-        val vp = presentationParameters.presentationResults.firstOrNull()
-            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
-
-        val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-
-        verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
-        verified.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
-        verified.isRevoked shouldBe false
-    }
-
     "keyBindingJws contains more JWK attributes, still verifies" {
         val credential = holderCredentialStore.getCredentials().getOrThrow()
             .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>().first()
@@ -120,55 +110,186 @@ class AgentSdJwtTest : FreeSpec({
         verified.isRevoked shouldBe false
     }
 
-    "wrong key binding jwt" {
-        val presentationParameters = holder.createPresentation(
-            request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-            presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
-        ).getOrThrow()
+    "when using presentation exchange" - {
+        "simple walk-through success" {
+            val presentationParameters = holder.createPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                presentationDefinition = buildPresentationDefinition(
+                    CLAIM_GIVEN_NAME,
+                    CLAIM_DATE_OF_BIRTH
+                )
+            ).getOrThrow()
 
-        val vp = presentationParameters.presentationResults.firstOrNull()
-            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
-        // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
-        val freshKbJwt = createFreshSdJwtKeyBinding(challenge, verifierId)
-        val malformedVpSdJwt = vp.serialized.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
+            val vp = presentationParameters.presentationResults.firstOrNull()
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-        verifier.verifyPresentationSdJwt(SdJwtSigned.parse(malformedVpSdJwt)!!, challenge)
-            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
+            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+
+            verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
+            verified.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
+            verified.isRevoked shouldBe false
+        }
+
+        "wrong key binding jwt" {
+            val presentationParameters = holder.createPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
+            ).getOrThrow()
+
+            val vp = presentationParameters.presentationResults.firstOrNull()
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+            // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
+            val freshKbJwt = createFreshSdJwtKeyBinding(challenge, verifierId)
+            val malformedVpSdJwt = vp.serialized.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
+
+            verifier.verifyPresentationSdJwt(SdJwtSigned.parse(malformedVpSdJwt)!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
+        }
+
+        "wrong challenge in key binding jwt" {
+            val malformedChallenge = challenge.reversed()
+            val presentationParameters = holder.createPresentation(
+                request = PresentationRequestParameters(malformedChallenge, verifierId),
+                presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
+            ).getOrThrow()
+
+            val vp = presentationParameters.presentationResults.firstOrNull()
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
+        }
+
+        "revoked sd jwt" {
+            val presentationParameters = holder.createPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
+            ).getOrThrow()
+
+            val vp = presentationParameters.presentationResults.firstOrNull()
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+            val listOfJwtId = holderCredentialStore.getCredentials().getOrThrow()
+                .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
+                .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
+            issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
+            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+            verified.isRevoked shouldBe true
+        }
     }
 
-    "wrong challenge in key binding jwt" {
-        val malformedChallenge = challenge.reversed()
-        val presentationParameters = holder.createPresentation(
-            request = PresentationRequestParameters(nonce = malformedChallenge, audience = verifierId),
-            presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
-        ).getOrThrow()
+    "when using dcql" - {
+        "simple walk-through success" {
+            val presentationParameters = holder.createDefaultPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                    dcqlQuery = buildDCQLQuery(
+                        DCQLJsonClaimsQuery(
+                            path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
+                        ),
+                        DCQLJsonClaimsQuery(
+                            path = DCQLClaimsPathPointer(CLAIM_DATE_OF_BIRTH),
+                        ),
+                    )
+                )
+            ).getOrThrow() as PresentationResponseParameters.DCQLParameters
 
-        val vp = presentationParameters.presentationResults.firstOrNull()
-            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
-        verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
+            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+
+            verified.reconstructedJsonObject[CLAIM_GIVEN_NAME]?.jsonPrimitive?.content shouldBe "Susanne"
+            verified.reconstructedJsonObject[CLAIM_DATE_OF_BIRTH]?.jsonPrimitive?.content shouldBe "1990-01-01"
+            verified.isRevoked shouldBe false
+        }
+
+        "wrong key binding jwt" {
+            val presentationParameters = holder.createDefaultPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                    buildDCQLQuery(
+                        DCQLJsonClaimsQuery(
+                            path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
+                        )
+                    ),
+                ),
+            ).getOrThrow() as PresentationResponseParameters.DCQLParameters
+
+            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+            // replace key binding of original vp.sdJwt (i.e. the part after the last `~`)
+            val freshKbJwt = createFreshSdJwtKeyBinding(challenge, verifierId)
+            val malformedVpSdJwt =
+                vp.serialized.replaceAfterLast("~", freshKbJwt.substringAfterLast("~"))
+
+            verifier.verifyPresentationSdJwt(SdJwtSigned.parse(malformedVpSdJwt)!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
+        }
+
+        "wrong challenge in key binding jwt" {
+            val malformedChallenge = challenge.reversed()
+            val presentationParameters = holder.createDefaultPresentation(
+                request = PresentationRequestParameters(
+                    nonce = malformedChallenge,
+                    audience = verifierId
+                ),
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                    dcqlQuery = buildDCQLQuery(
+                        DCQLJsonClaimsQuery(
+                            path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
+                        )
+                    ),
+                )
+            ).getOrThrow() as PresentationResponseParameters.DCQLParameters
+
+            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+            verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.ValidationError>()
+        }
+
+        "revoked sd jwt" {
+            val presentationParameters = holder.createDefaultPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
+                    dcqlQuery = buildDCQLQuery(
+                        DCQLJsonClaimsQuery(
+                            path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
+                        )
+                    ),
+                )
+            ).getOrThrow() as PresentationResponseParameters.DCQLParameters
+
+            val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
+                .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
+
+            val listOfJwtId = holderCredentialStore.getCredentials().getOrThrow()
+                .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
+                .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
+            issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
+            val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
+                .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
+            verified.isRevoked shouldBe true
+        }
     }
-
-    "revoked sd jwt" {
-        val presentationParameters = holder.createPresentation(
-            request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-            presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
-        ).getOrThrow()
-
-        val vp = presentationParameters.presentationResults.firstOrNull()
-            .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
-
-        val listOfJwtId = holderCredentialStore.getCredentials().getOrThrow()
-            .filterIsInstance<SubjectCredentialStore.StoreEntry.SdJwt>()
-            .associate { it.sdJwt.jwtId!! to it.sdJwt.notBefore!! }
-        issuer.revokeCredentialsWithId(listOfJwtId) shouldBe true
-        val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
-            .shouldBeInstanceOf<Verifier.VerifyPresentationResult.SuccessSdJwt>()
-        verified.isRevoked shouldBe true
-    }
-
 })
+
+private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuery(
+    credentials = DCQLCredentialQueryList(
+        DCQLSdJwtCredentialQuery(
+            id = DCQLCredentialQueryIdentifier(uuid4().toString()),
+            format = CredentialFormatEnum.VC_SD_JWT,
+            claims = DCQLClaimsQueryList(
+                claimsQueries.toList().toNonEmptyList(),
+            )
+        )
+    )
+)
 
 private fun buildPresentationDefinition(vararg attributeName: String) = PresentationDefinition(
     id = uuid4().toString(),

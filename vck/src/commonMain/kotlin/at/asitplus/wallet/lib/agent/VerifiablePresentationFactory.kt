@@ -4,6 +4,9 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
+import at.asitplus.openid.dcql.DCQLClaimsQueryResult
+import at.asitplus.openid.dcql.DCQLCredentialQueryMatchingResult
+import at.asitplus.openid.third_party.at.asitplus.jsonpath.core.plus
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
@@ -12,7 +15,13 @@ import at.asitplus.wallet.lib.data.KeyBindingJws
 import at.asitplus.wallet.lib.data.VerifiablePresentation
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.iso.DeviceAuth
+import at.asitplus.wallet.lib.iso.DeviceNameSpaces
+import at.asitplus.wallet.lib.iso.DeviceResponse
+import at.asitplus.wallet.lib.iso.DeviceSigned
+import at.asitplus.wallet.lib.iso.Document
+import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.jws.SdJwtSigned
@@ -46,6 +55,57 @@ class VerifiablePresentationFactory(
                 request = request,
                 credential = credential,
                 requestedClaims = disclosedAttributes,
+            )
+        }
+    }
+
+    suspend fun createVerifiablePresentation(
+        request: PresentationRequestParameters,
+        credential: SubjectCredentialStore.StoreEntry,
+        disclosedAttributes: DCQLCredentialQueryMatchingResult,
+    ): KmmResult<CreatePresentationResult> = catching {
+        when (credential) {
+            is SubjectCredentialStore.StoreEntry.Vc -> if (disclosedAttributes !is DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult) {
+                throw IllegalArgumentException("Credential type only allows disclosure of all attributes.")
+            } else createVcPresentation(
+                request = request,
+                validCredentials = listOf(credential.vcSerialized),
+            )
+
+            is SubjectCredentialStore.StoreEntry.SdJwt -> createSdJwtPresentation(
+                request = request,
+                validSdJwtCredential = credential,
+                requestedClaims = when (disclosedAttributes) {
+                    DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult -> credential.disclosures.entries.map {
+                        NormalizedJsonPath() + it.value!!.claimName!!
+                    }
+
+                    is DCQLCredentialQueryMatchingResult.ClaimsQueryResults -> disclosedAttributes.claimsQueryResults.map {
+                        it as DCQLClaimsQueryResult.JsonResult
+                    }.map {
+                        it.nodeList.map {
+                            it.normalizedJsonPath
+                        }
+                    }.flatten()
+                },
+            )
+
+            is SubjectCredentialStore.StoreEntry.Iso -> createIsoPresentation(
+                request = request,
+                credential = credential,
+                requestedClaims = when (disclosedAttributes) {
+                    DCQLCredentialQueryMatchingResult.AllClaimsMatchingResult -> credential.issuerSigned.namespaces!!.entries.flatMap { namespace ->
+                        namespace.value.entries.map {
+                            NormalizedJsonPath() + namespace.key + it.value.elementIdentifier
+                        }
+                    }
+
+                    is DCQLCredentialQueryMatchingResult.ClaimsQueryResults -> disclosedAttributes.claimsQueryResults.map {
+                        it as DCQLClaimsQueryResult.IsoMdocResult
+                    }.map {
+                        NormalizedJsonPath() + it.namespace + it.claimName
+                    }
+                },
             )
         }
     }
@@ -127,7 +187,10 @@ class VerifiablePresentationFactory(
         requestedClaims: Collection<NormalizedJsonPath>,
     ): CreatePresentationResult.SdJwt {
         val filteredDisclosures = requestedClaims
-            .flatMap { it.segments }
+            .flatMap {
+                // TODO: this feels wrong, each path should represent a single attribute to be disclosed
+                it.segments
+            }
             .filterIsInstance<NormalizedJsonPathSegment.NameSegment>()
             .mapNotNull { claim ->
                 validSdJwtCredential.disclosures.entries.firstOrNull { it.value?.claimName == claim.memberName }?.key

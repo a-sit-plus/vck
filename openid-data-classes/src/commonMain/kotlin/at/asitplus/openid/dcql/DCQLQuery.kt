@@ -72,22 +72,6 @@ data class DCQLQuery(
         credentialClaimStructureExtractor = credentialClaimStructureExtractor,
     )
 
-    fun <Credential : Any> findCredentialQueryMatches(
-        availableCredentials: List<Credential>,
-        credentialFormatExtractor: (Credential) -> CredentialFormatEnum,
-        mdocCredentialDoctypeExtractor: (Credential) -> String,
-        sdJwtCredentialTypeExtractor: (Credential) -> String,
-        credentialClaimStructureExtractor: (Credential) -> DCQLCredentialClaimStructure,
-    ): Map<DCQLCredentialQueryIdentifier, List<DCQLCredentialSubmissionOption<Credential>>> =
-        Procedures.findCredentialQueryMatches(
-            credentialQueries = credentials,
-            availableCredentials = availableCredentials,
-            credentialFormatExtractor = credentialFormatExtractor,
-            mdocCredentialDoctypeExtractor = mdocCredentialDoctypeExtractor,
-            sdJwtCredentialTypeExtractor = sdJwtCredentialTypeExtractor,
-            credentialClaimStructureExtractor = credentialClaimStructureExtractor,
-        )
-
     object Procedures {
         /**
          *  6.3.1.2. Selecting Credentials
@@ -172,12 +156,12 @@ data class DCQLQuery(
                     credentialSetQuery.copy(
                         options = credentialSetQuery.options.filter { option ->
                             option.all {
-                                it in credentialQueryMatches
+                                credentialQueryMatches[it]?.isNotEmpty() == true
                             }
                         }.toNonEmptyList()
                     )
                 }.getOrElse {
-                    if(credentialSetQuery.required) {
+                    if (credentialSetQuery.required) {
                         throw IllegalArgumentException("Required credential set query is not satisfiable.", it)
                     }
                     null

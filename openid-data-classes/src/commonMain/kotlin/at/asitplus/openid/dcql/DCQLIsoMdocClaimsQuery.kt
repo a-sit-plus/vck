@@ -71,7 +71,7 @@ data class DCQLIsoMdocClaimsQuery(
         credentialQuery: DCQLCredentialQuery,
         credential: Credential,
         credentialStructureExtractor: (Credential) -> DCQLCredentialClaimStructure.IsoMdocStructure,
-    ): KmmResult<DCQLClaimsQueryResult> = catching {
+    ): KmmResult<DCQLClaimsQueryResult.IsoMdocResult> = catching {
         if (credentialQuery.format != CredentialFormatEnum.MSO_MDOC) {
             throw IllegalArgumentException("Inconsistent credential format and claim query")
         }
@@ -82,15 +82,15 @@ data class DCQLIsoMdocClaimsQuery(
             catching {
                 when (it) {
                     is DCQLExpectedClaimValue.IntegerValue -> when (value) {
-                        is Byte -> value == it.long
-                        is UByte -> value == it.long
-                        is Short -> value == it.long
-                        is UShort -> value == it.long
-                        is Int -> value == it.long
-                        is UInt -> value == it.long
-                        is Long -> value == it.long
-                        is ULong -> value == it.long
-                        is BigInteger -> value == it.long
+                        is Byte -> value.toLong() == it.long
+                        is UByte -> value.toLong() == it.long
+                        is Short -> value.toLong() == it.long
+                        is UShort -> value.toLong() == it.long
+                        is Int -> value.toLong() == it.long
+                        is UInt -> value.toLong() == it.long
+                        is Long -> value.toLong() == it.long
+                        is ULong -> value.toLong() == it.long
+                        is BigInteger -> value == BigInteger(it.long)
                         else -> false
                     }
 
