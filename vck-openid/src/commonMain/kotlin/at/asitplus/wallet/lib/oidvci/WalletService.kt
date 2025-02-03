@@ -159,9 +159,35 @@ class WalletService(
         OpenIdAuthorizationDetails(
             credentialConfigurationId = it,
             locations = authorizationServers,
-            // Not supporting different credential datasets for one credential configuration at the moment,
-            // so we'll just use the `credentialConfigurationId`, see OID4VCI 6.2
-            credentialIdentifiers = setOf(it)
+        )
+    }.toSet()
+
+    /**
+     * Build authorization details for use in [OAuth2Client.createAuthRequest].
+     *
+     * @param requestOptions which credentials to request, to build [OpenIdAuthorizationDetails.format] and other
+     * properties like [OpenIdAuthorizationDetails.sdJwtVcType]
+     * @param authorizationServers from [IssuerMetadata.authorizationServers]
+     */
+    fun buildAuthorizationDetails(
+        requestOptions: RequestOptions,
+        authorizationServers: Set<String>? = null,
+    ) = buildAuthorizationDetails(setOf(requestOptions), authorizationServers)
+
+    /**
+     * Build authorization details for use in [OAuth2Client.createAuthRequest].
+     *
+     * @param requestOptions which credentials to request, to build [OpenIdAuthorizationDetails.format] and other
+     * properties like [OpenIdAuthorizationDetails.sdJwtVcType]
+     * @param authorizationServers from [IssuerMetadata.authorizationServers]
+     */
+    fun buildAuthorizationDetails(
+        requestOptions: Set<RequestOptions>,
+        authorizationServers: Set<String>? = null,
+    ) = requestOptions.map {
+        OpenIdAuthorizationDetails(
+            format = it.representation.toFormat(),
+            locations = authorizationServers,
         )
     }.toSet()
 
@@ -197,6 +223,59 @@ class WalletService(
             @Deprecated("Removed in OID4VCI draft 15")
             val requestedAttributes: Set<String>? = null,
         ) : CredentialRequestInput()
+    }
+
+    /**
+     * Send the result as JSON-serialized content to the server at `/credential` (or more specific
+     * [IssuerMetadata.credentialEndpointUrl]).
+     *
+     * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
+     * see [TokenResponseParameters.toHttpHeaderValue].
+     *
+     * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
+     * see [JwsService.buildDPoPHeader].
+     *
+     * See [OAuth2Client.createTokenRequestParameters].
+     *
+     * Sample ktor code:
+     * ```
+     * val tokenResponse = ...
+     * val credentialRequest = client.createCredentialRequest(
+     *     tokenResponse = tokenResponse,
+     *     credentialIssuer = issuerMetadata.credentialIssuer
+     * ).getOrThrow()
+     *
+     * val credentialResponse = httpClient.post(issuerMetadata.credentialEndpointUrl) {
+     *     setBody(credentialRequest)
+     *     headers {
+     *         append(HttpHeaders.Authorization, tokenResponse.toHttpHeaderValue())
+     *     }
+     * }
+     * ```
+     *
+     * @param tokenResponse from the authorization server token endpoint
+     * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
+     */
+    suspend fun createCredentialRequest(
+        tokenResponse: TokenResponseParameters,
+        credentialIssuer: String?,
+        clock: Clock = Clock.System,
+    ): KmmResult<Collection<CredentialRequestParameters>> = catching {
+        val requests = tokenResponse.authorizationDetails?.let {
+            it.filterIsInstance<OpenIdAuthorizationDetails>().flatMap {
+                require(it.credentialIdentifiers != null) { "credential_identifiers are null" }
+                it.credentialIdentifiers!!.map {
+                    CredentialRequestParameters(credentialIdentifier = it)
+                }
+            }
+        } ?: tokenResponse.scope?.let {
+            setOf(CredentialRequestParameters(credentialConfigurationId = it))
+        } ?: throw IllegalArgumentException("Can't parse tokenResponse: $tokenResponse")
+        requests.map {
+            it.copy(proof = createCredentialRequestProof(tokenResponse.clientNonce, credentialIssuer, clock))
+        }.also {
+            Napier.i("createCredentialRequest returns $it")
+        }
     }
 
     /**
@@ -302,6 +381,7 @@ class WalletService(
             credentialConfigurationId = scope, // TODO verify
         )
 }
+
 
 /**
  * To be set as header `DPoP` in making request to [url],
