@@ -19,19 +19,21 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.plus
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.seconds
 
 suspend fun X509Certificate.Companion.generateSelfSignedCertificate(
     publicKey: CryptoPublicKey,
     algorithm: X509SignatureAlgorithm,
+    lifetimeInSeconds: Long = 30,
     extensions: List<X509CertificateExtension> = listOf(),
     signer: suspend (ByteArray) -> KmmResult<CryptoSignature>,
 ): KmmResult<X509Certificate> = catching {
     Napier.d { "Generating self-signed Certificate" }
     val notBeforeDate = Clock.System.now()
-    val notAfterDate = notBeforeDate.plus(30, DateTimeUnit.SECOND)
+    val notAfterDate = notBeforeDate.plus(lifetimeInSeconds, DateTimeUnit.SECOND)
     val tbsCertificate = TbsCertificate(
         version = 2,
-        serialNumber = Random.nextBytes(8),
+        serialNumber = byteArrayOf(1),
         issuerName = listOf(
             RelativeDistinguishedName(
                 AttributeTypeAndValue.CommonName(

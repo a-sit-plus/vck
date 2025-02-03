@@ -1,6 +1,7 @@
 package at.asitplus.wallet.lib.iso
 
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import kotlinx.serialization.encodeToByteArray
 
 /**
  * Convenience class with a custom serializer ([IssuerSignedListSerializer]) to prevent
@@ -36,7 +37,10 @@ data class IssuerSignedList(
          */
         fun fromIssuerSignedItems(items: List<IssuerSignedItem>, namespace: String) =
             IssuerSignedList(items.map { item ->
-                ByteStringWrapper(item, item.serialize(namespace).wrapInCborTag(24))
+                ByteStringWrapper(
+                    item,
+                    vckCborSerializer.encodeToByteArray(item.serialize(namespace)).wrapInCborTag(24)
+                )
             })
     }
 }

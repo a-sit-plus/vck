@@ -57,7 +57,7 @@ open class IssuerSignedItemSerializer(private val namespace: String, private val
     }
 
     private fun Any.annotations() =
-        if (this is LocalDate || this is Instant) {
+        if (this is LocalDate) {
             @OptIn(ExperimentalUnsignedTypes::class)
             listOf(ValueTags(1004uL))
         } else {

@@ -35,6 +35,7 @@ interface KeyMaterial : Signer {
 abstract class KeyWithSelfSignedCert(
     private val extensions: List<X509CertificateExtension>,
     val customKeyId: String? = null,
+    val lifetimeInSeconds: Long = 30,
 ) : KeyMaterial {
     override val identifier: String get() = customKeyId ?: publicKey.didEncoded
     private val crtMut = Mutex()
@@ -45,7 +46,8 @@ abstract class KeyWithSelfSignedCert(
             if (_certificate == null) _certificate = X509Certificate.generateSelfSignedCertificate(
                 publicKey,
                 signatureAlgorithm.toX509SignatureAlgorithm().getOrThrow(),
-                extensions
+                lifetimeInSeconds = lifetimeInSeconds,
+                extensions = extensions,
             ) {
                 sign(it).asKmmResult()
             }.onFailure { Napier.e("Could not self-sign Cert", it) }.getOrNull()
@@ -66,7 +68,8 @@ class EphemeralKeyWithSelfSignedCert(
     }.getOrThrow(),
     extensions: List<X509CertificateExtension> = listOf(),
     customKeyId: String? = null,
-) : KeyWithSelfSignedCert(extensions, customKeyId), Signer by key.signer().getOrThrow() {
+    lifetimeInSeconds: Long = 30,
+) : KeyWithSelfSignedCert(extensions, customKeyId, lifetimeInSeconds), Signer by key.signer().getOrThrow() {
     override fun getUnderLyingSigner(): Signer = key.signer().getOrThrow()
 }
 

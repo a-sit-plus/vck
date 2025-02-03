@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.odcJsonSerializer
 import at.asitplus.wallet.lib.agent.CredentialSubmission
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.HolderAgent
@@ -30,6 +31,8 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Implements the wallet side of
@@ -179,6 +182,7 @@ data class OpenId4VpSuccess(
 private suspend fun HttpResponse.extractRedirectUri(): String? =
     headers[HttpHeaders.Location]?.let {
         it.ifEmpty { null }
-    } ?: runCatching { body<OpenId4VpSuccess>() }.getOrNull()?.let {
-        it.redirectUri.ifEmpty { null }
+    } ?: runCatching { body<String>() }.getOrNull()?.let {
+        runCatching { odcJsonSerializer.decodeFromString<JsonObject>(it) }.getOrNull()
+            ?.get("redirect_uri")?.jsonPrimitive?.content
     }
