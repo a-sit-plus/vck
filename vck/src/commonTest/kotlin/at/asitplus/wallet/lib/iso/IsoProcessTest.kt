@@ -222,9 +222,9 @@ class Verifier {
     ) {
         val issuerSignedItem = issuerSignedItems.entries.first { it.value.elementIdentifier == key }
         //val elementValue = issuerSignedItem.value.elementValue.toString().shouldNotBeNull()
-        val issuerHash = mdlItems.entries.first { it.key == issuerSignedItem.value.digestId }.shouldNotBeNull()
+        val issuerHash = mdlItems.entries.first { it.key == issuerSignedItem.value.digestId }.shouldNotBeNull().value
         val verifierHash = issuerSignedItem.serialized.sha256()
-        verifierHash.encodeToString(Base16(true)) shouldBe issuerHash.value.encodeToString(Base16(true))
+        verifierHash.encodeToString(Base16(true)) shouldBe issuerHash.encodeToString(Base16(true))
     }
 }
 
