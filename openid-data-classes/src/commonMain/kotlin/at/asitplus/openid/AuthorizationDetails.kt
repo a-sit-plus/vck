@@ -76,9 +76,10 @@ data class OpenIdAuthorizationDetails(
      * the Access Token returned in this response. Each of these Credential Datasets corresponds to the same
      * Credential Configuration in the [IssuerMetadata.supportedCredentialConfigurations]. The Wallet MUST use these
      * identifiers together with an Access Token in subsequent Credential Requests.
+     * Note: Is only required in the token response!
      */
     @SerialName("credential_identifiers")
-    val credentialIdentifiers: Set<String>,
+    val credentialIdentifiers: Set<String>? = null,
 ) : AuthorizationDetails {
 
     val claimDescription: Set<ClaimDescription>?

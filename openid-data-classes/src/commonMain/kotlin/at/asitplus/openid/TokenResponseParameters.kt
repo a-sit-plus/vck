@@ -2,6 +2,7 @@ package at.asitplus.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
+import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -100,6 +101,9 @@ data class TokenResponseParameters(
     @SerialName("credentialID")
     val credentialId: String? = null,
 ) {
+
+    fun toHttpHeaderValue() = "$tokenType $accessToken"
+    fun toHttpHeader() = "${HttpHeaders.Authorization}: $tokenType $accessToken"
 
     fun serialize() = odcJsonSerializer.encodeToString(this)
 
