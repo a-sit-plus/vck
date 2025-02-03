@@ -16,7 +16,7 @@ enum class CredentialFormatEnum(val text: String) {
          * Supporting deprecated credential formats as long as necessary.
          */
         @Deprecated(
-            "Supporting deprecated credential formats as long as necessary",
+            "Supporting parsing of deprecated credential format identifiers for as long as necessary",
             replaceWith = ReplaceWith("null"),
         )
         private fun coerceDeprecations(text: String) = when (text) {
