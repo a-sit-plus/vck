@@ -40,7 +40,7 @@ kotlin {
     }
 }
 
-exportIosFramework("VcLibKmm", *commonIosExports())
+exportXCFramework("VcLibKmm", transitiveExports = false, additionalExports = commonIosExports())
 
 val javadocJar = setupDokka(baseUrl = "https://github.com/a-sit-plus/kmm-vc-library/tree/backport/conventions")
 
