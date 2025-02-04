@@ -2,62 +2,25 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.ClaimFormat
-import at.asitplus.dif.FormatContainerJwt
-import at.asitplus.dif.FormatContainerSdJwt
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.PresentationSubmissionDescriptor
+import at.asitplus.dif.*
 import at.asitplus.jsonpath.JsonPath
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.CredentialFormatEnum
-import at.asitplus.openid.IdToken
-import at.asitplus.openid.IdTokenType
-import at.asitplus.openid.JwtVcIssuerMetadata
-import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.openid.RequestObjectParameters
-import at.asitplus.openid.ResponseParametersFrom
+import at.asitplus.openid.*
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.ClientIdToHash
-import at.asitplus.wallet.lib.iso.DeviceAuthentication
-import at.asitplus.wallet.lib.iso.DeviceResponse
-import at.asitplus.wallet.lib.iso.Document
-import at.asitplus.wallet.lib.iso.MobileSecurityObject
-import at.asitplus.wallet.lib.iso.OID4VPHandover
-import at.asitplus.wallet.lib.iso.ResponseUriToHash
-import at.asitplus.wallet.lib.iso.SessionTranscript
-import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.jws.DefaultJwsService
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.jws.JwsService
-import at.asitplus.wallet.lib.jws.SdJwtSigned
-import at.asitplus.wallet.lib.jws.VerifierJwsService
-import at.asitplus.wallet.lib.oidvci.DefaultMapStore
-import at.asitplus.wallet.lib.oidvci.DefaultNonceService
-import at.asitplus.wallet.lib.oidvci.MapStore
-import at.asitplus.wallet.lib.oidvci.NonceService
-import at.asitplus.wallet.lib.oidvci.decode
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import at.asitplus.wallet.lib.iso.*
+import at.asitplus.wallet.lib.jws.*
+import at.asitplus.wallet.lib.oidvci.*
 import io.github.aakira.napier.Napier
-import io.ktor.http.URLBuilder
+import io.ktor.http.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
@@ -523,13 +486,15 @@ open class OpenId4VpVerifier(
                         CredentialFormatEnum.JWT_VC -> ClaimFormat.JWT_VP
 
                         CredentialFormatEnum.VC_SD_JWT,
-                        CredentialFormatEnum.DC_SD_JWT -> ClaimFormat.SD_JWT
+                        CredentialFormatEnum.DC_SD_JWT,
+                            -> ClaimFormat.SD_JWT
 
                         CredentialFormatEnum.MSO_MDOC -> ClaimFormat.MSO_MDOC
 
                         CredentialFormatEnum.NONE,
                         CredentialFormatEnum.JWT_VC_JSON_LD,
-                        CredentialFormatEnum.JSON_LD -> throw IllegalStateException("Unsupported credential format")
+                        CredentialFormatEnum.JSON_LD,
+                            -> throw IllegalStateException("Unsupported credential format")
                     },
                     relatedPresentation,
                     expectedNonce,
@@ -578,8 +543,11 @@ open class OpenId4VpVerifier(
         )
 
         ClaimFormat.MSO_MDOC -> {
+            // if the response is not encrypted, the wallet could not transfer the mdocGeneratedNonce,
+            // so we'll use the empty string
             val mdocGeneratedNonce = (input as? ResponseParametersFrom.JweDecrypted)?.jweDecrypted
                 ?.header?.agreementPartyUInfo?.decodeToByteArrayOrNull(Base64UrlStrict)?.decodeToString()
+                ?: ""
             verifier.verifyPresentationIsoMdoc(
                 input = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
                     .let { DeviceResponse.Companion.deserialize(it).getOrThrow() },
@@ -597,7 +565,7 @@ open class OpenId4VpVerifier(
      */
     @Throws(IllegalArgumentException::class)
     private fun verifyDocument(
-        mdocGeneratedNonce: String?,
+        mdocGeneratedNonce: String,
         clientId: String?,
         responseUrl: String?,
         expectedNonce: String,
@@ -608,7 +576,7 @@ open class OpenId4VpVerifier(
         }
 
         val walletKey = mso.deviceKeyInfo.deviceKey
-        if (mdocGeneratedNonce != null && clientId != null && responseUrl != null) {
+        if (clientId != null && responseUrl != null) {
             val deviceAuthentication =
                 document.calcDeviceAuthentication(expectedNonce, mdocGeneratedNonce, clientId, responseUrl)
             Napier.d("Device authentication is ${deviceAuthentication.encodeToString(Base16())}")
@@ -621,6 +589,7 @@ open class OpenId4VpVerifier(
                 throw IllegalArgumentException("deviceSignature")
             }
         } else {
+            // TODO Remove this, as mdocGeneratedNonce is at least the empty string now
             verifierCoseService.verifyCose(deviceSignature, walletKey).onFailure {
                 Napier.w("DeviceSignature not verified: ${document.deviceSigned.deviceAuth}", it)
                 throw IllegalArgumentException("deviceSignature")
@@ -652,21 +621,18 @@ open class OpenId4VpVerifier(
         val sessionTranscript = SessionTranscript(
             deviceEngagementBytes = null,
             eReaderKeyBytes = null,
-            handover = ByteStringWrapper(
-                OID4VPHandover(
-                    clientIdHash = clientIdToHash.serialize().sha256(),
-                    responseUriHash = responseUriToHash.serialize().sha256(),
-                    nonce = challenge
-                )
+            handover = OID4VPHandover(
+                clientIdHash = clientIdToHash.serialize().sha256(),
+                responseUriHash = responseUriToHash.serialize().sha256(),
+                nonce = challenge
             ),
         )
-        val deviceAuthentication = DeviceAuthentication(
+        return DeviceAuthentication(
             type = "DeviceAuthentication",
             sessionTranscript = sessionTranscript,
             docType = docType,
             namespaces = deviceSigned.namespaces
-        )
-        return deviceAuthentication.serialize()
+        ).serialize()
     }
 
     private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {

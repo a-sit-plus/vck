@@ -13,16 +13,12 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
-import at.asitplus.wallet.lib.agent.CreatePresentationResult
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.PresentationException
-import at.asitplus.wallet.lib.agent.PresentationExchangeCredentialDisclosure
-import at.asitplus.wallet.lib.agent.PresentationRequestParameters
-import at.asitplus.wallet.lib.agent.PresentationResponseParameters
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
@@ -37,6 +33,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlin.coroutines.cancellation.CancellationException
@@ -118,11 +115,15 @@ internal class PresentationFactory(
         responseUrl: String?,
         nonce: String,
         docType: String,
-    ): Pair<CoseSigned<ByteArray>, String?> = if (responseWillBeEncrypted && clientId != null && responseUrl != null) {
+    ): Pair<CoseSigned<ByteArray>, String?> = if (clientId != null && responseUrl != null) {
         val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-        val mdocGeneratedNonce = Random.nextBytes(16).encodeToString(Base16Strict)
-        val clientIdToHash =
-            ClientIdToHash(clientId = clientId, mdocGeneratedNonce = mdocGeneratedNonce)
+        // if it's not encrypted, we have no way of transporting the mdocGeneratedNonce, so we'll use the empty string
+        val mdocGeneratedNonce = if (responseWillBeEncrypted)
+            Random.Default.nextBytes(16).encodeToString(Base16Strict) else ""
+        val clientIdToHash = ClientIdToHash(
+            clientId = clientId,
+            mdocGeneratedNonce = mdocGeneratedNonce
+        )
         val responseUriToHash = ResponseUriToHash(
             responseUri = responseUrl,
             mdocGeneratedNonce = mdocGeneratedNonce
@@ -130,12 +131,10 @@ internal class PresentationFactory(
         val sessionTranscript = SessionTranscript(
             deviceEngagementBytes = null,
             eReaderKeyBytes = null,
-            handover = ByteStringWrapper(
-                OID4VPHandover(
-                    clientIdHash = clientIdToHash.serialize().sha256(),
-                    responseUriHash = responseUriToHash.serialize().sha256(),
-                    nonce = nonce
-                )
+            handover = OID4VPHandover(
+                clientIdHash = clientIdToHash.serialize().sha256(),
+                responseUriHash = responseUriToHash.serialize().sha256(),
+                nonce = nonce
             ),
         )
         val deviceAuthentication = DeviceAuthentication(
@@ -144,9 +143,11 @@ internal class PresentationFactory(
             docType = docType,
             namespaces = deviceNameSpaceBytes
         )
-        Napier.d("Device authentication is ${deviceAuthentication.serialize().encodeToString(Base16())}")
+        val deviceAuthenticationBytes =
+            coseCompliantSerializer.encodeToByteArray(ByteStringWrapper(deviceAuthentication)).wrapInCborTag(24)
+        Napier.i("Device authentication is ${deviceAuthenticationBytes.encodeToString(Base16())}")
         coseService.createSignedCoseWithDetachedPayload(
-            payload = deviceAuthentication.serialize(),
+            payload = deviceAuthenticationBytes,
             serializer = ByteArraySerializer(),
             addKeyId = false
         ).getOrElse {
