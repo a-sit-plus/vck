@@ -557,8 +557,11 @@ class OpenId4VpVerifier(
         )
 
         ClaimFormat.MSO_MDOC -> {
+            // if the response is not encrypted, the wallet could not transfer the mdocGeneratedNonce,
+            // so we'll use the empty string
             val mdocGeneratedNonce = (input as? ResponseParametersFrom.JweDecrypted)?.jweDecrypted
                 ?.header?.agreementPartyUInfo?.decodeToByteArrayOrNull(Base64UrlStrict)?.decodeToString()
+                ?: ""
             verifier.verifyPresentationIsoMdoc(
                 input = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
                     .let { DeviceResponse.Companion.deserialize(it).getOrThrow() },
@@ -600,6 +603,7 @@ class OpenId4VpVerifier(
                 throw IllegalArgumentException("deviceSignature")
             }
         } else {
+            // TODO Remove this, as mdocGeneratedNonce is at least the empty string now
             verifierCoseService.verifyCose(deviceSignature, walletKey).onFailure {
                 Napier.w("DeviceSignature not verified: ${document.deviceSigned.deviceAuth}", it)
                 throw IllegalArgumentException("deviceSignature")
@@ -631,18 +635,16 @@ class OpenId4VpVerifier(
         val sessionTranscript = SessionTranscript(
             deviceEngagementBytes = null,
             eReaderKeyBytes = null,
-            handover = ByteStringWrapper(
-                OID4VPHandover(
-                    clientIdHash = clientIdToHash.serialize().sha256(),
-                    responseUriHash = responseUriToHash.serialize().sha256(),
-                    nonce = challenge
-                )
+            handover = OID4VPHandover(
+                clientIdHash = clientIdToHash.serialize().sha256(),
+                responseUriHash = responseUriToHash.serialize().sha256(),
+                nonce = challenge
             ),
         )
         val deviceAuthentication = DeviceAuthentication(
             type = "DeviceAuthentication",
             sessionTranscript = sessionTranscript,
-            docType = docType,
+            docType = if (mdocGeneratedNonce.isNotEmpty()) docType else "",
             namespaces = deviceSigned.namespaces
         )
         return deviceAuthentication.serialize()
