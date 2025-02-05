@@ -41,6 +41,7 @@ Release 5.4.0:
 
 Release 5.3.3:
  - ISO: Fix serialization of device authentication bytes
+ - OpenID4VP: Support extracting authentication response from JWS inside JWE
 
 Release 5.3.2:
  - ISO: Do not tag instants in CBOR with tag 1004
