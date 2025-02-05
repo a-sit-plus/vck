@@ -18,6 +18,8 @@ Release 5.5.0:
    - Deprecate methods in `OpenId4VciClient` containing parameter for `requestedAttributes`
    - In `OpenId4VciClient.startProvisioningWithAuthRequest()` remove parameter `requestedAttributes`
    - In `OpenId4VciClient.loadCredentialWithOffer()` remove parameter `requestedAttributes`
+   - In `WalletService`, deprecate `CredentialRequestInput`
+   - In `WalletService`, deprecate `createCredentialRequest(CredentialRequestInput)`, provide new method `createCredentialRequest(TokenResponseParameters)` for direct processing of the token response
    - Remove proof type `cwt`, which has been removed from draft 14
 
 Release 5.4.3:

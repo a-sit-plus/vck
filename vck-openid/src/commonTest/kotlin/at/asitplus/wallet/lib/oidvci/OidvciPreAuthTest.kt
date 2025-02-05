@@ -68,12 +68,11 @@ class OidvciPreAuthTest : FreeSpec({
 
         val first = authorizationDetails.first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
         val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialConfigurationId!!),
-            clientNonce = token.clientNonce,
+            tokenResponse = token,
             credentialIssuer = issuer.metadata.credentialIssuer
         ).getOrThrow()
 
-        val credential = issuer.credential(token.accessToken, credentialRequest)
+        val credential = issuer.credential(token.accessToken, credentialRequest.first())
             .getOrThrow()
         credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }
@@ -95,13 +94,14 @@ class OidvciPreAuthTest : FreeSpec({
             // so we'll just use the credential identifier, see OID4VCI 6.2
             val credentialIdentifier = it.credentialIdentifiers!!.first()
             val credentialRequest = client.createCredentialRequest(
-                input = WalletService.CredentialRequestInput.CredentialIdentifier(credentialIdentifier),
-                clientNonce = token.clientNonce,
+                tokenResponse = token,
                 credentialIssuer = issuer.metadata.credentialIssuer
             ).getOrThrow()
 
-            issuer.credential(token.accessToken, credentialRequest)
-                .getOrThrow().credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
+            issuer.credential(token.accessToken, credentialRequest.first())
+                .getOrThrow()
+                .credentials.shouldNotBeEmpty().first()
+                .credentialString.shouldNotBeNull()
         }
     }
 
@@ -125,13 +125,14 @@ class OidvciPreAuthTest : FreeSpec({
         val token = authorizationService.token(tokenRequest).getOrThrow()
 
         val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.Format(supportedCredentialFormat),
-            clientNonce = token.clientNonce,
+            tokenResponse = token,
             credentialIssuer = issuer.metadata.credentialIssuer
         ).getOrThrow()
 
-        issuer.credential(token.accessToken, credentialRequest)
-            .getOrThrow().credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
+        issuer.credential(token.accessToken, credentialRequest.first())
+            .getOrThrow()
+            .credentials.shouldNotBeEmpty().first()
+            .credentialString.shouldNotBeNull()
     }
 
 })

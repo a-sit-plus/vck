@@ -95,23 +95,20 @@ class OidvciCodeFlowTest : FreeSpec({
         token: TokenResponseParameters,
     ): CredentialResponseParameters {
         val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.RequestOptions(requestOptions),
-            clientNonce = token.clientNonce,
+            tokenResponse = token,
             credentialIssuer = issuer.metadata.credentialIssuer
         ).getOrThrow()
-        return issuer.credential(token.accessToken, credentialRequest).getOrThrow()
+        return issuer.credential(token.accessToken, credentialRequest.first()).getOrThrow()
     }
 
     suspend fun issueCredential(
-        credentialIdentifier: String,
         token: TokenResponseParameters,
     ): CredentialResponseParameters {
         val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.CredentialIdentifier(credentialIdentifier),
-            clientNonce = token.clientNonce,
+            tokenResponse = token,
             credentialIssuer = issuer.metadata.credentialIssuer
         ).getOrThrow()
-        return issuer.credential(token.accessToken, credentialRequest).getOrThrow()
+        return issuer.credential(token.accessToken, credentialRequest.first()).getOrThrow()
     }
 
     fun defectMapStore() = object : MapStore<String, OidcUserInfoExtended> {
@@ -230,7 +227,7 @@ class OidvciCodeFlowTest : FreeSpec({
         )
         val token = getToken(authorizationDetails)
 
-        val credential = issueCredential(credentialIdToRequest, token)
+        val credential = issueCredential(token)
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
         val serializedCredential = credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
 

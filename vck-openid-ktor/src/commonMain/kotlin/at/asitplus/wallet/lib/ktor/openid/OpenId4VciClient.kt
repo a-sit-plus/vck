@@ -19,7 +19,6 @@ import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
 import at.asitplus.wallet.lib.oidvci.*
-import at.asitplus.wallet.lib.oidvci.WalletService.CredentialRequestInput
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -237,28 +236,11 @@ class OpenId4VciClient(
             ?: throw Exception("Unknown credential scheme in ${context.credential}")
         postCredentialRequestAndStore(
             credentialEndpointUrl = context.issuerMetadata.credentialEndpointUrl,
-            input = tokenResponse.extractCredentialRequestInput(
-                credentialIdentifier = context.credential.credentialIdentifier,
-                requestedAttributes = null,
-                supportedCredentialFormat = context.credential.supportedCredentialFormat
-            ),
             tokenResponse = tokenResponse,
             credentialScheme = credentialScheme,
             credentialIssuer = context.issuerMetadata.credentialIssuer
         )
     }
-
-    private fun TokenResponseParameters.extractCredentialRequestInput(
-        credentialIdentifier: String,
-        requestedAttributes: Set<String>?,
-        supportedCredentialFormat: SupportedCredentialFormat,
-    ): CredentialRequestInput =
-        authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.firstOrNull()?.let {
-            if (it.credentialConfigurationId != null)
-                CredentialRequestInput.CredentialIdentifier(credentialIdentifier)
-            else
-                CredentialRequestInput.Format(supportedCredentialFormat, requestedAttributes)
-        } ?: CredentialRequestInput.Format(supportedCredentialFormat, requestedAttributes)
 
     @Throws(Exception::class)
     private suspend fun postToken(
@@ -301,15 +283,13 @@ class OpenId4VciClient(
     @Throws(Exception::class)
     private suspend fun postCredentialRequestAndStore(
         credentialEndpointUrl: String,
-        input: CredentialRequestInput,
         tokenResponse: TokenResponseParameters,
         credentialScheme: ConstantIndex.CredentialScheme,
         credentialIssuer: String,
     ) {
-        Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl with $input")
-        val credentialRequest = oid4vciService.createCredentialRequest(
-            input = input,
-            clientNonce = tokenResponse.clientNonce,
+        Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl with $tokenResponse")
+        val credentialRequests = oid4vciService.createCredentialRequest(
+            tokenResponse = tokenResponse,
             credentialIssuer = credentialIssuer,
         ).getOrThrow()
 
@@ -317,23 +297,24 @@ class OpenId4VciClient(
             jwsService.buildDPoPHeader(url = credentialEndpointUrl, accessToken = tokenResponse.accessToken)
         else null
 
-        val credentialResponse: CredentialResponseParameters = client.post(credentialEndpointUrl) {
-            contentType(ContentType.Application.Json)
-            setBody(credentialRequest)
-            headers {
-                append(HttpHeaders.Authorization, "${tokenResponse.tokenType} ${tokenResponse.accessToken}")
-                dpopHeader?.let { append(HttpHeaders.DPoP, it) }
-            }
-        }.body()
+        credentialRequests.forEach { credentialRequest ->
+            val credentialResponse: CredentialResponseParameters = client.post(credentialEndpointUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(credentialRequest)
+                headers {
+                    append(HttpHeaders.Authorization, "${tokenResponse.tokenType} ${tokenResponse.accessToken}")
+                    dpopHeader?.let { append(HttpHeaders.DPoP, it) }
+                }
+            }.body()
 
-        // TODO do we know the format? Because that parameter is removed in draft 15
-        credentialResponse.extractCredentials()
-            .ifEmpty { throw Exception("No credential was received") }
-            .forEach {
-                val storeCredentialInput = it.toStoreCredentialInput(credentialResponse.format, credentialScheme)
-                holderAgent.storeCredential(storeCredentialInput).getOrThrow()
-            }
-
+            // TODO do we know the format? Because that parameter is removed in draft 15
+            credentialResponse.extractCredentials()
+                .ifEmpty { throw Exception("No credential was received") }
+                .forEach {
+                    val storeCredentialInput = it.toStoreCredentialInput(credentialResponse.format, credentialScheme)
+                    holderAgent.storeCredential(storeCredentialInput).getOrThrow()
+                }
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -405,11 +386,6 @@ class OpenId4VciClient(
 
             postCredentialRequestAndStore(
                 credentialEndpointUrl = issuerMetadata.credentialEndpointUrl,
-                input = tokenResponse.extractCredentialRequestInput(
-                    credentialIdentifier = credentialIdentifierInfo.credentialIdentifier,
-                    requestedAttributes = null,
-                    supportedCredentialFormat = credentialIdentifierInfo.supportedCredentialFormat
-                ),
                 tokenResponse = tokenResponse,
                 credentialScheme = credentialScheme,
                 credentialIssuer = issuerMetadata.credentialIssuer
