@@ -27,19 +27,40 @@ class CredentialAuthorizationServiceStrategy(
     override suspend fun loadUserInfo(request: AuthenticationRequestParameters, code: String) =
         dataProvider.loadUserInfo(request, code)
 
+    override fun filterScope(scope: String): String? {
+        if (supportedCredentialSchemes.containsKey(scope)) {
+            return scope
+        } else {
+            return null
+        }
+    }
+
     override fun filterAuthorizationDetails(authorizationDetails: Set<AuthorizationDetails>) =
         authorizationDetails
             .filterIsInstance<OpenIdAuthorizationDetails>()
-            .filter { authnDetails ->
-                authnDetails.credentialConfigurationId?.let {
-                    supportedCredentialSchemes.containsKey(it)
-                } ?: authnDetails.format?.let {
-                    supportedCredentialSchemes.values.any {
-                        it.format == authnDetails.format &&
-                                it.docType == authnDetails.docType &&
-                                it.sdJwtVcType == authnDetails.sdJwtVcType &&
-                                it.credentialDefinition == authnDetails.credentialDefinition
-                    }
-                } ?: false
-            }.toSet()
+            .mapNotNull {
+                when {
+                    it.credentialConfigurationId != null -> it.filterCredentialConfigurationId()
+                    it.format != null -> it.filterFormat()
+                    else -> null
+                }
+            }
+            .toSet()
+
+    private fun OpenIdAuthorizationDetails.filterFormat(): OpenIdAuthorizationDetails? =
+        supportedCredentialSchemes.entries.firstOrNull {
+            it.value.format == format &&
+                    it.value.docType == docType &&
+                    it.value.sdJwtVcType == sdJwtVcType &&
+                    it.value.credentialDefinition == credentialDefinition
+        }?.let { matchingCredential ->
+            copy(credentialIdentifiers = setOf(matchingCredential.key))
+        }
+
+    private fun OpenIdAuthorizationDetails.filterCredentialConfigurationId(): OpenIdAuthorizationDetails? =
+        if (supportedCredentialSchemes.containsKey(credentialConfigurationId)) {
+            copy(credentialIdentifiers = setOf(credentialConfigurationId!!))
+        } else {
+            null
+        }
 }
