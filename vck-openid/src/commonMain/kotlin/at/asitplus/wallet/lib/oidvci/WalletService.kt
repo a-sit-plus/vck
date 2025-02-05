@@ -169,10 +169,11 @@ class WalletService(
      * properties like [OpenIdAuthorizationDetails.sdJwtVcType]
      * @param authorizationServers from [IssuerMetadata.authorizationServers]
      */
-    fun buildAuthorizationDetails(
+    // TODO is this needed?
+    fun buildAuthorizationDetailsRo(
         requestOptions: RequestOptions,
         authorizationServers: Set<String>? = null,
-    ) = buildAuthorizationDetails(setOf(requestOptions), authorizationServers)
+    ) = buildAuthorizationDetailsRo(setOf(requestOptions), authorizationServers)
 
     /**
      * Build authorization details for use in [OAuth2Client.createAuthRequest].
@@ -181,7 +182,8 @@ class WalletService(
      * properties like [OpenIdAuthorizationDetails.sdJwtVcType]
      * @param authorizationServers from [IssuerMetadata.authorizationServers]
      */
-    fun buildAuthorizationDetails(
+    // TODO is this needed?
+    fun buildAuthorizationDetailsRo(
         requestOptions: Set<RequestOptions>,
         authorizationServers: Set<String>? = null,
     ) = requestOptions.map {
