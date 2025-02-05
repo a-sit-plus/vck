@@ -207,17 +207,20 @@ class WalletService(
         }
     }?.scope
 
+    @Suppress("DEPRECATION")
+    @Deprecated("Removed in OID4VCI draft 15, use createCredentialRequest with token response")
     sealed class CredentialRequestInput {
         /**
          * @param id from the token response, see [TokenResponseParameters.authorizationDetails]
          * and [OpenIdcredentialConfigurationId]
          */
+        @Deprecated("Removed in OID4VCI draft 15, use createCredentialRequest with token response")
         data class CredentialIdentifier(val id: String) : CredentialRequestInput()
 
-        @Deprecated("Use another type to specify credential in request to issuer")
+        @Deprecated("Removed in OID4VCI draft 15, use createCredentialRequest with token response")
         data class RequestOptions(val requestOptions: WalletService.RequestOptions) : CredentialRequestInput()
 
-        // TODO Should this also be removed?
+        @Deprecated("Removed in OID4VCI draft 15, use createCredentialRequest with token response")
         data class Format(
             val supportedCredentialFormat: SupportedCredentialFormat,
             @Deprecated("Removed in OID4VCI draft 15")
@@ -278,39 +281,8 @@ class WalletService(
         }
     }
 
-    /**
-     * Send the result as JSON-serialized content to the server at `/credential` (or more specific
-     * [IssuerMetadata.credentialEndpointUrl]).
-     *
-     * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
-     * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
-     *
-     * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
-     * see [JwsService.buildDPoPHeader].
-     *
-     * See [OAuth2Client.createTokenRequestParameters].
-     *
-     * Sample ktor code:
-     * ```
-     * val token = ...
-     * val credentialRequest = client.createCredentialRequest(
-     *     requestOptions = requestOptions,
-     *     clientNonce = token.clientNonce,
-     *     credentialIssuer = issuerMetadata.credentialIssuer
-     * ).getOrThrow()
-     *
-     * val credentialResponse = httpClient.post(issuerMetadata.credentialEndpointUrl) {
-     *     setBody(credentialRequest)
-     *     headers {
-     *         append(HttpHeaders.Authorization, "Bearer ${token.accessToken}")
-     *     }
-     * }
-     * ```
-     *
-     * @param input which credential to request, see subclasses of [CredentialRequestInput]
-     * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
-     * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
-     */
+    @Suppress("DEPRECATION")
+    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("createCredentialRequest(tokenResponse, credentialIssuer)"))
     suspend fun createCredentialRequest(
         input: CredentialRequestInput,
         clientNonce: String?,
