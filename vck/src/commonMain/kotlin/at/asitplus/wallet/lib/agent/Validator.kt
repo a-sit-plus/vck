@@ -332,8 +332,8 @@ class Validator(
         }
 
         verifierCoseService.verifyCose(deviceSignature, walletKey).onFailure {
-            Napier.w("DeviceSignature not verified: ${doc.deviceSigned.deviceAuth}", it)
-            throw IllegalArgumentException("deviceSignature")
+            Napier.w("DeviceSignature not verified: ${deviceSignature}", it)
+            throw IllegalArgumentException("deviceSignature", it)
         }
         val deviceSignaturePayload = deviceSignature.payload ?: run {
             Napier.w("DeviceSignature does not contain challenge")

@@ -7,12 +7,9 @@ import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
@@ -32,6 +29,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
@@ -581,7 +579,7 @@ class OpenId4VpVerifier(
      */
     @Throws(IllegalArgumentException::class)
     private fun verifyDocument(
-        mdocGeneratedNonce: String?,
+        mdocGeneratedNonce: String,
         clientId: String?,
         responseUrl: String?,
         expectedNonce: String,
@@ -592,20 +590,23 @@ class OpenId4VpVerifier(
         }
 
         val walletKey = mso.deviceKeyInfo.deviceKey
-        if (mdocGeneratedNonce != null && clientId != null && responseUrl != null) {
+        if (clientId != null && responseUrl != null) {
             val deviceAuthentication =
                 document.calcDeviceAuthentication(expectedNonce, mdocGeneratedNonce, clientId, responseUrl)
-            Napier.d("Device authentication is ${deviceAuthentication.encodeToString(Base16())}")
+            val expectedPayload = coseCompliantSerializer
+                .encodeToByteArray(deviceAuthentication.serialize())
+                .wrapInCborTag(24)
+                .also { Napier.d("Device authentication for verification is ${it.encodeToString(Base16())}") }
             verifierCoseService.verifyCose(
                 deviceSignature,
                 walletKey,
-                detachedPayload = deviceAuthentication
+                detachedPayload = expectedPayload
             ).onFailure {
-                Napier.w("DeviceSignature not verified: ${document.deviceSigned.deviceAuth}", it)
-                throw IllegalArgumentException("deviceSignature")
+                val expectedBytes = expectedPayload.encodeToString(Base16)
+                Napier.w("DeviceSignature not verified: $deviceSignature for detached payload $expectedBytes", it)
+                throw IllegalArgumentException("deviceSignature", it)
             }
         } else {
-            // TODO Remove this, as mdocGeneratedNonce is at least the empty string now
             verifierCoseService.verifyCose(deviceSignature, walletKey).onFailure {
                 Napier.w("DeviceSignature not verified: ${document.deviceSigned.deviceAuth}", it)
                 throw IllegalArgumentException("deviceSignature")
@@ -631,7 +632,7 @@ class OpenId4VpVerifier(
         mdocGeneratedNonce: String,
         clientId: String,
         responseUrl: String,
-    ): ByteArray {
+    ): DeviceAuthentication {
         val clientIdToHash = ClientIdToHash(clientId = clientId, mdocGeneratedNonce = mdocGeneratedNonce)
         val responseUriToHash = ResponseUriToHash(responseUri = responseUrl, mdocGeneratedNonce = mdocGeneratedNonce)
         val sessionTranscript = SessionTranscript(
@@ -643,13 +644,12 @@ class OpenId4VpVerifier(
                 nonce = challenge
             ),
         )
-        val deviceAuthentication = DeviceAuthentication(
+        return DeviceAuthentication(
             type = "DeviceAuthentication",
             sessionTranscript = sessionTranscript,
-            docType = if (mdocGeneratedNonce.isNotEmpty()) docType else "",
+            docType = docType,
             namespaces = deviceSigned.namespaces
         )
-        return deviceAuthentication.serialize()
     }
 
     private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
@@ -659,7 +659,7 @@ class OpenId4VpVerifier(
 
         is Verifier.VerifyPresentationResult.ValidationError ->
             AuthnResponseResult.ValidationError("vpToken", state)
-                .also { Napier.w("VP error: $this") }
+                .also { Napier.w("VP error: $this", cause) }
 
         is Verifier.VerifyPresentationResult.Success ->
             AuthnResponseResult.Success(vp, state)

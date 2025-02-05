@@ -121,12 +121,15 @@ internal class PresentationFactory(
         val deviceAuthentication = DeviceAuthentication(
             type = "DeviceAuthentication",
             sessionTranscript = sessionTranscript,
-            docType = if (responseWillBeEncrypted) docType else "",
+            docType = docType,
             namespaces = deviceNameSpaceBytes
         )
         // TODO Change type to CoseSigned<DeviceAuthentication>
-        val deviceAuthenticationBytes = coseCompliantSerializer.encodeToByteArray(ByteStringWrapper(deviceAuthentication)).wrapInCborTag(24)
-        Napier.i("Device authentication is ${deviceAuthenticationBytes.encodeToString(Base16())}")
+        val deviceAuthenticationBytes = coseCompliantSerializer
+            .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
+            .wrapInCborTag(24)
+            .also { Napier.d("Device authentication signature input is ${it.encodeToString(Base16())}") }
+
         coseService.createSignedCoseWithDetachedPayload(
             payload = deviceAuthenticationBytes,
             serializer = ByteArraySerializer(),
