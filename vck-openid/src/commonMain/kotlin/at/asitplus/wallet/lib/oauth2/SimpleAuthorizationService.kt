@@ -123,10 +123,7 @@ class SimpleAuthorizationService(
             }
         }
 
-        val filteredAuthorizationDetails = params.authorizationDetails
-            ?.let { strategy.filterAuthorizationDetails(it) }
-
-        TokenResponseParameters(
+        val response = TokenResponseParameters(
             accessToken = tokenService.provideNonce().also {
                 // TODO Also store the scope values or authorization details associated with that access token,
                 // so it can be verified when issuing a credential
@@ -135,8 +132,25 @@ class SimpleAuthorizationService(
             tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
             expires = 3600.seconds,
             clientNonce = clientNonceService.provideNonce(),
-            authorizationDetails = filteredAuthorizationDetails
-        ).also { Napier.i("token returns $it") }
+        )
+
+        if (params.authorizationDetails != null) {
+            val filtered = strategy.filterAuthorizationDetails(params.authorizationDetails!!)
+            if (filtered.isEmpty())
+                throw OAuth2Exception(Errors.INVALID_REQUEST, "No matching authorization details")
+            response
+                .copy(authorizationDetails = filtered)
+                .also { Napier.i("token returns $it") }
+        } else if (params.scope != null) {
+            val scope = strategy.filterScope(params.scope!!)
+                ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "No matching scope")
+            response
+                .copy(scope = params.scope)
+                .also { Napier.i("token returns $it") }
+        } else {
+            Napier.w("token: request can not be parsed: $params")
+            throw OAuth2Exception(Errors.INVALID_REQUEST, "neither authorizationdetails nor scope in request")
+        }
     }
 
     private suspend fun validateCodeChallenge(code: String, codeVerifier: String) {

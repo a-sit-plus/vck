@@ -13,5 +13,7 @@ interface AuthorizationServiceStrategy {
 
     fun filterAuthorizationDetails(authorizationDetails: Set<AuthorizationDetails>): Set<AuthorizationDetails>
 
+    fun filterScope(scope: String): String?
+
 
 }
