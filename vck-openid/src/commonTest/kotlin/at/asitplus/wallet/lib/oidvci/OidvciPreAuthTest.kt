@@ -44,7 +44,7 @@ class OidvciPreAuthTest : FreeSpec({
 
     suspend fun getToken(
         credentialOffer: CredentialOffer,
-        credentialIdToRequest: Set<String>
+        credentialIdToRequest: Set<String>,
     ): TokenResponseParameters {
         val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
@@ -63,13 +63,12 @@ class OidvciPreAuthTest : FreeSpec({
         val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(PLAIN_JWT)
 
         val token = getToken(credentialOffer, setOf(credentialIdToRequest))
-        val authorizationDetails = token.authorizationDetails
-            .shouldNotBeNull()
+        token.authorizationDetails.shouldNotBeNull()
+            .first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
 
-        val first = authorizationDetails.first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
         val credentialRequest = client.createCredentialRequest(
             tokenResponse = token,
-            credentialIssuer = issuer.metadata.credentialIssuer
+            metadata = issuer.metadata
         ).getOrThrow()
 
         val credential = issuer.credential(token.accessToken, credentialRequest.first())
@@ -90,12 +89,9 @@ class OidvciPreAuthTest : FreeSpec({
 
         authnDetails.forEach {
             it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
-            // Not supporting different credential datasets for one credential configuration at the moment,
-            // so we'll just use the credential identifier, see OID4VCI 6.2
-            val credentialIdentifier = it.credentialIdentifiers!!.first()
             val credentialRequest = client.createCredentialRequest(
                 tokenResponse = token,
-                credentialIssuer = issuer.metadata.credentialIssuer
+                metadata = issuer.metadata
             ).getOrThrow()
 
             issuer.credential(token.accessToken, credentialRequest.first())
@@ -126,7 +122,7 @@ class OidvciPreAuthTest : FreeSpec({
 
         val credentialRequest = client.createCredentialRequest(
             tokenResponse = token,
-            credentialIssuer = issuer.metadata.credentialIssuer
+            metadata = issuer.metadata
         ).getOrThrow()
 
         issuer.credential(token.accessToken, credentialRequest.first())

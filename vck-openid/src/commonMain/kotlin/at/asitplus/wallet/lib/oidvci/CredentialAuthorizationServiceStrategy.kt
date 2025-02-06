@@ -27,13 +27,12 @@ class CredentialAuthorizationServiceStrategy(
     override suspend fun loadUserInfo(request: AuthenticationRequestParameters, code: String) =
         dataProvider.loadUserInfo(request, code)
 
-    override fun filterScope(scope: String): String? {
-        if (supportedCredentialSchemes.containsKey(scope)) {
-            return scope
-        } else {
-            return null
+    override fun filterScope(scope: String): String? = scope.split(" ")
+        .mapNotNull { scope ->
+            if (supportedCredentialSchemes.values.find { it.scope == scope } != null) scope
+            else null
         }
-    }
+        .joinToString(" ")
 
     override fun filterAuthorizationDetails(authorizationDetails: Set<AuthorizationDetails>) =
         authorizationDetails
