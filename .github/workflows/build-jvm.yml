@@ -15,19 +15,19 @@ jobs:
       - name: Build jar
         run: ./gradlew assemble
       - name: Upload jar vck
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: vck
           path: |
             vck/build/libs/*jar
       - name: Upload jar vck-openid
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: vck-openid
           path: |
             vck-openid/build/libs/*jar
       - name: Upload jar vck-openid-ktor
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: vck-openid-ktor
           path: |
