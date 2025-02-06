@@ -25,7 +25,7 @@ import io.github.aakira.napier.Napier
  *
  * Implemented from
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- * , Draft 14, 2024-08-21.
+ * , Draft 15, 2024-12-19.
  */
 class CredentialIssuer(
     /**

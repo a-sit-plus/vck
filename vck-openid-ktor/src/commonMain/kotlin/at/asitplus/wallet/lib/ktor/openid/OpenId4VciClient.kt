@@ -42,7 +42,9 @@ import kotlin.time.Duration.Companion.minutes
 
 
 /**
- * Implements the client side of [OpenID for Verifiable Credential Issuance - draft 14](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html).
+ * Implements the client side of
+ * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
+ *  * , Draft 15, 2024-12-19.
  *
  * Supported features:
  *  * Pre-authorized grants
