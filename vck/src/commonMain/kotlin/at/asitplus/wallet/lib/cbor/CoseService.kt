@@ -12,6 +12,8 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
 import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import io.github.aakira.napier.Napier
+import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.KSerializer
 
 /**
@@ -174,11 +176,13 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
             payload = payload,
             payloadSerializer = serializer
         ).let { signatureInput ->
+            Napier.d("COSE Signature input is ${signatureInput.serialize().encodeToString(Base16())}")
             cryptoService.sign(signatureInput.serialize()).asKmmResult().getOrElse {
                 Napier.w("No signature from native code", it)
                 throw it
             }
         }
+
 }
 
 class DefaultVerifierCoseService(
@@ -200,10 +204,11 @@ class DefaultVerifierCoseService(
         detachedPayload: ByteArray?,
     ) = catching {
         val signatureInput = coseSigned.prepareCoseSignatureInput(externalAad, detachedPayload)
+            .also { Napier.d("verifyCose input is ${it.encodeToString(Base16())}") }
         val algorithm = coseSigned.protectedHeader.algorithm
             ?: throw IllegalArgumentException("Algorithm not specified")
         val publicKey = signer.toCryptoPublicKey().getOrElse { ex ->
-            throw IllegalArgumentException("Signer not convertible")
+            throw IllegalArgumentException("Signer not convertible", ex)
                 .also { Napier.w("Could not convert signer to public key: $signer", ex) }
         }
         cryptoService.verify(

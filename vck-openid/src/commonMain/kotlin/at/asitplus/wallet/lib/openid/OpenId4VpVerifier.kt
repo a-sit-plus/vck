@@ -7,12 +7,9 @@ import at.asitplus.jsonpath.JsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
-import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.signum.indispensable.josef.JsonWebKeySet
-import at.asitplus.signum.indispensable.josef.JwsHeader
-import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.signum.indispensable.josef.toJsonWebKey
+import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
@@ -29,9 +26,9 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
@@ -62,6 +59,9 @@ class OpenId4VpVerifier(
     private val responseParser = ResponseParser(jwsService, verifierJwsService)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
     private val supportedAlgorithms = verifierJwsService.supportedAlgorithms.map { it.identifier }
+    private val supportedSignatureVerificationAlgorithm =
+        (verifierJwsService.supportedAlgorithms.firstOrNull { it == JwsAlgorithm.ES256 }?.identifier
+            ?: verifierJwsService.supportedAlgorithms.first().identifier)
     private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithms)
     private val containerSdJwt = FormatContainerSdJwt(
         algorithmStrings = supportedAlgorithms.toSet(),
@@ -88,6 +88,7 @@ class OpenId4VpVerifier(
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
             jsonWebKeySet = JsonWebKeySet(listOf(keyMaterial.publicKey.toJsonWebKey())),
+            authorizationSignedResponseAlgString = supportedSignatureVerificationAlgorithm,
             subjectSyntaxTypesSupported = setOf(
                 OpenIdConstants.URN_TYPE_JWK_THUMBPRINT,
                 OpenIdConstants.PREFIX_DID_KEY,
@@ -275,7 +276,7 @@ class OpenId4VpVerifier(
         clientIdScheme = clientIdScheme.scheme, // still set this for our own older implementations
         redirectUrl = if (!requestOptions.isAnyDirectPost) clientIdScheme.redirectUri else null,
         responseUrl = requestOptions.responseUrl,
-        scope = requestOptions.buildScope(),
+        //scope = requestOptions.buildScope(), // TODO verify if this is needed
         nonce = nonceService.provideNonce(),
         walletNonce = requestObjectParameters?.walletNonce,
         clientMetadata = clientMetadata(requestOptions),
@@ -397,15 +398,13 @@ class OpenId4VpVerifier(
     /**
      * Validates an Authentication Response from the Wallet, where [input] is a map of POST parameters received.
      */
-    suspend fun validateAuthnResponse(input: Map<String, String>): AuthnResponseResult {
-        val paramsFrom = runCatching {
+    suspend fun validateAuthnResponse(input: Map<String, String>): AuthnResponseResult =
+        runCatching {
             ResponseParametersFrom.Post(input.decode<AuthenticationResponseParameters>())
         }.getOrElse {
             Napier.w("Could not parse authentication response: $input", it)
             return AuthnResponseResult.Error("Can't parse input", null)
-        }
-        return validateAuthnResponse(paramsFrom)
-    }
+        }.let { validateAuthnResponse(it) }
 
     /**
      * Validates an Authentication Response from the Wallet, where [input] is either:
@@ -413,15 +412,15 @@ class OpenId4VpVerifier(
      * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
      * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
      */
-    suspend fun validateAuthnResponse(input: String): AuthnResponseResult {
-        val paramsFrom = runCatching {
+    suspend fun validateAuthnResponse(input: String): AuthnResponseResult =
+        runCatching {
             responseParser.parseAuthnResponse(input)
         }.getOrElse {
             Napier.w("Could not parse authentication response: $input", it)
             return AuthnResponseResult.Error("Can't parse input", null)
+        }.let {
+            validateAuthnResponse(it)
         }
-        return validateAuthnResponse(paramsFrom)
-    }
 
     /**
      * Validates [AuthenticationResponseParameters] from the Wallet
@@ -557,8 +556,15 @@ class OpenId4VpVerifier(
         )
 
         ClaimFormat.MSO_MDOC -> {
-            val mdocGeneratedNonce = (input as? ResponseParametersFrom.JweDecrypted)?.jweDecrypted
-                ?.header?.agreementPartyUInfo?.decodeToByteArrayOrNull(Base64UrlStrict)?.decodeToString()
+            // if the response is not encrypted, the wallet could not transfer the mdocGeneratedNonce,
+            // so we'll use the empty string
+            val apuDirect = (input as? ResponseParametersFrom.JweDecrypted)
+                ?.jweDecrypted?.header?.agreementPartyUInfo
+            val apuNested = ((input as? ResponseParametersFrom.JwsSigned)?.parent as? ResponseParametersFrom.JweForJws)
+                ?.jweDecrypted?.header?.agreementPartyUInfo
+            val mdocGeneratedNonce = apuDirect?.decodeToString()
+                ?: apuNested?.decodeToString()
+                ?: ""
             verifier.verifyPresentationIsoMdoc(
                 input = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)
                     .let { DeviceResponse.Companion.deserialize(it).getOrThrow() },
@@ -576,7 +582,7 @@ class OpenId4VpVerifier(
      */
     @Throws(IllegalArgumentException::class)
     private fun verifyDocument(
-        mdocGeneratedNonce: String?,
+        mdocGeneratedNonce: String,
         clientId: String?,
         responseUrl: String?,
         expectedNonce: String,
@@ -587,17 +593,21 @@ class OpenId4VpVerifier(
         }
 
         val walletKey = mso.deviceKeyInfo.deviceKey
-        if (mdocGeneratedNonce != null && clientId != null && responseUrl != null) {
+        if (clientId != null && responseUrl != null) {
             val deviceAuthentication =
                 document.calcDeviceAuthentication(expectedNonce, mdocGeneratedNonce, clientId, responseUrl)
-            Napier.d("Device authentication is ${deviceAuthentication.encodeToString(Base16())}")
+            val expectedPayload = coseCompliantSerializer
+                .encodeToByteArray(deviceAuthentication.serialize())
+                .wrapInCborTag(24)
+                .also { Napier.d("Device authentication for verification is ${it.encodeToString(Base16())}") }
             verifierCoseService.verifyCose(
                 deviceSignature,
                 walletKey,
-                detachedPayload = deviceAuthentication
+                detachedPayload = expectedPayload
             ).onFailure {
-                Napier.w("DeviceSignature not verified: ${document.deviceSigned.deviceAuth}", it)
-                throw IllegalArgumentException("deviceSignature")
+                val expectedBytes = expectedPayload.encodeToString(Base16)
+                Napier.w("DeviceSignature not verified: $deviceSignature for detached payload $expectedBytes", it)
+                throw IllegalArgumentException("deviceSignature", it)
             }
         } else {
             verifierCoseService.verifyCose(deviceSignature, walletKey).onFailure {
@@ -625,27 +635,24 @@ class OpenId4VpVerifier(
         mdocGeneratedNonce: String,
         clientId: String,
         responseUrl: String,
-    ): ByteArray {
+    ): DeviceAuthentication {
         val clientIdToHash = ClientIdToHash(clientId = clientId, mdocGeneratedNonce = mdocGeneratedNonce)
         val responseUriToHash = ResponseUriToHash(responseUri = responseUrl, mdocGeneratedNonce = mdocGeneratedNonce)
         val sessionTranscript = SessionTranscript(
             deviceEngagementBytes = null,
             eReaderKeyBytes = null,
-            handover = ByteStringWrapper(
-                OID4VPHandover(
-                    clientIdHash = clientIdToHash.serialize().sha256(),
-                    responseUriHash = responseUriToHash.serialize().sha256(),
-                    nonce = challenge
-                )
+            handover = OID4VPHandover(
+                clientIdHash = clientIdToHash.serialize().sha256(),
+                responseUriHash = responseUriToHash.serialize().sha256(),
+                nonce = challenge
             ),
         )
-        val deviceAuthentication = DeviceAuthentication(
+        return DeviceAuthentication(
             type = "DeviceAuthentication",
             sessionTranscript = sessionTranscript,
             docType = docType,
             namespaces = deviceSigned.namespaces
         )
-        return deviceAuthentication.serialize()
     }
 
     private fun Verifier.VerifyPresentationResult.mapToAuthnResponseResult(state: String) = when (this) {
@@ -655,7 +662,7 @@ class OpenId4VpVerifier(
 
         is Verifier.VerifyPresentationResult.ValidationError ->
             AuthnResponseResult.ValidationError("vpToken", state)
-                .also { Napier.w("VP error: $this") }
+                .also { Napier.w("VP error: $this", cause) }
 
         is Verifier.VerifyPresentationResult.Success ->
             AuthnResponseResult.Success(vp, state)

@@ -22,8 +22,7 @@ data class SessionTranscript(
     /** Set to `null` for OID4VP with ISO/IEC 18013-7 */
     @ByteString
     val eReaderKeyBytes: ByteArray?,
-    @ValueTags(24U)
-    val handover: ByteStringWrapper<OID4VPHandover>,
+    val handover: OID4VPHandover,
 ) {
 
     fun serialize() = vckCborSerializer.encodeToByteArray(this)
@@ -34,8 +33,14 @@ data class SessionTranscript(
 
         other as SessionTranscript
 
-        if (!deviceEngagementBytes.contentEquals(other.deviceEngagementBytes)) return false
-        if (!eReaderKeyBytes.contentEquals(other.eReaderKeyBytes)) return false
+        if (deviceEngagementBytes != null) {
+            if (other.deviceEngagementBytes == null) return false
+            if (!deviceEngagementBytes.contentEquals(other.deviceEngagementBytes)) return false
+        } else if (other.deviceEngagementBytes != null) return false
+        if (eReaderKeyBytes != null) {
+            if (other.eReaderKeyBytes == null) return false
+            if (!eReaderKeyBytes.contentEquals(other.eReaderKeyBytes)) return false
+        } else if (other.eReaderKeyBytes != null) return false
         if (handover != other.handover) return false
 
         return true

@@ -126,6 +126,35 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         document.invalidItems.shouldBeEmpty()
     }
 
+    "Selective Disclosure with mDL (ISO/IEC 18013-7:2024 Annex B)" {
+        val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
+        verifierOid4vp = OpenId4VpVerifier(
+            keyMaterial = verifierKeyMaterial,
+            clientIdScheme = ClientIdScheme.RedirectUri(clientId),
+        )
+        val requestOptions = RequestOptions(
+            credentials = setOf(
+                RequestOptionsCredential(MobileDrivingLicenceScheme, ISO_MDOC, setOf(requestedClaim))
+            ),
+            responseMode = OpenIdConstants.ResponseMode.DirectPost,
+            responseUrl = "https://example.com/response",
+        )
+        val authnRequest = verifierOid4vp.createAuthnRequest(
+            requestOptions, OpenId4VpVerifier.CreationOptions.Query(walletUrl)
+        ).getOrThrow().url
+
+        val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+
+        val document = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+            .shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
+            .documents.first()
+
+        document.validItems.shouldBeSingleton()
+        document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
+        document.invalidItems.shouldBeEmpty()
+    }
+
     "Selective Disclosure with mDL and encryption (ISO/IEC 18013-7:2024 Annex B)" {
         val requestedClaim = MobileDrivingLicenceDataElements.FAMILY_NAME
         verifierOid4vp = OpenId4VpVerifier(
@@ -145,12 +174,11 @@ class OpenId4VpIsoProtocolTest : FreeSpec({
         ).getOrThrow().url
 
         val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-        result.shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
-
-        val document = result.documents.first()
+        val document = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+            .shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
+            .documents.first()
 
         document.validItems.shouldBeSingleton()
         document.validItems.shouldHaveSingleElement { it.elementIdentifier == requestedClaim }
@@ -195,9 +223,9 @@ private suspend fun runProcess(
     ).getOrThrow().url
 
     val authnResponse = holderOid4vp.createAuthnResponse(authnRequest).getOrThrow()
-    authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+        .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
 
-    val result = verifierOid4vp.validateAuthnResponse(authnResponse.url)
-    result.shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
-    return result.documents.first()
+    return verifierOid4vp.validateAuthnResponse(authnResponse.url)
+        .shouldBeInstanceOf<AuthnResponseResult.SuccessIso>()
+        .documents.first()
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+Release 5.3.3:
+ - ISO: Fix serialization of device authentication bytes
+ - ISO: Fix generating `mdocGeneratedNonce` for device authentication acc. to ISO 18013-7
+ - OpenID4VP: Support extracting authentication response from JWS inside JWE
+
 Release 5.3.2:
  - ISO: Do not tag instants in CBOR with tag 1004
  - ISO: Fix calcluation of value digests
