@@ -127,6 +127,9 @@ class SimpleAuthorizationService(
             accessToken = tokenService.provideNonce().also {
                 // TODO Also store the scope values or authorization details associated with that access token,
                 // so it can be verified when issuing a credential
+                // e.g. OID4VCI 8.2.
+                // The corresponding object in the credential_configurations_supported map MUST contain one of the
+                // value(s) used in the scope parameter in the Authorization Request.
                 accessTokenToUserInfoStore.put(it, userInfo)
             },
             tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
@@ -145,7 +148,7 @@ class SimpleAuthorizationService(
             val scope = strategy.filterScope(params.scope!!)
                 ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "No matching scope")
             response
-                .copy(scope = params.scope)
+                .copy(scope = scope)
                 .also { Napier.i("token returns $it") }
         } else {
             Napier.w("token: request can not be parsed: $params")
@@ -179,7 +182,7 @@ class SimpleAuthorizationService(
         }
 
         else -> throw OAuth2Exception(Errors.INVALID_REQUEST, "grant_type invalid")
-            .also { Napier.w("token: client did not provide valid grant_type: ${grantType}") }
+            .also { Napier.w("token: client did not provide valid grant_type: $grantType") }
     }
 
     override suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String =

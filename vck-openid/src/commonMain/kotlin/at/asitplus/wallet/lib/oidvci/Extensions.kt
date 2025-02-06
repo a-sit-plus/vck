@@ -21,15 +21,16 @@ import kotlinx.serialization.json.JsonPrimitive
 @Suppress("DEPRECATION")
 fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<SignatureAlgorithm>? = null)
         : Map<String, SupportedCredentialFormat> {
+    val supportedSigningAlgorithms = cryptoAlgorithms
+        ?.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
+        ?.toSet()
     val iso = if (supportsIso) {
         isoNamespace!! to SupportedCredentialFormat.forIsoMdoc(
             format = CredentialFormatEnum.MSO_MDOC,
             scope = isoNamespace!!,
             docType = isoDocType!!,
             supportedBindingMethods = setOf(BINDING_METHOD_JWK, BINDING_METHOD_COSE_KEY),
-            supportedSigningAlgorithms = cryptoAlgorithms
-                ?.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
-                ?.toSet(),
+            supportedSigningAlgorithms = supportedSigningAlgorithms,
             isoClaims = claimNames.map {
                 ClaimDescription(path = listOf(isoNamespace!!) + it.split("."))
             }.toSet()
@@ -38,27 +39,23 @@ fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<Signature
     val jwtVc = if (supportsVcJwt) {
         encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC) to SupportedCredentialFormat.forVcJwt(
             format = CredentialFormatEnum.JWT_VC,
-            scope = vcType!!,
+            scope = encodeToCredentialIdentifier(vcType!!, CredentialFormatEnum.JWT_VC),
             credentialDefinition = SupportedCredentialFormatDefinition(
                 types = setOf(VcDataModelConstants.VERIFIABLE_CREDENTIAL, vcType!!),
                 credentialSubject = claimNames.associateWith { CredentialSubjectMetadataSingle() }
             ),
             supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
-            supportedSigningAlgorithms = cryptoAlgorithms
-                ?.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
-                ?.toSet(),
+            supportedSigningAlgorithms = supportedSigningAlgorithms,
         )
     } else null
     // Uses "vc+sd-jwt", defined in SD-JWT VC up until draft 06
     val sdJwt = if (supportsSdJwt) {
         encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT) to SupportedCredentialFormat.forSdJwt(
             format = CredentialFormatEnum.VC_SD_JWT,
-            scope = sdJwtType!!,
+            scope = encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.VC_SD_JWT),
             sdJwtVcType = sdJwtType!!,
             supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
-            supportedSigningAlgorithms = cryptoAlgorithms
-                ?.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
-                ?.toSet(),
+            supportedSigningAlgorithms = supportedSigningAlgorithms,
             sdJwtClaims = claimNames.map {
                 ClaimDescription(path = it.split("."))
             }.toSet(),
@@ -68,12 +65,10 @@ fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<Signature
     val sdJwtNewIdentifier = if (supportsSdJwt) {
         encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.DC_SD_JWT) to SupportedCredentialFormat.forSdJwt(
             format = CredentialFormatEnum.DC_SD_JWT,
-            scope = sdJwtType!!,
+            scope = encodeToCredentialIdentifier(sdJwtType!!, CredentialFormatEnum.DC_SD_JWT),
             sdJwtVcType = sdJwtType!!,
             supportedBindingMethods = setOf(BINDING_METHOD_JWK, URN_TYPE_JWK_THUMBPRINT),
-            supportedSigningAlgorithms = cryptoAlgorithms
-                ?.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
-                ?.toSet(),
+            supportedSigningAlgorithms = supportedSigningAlgorithms,
             sdJwtClaims = claimNames.map {
                 ClaimDescription(path = it.split("."))
             }.toSet(),

@@ -259,11 +259,11 @@ class WalletService(
      * ```
      *
      * @param tokenResponse from the authorization server token endpoint
-     * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
+     * @param metadata the issuer's metadata, see [IssuerMetadata]
      */
     suspend fun createCredentialRequest(
         tokenResponse: TokenResponseParameters,
-        credentialIssuer: String?,
+        metadata: IssuerMetadata,
         clock: Clock = Clock.System,
     ): KmmResult<Collection<CredentialRequestParameters>> = catching {
         val requests = tokenResponse.authorizationDetails?.let {
@@ -273,11 +273,16 @@ class WalletService(
                     CredentialRequestParameters(credentialIdentifier = it)
                 }
             }
-        } ?: tokenResponse.scope?.let {
-            setOf(CredentialRequestParameters(credentialConfigurationId = it))
+        } ?: tokenResponse.scope?.let { scopes ->
+            scopes.split(" ").map { scope ->
+                val ccId = metadata.supportedCredentialConfigurations
+                    ?.entries?.firstOrNull { it.value.scope == scope }?.key
+                    ?: throw IllegalArgumentException("Can't find scope $scope from supported credential configurations")
+                CredentialRequestParameters(credentialConfigurationId = ccId)
+            }.toSet()
         } ?: throw IllegalArgumentException("Can't parse tokenResponse: $tokenResponse")
         requests.map {
-            it.copy(proof = createCredentialRequestProof(tokenResponse.clientNonce, credentialIssuer, clock))
+            it.copy(proof = createCredentialRequestProof(tokenResponse.clientNonce, metadata.credentialIssuer, clock))
         }.also {
             Napier.i("createCredentialRequest returns $it")
         }
@@ -331,7 +336,6 @@ class WalletService(
         ).getOrThrow().serialize()
     )
 
-    // TODO verify setting this is the correct value
     private fun ConstantIndex.CredentialScheme.toCredentialRequestParameters(
         credentialRepresentation: CredentialRepresentation,
     ) = when {
@@ -352,7 +356,7 @@ class WalletService(
 
     private fun SupportedCredentialFormat.toCredentialRequestParameters() =
         CredentialRequestParameters(
-            credentialConfigurationId = scope, // TODO verify
+            credentialConfigurationId = scope
         )
 }
 

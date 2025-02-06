@@ -238,7 +238,7 @@ class OpenId4VciClient(
             credentialEndpointUrl = context.issuerMetadata.credentialEndpointUrl,
             tokenResponse = tokenResponse,
             credentialScheme = credentialScheme,
-            credentialIssuer = context.issuerMetadata.credentialIssuer
+            issuerMetadata = context.issuerMetadata,
         )
     }
 
@@ -285,12 +285,12 @@ class OpenId4VciClient(
         credentialEndpointUrl: String,
         tokenResponse: TokenResponseParameters,
         credentialScheme: ConstantIndex.CredentialScheme,
-        credentialIssuer: String,
+        issuerMetadata: IssuerMetadata,
     ) {
         Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl with $tokenResponse")
         val credentialRequests = oid4vciService.createCredentialRequest(
             tokenResponse = tokenResponse,
-            credentialIssuer = credentialIssuer,
+            metadata = issuerMetadata,
         ).getOrThrow()
 
         val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))
@@ -388,7 +388,7 @@ class OpenId4VciClient(
                 credentialEndpointUrl = issuerMetadata.credentialEndpointUrl,
                 tokenResponse = tokenResponse,
                 credentialScheme = credentialScheme,
-                credentialIssuer = issuerMetadata.credentialIssuer
+                issuerMetadata = issuerMetadata
             )
         } ?: credentialOffer.grants?.authorizationCode?.let {
             ProvisioningContext(
