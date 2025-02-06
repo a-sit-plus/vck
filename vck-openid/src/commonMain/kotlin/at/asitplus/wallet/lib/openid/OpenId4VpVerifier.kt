@@ -26,7 +26,6 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToByteArray
@@ -559,8 +558,12 @@ class OpenId4VpVerifier(
         ClaimFormat.MSO_MDOC -> {
             // if the response is not encrypted, the wallet could not transfer the mdocGeneratedNonce,
             // so we'll use the empty string
-            val mdocGeneratedNonce = (input as? ResponseParametersFrom.JweDecrypted)?.jweDecrypted
-                ?.header?.agreementPartyUInfo?.decodeToByteArrayOrNull(Base64UrlStrict)?.decodeToString()
+            val apuDirect = (input as? ResponseParametersFrom.JweDecrypted)
+                ?.jweDecrypted?.header?.agreementPartyUInfo
+            val apuNested = ((input as? ResponseParametersFrom.JwsSigned)?.parent as? ResponseParametersFrom.JweForJws)
+                ?.jweDecrypted?.header?.agreementPartyUInfo
+            val mdocGeneratedNonce = apuDirect?.decodeToString()
+                ?: apuNested?.decodeToString()
                 ?: ""
             verifier.verifyPresentationIsoMdoc(
                 input = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)

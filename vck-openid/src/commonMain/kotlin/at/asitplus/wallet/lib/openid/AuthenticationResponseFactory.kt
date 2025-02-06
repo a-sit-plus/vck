@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.ResponseMode.*
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweHeader
@@ -14,9 +13,6 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import io.matthewnelson.encoding.base64.Base64
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
 import kotlin.coroutines.cancellation.CancellationException
@@ -128,14 +124,10 @@ internal class AuthenticationResponseFactory(
         val algorithm = response.clientMetadata!!.authorizationEncryptedResponseAlg!!
         val encryption = response.clientMetadata.authorizationEncryptedResponseEncoding!!
         val recipientKey = response.jsonWebKeys!!.getEcdhEsKey()
-        val recipientNonce = runCatching { request.parameters.nonce?.decodeToByteArray(Base64()) }.getOrNull()
-            ?: runCatching { request.parameters.nonce?.encodeToByteArray() }.getOrNull()
+        val apv = request.parameters.nonce?.encodeToByteArray()
             ?: Random.nextBytes(16)
-        // TODO Verify whether its always base64-url-no-padding, as in iso/iec 18013-7:2024
-        val apv = recipientNonce.encodeToByteArray(Base64UrlStrict)
-        val senderNonce = response.mdocGeneratedNonce?.encodeToByteArray()
+        val apu = response.mdocGeneratedNonce?.encodeToByteArray()
             ?: Random.nextBytes(16)
-        val apu = senderNonce.encodeToByteArray(Base64UrlStrict)
         val header = JweHeader(
             algorithm = algorithm,
             encryption = encryption,
