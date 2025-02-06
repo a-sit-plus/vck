@@ -63,14 +63,16 @@ class ResponseParser(
                     throw IllegalArgumentException("JWS not verified")
                 }
                 ResponseParametersFrom.JwsSigned(jarm, input, jarm.payload)
-            } ?: encodedResponse.fromJweJws()?.let { jarm ->
-                if (!verifierJwsService.verifyJwsObject(jarm)) {
+            } ?: encodedResponse.fromJwe()?.let { jarm ->
+                ResponseParametersFrom.JweDecrypted(jarm, input, jarm.payload)
+            } ?: encodedResponse.fromJweString()?.let { jarm ->
+                val nested = jarm.payload.fromJws()
+                    ?: throw IllegalArgumentException("JWS inside JWE not verified")
+                if (!verifierJwsService.verifyJwsObject(nested)) {
                     Napier.w("JWS inside JWE of response not verified: $encodedResponse")
                     throw IllegalArgumentException("JWS inside JWE not verified")
                 }
-                ResponseParametersFrom.JwsSigned(jarm, input, jarm.payload)
-            } ?: encodedResponse.fromJwe()?.let { jarm ->
-                ResponseParametersFrom.JweDecrypted(jarm, input, jarm.payload)
+                ResponseParametersFrom.JwsSigned(nested, ResponseParametersFrom.JweForJws(jarm, input, nested.payload), nested.payload)
             } ?: throw IllegalArgumentException("Got encoded response, but could not deserialize it from $input")
         } ?: input
 
@@ -79,9 +81,9 @@ class ResponseParser(
             jwsService.decryptJweObject(it, this, AuthenticationResponseParameters.Companion.serializer()).getOrNull()
         }
 
-    private suspend fun String.fromJweJws(): JwsSigned<AuthenticationResponseParameters>? =
+    private suspend fun String.fromJweString(): JweDecrypted<String>? =
         JweEncrypted.Companion.deserialize(this).getOrNull()?.let {
-            jwsService.decryptJweObject(it, this, String.serializer()).getOrNull()?.payload?.fromJws()
+            jwsService.decryptJweObject(it, this, String.serializer()).getOrNull()
         }
 
     private fun String.fromJws(): JwsSigned<AuthenticationResponseParameters>? =

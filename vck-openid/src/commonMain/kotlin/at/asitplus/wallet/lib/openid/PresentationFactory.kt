@@ -11,10 +11,10 @@ import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.cosef.io.Base16Strict
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -119,7 +119,7 @@ internal class PresentationFactory(
         val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
         // if it's not encrypted, we have no way of transporting the mdocGeneratedNonce, so we'll use the empty string
         val mdocGeneratedNonce = if (responseWillBeEncrypted)
-            Random.Default.nextBytes(16).encodeToString(Base16Strict) else ""
+            Random.Default.nextBytes(16).encodeToString(Base64Strict) else ""
         val clientIdToHash = ClientIdToHash(
             clientId = clientId,
             mdocGeneratedNonce = mdocGeneratedNonce
