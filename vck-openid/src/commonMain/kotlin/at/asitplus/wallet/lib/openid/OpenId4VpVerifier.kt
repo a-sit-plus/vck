@@ -21,7 +21,6 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
-import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArrayOrNull
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToByteArray
@@ -56,6 +55,9 @@ open class OpenId4VpVerifier(
     private val responseParser = ResponseParser(jwsService, verifierJwsService)
     private val timeLeeway = timeLeewaySeconds.toDuration(DurationUnit.SECONDS)
     private val supportedAlgorithms = verifierJwsService.supportedAlgorithms.map { it.identifier }
+    private val supportedSignatureVerificationAlgorithm =
+        (verifierJwsService.supportedAlgorithms.firstOrNull { it == JwsAlgorithm.ES256 }?.identifier
+            ?: verifierJwsService.supportedAlgorithms.first().identifier)
     private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithms)
     private val containerSdJwt = FormatContainerSdJwt(
         sdJwtAlgorithmStrings = supportedAlgorithms.toSet(),
@@ -81,6 +83,7 @@ open class OpenId4VpVerifier(
         RelyingPartyMetadata(
             redirectUris = listOfNotNull((clientIdScheme as? ClientIdScheme.RedirectUri)?.redirectUri),
             jsonWebKeySet = JsonWebKeySet(listOf(keyMaterial.publicKey.toJsonWebKey())),
+            authorizationSignedResponseAlgString = supportedSignatureVerificationAlgorithm,
             subjectSyntaxTypesSupported = setOf(
                 OpenIdConstants.URN_TYPE_JWK_THUMBPRINT,
                 OpenIdConstants.PREFIX_DID_KEY,
@@ -281,7 +284,7 @@ open class OpenId4VpVerifier(
         clientId = clientIdScheme.clientId,
         redirectUrl = if (!requestOptions.isAnyDirectPost) clientIdScheme.redirectUri else null,
         responseUrl = requestOptions.responseUrl,
-        scope = requestOptions.buildScope(),
+        //scope = requestOptions.buildScope(), // TODO verify if this is needed
         nonce = nonceService.provideNonce(),
         walletNonce = requestObjectParameters?.walletNonce,
         clientMetadata = clientMetadata(requestOptions),
@@ -326,15 +329,13 @@ open class OpenId4VpVerifier(
     /**
      * Validates an Authentication Response from the Wallet, where [input] is a map of POST parameters received.
      */
-    suspend fun validateAuthnResponse(input: Map<String, String>): AuthnResponseResult {
-        val paramsFrom = runCatching {
+    suspend fun validateAuthnResponse(input: Map<String, String>): AuthnResponseResult =
+        runCatching {
             ResponseParametersFrom.Post(input.decode<AuthenticationResponseParameters>())
         }.getOrElse {
             Napier.w("Could not parse authentication response: $input", it)
             return AuthnResponseResult.Error("Can't parse input", null)
-        }
-        return validateAuthnResponse(paramsFrom)
-    }
+        }.let { validateAuthnResponse(it) }
 
     /**
      * Validates an Authentication Response from the Wallet, where [input] is either:
@@ -342,15 +343,15 @@ open class OpenId4VpVerifier(
      * - a URL, containing parameters in the query, e.g. `https://example.com?id_token=...`
      * - parameters encoded as a POST body, e.g. `id_token=...&vp_token=...`
      */
-    suspend fun validateAuthnResponse(input: String): AuthnResponseResult {
-        val paramsFrom = runCatching {
+    suspend fun validateAuthnResponse(input: String): AuthnResponseResult =
+        runCatching {
             responseParser.parseAuthnResponse(input)
         }.getOrElse {
             Napier.w("Could not parse authentication response: $input", it)
             return AuthnResponseResult.Error("Can't parse input", null)
+        }.let {
+            validateAuthnResponse(it)
         }
-        return validateAuthnResponse(paramsFrom)
-    }
 
     /**
      * Validates [AuthenticationResponseParameters] from the Wallet
@@ -544,8 +545,12 @@ open class OpenId4VpVerifier(
         ClaimFormat.MSO_MDOC -> {
             // if the response is not encrypted, the wallet could not transfer the mdocGeneratedNonce,
             // so we'll use the empty string
-            val mdocGeneratedNonce = (input as? ResponseParametersFrom.JweDecrypted)?.jweDecrypted
-                ?.header?.agreementPartyUInfo?.decodeToByteArrayOrNull(Base64UrlStrict)?.decodeToString()
+            val apuDirect = (input as? ResponseParametersFrom.JweDecrypted)
+                ?.jweDecrypted?.header?.agreementPartyUInfo
+            val apuNested = ((input as? ResponseParametersFrom.JwsSigned)?.parent as? ResponseParametersFrom.JweForJws)
+                ?.jweDecrypted?.header?.agreementPartyUInfo
+            val mdocGeneratedNonce = apuDirect?.decodeToString()
+                ?: apuNested?.decodeToString()
                 ?: ""
             verifier.verifyPresentationIsoMdoc(
                 input = relatedPresentation.jsonPrimitive.content.decodeToByteArray(Base64UrlStrict)

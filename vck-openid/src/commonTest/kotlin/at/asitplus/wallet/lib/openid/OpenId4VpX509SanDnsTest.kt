@@ -9,8 +9,9 @@ import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.lib.agent.*
-import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.oidvci.formUrlEncode
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -46,8 +47,8 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
             IssuerAgent().issueCredential(
                 DummyCredentialDataProvider.getCredential(
                     holderKeyMaterial.publicKey,
-                    ConstantIndex.AtomicAttribute2023,
-                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                    AtomicAttribute2023,
+                    SD_JWT,
                 ).getOrThrow()
             ).getOrThrow().toStoreCredentialInput()
         )
@@ -71,11 +72,7 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
         val (walletUrl, jar) = verifierOid4vp.createAuthnRequest(
             OpenIdRequestOptions(
                 credentials = setOf(
-                    RequestOptionsCredential(
-                        ConstantIndex.AtomicAttribute2023,
-                        ConstantIndex.CredentialRepresentation.SD_JWT,
-                        setOf(CLAIM_GIVEN_NAME)
-                    )
+                    RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(CLAIM_GIVEN_NAME))
                 ),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = "https://example.com/response",
@@ -87,14 +84,47 @@ class OpenId4VpX509SanDnsTest : FreeSpec({
         holderOid4vp = OpenId4VpHolder(
             holderKeyMaterial,
             holderAgent,
-            remoteResourceRetriever = { if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null })
+            remoteResourceRetriever = {
+                if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
+            })
 
         val authnResponse = holderOid4vp.createAuthnResponse(walletUrl).getOrThrow()
-        authnResponse.shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
-        val result = verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
-        result.shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
-        result.reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
+        verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+            .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            .reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
+
+    }
+
+    "test with encryption" {
+        val requestUrl = "https://example.com/request"
+        val (walletUrl, jar) = verifierOid4vp.createAuthnRequest(
+            OpenIdRequestOptions(
+                credentials = setOf(
+                    RequestOptionsCredential(AtomicAttribute2023, SD_JWT, setOf(CLAIM_GIVEN_NAME))
+                ),
+                responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
+                responseUrl = "https://example.com/response",
+                encryption = true
+            ),
+            OpenId4VpVerifier.CreationOptions.SignedRequestByReference("haip://", requestUrl)
+        ).getOrThrow()
+        jar.shouldNotBeNull()
+
+        holderOid4vp = OpenId4VpHolder(
+            holderKeyMaterial,
+            holderAgent,
+            remoteResourceRetriever = {
+                if (it.url == requestUrl) jar.invoke(it.requestObjectParameters).getOrThrow() else null
+            })
+
+        val authnResponse = holderOid4vp.createAuthnResponse(walletUrl).getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
+
+        verifierOid4vp.validateAuthnResponse(authnResponse.params.formUrlEncode())
+            .shouldBeInstanceOf<AuthnResponseResult.SuccessSdJwt>()
+            .reconstructed[CLAIM_GIVEN_NAME].shouldNotBeNull()
 
     }
 })

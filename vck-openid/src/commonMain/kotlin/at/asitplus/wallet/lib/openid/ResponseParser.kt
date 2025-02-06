@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
+import kotlinx.serialization.builtins.serializer
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -19,7 +20,7 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 class ResponseParser(
     private val jwsService: JwsService,
-    private val verifierJwsService: VerifierJwsService
+    private val verifierJwsService: VerifierJwsService,
 ) {
     /**
      * Parses [at.asitplus.openid.AuthenticationResponseParameters], where [input] is either:
@@ -54,32 +55,41 @@ class ResponseParser(
      * [AuthenticationResponseParameters.response], which may be a JWS or JWE.
      */
     @Throws(IllegalArgumentException::class, CancellationException::class)
-    internal suspend fun extractAuthnResponse(input: ResponseParametersFrom): ResponseParametersFrom {
-        val encodedResponse = input.parameters.response
-        if (encodedResponse != null) {
+    internal suspend fun extractAuthnResponse(input: ResponseParametersFrom): ResponseParametersFrom =
+        input.parameters.response?.let { encodedResponse ->
             encodedResponse.fromJws()?.let { jarm ->
                 if (!verifierJwsService.verifyJwsObject(jarm)) {
                     Napier.w("JWS of response not verified: $encodedResponse")
                     throw IllegalArgumentException("JWS not verified")
                 }
-                return ResponseParametersFrom.JwsSigned(jarm, input, jarm.payload)
-            }
-            encodedResponse.fromJwe()?.let { jarm ->
-                return ResponseParametersFrom.JweDecrypted(jarm, input, jarm.payload)
-            }
-            throw IllegalArgumentException("Got encoded response, but could not deserialize it from $input")
-        }
-        return input
-    }
+                ResponseParametersFrom.JwsSigned(jarm, input, jarm.payload)
+            } ?: encodedResponse.fromJwe()?.let { jarm ->
+                ResponseParametersFrom.JweDecrypted(jarm, input, jarm.payload)
+            } ?: encodedResponse.fromJweString()?.let { jarm ->
+                val nested = jarm.payload.fromJws()
+                    ?: throw IllegalArgumentException("JWS inside JWE not verified")
+                if (!verifierJwsService.verifyJwsObject(nested)) {
+                    Napier.w("JWS inside JWE of response not verified: $encodedResponse")
+                    throw IllegalArgumentException("JWS inside JWE not verified")
+                }
+                ResponseParametersFrom.JwsSigned(nested, ResponseParametersFrom.JweForJws(jarm, input, nested.payload), nested.payload)
+            } ?: throw IllegalArgumentException("Got encoded response, but could not deserialize it from $input")
+        } ?: input
 
     private suspend fun String.fromJwe(): JweDecrypted<AuthenticationResponseParameters>? =
         JweEncrypted.Companion.deserialize(this).getOrNull()?.let {
             jwsService.decryptJweObject(it, this, AuthenticationResponseParameters.Companion.serializer()).getOrNull()
         }
 
+    private suspend fun String.fromJweString(): JweDecrypted<String>? =
+        JweEncrypted.Companion.deserialize(this).getOrNull()?.let {
+            jwsService.decryptJweObject(it, this, String.serializer()).getOrNull()
+        }
+
     private fun String.fromJws(): JwsSigned<AuthenticationResponseParameters>? =
         JwsSigned.Companion.deserialize(
-            AuthenticationResponseParameters.Companion.serializer(), this,
+            AuthenticationResponseParameters.Companion.serializer(),
+            this,
             vckJsonSerializer
         ).getOrNull()
 
