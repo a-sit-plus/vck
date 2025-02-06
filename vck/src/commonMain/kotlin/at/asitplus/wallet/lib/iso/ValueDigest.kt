@@ -2,6 +2,7 @@ package at.asitplus.wallet.lib.iso
 
 import io.matthewnelson.encoding.base16.Base16
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.builtins.ByteArraySerializer
 
 /**
  * Convenience class with a custom serializer ([ValueDigestListSerializer]) to prevent
@@ -40,7 +41,10 @@ data class ValueDigest(
         fun fromIssuerSignedItem(value: IssuerSignedItem, namespace: String): ValueDigest =
             ValueDigest(
                 value.digestId,
-                value.serialize(namespace).wrapInCborTag(24).sha256()
+                // Ensure wrapping it in the whole "bytes" cbor structure,
+                // afterwards wrapping it with D818
+                vckCborSerializer.encodeToByteArray(ByteArraySerializer(), value.serialize(namespace))
+                    .wrapInCborTag(24).sha256()
             )
     }
 }

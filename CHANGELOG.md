@@ -1,5 +1,9 @@
 # Changelog
 
+Release 5.3.2:
+ - ISO: Do not tag instants in CBOR with tag 1004
+ - ISO: Fix calcluation of value digests
+
 Release 5.3.1:
 - Add optional parameter `issuerUri` to `ClientIdScheme.PreRegistered`
 - Fix validation of KB-JWT for SD-JWT presentations
@@ -72,6 +76,11 @@ Release 5.3.0:
 - Dependency updates:
   - Update signum to 3.12.1
 - Add isolated DCQL implementation 
+
+Release 5.2.4:
+ - SD-JWT: Be more lenient in parsing `status` information from credentials
+ - ISO: Do not tag instants in CBOR with tag 1004
+ - ISO: Fix calcluation of value digests
 
 Release 5.2.3:
  - Be more lenient in parsing OpenId authentication requests
