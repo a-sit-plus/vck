@@ -5,9 +5,9 @@ import at.asitplus.catching
 import at.asitplus.openid.CredentialFormatEnum
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
+import kotlinx.serialization.json.longOrNull
 
 @Serializable
 data class DCQLJsonClaimsQuery(
@@ -78,15 +78,11 @@ data class DCQLJsonClaimsQuery(
                 catching {
                     val primitive = result.value.jsonPrimitive
                     values.any { value ->
-                        catching {
-                            when (value) {
-                                is DCQLExpectedClaimValue.BooleanValue -> primitive.boolean == value.boolean
-                                is DCQLExpectedClaimValue.IntegerValue -> primitive.long == value.long
-                                is DCQLExpectedClaimValue.StringValue -> if (primitive.isString) {
-                                    primitive.content == value.string
-                                } else false
-                            }
-                        }.getOrNull() ?: false
+                        when (value) {
+                            is DCQLExpectedClaimValue.StringValue -> primitive.isString && primitive.content == value.string
+                            is DCQLExpectedClaimValue.BooleanValue -> !primitive.isString && primitive.booleanOrNull == value.boolean
+                            is DCQLExpectedClaimValue.IntegerValue -> !primitive.isString && primitive.longOrNull == value.long
+                        }
                     }
                 }.getOrNull() ?: false
             }
