@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
+import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.ECCurve
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.nativeDigest
@@ -11,6 +13,7 @@ import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.signum.supreme.sign.Signer
+import at.asitplus.signum.supreme.sign.signerFor
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -87,6 +90,18 @@ class EphemeralKeyWithoutCert(
 ) : KeyMaterial, Signer by key.signer().getOrThrow() {
     override val identifier: String = customKeyId ?: publicKey.didEncoded
     override fun getUnderLyingSigner(): Signer = key.signer().getOrThrow()
+    override suspend fun getCertificate(): X509Certificate? = null
+}
+
+/**
+ * Generate new key material with a random key, e.g. used in tests
+ */
+class KeyWithoutCert(
+    val key: CryptoPrivateKey.EC.WithPublicKey,
+    val customKeyId: String? = null,
+) : KeyMaterial, Signer by SignatureAlgorithm.ECDSA(key.curve.nativeDigest,key.curve).signerFor(key).getOrThrow() {
+    override val identifier: String = customKeyId ?: publicKey.didEncoded
+    override fun getUnderLyingSigner(): Signer = SignatureAlgorithm.ECDSA(key.curve.nativeDigest,key.curve).signerFor(key).getOrThrow()
     override suspend fun getCertificate(): X509Certificate? = null
 }
 

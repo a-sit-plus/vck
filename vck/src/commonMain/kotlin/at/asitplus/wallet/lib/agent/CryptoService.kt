@@ -5,11 +5,27 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.KmmResult
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.CryptoSignature
-import at.asitplus.signum.indispensable.SignatureAlgorithm
+import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.ECCurve
+import at.asitplus.signum.indispensable.X509SignatureAlgorithm
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JweAlgorithm
 import at.asitplus.signum.indispensable.josef.JweEncryption
+import at.asitplus.signum.supreme.SignatureResult
+import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.signum.supreme.sign.SignatureInput
 import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.signum.supreme.sign.verifierFor
+
+interface CryptoService {
+
+    suspend fun sign(input: ByteArray): SignatureResult<CryptoSignature.RawByteEncodable>
+
+    suspend fun performKeyAgreement(ephemeralKey: KeyAgreementPublicValue.ECDH): KmmResult<ByteArray>
+
+    val keyMaterial: KeyMaterial
+
+}
 
 typealias VerifySignatureFun = (
     input: ByteArray,
@@ -26,49 +42,43 @@ object VerifySignature {
     }
 }
 
-data class AuthenticatedCiphertext(val ciphertext: ByteArray, val authtag: ByteArray) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
+@Deprecated("Use VerifySignatureFun instead")
+interface VerifierCryptoService {
 
-        other as AuthenticatedCiphertext
+    /**
+     * List of algorithms, for which signatures can be verified in [verify].
+     */
+    val supportedAlgorithms: List<X509SignatureAlgorithm>
 
-        if (!ciphertext.contentEquals(other.ciphertext)) return false
-        if (!authtag.contentEquals(other.authtag)) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = ciphertext.contentHashCode()
-        result = 31 * result + authtag.contentHashCode()
-        return result
-    }
+    fun verify(
+        input: ByteArray,
+        signature: CryptoSignature,
+        algorithm: X509SignatureAlgorithm,
+        publicKey: CryptoPublicKey,
+    ): KmmResult<Verifier.Success>
 }
 
-expect open class PlatformCryptoShim() {
 
-    open fun encrypt(
-        key: ByteArray,
-        iv: ByteArray,
-        aad: ByteArray,
-        input: ByteArray,
-        algorithm: JweEncryption,
-    ): KmmResult<AuthenticatedCiphertext>
+open class DefaultCryptoService(
+    override val keyMaterial: KeyMaterial
+) : CryptoService {
 
-    open suspend fun decrypt(
-        key: ByteArray,
-        iv: ByteArray,
-        aad: ByteArray,
-        input: ByteArray,
-        authTag: ByteArray,
-        algorithm: JweEncryption,
-    ): KmmResult<ByteArray>
 
-    open fun hmac(
-        key: ByteArray,
-        algorithm: JweEncryption,
-        input: ByteArray,
-    ): KmmResult<ByteArray>
+    override suspend fun sign(input: ByteArray) = keyMaterial.sign(input)
+
+    override suspend fun performKeyAgreement(ephemeralKey: KeyAgreementPublicValue.ECDH) =
+       (keyMaterial.getUnderLyingSigner() as Signer.ECDSA).keyAgreement(ephemeralKey)
+
 }
 
+open class DefaultVerifierCryptoService : VerifierCryptoService {
+    override val supportedAlgorithms: List<X509SignatureAlgorithm> =
+        listOf(X509SignatureAlgorithm.ES256)
+
+    override fun verify(
+        input: ByteArray,
+        signature: CryptoSignature,
+        algorithm: X509SignatureAlgorithm,
+        publicKey: CryptoPublicKey,
+    ): KmmResult<Verifier.Success> = VerifySignature()(input, signature, algorithm.algorithm, publicKey)
+}

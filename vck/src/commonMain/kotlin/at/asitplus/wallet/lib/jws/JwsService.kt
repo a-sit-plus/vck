@@ -108,88 +108,41 @@ typealias EncryptJweFun = suspend (
 object EncryptJwe {
     operator fun invoke(
         keyMaterial: KeyMaterial,
-        platformCryptoShim: PlatformCryptoShim = PlatformCryptoShim(),
     ): EncryptJweFun = { header, payload, recipientKey ->
         catching {
+
+            val cryptoPublicKey = recipientKey.toCryptoPublicKey().getOrThrow()
+            require(cryptoPublicKey is CryptoPublicKey.EC)
             val crv = recipientKey.curve
                 ?: throw IllegalArgumentException("No curve in recipient key")
-            val ephemeralKeyPair = DefaultEphemeralKeyHolder(crv)
-            val jweEncryption = header.encryption
-                ?: throw IllegalArgumentException("No encryption in JWE header")
-            val jweAlgorithm = header.algorithm
-                ?: throw IllegalArgumentException("No algorithm in JWE header")
-            val jweHeader = header.copy(
-                jsonWebKey = keyMaterial.jsonWebKey,
-                ephemeralKeyPair = ephemeralKeyPair.publicJsonWebKey
-            )
-            val z = performKeyAgreement(ephemeralKeyPair, recipientKey).getOrThrow()
+            val ephemeralKeyPair =  KeyAgreementPrivateValue.ECDH.Ephemeral(crv).getOrThrow()
+
+            val z = ephemeralKeyPair.keyAgreement(cryptoPublicKey).getOrThrow()
             val intermediateKey = concatKdf(
                 z,
                 jweEncryption,
                 jweHeader.agreementPartyUInfo,
                 jweHeader.agreementPartyVInfo,
-                jweEncryption.encryptionKeyLength
             )
-            val key = compositeKey(jweEncryption, intermediateKey)
-            // Pending fix in signum
-            val ivLengthBits = when (jweEncryption) {
-                A128GCM, A192GCM, A256GCM -> 96
-                else -> 128
-            }
-            val iv = Random.nextBytes(ivLengthBits / 8)
+
+            val algorithm = jweEncryption.algorithm
+            require(algorithm.requiresNonce())
+            require(algorithm.isAuthenticated())
+            val key = algorithm.keyFromIntermediate(intermediateKey)
+
             val headerSerialized = jweHeader.serialize()
             val aad = headerSerialized.encodeToByteArray()
             val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
-            val bytes = payload.encodeToByteArray()
-            val ciphertext = platformCryptoShim.encrypt(key.aesKey, iv, aadForCipher, bytes, jweEncryption).getOrThrow()
-            val authTag = key.hmacKey?.let { hmacKey ->
-                platformCryptoShim.hmac(hmacKey, jweEncryption, hmacInput(aadForCipher, iv, ciphertext.ciphertext))
-                    .getOrThrow()
-                    .take(jweEncryption.macLength!!).toByteArray()
-            } ?: ciphertext.authtag
-            JweEncrypted(jweHeader, aad, null, iv, ciphertext.ciphertext, authTag)
+            val bytes = vckJsonSerializer.encodeToString(serializer, payload).encodeToByteArray()
+            val sealedBox = key.encrypt(bytes, authenticatedData = aadForCipher).getOrThrow()
+
+            JweEncrypted(jweHeader, aad, null, sealedBox.nonce, sealedBox.encryptedData, sealedBox.authTag)
         }
     }
-
-
-    private suspend fun performKeyAgreement(
-        ephemeralKey: EphemeralKeyHolder,
-        recipientKey: JsonWebKey,
-    ): KmmResult<ByteArray> = catching {
-        //this is temporary until we refactor the JWS service and both key agreement functions get merged
-        @OptIn(SecretExposure::class)
-        (recipientKey.toCryptoPublicKey()
-            .getOrThrow() as CryptoPublicKey.EC).keyAgreement(
-            ephemeralKey.key.exportPrivateKey().getOrThrow() as CryptoPrivateKey.WithPublicKey<CryptoPublicKey.EC>
-        ).getOrThrow()
-    }
-
 }
 
 
 object JweUtils {
-
-    /**
-     * Derives the key, for use in content encryption in JWE,
-     * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-5.2.2.1)
-     */
-    fun compositeKey(jweEncryption: JweEncryption, key: ByteArray) =
-        if (jweEncryption.macLength != null) {
-            CompositeKey(key.drop(key.size / 2).toByteArray(), key.take(key.size / 2).toByteArray())
-        } else {
-            CompositeKey(key)
-        }
-
-    /**
-     * Input for HMAC calculation in JWE, when not using authenticated encryption,
-     * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-5.2.2.1)
-     */
-    fun hmacInput(
-        aadForCipher: ByteArray,
-        iv: ByteArray,
-        ciphertext: ByteArray,
-    ) = aadForCipher + iv + ciphertext + (aadForCipher.size * 8L).encodeTo8Bytes()
-
     /**
      * Concat KDF for use in ECDH-ES in JWE,
      * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-4.6),
@@ -224,7 +177,6 @@ typealias DecryptJweFun = suspend (
 object DecryptJwe {
     operator fun invoke(
         keyMaterial: KeyMaterial,
-        platformCryptoShim: PlatformCryptoShim = PlatformCryptoShim(),
     ): DecryptJweFun = { jweObject ->
         catching {
             val header = jweObject.header
@@ -242,7 +194,7 @@ object DecryptJwe {
                 header.agreementPartyVInfo,
                 enc.encryptionKeyLength
             )
-            val key = compositeKey(enc, intermediateKey)
+            val key = enc.symmetricKeyFromJsonWebKeyBytes(intermediateKey)
             val iv = jweObject.iv
             val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
             val ciphertext = jweObject.ciphertext

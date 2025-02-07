@@ -1,8 +1,8 @@
 package at.asitplus.wallet.lib.cbor
 
+import at.asitplus.signum.HazardousMaterials
 import at.asitplus.signum.indispensable.*
 import at.asitplus.signum.indispensable.cosef.*
-import at.asitplus.signum.supreme.HazardousMaterials
 import at.asitplus.signum.supreme.hazmat.jcaPrivateKey
 import at.asitplus.signum.supreme.sign.EphemeralKey
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
@@ -66,6 +66,7 @@ class CoseServiceJvmTest : FreeSpec({
             }
 
             val extLibVerifier = COSEVerifier(ephemeralKey.publicKey.toJcaPublicKey().getOrThrow() as ECPublicKey)
+
 
             @OptIn(HazardousMaterials::class)
             val extLibSigner = COSESigner(ephemeralKey.jcaPrivateKey as ECPrivateKey)
