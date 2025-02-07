@@ -80,7 +80,7 @@ kotlin {
 exportXCFramework(
     "VckOpenIdKtorKmm",
     transitiveExports = true,
-    project(":vck")
+    additionalExports = arrayOf(project(":vck"))
 )
 
 val javadocJar = setupDokka(

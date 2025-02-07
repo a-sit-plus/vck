@@ -45,10 +45,10 @@ kotlin {
 
 setupAndroid()
 
-exportIosFramework(
+exportXCFramework(
     "OpenIdDataClasses",
     transitiveExports = true,
-    project(":dif-data-classes")
+    additionalExports = arrayOf(project(":dif-data-classes"))
 )
 
 val javadocJar = setupDokka(
