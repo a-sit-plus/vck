@@ -2,7 +2,11 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.*
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.RequestObjectParameters
+import at.asitplus.openid.RequestParameters
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
@@ -99,15 +103,11 @@ class RequestParser(
 
     @Suppress("UNCHECKED_CAST")
     private fun <T> matchRequestParameterCases(input: T, params: RequestParameters): RequestParametersFrom<*> =
-        when (params) {
-            is AuthenticationRequestParameters -> when (input) {
-                is Url -> RequestParametersFrom.Uri(input, params)
-                is JwsSigned<*> -> RequestParametersFrom.JwsSigned(input as JwsSigned<RequestParameters>, params)
-                is String -> RequestParametersFrom.Json(input, params)
-                else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
-            }
-
-            else -> throw NotImplementedError("matchRequestParameterCases: ${params::class.simpleName} not implemented")
+        when (input) {
+            is Url -> RequestParametersFrom.Uri(input, params)
+            is JwsSigned<*> -> RequestParametersFrom.JwsSigned(input as JwsSigned<RequestParameters>, params)
+            is String -> RequestParametersFrom.Json(input, params)
+            else -> throw Exception("matchRequestParameterCases: unknown type ${input?.let { it::class.simpleName } ?: "null"}")
         }
 }
 
