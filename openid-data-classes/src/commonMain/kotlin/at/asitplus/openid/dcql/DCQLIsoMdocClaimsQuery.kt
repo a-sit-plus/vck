@@ -79,25 +79,23 @@ data class DCQLIsoMdocClaimsQuery(
 
         val value = credentialStructure.namespaceClaimValueMap[namespace]!![claimName]!!
         values?.any {
-            catching {
-                when (it) {
-                    is DCQLExpectedClaimValue.IntegerValue -> when (value) {
-                        is Byte -> value.toLong() == it.long
-                        is UByte -> value.toLong() == it.long
-                        is Short -> value.toLong() == it.long
-                        is UShort -> value.toLong() == it.long
-                        is Int -> value.toLong() == it.long
-                        is UInt -> value.toLong() == it.long
-                        is Long -> value.toLong() == it.long
-                        is ULong -> value.toLong() == it.long
-                        is BigInteger -> value == BigInteger(it.long)
-                        else -> false
-                    }
-
-                    is DCQLExpectedClaimValue.BooleanValue -> value as Boolean == it.boolean
-                    is DCQLExpectedClaimValue.StringValue -> value as String == it.string
+            when (it) {
+                is DCQLExpectedClaimValue.IntegerValue -> when (value) {
+                    is Byte -> value.toLong() == it.long
+                    is UByte -> value.toLong() == it.long
+                    is Short -> value.toLong() == it.long
+                    is UShort -> value.toLong() == it.long
+                    is Int -> value.toLong() == it.long
+                    is UInt -> value.toLong() == it.long
+                    is Long -> value.toLong() == it.long
+                    is ULong -> value.toLong() == it.long
+                    is BigInteger -> value == BigInteger(it.long)
+                    else -> false
                 }
-            }.getOrNull() ?: false
+
+                is DCQLExpectedClaimValue.BooleanValue -> value as? Boolean == it.boolean
+                is DCQLExpectedClaimValue.StringValue -> value as? String == it.string
+            }
         }?.let {
             if (it == false) {
                 throw IllegalStateException("Value $value (${value::class}) to be queried is not expected: $values")
