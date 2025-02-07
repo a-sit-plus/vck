@@ -20,9 +20,9 @@ object DCQLExpectedClaimValueSerializer : KSerializer<DCQLExpectedClaimValue> by
 
     decodeAs = {
         when {
+            it.isString -> DCQLExpectedClaimValue.StringValue(it.content)
             it.booleanOrNull != null -> DCQLExpectedClaimValue.BooleanValue(it.boolean)
             it.longOrNull != null -> DCQLExpectedClaimValue.IntegerValue(it.long)
-            it.isString -> DCQLExpectedClaimValue.StringValue(it.content)
             else -> throw IllegalArgumentException("Value is not a valid expected claim value.")
         }
     }

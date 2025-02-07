@@ -13,6 +13,8 @@ import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
@@ -1106,78 +1108,6 @@ class DCQLQueryTest : FreeSpec({
                 Json.decodeFromString<DCQLQuery>(it)
             }
 
-            val abcdeCred =  TestCredential.SdJwtCredential(
-                type = "https://credentials.example.com/identity_credential",
-                claimStructure = buildJsonObject {
-                    put("last_name", "dummyStringValue")
-                    put("postal_code", "dummyStringValue")
-                    put("locality", "dummyStringValue")
-                    put("region", "dummyStringValue")
-                    put("date_of_birth", "dummyStringValue")
-                },
-            )
-            val acdeCred =  TestCredential.SdJwtCredential(
-                type = "https://credentials.example.com/identity_credential",
-                claimStructure = buildJsonObject {
-                    put("last_name", "dummyStringValue")
-                    put("locality", "dummyStringValue")
-                    put("region", "dummyStringValue")
-                    put("date_of_birth", "dummyStringValue")
-                },
-            )
-            val abeCred =  TestCredential.SdJwtCredential(
-                type = "https://credentials.example.com/identity_credential",
-                claimStructure = buildJsonObject {
-                    put("last_name", "dummyStringValue")
-                    put("postal_code", "dummyStringValue")
-                    put("date_of_birth", "dummyStringValue")
-                },
-            )
-            val abCred =  TestCredential.SdJwtCredential(
-                type = "https://credentials.example.com/identity_credential",
-                claimStructure = buildJsonObject {
-                    put("last_name", "dummyStringValue")
-                    put("postal_code", "dummyStringValue")
-                },
-            )
-            val aeCred =  TestCredential.SdJwtCredential(
-                type = "https://credentials.example.com/identity_credential",
-                claimStructure = buildJsonObject {
-                    put("last_name", "dummyStringValue")
-                    put("date_of_birth", "dummyStringValue")
-                },
-            )
-            val beCred =  TestCredential.SdJwtCredential(
-                type = "https://credentials.example.com/identity_credential",
-                claimStructure = buildJsonObject {
-                    put("postal_code", "dummyStringValue")
-                    put("date_of_birth", "dummyStringValue")
-                },
-            )
-            val cdeCred =  TestCredential.SdJwtCredential(
-                type = "https://credentials.example.com/identity_credential",
-                claimStructure = buildJsonObject {
-                    put("locality", "dummyStringValue")
-                    put("region", "dummyStringValue")
-                    put("date_of_birth", "dummyStringValue")
-                },
-            )
-            val adeCred =  TestCredential.SdJwtCredential(
-                type = "https://credentials.example.com/identity_credential",
-                claimStructure = buildJsonObject {
-                    put("last_name", "dummyStringValue")
-                    put("region", "dummyStringValue")
-                    put("date_of_birth", "dummyStringValue")
-                },
-            )
-            val aceCred =  TestCredential.SdJwtCredential(
-                type = "https://credentials.example.com/identity_credential",
-                claimStructure = buildJsonObject {
-                    put("last_name", "dummyStringValue")
-                    put("locality", "dummyStringValue")
-                    put("date_of_birth", "dummyStringValue")
-                },
-            )
             val valid1 =  TestCredential.SdJwtCredential(
                 type = "https://credentials.example.com/identity_credential",
                 claimStructure = buildJsonObject {
@@ -1209,6 +1139,28 @@ class DCQLQueryTest : FreeSpec({
                         put("street_address", "dummyStringValue")
                     })
                     put("postal_code", "90212")
+                },
+            )
+            val wrongPostalCodeType =  TestCredential.SdJwtCredential(
+                type = "https://credentials.example.com/identity_credential",
+                claimStructure = buildJsonObject {
+                    put("last_name", "Doe")
+                    put("first_name", "dummyStringValue")
+                    put("address", buildJsonObject {
+                        put("street_address", "dummyStringValue")
+                    })
+                    put("postal_code", 90211)
+                },
+            )
+            val wrongPostalCodeTypeAndValue =  TestCredential.SdJwtCredential(
+                type = "https://credentials.example.com/identity_credential",
+                claimStructure = buildJsonObject {
+                    put("last_name", "Doe")
+                    put("first_name", "dummyStringValue")
+                    put("address", buildJsonObject {
+                        put("street_address", "dummyStringValue")
+                    })
+                    put("postal_code", true)
                 },
             )
             val wrongName =  TestCredential.SdJwtCredential(
@@ -1262,6 +1214,8 @@ class DCQLQueryTest : FreeSpec({
                             missingFirstName,
                             wrongName,
                             wrongPostalCode,
+                            wrongPostalCodeType,
+                            wrongPostalCodeTypeAndValue,
                         ),
                     ),
                 ) {
@@ -1276,6 +1230,260 @@ class DCQLQueryTest : FreeSpec({
                     data = mapOf(
                         "valid1" to listOf(valid1),
                         "valid2" to listOf(valid2),
+                    )
+                ) {
+                    TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
+                }
+            }
+        }
+    }
+    "Manual written examples" - {
+        "values" - {
+            "requested strings" - {
+                val dcqlQuery = """
+                    {
+                      "credentials": [
+                        {
+                          "id": "my_credential",
+                          "format": "dc+sd-jwt",
+                          "claims": [
+                              {
+                                "path": ["value"],
+                                "values": ["expectedStringValue1", "2"]
+                              }
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trimIndent().let {
+                    Json.decodeFromString<DCQLQuery>(it)
+                }
+                val valid1 =  TestCredential.SdJwtCredential(
+                    type = "https://credentials.example.com/identity_credential",
+                    claimStructure = buildJsonObject {
+                        put("value", "expectedStringValue1")
+                    },
+                )
+                val valid2 =  TestCredential.SdJwtCredential(
+                    type = "https://credentials.example.com/identity_credential",
+                    claimStructure = buildJsonObject {
+                        put("value", "2")
+                    },
+                )
+                val missingValue =  TestCredential.SdJwtCredential(
+                    type = "https://credentials.example.com/identity_credential",
+                    claimStructure = buildJsonObject {},
+                )
+                val invalidValue =  TestCredential.SdJwtCredential(
+                    type = "https://credentials.example.com/identity_credential",
+                    claimStructure = buildJsonObject {
+                        put("value", "unexpectedStringValue")
+                    },
+                )
+                val invalidInteger1 =  TestCredential.SdJwtCredential(
+                    type = "https://credentials.example.com/identity_credential",
+                    claimStructure = buildJsonObject {
+                        put("value", 0)
+                    },
+                )
+                val invalidInteger2 =  TestCredential.SdJwtCredential(
+                    type = "https://credentials.example.com/identity_credential",
+                    claimStructure = buildJsonObject {
+                        put("value", 2)
+                    },
+                )
+                val invalidBoolean =  TestCredential.SdJwtCredential(
+                    type = "https://credentials.example.com/identity_credential",
+                    claimStructure = buildJsonObject {
+                        put("value", true)
+                    },
+                )
+                "failing" - {
+                    withData(
+                        data = mapOf(
+                            "empty database" to listOf<TestCredential>(),
+                            "missing claims" to listOf(
+                                missingValue,
+                                invalidValue,
+                                invalidInteger1,
+                                invalidInteger2,
+                                invalidBoolean,
+                            ),
+                        ),
+                    ) {
+                        shouldThrowAny {
+                            TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
+                        }
+                    }
+                }
+
+                "success" - {
+                    withData(
+                        data = mapOf(
+                            "valid1" to listOf(valid1),
+                            "valid2" to listOf(valid2),
+                        )
+                    ) {
+                        TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
+                    }
+                }
+            }
+        }
+        "requested integers" - {
+            val dcqlQuery = """
+                    {
+                      "credentials": [
+                        {
+                          "id": "my_credential",
+                          "format": "dc+sd-jwt",
+                          "claims": [
+                              {
+                                "path": ["value"],
+                                "values": [0, 1]
+                              }
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trimIndent().let {
+                Json.decodeFromString<DCQLQuery>(it)
+            }
+            val valid1 =  TestCredential.SdJwtCredential(
+                type = "https://credentials.example.com/identity_credential",
+                claimStructure = buildJsonObject {
+                    put("value", 0)
+                },
+            )
+            val valid2 =  TestCredential.SdJwtCredential(
+                type = "https://credentials.example.com/identity_credential",
+                claimStructure = buildJsonObject {
+                    put("value", 1)
+                },
+            )
+            val missingValue =  TestCredential.SdJwtCredential(
+                type = "https://credentials.example.com/identity_credential",
+                claimStructure = buildJsonObject {},
+            )
+            "failing" - {
+                withData(
+                    data = mapOf(
+                        "empty database" to listOf<TestCredential>(),
+                        "missing claims" to listOf(
+                            missingValue,
+                        ) + listOf(
+                            "0",
+                            "1",
+                            -1,
+                            2,
+                            false,
+                            true,
+                            "unexpected string value",
+                            "false",
+                            "true",
+                        ).map {
+                            when(it) {
+                                is String -> JsonPrimitive(it)
+                                is Boolean -> JsonPrimitive(it)
+                                is Int -> JsonPrimitive(it)
+                                else -> JsonNull
+                            }
+                        }.map {
+                            TestCredential.SdJwtCredential(
+                                type = "https://credentials.example.com/identity_credential",
+                                claimStructure = buildJsonObject {
+                                    put("value", it)
+                                },
+                            )
+                        }
+                    ),
+                ) {
+                    shouldThrowAny {
+                        TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
+                    }
+                }
+            }
+
+            "success" - {
+                withData(
+                    data = mapOf(
+                        "valid1" to listOf(valid1),
+                        "valid2" to listOf(valid2),
+                    )
+                ) {
+                    TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
+                }
+            }
+        }
+        "requested boolean" - {
+            val dcqlQuery = """
+                    {
+                      "credentials": [
+                        {
+                          "id": "my_credential",
+                          "format": "dc+sd-jwt",
+                          "claims": [
+                              {
+                                "path": ["value"],
+                                "values": [true, true]
+                              }
+                          ]
+                        }
+                      ]
+                    }
+                """.trimIndent().trimIndent().let {
+                Json.decodeFromString<DCQLQuery>(it)
+            }
+            val valid1 =  TestCredential.SdJwtCredential(
+                type = "https://credentials.example.com/identity_credential",
+                claimStructure = buildJsonObject {
+                    put("value", true)
+                },
+            )
+            val missingValue =  TestCredential.SdJwtCredential(
+                type = "https://credentials.example.com/identity_credential",
+                claimStructure = buildJsonObject {},
+            )
+            "failing" - {
+                withData(
+                    data = mapOf(
+                        "empty database" to listOf<TestCredential>(),
+                        "missing claims" to listOf(
+                            missingValue,
+                        ) + listOf(
+                            "0",
+                            "1",
+                            0,
+                            1,
+                            false,
+                            "false",
+                            "true",
+                        ).map {
+                            when(it) {
+                                is String -> JsonPrimitive(it)
+                                is Boolean -> JsonPrimitive(it)
+                                is Int -> JsonPrimitive(it)
+                                else -> JsonNull
+                            }
+                        }.map {
+                            TestCredential.SdJwtCredential(
+                                type = "https://credentials.example.com/identity_credential",
+                                claimStructure = buildJsonObject {
+                                    put("value", it)
+                                },
+                            )
+                        }
+                    ),
+                ) {
+                    shouldThrowAny {
+                        TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
+                    }
+                }
+            }
+
+            "success" - {
+                withData(
+                    data = mapOf(
+                        "valid1" to listOf(valid1),
                     )
                 ) {
                     TestCredentialQueryAdapter(dcqlQuery).execute(it).getOrThrow()
