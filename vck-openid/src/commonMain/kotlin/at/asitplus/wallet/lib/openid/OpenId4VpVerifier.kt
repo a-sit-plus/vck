@@ -334,7 +334,7 @@ open class OpenId4VpVerifier(
             ResponseParametersFrom.Post(input.decode<AuthenticationResponseParameters>())
         }.getOrElse {
             Napier.w("Could not parse authentication response: $input", it)
-            return AuthnResponseResult.Error("Can't parse input", null)
+            return AuthnResponseResult.Error("Can't parse input", null, it)
         }.let { validateAuthnResponse(it) }
 
     /**
@@ -348,7 +348,7 @@ open class OpenId4VpVerifier(
             responseParser.parseAuthnResponse(input)
         }.getOrElse {
             Napier.w("Could not parse authentication response: $input", it)
-            return AuthnResponseResult.Error("Can't parse input", null)
+            return AuthnResponseResult.Error("Can't parse input", null, it)
         }.let {
             validateAuthnResponse(it)
         }
@@ -380,7 +380,7 @@ open class OpenId4VpVerifier(
                 catching {
                     extractValidatedIdToken(idToken)
                 }.getOrElse {
-                    return AuthnResponseResult.ValidationError("idToken", state)
+                    return AuthnResponseResult.ValidationError("idToken", state, it)
                 }
             } ?: return AuthnResponseResult.ValidationError("idToken", state)
                 .also { Napier.w("State not associated with response type: $state") }
@@ -463,7 +463,7 @@ open class OpenId4VpVerifier(
                     )
                 }.getOrElse {
                     Napier.w("Invalid presentation format: $relatedPresentation", it)
-                    return AuthnResponseResult.ValidationError("Invalid presentation", state)
+                    return AuthnResponseResult.ValidationError("Invalid presentation", state, it)
                 }
                 result.mapToAuthnResponseResult(state)
             } ?: listOf()
@@ -648,7 +648,7 @@ open class OpenId4VpVerifier(
                 .also { Napier.w("VP error: $this") }
 
         is Verifier.VerifyPresentationResult.ValidationError ->
-            AuthnResponseResult.ValidationError("vpToken", state)
+            AuthnResponseResult.ValidationError("vpToken", state, cause)
                 .also { Napier.w("VP error: $this", cause) }
 
         is Verifier.VerifyPresentationResult.Success ->

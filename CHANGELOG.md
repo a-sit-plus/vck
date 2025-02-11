@@ -34,6 +34,10 @@ Release 5.4.0:
   - Added validation support for DCQL presentations
 - `RequestOptions`:
   - Added member `presentationMechanism` to explicitly select DCQL or PresentationExchange
+- Error handling:
+  - Preserve more causes for errors
+  - In `AuthnRespnoseResult.Error` add `cause`, which optionally holds the cause for the error
+  - In `AuthnRespnoseResult.ValidationError` add `cause`, which optionally holds the cause for the error
 - Improve support for ISO mDocs:
   - In `IssuerSignedItem`, tag `Instant` values with CBOR tag `0`, and `LocalDate` with CBOR tag `1004`
   - Fix calculating digests for `IssuerSignedItems`
