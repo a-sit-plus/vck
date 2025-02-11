@@ -246,7 +246,7 @@ class CredentialIssuer(
         if (cwt.audience == null || cwt.audience != publicContext)
             throw OAuth2Exception(Errors.INVALID_PROOF, "audience invalid: ${cwt.audience}")
                 .also { Napier.w("client did provide invalid audience in CWT in proof: $header") }
-        return header.certificateChain?.let { X509Certificate.decodeFromByteArray(it)?.publicKey }
+        return header.certificateChain?.firstOrNull()?.let { X509Certificate.decodeFromByteArray(it)?.publicKey }
             ?: throw OAuth2Exception(Errors.INVALID_PROOF, "could not extract public key")
                 .also { Napier.w("client did provide no valid key in header in CWT in proof: $header") }
     }

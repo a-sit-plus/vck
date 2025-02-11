@@ -38,6 +38,8 @@ Release 5.4.0:
   - In `IssuerSignedItem`, tag `Instant` values with CBOR tag `0`, and `LocalDate` with CBOR tag `1004`
   - Fix calculating digests for `IssuerSignedItems`
   - Fix serialization of device authentication bytes, ensuring compatibility with ISO 18013-7
+- Updates:
+  - signum to 3.13.0, fixing COSE headers with more than one certificate
 
 Release 5.3.3:
  - ISO: Fix serialization of device authentication bytes

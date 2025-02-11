@@ -2,12 +2,7 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.ClaimFormat
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.PresentationSubmission
-import at.asitplus.dif.PresentationSubmissionDescriptor
+import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryResult
@@ -90,7 +85,7 @@ class HolderAgent(
 
             is Holder.StoreCredentialInput.Iso -> {
                 val issuerKey: CoseKey? =
-                    credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.let {
+                    credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()?.let {
                         runCatching { X509Certificate.decodeFromDer(it) }.getOrNull()?.publicKey?.toCoseKey()
                             ?.getOrNull()
                     }
