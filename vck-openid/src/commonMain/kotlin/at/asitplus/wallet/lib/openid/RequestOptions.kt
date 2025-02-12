@@ -10,18 +10,9 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.SCOPE_OPENID
 import at.asitplus.openid.OpenIdConstants.SCOPE_PROFILE
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
-import at.asitplus.openid.dcql.DCQLClaimsQueryList
-import at.asitplus.openid.dcql.DCQLCredentialQuery
-import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
-import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
-import at.asitplus.openid.dcql.DCQLCredentialQueryList
-import at.asitplus.openid.dcql.DCQLIsoMdocClaimsQuery
-import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
-import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
-import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.*
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import com.benasher44.uuid.uuid4
@@ -107,51 +98,51 @@ data class OpenIdRequestOptions(
     override val encryption: Boolean = false,
     override val presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
 ) : RequestOptions {
+
     override fun toDCQLQuery(): DCQLQuery? = if (credentials.isEmpty()) null else DCQLQuery(
-        credentials = toDCQLCredentialQueryList(),
-    )
+        credentials = DCQLCredentialQueryList<DCQLCredentialQueryInstance>(
+            credentials.map<RequestOptionsCredential, DCQLCredentialQueryInstance> { credential ->
+                val format = when (credential.representation) {
+                    CredentialRepresentation.PLAIN_JWT -> CredentialFormatEnum.JWT_VC
+                    CredentialRepresentation.SD_JWT -> CredentialFormatEnum.DC_SD_JWT
+                    CredentialRepresentation.ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
+                }
+                val meta = when (credential.representation) {
+                    CredentialRepresentation.PLAIN_JWT -> null
+                    CredentialRepresentation.SD_JWT -> DCQLSdJwtCredentialMetadataAndValidityConstraints(
+                        vctValues = listOf(credential.credentialScheme.sdJwtType!!)
+                    )
 
-    private fun toDCQLCredentialQueryList(): DCQLCredentialQueryList<DCQLCredentialQuery> = DCQLCredentialQueryList(
-        credentials.map { credential ->
-            val format = when (credential.representation) {
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> CredentialFormatEnum.JWT_VC
-                ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialFormatEnum.DC_SD_JWT
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
-            }
-            val meta = when (credential.representation) {
-                ConstantIndex.CredentialRepresentation.PLAIN_JWT -> null
-                ConstantIndex.CredentialRepresentation.SD_JWT -> DCQLSdJwtCredentialMetadataAndValidityConstraints(
-                    vctValues = listOf(credential.credentialScheme.sdJwtType!!)
-                )
+                    CredentialRepresentation.ISO_MDOC -> DCQLIsoMdocCredentialMetadataAndValidityConstraints(
+                        doctypeValue = credential.credentialScheme.isoDocType!!
+                    )
+                }
+                val claims = credential.requestedAttributes?.let { attributes ->
+                    DCQLClaimsQueryList(
+                        attributes.map { attribute ->
+                            when (credential.representation) {
+                                CredentialRepresentation.SD_JWT,
+                                CredentialRepresentation.PLAIN_JWT
+                                    -> DCQLJsonClaimsQuery(
+                                    path = DCQLClaimsPathPointer(attribute)
+                                )
 
-                ConstantIndex.CredentialRepresentation.ISO_MDOC -> DCQLIsoMdocCredentialMetadataAndValidityConstraints(
-                    doctypeValue = credential.credentialScheme.isoDocType!!
+                                CredentialRepresentation.ISO_MDOC -> DCQLIsoMdocClaimsQuery(
+                                    namespace = credential.credentialScheme.isoNamespace!!,
+                                    claimName = attribute,
+                                )
+                            }
+                        }.toNonEmptyList()
+                    )
+                }
+                DCQLCredentialQueryInstance(
+                    id = DCQLCredentialQueryIdentifier(uuid4().toString()),
+                    format = format,
+                    meta = meta,
+                    claims = claims,
                 )
-            }
-            val claims = credential.requestedAttributes?.let { attributes ->
-                DCQLClaimsQueryList(
-                    attributes.map { attribute ->
-                        when (credential.representation) {
-                            ConstantIndex.CredentialRepresentation.SD_JWT,
-                            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> DCQLJsonClaimsQuery(
-                                path = DCQLClaimsPathPointer(attribute)
-                            )
-
-                            ConstantIndex.CredentialRepresentation.ISO_MDOC -> DCQLIsoMdocClaimsQuery(
-                                namespace = credential.credentialScheme.isoNamespace!!,
-                                claimName = attribute,
-                            )
-                        }
-                    }.toNonEmptyList()
-                )
-            }
-            DCQLCredentialQueryInstance(
-                id = DCQLCredentialQueryIdentifier(uuid4().toString()),
-                format = format,
-                meta = meta,
-                claims = claims,
-            )
-        }.toNonEmptyList()
+            }.toNonEmptyList()
+        ),
     )
 
     override fun toPresentationDefinition(
@@ -182,7 +173,7 @@ data class RequestOptionsCredential(
     /**
      * Required representation, see [ConstantIndex.CredentialRepresentation]
      */
-    val representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
+    val representation: CredentialRepresentation = CredentialRepresentation.PLAIN_JWT,
     /**
      * List of attributes that shall be requested explicitly (selective disclosure),
      * or `null` to make no restrictions
@@ -196,7 +187,7 @@ data class RequestOptionsCredential(
     val requestedOptionalAttributes: RequestedAttributes? = null,
 ) {
     fun buildId() =
-        if (credentialScheme.isoDocType != null && representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
+        if (credentialScheme.isoDocType != null && representation == CredentialRepresentation.ISO_MDOC)
             credentialScheme.isoDocType!! else uuid4().toString()
 
     fun toConstraint() =
@@ -211,28 +202,28 @@ data class RequestOptionsCredential(
             ?: listOf()
 
     private fun toTypeConstraint() = when (representation) {
-        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> this.credentialScheme.toVcConstraint()
-        ConstantIndex.CredentialRepresentation.SD_JWT -> this.credentialScheme.toSdJwtConstraint()
-        ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
+        CredentialRepresentation.PLAIN_JWT -> this.credentialScheme.toVcConstraint()
+        CredentialRepresentation.SD_JWT -> this.credentialScheme.toSdJwtConstraint()
+        CredentialRepresentation.ISO_MDOC -> null
     }
 
     fun toFormatHolder(containerJwt: FormatContainerJwt, containerSdJwt: FormatContainerSdJwt) =
         when (representation) {
-            ConstantIndex.CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
-            ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(
+            CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
+            CredentialRepresentation.SD_JWT -> FormatHolder(
                 jwtSd = containerSdJwt,
                 sdJwt = containerSdJwt
             )
 
-            ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
+            CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
         }
 
     private fun RequestedAttributes.createConstraints(
-        representation: ConstantIndex.CredentialRepresentation,
+        representation: CredentialRepresentation,
         credentialScheme: ConstantIndex.CredentialScheme?,
         optional: Boolean,
     ): Collection<ConstraintField> = map {
-        if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
+        if (representation == CredentialRepresentation.ISO_MDOC)
             credentialScheme.toConstraintField(it, optional)
         else
             ConstraintField(path = listOf("\$[${it.quote()}]"), optional = optional)
