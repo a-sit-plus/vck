@@ -1,7 +1,5 @@
-
-
 import at.asitplus.gradle.commonImplementationAndApiDependencies
-import at.asitplus.gradle.exportIosFramework
+import at.asitplus.gradle.exportXCFramework
 import at.asitplus.gradle.setupAndroid
 import at.asitplus.gradle.setupDokka
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
@@ -61,10 +59,10 @@ kotlin {
 
 setupAndroid()
 
-exportIosFramework(
+exportXCFramework(
     name = "VckKmm",
     transitiveExports = true,
-    project(":dif-data-classes")
+    additionalExports = arrayOf(project(":dif-data-classes"))
 )
 
 val javadocJar = setupDokka(

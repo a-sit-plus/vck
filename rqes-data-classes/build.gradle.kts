@@ -1,4 +1,4 @@
-import at.asitplus.gradle.exportIosFramework
+import at.asitplus.gradle.exportXCFramework
 import at.asitplus.gradle.ktor
 import at.asitplus.gradle.napier
 import at.asitplus.gradle.setupAndroid
@@ -51,13 +51,13 @@ kotlin {
 
 setupAndroid()
 
-exportIosFramework(
+exportXCFramework(
     "RqesDataClasses",
     transitiveExports = true,
-    "at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}",
+    additionalExports = arrayOf("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}",
     "at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}",
     "at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}",
-    "com.benasher44:uuid:${VcLibVersions.uuid}"
+    "com.benasher44:uuid:${VcLibVersions.uuid}")
 )
 
 val javadocJar = setupDokka(

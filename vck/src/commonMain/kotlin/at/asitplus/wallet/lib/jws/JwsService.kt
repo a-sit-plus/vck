@@ -4,22 +4,29 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
+import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
-import at.asitplus.signum.indispensable.asn1.encoding.encodeTo8Bytes
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
-import at.asitplus.signum.indispensable.josef.JweEncryption.*
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
-import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
+import at.asitplus.signum.indispensable.symmetric.*
+import at.asitplus.signum.supreme.agree.Ephemeral
+import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.asKmmResult
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.signum.supreme.hash.digest
+import at.asitplus.signum.supreme.symmetric.encrypt
+import at.asitplus.signum.supreme.symmetric.keyFrom
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerializationStrategy
-import kotlin.random.Random
 
 
 /**
@@ -83,7 +90,7 @@ interface JwsService {
         jweEncryption: JweEncryption,
     ): KmmResult<JweEncrypted>
 
-    fun <T : Any> encryptJweObject(
+    suspend fun <T : Any> encryptJweObject(
         type: String,
         payload: T,
         serializer: SerializationStrategy<T>,
@@ -193,29 +200,26 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             ?: throw IllegalArgumentException("No encryption in JWE header")
         val epk = header.ephemeralKeyPair
             ?: throw IllegalArgumentException("No epk in JWE header")
-        val z = cryptoService.performKeyAgreement(epk, alg).getOrThrow()
+        val z =
+            cryptoService.performKeyAgreement(epk.toCryptoPublicKey().getOrThrow() as CryptoPublicKey.EC).getOrThrow()
         val intermediateKey = concatKdf(
             z,
             enc,
             header.agreementPartyUInfo,
-            header.agreementPartyVInfo,
-            enc.encryptionKeyLength
+            header.agreementPartyVInfo
         )
-        val key = compositeKey(enc, intermediateKey)
+        require(alg == JweAlgorithm.ECDH_ES)
+        val algorithm = enc.algorithm
+        require(algorithm.requiresNonce())
+        require(algorithm.isAuthenticated())
+        val key = algorithm.keyFromIntermediate(intermediateKey)
         val iv = jweObject.iv
         val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
         val ciphertext = jweObject.ciphertext
         val authTag = jweObject.authTag
-        val plaintext = cryptoService.decrypt(key.aesKey, iv, aad, ciphertext, authTag, enc).getOrThrow()
+        val plaintext = cryptoService.decrypt(key, iv, aad, ciphertext, authTag).getOrThrow()
         val plainObject = vckJsonSerializer.decodeFromString(deserializer, plaintext.decodeToString())
-        key.hmacKey?.let { hmacKey ->
-            val expectedAuthTag = cryptoService.hmac(hmacKey, enc, hmacInput(aad, iv, ciphertext))
-                .getOrThrow()
-                .take(enc.macLength!!).toByteArray()
-            if (!expectedAuthTag.contentEquals(authTag)) {
-                throw IllegalArgumentException("Authtag mismatch")
-            }
-        }
+
         JweDecrypted(header, plainObject)
     }
 
@@ -229,17 +233,17 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): KmmResult<JweEncrypted> = catching {
         val crv = recipientKey.curve
             ?: throw IllegalArgumentException("No curve in recipient key")
-        val ephemeralKeyPair = cryptoService.generateEphemeralKeyPair(crv)
+        val ephemeralKeyPair = KeyAgreementPrivateValue.ECDH.Ephemeral(crv).getOrThrow()
         val jweHeader = (header ?: JweHeader(jweAlgorithm, jweEncryption, type = null)).copy(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
             jsonWebKey = cryptoService.keyMaterial.jsonWebKey,
-            ephemeralKeyPair = ephemeralKeyPair.publicJsonWebKey
+            ephemeralKeyPair = ephemeralKeyPair.publicValue.asCryptoPublicKey().toJsonWebKey()
         )
         encryptJwe(ephemeralKeyPair, recipientKey, jweAlgorithm, jweEncryption, jweHeader, payload, serializer)
     }
 
-    override fun <T : Any> encryptJweObject(
+    override suspend fun <T : Any> encryptJweObject(
         type: String,
         payload: T,
         serializer: SerializationStrategy<T>,
@@ -250,20 +254,20 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
     ): KmmResult<JweEncrypted> = catching {
         val crv = recipientKey.curve
             ?: throw IllegalArgumentException("No curve in recipient key")
-        val ephemeralKeyPair = cryptoService.generateEphemeralKeyPair(crv)
+        val ephemeralKeyPair = KeyAgreementPrivateValue.ECDH.Ephemeral(crv).getOrThrow()
         val jweHeader = JweHeader(
             algorithm = jweAlgorithm,
             encryption = jweEncryption,
             jsonWebKey = cryptoService.keyMaterial.jsonWebKey,
             type = type,
             contentType = contentType,
-            ephemeralKeyPair = ephemeralKeyPair.publicJsonWebKey
+            ephemeralKeyPair = ephemeralKeyPair.publicValue.asCryptoPublicKey().toJsonWebKey()
         )
         encryptJwe(ephemeralKeyPair, recipientKey, jweAlgorithm, jweEncryption, jweHeader, payload, serializer)
     }
 
-    private fun <T : Any> encryptJwe(
-        ephemeralKeyPair: EphemeralKeyHolder,
+    private suspend fun <T : Any> encryptJwe(
+        ephemeralKeyPair: KeyAgreementPrivateValue.ECDH,
         recipientKey: JsonWebKey,
         jweAlgorithm: JweAlgorithm,
         jweEncryption: JweEncryption,
@@ -271,55 +275,49 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         payload: T,
         serializer: SerializationStrategy<T>,
     ): JweEncrypted {
-        val z = cryptoService.performKeyAgreement(ephemeralKeyPair, recipientKey, jweAlgorithm)
-            .getOrThrow()
+
+        val cryptoPublicKey = recipientKey.toCryptoPublicKey().getOrThrow()
+        require(cryptoPublicKey is CryptoPublicKey.EC)
+
+
+        val z = ephemeralKeyPair.keyAgreement(cryptoPublicKey).getOrThrow()
         val intermediateKey = concatKdf(
             z,
             jweEncryption,
             jweHeader.agreementPartyUInfo,
             jweHeader.agreementPartyVInfo,
-            jweEncryption.encryptionKeyLength
         )
-        val key = compositeKey(jweEncryption, intermediateKey)
-        // Pending fix in signum
-        val ivLengthBits = when (jweEncryption) {
-            A128GCM, A192GCM, A256GCM -> 96
-            else -> 128
-        }
-        val iv = Random.nextBytes(ivLengthBits / 8)
+
+        val algorithm = jweEncryption.algorithm
+        require(algorithm.requiresNonce())
+        require(algorithm.isAuthenticated())
+        val key = algorithm.keyFromIntermediate(intermediateKey)
+
         val headerSerialized = jweHeader.serialize()
         val aad = headerSerialized.encodeToByteArray()
         val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
         val bytes = vckJsonSerializer.encodeToString(serializer, payload).encodeToByteArray()
-        val ciphertext = cryptoService.encrypt(key.aesKey, iv, aadForCipher, bytes, jweEncryption).getOrThrow()
-        val authTag = key.hmacKey?.let { hmacKey ->
-            cryptoService.hmac(hmacKey, jweEncryption, hmacInput(aadForCipher, iv, ciphertext.ciphertext))
-                .getOrThrow()
-                .take(jweEncryption.macLength!!).toByteArray()
-        } ?: ciphertext.authtag
-        return JweEncrypted(jweHeader, aad, null, iv, ciphertext.ciphertext, authTag)
+        val sealedBox = cryptoService.encrypt(key, bytes, aad = aadForCipher).getOrThrow()
+
+        return JweEncrypted(jweHeader, aad, null, sealedBox.nonce, sealedBox.encryptedData, sealedBox.authTag)
     }
 
     /**
      * Derives the key, for use in content encryption in JWE,
      * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-5.2.2.1)
      */
-    private fun compositeKey(jweEncryption: JweEncryption, key: ByteArray) =
-        if (jweEncryption.macLength != null) {
-            CompositeKey(key.drop(key.size / 2).toByteArray(), key.take(key.size / 2).toByteArray())
-        } else {
-            CompositeKey(key)
-        }
+    private inline fun SymmetricEncryptionAlgorithm<AuthCapability.Authenticated<*>, NonceTrait.Required, *>.keyFromIntermediate(
+        jweKeyBytes: ByteArray
+    ): SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *> {
+        return ((if (hasDedicatedMac())
+            keyFrom(
+                jweKeyBytes.drop(jweKeyBytes.size / 2).toByteArray(),
+                jweKeyBytes.take(jweKeyBytes.size / 2).toByteArray()
+            ).getOrThrow()
+        else
+            keyFrom(jweKeyBytes).getOrThrow()) as SymmetricKey<AuthCapability.Authenticated<*>, NonceTrait.Required, *>)
+    }
 
-    /**
-     * Input for HMAC calculation in JWE, when not using authenticated encryption,
-     * per [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518#section-5.2.2.1)
-     */
-    private fun hmacInput(
-        aadForCipher: ByteArray,
-        iv: ByteArray,
-        ciphertext: ByteArray,
-    ) = aadForCipher + iv + ciphertext + (aadForCipher.size * 8L).encodeTo8Bytes()
 
     /**
      * Concat KDF for use in ECDH-ES in JWE,
@@ -331,19 +329,19 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         jweEncryption: JweEncryption,
         apu: ByteArray?,
         apv: ByteArray?,
-        encryptionKeyLengthBits: Int,
     ): ByteArray {
         val digest = Digest.SHA256
-        val repetitions = (encryptionKeyLengthBits.toUInt() + digest.outputLength.bits - 1U) / digest.outputLength.bits
-        val algId = jweEncryption.text.encodeToByteArray().prependWith4BytesSize()
+        val repetitions =
+            (jweEncryption.combinedEncryptionKeyLength.bits + digest.outputLength.bits - 1U) / digest.outputLength.bits
+        val algId = jweEncryption.identifier.encodeToByteArray().prependWith4BytesSize()
         val apuEncoded = apu?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
         val apvEncoded = apv?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
-        val keyLength = jweEncryption.encryptionKeyLength.encodeTo4Bytes()
+        val keyLength = jweEncryption.combinedEncryptionKeyLength.bits.toInt().encodeTo4Bytes()
         val otherInfo = algId + apuEncoded + apvEncoded + keyLength + byteArrayOf()
         val output = (1..repetitions.toInt()).fold(byteArrayOf()) { acc, step ->
-            acc + cryptoService.messageDigest(step.encodeTo4Bytes() + z + otherInfo, digest)
+            acc + digest.digest(step.encodeTo4Bytes() + z + otherInfo)
         }
-        return output.take(encryptionKeyLengthBits / 8).toByteArray()
+        return output.take(jweEncryption.combinedEncryptionKeyLength.bytes.toInt()).toByteArray()
     }
 
 }
@@ -429,10 +427,12 @@ class DefaultVerifierJwsService(
     )
 
     private fun verify(jwsObject: JwsSigned<*>, publicKey: CryptoPublicKey): Boolean = catching {
+        require(jwsObject.header.algorithm.algorithm is SignatureAlgorithm)
+
         cryptoService.verify(
             input = jwsObject.plainSignatureInput,
             signature = jwsObject.signature,
-            algorithm = jwsObject.header.algorithm.toX509SignatureAlgorithm().getOrThrow(),
+            algorithm = jwsObject.header.algorithm.algorithm as SignatureAlgorithm,
             publicKey = publicKey,
         ).getOrThrow()
     }.fold(onSuccess = { true }, onFailure = {

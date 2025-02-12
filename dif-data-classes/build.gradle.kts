@@ -50,13 +50,13 @@ kotlin {
 
 setupAndroid()
 
-exportIosFramework(
+exportXCFramework(
     "DifDataClasses",
     transitiveExports = true,
-    "at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}",
+    additionalExports = arrayOf("at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}",
     "at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}",
     "at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}",
-    "com.benasher44:uuid:${VcLibVersions.uuid}"
+    "com.benasher44:uuid:${VcLibVersions.uuid}")
 )
 
 val javadocJar = setupDokka(
