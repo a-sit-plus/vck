@@ -275,9 +275,9 @@ class Validator(
             Napier.w("Got no issuer certificate in $issuerAuth")
             throw IllegalArgumentException("issuerKey")
         }
-        val x509Certificate = X509Certificate.decodeFromDerSafe(certificateChain).getOrElse {
+        val x509Certificate = X509Certificate.decodeFromDerSafe(certificateChain.first()).getOrElse {
             Napier.w(
-                "Could not parse issuer certificate in ${certificateChain.encodeToString(Base64())}",
+                "Could not parse issuer certificate in ${certificateChain.joinToString{it.encodeToString(Base64())}}",
                 it
             )
             throw IllegalArgumentException("issuerKey")

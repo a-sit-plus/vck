@@ -53,14 +53,14 @@ class DeviceSignedItemSerializationTest : FreeSpec({
             protectedHeader,
             null,
             null,
-            CryptoSignature.RSAorHMAC(byteArrayOf()),
+            CryptoSignature.RSA(byteArrayOf()),
             MobileSecurityObject.serializer()
         )
         val deviceAuth = CoseSigned.create(
             protectedHeader,
             null,
             null,
-            CryptoSignature.RSAorHMAC(byteArrayOf()),
+            CryptoSignature.RSA(byteArrayOf()),
             ByteArraySerializer()
         )
 

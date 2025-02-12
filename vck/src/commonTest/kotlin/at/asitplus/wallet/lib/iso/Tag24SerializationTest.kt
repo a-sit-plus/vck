@@ -60,7 +60,7 @@ class Tag24SerializationTest : FreeSpec({
                     protectedHeader = CoseHeader(algorithm = CoseAlgorithm.RS256),
                     unprotectedHeader = null,
                     payload = null,
-                    signature = CryptoSignature.RSAorHMAC(byteArrayOf()),
+                    signature = CryptoSignature.RSA(byteArrayOf()),
                     payloadSerializer = ByteArraySerializer()
                 )
             )
@@ -135,7 +135,7 @@ class Tag24SerializationTest : FreeSpec({
             protectedHeader = CoseHeader(algorithm = CoseAlgorithm.RS256),
             unprotectedHeader = null,
             payload = mso,
-            signature = CryptoSignature.RSAorHMAC(byteArrayOf()),
+            signature = CryptoSignature.RSA(byteArrayOf()),
             payloadSerializer = MobileSecurityObject.serializer(),
         )
 
@@ -186,7 +186,7 @@ private fun issuerAuth() = CoseSigned.create(
     protectedHeader = CoseHeader(algorithm = CoseAlgorithm.RS256),
     unprotectedHeader = null,
     payload = null,
-    signature = CryptoSignature.RSAorHMAC(byteArrayOf()),
+    signature = CryptoSignature.RSA(byteArrayOf()),
     payloadSerializer = MobileSecurityObject.serializer(),
 )
 

@@ -2,11 +2,9 @@ package at.asitplus.wallet.lib.jws
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
-import at.asitplus.signum.indispensable.asn1.encoding.encodeTo8Bytes
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.josef.JweEncryption.*
@@ -352,8 +350,7 @@ object VerifyJwsObject {
         header.publicKey?.let { setOf(it) }
             ?: header.jsonWebKeySetUrl?.let {
                 retrieveJwkFromKeySetUrl(jwkSetRetriever, it, header.keyId)?.let { setOf(it) }
-            } ?: publicKeyLookup(this)?.mapNotNull { jwk -> jwk.toCryptoPublicKey().getOrNull() }?.toSet()
-            ?: setOf()
+            } ?: publicKeyLookup(this)?.mapNotNull { jwk -> jwk.toCryptoPublicKey().getOrNull() }?.toSet() ?: setOf()
 
     /**
      * Either take the single key from the JSON Web Key Set, or the one matching the keyId
@@ -367,31 +364,4 @@ object VerifyJwsObject {
             (keys.firstOrNull { it.keyId == keyId } ?: keys.singleOrNull())
         }?.toCryptoPublicKey()?.getOrNull()
 
-}
-
-
-data class CompositeKey(
-    val aesKey: ByteArray,
-    val hmacKey: ByteArray? = null,
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as CompositeKey
-
-        if (!aesKey.contentEquals(other.aesKey)) return false
-        if (hmacKey != null) {
-            if (other.hmacKey == null) return false
-            if (!hmacKey.contentEquals(other.hmacKey)) return false
-        } else if (other.hmacKey != null) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = aesKey.contentHashCode()
-        result = 31 * result + (hmacKey?.contentHashCode() ?: 0)
-        return result
-    }
 }
