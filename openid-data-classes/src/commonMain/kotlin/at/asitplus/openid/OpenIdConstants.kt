@@ -63,10 +63,15 @@ object OpenIdConstants {
     @Serializable(with = ProofType.Serializer::class)
     sealed class ProofType(val stringRepresentation: String) {
         override fun toString(): String = this::class.simpleName + "(" + stringRepresentation + ")"
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is ProofType) return false
             return other.stringRepresentation == stringRepresentation
+        }
+
+        override fun hashCode(): Int {
+            return stringRepresentation.hashCode()
         }
 
         companion object {
@@ -77,7 +82,6 @@ object OpenIdConstants {
         /**
          * Proof type in [at.asitplus.openid.CredentialRequestProof]
          */
-        @Serializable(with = Serializer::class)
         object JWT : ProofType(STRING_JWT)
 
         /**
@@ -85,13 +89,11 @@ object OpenIdConstants {
          *
          * Removed in OID4VCI Draft 14, kept here for a bit of backwards-compatibility
          */
-        @Serializable(with = Serializer::class)
         object CWT : ProofType(STRING_CWT)
 
         /**
          * Any proof type not natively supported by this library
          */
-        @Serializable(with = Serializer::class)
         class Other(stringRepresentation: String) : ProofType(stringRepresentation)
 
         object Serializer : KSerializer<ProofType> {
@@ -119,6 +121,10 @@ object OpenIdConstants {
         val prefix = "$stringRepresentation:"
 
         override fun toString(): String = this::class.simpleName + "(" + stringRepresentation + ")"
+
+        override fun hashCode(): Int {
+            return stringRepresentation.hashCode()
+        }
 
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -151,7 +157,6 @@ object OpenIdConstants {
          * Wallet in advance of the Authorization Request. The Verifier metadata is obtained using RFC7591 or through
          * out-of-band mechanisms.
          */
-        @Serializable(with = Serializer::class)
         object PreRegistered : ClientIdScheme(STRING_PRE_REGISTERED)
 
         /**
@@ -161,7 +166,6 @@ object OpenIdConstants {
          * Mode `direct_post` is used). All Verifier metadata parameters MUST be passed using the `client_metadata`
          * parameter.
          */
-        @Serializable(with = Serializer::class)
         object RedirectUri : ClientIdScheme(STRING_REDIRECT_URI)
 
         /**
@@ -178,7 +182,6 @@ object OpenIdConstants {
          * to freely choose the `redirect_uri` value. If not, the FQDN of the `redirect_uri` value MUST match the
          * Client Identifier.
          */
-        @Serializable(with = Serializer::class)
         object X509SanDns : ClientIdScheme(STRING_X509_SAN_DNS)
 
         /**
@@ -192,7 +195,6 @@ object OpenIdConstants {
          * the Client Identifier is contained in a list of trusted Client Identifiers, it may allow the client to
          * freely choose the `redirect_uri` value. If not, the `redirect_uri` value MUST match the Client Identifier.
          */
-        @Serializable(with = Serializer::class)
         object X509SanUri : ClientIdScheme(STRING_X509_SAN_URI)
 
         /**
@@ -203,7 +205,6 @@ object OpenIdConstants {
          * `client_metadata_uri` parameter MUST NOT be present in the Authorization Request when this Client
          * Identifier scheme is used.
          */
-        @Serializable(with = Serializer::class)
         object EntityId : ClientIdScheme(STRING_ENTITY_ID)
 
         /**
@@ -215,7 +216,6 @@ object OpenIdConstants {
          * the Verifier. All Verifier metadata other than the public key MUST be obtained from the `client_metadata`
          * or the `client_metadata_uri` parameter.
          */
-        @Serializable(with = Serializer::class)
         object Did : ClientIdScheme(STRING_DID)
 
         /**
@@ -231,13 +231,11 @@ object OpenIdConstants {
          * parameter value exactly matches one of the `redirect_uris` claim entries. All Verifier metadata other than
          * the public key MUST be obtained from the `client_metadata` parameter.
          */
-        @Serializable(with = Serializer::class)
         object VerifierAttestation : ClientIdScheme(STRING_VERIFIER_ATTESTATION)
 
         /**
          * Any not natively supported client id scheme, so it can still be parsed
          */
-        @Serializable(with = Serializer::class)
         class Other(stringRepresentation: String) : ClientIdScheme(stringRepresentation)
 
         object Serializer : KSerializer<ClientIdScheme> {
@@ -286,7 +284,6 @@ object OpenIdConstants {
          * to the Verifier, or it can end with a redirect that follows the HTTPS POST request, if the Verifier responds
          * with a redirect URI to the Wallet.
          */
-        @Serializable(with = Serializer::class)
         object DirectPost : ResponseMode(STRING_DIRECT_POST)
 
         /**
@@ -295,27 +292,23 @@ object OpenIdConstants {
          * containing the JWT as defined in Section 4.1. of JARM and Section 6.3 in the body of an HTTPS POST request
          * using the `application/x-www-form-urlencoded` content type.
          */
-        @Serializable(with = Serializer::class)
         object DirectPostJwt : ResponseMode(STRING_DIRECT_POST_JWT)
 
         /**
          * OAuth 2.0: In this mode, Authorization Response parameters are encoded in the query string added to the
          * `redirect_uri` when redirecting back to the Client.
          */
-        @Serializable(with = Serializer::class)
         object Query : ResponseMode(STRING_QUERY)
 
         /**
          * OAuth 2.0: In this mode, Authorization Response parameters are encoded in the fragment added to the
          * `redirect_uri` when redirecting back to the Client.
          */
-        @Serializable(with = Serializer::class)
         object Fragment : ResponseMode(STRING_FRAGMENT)
 
         /**
          * Any not natively supported Client ID Scheme, so it can still be parsed
          */
-        @Serializable(with = Serializer::class)
         class Other(stringRepresentation: String) : ResponseMode(stringRepresentation)
 
         object Serializer : KSerializer<ResponseMode> {

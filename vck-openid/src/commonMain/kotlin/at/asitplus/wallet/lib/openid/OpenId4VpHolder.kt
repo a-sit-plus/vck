@@ -3,22 +3,12 @@ package at.asitplus.wallet.lib.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.IdTokenType
-import at.asitplus.openid.OAuth2AuthorizationServerMetadata
-import at.asitplus.openid.OpenIdConstants
+import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.BINDING_METHOD_JWK
 import at.asitplus.openid.OpenIdConstants.ClientIdScheme
 import at.asitplus.openid.OpenIdConstants.PREFIX_DID_KEY
 import at.asitplus.openid.OpenIdConstants.URN_TYPE_JWK_THUMBPRINT
 import at.asitplus.openid.OpenIdConstants.VP_TOKEN
-import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.openid.RequestObjectParameters
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFrom
-import at.asitplus.openid.SupportedAlgorithmsContainer
-import at.asitplus.openid.VpFormatsSupported
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
@@ -26,13 +16,7 @@ import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.signum.indispensable.josef.toJwsAlgorithm
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
-import at.asitplus.wallet.lib.agent.CredentialSubmission
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.Holder
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.PresentationExchangeCredentialDisclosure
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseService
 import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialPresentation
@@ -167,6 +151,7 @@ class OpenId4VpHolder(
      */
     suspend fun parseAuthenticationRequestParameters(input: String): KmmResult<RequestParametersFrom<AuthenticationRequestParameters>> =
         catching {
+            @Suppress("UNCHECKED_CAST")
             requestParser.parseRequestParameters(input)
                 .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
         }
@@ -185,6 +170,7 @@ class OpenId4VpHolder(
     /**
      * Creates the authentication response from the RP's [params]
      */
+    @Suppress("DEPRECATION")
     suspend fun createAuthnResponseParams(
         params: RequestParametersFrom<AuthenticationRequestParameters>,
     ): KmmResult<AuthenticationResponse> =
@@ -221,6 +207,7 @@ class OpenId4VpHolder(
      * @param preparationState The preparation state from [startAuthorizationResponsePreparation]
      * @param inputDescriptorSubmissions Map from input descriptor ids to [CredentialSubmission]
      */
+    @Suppress("DEPRECATION")
     @Deprecated("Use more general method.")
     suspend fun finalizeAuthorizationResponse(
         request: RequestParametersFrom<AuthenticationRequestParameters>,
@@ -242,7 +229,7 @@ class OpenId4VpHolder(
     suspend fun <T : RequestParameters> finalizeAuthorizationResponseParameters(
         request: RequestParametersFrom<T>,
         preparationState: AuthorizationResponsePreparationState,
-        inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
+        @Suppress("DEPRECATION") inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
     ): KmmResult<AuthenticationResponse> = finalizeAuthorizationResponseParameters(
         request = request,
         clientMetadata = preparationState.clientMetadata,
@@ -292,7 +279,7 @@ class OpenId4VpHolder(
         clientMetadata: RelyingPartyMetadata?,
         credentialPresentation: CredentialPresentation?,
     ): KmmResult<AuthenticationResponse> = catching {
-        val certKey = (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
+        @Suppress("UNCHECKED_CAST") val certKey = (request as? RequestParametersFrom.JwsSigned<AuthenticationRequestParameters>)
             ?.jwsSigned?.header?.certificateChain?.firstOrNull()?.publicKey?.toJsonWebKey()
         val clientJsonWebKeySet = clientMetadata?.loadJsonWebKeySet()
         val audience = request.parameters.extractAudience(clientJsonWebKeySet)

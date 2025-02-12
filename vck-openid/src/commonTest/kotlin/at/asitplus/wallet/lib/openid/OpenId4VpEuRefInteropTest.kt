@@ -32,6 +32,7 @@ import kotlinx.datetime.Instant
  * Tests our OpenId4VP implementation against EUDI Ref Impl.,
  * see [https://verifier.eudiw.dev/cbor-selectable/verifiable](https://verifier.eudiw.dev/cbor-selectable/verifiable)
  */
+@Suppress("DEPRECATION")
 class OpenId4VpEuRefInteropTest : FreeSpec({
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
@@ -200,7 +201,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                             "fields": [
                                 {
                                     "path": [
-                                        "${'$'}.mdoc.doctype"
+                                        "$.mdoc.doctype"
                                     ],
                                     "filter": {
                                         "type": "string",
@@ -209,7 +210,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                                 },
                                 {
                                     "path": [
-                                        "${'$'}.mdoc.namespace"
+                                        "$.mdoc.namespace"
                                     ],
                                     "filter": {
                                         "type": "string",
@@ -218,7 +219,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                                 },
                                 {
                                     "path": [
-                                        "${'$'}.mdoc.given_name"
+                                        "$.mdoc.given_name"
                                     ],
                                     "intent_to_retain": false
                                 }

@@ -8,6 +8,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 
+@Suppress("UNCHECKED_CAST")
 private val requestParametersModule = SerializersModule {
     polymorphic(RequestParameters::class) {
         subclass(AuthenticationRequestParameters::class, AuthenticationRequestParameters.serializer())
@@ -27,6 +28,7 @@ private val requestParametersModule = SerializersModule {
     )
 }
 
+@Suppress("UNCHECKED_CAST")
 private val authorizationDetailsModule = SerializersModule {
     polymorphic(AuthorizationDetails::class) {
         subclass(OpenIdAuthorizationDetails::class, OpenIdAuthorizationDetails.serializer())
@@ -46,6 +48,7 @@ private val authorizationDetailsModule = SerializersModule {
     )
 }
 
+@Suppress("UNCHECKED_CAST")
 private val inputDescriptorModule = SerializersModule {
     polymorphic(InputDescriptor::class) {
         subclass(DifInputDescriptor::class, DifInputDescriptor.serializer())

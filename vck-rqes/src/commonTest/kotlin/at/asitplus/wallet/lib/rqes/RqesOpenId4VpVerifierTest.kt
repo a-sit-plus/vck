@@ -1,3 +1,4 @@
+
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.SignatureQualifier
@@ -27,6 +28,7 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.http.*
 import kotlinx.serialization.encodeToString
 
+@Suppress("DEPRECATION")
 class RqesOpenId4VpVerifierTest : FreeSpec({
 
     lateinit var clientId: String

@@ -208,6 +208,7 @@ class HolderAgent(
             )
         )
 
+    @Suppress("DEPRECATION")
     private suspend fun createPresentationExchangePresentation(
         request: PresentationRequestParameters,
         credentialPresentation: CredentialPresentation.PresentationExchangePresentation,
@@ -240,7 +241,7 @@ class HolderAgent(
     override suspend fun createPresentation(
         request: PresentationRequestParameters,
         presentationDefinitionId: String?,
-        presentationSubmissionSelection: Map<String, CredentialSubmission>,
+        @Suppress("DEPRECATION") presentationSubmissionSelection: Map<String, CredentialSubmission>,
     ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters> = catching {
         val submissionList = presentationSubmissionSelection.mapValues {
             PresentationExchangeCredentialDisclosure(

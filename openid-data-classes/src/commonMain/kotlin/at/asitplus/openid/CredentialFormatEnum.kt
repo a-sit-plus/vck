@@ -13,7 +13,7 @@ enum class CredentialFormatEnum(val text: String) {
     JSON_LD("ldp_vc"),
     MSO_MDOC("mso_mdoc");
 
-    @Deprecated("To be removed along with VC_SD_JWT")
+    @Suppress("DEPRECATION")
     fun coerceDeprecations() = when(this) {
         VC_SD_JWT -> DC_SD_JWT
         else -> this

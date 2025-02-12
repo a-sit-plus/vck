@@ -127,12 +127,10 @@ class TransactionDataInterop : FreeSpec({
         val testVector =
             "ewogICJ0eXBlIjogInFjZXJ0X2NyZWF0aW9uX2FjY2VwdGFuY2UiLAogICJRQ190ZXJtc19jb25kaXRpb25zX3VyaSI6ICJodHRwczovL2V4YW1wbGUuY29tL3RvcyIsCiAgIlFDX2hhc2giOiAia1hBZ3dEY2RBZTNvYnhwbzhVb0RrQytEK2I3T0NyRG84SU9HWmpTWDgvTT0iLAogICJRQ19oYXNoQWxnb3JpdGhtT0lEIjogIjIuMTYuODQwLjEuMTAxLjMuNC4yLjEiCn0="
 
-        val transactionData = runCatching {
-            rdcJsonSerializer.decodeFromString(
-                Base64URLTransactionDataSerializer,
-                rdcJsonSerializer.encodeToString(testVector)
-            )
-        }.getOrThrow()
+        val transactionData = rdcJsonSerializer.decodeFromString(
+            Base64URLTransactionDataSerializer,
+            rdcJsonSerializer.encodeToString(testVector)
+        )
 
         val expected = rdcJsonSerializer.decodeFromString<JsonElement>(
             testVector.decodeToByteArray(Base64UrlStrict).decodeToString()
@@ -147,6 +145,7 @@ class TransactionDataInterop : FreeSpec({
             rdcJsonSerializer.decodeFromString<PresentationDefinition>(presentationDefinitionAsJsonString)
         val first = presentationDefinition.inputDescriptors.first()
             .shouldBeInstanceOf<QesInputDescriptor>()
+        @Suppress("DEPRECATION")
         first.transactionData shouldNotBe null
     }
 })

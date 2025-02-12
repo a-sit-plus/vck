@@ -7,6 +7,7 @@ import kotlinx.serialization.*
 /**
  * Part of the ISO/IEC 18013-5:2021 standard: Data structure for mdoc request (8.3.2.1.2.1)
  */
+@ConsistentCopyVisibility
 @Serializable
 data class IssuerSigned private constructor(
     @SerialName("nameSpaces")

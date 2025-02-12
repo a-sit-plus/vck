@@ -53,6 +53,7 @@ data class KeyBindingJws(
 ) {
 
     fun serialize() = vckJsonSerializer.encodeToString(this)
+    @Suppress("DEPRECATION")
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
@@ -76,6 +77,7 @@ data class KeyBindingJws(
         return true
     }
 
+    @Suppress("DEPRECATION")
     override fun hashCode(): Int {
         var result = issuedAt?.hashCode() ?: 0
         result = 31 * result + audience.hashCode()

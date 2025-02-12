@@ -1,11 +1,7 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.dif.ConstraintField
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.InputDescriptor
-import at.asitplus.dif.PresentationDefinition
-import at.asitplus.dif.PresentationSubmission
+import at.asitplus.dif.*
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.dcql.DCQLQuery
@@ -139,7 +135,7 @@ interface Holder {
     suspend fun createPresentation(
         request: PresentationRequestParameters,
         presentationDefinitionId: String?,
-        presentationSubmissionSelection: Map<String, CredentialSubmission>,
+        @Suppress("DEPRECATION") presentationSubmissionSelection: Map<String, CredentialSubmission>,
     ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters>
 
     /**
