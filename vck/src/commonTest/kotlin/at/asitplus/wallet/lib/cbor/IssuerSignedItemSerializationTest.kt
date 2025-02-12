@@ -121,7 +121,7 @@ class IssuerSignedItemSerializationTest : FreeSpec({
             protectedHeader,
             null,
             mso,
-            CryptoSignature.RSAorHMAC(byteArrayOf()),
+            CryptoSignature.RSA(byteArrayOf()),
             MobileSecurityObject.serializer()
         )
         val doc = Document(

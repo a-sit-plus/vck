@@ -3,9 +3,9 @@ package at.asitplus.wallet.lib.cbor
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoSignature
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.cosef.*
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.sign.Verifier
 import at.asitplus.wallet.lib.agent.CryptoService
@@ -145,7 +145,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         }
 
     private fun CoseHeader?.withCertificate(certificate: X509Certificate?) =
-        (this ?: CoseHeader()).copy(certificateChain = certificate?.encodeToDer())
+        (this ?: CoseHeader()).copy(certificateChain = certificate?.let { listOf(it.encodeToDer()) })
 
     private fun CoseHeader?.withAlgorithmAndKeyId(addKeyId: Boolean): CoseHeader =
         if (addKeyId) {
@@ -211,10 +211,13 @@ class DefaultVerifierCoseService(
             throw IllegalArgumentException("Signer not convertible", ex)
                 .also { Napier.w("Could not convert signer to public key: $signer", ex) }
         }
+
+        require(algorithm.algorithm is SignatureAlgorithm)
+
         cryptoService.verify(
             input = signatureInput,
             signature = coseSigned.signature,
-            algorithm = algorithm.toX509SignatureAlgorithm().getOrThrow(),
+            algorithm = algorithm.algorithm as SignatureAlgorithm,
             publicKey = publicKey
         ).getOrThrow()
     }
@@ -248,14 +251,13 @@ class DefaultVerifierCoseService(
 typealias PublicCoseKeyLookup = (CoseSigned<*>) -> Set<CoseKey>?
 
 /**
- * Tries to compute a public key in order from [coseKey], [kid] or
+ * Tries to compute a public key in order from [kid] or
  * [certificateChain], and takes the first success or null.
  */
 val CoseHeader.publicKey: CoseKey?
-    get() = coseKey?.let { CoseKey.deserialize(it).getOrNull() }
-        ?: kid?.let { CoseKey.fromDid(it.decodeToString()) }?.getOrNull()
+    get() = kid?.let { CoseKey.fromDid(it.decodeToString()) }?.getOrNull()
         ?: certificateChain?.let {
             runCatching {
-                X509Certificate.decodeFromDer(it)
+                X509Certificate.decodeFromDer(it.first())
             }.getOrNull()?.publicKey?.toCoseKey()?.getOrThrow()
         }

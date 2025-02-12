@@ -65,7 +65,7 @@ class ValidatorMdocTest : FreeSpec() {
 
             val issuerKey: CoseKey? =
                 credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.let {
-                    runCatching { X509Certificate.decodeFromDer(it) }.getOrNull()?.publicKey?.toCoseKey()
+                    runCatching { X509Certificate.decodeFromDer(it.first()) }.getOrNull()?.publicKey?.toCoseKey()
                         ?.getOrNull()
                 }
 
@@ -85,7 +85,7 @@ class ValidatorMdocTest : FreeSpec() {
 
             val issuerKey: CoseKey? =
                 credential.issuerSigned.issuerAuth.unprotectedHeader?.certificateChain?.let {
-                    runCatching { X509Certificate.decodeFromDer(it) }.getOrNull()?.publicKey?.toCoseKey()
+                    runCatching { X509Certificate.decodeFromDer(it.first()) }.getOrNull()?.publicKey?.toCoseKey()
                         ?.getOrNull()
                 }
 

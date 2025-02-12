@@ -9,6 +9,7 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
 import at.asitplus.signum.indispensable.KeyAgreementPublicValue
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.X509SignatureAlgorithm
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JweAlgorithm
@@ -34,12 +35,12 @@ interface VerifierCryptoService {
     /**
      * List of algorithms, for which signatures can be verified in [verify].
      */
-    val supportedAlgorithms: List<X509SignatureAlgorithm>
+    val supportedAlgorithms: List<SignatureAlgorithm>
 
     fun verify(
         input: ByteArray,
         signature: CryptoSignature,
-        algorithm: X509SignatureAlgorithm,
+        algorithm: SignatureAlgorithm,
         publicKey: CryptoPublicKey,
     ): KmmResult<Verifier.Success>
 }
@@ -58,15 +59,15 @@ open class DefaultCryptoService(
 }
 
 open class DefaultVerifierCryptoService : VerifierCryptoService {
-    override val supportedAlgorithms: List<X509SignatureAlgorithm> =
-        listOf(X509SignatureAlgorithm.ES256)
+    override val supportedAlgorithms: List<SignatureAlgorithm> =
+        listOf(SignatureAlgorithm.ECDSAwithSHA256)
 
     override fun verify(
         input: ByteArray,
         signature: CryptoSignature,
-        algorithm: X509SignatureAlgorithm,
+        algorithm: SignatureAlgorithm,
         publicKey: CryptoPublicKey
-    ): KmmResult<Verifier.Success> = algorithm.algorithm.verifierFor(publicKey).transform {
+    ): KmmResult<Verifier.Success> = algorithm.verifierFor(publicKey).transform {
         it.verify(SignatureInput(input), signature)
     }
 }

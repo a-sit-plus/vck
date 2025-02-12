@@ -5,14 +5,13 @@ import at.asitplus.catching
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.Digest
 import at.asitplus.signum.indispensable.KeyAgreementPrivateValue
+import at.asitplus.signum.indispensable.SignatureAlgorithm
 import at.asitplus.signum.indispensable.asn1.encoding.encodeTo4Bytes
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.signum.indispensable.josef.JwsExtensions.prependWith4BytesSize
 import at.asitplus.signum.indispensable.josef.JwsSigned.Companion.prepareJwsSignatureInput
-import at.asitplus.signum.indispensable.misc.BitLength
 import at.asitplus.signum.indispensable.symmetric.*
-import at.asitplus.signum.indispensable.toX509SignatureAlgorithm
 import at.asitplus.signum.supreme.agree.Ephemeral
 import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.asKmmResult
@@ -20,7 +19,10 @@ import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.signum.supreme.symmetric.decrypt
 import at.asitplus.signum.supreme.symmetric.encrypt
 import at.asitplus.signum.supreme.symmetric.keyFrom
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.CryptoService
+import at.asitplus.wallet.lib.agent.DefaultVerifierCryptoService
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.VerifierCryptoService
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
@@ -89,7 +91,7 @@ interface JwsService {
         jweEncryption: JweEncryption,
     ): KmmResult<JweEncrypted>
 
-   suspend fun <T : Any> encryptJweObject(
+    suspend fun <T : Any> encryptJweObject(
         type: String,
         payload: T,
         serializer: SerializationStrategy<T>,
@@ -199,14 +201,15 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             ?: throw IllegalArgumentException("No encryption in JWE header")
         val epk = header.ephemeralKeyPair
             ?: throw IllegalArgumentException("No epk in JWE header")
-        val z = cryptoService.performKeyAgreement(epk.toCryptoPublicKey().getOrThrow() as CryptoPublicKey.EC).getOrThrow()
+        val z =
+            cryptoService.performKeyAgreement(epk.toCryptoPublicKey().getOrThrow() as CryptoPublicKey.EC).getOrThrow()
         val intermediateKey = concatKdf(
             z,
             enc,
             header.agreementPartyUInfo,
             header.agreementPartyVInfo
         )
-        require( alg == JweAlgorithm.ECDH_ES )
+        require(alg == JweAlgorithm.ECDH_ES)
         val algorithm = enc.algorithm
         require(algorithm.requiresNonce())
         require(algorithm.isAuthenticated())
@@ -216,7 +219,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val ciphertext = jweObject.ciphertext
         val authTag = jweObject.authTag
 
-        val plaintext =  key.decrypt(iv,ciphertext,authTag,aad).getOrThrow()
+        val plaintext = key.decrypt(iv, ciphertext, authTag, aad).getOrThrow()
         val plainObject = vckJsonSerializer.decodeFromString(deserializer, plaintext.decodeToString())
 
         JweDecrypted(header, plainObject)
@@ -330,7 +333,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         apv: ByteArray?,
     ): ByteArray {
         val digest = Digest.SHA256
-        val repetitions = (jweEncryption.combinedEncryptionKeyLength.bits + digest.outputLength.bits - 1U) / digest.outputLength.bits
+        val repetitions =
+            (jweEncryption.combinedEncryptionKeyLength.bits + digest.outputLength.bits - 1U) / digest.outputLength.bits
         val algId = jweEncryption.identifier.encodeToByteArray().prependWith4BytesSize()
         val apuEncoded = apu?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
         val apvEncoded = apv?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
@@ -425,10 +429,12 @@ class DefaultVerifierJwsService(
     )
 
     private fun verify(jwsObject: JwsSigned<*>, publicKey: CryptoPublicKey): Boolean = catching {
+        require(jwsObject.header.algorithm.algorithm is SignatureAlgorithm)
+
         cryptoService.verify(
             input = jwsObject.plainSignatureInput,
             signature = jwsObject.signature,
-            algorithm = jwsObject.header.algorithm.toX509SignatureAlgorithm().getOrThrow(),
+            algorithm = jwsObject.header.algorithm.algorithm as SignatureAlgorithm,
             publicKey = publicKey,
         ).getOrThrow()
     }.fold(onSuccess = { true }, onFailure = {
