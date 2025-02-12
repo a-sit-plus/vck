@@ -5,54 +5,40 @@ Release 5.4.0:
   - Update data classes in `rqes-data-classes`
   - See main classes `RqesOpenId4VpHolder` and `RqesOpenId4VpVerifier` in `vck-rqes`
   - OpenID4VP: Update implementation to draft 23, adding transaction data hashes to the response of the Wallet
-- Refactorings:
   - Rename `RequestOptions` to `OpenIdRequestOptions`
   - Add `transactionData` to `PresentationRequestParameters`
-  - Remove elements marked as deprecated in 5.3.0: `OidcSiopVerifier`, `OidcSiopWallet`, `Verifier.verifyPresentation()`, `OpenId4VpVerifier.validateAuthnResponseFromPost()`
-- Add DCQL Query library in module `openid-data-classes`
-  - module `vck` now depends on this module because of dcql queries
-- `AuthenticationRequestParameters`:
-  - Add member `dcqlQuery`
-- `CredentialFormatEnum`:
-  - Add method `coerceDeprecations` to coerce deprecated `VC_SD_JWT` to `DC_SD_JWT`
-- `Holder`
-  - Deprecated previous methods for creating presentations
-  - Added new methods for creating presentations supporting DCQL and presentation exchange
-- Added class `CredentialPresentation`
-- Added class `CredentialPresentationRequest`
-- `PresentationResponseParameters`
-  - Changed to directly reveal the parameters necessary for creating a response
-  - Added subclasses for working with raw presentation results
-- Added subclass `VerifiableDCQLPresentationValidationResults` of `AuthnResponseResult` to preserve credential query identifiers
-- `AuthorizationResponsePreparationState`
-  - Now holds general credential presentation request
-- `OpenId4VpHolder`:
-  - Added presentation methods supporting both presentation mechanisms
-  - Deprecated previously existing presentation methods
-- `OpenId4VpVerifier`:
-  - Added `prepareAuthnRequest` and `submitAuthnRequest` to allow customization of presentation request
-  - Added validation support for DCQL presentations
-- `RequestOptions`:
-  - Added member `presentationMechanism` to explicitly select DCQL or PresentationExchange
+- Implement Digital Credentials Query Language (DCQL) from OpenID for Verifiable Presentations:
+  - Add DCQL library in module `openid-data-classes` (module `vck` now depends on this module because of dcql queries)
+  - `AuthenticationRequestParameters`: Add member `dcqlQuery`
+  - `CredentialFormatEnum`: Add method `coerceDeprecations` to coerce deprecated `VC_SD_JWT` to `DC_SD_JWT`
+  - `Holder`: Deprecate previous methods for creating presentations, add new methods for creating presentations supporting DCQL and presentation exchange
+  - Add class `CredentialPresentation`
+  - Add class `CredentialPresentationRequest`
+  - Change `PresentationResponseParameters` to directly reveal the parameters necessary for creating a response
+  - Add subclasses to `PresentationResponseParameters` for working with raw presentation results
+  - Add subclass `VerifiableDCQLPresentationValidationResults` of `AuthnResponseResult` to preserve credential query identifiers
+  - `AuthorizationResponsePreparationState` now holds general credential presentation request
+  - `OpenId4VpHolder`: Add presentation methods supporting both presentation mechanisms and deprecate previously existing presentation methods
+  - `OpenId4VpVerifier`: Add `prepareAuthnRequest` and `submitAuthnRequest` to allow customization of presentation request, add validation support for DCQL presentations
+  - `RequestOptions`: Add member `presentationMechanism` to explicitly select DCQL or PresentationExchange
 - Error handling:
   - Preserve more causes for errors
   - In `AuthnRespnoseResult.Error` add `cause`, which optionally holds the cause for the error
   - In `AuthnRespnoseResult.ValidationError` add `cause`, which optionally holds the cause for the error
 - Improve support for ISO mDocs:
   - In `IssuerSignedItem`, tag `Instant` values with CBOR tag `0`, and `LocalDate` with CBOR tag `1004`
-  - Fix calculating digests for `IssuerSignedItems`
-  - Fix serialization of device authentication bytes, ensuring compatibility with ISO 18013-7
 - Updates:
   - signum to 3.13.0, fixing COSE headers with more than one certificate
+- Remove elements marked as deprecated in 5.3.0: `OidcSiopVerifier`, `OidcSiopWallet`, `Verifier.verifyPresentation()`, `OpenId4VpVerifier.validateAuthnResponseFromPost()`
 
 Release 5.3.3:
- - ISO: Fix serialization of device authentication bytes
+ - ISO: Fix serialization of device authentication bytes acc. to ISO 18013-7
  - ISO: Fix generating `mdocGeneratedNonce` for device authentication acc. to ISO 18013-7
  - OpenID4VP: Support extracting authentication response from JWS inside JWE
 
 Release 5.3.2:
  - ISO: Do not tag instants in CBOR with tag 1004
- - ISO: Fix calcluation of value digests
+ - ISO: Fix calcluation of value digests for `IssuerSignedItems`
 
 Release 5.3.1:
 - Add optional parameter `issuerUri` to `ClientIdScheme.PreRegistered`
