@@ -22,7 +22,6 @@ import at.asitplus.signum.supreme.symmetric.encrypt
 import at.asitplus.signum.supreme.symmetric.keyFrom
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.jws.VerifyJwsSignatureWithCnf.loadPublicKeys
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToByteArray
 import kotlinx.serialization.DeserializationStrategy
@@ -98,7 +97,7 @@ interface JwsService {
         jweEncryption: JweEncryption,
     ): KmmResult<JweEncrypted>
 
-   suspend fun <T : Any> encryptJweObject(
+    suspend fun <T : Any> encryptJweObject(
         type: String,
         payload: T,
         serializer: SerializationStrategy<T>,
@@ -208,14 +207,15 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
             ?: throw IllegalArgumentException("No encryption in JWE header")
         val epk = header.ephemeralKeyPair
             ?: throw IllegalArgumentException("No epk in JWE header")
-        val z = cryptoService.performKeyAgreement(epk.toCryptoPublicKey().getOrThrow() as CryptoPublicKey.EC).getOrThrow()
+        val z =
+            cryptoService.performKeyAgreement(epk.toCryptoPublicKey().getOrThrow() as CryptoPublicKey.EC).getOrThrow()
         val intermediateKey = concatKdf(
             z,
             enc,
             header.agreementPartyUInfo,
             header.agreementPartyVInfo
         )
-        require( alg == JweAlgorithm.ECDH_ES )
+        require(alg == JweAlgorithm.ECDH_ES)
         val algorithm = enc.algorithm
         require(algorithm.requiresNonce())
         require(algorithm.isAuthenticated())
@@ -225,7 +225,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val ciphertext = jweObject.ciphertext
         val authTag = jweObject.authTag
 
-        val plaintext =  key.decrypt(iv,ciphertext,authTag,aad).getOrThrow()
+        val plaintext = key.decrypt(iv, ciphertext, authTag, aad).getOrThrow()
         val plainObject = vckJsonSerializer.decodeFromString(deserializer, plaintext.decodeToString())
 
         JweDecrypted(header, plainObject)
@@ -339,7 +339,8 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         apv: ByteArray?,
     ): ByteArray {
         val digest = Digest.SHA256
-        val repetitions = (jweEncryption.combinedEncryptionKeyLength.bits + digest.outputLength.bits - 1U) / digest.outputLength.bits
+        val repetitions =
+            (jweEncryption.combinedEncryptionKeyLength.bits + digest.outputLength.bits - 1U) / digest.outputLength.bits
         val algId = jweEncryption.identifier.encodeToByteArray().prependWith4BytesSize()
         val apuEncoded = apu?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()
         val apvEncoded = apv?.prependWith4BytesSize() ?: 0.encodeTo4Bytes()

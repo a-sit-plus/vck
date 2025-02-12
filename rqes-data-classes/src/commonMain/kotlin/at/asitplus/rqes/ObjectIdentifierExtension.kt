@@ -28,7 +28,6 @@ internal fun ObjectIdentifier?.getHashAlgorithm(signatureAlgorithm: SignatureAlg
         Digest.entries.find { digest -> digest.oid == it }
     } ?: when(signatureAlgorithm) {
         is SignatureAlgorithm.ECDSA -> signatureAlgorithm.digest
-        is SignatureAlgorithm.HMAC -> signatureAlgorithm.digest
         is SignatureAlgorithm.RSA -> signatureAlgorithm.digest
         null -> null
     } ?: throw Exception("Unknown hashing algorithm defined with oid $this or signature algorithm $signatureAlgorithm")

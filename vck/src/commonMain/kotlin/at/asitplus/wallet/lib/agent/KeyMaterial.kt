@@ -93,18 +93,6 @@ class EphemeralKeyWithoutCert(
     override suspend fun getCertificate(): X509Certificate? = null
 }
 
-/**
- * Generate new key material with a random key, e.g. used in tests
- */
-class KeyWithoutCert(
-    val key: CryptoPrivateKey.EC.WithPublicKey,
-    val customKeyId: String? = null,
-) : KeyMaterial, Signer by SignatureAlgorithm.ECDSA(key.curve.nativeDigest,key.curve).signerFor(key).getOrThrow() {
-    override val identifier: String = customKeyId ?: publicKey.didEncoded
-    override fun getUnderLyingSigner(): Signer = SignatureAlgorithm.ECDSA(key.curve.nativeDigest,key.curve).signerFor(key).getOrThrow()
-    override suspend fun getCertificate(): X509Certificate? = null
-}
-
 interface EphemeralKeyHolder {
     val publicJsonWebKey: JsonWebKey?
     val key: EphemeralKey
