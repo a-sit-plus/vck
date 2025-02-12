@@ -16,7 +16,6 @@ import at.asitplus.signum.supreme.agree.Ephemeral
 import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.hash.digest
-import at.asitplus.signum.supreme.symmetric.decrypt
 import at.asitplus.signum.supreme.symmetric.encrypt
 import at.asitplus.signum.supreme.symmetric.keyFrom
 import at.asitplus.wallet.lib.agent.CryptoService
@@ -218,8 +217,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val aad = jweObject.headerAsParsed.encodeToByteArray(Base64UrlStrict)
         val ciphertext = jweObject.ciphertext
         val authTag = jweObject.authTag
-
-        val plaintext = key.decrypt(iv, ciphertext, authTag, aad).getOrThrow()
+        val plaintext = cryptoService.decrypt(key, iv, aad, ciphertext, authTag).getOrThrow()
         val plainObject = vckJsonSerializer.decodeFromString(deserializer, plaintext.decodeToString())
 
         JweDecrypted(header, plainObject)
@@ -299,7 +297,7 @@ class DefaultJwsService(private val cryptoService: CryptoService) : JwsService {
         val aad = headerSerialized.encodeToByteArray()
         val aadForCipher = aad.encodeToByteArray(Base64UrlStrict)
         val bytes = vckJsonSerializer.encodeToString(serializer, payload).encodeToByteArray()
-        val sealedBox = key.encrypt(bytes, authenticatedData = aadForCipher).getOrThrow()
+        val sealedBox = cryptoService.encrypt(key, bytes, aad = aadForCipher).getOrThrow()
 
         return JweEncrypted(jweHeader, aad, null, sealedBox.nonce, sealedBox.encryptedData, sealedBox.authTag)
     }
