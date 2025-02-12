@@ -15,6 +15,8 @@ import at.asitplus.signum.supreme.agree.keyAgreement
 import at.asitplus.signum.supreme.asKmmResult
 import at.asitplus.signum.supreme.hash.digest
 import at.asitplus.signum.supreme.sign.Signer
+import at.asitplus.signum.supreme.symmetric.encrypt
+import at.asitplus.signum.supreme.symmetric.keyFrom
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JweUtils.compositeKey
