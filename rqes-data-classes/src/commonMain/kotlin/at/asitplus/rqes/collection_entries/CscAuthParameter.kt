@@ -7,12 +7,14 @@ import kotlinx.serialization.json.JsonObject
 @Serializable
 data class CscAuthParameter(
     /**
+     * REQUIRED.
      * Specifies one of the authorization modes.
      */
     @SerialName("mode")
     val mode: AuthMode,
 
     /**
+     * OPTIONAL-CONDITIONAL.
      * An expression defining the combination of authentication objects
      * required to authorize usage of the private key.
      * If empty, an “AND” of all authentication objects is implied.
@@ -23,6 +25,7 @@ data class CscAuthParameter(
     val expression: String? = null,
 
     /**
+     * REQUIRED-CONDITIONAL.
      * The authentication object types available for this credential.
      * authentication This value SHALL only be returned if auth/mode is “explicit”.
      */

@@ -75,7 +75,7 @@ data class SignatureRequestParameters(
      * be present in the nonce values used to prevent attackers from guessing values.
      */
     @SerialName("nonce")
-    override val nonce: String,
+    override val nonce: String? = null,
 
     /**
      * OIDC: RECOMMENDED. Opaque value used to maintain state between the request and the callback. Typically,
@@ -125,7 +125,7 @@ data class SignatureRequestParameters(
      * debugging purposes
      */
     @SerialName("clientData")
-    val clientData: String?,
+    val clientData: String? = null,
 
     /**
      * OID4VP: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed
