@@ -11,7 +11,7 @@ sealed class SignatureResponse {
     @Serializable
     data class SignHashResponse(
         @SerialName("signatures")
-        val signatures: List<String>?,
+        val signatures: List<String>,
         @SerialName("responseID")
         val responseId: String?,
     ) : SignatureResponse()

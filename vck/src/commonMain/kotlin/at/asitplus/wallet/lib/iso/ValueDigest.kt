@@ -41,8 +41,7 @@ data class ValueDigest(
         fun fromIssuerSignedItem(value: IssuerSignedItem, namespace: String): ValueDigest =
             ValueDigest(
                 value.digestId,
-                // Ensure wrapping it in the whole "bytes" cbor structure,
-                // afterwards wrapping it with D818
+                // Ensure wrapping it in the whole "bytes" cbor structure, afterward wrapping it with D818
                 vckCborSerializer.encodeToByteArray(ByteArraySerializer(), value.serialize(namespace))
                     .wrapInCborTag(24).sha256()
             )

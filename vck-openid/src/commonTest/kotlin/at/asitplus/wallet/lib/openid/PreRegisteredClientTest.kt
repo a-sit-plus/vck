@@ -58,7 +58,7 @@ class PreRegisteredClientTest : FreeSpec({
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = ClientIdScheme.PreRegistered(clientId, redirectUrl),
         )
-        defaultRequestOptions = RequestOptions(
+        defaultRequestOptions = OpenIdRequestOptions(
             credentials = setOf(
                 RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
             ),
@@ -67,7 +67,7 @@ class PreRegisteredClientTest : FreeSpec({
 
     "test with Fragment" {
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            RequestOptions(
+            OpenIdRequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.Fragment,
             ),
@@ -97,7 +97,7 @@ class PreRegisteredClientTest : FreeSpec({
     "test with Query" {
         val expectedState = uuid4().toString()
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            RequestOptions(
+            OpenIdRequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.Query,
                 state = expectedState,
@@ -128,7 +128,7 @@ class PreRegisteredClientTest : FreeSpec({
                 override suspend fun verifyAndRemoveNonce(it: String) = false
             }
         )
-        val requestOptions = RequestOptions(
+        val requestOptions = OpenIdRequestOptions(
             credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
             responseType = OpenIdConstants.ID_TOKEN,
         )
@@ -190,7 +190,7 @@ class PreRegisteredClientTest : FreeSpec({
 
     "test with direct_post" {
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            RequestOptions(
+            OpenIdRequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = redirectUrl
@@ -209,7 +209,7 @@ class PreRegisteredClientTest : FreeSpec({
 
     "test with direct_post_jwt" {
         val authnRequest = verifierOid4vp.createAuthnRequest(
-            RequestOptions(
+            OpenIdRequestOptions(
                 credentials = setOf(RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)),
                 responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                 responseUrl = redirectUrl
@@ -401,8 +401,7 @@ class PreRegisteredClientTest : FreeSpec({
     }
 })
 
-
-private fun requestOptionsAtomicAttribute() = RequestOptions(
+private fun requestOptionsAtomicAttribute() = OpenIdRequestOptions(
     credentials = setOf(
         RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
     ),

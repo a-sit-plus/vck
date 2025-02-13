@@ -5,27 +5,37 @@ import at.asitplus.catching
 import at.asitplus.dif.ClaimFormat
 import at.asitplus.dif.FormatHolder
 import at.asitplus.dif.PresentationDefinition
+import at.asitplus.jsonpath.JsonPath
 import at.asitplus.openid.*
+import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.VP_TOKEN
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.Base64Strict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.CoseService
+import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base16.Base16
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlinx.serialization.PolymorphicSerializer
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonArray
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
@@ -34,55 +44,65 @@ internal class PresentationFactory(
     private val jwsService: JwsService,
     private val coseService: CoseService,
 ) {
-    suspend fun createPresentationExchangePresentation(
+    suspend fun createPresentation(
         holder: Holder,
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParameters,
+        nonce: String,
         audience: String,
-        presentationDefinition: PresentationDefinition,
         clientMetadata: RelyingPartyMetadata?,
-        inputDescriptorSubmissions: Map<String, CredentialSubmission>? = null,
         jsonWebKeys: Collection<JsonWebKey>?,
+        credentialPresentation: CredentialPresentation,
     ): KmmResult<PresentationResponseParameters> = catching {
-        request.parameters.verifyResponseType()
-        val nonce = request.parameters.nonce ?: run {
-            Napier.w("nonce is null in ${request.parameters}")
-            throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
-        }
-        val credentialSubmissions = inputDescriptorSubmissions
-            ?: holder.matchInputDescriptorsAgainstCredentialStore(
-                inputDescriptors = presentationDefinition.inputDescriptors,
-                fallbackFormatHolder = clientMetadata?.vpFormats,
-            ).getOrThrow().toDefaultSubmission()
-
-        presentationDefinition.validateSubmission(
-            holder = holder,
-            clientMetadata = clientMetadata,
-            credentialSubmissions = credentialSubmissions
-        )
+        request.verifyResponseType()
 
         val responseWillBeEncrypted = jsonWebKeys != null && clientMetadata?.requestsEncryption() == true
-        val clientId = request.parameters.clientId
-        val responseUrl = request.parameters.responseUrl
+        val clientId = request.clientId
+        val responseUrl = request.responseUrl
+        val transactionData = parseTransactionData(request)
         val vpRequestParams = PresentationRequestParameters(
             nonce = nonce,
             audience = audience,
+            transactionData = transactionData,
             calcIsoDeviceSignature = { docType ->
                 calcDeviceSignature(responseWillBeEncrypted, clientId, responseUrl, nonce, docType)
             }
         )
+
         holder.createPresentation(
             request = vpRequestParams,
-            presentationDefinitionId = presentationDefinition.id,
-            presentationSubmissionSelection = credentialSubmissions,
+            credentialPresentation = credentialPresentation,
         ).getOrElse {
             Napier.w("Could not create presentation", it)
-            throw OAuth2Exception(OpenIdConstants.Errors.USER_CANCELLED)
-        }.also { container ->
+            throw OAuth2Exception(Errors.USER_CANCELLED, it)
+        }.also { presentation ->
             clientMetadata?.vpFormats?.let {
-                container.verifyFormatSupport(it)
+                when (presentation) {
+                    is PresentationResponseParameters.DCQLParameters -> presentation.verifyFormatSupport(it)
+
+                    is PresentationResponseParameters.PresentationExchangeParameters -> {
+                        presentation.verifyFormatSupport(it)
+                    }
+                }
             }
         }
     }
+
+    /**
+     * Parses all `transaction_data` fields from the request, with a JsonPath, because
+     * ... for OpenID4VP Draft 23, that's encoded in the AuthnRequest
+     * ... but for Potential UC 5, that's encoded in the input descriptor,
+     *     and we don't have access to that class from the module vck-rqes
+     */
+    private fun parseTransactionData(request: RequestParameters): Set<ByteArray>? =
+        with(vckJsonSerializer.encodeToJsonElement(PolymorphicSerializer(RequestParameters::class), request)) {
+            JsonPath("$..transaction_data").query(this)
+                .flatMap { it.value.jsonArray }
+                .map { vckJsonSerializer.decodeFromJsonElement<String>(it) }
+                .filter { it.isNotEmpty() }
+                .map { if (it.contains(",")) it.encodeToByteArray() else it.decodeToByteArray(Base64UrlStrict) }
+                .toSet()
+                .ifEmpty { null }
+        }
 
     /**
      * Performs calculation of the [at.asitplus.wallet.lib.iso.SessionTranscript] and [at.asitplus.wallet.lib.iso.DeviceAuthentication],
@@ -97,8 +117,7 @@ internal class PresentationFactory(
         docType: String,
     ): Pair<CoseSigned<ByteArray>, String?> = if (clientId != null && responseUrl != null) {
         val deviceNameSpaceBytes = ByteStringWrapper(DeviceNameSpaces(mapOf()))
-        // if it's not encrypted, we have no way of transporting the mdocGeneratedNonce,
-        // so we'll use the empty string
+        // if it's not encrypted, we have no way of transporting the mdocGeneratedNonce, so we'll use the empty string
         val mdocGeneratedNonce = if (responseWillBeEncrypted)
             Random.Default.nextBytes(16).encodeToString(Base64Strict) else ""
         val clientIdToHash = ClientIdToHash(
@@ -124,7 +143,6 @@ internal class PresentationFactory(
             docType = docType,
             namespaces = deviceNameSpaceBytes
         )
-        // TODO Change type to CoseSigned<DeviceAuthentication>
         val deviceAuthenticationBytes = coseCompliantSerializer
             .encodeToByteArray(ByteStringWrapper(deviceAuthentication))
             .wrapInCborTag(24)
@@ -149,17 +167,17 @@ internal class PresentationFactory(
         } to null
     }
 
-    suspend fun createSignedIdToken(
+    suspend fun <T : RequestParameters> createSignedIdToken(
         clock: Clock,
         agentPublicKey: CryptoPublicKey,
-        request: RequestParametersFrom<AuthenticationRequestParameters>,
+        request: RequestParametersFrom<T>,
     ): KmmResult<JwsSigned<IdToken>?> = catching {
         if (request.parameters.responseType?.contains(OpenIdConstants.ID_TOKEN) != true) {
             return@catching null
         }
         val nonce = request.parameters.nonce ?: run {
             Napier.w("nonce is null in ${request.parameters}")
-            throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
+            throw OAuth2Exception(Errors.INVALID_REQUEST, "nonce is null")
         }
         val now = clock.now()
         // we'll assume jwk-thumbprint
@@ -178,19 +196,19 @@ internal class PresentationFactory(
         )
         jwsService.createSignedJwsAddingParams(
             payload = idToken,
-            serializer = IdToken.Companion.serializer(),
+            serializer = IdToken.serializer(),
             addX5c = false
         ).getOrElse {
             Napier.w("Could not sign id_token", it)
-            throw OAuth2Exception(OpenIdConstants.Errors.USER_CANCELLED)
+            throw OAuth2Exception(Errors.USER_CANCELLED, it)
         }
     }
 
     @Throws(OAuth2Exception::class)
-    private fun AuthenticationRequestParameters.verifyResponseType() {
-        if (responseType == null || !responseType!!.contains(OpenIdConstants.VP_TOKEN)) {
+    private fun RequestParameters.verifyResponseType() {
+        if (responseType == null || !responseType!!.contains(VP_TOKEN)) {
             Napier.w("vp_token not requested in response_type='$responseType'")
-            throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST)
+            throw OAuth2Exception(Errors.INVALID_REQUEST, "response_type invalid")
         }
     }
 
@@ -198,19 +216,19 @@ internal class PresentationFactory(
     private fun PresentationDefinition.validateSubmission(
         holder: Holder,
         clientMetadata: RelyingPartyMetadata?,
-        credentialSubmissions: Map<String, CredentialSubmission>,
+        credentialSubmissions: Map<String, PresentationExchangeCredentialDisclosure>,
     ) {
-        val validator = PresentationSubmissionValidator.Companion.createInstance(this).getOrThrow()
+        val validator = PresentationSubmissionValidator.createInstance(this).getOrThrow()
         if (!validator.isValidSubmission(credentialSubmissions.keys)) {
             Napier.w("submission requirements are not satisfied")
-            throw OAuth2Exception(OpenIdConstants.Errors.USER_CANCELLED)
+            throw OAuth2Exception(Errors.USER_CANCELLED, "submission requirements not satisfied")
         }
 
         // making sure, that all the submissions actually match the corresponding input descriptor requirements
         credentialSubmissions.forEach { submission ->
             val inputDescriptor = this.inputDescriptors.firstOrNull { it.id == submission.key } ?: run {
-                Napier.w("Invalid input descriptor id")
-                throw OAuth2Exception(OpenIdConstants.Errors.USER_CANCELLED)
+                Napier.w("Invalid input descriptor id: ${submission.key}")
+                throw OAuth2Exception(Errors.USER_CANCELLED, "invalid input_descriptor_id")
             }
 
             val constraintFieldMatches = holder.evaluateInputDescriptorAgainstCredential(
@@ -233,7 +251,7 @@ internal class PresentationFactory(
                 disclosedAttributes.firstOrNull { allowedPaths.contains(it) } ?: run {
                     val keyId = constraintField.key.id?.let { " Missing field: $it" }
                     Napier.w("Input descriptor constraints not satisfied: ${inputDescriptor.id}.$keyId")
-                    throw OAuth2Exception(OpenIdConstants.Errors.USER_CANCELLED)
+                    throw OAuth2Exception(Errors.USER_CANCELLED, "constraints not satisfied")
                 }
             }
             // TODO: maybe we also want to validate, whether there are any redundant disclosed attributes?
@@ -242,10 +260,26 @@ internal class PresentationFactory(
     }
 
     @Throws(OAuth2Exception::class)
-    private fun PresentationResponseParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
+    private fun PresentationResponseParameters.PresentationExchangeParameters.verifyFormatSupport(
+        supportedFormats: FormatHolder,
+    ) =
         presentationSubmission.descriptorMap?.mapIndexed { _, descriptor ->
             if (supportedFormats.isMissingFormatSupport(descriptor.format)) {
                 Napier.w("Incompatible JWT algorithms for claim format ${descriptor.format}: $supportedFormats")
+                throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED, "incompatible algorithms")
+            }
+        }
+
+    @Throws(OAuth2Exception::class)
+    private fun PresentationResponseParameters.DCQLParameters.verifyFormatSupport(supportedFormats: FormatHolder) =
+        verifiablePresentations.entries.mapIndexed { _, descriptor ->
+            val format = when (verifiablePresentations.entries.first().value) {
+                is CreatePresentationResult.DeviceResponse -> ClaimFormat.MSO_MDOC
+                is CreatePresentationResult.SdJwt -> ClaimFormat.JWT_SD
+                is CreatePresentationResult.Signed -> ClaimFormat.JWT_VP
+            }
+            if (supportedFormats.isMissingFormatSupport(format)) {
+                Napier.w("Incompatible JWT algorithms for claim format $format: $supportedFormats")
                 throw OAuth2Exception(OpenIdConstants.Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
             }
         }
@@ -255,10 +289,8 @@ internal class PresentationFactory(
         return when (claimFormat) {
             ClaimFormat.JWT_VP -> jwtVp?.algorithms?.let { !it.contains(jwsService.algorithm) } ?: false
             ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> {
-                if (jwtSd?.algorithms?.contains(jwsService.algorithm) == false) return true
                 if (jwtSd?.sdJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
                 if (jwtSd?.kbJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
-                if (sdJwt?.algorithms?.contains(jwsService.algorithm) == false) return true
                 if (sdJwt?.sdJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
                 if (sdJwt?.kbJwtAlgorithms?.contains(jwsService.algorithm) == false) return true
                 return false

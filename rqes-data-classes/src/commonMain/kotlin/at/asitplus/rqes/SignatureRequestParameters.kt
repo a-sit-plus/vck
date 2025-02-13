@@ -1,32 +1,19 @@
 package at.asitplus.rqes
 
-import CscAuthorizationDetails
-import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RequestParameters
-import at.asitplus.rqes.collection_entries.CscDocumentDigest
+import at.asitplus.openid.SignatureQualifier
 import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
-import at.asitplus.rqes.enums.ConformanceLevel
-import at.asitplus.rqes.enums.SignatureFormat
-import at.asitplus.rqes.enums.SignatureQualifier
-import at.asitplus.rqes.enums.SignedEnvelopeProperty
 import at.asitplus.signum.indispensable.Digest
-import at.asitplus.signum.indispensable.X509SignatureAlgorithm
-import at.asitplus.signum.indispensable.asn1.Asn1Element
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
-import kotlinx.serialization.json.JsonObject
 
 /**
  * In the Wallet centric model this is the request
  * coming from the Driving application to the wallet which starts
  * the process
- *
- * This should not be confused with the CSC-related extensions to [AuthenticationRequestParameters] which are used
- * by the wallet to communicate with the QTSP using OAuth2
  */
 @Serializable
 data class SignatureRequestParameters(
@@ -41,13 +28,13 @@ data class SignatureRequestParameters(
      * Optional when JAR (RFC9101) is used.
      */
     @SerialName("response_type")
-    val responseType: String,
+    override val responseType: String,
 
     /**
      * OIDC: REQUIRED. OAuth 2.0 Client Identifier valid at the Authorization Server.
      */
     @SerialName("client_id")
-    val clientId: String,
+    override val clientId: String,
 
     /**
      * OID4VP: OPTIONAL. A string identifying the scheme of the value in the `client_id` Authorization Request parameter
@@ -80,7 +67,7 @@ data class SignatureRequestParameters(
      * `invalid_request` Authorization Response error.
      */
     @SerialName("response_uri")
-    val responseUrl: String? = null,
+    override val responseUrl: String? = null,
 
     /**
      * OIDC: OPTIONAL. String value used to associate a Client session with an ID Token, and to mitigate replay attacks.
@@ -88,7 +75,7 @@ data class SignatureRequestParameters(
      * be present in the nonce values used to prevent attackers from guessing values.
      */
     @SerialName("nonce")
-    val nonce: String,
+    override val nonce: String,
 
     /**
      * OIDC: RECOMMENDED. Opaque value used to maintain state between the request and the callback. Typically,
@@ -96,7 +83,7 @@ data class SignatureRequestParameters(
      * parameter with a browser cookie.
      */
     @SerialName("state")
-    val state: String? = null,
+    override val state: String? = null,
 
     /**
      * UC5 Draft REQUIRED.
@@ -134,41 +121,23 @@ data class SignatureRequestParameters(
     /**
      * CSC: OPTIONAL
      * Arbitrary data from the signature application. It can be used to handle a
-     * transaction identifier or other application-spe cific data that may be useful for
+     * transaction identifier or other application-specific data that may be useful for
      * debugging purposes
      */
     @SerialName("clientData")
     val clientData: String?,
+
+    /**
+     * OID4VP: OPTIONAL. Array of strings, where each string is a base64url encoded JSON object that contains a typed
+     * parameter set with details about the transaction that the Verifier is requesting the End-User to authorize.
+     * The Wallet MUST return an error if a request contains even one unrecognized transaction data type or transaction
+     * data not conforming to the respective type definition.
+     */
+    @SerialName("transaction_data")
+    override val transactionData: Set<String>? = null,
 ) : RequestParameters {
 
-    @Transient
-    val hashAlgorithm: Digest = hashAlgorithmOid.getHashAlgorithm()
+    override val redirectUrl: String? = null
+    override val audience: String? = null
 
-    fun toAuthorizationDetails(): AuthorizationDetails =
-        CscAuthorizationDetails(
-            credentialID = this.clientId,
-            signatureQualifier = this.signatureQualifier,
-            hashAlgorithmOid = this.hashAlgorithmOid,
-            documentDigests = this.documentDigests,
-            documentLocations = this.documentLocations,
-        )
-
-    fun getCscDocumentDigests(
-        signatureFormat: SignatureFormat,
-        signAlgorithm: X509SignatureAlgorithm,
-        signAlgoParam: Asn1Element? = null,
-        signedProps: List<JsonObject>? = null,
-        conformanceLevel: ConformanceLevel? = ConformanceLevel.ADESBB,
-        signedEnvelopeProperty: SignedEnvelopeProperty? = SignedEnvelopeProperty.defaultProperty(signatureFormat),
-    ): CscDocumentDigest =
-        CscDocumentDigest(
-            hashes = this.documentDigests.map { it.hash },
-            hashAlgorithmOid = this.hashAlgorithmOid,
-            signatureFormat = signatureFormat,
-            conformanceLevel = conformanceLevel,
-            signAlgoOid = signAlgorithm.oid,
-            signAlgoParams = signAlgoParam,
-            signedProps = signedProps,
-            signedEnvelopeProperty = signedEnvelopeProperty
-        )
 }

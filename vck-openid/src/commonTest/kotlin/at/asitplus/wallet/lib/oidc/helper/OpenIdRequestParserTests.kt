@@ -87,7 +87,8 @@ class OpenIdRequestParserTests : FreeSpec({
             m0LQZeO-00GBYNI0PQ
         """.trimIndent()
 
-        val parsed = requestParser.parseRequestParameters(input).getOrThrow()  as RequestParametersFrom<AuthenticationRequestParameters>
+        @Suppress("UNCHECKED_CAST") val parsed = requestParser.parseRequestParameters(input)
+            .getOrThrow() as RequestParametersFrom<AuthenticationRequestParameters>
         val params = (parsed.parameters)
         val fields = params.presentationDefinition!!.inputDescriptors.first().constraints!!.fields!!
 

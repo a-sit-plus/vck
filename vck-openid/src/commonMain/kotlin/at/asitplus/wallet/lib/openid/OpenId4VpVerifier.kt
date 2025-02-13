@@ -4,24 +4,19 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dif.*
 import at.asitplus.jsonpath.JsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.cbor.DefaultVerifierCoseService
 import at.asitplus.wallet.lib.cbor.VerifierCoseService
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
-import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
 import at.asitplus.wallet.lib.data.VerifiablePresentationJws
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.*
 import at.asitplus.wallet.lib.jws.*
 import at.asitplus.wallet.lib.oidvci.*
-import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.base16.Base16
@@ -30,6 +25,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.DurationUnit
@@ -40,9 +36,9 @@ import kotlin.time.toDuration
  * Implements [OpenID for VP](https://openid.net/specs/openid-connect-4-verifiable-presentations-1_0.html) (2024-12-02)
  * as well as [SIOP V2](https://openid.net/specs/openid-connect-self-issued-v2-1_0.html) (2023-11-28).
  *
- * This class creates the Authentication Request, [verifier] verifies the response. See [at.asitplus.wallet.lib.oidc.OidcSiopWallet] for the holder.
+ * This class creates the Authentication Request, [verifier] verifies the response. See [OpenId4VpHolder] for the holder.
  */
-class OpenId4VpVerifier(
+open class OpenId4VpVerifier(
     private val clientIdScheme: ClientIdScheme,
     private val keyMaterial: KeyMaterial = EphemeralKeyWithoutCert(),
     val verifier: Verifier = VerifierAgent(identifier = clientIdScheme.clientId),
@@ -64,7 +60,6 @@ class OpenId4VpVerifier(
             ?: verifierJwsService.supportedAlgorithms.first().identifier)
     private val containerJwt = FormatContainerJwt(algorithmStrings = supportedAlgorithms)
     private val containerSdJwt = FormatContainerSdJwt(
-        algorithmStrings = supportedAlgorithms.toSet(),
         sdJwtAlgorithmStrings = supportedAlgorithms.toSet(),
         kbJwtAlgorithmStrings = supportedAlgorithms.toSet()
     )
@@ -270,10 +265,23 @@ class OpenId4VpVerifier(
     suspend fun createAuthnRequest(
         requestOptions: RequestOptions,
         requestObjectParameters: RequestObjectParameters? = null,
+    ) = prepareAuthnRequest(
+        requestOptions = requestOptions,
+        requestObjectParameters = requestObjectParameters,
+    ).also {
+        submitAuthnRequest(it)
+    }
+
+    /**
+     * Creates [AuthenticationRequestParameters], to be encoded in the URL of the wallet somehow,
+     * see [createAuthnRequest]
+     */
+    suspend fun prepareAuthnRequest(
+        requestOptions: RequestOptions,
+        requestObjectParameters: RequestObjectParameters? = null,
     ) = AuthenticationRequestParameters(
         responseType = requestOptions.responseType,
         clientId = clientIdScheme.clientId,
-        clientIdScheme = clientIdScheme.scheme, // still set this for our own older implementations
         redirectUrl = if (!requestOptions.isAnyDirectPost) clientIdScheme.redirectUri else null,
         responseUrl = requestOptions.responseUrl,
         //scope = requestOptions.buildScope(), // TODO verify if this is needed
@@ -284,11 +292,31 @@ class OpenId4VpVerifier(
         idTokenType = IdTokenType.SUBJECT_SIGNED.text,
         responseMode = requestOptions.responseMode,
         state = requestOptions.state,
-        presentationDefinition = PresentationDefinition(
-            id = uuid4().toString(),
-            inputDescriptors = requestOptions.credentials.map { it.toInputDescriptor() },
-        ),
-    ).also { stateToAuthnRequestStore.put(requestOptions.state, it) }
+        dcqlQuery = if (requestOptions.presentationMechanism == PresentationMechanismEnum.DCQL) {
+            requestOptions.toDCQLQuery()
+        } else null,
+        presentationDefinition = if (requestOptions.presentationMechanism == PresentationMechanismEnum.PresentationExchange) {
+            requestOptions.toPresentationDefinition(containerJwt, containerSdJwt)
+        } else null
+    ).let {
+        enrichAuthnRequest(it, requestOptions)
+    }
+
+    open suspend fun enrichAuthnRequest(
+        params: AuthenticationRequestParameters,
+        requestOptions: RequestOptions,
+    ): AuthenticationRequestParameters = params
+
+    /**
+     * Remembers [authenticationRequestParameters] to link responses to requests
+     */
+    suspend fun submitAuthnRequest(
+        authenticationRequestParameters: AuthenticationRequestParameters,
+    ) = stateToAuthnRequestStore.put(
+        authenticationRequestParameters.state
+            ?: throw IllegalArgumentException("No state value has been provided"),
+        authenticationRequestParameters,
+    )
 
     // OpenID4VP: Metadata MUST be passed as parameter if client_id_scheme is "redirect_uri"
     private fun clientMetadata(options: RequestOptions): RelyingPartyMetadata? =
@@ -298,103 +326,6 @@ class OpenId4VpVerifier(
             if (options.encryption) metadataWithEncryption else metadata
         }
 
-    private fun RequestOptions.buildScope() =
-        listOf(OpenIdConstants.SCOPE_OPENID, OpenIdConstants.SCOPE_PROFILE).joinToString(" ")
-
-    private val RequestOptions.isAnyDirectPost
-        get() = (responseMode == OpenIdConstants.ResponseMode.DirectPost) ||
-                (responseMode == OpenIdConstants.ResponseMode.DirectPostJwt)
-
-    //TODO extend for InputDescriptor interface in case QES
-    private fun RequestOptionsCredential.toInputDescriptor() = DifInputDescriptor(
-        id = buildId(),
-        format = toFormatHolder(),
-        constraints = toConstraint(),
-    )
-
-    /**
-     * doctype is not really an attribute that can be presented,
-     * encoding it into the descriptor id as in the following non-normative example fow now:
-     * https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-A.3.1-4
-     */
-    private fun RequestOptionsCredential.buildId() =
-        if (credentialScheme.isoDocType != null && representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-            credentialScheme.isoDocType!! else uuid4().toString()
-
-    private fun RequestOptionsCredential.toConstraint() =
-        Constraint(fields = (requiredAttributes() + optionalAttributes() + toTypeConstraint()).filterNotNull())
-
-    private fun RequestOptionsCredential.requiredAttributes() =
-        requestedAttributes?.createConstraints(representation, credentialScheme, false)?.toSet()
-            ?: setOf()
-
-    private fun RequestOptionsCredential.optionalAttributes() =
-        requestedOptionalAttributes?.createConstraints(representation, credentialScheme, true)
-            ?: listOf()
-
-    private fun RequestOptionsCredential.toTypeConstraint() = when (representation) {
-        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> this.credentialScheme.toVcConstraint()
-        ConstantIndex.CredentialRepresentation.SD_JWT -> this.credentialScheme.toSdJwtConstraint()
-        ConstantIndex.CredentialRepresentation.ISO_MDOC -> null
-    }
-
-    private fun RequestOptionsCredential.toFormatHolder() = when (representation) {
-        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> FormatHolder(jwtVp = containerJwt)
-        ConstantIndex.CredentialRepresentation.SD_JWT -> FormatHolder(jwtSd = containerSdJwt, sdJwt = containerSdJwt)
-        ConstantIndex.CredentialRepresentation.ISO_MDOC -> FormatHolder(msoMdoc = containerJwt)
-    }
-
-    private fun ConstantIndex.CredentialScheme.toVcConstraint() = if (supportsVcJwt)
-        ConstraintField(
-            path = listOf("$.type"),
-            filter = ConstraintFilter(
-                type = "string",
-                pattern = vcType,
-            )
-        ) else null
-
-    private fun ConstantIndex.CredentialScheme.toSdJwtConstraint() = if (supportsSdJwt)
-        ConstraintField(
-            path = listOf("$.vct"),
-            filter = ConstraintFilter(
-                type = "string",
-                pattern = sdJwtType!!
-            )
-        ) else null
-
-    private fun Set<String>.createConstraints(
-        representation: ConstantIndex.CredentialRepresentation,
-        credentialScheme: ConstantIndex.CredentialScheme?,
-        optional: Boolean,
-    ): Collection<ConstraintField> = map {
-        if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
-            credentialScheme.toConstraintField(it, optional)
-        else
-            ConstraintField(path = listOf("\$[${it.quote()}]"), optional = optional)
-    }
-
-    private fun ConstantIndex.CredentialScheme?.toConstraintField(
-        attributeType: String,
-        optional: Boolean,
-    ) = ConstraintField(
-        path = listOf(
-            NormalizedJsonPath(
-                NormalizedJsonPathSegment.NameSegment(this?.isoNamespace ?: "mdoc"),
-                NormalizedJsonPathSegment.NameSegment(attributeType),
-            ).toString()
-        ),
-        intentToRetain = false,
-        optional = optional,
-    )
-
-    /**
-     * Validates the OpenID Authentication Response from the Wallet, where [content] are the HTTP POST encoded
-     * [at.asitplus.openid.AuthenticationResponseParameters], e.g. `id_token=...&vp_token=...`
-     */
-    @Deprecated("Use validateAuthnResponse", ReplaceWith("validateAuthnResponse"))
-    suspend fun validateAuthnResponseFromPost(content: String): AuthnResponseResult =
-        validateAuthnResponse(content)
-
     /**
      * Validates an Authentication Response from the Wallet, where [input] is a map of POST parameters received.
      */
@@ -403,7 +334,7 @@ class OpenId4VpVerifier(
             ResponseParametersFrom.Post(input.decode<AuthenticationResponseParameters>())
         }.getOrElse {
             Napier.w("Could not parse authentication response: $input", it)
-            return AuthnResponseResult.Error("Can't parse input", null)
+            return AuthnResponseResult.Error("Can't parse input", null, it)
         }.let { validateAuthnResponse(it) }
 
     /**
@@ -417,7 +348,7 @@ class OpenId4VpVerifier(
             responseParser.parseAuthnResponse(input)
         }.getOrElse {
             Napier.w("Could not parse authentication response: $input", it)
-            return AuthnResponseResult.Error("Can't parse input", null)
+            return AuthnResponseResult.Error("Can't parse input", null, it)
         }.let {
             validateAuthnResponse(it)
         }
@@ -434,40 +365,14 @@ class OpenId4VpVerifier(
             ?: return AuthnResponseResult.ValidationError("state", state)
                 .also { Napier.w("State not associated with authn request: $state") }
 
+        // TODO: support concurrent presentation of ID token and VP token?
         val responseType = authnRequest.responseType
         if (responseType?.contains(OpenIdConstants.VP_TOKEN) == true) {
-            val expectedNonce = authnRequest.nonce
-                ?: return AuthnResponseResult.ValidationError("state", state)
-                    .also { Napier.w("State not associated with nonce: $state") }
-            val presentationSubmission = params.presentationSubmission
-                ?: return AuthnResponseResult.ValidationError("presentation_submission", state)
-                    .also { Napier.w("presentation_submission empty") }
-            val descriptors = presentationSubmission.descriptorMap
-                ?: return AuthnResponseResult.ValidationError("presentation_submission", state)
-                    .also { Napier.w("presentation_submission contains no descriptors") }
-            val verifiablePresentation = params.vpToken
-                ?: return AuthnResponseResult.ValidationError("vp_token is null", state)
-                    .also { Napier.w("No VP in response") }
-
-            val validationResults = descriptors.map { descriptor ->
-                val relatedPresentation = JsonPath(descriptor.cumulativeJsonPath)
-                    .query(verifiablePresentation).first().value
-                val result = runCatching {
-                    verifyPresentationResult(
-                        descriptor,
-                        relatedPresentation,
-                        expectedNonce,
-                        input,
-                        authnRequest.clientId,
-                        authnRequest.responseUrl
-                    )
-                }.getOrElse {
-                    Napier.w("Invalid presentation format: $relatedPresentation", it)
-                    return AuthnResponseResult.ValidationError("Invalid presentation", state)
-                }
-                result.mapToAuthnResponseResult(state)
-            }
-            return validationResults.firstOrList()
+            return validateVpToken(
+                authnRequest = authnRequest,
+                responseParameters = input,
+                state = state
+            )
         }
 
         if (responseType?.contains(OpenIdConstants.ID_TOKEN) == true) {
@@ -475,7 +380,7 @@ class OpenId4VpVerifier(
                 catching {
                     extractValidatedIdToken(idToken)
                 }.getOrElse {
-                    return AuthnResponseResult.ValidationError("idToken", state)
+                    return AuthnResponseResult.ValidationError("idToken", state, it)
                 }
             } ?: return AuthnResponseResult.ValidationError("idToken", state)
                 .also { Napier.w("State not associated with response type: $state") }
@@ -484,10 +389,6 @@ class OpenId4VpVerifier(
 
         return AuthnResponseResult.Error("Neither id_token nor vp_token", state)
     }
-
-    private fun List<AuthnResponseResult>.firstOrList(): AuthnResponseResult =
-        if (size == 1) this[0]
-        else AuthnResponseResult.VerifiablePresentationValidationResults(this)
 
     @Throws(IllegalArgumentException::class, CancellationException::class)
     private suspend fun extractValidatedIdToken(idTokenJws: String): IdToken {
@@ -531,15 +432,101 @@ class OpenId4VpVerifier(
      * [OpenID for VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html),
      * as referenced by [OpenID for VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html).
      */
+    private suspend fun validateVpToken(
+        authnRequest: AuthenticationRequestParameters,
+        responseParameters: ResponseParametersFrom,
+        state: String,
+    ): AuthnResponseResult {
+        val params = responseParameters.parameters
+        val expectedNonce = authnRequest.nonce
+            ?: return AuthnResponseResult.ValidationError("state", state)
+                .also { Napier.w("State not associated with nonce: $state") }
+        val verifiablePresentation = params.vpToken
+            ?: return AuthnResponseResult.ValidationError("vp_token is null", state)
+                .also { Napier.w("No VP in response") }
+
+        authnRequest.presentationDefinition?.let { presentationDefinition ->
+            val presentationSubmission = params.presentationSubmission
+                ?: throw IllegalArgumentException("Credential presentations using Presentation Exchange need to present a presentation submission.")
+
+            val validationResults = presentationSubmission.descriptorMap?.map { descriptor ->
+                val relatedPresentation = JsonPath(descriptor.cumulativeJsonPath)
+                    .query(verifiablePresentation).first().value
+                val result = runCatching {
+                    verifyPresentationResult(
+                        descriptor.format,
+                        relatedPresentation,
+                        expectedNonce,
+                        responseParameters,
+                        authnRequest.clientId,
+                        authnRequest.responseUrl
+                    )
+                }.getOrElse {
+                    Napier.w("Invalid presentation format: $relatedPresentation", it)
+                    return AuthnResponseResult.ValidationError("Invalid presentation", state, it)
+                }
+                result.mapToAuthnResponseResult(state)
+            } ?: listOf()
+            return validationResults.firstOrList()
+        }
+
+        authnRequest.dcqlQuery?.let { query ->
+            val credentialQueryMap = query.credentials.associateBy {
+                it.id
+            }
+
+            val presentation = verifiablePresentation.jsonObject.mapKeys {
+                DCQLCredentialQueryIdentifier(it.key)
+            }.mapValues { (credentialQueryId, relatedPresentation) ->
+                val credentialQuery = credentialQueryMap[credentialQueryId]
+                    ?: throw IllegalArgumentException("Unknown credential query identifier.")
+
+                verifyPresentationResult(
+                    when (credentialQuery.format) {
+                        CredentialFormatEnum.JWT_VC -> ClaimFormat.JWT_VP
+
+                        CredentialFormatEnum.VC_SD_JWT,
+                        CredentialFormatEnum.DC_SD_JWT,
+                            -> ClaimFormat.SD_JWT
+
+                        CredentialFormatEnum.MSO_MDOC -> ClaimFormat.MSO_MDOC
+
+                        CredentialFormatEnum.NONE,
+                        CredentialFormatEnum.JWT_VC_JSON_LD,
+                        CredentialFormatEnum.JSON_LD,
+                            -> throw IllegalStateException("Unsupported credential format")
+                    },
+                    relatedPresentation,
+                    expectedNonce,
+                    responseParameters,
+                    authnRequest.clientId,
+                    authnRequest.responseUrl
+                ).mapToAuthnResponseResult(state)
+            }
+            return AuthnResponseResult.VerifiableDCQLPresentationValidationResults(presentation)
+        }
+
+        throw IllegalArgumentException("Unsupported presentation mechanism")
+    }
+
+    private fun List<AuthnResponseResult>.firstOrList(): AuthnResponseResult =
+        if (size == 1) this[0]
+        else AuthnResponseResult.VerifiablePresentationValidationResults(this)
+
+    /**
+     * Extract and verifies verifiable presentations, according to format defined in
+     * [OpenID for VCI](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html),
+     * as referenced by [OpenID for VP](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html).
+     */
     @Suppress("DEPRECATION")
     private suspend fun verifyPresentationResult(
-        descriptor: PresentationSubmissionDescriptor,
+        claimFormat: ClaimFormat,
         relatedPresentation: JsonElement,
         expectedNonce: String,
         input: ResponseParametersFrom,
         clientId: String?,
         responseUrl: String?,
-    ) = when (descriptor.format) {
+    ) = when (claimFormat) {
         ClaimFormat.JWT_SD, ClaimFormat.SD_JWT -> verifier.verifyPresentationSdJwt(
             input = SdJwtSigned.Companion.parse(relatedPresentation.jsonPrimitive.content)
                 ?: throw IllegalArgumentException("relatedPresentation"),
@@ -661,7 +648,7 @@ class OpenId4VpVerifier(
                 .also { Napier.w("VP error: $this") }
 
         is Verifier.VerifyPresentationResult.ValidationError ->
-            AuthnResponseResult.ValidationError("vpToken", state)
+            AuthnResponseResult.ValidationError("vpToken", state, cause)
                 .also { Napier.w("VP error: $this", cause) }
 
         is Verifier.VerifyPresentationResult.Success ->

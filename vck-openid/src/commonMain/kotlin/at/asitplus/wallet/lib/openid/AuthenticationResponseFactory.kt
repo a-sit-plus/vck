@@ -40,7 +40,7 @@ internal class AuthenticationResponseFactory(
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
             ?: request.parameters.redirectUrlExtracted
-            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "no response_uri or redirect_uri")
         val responseSerialized = buildJarm(request, response)
         val jarm = AuthenticationResponseParameters(
             response = responseSerialized,
@@ -56,7 +56,7 @@ internal class AuthenticationResponseFactory(
     ): AuthenticationResponseResult.Post {
         val url = request.parameters.responseUrl
             ?: request.parameters.redirectUrlExtracted
-            ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+            ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "no response_uri or redirect_uri")
         return AuthenticationResponseResult.Post(url, response.params.encodeToParameters())
     }
 
@@ -71,7 +71,7 @@ internal class AuthenticationResponseFactory(
                     this.parameters.append(it.key, it.value)
                 }
             }.buildString()
-        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "no redirect_uri")
 
         return AuthenticationResponseResult.Redirect(url, response.params)
     }
@@ -88,7 +88,7 @@ internal class AuthenticationResponseFactory(
             URLBuilder(redirectUrl).apply {
                 encodedFragment = response.params.encodeToParameters().formUrlEncode()
             }.buildString()
-        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST)
+        } ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "no redirect_uri")
         return AuthenticationResponseResult.Redirect(url, response.params)
     }
 

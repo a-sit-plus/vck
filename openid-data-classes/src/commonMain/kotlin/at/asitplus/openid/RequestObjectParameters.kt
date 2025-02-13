@@ -34,6 +34,15 @@ data class RequestObjectParameters(
         walletNonce = nonce
     )
 
+    override val responseType: String? = null
+    override val nonce: String? = null
+    override val clientId: String? = null
+    override val redirectUrl: String? = null
+    override val responseUrl: String? = null
+    override val audience: String? = null
+    override val state: String? = null
+    override val transactionData: Set<String>? = null
+
     fun serialize() = odcJsonSerializer.encodeToString(this)
 
     val walletMetadata: OAuth2AuthorizationServerMetadata?

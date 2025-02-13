@@ -145,7 +145,7 @@ class DefaultCoseService(private val cryptoService: CryptoService) : CoseService
         }
 
     private fun CoseHeader?.withCertificate(certificate: X509Certificate?) =
-        (this ?: CoseHeader()).copy(certificateChain = certificate?.encodeToDer())
+        (this ?: CoseHeader()).copy(certificateChain = certificate?.let { listOf(it.encodeToDer()) })
 
     private fun CoseHeader?.withAlgorithmAndKeyId(addKeyId: Boolean): CoseHeader =
         if (addKeyId) {
@@ -252,9 +252,8 @@ typealias PublicCoseKeyLookup = (CoseSigned<*>) -> Set<CoseKey>?
  * [certificateChain], and takes the first success or null.
  */
 val CoseHeader.publicKey: CoseKey?
-    get() = coseKey?.let { CoseKey.deserialize(it).getOrNull() }
-        ?: kid?.let { CoseKey.fromDid(it.decodeToString()) }?.getOrNull()
-        ?: certificateChain?.let {
+    get() = kid?.let { CoseKey.fromDid(it.decodeToString()) }?.getOrNull()
+        ?: certificateChain?.firstOrNull()?.let {
             runCatching {
                 X509Certificate.decodeFromDer(it)
             }.getOrNull()?.publicKey?.toCoseKey()?.getOrThrow()

@@ -73,6 +73,10 @@ class DCQLClaimsPathPointer(
         return segments.hashCode()
     }
 
+    override fun toString(): String {
+        return super.toString() + "($segments)"
+    }
+
     /**
      *  6.4.1. Processing
      *

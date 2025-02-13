@@ -32,6 +32,7 @@ import kotlinx.datetime.Instant
  * Tests our OpenId4VP implementation against EUDI Ref Impl.,
  * see [https://verifier.eudiw.dev/cbor-selectable/verifiable](https://verifier.eudiw.dev/cbor-selectable/verifiable)
  */
+@Suppress("DEPRECATION")
 class OpenId4VpEuRefInteropTest : FreeSpec({
     lateinit var holderKeyMaterial: KeyMaterial
     lateinit var holderAgent: Holder
@@ -200,7 +201,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                             "fields": [
                                 {
                                     "path": [
-                                        "${'$'}.mdoc.doctype"
+                                        "$.mdoc.doctype"
                                     ],
                                     "filter": {
                                         "type": "string",
@@ -209,7 +210,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                                 },
                                 {
                                     "path": [
-                                        "${'$'}.mdoc.namespace"
+                                        "$.mdoc.namespace"
                                     ],
                                     "filter": {
                                         "type": "string",
@@ -218,7 +219,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
                                 },
                                 {
                                     "path": [
-                                        "${'$'}.mdoc.given_name"
+                                        "$.mdoc.given_name"
                                     ],
                                     "intent_to_retain": false
                                 }
@@ -247,7 +248,6 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         parsed.shouldNotBeNull()
 
         parsed.responseUrl shouldBe "https://verifier-backend.eudiw.dev/wallet/direct_post"
-        parsed.clientIdSchemeExtracted shouldBe OpenIdConstants.ClientIdScheme.X509SanDns
         parsed.responseType shouldBe "vp_token"
         parsed.nonce shouldBe "nonce"
         parsed.clientId shouldBe "verifier-backend.eudiw.dev"
@@ -336,7 +336,7 @@ class OpenId4VpEuRefInteropTest : FreeSpec({
         val nonce = uuid4().toString()
         val requestUrl = "https://example.com/request/$nonce"
         val (walletUrl, jar) = verifierOid4vp.createAuthnRequest(
-            RequestOptions(
+            OpenIdRequestOptions(
                 responseMode = OpenIdConstants.ResponseMode.DirectPost,
                 responseUrl = "https://example.com/response",
                 credentials = setOf(
