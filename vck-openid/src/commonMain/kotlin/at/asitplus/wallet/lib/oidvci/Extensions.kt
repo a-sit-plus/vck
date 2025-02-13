@@ -151,11 +151,7 @@ fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
 }
 
 class OAuth2Exception : Throwable {
-    @Deprecated("Use constructor with description or cause")
-    constructor(error: String) : super(error)
     constructor(error: String, errorDescription: String) : super("$error: $errorDescription")
     constructor(error: String, cause: Throwable) : super(error, cause)
-    @Deprecated("Use constructor with description or cause")
-    constructor(error: String, errorDescription: String, cause: Throwable) : super("$error: $errorDescription", cause)
 
 }
