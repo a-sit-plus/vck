@@ -1,10 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.dif.Constraint
-import at.asitplus.dif.ConstraintField
-import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
@@ -55,9 +51,9 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ),
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = buildPresentationDefinition(
+            val presentationDefinition = PresentationExchangePresentation.forAttributeNames(
                 "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
+                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
 
             val vp = holder.createPresentation(
@@ -88,9 +84,9 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ),
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = buildPresentationDefinition(
+            val presentationDefinition = PresentationExchangePresentation.forAttributeNames(
                 "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
+                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
 
             val vp = holder.createPresentation(
@@ -122,9 +118,9 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ),
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = buildPresentationDefinition(
+            val presentationDefinition = PresentationExchangePresentation.forAttributeNames(
                 "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
+                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
 
             val vp = holder.createPresentation(
@@ -151,9 +147,9 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY", "AT"),
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = buildPresentationDefinition(
+            val presentationDefinition = PresentationExchangePresentation.forAttributeNames(
                 "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
+                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
 
             val vp = holder.createPresentation(
@@ -181,7 +177,7 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ClaimToBeIssued(CLAIM_ALWAYS_VISIBLE, "anything", selectivelyDisclosable = false)
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = buildPresentationDefinition(
+            val presentationDefinition = PresentationExchangePresentation.forAttributeNames(
                 "$['$CLAIM_GIVEN_NAME']",
                 "$['$CLAIM_FAMILY_NAME']",
                 "$.$CLAIM_ALWAYS_VISIBLE"
@@ -397,20 +393,6 @@ private suspend fun issueAndStoreCredential(
     )
 }
 
-private fun buildPresentationDefinition(vararg attributeName: String) =
-    PresentationExchangePresentation(
-        presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest(
-            PresentationDefinition(
-                DifInputDescriptor(
-                    Constraint(
-                        fields = attributeName.map { ConstraintField(path = listOf(it)) }
-                    )
-                )
-            ),
-        ),
-        inputDescriptorSubmissions = null,
-    )
-
 private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuery(
     credentials = DCQLCredentialQueryList(
         DCQLSdJwtCredentialQuery(
@@ -428,9 +410,7 @@ private suspend fun createPresentation(
     verifierId: String,
 ) = holder.createDefaultPresentation(
     request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-        dcqlQuery = dcqlQuery
-    ),
+    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(dcqlQuery),
 ).getOrThrow().let {
     it as PresentationResponseParameters.DCQLParameters
 }.verifiablePresentations.values.firstOrNull()

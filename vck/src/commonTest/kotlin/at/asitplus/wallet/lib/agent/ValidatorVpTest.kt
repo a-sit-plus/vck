@@ -25,12 +25,11 @@ import kotlin.random.Random
 class ValidatorVpTest : FreeSpec({
 
     val singularPresentationDefinition = PresentationExchangePresentation(
-        presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest(
+        CredentialPresentationRequest.PresentationExchangeRequest(
             PresentationDefinition(
                 DifInputDescriptor(id = uuid4().toString())
             ),
         ),
-        inputDescriptorSubmissions = null,
     )
 
     lateinit var validator: Validator

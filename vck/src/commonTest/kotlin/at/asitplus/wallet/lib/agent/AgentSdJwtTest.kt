@@ -1,8 +1,6 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
-import at.asitplus.dif.Constraint
-import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.CredentialFormatEnum
@@ -173,7 +171,7 @@ class AgentSdJwtTest : FreeSpec({
             val presentationParameters = holder.createDefaultPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    dcqlQuery = buildDCQLQuery(
+                    buildDCQLQuery(
                         DCQLJsonClaimsQuery(
                             path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
                         ),
@@ -226,7 +224,7 @@ class AgentSdJwtTest : FreeSpec({
                     audience = verifierId
                 ),
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    dcqlQuery = buildDCQLQuery(
+                    buildDCQLQuery(
                         DCQLJsonClaimsQuery(
                             path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
                         )
@@ -245,7 +243,7 @@ class AgentSdJwtTest : FreeSpec({
             val presentationParameters = holder.createDefaultPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
                 credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    dcqlQuery = buildDCQLQuery(
+                    buildDCQLQuery(
                         DCQLJsonClaimsQuery(
                             path = DCQLClaimsPathPointer(CLAIM_GIVEN_NAME),
                         )
@@ -279,18 +277,8 @@ private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuer
     )
 )
 
-private fun buildPresentationDefinition(vararg attributeName: String) = PresentationExchangePresentation(
-    presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest(
-        PresentationDefinition(
-            DifInputDescriptor(
-                Constraint(
-                    fields = attributeName.map { ConstraintField(path = listOf("$['$it']")) }
-                )
-            )
-        ),
-    ),
-    inputDescriptorSubmissions = null,
-)
+private fun buildPresentationDefinition(vararg attributeName: String) =
+    PresentationExchangePresentation.forAttributeNames(*attributeName.map { it -> "$['$it']" }.toTypedArray())
 
 suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {
     val holderKeyMaterial = EphemeralKeyWithoutCert()
@@ -307,12 +295,11 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
     val presentationResult = holder.createPresentation(
         request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
         credentialPresentation = PresentationExchangePresentation(
-            presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest(
+            CredentialPresentationRequest.PresentationExchangeRequest(
                 PresentationDefinition(
                     DifInputDescriptor(id = uuid4().toString())
                 ),
             ),
-            inputDescriptorSubmissions = null,
         )
     ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
     return (presentationResult.presentationResults.first() as CreatePresentationResult.SdJwt).serialized

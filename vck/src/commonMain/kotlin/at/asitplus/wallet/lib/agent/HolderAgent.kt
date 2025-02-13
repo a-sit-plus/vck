@@ -146,18 +146,12 @@ class HolderAgent(
     ): KmmResult<PresentationResponseParameters> = when (credentialPresentationRequest) {
         is CredentialPresentationRequest.PresentationExchangeRequest -> createPresentation(
             request = request,
-            credentialPresentation = CredentialPresentation.PresentationExchangePresentation(
-                presentationRequest = credentialPresentationRequest,
-                inputDescriptorSubmissions = null
-            ),
+            credentialPresentation = credentialPresentationRequest.toCredentialPresentation()
         )
 
         is CredentialPresentationRequest.DCQLRequest -> createPresentation(
             request = request,
-            credentialPresentation = CredentialPresentation.DCQLPresentation(
-                presentationRequest = credentialPresentationRequest,
-                credentialQuerySubmissions = null
-            ),
+            credentialPresentation = credentialPresentationRequest.toCredentialPresentation()
         )
     }
 
@@ -184,11 +178,10 @@ class HolderAgent(
         createPresentationExchangePresentation(
             request = request,
             credentialPresentation = CredentialPresentation.PresentationExchangePresentation(
-                presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest(
+                CredentialPresentationRequest.PresentationExchangeRequest(
                     presentationDefinition,
                     fallbackFormatHolder,
                 ),
-                inputDescriptorSubmissions = null,
             )
         )
 
