@@ -67,7 +67,7 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
         recipientKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray> = runCatching {
-        val jvmKey = recipientKey.toCryptoPublicKey().getOrThrow().getJcaPublicKey().getOrThrow()
+        val jvmKey = recipientKey.toCryptoPublicKey().getOrThrow().toJcaPublicKey().getOrThrow()
         KeyAgreement.getInstance(algorithm.jcaName).also {
             @OptIn(HazardousMaterials::class)
             it.init(ephemeralKey.key.jcaPrivateKey)
@@ -79,7 +79,7 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
         ephemeralKey: JsonWebKey,
         algorithm: JweAlgorithm
     ): KmmResult<ByteArray> = runCatching {
-        val publicKey = ephemeralKey.toCryptoPublicKey().getOrThrow().getJcaPublicKey().getOrThrow()
+        val publicKey = ephemeralKey.toCryptoPublicKey().getOrThrow().toJcaPublicKey().getOrThrow()
         KeyAgreement.getInstance(algorithm.jcaName).also {
             @OptIn(HazardousMaterials::class)
             it.init(keyMaterial.getUnderLyingSigner().jcaPrivateKey)
