@@ -25,6 +25,7 @@ import kotlinx.serialization.json.JsonObject
 @Serializable
 data class CscDocumentDigest(
     /**
+     *
      * One or more hash values representing one or more SDRs. This
      * parameter SHALL contain the Base64-encoded hash(es) of the
      * documents to be signed.

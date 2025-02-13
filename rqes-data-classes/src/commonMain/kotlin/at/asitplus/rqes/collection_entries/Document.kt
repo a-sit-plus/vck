@@ -15,7 +15,7 @@ import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonObject
 
 /**
- * CSC: Class used as part of [SignatureRequestParameters]
+ * CSC: Class used as part of [CscSignatureRequestParameters]
  */
 @Serializable
 data class Document(

@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class OAuthDocumentDigest (
     /**
+     * REQUIRED.
      * CSC: Conditional String containing the actual Base64-
      * encoded octet-representation of the hash of the document
      */
@@ -19,6 +20,7 @@ data class OAuthDocumentDigest (
     val hash: ByteArray,
 
     /**
+     * NOT SPECIFIED (Assume REQUIRED)
      * CSC: String containing a human-readable description of the respective
      * document
      */

@@ -8,34 +8,34 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * CSC: The authorization details type credential allows applications to pass the details of a certain
+ * The authorization details type credential allows applications to pass the details of a certain
  * credential authorization in a single JSON object
  */
 @Serializable
 @SerialName("credential")
 data class CscAuthorizationDetails(
     /**
-     * CSC: The identifier associated to the credential to authorize
+     * The identifier associated to the credential to authorize
      */
     @SerialName("credentialID")
     val credentialID: String? = null,
 
     /**
-     * CSC: This parameter contains the symbolic identifier determining the kind of
+     * This parameter contains the symbolic identifier determining the kind of
      * signature to be created
      */
     @SerialName("signatureQualifier")
     val signatureQualifier: SignatureQualifier? = null,
 
     /**
-     * CSC: An array composed of entries for every document to be signed. This applies for
+     * An array composed of entries for every document to be signed. This applies for
      * array both cases, where are document is signed or a digest is signed
      */
     @SerialName("documentDigests")
     val documentDigests: Collection<OAuthDocumentDigest>,
 
     /**
-     * CSC: String containing the OID of the hash algorithm used to generate the hashes
+     * String containing the OID of the hash algorithm used to generate the hashes
      * listed in documentDigests.
      */
     @SerialName("hashAlgorithmOID")
@@ -43,14 +43,14 @@ data class CscAuthorizationDetails(
     val hashAlgorithmOid: ObjectIdentifier,
 
     /**
-     * CSC: An array of strings designating the locations of
+     * An array of strings designating the locations of
      * array the API where the access token issued in a certain OAuth transaction shall be used.
      */
     @SerialName("locations")
     val locations: Collection<String>? = null,
 
     /**
-     * QES: This parameter is used to convey the
+     * UC5 RQES Specification: This parameter is used to convey the
      * signer document. This parameter
      * SHALL not be used when the signer
      * document is not required for the
