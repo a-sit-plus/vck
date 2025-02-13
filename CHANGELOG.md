@@ -1,7 +1,7 @@
 # Changelog
 
 Release 5.5.0:
- - tbd
+ - Fix encoding `dcql_query` in authentication request, it is now a string
 
 Release 5.4.0:
 - Extend support for POTENTIAL UC5: Remote qualified electronic signatures

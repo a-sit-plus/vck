@@ -24,6 +24,7 @@ import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -292,8 +293,8 @@ open class OpenId4VpVerifier(
         idTokenType = IdTokenType.SUBJECT_SIGNED.text,
         responseMode = requestOptions.responseMode,
         state = requestOptions.state,
-        dcqlQuery = if (requestOptions.presentationMechanism == PresentationMechanismEnum.DCQL) {
-            requestOptions.toDCQLQuery()
+        dcqlQueryString = if (requestOptions.presentationMechanism == PresentationMechanismEnum.DCQL) {
+            requestOptions.toDCQLQuery()?.let { odcJsonSerializer.encodeToString(it) }
         } else null,
         presentationDefinition = if (requestOptions.presentationMechanism == PresentationMechanismEnum.PresentationExchange) {
             requestOptions.toPresentationDefinition(containerJwt, containerSdJwt)

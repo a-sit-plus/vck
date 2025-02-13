@@ -162,7 +162,7 @@ data class DCQLQuery(
                     )
                 }.getOrElse {
                     if (credentialSetQuery.required) {
-                        throw IllegalArgumentException("Required credential set query is not satisfiable.", it)
+                        throw IllegalArgumentException("Required credential set query is not satisfiable: $credentialSetQuery", it)
                     }
                     null
                 }
