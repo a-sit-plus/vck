@@ -1,5 +1,8 @@
 # Changelog
 
+Release 5.5.0:
+ - tbd
+
 Release 5.4.0:
 - Extend support for POTENTIAL UC5: Remote qualified electronic signatures
   - Update data classes in `rqes-data-classes`
