@@ -1,7 +1,13 @@
 # Changelog
 
 Release 5.5.0:
- - Fix encoding `dcql_query` in authentication request, it is now a string
+ - Remove elements deprecated in 5.4.0 when introducing DCQL:
+   - Class `CredentialSubmission`, replaced with `PresentationExchangeCredentialDisclosure`
+   - In `Holder` remove `createPresentation()` taking in `PresentationDefinition`
+   - In `Holder` remove `createPresentation()` taking in `CredentialSubmission`
+   - In `OpenId4VpHolder` remove `finalizeAuthorizationResponse()` taking in `CredentialSubmission`
+   - In `OpenId4VpHolder` remove `finalizeAuthorizationResponseParameters()` taking in `CredentialSubmission`
+   - In `OpenId4VpWallet` remove `finalizeAuthorizationResponseParameters()` taking in `CredentialSubmission`
 
 Release 5.4.0:
 - Extend support for POTENTIAL UC5: Remote qualified electronic signatures
@@ -41,7 +47,7 @@ Release 5.3.3:
 
 Release 5.3.2:
  - ISO: Do not tag instants in CBOR with tag 1004
- - ISO: Fix calcluation of value digests for `IssuerSignedItems`
+ - ISO: Fix calculation of value digests for `IssuerSignedItems`
 
 Release 5.3.1:
 - Add optional parameter `issuerUri` to `ClientIdScheme.PreRegistered`

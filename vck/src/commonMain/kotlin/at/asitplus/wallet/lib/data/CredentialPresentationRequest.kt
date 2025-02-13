@@ -8,13 +8,30 @@ import kotlin.jvm.JvmInline
 
 @Serializable(with = CredentialPresentationRequestSerializer::class)
 sealed interface CredentialPresentationRequest {
+
+    fun toCredentialPresentation(): CredentialPresentation
+
     @Serializable
     data class PresentationExchangeRequest(
         val presentationDefinition: PresentationDefinition,
         val fallbackFormatHolder: FormatHolder? = null,
-    ) : CredentialPresentationRequest
+    ) : CredentialPresentationRequest {
+        override fun toCredentialPresentation(): CredentialPresentation =
+            CredentialPresentation.PresentationExchangePresentation(
+                presentationRequest = this,
+                inputDescriptorSubmissions = null
+            )
+    }
 
     @Serializable
     @JvmInline
-    value class DCQLRequest(val dcqlQuery: DCQLQuery) : CredentialPresentationRequest
+    value class DCQLRequest(
+        val dcqlQuery: DCQLQuery
+    ) : CredentialPresentationRequest {
+        override fun toCredentialPresentation(): CredentialPresentation =
+            CredentialPresentation.DCQLPresentation(
+                presentationRequest = this,
+                credentialQuerySubmissions = null
+            )
+    }
 }

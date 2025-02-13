@@ -6,22 +6,13 @@ import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.CredentialFormatEnum
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
-import at.asitplus.openid.dcql.DCQLClaimsQueryList
-import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
-import at.asitplus.openid.dcql.DCQLCredentialQueryList
-import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
-import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
+import at.asitplus.openid.dcql.*
 import at.asitplus.signum.indispensable.josef.JwsHeader
 import at.asitplus.signum.indispensable.josef.JwsSigned
-import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_DATE_OF_BIRTH
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.KeyBindingJws
-import at.asitplus.wallet.lib.data.StatusListToken
-import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
+import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -114,11 +105,8 @@ class AgentSdJwtTest : FreeSpec({
         "simple walk-through success" {
             val presentationParameters = holder.createPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                presentationDefinition = buildPresentationDefinition(
-                    CLAIM_GIVEN_NAME,
-                    CLAIM_DATE_OF_BIRTH
-                )
-            ).getOrThrow()
+                credentialPresentation = buildPresentationDefinition(CLAIM_GIVEN_NAME, CLAIM_DATE_OF_BIRTH)
+            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
@@ -134,8 +122,8 @@ class AgentSdJwtTest : FreeSpec({
         "wrong key binding jwt" {
             val presentationParameters = holder.createPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
-            ).getOrThrow()
+                credentialPresentation = buildPresentationDefinition(CLAIM_GIVEN_NAME)
+            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
@@ -151,8 +139,8 @@ class AgentSdJwtTest : FreeSpec({
             val malformedChallenge = challenge.reversed()
             val presentationParameters = holder.createPresentation(
                 request = PresentationRequestParameters(malformedChallenge, verifierId),
-                presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
-            ).getOrThrow()
+                credentialPresentation = buildPresentationDefinition(CLAIM_GIVEN_NAME)
+            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
@@ -164,8 +152,8 @@ class AgentSdJwtTest : FreeSpec({
         "revoked sd jwt" {
             val presentationParameters = holder.createPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                presentationDefinition = buildPresentationDefinition(CLAIM_GIVEN_NAME)
-            ).getOrThrow()
+                credentialPresentation = buildPresentationDefinition(CLAIM_GIVEN_NAME)
+            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
 
             val vp = presentationParameters.presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
@@ -283,7 +271,7 @@ private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuer
     credentials = DCQLCredentialQueryList(
         DCQLSdJwtCredentialQuery(
             id = DCQLCredentialQueryIdentifier(uuid4().toString()),
-            format = CredentialFormatEnum.VC_SD_JWT,
+            format = CredentialFormatEnum.DC_SD_JWT,
             claims = DCQLClaimsQueryList(
                 claimsQueries.toList().toNonEmptyList(),
             )
@@ -291,16 +279,17 @@ private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuer
     )
 )
 
-private fun buildPresentationDefinition(vararg attributeName: String) = PresentationDefinition(
-    id = uuid4().toString(),
-    inputDescriptors = listOf(
-        DifInputDescriptor(
-            id = uuid4().toString(),
-            constraints = Constraint(
-                fields = attributeName.map { ConstraintField(path = listOf("$['$it']")) }
+private fun buildPresentationDefinition(vararg attributeName: String) = PresentationExchangePresentation(
+    presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest(
+        PresentationDefinition(
+            DifInputDescriptor(
+                Constraint(
+                    fields = attributeName.map { ConstraintField(path = listOf("$['$it']")) }
+                )
             )
-        )
-    )
+        ),
+    ),
+    inputDescriptorSubmissions = null,
 )
 
 suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {
@@ -317,11 +306,15 @@ suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): S
     )
     val presentationResult = holder.createPresentation(
         request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-        presentationDefinition = PresentationDefinition(
-            id = uuid4().toString(),
-            inputDescriptors = listOf(DifInputDescriptor(id = uuid4().toString()))
-        ),
-    ).getOrThrow()
+        credentialPresentation = PresentationExchangePresentation(
+            presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest(
+                PresentationDefinition(
+                    DifInputDescriptor(id = uuid4().toString())
+                ),
+            ),
+            inputDescriptorSubmissions = null,
+        )
+    ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
     return (presentationResult.presentationResults.first() as CreatePresentationResult.SdJwt).serialized
 }
 

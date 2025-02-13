@@ -5,10 +5,8 @@ package at.asitplus.wallet.lib.agent
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.wallet.lib.agent.Verifier.VerifyPresentationResult
-import at.asitplus.wallet.lib.data.ConstantIndex
-import at.asitplus.wallet.lib.data.StatusListToken
-import at.asitplus.wallet.lib.data.VerifiablePresentation
-import at.asitplus.wallet.lib.data.VerifiablePresentationJws
+import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -25,9 +23,14 @@ import kotlin.random.Random
 
 
 class ValidatorVpTest : FreeSpec({
-    val singularPresentationDefinition = PresentationDefinition(
-        id = uuid4().toString(),
-        inputDescriptors = listOf(DifInputDescriptor(id = uuid4().toString()))
+
+    val singularPresentationDefinition = PresentationExchangePresentation(
+        presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest(
+            PresentationDefinition(
+                DifInputDescriptor(id = uuid4().toString())
+            ),
+        ),
+        inputDescriptorSubmissions = null,
     )
 
     lateinit var validator: Validator
@@ -90,9 +93,9 @@ class ValidatorVpTest : FreeSpec({
     "correct challenge in VP leads to Success" {
         val presentationParameters = holder.createPresentation(
             request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-            presentationDefinition = singularPresentationDefinition,
-        ).getOrNull()
-        presentationParameters.shouldNotBeNull()
+            credentialPresentation = singularPresentationDefinition,
+        ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+
         val vp = presentationParameters.presentationResults.first()
             .shouldBeInstanceOf<CreatePresentationResult.Signed>()
         verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
@@ -123,9 +126,9 @@ class ValidatorVpTest : FreeSpec({
     "wrong challenge in VP leads to error" {
         val presentationParameters = holder.createPresentation(
             request = PresentationRequestParameters(nonce = "challenge", audience = verifierId),
-            presentationDefinition = singularPresentationDefinition,
-        ).getOrNull()
-        presentationParameters.shouldNotBeNull()
+            credentialPresentation = singularPresentationDefinition,
+        ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+
         val vp = presentationParameters.presentationResults.firstOrNull()
             .shouldBeInstanceOf<CreatePresentationResult.Signed>()
         verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
@@ -135,8 +138,9 @@ class ValidatorVpTest : FreeSpec({
     "wrong audience in VP leads to error" {
         val presentationParameters = holder.createPresentation(
             request = PresentationRequestParameters(nonce = challenge, audience = "keyId"),
-            presentationDefinition = singularPresentationDefinition,
-        ).getOrThrow()
+            credentialPresentation = singularPresentationDefinition,
+        ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+
         val vp = presentationParameters.presentationResults.first()
             .shouldBeInstanceOf<CreatePresentationResult.Signed>()
         verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
@@ -146,9 +150,9 @@ class ValidatorVpTest : FreeSpec({
     "valid parsed presentation should separate revoked and valid credentials" {
         val presentationResults = holder.createPresentation(
             request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-            presentationDefinition = singularPresentationDefinition,
-        ).getOrNull()
-        presentationResults.shouldNotBeNull()
+            credentialPresentation= singularPresentationDefinition,
+        ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+
         val vp = presentationResults.presentationResults.first()
             .shouldBeInstanceOf<CreatePresentationResult.Signed>()
         holderCredentialStore.getCredentials().getOrThrow()

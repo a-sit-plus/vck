@@ -118,13 +118,6 @@ data class PresentationExchangeCredentialDisclosure(
     val disclosedAttributes: Collection<NormalizedJsonPath>,
 )
 
-@Deprecated("More expressive naming is required due to increasing amount of presentation mechanisms", replaceWith = ReplaceWith("PresentationExchangeCredentialDisclosure"))
-@Serializable
-data class CredentialSubmission(
-    val credential: SubjectCredentialStore.StoreEntry,
-    val disclosedAttributes: Collection<NormalizedJsonPath>,
-)
-
 typealias InputDescriptorMatches = Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>
 
 fun Map<String, Map<SubjectCredentialStore.StoreEntry, Map<ConstraintField, NodeList>>>.toDefaultSubmission() =

@@ -484,6 +484,7 @@ open class OpenId4VpVerifier(
                 val credentialQuery = credentialQueryMap[credentialQueryId]
                     ?: throw IllegalArgumentException("Unknown credential query identifier.")
 
+                @Suppress("DEPRECATION")
                 verifyPresentationResult(
                     when (credentialQuery.format) {
                         CredentialFormatEnum.JWT_VC -> ClaimFormat.JWT_VP

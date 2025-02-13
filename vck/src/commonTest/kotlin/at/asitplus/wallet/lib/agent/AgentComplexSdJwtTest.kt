@@ -6,16 +6,11 @@ import at.asitplus.dif.ConstraintField
 import at.asitplus.dif.DifInputDescriptor
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.CredentialFormatEnum
-import at.asitplus.openid.dcql.DCQLClaimsPathPointer
-import at.asitplus.openid.dcql.DCQLClaimsQueryList
-import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
-import at.asitplus.openid.dcql.DCQLCredentialQueryList
-import at.asitplus.openid.dcql.DCQLJsonClaimsQuery
-import at.asitplus.openid.dcql.DCQLQuery
-import at.asitplus.openid.dcql.DCQLSdJwtCredentialQuery
+import at.asitplus.openid.dcql.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
+import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -65,7 +60,11 @@ class AgentComplexSdJwtTest : FreeSpec({
                 "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
             )
 
-            val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
+            val vp = holder.createPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                credentialPresentation = presentationDefinition
+            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+                .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
@@ -94,7 +93,11 @@ class AgentComplexSdJwtTest : FreeSpec({
                 "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
             )
 
-            val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
+            val vp = holder.createPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                credentialPresentation = presentationDefinition
+            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+                .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
@@ -124,7 +127,11 @@ class AgentComplexSdJwtTest : FreeSpec({
                 "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
             )
 
-            val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
+            val vp = holder.createPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                credentialPresentation = presentationDefinition
+            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+                .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
@@ -149,7 +156,11 @@ class AgentComplexSdJwtTest : FreeSpec({
                 "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY",
             )
 
-            val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
+            val vp = holder.createPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                credentialPresentation = presentationDefinition
+            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+                .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
@@ -176,7 +187,11 @@ class AgentComplexSdJwtTest : FreeSpec({
                 "$.$CLAIM_ALWAYS_VISIBLE"
             )
 
-            val vp = createPresentation(holder, challenge, presentationDefinition, verifierId)
+            val vp = holder.createPresentation(
+                request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
+                credentialPresentation = presentationDefinition
+            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+                .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
 
             val verified = verifier.verifyPresentationSdJwt(vp.sdJwt!!, challenge)
@@ -382,17 +397,19 @@ private suspend fun issueAndStoreCredential(
     )
 }
 
-private fun buildPresentationDefinition(vararg attributeName: String) = PresentationDefinition(
-    id = uuid4().toString(),
-    inputDescriptors = listOf(
-        DifInputDescriptor(
-            id = uuid4().toString(),
-            constraints = Constraint(
-                fields = attributeName.map { ConstraintField(path = listOf(it)) }
-            )
-        )
+private fun buildPresentationDefinition(vararg attributeName: String) =
+    PresentationExchangePresentation(
+        presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest(
+            PresentationDefinition(
+                DifInputDescriptor(
+                    Constraint(
+                        fields = attributeName.map { ConstraintField(path = listOf(it)) }
+                    )
+                )
+            ),
+        ),
+        inputDescriptorSubmissions = null,
     )
-)
 
 private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuery(
     credentials = DCQLCredentialQueryList(
@@ -403,16 +420,6 @@ private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuer
         )
     )
 )
-
-private suspend fun createPresentation(
-    holder: Holder,
-    challenge: String,
-    presentationDefinition: PresentationDefinition,
-    verifierId: String,
-) = holder.createPresentation(
-    request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-    presentationDefinition = presentationDefinition
-).getOrThrow().presentationResults.firstOrNull()
 
 private suspend fun createPresentation(
     holder: Holder,
