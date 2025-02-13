@@ -7,24 +7,28 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CscKeyParameters(
     /**
+     * REQUIRED.
      * The status of the signing key of the credential:
      */
     @SerialName("status")
     val status: KeyStatusOptions,
 
     /**
+     * REQUIRED.
      * The list of OIDs of the supported key algorithms
      */
     @SerialName("algo")
     val algo: Collection<ObjectIdentifier>,
 
     /**
+     * REQUIRED.
      * The length of the cryptographic key in bits.
      */
     @SerialName("len")
     val len: UInt,
 
     /**
+     * REQUIRED-CONDITIONAL
      * The OID of the ECDSA curve. The value SHALL only be returned if
      * [algo] is based on ECDSA.
      */
