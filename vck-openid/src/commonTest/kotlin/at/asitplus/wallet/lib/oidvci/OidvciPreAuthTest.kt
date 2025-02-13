@@ -14,6 +14,7 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
@@ -43,7 +44,7 @@ class OidvciPreAuthTest : FreeSpec({
 
     suspend fun getToken(
         credentialOffer: CredentialOffer,
-        credentialIdToRequest: Set<String>
+        credentialIdToRequest: Set<String>,
     ): TokenResponseParameters {
         val preAuth = credentialOffer.grants?.preAuthorizedCode.shouldNotBeNull()
         val tokenRequest = client.oauth2Client.createTokenRequestParameters(
@@ -62,19 +63,17 @@ class OidvciPreAuthTest : FreeSpec({
         val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(PLAIN_JWT)
 
         val token = getToken(credentialOffer, setOf(credentialIdToRequest))
-        val authorizationDetails = token.authorizationDetails
-            .shouldNotBeNull()
+        token.authorizationDetails.shouldNotBeNull()
+            .first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
 
-        val first = authorizationDetails.first().shouldBeInstanceOf<OpenIdAuthorizationDetails>()
         val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.CredentialIdentifier(first.credentialConfigurationId!!),
-            clientNonce = token.clientNonce,
-            credentialIssuer = issuer.metadata.credentialIssuer
+            tokenResponse = token,
+            metadata = issuer.metadata
         ).getOrThrow()
 
-        val credential = issuer.credential(token.accessToken, credentialRequest)
+        val credential = issuer.credential(token.accessToken, credentialRequest.first())
             .getOrThrow()
-        credential.credential.shouldNotBeNull()
+        credential.credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
     }
 
     "process with pre-authorized code, credential offer, and authorization details for all credentials" {
@@ -90,19 +89,15 @@ class OidvciPreAuthTest : FreeSpec({
 
         authnDetails.forEach {
             it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
-            // Not supporting different credential datasets for one credential configuration at the moment,
-            // so we'll just use the credential identifier, see OID4VCI 6.2
-            val credentialIdentifier = it.credentialIdentifiers?.first()
-                ?: throw IllegalArgumentException("credential_identifiers")
             val credentialRequest = client.createCredentialRequest(
-                input = WalletService.CredentialRequestInput.CredentialIdentifier(credentialIdentifier),
-                clientNonce = token.clientNonce,
-                credentialIssuer = issuer.metadata.credentialIssuer
+                tokenResponse = token,
+                metadata = issuer.metadata
             ).getOrThrow()
 
-            val credential = issuer.credential(token.accessToken, credentialRequest)
+            issuer.credential(token.accessToken, credentialRequest.first())
                 .getOrThrow()
-            credential.credential.shouldNotBeNull()
+                .credentials.shouldNotBeEmpty().first()
+                .credentialString.shouldNotBeNull()
         }
     }
 
@@ -126,14 +121,14 @@ class OidvciPreAuthTest : FreeSpec({
         val token = authorizationService.token(tokenRequest).getOrThrow()
 
         val credentialRequest = client.createCredentialRequest(
-            input = WalletService.CredentialRequestInput.Format(supportedCredentialFormat),
-            clientNonce = token.clientNonce,
-            credentialIssuer = issuer.metadata.credentialIssuer
+            tokenResponse = token,
+            metadata = issuer.metadata
         ).getOrThrow()
 
-        val credential = issuer.credential(token.accessToken, credentialRequest)
+        issuer.credential(token.accessToken, credentialRequest.first())
             .getOrThrow()
-        credential.credential.shouldNotBeNull()
+            .credentials.shouldNotBeEmpty().first()
+            .credentialString.shouldNotBeNull()
     }
 
 })

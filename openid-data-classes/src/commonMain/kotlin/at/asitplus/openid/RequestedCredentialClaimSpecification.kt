@@ -3,6 +3,7 @@ package at.asitplus.openid
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@Deprecated("Removed in OID4VCI draft 15")
 @Serializable
 data class RequestedCredentialClaimSpecification(
 

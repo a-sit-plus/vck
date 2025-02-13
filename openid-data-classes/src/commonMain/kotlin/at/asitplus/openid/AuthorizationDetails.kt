@@ -2,6 +2,8 @@ package at.asitplus.openid
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
 
 interface AuthorizationDetails
 
@@ -17,6 +19,8 @@ data class OpenIdAuthorizationDetails(
     /**
      * OID4VCI: REQUIRED when [format] parameter is not present. String specifying a unique identifier of the
      * Credential being described in [IssuerMetadata.supportedCredentialConfigurations].
+     * The referenced object in [IssuerMetadata.supportedCredentialConfigurations] conveys the details, such as the
+     * format, for issuance of the requested Credential.
      */
     @SerialName("credential_configuration_id")
     val credentialConfigurationId: String? = null,
@@ -39,12 +43,11 @@ data class OpenIdAuthorizationDetails(
     val docType: String? = null,
 
     /**
-     * OID4VCI: ISO mDL: OPTIONAL. Object as defined in Appendix A.3.2 excluding the `display` and `value_type`
-     * parameters. The `mandatory` parameter here is used by the Wallet to indicate to the Issuer that it only
-     * accepts Credential(s) issued with those claim(s).
+     * OID4VCI: ISO mDL: OPTIONAL. An array of claims description objects as defined in Appendix B.2.
+     * OID4VCI: IETF SD-JWT VC: OPTIONAL. An array of claims description objects as defined in Appendix B.2.
      */
     @SerialName("claims")
-    val claims: Map<String, Map<String, RequestedCredentialClaimSpecification>>? = null,
+    val claims: JsonElement? = null,
 
     /**
      * OID4VCI: W3C VC: OPTIONAL. Object containing a detailed description of the Credential consisting of the
@@ -73,7 +76,17 @@ data class OpenIdAuthorizationDetails(
      * the Access Token returned in this response. Each of these Credential Datasets corresponds to the same
      * Credential Configuration in the [IssuerMetadata.supportedCredentialConfigurations]. The Wallet MUST use these
      * identifiers together with an Access Token in subsequent Credential Requests.
+     * Note: Is only required in the token response!
      */
     @SerialName("credential_identifiers")
-    val credentialIdentifiers: Set<String>,
-) : AuthorizationDetails
+    val credentialIdentifiers: Set<String>? = null,
+) : AuthorizationDetails {
+
+    val claimDescription: Set<ClaimDescription>?
+        get() = claims?.let {
+            runCatching {
+                odcJsonSerializer.decodeFromJsonElement<Set<ClaimDescription>>(it)
+            }.getOrNull()
+        }
+
+}

@@ -12,4 +12,5 @@ data class CredentialRequestProofSupported(
      */
     @SerialName("proof_signing_alg_values_supported")
     val supportedSigningAlgorithms: Collection<String>,
+    // todo add key_attestations_required
 )
