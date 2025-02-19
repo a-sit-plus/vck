@@ -1,5 +1,8 @@
 # Changelog
 
+Release 5.4.2:
+- Fix auth tag size calculation
+
 Release 5.4.1:
  - Fix encoding `dcql_query` in authentication request, it is now a string
  - Provide default values for RQES data classes
