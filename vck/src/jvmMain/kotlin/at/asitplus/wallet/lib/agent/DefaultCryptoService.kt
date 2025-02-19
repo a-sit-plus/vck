@@ -41,8 +41,9 @@ actual open class PlatformCryptoShim actual constructor(actual val keyMaterial: 
             }
         }.doFinal(input)
         if (algorithm.isAuthenticatedEncryption) {
-            val ciphertext = jcaCiphertext.dropLast(algorithm.ivLengthBits / 8).toByteArray()
-            val authtag = jcaCiphertext.takeLast(algorithm.ivLengthBits / 8).toByteArray()
+            //FOR AES AEAD it is always block size
+            val ciphertext = jcaCiphertext.dropLast(128/ 8).toByteArray()
+            val authtag = jcaCiphertext.takeLast(128 / 8).toByteArray()
             AuthenticatedCiphertext(ciphertext, authtag)
         } else {
             AuthenticatedCiphertext(jcaCiphertext, byteArrayOf())
