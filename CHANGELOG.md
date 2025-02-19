@@ -3,6 +3,16 @@
 Release 5.5.0:
  - Fix encoding `dcql_query` in authentication request, it is now a string
 
+Release 5.4.3:
+ - Fix property names for serialized RQES data classes
+
+Release 5.4.2:
+ - Fix auth tag size calculation
+
+Release 5.4.1:
+ - Fix encoding `dcql_query` in authentication request, it is now a string
+ - Provide default values for RQES data classes
+
 Release 5.4.0:
 - Extend support for POTENTIAL UC5: Remote qualified electronic signatures
   - Update data classes in `rqes-data-classes`
