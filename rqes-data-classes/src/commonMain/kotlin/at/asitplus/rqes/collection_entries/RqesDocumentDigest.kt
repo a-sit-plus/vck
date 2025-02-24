@@ -2,7 +2,7 @@ package at.asitplus.rqes.collection_entries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.rqes.Method
+import at.asitplus.rqes.DocumentAccessMode
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
@@ -18,8 +18,8 @@ data class RqesDocumentDigestEntry private constructor(
      * description of the document to
      * be signed (SD). The Wallet MUST
      * show the label element in the
-     * user interaction. It MUST be UTF-
-     * 8 encoded.
+     * user interaction. It MUST be
+     * UTF-8 encoded.
      */
     @SerialName("label")
     val label: String,
@@ -42,6 +42,8 @@ data class RqesDocumentDigestEntry private constructor(
      * String containing the OID of the
      * hash algorithm used to generate
      * the hash listed in the [hash].
+     * If the [hash] property is not present this parameter MUST
+     * NOT be present.
      */
     @SerialName("hashAlgorithmOID")
     @Serializable(ObjectIdSerializer::class)
@@ -53,15 +55,17 @@ data class RqesDocumentDigestEntry private constructor(
      * to be signed (SD); the parameter
      * [hash] MUST be the hash value
      * of the designated document.
+     * If this parameter is present, the parameter
+     * [documentLocationMethod] MUST be present.
      */
     @SerialName("documentLocation_uri")
     val documentLocationUri: String? = null,
 
     /**
      * D3.1: UC Specification WP3: OPTIONAL.
-     * An object with
-     * information how to access
-     * [documentLocationUri].
+     * An object with information how to access [documentLocationUri].
+     * If the [documentLocationUri] property is not present, this
+     * property MUST NOT be present
      */
     @SerialName("documentLocation_method")
     val documentLocationMethod: DocumentLocationMethod? = null,
@@ -72,8 +76,14 @@ data class RqesDocumentDigestEntry private constructor(
      * representation as defined in CEN
      * EN 419241-1 and ETSI/TR 119
      * 001:2016 (as base64-encoded octet).
+     * If this property is present,
+     * the [dtbsrHashAlgorithmOid] MUST
+     * be present.
+     * One of the parameters “hash” and “DTBS/R” MUST be
+     * present. Both parameters “hash” and “DTBS/R” MAY be
+     * present.
      */
-    @SerialName("dtbsr")
+    @SerialName("DTBS/R")
     @Serializable(ByteArrayBase64Serializer::class)
     val dataToBeSignedRepresentation: ByteArray? = null,
 
@@ -83,8 +93,13 @@ data class RqesDocumentDigestEntry private constructor(
      * OID of the hash algorithm used
      * to generate the hash listed in
      * [dataToBeSignedRepresentation]
+     * If [DTBS/R] property is not
+     * present, this parameter MUST NOT be present.
+     * NOTE: Usually this request does not contain enough
+     * information to recreate the [DTBS/R]. It should be considered
+     * opaque for the Wallet.
      */
-    @SerialName("dtbsrHashAlgorithmOID")
+    @SerialName("DTBS/RHashAlgorithmOID")
     @Serializable(ObjectIdSerializer::class)
     val dtbsrHashAlgorithmOid: ObjectIdentifier? = null,
 ) {
@@ -150,7 +165,8 @@ data class RqesDocumentDigestEntry private constructor(
     @Serializable
     @SerialName("documentLocation_method")
     data class DocumentLocationMethod(
-        val method: Method,
+        @SerialName("document_access_mode")
+        val documentAccessMode: DocumentAccessMode,
     )
 
     companion object {

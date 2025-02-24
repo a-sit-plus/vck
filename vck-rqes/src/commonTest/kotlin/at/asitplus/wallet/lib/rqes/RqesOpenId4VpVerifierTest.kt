@@ -2,7 +2,7 @@
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.SignatureQualifier
-import at.asitplus.rqes.Method
+import at.asitplus.rqes.DocumentAccessMode
 import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
 import at.asitplus.rqes.collection_entries.TransactionData
@@ -153,7 +153,7 @@ private fun getDocumentDigests(): RqesDocumentDigestEntry = RqesDocumentDigestEn
     hash = uuid4().bytes,
     documentLocationUri = uuid4().toString(),
     documentLocationMethod = RqesDocumentDigestEntry.DocumentLocationMethod(
-        method = Method.Oauth2
+        documentAccessMode = DocumentAccessMode.Oauth2
     ),
     hashAlgorithmOID = Digest.entries.random().oid,
 ).getOrThrow()

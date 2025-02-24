@@ -5,6 +5,7 @@ import at.asitplus.rqes.SignatureRequestParameters
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.openid.RequestParser
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 class SignatureRequestParsingTests : FreeSpec({
@@ -13,9 +14,10 @@ class SignatureRequestParsingTests : FreeSpec({
     val parser = RequestParser()
 
     "can parse SignatureRequestParameter from signed JWT" {
-
         val res = parser.parseRequestParameters(jwt).getOrThrow()
         res.shouldBeInstanceOf<RequestParametersFrom.JwsSigned<SignatureRequestParameters>>()
+        res.parameters.documentDigests.shouldNotBeEmpty()
+        res.parameters.documentLocations.shouldNotBeEmpty()
     }
 
     "can parse SignatureRequestParameter without clientData" {
