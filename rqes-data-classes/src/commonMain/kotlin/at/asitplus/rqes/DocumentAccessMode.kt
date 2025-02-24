@@ -15,8 +15,8 @@ import kotlinx.serialization.Serializable
  * The method describes the restrictions/way of accessing a document
  */
 @Serializable
-@SerialName("method")
-sealed class Method {
+@SerialName("document_access_mode")
+sealed class DocumentAccessMode {
     /**
      * D3.1: UC Specification WP3:
      * The document corresponding to the parameter [hash] can be
@@ -25,7 +25,7 @@ sealed class Method {
      */
     @Serializable
     @SerialName("public")
-    data object Public : Method()
+    data object Public : DocumentAccessMode()
 
     /**
      * D3.1: UC Specification WP3:
@@ -35,10 +35,11 @@ sealed class Method {
      * document corresponding to [hash].
      */
     @Serializable
-    @SerialName("otp")
+    @SerialName("OTP")
     data class OTP(
+        @SerialName("oneTimePassword")
         val oneTimePassword: String
-    ) : Method()
+    ) : DocumentAccessMode()
 
     /**
      * D3.1: UC Specification WP3:
@@ -47,8 +48,8 @@ sealed class Method {
      * using the ‘Basic’ HTTP Authentication Scheme (RFC 7617).
      */
     @Serializable
-    @SerialName("basic_auth")
-    data object Basic : Method()
+    @SerialName("Basic_Auth")
+    data object Basic : DocumentAccessMode()
 
     /**
      * D3.1: UC Specification WP3:
@@ -57,8 +58,8 @@ sealed class Method {
      * using the ‘Digest’ HTTP Authentication Scheme (RFC 7616).
      */
     @Serializable
-    @SerialName("digest_auth")
-    data object Digest : Method()
+    @SerialName("Digest_Auth")
+    data object Digest : DocumentAccessMode()
 
     /**
      * D3.1: UC Specification WP3:
@@ -68,6 +69,6 @@ sealed class Method {
      * and RFC8252).
      */
     @Serializable
-    @SerialName("oauth_20")
-    data object Oauth2 : Method()
+    @SerialName("OAuth_20")
+    data object Oauth2 : DocumentAccessMode()
 }
