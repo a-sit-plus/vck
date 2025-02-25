@@ -9,6 +9,7 @@ import at.asitplus.rqes.SignHashParameters
 import at.asitplus.rqes.collection_entries.CscCertificateParameters
 import at.asitplus.rqes.collection_entries.CscDocumentDigest
 import at.asitplus.rqes.collection_entries.CscKeyParameters
+import at.asitplus.rqes.collection_entries.DocumentLocation
 import at.asitplus.rqes.collection_entries.OAuthDocumentDigest
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
@@ -113,12 +114,14 @@ class RqesOpenId4VpHolder(
     suspend fun getCscAuthenticationDetails(
         documentDigests: Collection<OAuthDocumentDigest>,
         hashAlgorithm: Digest,
+        documentLocation: Collection<DocumentLocation>? = null
     ): AuthorizationDetails = signingCredential?.let { signingCred ->
         CscAuthorizationDetails(
             credentialID = signingCred.credentialId,
             signatureQualifier = signatureProperties.signatureQualifier,
             hashAlgorithmOid = hashAlgorithm.oid,
-            documentDigests = documentDigests
+            documentDigests = documentDigests,
+            documentLocations = documentLocation
         )
     } ?: throw Exception("Please set a signing credential before using CSC functionality.")
 
@@ -157,9 +160,10 @@ class RqesOpenId4VpHolder(
         redirectUrl: String = this.redirectUrl,
         hashAlgorithm: Digest,
         optionalParameters: OAuth2RqesParameters.Optional? = null,
+        documentLocation: Collection<DocumentLocation>? = null
     ): AuthenticationRequestParameters = oauth2Client.createAuthRequest(
         state = uuid4().toString(),
-        authorizationDetails = setOf(getCscAuthenticationDetails(documentDigests, hashAlgorithm)),
+        authorizationDetails = setOf(getCscAuthenticationDetails(documentDigests, hashAlgorithm, documentLocation)),
     ).enrichAuthRequest(
         redirectUrl = redirectUrl,
         optionalParameters = optionalParameters
