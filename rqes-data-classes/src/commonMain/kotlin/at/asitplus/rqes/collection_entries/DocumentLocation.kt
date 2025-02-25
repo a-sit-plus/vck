@@ -1,6 +1,6 @@
 package at.asitplus.rqes.collection_entries
 
-import at.asitplus.rqes.DocumentAccessMode
+import at.asitplus.rqes.Method
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -12,5 +12,5 @@ data class DocumentLocation(
     @SerialName("uri")
     val uri: String,
     @SerialName("method")
-    val method: DocumentAccessMode,
+    val method: Method,
 )

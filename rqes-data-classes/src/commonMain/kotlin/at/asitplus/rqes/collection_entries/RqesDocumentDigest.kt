@@ -2,7 +2,6 @@ package at.asitplus.rqes.collection_entries
 
 import at.asitplus.KmmResult
 import at.asitplus.KmmResult.Companion.wrap
-import at.asitplus.rqes.DocumentAccessMode
 import at.asitplus.signum.indispensable.asn1.ObjectIdSerializer
 import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64Serializer
@@ -167,7 +166,30 @@ data class RqesDocumentDigestEntry private constructor(
     data class DocumentLocationMethod(
         @SerialName("document_access_mode")
         val documentAccessMode: DocumentAccessMode,
-    )
+        @SerialName("oneTimePassword")
+        val oneTimePassword: String? = null,
+    ) {
+        init {
+            if (documentAccessMode == DocumentAccessMode.OTP) require(!oneTimePassword.isNullOrEmpty())
+            else require(oneTimePassword.isNullOrEmpty())
+        }
+
+        /**
+         * Incompatible version of [at.asitplus.rqes.Method] due to presumably incomplete changes in draft. Unify as soon as possible.
+         */
+        enum class DocumentAccessMode {
+            @SerialName("public")
+            PUBLIC,
+            @SerialName("OTP")
+            OTP,
+            @SerialName("Basic_Auth")
+            BASIC,
+            @SerialName("Digest_Auth")
+            DIGEST,
+            @SerialName("OAuth_20")
+            OAUTH2,
+        }
+    }
 
     companion object {
         /**
