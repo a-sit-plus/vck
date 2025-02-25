@@ -14,6 +14,7 @@ import kotlinx.serialization.Serializable
  *
  * The method describes the restrictions/way of accessing a document
  */
+@Deprecated("Unify with [at.asitplus.rqes.collection_entries.DocumentDigestEntry.DocumentLocationMethod.DocumentAccessMethod] asap")
 @Serializable
 @SerialName("method")
 sealed class Method {
