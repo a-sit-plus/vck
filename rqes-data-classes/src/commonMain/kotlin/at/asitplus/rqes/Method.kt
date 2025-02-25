@@ -14,6 +14,7 @@ import kotlinx.serialization.Serializable
  *
  * The method describes the restrictions/way of accessing a document
  */
+@Deprecated("Unify with [at.asitplus.rqes.collection_entries.DocumentDigestEntry.DocumentLocationMethod.DocumentAccessMethod] asap")
 @Serializable
 @SerialName("method")
 sealed class Method {
@@ -35,8 +36,9 @@ sealed class Method {
      * document corresponding to [hash].
      */
     @Serializable
-    @SerialName("otp")
+    @SerialName("OTP")
     data class OTP(
+        @SerialName("oneTimePassword")
         val oneTimePassword: String
     ) : Method()
 
@@ -47,7 +49,7 @@ sealed class Method {
      * using the ‘Basic’ HTTP Authentication Scheme (RFC 7617).
      */
     @Serializable
-    @SerialName("basic_auth")
+    @SerialName("Basic_Auth")
     data object Basic : Method()
 
     /**
@@ -57,7 +59,7 @@ sealed class Method {
      * using the ‘Digest’ HTTP Authentication Scheme (RFC 7616).
      */
     @Serializable
-    @SerialName("digest_auth")
+    @SerialName("Digest_Auth")
     data object Digest : Method()
 
     /**
@@ -68,6 +70,6 @@ sealed class Method {
      * and RFC8252).
      */
     @Serializable
-    @SerialName("oauth_20")
+    @SerialName("OAuth_20")
     data object Oauth2 : Method()
 }

@@ -47,6 +47,9 @@ sealed class TransactionData {
          * CSC: OPTIONAL.
          * Identifier of the signature type to be created. A set of such identifiers
          * is defined in (CSC-API) section 11.11.
+         * D3.1: UC Specification WP3:
+         * MUST be present when `CredentialID` parameter is not present.
+         * Both `signatureQualifier` and `CredentialID` values MAY be present.
          */
         @SerialName("signatureQualifier")
         val signatureQualifier: SignatureQualifier? = null,
@@ -54,6 +57,9 @@ sealed class TransactionData {
         /**
          * CSC: OPTIONAL.
          * The unique identifier associated with the credential.
+         * D3.1: UC Specification WP3:
+         * MUST be present when `signatureQualifier` parameter is not present.
+         * Both `signatureQualifier` and `CredentialID` values MAY be present.
          */
         @SerialName("credentialID")
         val credentialID: String? = null,
@@ -83,9 +89,7 @@ sealed class TransactionData {
          * D3.1: UC Specification WP3: REQUIRED.
          * An array composed of entries for every document to be signed (SD).
          * This applies for both cases, where a document is signed, or a digest is
-         * signed. Every entry is composed of the following elements. Not all
-         * entries need to be present in a particular request, but a wallet needs
-         * to handle all of them if present.
+         * signed.
          */
         @SerialName("documentDigests")
         val documentDigests: List<RqesDocumentDigestEntry>,

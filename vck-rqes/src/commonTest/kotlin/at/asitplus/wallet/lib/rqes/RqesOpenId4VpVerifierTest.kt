@@ -1,8 +1,6 @@
-
 package at.asitplus.wallet.lib.rqes
 
 import at.asitplus.openid.SignatureQualifier
-import at.asitplus.rqes.Method
 import at.asitplus.rqes.QesInputDescriptor
 import at.asitplus.rqes.collection_entries.RqesDocumentDigestEntry
 import at.asitplus.rqes.collection_entries.TransactionData
@@ -10,12 +8,22 @@ import at.asitplus.signum.indispensable.Digest
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.FAMILY_NAME
 import at.asitplus.wallet.eupid.EuPidScheme.SdJwtAttributes.GIVEN_NAME
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.openid.*
+import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.AuthnResponseResult
+import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier.CreationOptions.Query
+import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
+import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import at.asitplus.wallet.lib.rqes.helper.OpenIdRqesParameters
 import com.benasher44.uuid.bytes
 import com.benasher44.uuid.uuid4
@@ -153,7 +161,7 @@ private fun getDocumentDigests(): RqesDocumentDigestEntry = RqesDocumentDigestEn
     hash = uuid4().bytes,
     documentLocationUri = uuid4().toString(),
     documentLocationMethod = RqesDocumentDigestEntry.DocumentLocationMethod(
-        method = Method.Oauth2
+        documentAccessMode = RqesDocumentDigestEntry.DocumentLocationMethod.DocumentAccessMode.OAUTH2
     ),
     hashAlgorithmOID = Digest.entries.random().oid,
 ).getOrThrow()
