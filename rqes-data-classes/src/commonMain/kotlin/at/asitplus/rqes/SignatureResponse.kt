@@ -13,7 +13,7 @@ sealed class SignatureResponse {
         @SerialName("signatures")
         val signatures: List<String>,
         @SerialName("responseID")
-        val responseId: String?,
+        val responseId: String? = null,
     ) : SignatureResponse()
 
     @Serializable
