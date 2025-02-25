@@ -15,8 +15,8 @@ import kotlinx.serialization.Serializable
  * The method describes the restrictions/way of accessing a document
  */
 @Serializable
-@SerialName("document_access_mode")
-sealed class DocumentAccessMode {
+@SerialName("method")
+sealed class Method {
     /**
      * D3.1: UC Specification WP3:
      * The document corresponding to the parameter [hash] can be
@@ -25,7 +25,7 @@ sealed class DocumentAccessMode {
      */
     @Serializable
     @SerialName("public")
-    data object Public : DocumentAccessMode()
+    data object Public : Method()
 
     /**
      * D3.1: UC Specification WP3:
@@ -39,7 +39,7 @@ sealed class DocumentAccessMode {
     data class OTP(
         @SerialName("oneTimePassword")
         val oneTimePassword: String
-    ) : DocumentAccessMode()
+    ) : Method()
 
     /**
      * D3.1: UC Specification WP3:
@@ -49,7 +49,7 @@ sealed class DocumentAccessMode {
      */
     @Serializable
     @SerialName("Basic_Auth")
-    data object Basic : DocumentAccessMode()
+    data object Basic : Method()
 
     /**
      * D3.1: UC Specification WP3:
@@ -59,7 +59,7 @@ sealed class DocumentAccessMode {
      */
     @Serializable
     @SerialName("Digest_Auth")
-    data object Digest : DocumentAccessMode()
+    data object Digest : Method()
 
     /**
      * D3.1: UC Specification WP3:
@@ -70,5 +70,5 @@ sealed class DocumentAccessMode {
      */
     @Serializable
     @SerialName("OAuth_20")
-    data object Oauth2 : DocumentAccessMode()
+    data object Oauth2 : Method()
 }
