@@ -1,9 +1,5 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.dif.Constraint
-import at.asitplus.dif.ConstraintField
-import at.asitplus.dif.DifInputDescriptor
-import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialSubmissionOption
 import at.asitplus.wallet.lib.agent.PresentationExchangeCredentialDisclosure
@@ -18,23 +14,7 @@ sealed interface CredentialPresentation {
     data class PresentationExchangePresentation(
         override val presentationRequest: CredentialPresentationRequest.PresentationExchangeRequest,
         val inputDescriptorSubmissions: Map<String, PresentationExchangeCredentialDisclosure>? = null
-    ) : CredentialPresentation {
-
-        companion object {
-            fun forAttributeNames(vararg attributeName: String) =
-                PresentationExchangePresentation(
-                    CredentialPresentationRequest.PresentationExchangeRequest(
-                        PresentationDefinition(
-                            DifInputDescriptor(
-                                Constraint(
-                                    fields = attributeName.map { ConstraintField(path = listOf(it)) }
-                                )
-                            )
-                        ),
-                    ),
-                )
-        }
-    }
+    ) : CredentialPresentation
 
     @Serializable
     data class DCQLPresentation(

@@ -1,7 +1,6 @@
 package at.asitplus.wallet.lib.data
 
-import at.asitplus.dif.FormatHolder
-import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.*
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.openid.dcql.DCQLCredentialSubmissionOption
 import at.asitplus.openid.dcql.DCQLQuery
@@ -24,11 +23,22 @@ sealed interface CredentialPresentationRequest {
 
         fun toCredentialPresentation(
             inputDescriptorSubmissions: Map<String, PresentationExchangeCredentialDisclosure>?
-        ): CredentialPresentation =
-            CredentialPresentation.PresentationExchangePresentation(
-                presentationRequest = this,
-                inputDescriptorSubmissions = inputDescriptorSubmissions
+        ): CredentialPresentation = CredentialPresentation.PresentationExchangePresentation(
+            presentationRequest = this,
+            inputDescriptorSubmissions = inputDescriptorSubmissions
+        )
+
+        companion object {
+            fun forAttributeNames(vararg attributeName: String) = PresentationExchangeRequest(
+                PresentationDefinition(
+                    DifInputDescriptor(
+                        Constraint(
+                            fields = attributeName.map { ConstraintField(path = listOf(it)) }
+                        )
+                    )
+                ),
             )
+        }
     }
 
     @Serializable
@@ -40,10 +50,9 @@ sealed interface CredentialPresentationRequest {
 
         fun toCredentialPresentation(
             credentialQuerySubmissions: Map<DCQLCredentialQueryIdentifier, DCQLCredentialSubmissionOption<SubjectCredentialStore.StoreEntry>>?
-        ): CredentialPresentation =
-            CredentialPresentation.DCQLPresentation(
-                presentationRequest = this,
-                credentialQuerySubmissions = credentialQuerySubmissions
-            )
+        ): CredentialPresentation = CredentialPresentation.DCQLPresentation(
+            presentationRequest = this,
+            credentialQuerySubmissions = credentialQuerySubmissions
+        )
     }
 }

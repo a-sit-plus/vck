@@ -277,8 +277,10 @@ private fun buildDCQLQuery(vararg claimsQueries: DCQLJsonClaimsQuery) = DCQLQuer
     )
 )
 
-private fun buildPresentationDefinition(vararg attributeName: String) =
-    PresentationExchangePresentation.forAttributeNames(*attributeName.map { it -> "$['$it']" }.toTypedArray())
+private fun buildPresentationDefinition(vararg attributeName: String) = PresentationExchangePresentation(
+    CredentialPresentationRequest.PresentationExchangeRequest
+        .forAttributeNames(*attributeName.map { it -> "$['$it']" }.toTypedArray())
+)
 
 suspend fun createFreshSdJwtKeyBinding(challenge: String, verifierId: String): String {
     val holderKeyMaterial = EphemeralKeyWithoutCert()

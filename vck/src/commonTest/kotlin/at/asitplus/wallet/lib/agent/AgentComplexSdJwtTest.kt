@@ -51,9 +51,11 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ),
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = PresentationExchangePresentation.forAttributeNames(
-                "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
+            val presentationDefinition = PresentationExchangePresentation(
+                CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+                    "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
+                    "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
+                )
             )
 
             val vp = holder.createPresentation(
@@ -84,9 +86,11 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ),
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = PresentationExchangePresentation.forAttributeNames(
-                "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
+            val presentationDefinition = PresentationExchangePresentation(
+                CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+                    "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
+                    "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
+                )
             )
 
             val vp = holder.createPresentation(
@@ -118,9 +122,11 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ),
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = PresentationExchangePresentation.forAttributeNames(
-                "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
+            val presentationDefinition = PresentationExchangePresentation(
+                CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+                    "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
+                    "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
+                )
             )
 
             val vp = holder.createPresentation(
@@ -147,9 +153,11 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY", "AT"),
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = PresentationExchangePresentation.forAttributeNames(
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
-                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
+            val presentationDefinition = PresentationExchangePresentation(
+                CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+                    "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
+                    "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
+                )
             )
 
             val vp = holder.createPresentation(
@@ -177,10 +185,12 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ClaimToBeIssued(CLAIM_ALWAYS_VISIBLE, "anything", selectivelyDisclosable = false)
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = PresentationExchangePresentation.forAttributeNames(
-                "$['$CLAIM_GIVEN_NAME']",
-                "$['$CLAIM_FAMILY_NAME']",
-                "$.$CLAIM_ALWAYS_VISIBLE"
+            val presentationDefinition = PresentationExchangePresentation(
+                CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+                    "$['$CLAIM_GIVEN_NAME']",
+                    "$['$CLAIM_FAMILY_NAME']",
+                    "$.$CLAIM_ALWAYS_VISIBLE"
+                )
             )
 
             val vp = holder.createPresentation(
