@@ -6,7 +6,6 @@ import at.asitplus.openid.dcql.*
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_FAMILY_NAME
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023.CLAIM_GIVEN_NAME
-import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
@@ -51,16 +50,14 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ),
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = PresentationExchangePresentation(
-                CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
-                    "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
-                    "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
-                )
+            val presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+                "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
+                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
 
-            val vp = holder.createPresentation(
+            val vp = holder.createDefaultPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                credentialPresentation = presentationDefinition
+                credentialPresentationRequest = presentationRequest
             ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
@@ -86,16 +83,14 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ),
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = PresentationExchangePresentation(
-                CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
-                    "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
-                    "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
-                )
+            val presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+                "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
+                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
 
-            val vp = holder.createPresentation(
+            val vp = holder.createDefaultPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                credentialPresentation = presentationDefinition
+                credentialPresentationRequest = presentationRequest
             ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
@@ -122,16 +117,14 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ),
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = PresentationExchangePresentation(
-                CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
-                    "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
-                    "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
-                )
+            val presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+                "$['$CLAIM_ADDRESS']['$CLAIM_ADDRESS_REGION']",
+                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
 
-            val vp = holder.createPresentation(
+            val vp = holder.createDefaultPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                credentialPresentation = presentationDefinition
+                credentialPresentationRequest = presentationRequest
             ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
@@ -153,16 +146,14 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ClaimToBeIssued("$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY", "AT"),
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = PresentationExchangePresentation(
-                CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
-                    "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
-                    "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
-                )
+            val presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_REGION",
+                "$.$CLAIM_ADDRESS.$CLAIM_ADDRESS_COUNTRY"
             )
 
-            val vp = holder.createPresentation(
+            val vp = holder.createDefaultPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                credentialPresentation = presentationDefinition
+                credentialPresentationRequest = presentationRequest
             ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()
@@ -185,17 +176,15 @@ class AgentComplexSdJwtTest : FreeSpec({
                 ClaimToBeIssued(CLAIM_ALWAYS_VISIBLE, "anything", selectivelyDisclosable = false)
             ).apply { issueAndStoreCredential(holder, issuer, this, holderKeyMaterial) }
 
-            val presentationDefinition = PresentationExchangePresentation(
-                CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
-                    "$['$CLAIM_GIVEN_NAME']",
-                    "$['$CLAIM_FAMILY_NAME']",
-                    "$.$CLAIM_ALWAYS_VISIBLE"
-                )
+            val presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest.forAttributeNames(
+                "$['$CLAIM_GIVEN_NAME']",
+                "$['$CLAIM_FAMILY_NAME']",
+                "$.$CLAIM_ALWAYS_VISIBLE"
             )
 
-            val vp = holder.createPresentation(
+            val vp = holder.createDefaultPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                credentialPresentation = presentationDefinition
+                credentialPresentationRequest = presentationRequest
             ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
                 .presentationResults.firstOrNull()
                 .shouldBeInstanceOf<CreatePresentationResult.SdJwt>()

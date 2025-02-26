@@ -81,10 +81,9 @@ interface Holder {
     }
 
     /**
-     * Creates [PresentationResponseParameters] as specified using the parameter
-     * `credentialDisclosure`
+     * Creates [PresentationResponseParameters] as specified using the parameter [credentialPresentation]
      *
-     * Fails in case the submission is not valid submission.
+     * Fails in case the submission is not a valid submission.
      */
     suspend fun createPresentation(
         request: PresentationRequestParameters,
@@ -92,9 +91,9 @@ interface Holder {
     ): KmmResult<PresentationResponseParameters>
 
     /**
-     * Creates [PresentationResponseParameters] using the default submission
+     * Creates [PresentationResponseParameters] using the default submission.
      *
-     * Fails in case the default submission is not valid submission.
+     * Fails in case the default submission is not a valid submission.
      */
     suspend fun createDefaultPresentation(
         request: PresentationRequestParameters,
