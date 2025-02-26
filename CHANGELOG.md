@@ -1,5 +1,8 @@
 # Changelog
 
+Release 5.4.4:
+ - Improve interop of RQES data classes
+
 Release 5.4.3:
  - Fix property names for serialized RQES data classes
 
