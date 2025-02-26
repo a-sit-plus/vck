@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
 plugins {
+    id("com.android.library")
     kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("at.asitplus.gradle.vclib-conventions")
@@ -17,10 +18,8 @@ version = artifactVersion
 
 
 kotlin {
-
     jvm()
     androidTarget {
-        publishLibraryVariants("release")
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(test)
     }
@@ -50,9 +49,10 @@ kotlin {
 
 setupAndroid()
 
-exportIosFramework(
+exportXCFramework(
     "DifDataClasses",
     transitiveExports = true,
+    static = false,
     "at.asitplus.signum:indispensable-cosef:${VcLibVersions.signum}",
     "at.asitplus.signum:indispensable-josef:${VcLibVersions.signum}",
     "at.asitplus:jsonpath4k:${VcLibVersions.jsonpath}",

@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.wallet.lib.iso.IssuerSignedItem.Companion.PROP_ELEMENT_ID
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SealedSerializationApi
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.ValueTags
@@ -23,6 +24,7 @@ import net.orandja.obor.data.CborText
  */
 open class IssuerSignedListSerializer(private val namespace: String) : KSerializer<IssuerSignedList> {
 
+    @OptIn(SealedSerializationApi::class)
     override val descriptor: SerialDescriptor = object : SerialDescriptor {
         @ExperimentalSerializationApi
         override val elementsCount: Int = 1

@@ -1,12 +1,10 @@
 
-import at.asitplus.gradle.commonImplementationDependencies
-import at.asitplus.gradle.exportIosFramework
-import at.asitplus.gradle.setupAndroid
-import at.asitplus.gradle.setupDokka
+import at.asitplus.gradle.*
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree.Companion.test
 
 plugins {
+    id("com.android.library")
     kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("at.asitplus.gradle.vclib-conventions")
@@ -27,7 +25,6 @@ kotlin {
     jvm()
 
     androidTarget {
-        publishLibraryVariants("release")
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(test)
     }
@@ -54,9 +51,10 @@ kotlin {
     }
 }
 
-exportIosFramework(
+exportXCFramework(
     "VckRqesKmm",
     transitiveExports = false,
+    static = false,
     project(":vck")
 )
 
