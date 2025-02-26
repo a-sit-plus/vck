@@ -146,18 +146,12 @@ class HolderAgent(
     ): KmmResult<PresentationResponseParameters> = when (credentialPresentationRequest) {
         is CredentialPresentationRequest.PresentationExchangeRequest -> createPresentation(
             request = request,
-            credentialPresentation = CredentialPresentation.PresentationExchangePresentation(
-                presentationRequest = credentialPresentationRequest,
-                inputDescriptorSubmissions = null
-            ),
+            credentialPresentation = credentialPresentationRequest.toCredentialPresentation()
         )
 
         is CredentialPresentationRequest.DCQLRequest -> createPresentation(
             request = request,
-            credentialPresentation = CredentialPresentation.DCQLPresentation(
-                presentationRequest = credentialPresentationRequest,
-                credentialQuerySubmissions = null
-            ),
+            credentialPresentation = credentialPresentationRequest.toCredentialPresentation()
         )
     }
 
@@ -176,22 +170,6 @@ class HolderAgent(
         )
     }
 
-    @Deprecated(
-        "Replace with more general implementation due to increasing number of presentation mechanisms",
-        replaceWith = ReplaceWith("createDefaultPresentationExchangePresentation")
-    )
-    override suspend fun createPresentation(
-        request: PresentationRequestParameters,
-        presentationDefinition: PresentationDefinition,
-        fallbackFormatHolder: FormatHolder?,
-        pathAuthorizationValidator: PathAuthorizationValidator?,
-    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters> =
-        createDefaultPresentationExchangePresentation(
-            request = request,
-            presentationDefinition = presentationDefinition,
-            fallbackFormatHolder = fallbackFormatHolder,
-        )
-
     private suspend fun createDefaultPresentationExchangePresentation(
         request: PresentationRequestParameters,
         presentationDefinition: PresentationDefinition,
@@ -200,15 +178,13 @@ class HolderAgent(
         createPresentationExchangePresentation(
             request = request,
             credentialPresentation = CredentialPresentation.PresentationExchangePresentation(
-                presentationRequest = CredentialPresentationRequest.PresentationExchangeRequest(
+                CredentialPresentationRequest.PresentationExchangeRequest(
                     presentationDefinition,
                     fallbackFormatHolder,
                 ),
-                inputDescriptorSubmissions = null,
             )
         )
 
-    @Suppress("DEPRECATION")
     private suspend fun createPresentationExchangePresentation(
         request: PresentationRequestParameters,
         credentialPresentation: CredentialPresentation.PresentationExchangePresentation,
@@ -225,25 +201,8 @@ class HolderAgent(
             throw PresentationException(it)
         }
 
-        createPresentation(
-            request = request,
-            presentationDefinitionId = presentationDefinition.id,
-            presentationSubmissionSelection = presentationCredentialSelection.mapValues {
-                CredentialSubmission(
-                    credential = it.value.credential,
-                    disclosedAttributes = it.value.disclosedAttributes
-                )
-            },
-        ).getOrThrow()
-    }
-
-    @Suppress("OVERRIDE_DEPRECATION") // TODO: make private after removing from interface and change selection value type
-    override suspend fun createPresentation(
-        request: PresentationRequestParameters,
-        presentationDefinitionId: String?,
-        @Suppress("DEPRECATION") presentationSubmissionSelection: Map<String, CredentialSubmission>,
-    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters> = catching {
-        val submissionList = presentationSubmissionSelection.mapValues {
+        val presentationDefinitionId = presentationDefinition.id
+        val submissionList = presentationCredentialSelection.mapValues {
             PresentationExchangeCredentialDisclosure(
                 credential = it.value.credential,
                 disclosedAttributes = it.value.disclosedAttributes
@@ -270,7 +229,6 @@ class HolderAgent(
             presentationResults = verifiablePresentations,
         )
     }
-
 
     private suspend fun createDCQLPresentation(
         request: PresentationRequestParameters,

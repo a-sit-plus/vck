@@ -5,6 +5,8 @@ import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
+import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest.PresentationExchangeRequest
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrowAny
@@ -13,7 +15,6 @@ import io.kotest.matchers.maps.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.types.shouldBeInstanceOf
 
-@Suppress("DEPRECATION")
 class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
     lateinit var clientId: String
@@ -42,19 +43,21 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
     "test credential matching" - {
         "only credentials of the correct format are matched" {
             holderAgent.storeIsoCredential(holderKeyMaterial, AtomicAttribute2023)
-            holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-            holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+            holderAgent.storeIsoCredential(holderKeyMaterial, AtomicAttribute2023)
+            holderAgent.storeSdJwtCredential(holderKeyMaterial, AtomicAttribute2023)
 
             val authnRequest = verifierOid4vp.createAuthnRequest(
                 requestOptions = OpenIdRequestOptions(
                     credentials = setOf(
-                        RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
+                        RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
                     )
                 )
             )
             val preparationState = holderOid4vp.startAuthorizationResponsePreparation(authnRequest.serialize())
                 .getOrThrow()
-            val presentationDefinition = preparationState.presentationDefinition.shouldNotBeNull()
+            val presentationDefinition = preparationState.credentialPresentationRequest
+                .shouldBeInstanceOf<PresentationExchangeRequest>()
+                .presentationDefinition
             val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
 
             val matches = holderAgent.matchInputDescriptorsAgainstCredentialStore(
@@ -71,21 +74,25 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
     "test credential submission" - {
         "submission requirements need to match" - {
             "all credentials matching an input descriptor should be presentable" {
-                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-                holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeIsoCredential(holderKeyMaterial, AtomicAttribute2023)
+                holderAgent.storeIsoCredential(holderKeyMaterial, AtomicAttribute2023)
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, AtomicAttribute2023)
 
                 val authnRequest = verifierOid4vp.createAuthnRequest(
                     requestOptions = OpenIdRequestOptions(
                         credentials = setOf(
-                            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
+                            RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
                         )
                     )
                 )
 
                 val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest.serialize()).getOrThrow()
                 val preparationState = holderOid4vp.startAuthorizationResponsePreparation(params).getOrThrow()
-                val presentationDefinition = preparationState.presentationDefinition.shouldNotBeNull()
+                val presentationExchangeRequest = preparationState.credentialPresentationRequest
+                    .shouldBeInstanceOf<PresentationExchangeRequest>()
+                val presentationDefinition = presentationExchangeRequest
+                    .presentationDefinition
+
                 val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
                 val matches = holderAgent.matchInputDescriptorsAgainstCredentialStore(
                     presentationDefinition.inputDescriptors
@@ -98,7 +105,7 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
                 inputDescriptorMatches.forEach {
                     val submission = mapOf(
-                        inputDescriptorId to CredentialSubmission(
+                        inputDescriptorId to PresentationExchangeCredentialDisclosure(
                             credential = it.key,
                             disclosedAttributes = it.value.mapNotNull {
                                 it.value.firstOrNull()?.normalizedJsonPath
@@ -108,23 +115,26 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
                     shouldNotThrowAny {
                         holderOid4vp.finalizeAuthorizationResponseParameters(
-                            preparationState = preparationState,
                             request = params,
-                            inputDescriptorSubmissions = submission
+                            clientMetadata = verifierOid4vp.metadata,
+                            credentialPresentation = PresentationExchangePresentation(
+                                presentationRequest = presentationExchangeRequest,
+                                inputDescriptorSubmissions = submission
+                            )
                         ).getOrThrow()
                     }
                 }
             }
             "credentials not matching an input descriptor should not yield a valid submission" {
-                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-                holderAgent.storeIsoCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
-                holderAgent.storeSdJwtCredential(holderKeyMaterial, ConstantIndex.AtomicAttribute2023)
+                holderAgent.storeIsoCredential(holderKeyMaterial, AtomicAttribute2023)
+                holderAgent.storeIsoCredential(holderKeyMaterial, AtomicAttribute2023)
+                holderAgent.storeSdJwtCredential(holderKeyMaterial, AtomicAttribute2023)
 
                 val sdJwtMatches = run {
                     val authnRequestSdJwt = verifierOid4vp.createAuthnRequest(
                         requestOptions = OpenIdRequestOptions(
                             credentials = setOf(
-                                RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, SD_JWT)
+                                RequestOptionsCredential(AtomicAttribute2023, SD_JWT)
                             )
                         )
                     )
@@ -132,7 +142,9 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                     val preparationStateSdJwt = holderOid4vp.startAuthorizationResponsePreparation(
                         holderOid4vp.parseAuthenticationRequestParameters(authnRequestSdJwt.serialize()).getOrThrow()
                     ).getOrThrow()
-                    val presentationDefinitionSdJwt = preparationStateSdJwt.presentationDefinition.shouldNotBeNull()
+                    val presentationDefinitionSdJwt = preparationStateSdJwt.credentialPresentationRequest
+                        .shouldBeInstanceOf<PresentationExchangeRequest>()
+                        .presentationDefinition
 
                     holderAgent.matchInputDescriptorsAgainstCredentialStore(
                         presentationDefinitionSdJwt.inputDescriptors,
@@ -151,14 +163,17 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                 val authnRequest = verifierOid4vp.createAuthnRequest(
                     requestOptions = OpenIdRequestOptions(
                         credentials = setOf(
-                            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023, ISO_MDOC)
+                            RequestOptionsCredential(AtomicAttribute2023, ISO_MDOC)
                         )
                     )
                 )
 
                 val params = holderOid4vp.parseAuthenticationRequestParameters(authnRequest.serialize()).getOrThrow()
                 val preparationState = holderOid4vp.startAuthorizationResponsePreparation(params).getOrThrow()
-                val presentationDefinition = preparationState.presentationDefinition.shouldNotBeNull()
+                val presentationExchangeRequest = preparationState.credentialPresentationRequest
+                    .shouldBeInstanceOf<PresentationExchangeRequest>()
+                val presentationDefinition = presentationExchangeRequest
+                    .presentationDefinition
                 val inputDescriptorId = presentationDefinition.inputDescriptors.first().id
 
                 val matches = holderAgent.matchInputDescriptorsAgainstCredentialStore(
@@ -171,7 +186,7 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
 
                 val submission = mapOf(
                     inputDescriptorId to sdJwtMatches.values.first().entries.first().let {
-                        CredentialSubmission(
+                        PresentationExchangeCredentialDisclosure(
                             credential = it.key,
                             disclosedAttributes = it.value.entries.mapNotNull {
                                 it.value.firstOrNull()?.normalizedJsonPath
@@ -183,8 +198,11 @@ class OpenId4VpCombinedProtocolTwoStepTest : FreeSpec({
                 shouldThrowAny {
                     holderOid4vp.finalizeAuthorizationResponse(
                         request = params,
-                        preparationState = preparationState,
-                        inputDescriptorSubmissions = submission
+                        clientMetadata = verifierOid4vp.metadata,
+                        credentialPresentation = PresentationExchangePresentation(
+                            presentationRequest = presentationExchangeRequest,
+                            inputDescriptorSubmissions = submission
+                        )
                     ).getOrThrow()
                 }
             }

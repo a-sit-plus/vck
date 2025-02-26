@@ -1,7 +1,9 @@
 package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
-import at.asitplus.dif.*
+import at.asitplus.dif.ConstraintField
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
 import at.asitplus.jsonpath.core.NodeList
 import at.asitplus.jsonpath.core.NormalizedJsonPath
 import at.asitplus.openid.dcql.DCQLQuery
@@ -79,10 +81,9 @@ interface Holder {
     }
 
     /**
-     * Creates [PresentationResponseParameters] as specified using the parameter
-     * `credentialDisclosure`
+     * Creates [PresentationResponseParameters] as specified using the parameter [credentialPresentation]
      *
-     * Fails in case the submission is not valid submission.
+     * Fails in case the submission is not a valid submission.
      */
     suspend fun createPresentation(
         request: PresentationRequestParameters,
@@ -90,53 +91,14 @@ interface Holder {
     ): KmmResult<PresentationResponseParameters>
 
     /**
-     * Creates [PresentationResponseParameters] using the default submission
+     * Creates [PresentationResponseParameters] using the default submission.
      *
-     * Fails in case the default submission is not valid submission.
+     * Fails in case the default submission is not a valid submission.
      */
     suspend fun createDefaultPresentation(
         request: PresentationRequestParameters,
         credentialPresentationRequest: CredentialPresentationRequest,
     ): KmmResult<PresentationResponseParameters>
-
-
-    /**
-     * Creates [PresentationResponseParameters] (that is a list of [CreatePresentationResult] and a
-     * [PresentationSubmission]) to match the [presentationDefinition].
-     *
-     * Fails in case the default submission is not a valid submission.
-     *
-     * @param fallbackFormatHolder format holder to be used in case there is no format holder in a
-     *  given presentation definition and the input descriptor.
-     *  This will mostly resolve to be the same as in `clientMetadata.vpFormats`.
-     * @param pathAuthorizationValidator Provides the user of this library with a way to enforce
-     *  authorization rules.
-     */
-    @Deprecated("Replace with more general implementation due to increasing number of presentation mechanisms")
-    suspend fun createPresentation(
-        request: PresentationRequestParameters,
-        presentationDefinition: PresentationDefinition,
-        fallbackFormatHolder: FormatHolder? = null,
-        pathAuthorizationValidator: PathAuthorizationValidator? = null,
-    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters>
-
-    /**
-     * Creates [PresentationResponseParameters] (that is a list of [CreatePresentationResult] and a
-     * [PresentationSubmission]) to match the [presentationSubmissionSelection].
-     *
-     * Assumptions:
-     *  - the presentation submission selection is a valid submission regarding the submission requirements
-     *
-     * @param presentationDefinitionId id of the presentation definition this submission is intended for
-     * @param presentationSubmissionSelection a selection of input descriptors by `id` and
-     *  corresponding credentials along with a description of the fields to be disclosed
-     */
-    @Deprecated("Replace with more general implementation due to increasing number of presentation mechanisms")
-    suspend fun createPresentation(
-        request: PresentationRequestParameters,
-        presentationDefinitionId: String?,
-        @Suppress("DEPRECATION") presentationSubmissionSelection: Map<String, CredentialSubmission>,
-    ): KmmResult<PresentationResponseParameters.PresentationExchangeParameters>
 
     /**
      * Creates a mapping from the input descriptors of the presentation definition to matching

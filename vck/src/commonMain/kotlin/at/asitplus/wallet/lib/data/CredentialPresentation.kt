@@ -13,7 +13,7 @@ sealed interface CredentialPresentation {
     @Serializable
     data class PresentationExchangePresentation(
         override val presentationRequest: CredentialPresentationRequest.PresentationExchangeRequest,
-        val inputDescriptorSubmissions: Map<String, PresentationExchangeCredentialDisclosure>?,
+        val inputDescriptorSubmissions: Map<String, PresentationExchangeCredentialDisclosure>? = null
     ) : CredentialPresentation
 
     @Serializable

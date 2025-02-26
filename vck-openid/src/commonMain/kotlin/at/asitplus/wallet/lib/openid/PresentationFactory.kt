@@ -13,8 +13,8 @@ import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.ByteStringWrapper
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.io.Base64Strict
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.toJsonWebKey
@@ -275,12 +275,12 @@ internal class PresentationFactory(
         verifiablePresentations.entries.mapIndexed { _, descriptor ->
             val format = when (verifiablePresentations.entries.first().value) {
                 is CreatePresentationResult.DeviceResponse -> ClaimFormat.MSO_MDOC
-                is CreatePresentationResult.SdJwt -> ClaimFormat.JWT_SD
+                is CreatePresentationResult.SdJwt -> ClaimFormat.SD_JWT
                 is CreatePresentationResult.Signed -> ClaimFormat.JWT_VP
             }
             if (supportedFormats.isMissingFormatSupport(format)) {
                 Napier.w("Incompatible JWT algorithms for claim format $format: $supportedFormats")
-                throw OAuth2Exception(OpenIdConstants.Errors.REGISTRATION_VALUE_NOT_SUPPORTED)
+                throw OAuth2Exception(Errors.REGISTRATION_VALUE_NOT_SUPPORTED, "incompatible algorithms")
             }
         }
 

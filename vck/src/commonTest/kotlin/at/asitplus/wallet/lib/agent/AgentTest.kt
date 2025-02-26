@@ -10,6 +10,7 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryInstance
 import at.asitplus.openid.dcql.DCQLCredentialQueryList
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.CredentialPresentation.PresentationExchangePresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
@@ -73,9 +74,12 @@ class AgentTest : FreeSpec({
     }
 
     "when using presentation exchange" - {
-        val singularPresentationDefinition = PresentationDefinition(
-            id = uuid4().toString(),
-            inputDescriptors = listOf(DifInputDescriptor(id = uuid4().toString()))
+        val singularPresentationDefinition = PresentationExchangePresentation(
+            CredentialPresentationRequest.PresentationExchangeRequest(
+                PresentationDefinition(
+                    DifInputDescriptor(id = uuid4().toString())
+                ),
+            ),
         )
 
         "simple walk-through success" {
@@ -93,8 +97,9 @@ class AgentTest : FreeSpec({
 
             val presentationParameters = holder.createPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                presentationDefinition = singularPresentationDefinition,
-            ).getOrThrow()
+                credentialPresentation = singularPresentationDefinition,
+            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+
             val vp = presentationParameters.presentationResults.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
             val verified = verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
@@ -117,8 +122,9 @@ class AgentTest : FreeSpec({
                     nonce = challenge,
                     audience = issuer.keyMaterial.identifier
                 ),
-                presentationDefinition = singularPresentationDefinition,
-            ).getOrThrow()
+                credentialPresentation = singularPresentationDefinition,
+            ).getOrThrow().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+
             val vp = presentationParameters.presentationResults.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
             val result = verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge)
@@ -178,7 +184,7 @@ class AgentTest : FreeSpec({
                         nonce = challenge,
                         audience = "urn:${uuid4()}"
                     ),
-                    presentationDefinition = singularPresentationDefinition,
+                    credentialPresentation = singularPresentationDefinition,
                 ).getOrNull() shouldBe null
             }
         }
@@ -252,7 +258,7 @@ class AgentTest : FreeSpec({
                     nonce = challenge,
                     audience = "urn:${uuid4()}"
                 ),
-                presentationDefinition = singularPresentationDefinition,
+                credentialPresentation = singularPresentationDefinition,
             ).getOrNull() shouldBe null
         }
 
@@ -267,12 +273,12 @@ class AgentTest : FreeSpec({
             holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
             val presentationParameters = holder.createPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                presentationDefinition = singularPresentationDefinition,
-            ).getOrNull()
-            presentationParameters.shouldNotBeNull()
+                credentialPresentation = singularPresentationDefinition,
+            ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+
             val vp = presentationParameters.presentationResults.firstOrNull()
-            vp.shouldNotBeNull()
-            vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
+                .shouldNotBeNull()
+                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
             verifier.verifyPresentationVcJwt(vp.jwsSigned.getOrThrow(), challenge).also {
                 it.shouldBeInstanceOf<Verifier.VerifyPresentationResult.Success>()
@@ -292,12 +298,12 @@ class AgentTest : FreeSpec({
             holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
             val presentationParameters = holder.createPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                presentationDefinition = singularPresentationDefinition,
-            ).getOrNull()
-            presentationParameters.shouldNotBeNull()
+                credentialPresentation = singularPresentationDefinition,
+            ).getOrNull().shouldBeInstanceOf<PresentationResponseParameters.PresentationExchangeParameters>()
+
             val vp = presentationParameters.presentationResults.firstOrNull()
-            vp.shouldNotBeNull()
-            vp.shouldBeInstanceOf<CreatePresentationResult.Signed>()
+                .shouldNotBeNull()
+                .shouldBeInstanceOf<CreatePresentationResult.Signed>()
 
             val credentialsToRevoke = issuer.issueCredential(
                 DummyCredentialDataProvider.getCredential(
@@ -339,9 +345,7 @@ class AgentTest : FreeSpec({
 
             val presentationParameters = holder.createDefaultPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    dcqlQuery = singularDCQLRequest,
-                )
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
             val vp = presentationParameters.verifiablePresentations.values.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
@@ -365,9 +369,7 @@ class AgentTest : FreeSpec({
                     nonce = challenge,
                     audience = issuer.keyMaterial.identifier
                 ),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    dcqlQuery = singularDCQLRequest,
-                )
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
             ).getOrThrow() as PresentationResponseParameters.DCQLParameters
             val vp = presentationParameters.verifiablePresentations.values.first()
                 .shouldBeInstanceOf<CreatePresentationResult.Signed>()
@@ -398,9 +400,7 @@ class AgentTest : FreeSpec({
                         nonce = challenge,
                         audience = "urn:${uuid4()}"
                     ),
-                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                        dcqlQuery = singularDCQLRequest,
-                    )
+                    credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
                 ).getOrNull() as PresentationResponseParameters.DCQLParameters? shouldBe null
             }
         }
@@ -411,9 +411,7 @@ class AgentTest : FreeSpec({
                     nonce = challenge,
                     audience = "urn:${uuid4()}"
                 ),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    dcqlQuery = singularDCQLRequest,
-                ),
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest),
             ).getOrNull() as PresentationResponseParameters.DCQLParameters? shouldBe null
         }
 
@@ -428,9 +426,7 @@ class AgentTest : FreeSpec({
             holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
             val presentationParameters = holder.createDefaultPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    dcqlQuery = singularDCQLRequest,
-                )
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
             ).getOrNull() as PresentationResponseParameters.DCQLParameters?
             presentationParameters.shouldNotBeNull()
             val vp = presentationParameters.verifiablePresentations.values.firstOrNull()
@@ -455,9 +451,7 @@ class AgentTest : FreeSpec({
             holder.storeCredential(credentials.toStoreCredentialInput()).getOrThrow()
             val presentationParameters = holder.createDefaultPresentation(
                 request = PresentationRequestParameters(nonce = challenge, audience = verifierId),
-                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(
-                    dcqlQuery = singularDCQLRequest,
-                )
+                credentialPresentationRequest = CredentialPresentationRequest.DCQLRequest(singularDCQLRequest)
             ).getOrNull() as PresentationResponseParameters.DCQLParameters?
             presentationParameters.shouldNotBeNull()
             val vp = presentationParameters.verifiablePresentations.values.firstOrNull()

@@ -30,7 +30,6 @@ import kotlinx.serialization.json.jsonPrimitive
 /**
  * Tests our OpenID4VP/SIOP implementation against POTENTIAL Piloting Definition Scope
  */
-@Suppress("DEPRECATION")
 class OpenId4VpInteropTest : FreeSpec({
     lateinit var issuerKeyId: String
     lateinit var issuerClientId: String
@@ -150,8 +149,7 @@ class OpenId4VpInteropTest : FreeSpec({
 
         DefaultVerifierJwsService().verifyJws(jar, verifierRequestSigningKey) shouldBe true
 
-        val preparation = holderOid4vp.startAuthorizationResponsePreparation(parameters).getOrThrow()
-        val response = holderOid4vp.finalizeAuthorizationResponse(parameters, preparation).getOrThrow()
+        val response = holderOid4vp.createAuthnResponse(parameters).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Post>()
 
         response.params.entries.firstOrNull { it.key == "vp_token" }.shouldNotBeNull().value.let { vpToken ->
@@ -190,6 +188,7 @@ class OpenId4VpInteropTest : FreeSpec({
             presSub.definitionId.shouldNotBeNull()
             presSub.descriptorMap.shouldNotBeNull().first().also {
                 it.path shouldBe "$"
+                @Suppress("DEPRECATION")
                 it.format shouldBe ClaimFormat.JWT_SD
             }
         }
