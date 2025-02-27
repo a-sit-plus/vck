@@ -98,7 +98,7 @@ data class SupportedCredentialFormat private constructor(
      * An array of `claims.display.name` values that lists them in the order they should be displayed by the Wallet.
      */
     @SerialName("order")
-    val order: Set<String>? = null,
+    val order: List<String>? = null,
 
     /**
      * OID4VCI: OPTIONAL. Array of objects, where each object contains the display properties of the supported
@@ -143,7 +143,7 @@ data class SupportedCredentialFormat private constructor(
             credentialDefinition: SupportedCredentialFormatDefinition? = null,
             docType: String,
             isoClaims: Set<ClaimDescription>,
-            order: Set<String>? = null,
+            order: List<String>? = null,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
             format = format,
@@ -167,7 +167,7 @@ data class SupportedCredentialFormat private constructor(
             credentialDefinition: SupportedCredentialFormatDefinition? = null,
             sdJwtVcType: String,
             sdJwtClaims: Set<ClaimDescription>,
-            order: Set<String>? = null,
+            order: List<String>? = null,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
             format = format,
@@ -189,7 +189,7 @@ data class SupportedCredentialFormat private constructor(
             supportedSigningAlgorithms: Set<String>? = null,
             supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
             credentialDefinition: SupportedCredentialFormatDefinition,
-            order: Set<String>? = null,
+            order: List<String>? = null,
             display: Set<DisplayProperties>? = null,
         ) = SupportedCredentialFormat(
             format = format,

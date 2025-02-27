@@ -163,37 +163,6 @@ class WalletService(
     }.toSet()
 
     /**
-     * Build authorization details for use in [OAuth2Client.createAuthRequest].
-     *
-     * @param requestOptions which credentials to request, to build [OpenIdAuthorizationDetails.format] and other
-     * properties like [OpenIdAuthorizationDetails.sdJwtVcType]
-     * @param authorizationServers from [IssuerMetadata.authorizationServers]
-     */
-    // TODO is this needed?
-    fun buildAuthorizationDetailsRo(
-        requestOptions: RequestOptions,
-        authorizationServers: Set<String>? = null,
-    ) = buildAuthorizationDetailsRo(setOf(requestOptions), authorizationServers)
-
-    /**
-     * Build authorization details for use in [OAuth2Client.createAuthRequest].
-     *
-     * @param requestOptions which credentials to request, to build [OpenIdAuthorizationDetails.format] and other
-     * properties like [OpenIdAuthorizationDetails.sdJwtVcType]
-     * @param authorizationServers from [IssuerMetadata.authorizationServers]
-     */
-    // TODO is this needed?
-    fun buildAuthorizationDetailsRo(
-        requestOptions: Set<RequestOptions>,
-        authorizationServers: Set<String>? = null,
-    ) = requestOptions.map {
-        OpenIdAuthorizationDetails(
-            format = it.representation.toFormat(),
-            locations = authorizationServers,
-        )
-    }.toSet()
-
-    /**
      * Build `scope` value for use in [OAuth2Client.createAuthRequest] and [OAuth2Client.createTokenRequestParameters].
      */
     fun buildScope(
