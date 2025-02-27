@@ -10,7 +10,7 @@ import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT_LOGIN
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.*
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -236,11 +236,13 @@ class OpenId4VciClient(
 
         val credentialScheme = context.credential.supportedCredentialFormat.resolveCredentialScheme()
             ?: throw Exception("Unknown credential scheme in ${context.credential}")
+
         postCredentialRequestAndStore(
             credentialEndpointUrl = context.issuerMetadata.credentialEndpointUrl,
             tokenResponse = tokenResponse,
             credentialScheme = credentialScheme,
             issuerMetadata = context.issuerMetadata,
+            credentialRepresentation = context.credential.supportedCredentialFormat.format.toRepresentation()
         )
     }
 
@@ -288,6 +290,7 @@ class OpenId4VciClient(
         tokenResponse: TokenResponseParameters,
         credentialScheme: ConstantIndex.CredentialScheme,
         issuerMetadata: IssuerMetadata,
+        credentialRepresentation: ConstantIndex.CredentialRepresentation,
     ) {
         Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl with $tokenResponse")
         val credentialRequests = oid4vciService.createCredentialRequest(
@@ -313,7 +316,7 @@ class OpenId4VciClient(
             credentialResponse.extractCredentials()
                 .ifEmpty { throw Exception("No credential was received") }
                 .forEach {
-                    val storeCredentialInput = it.toStoreCredentialInput(credentialResponse.format, credentialScheme)
+                    val storeCredentialInput = it.toStoreCredentialInput(credentialRepresentation, credentialScheme)
                     holderAgent.storeCredential(storeCredentialInput).getOrThrow()
                 }
         }
@@ -372,7 +375,6 @@ class OpenId4VciClient(
                 credentialIdentifierInfo.credentialIdentifier,
                 issuerMetadata.authorizationServers
             )
-
             val tokenResponse = postToken(
                 tokenEndpointUrl = tokenEndpointUrl,
                 credentialIssuer = issuerMetadata.credentialIssuer,
@@ -390,7 +392,8 @@ class OpenId4VciClient(
                 credentialEndpointUrl = issuerMetadata.credentialEndpointUrl,
                 tokenResponse = tokenResponse,
                 credentialScheme = credentialScheme,
-                issuerMetadata = issuerMetadata
+                issuerMetadata = issuerMetadata,
+                credentialRepresentation = credentialIdentifierInfo.supportedCredentialFormat.format.toRepresentation()
             )
         } ?: credentialOffer.grants?.authorizationCode?.let {
             ProvisioningContext(
@@ -425,28 +428,15 @@ class OpenId4VciClient(
     @Suppress("DEPRECATION")
     @Throws(Exception::class)
     private fun String.toStoreCredentialInput(
-        format: CredentialFormatEnum?,
+        credentialRepresentation: ConstantIndex.CredentialRepresentation,
         credentialScheme: ConstantIndex.CredentialScheme,
-    ) = when (format) {
-        CredentialFormatEnum.JWT_VC -> Holder.StoreCredentialInput.Vc(this, credentialScheme)
-
-        CredentialFormatEnum.VC_SD_JWT,
-        CredentialFormatEnum.DC_SD_JWT,
-            -> Holder.StoreCredentialInput.SdJwt(this, credentialScheme)
-
-        CredentialFormatEnum.MSO_MDOC -> kotlin.runCatching { decodeToByteArray(Base64()) }.getOrNull()
+    ) = when (credentialRepresentation) {
+        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> Vc(this, credentialScheme)
+        ConstantIndex.CredentialRepresentation.SD_JWT -> SdJwt(this, credentialScheme)
+        ConstantIndex.CredentialRepresentation.ISO_MDOC -> runCatching { decodeToByteArray(Base64()) }.getOrNull()
             ?.let { IssuerSigned.deserialize(it) }?.getOrNull()
-            ?.let { Holder.StoreCredentialInput.Iso(it, credentialScheme) }
+            ?.let { Iso(it, credentialScheme) }
             ?: throw Exception("Invalid credential format: $this")
-
-        else -> {
-            if (contains("~")) {
-                Holder.StoreCredentialInput.SdJwt(this, credentialScheme)
-            } else runCatching { decodeToByteArray(Base64()) }.getOrNull()
-                ?.let { IssuerSigned.deserialize(it) }?.getOrNull()
-                ?.let { Holder.StoreCredentialInput.Iso(it, credentialScheme) }
-                ?: Holder.StoreCredentialInput.Vc(this, credentialScheme)
-        }
     }
 
     @Throws(Exception::class)
