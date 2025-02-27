@@ -8,6 +8,8 @@ Release 5.5.0:
    - In `OpenId4VpHolder` remove `finalizeAuthorizationResponse()` taking in `CredentialSubmission`
    - In `OpenId4VpHolder` remove `finalizeAuthorizationResponseParameters()` taking in `CredentialSubmission`
    - In `OpenId4VpWallet` remove `finalizeAuthorizationResponseParameters()` taking in `CredentialSubmission`
+ - Introduce dedicated Android targets, separate from JVM targets, that compileto JDK 8 / API-Level 30
+ - Update to Signum 3.14.1 / Supreme 0.8.0
 
 Release 5.4.3:
  - Fix property names for serialized RQES data classes
