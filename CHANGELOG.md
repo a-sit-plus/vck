@@ -1,5 +1,10 @@
 # Changelog
 
+TBA
+ - Refactorings in Rqes-Data-Classes
+   - Remove `Csc`-Prefix from all data classes
+   - Rename `CscSignatureRequestParameters` to `QtspSignatureRequest`
+
 Release 5.5.0:
  - Remove elements deprecated in 5.4.0 when introducing DCQL:
    - Class `CredentialSubmission`, replaced with `PresentationExchangeCredentialDisclosure`

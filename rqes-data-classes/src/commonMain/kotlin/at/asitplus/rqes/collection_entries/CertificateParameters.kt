@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
  * JsonObject which is part of [CredentialInfo]
  */
 @Serializable
-data class CscCertificateParameters(
+data class CertificateParameters(
     /**
      * OPTIONAL.
      * The status of validity of the end entity certificate.
@@ -21,7 +21,6 @@ data class CscCertificateParameters(
     /**
      * REQUIRED-CONDITIONAL.
      * One or more Base64-encoded X.509v3 certificates from the certificate
-     * Conditional
      * chain. If the certificates parameter is “chain”, the entire certificate chain
      * SHALL be returned with the end entity certificate at the beginning of the
      * array. If the certificates parameter is “single”, only the end entity
@@ -78,6 +77,7 @@ data class CscCertificateParameters(
     @SerialName("validTo")
     val validTo: String? = null,
 ) {
+
     /**
      * Valid certificate statuses as defined in CSC v2.0.0.2
      */

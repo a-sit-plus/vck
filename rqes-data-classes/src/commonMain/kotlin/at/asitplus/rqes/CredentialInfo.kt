@@ -1,19 +1,23 @@
 package at.asitplus.rqes
 
 import at.asitplus.openid.SignatureQualifier
-import at.asitplus.rqes.collection_entries.CscAuthParameter
-import at.asitplus.rqes.collection_entries.CscCertificateParameters
-import at.asitplus.rqes.collection_entries.CscKeyParameters
+import at.asitplus.rqes.collection_entries.AuthParameter
+import at.asitplus.rqes.collection_entries.CertificateParameters
+import at.asitplus.rqes.collection_entries.KeyParameters
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * In case of credentials/list [credentialID] is REQUIRED
- * in case this is a credentials/info response [credentialID] MUST NOT be in it...
+ * Data class that implements credentialInfo class defined
+ * in CSC-API v2.0.0.2 Ch. 11.4 "credentials/list" and Ch. 11.5 "credentials/info"
  */
 @Serializable
 data class CredentialInfo(
     /**
+     * CSC
+     * In case of credentials/list [credentialID] is REQUIRED.
+     * In case this is a credentials/info response [credentialID] is not defined.
+     *
      * The credentialID identifying one of the credentials associated with the
      * provided or implicit userID.
      * MUST be present in `credential/list` request but MUST NOT be present in `credential/info` request
@@ -22,6 +26,7 @@ data class CredentialInfo(
     val credentialID: String? = null,
 
     /**
+     * CSC OPTIONAL.
      * A free form description of the credential in the lang language. The
      * maximum size of the string is 255 characters.
      */
@@ -29,29 +34,33 @@ data class CredentialInfo(
     val description: String? = null,
 
     /**
+     * CSC OPTIONAL.
      * Identifier qualifying the type of signature this credential is suitable for
      */
     @SerialName("signatureQualifier")
     val signatureQualifier: SignatureQualifier? = null,
 
     /**
-     * Status and attributes of key
+     * CSC REQUIRED.
+     * Status and attributes of key.
      */
     @SerialName("key")
-    val keyParameters: CscKeyParameters,
+    val keyParameters: KeyParameters,
 
     /**
-     * Details of the requested certificate in case [CredentialListRequestParameters]
+     * CSC REQUIRED-CONDITIONAL.
+     * May be required depending on the [CredentialInfoRequest]\
+     * Contains information about the certificate associated with the credential
      */
     @SerialName("cert")
-    val certParameters: CscCertificateParameters? = null,
-
+    val certParameters: CertificateParameters? = null,
 
     /**
+     *
      * Details about the authentication method
      */
     @SerialName("auth")
-    val authParameters: CscAuthParameter? = null,
+    val authParameters: AuthParameter? = null,
 
     /**
      * Specifies if the RSSP will generate for this credential a signature

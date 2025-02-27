@@ -1,9 +1,9 @@
 package at.asitplus.wallet.lib.rqes
 
-import at.asitplus.rqes.CscSignatureRequestParameters
+import at.asitplus.rqes.QtspSignatureRequest
 import at.asitplus.rqes.SignDocParameters
 import at.asitplus.rqes.SignHashParameters
-import at.asitplus.rqes.collection_entries.CscDocumentDigest
+import at.asitplus.rqes.collection_entries.DocumentDigest
 import at.asitplus.rqes.collection_entries.Document
 import at.asitplus.rqes.enums.ConformanceLevel
 import at.asitplus.rqes.enums.SignatureFormat
@@ -178,7 +178,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                 SignDocParameters(
                     credentialId = "1234",
                     documentDigests = listOf(
-                        CscDocumentDigest(
+                        DocumentDigest(
                             hashes = listOf("1234".decodeToByteArray(Base64Strict)),
                             hashAlgorithmOid = Digest.SHA256.oid,
                             signatureFormat = SignatureFormat.XADES,
@@ -188,7 +188,7 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
                             signedProps = null,
                             signedEnvelopeProperty = SignedEnvelopeProperty.ENVELOPING
                         ),
-                        CscDocumentDigest(
+                        DocumentDigest(
                             hashes = listOf("1234".decodeToByteArray(Base64Strict)),
                             hashAlgorithmOid = null,
                             signatureFormat = SignatureFormat.PADES,
@@ -203,10 +203,10 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
             )
         dummyEntries.forEachIndexed { i, dummyEntry ->
             "Entry ${i + 1}" {
-                val serialized = rdcJsonSerializer.encodeToString(CscSignatureRequestParameters.serializer(), dummyEntry)
+                val serialized = rdcJsonSerializer.encodeToString(QtspSignatureRequest.serializer(), dummyEntry)
                     .also { Napier.d("serialized ${dummyEntry::class}: $it") }
                 val deserialized =
-                    rdcJsonSerializer.decodeFromString(CscSignatureRequestParameters.serializer(), serialized)
+                    rdcJsonSerializer.decodeFromString(QtspSignatureRequest.serializer(), serialized)
 
                 deserialized shouldBe dummyEntry
             }
@@ -225,9 +225,9 @@ class AuthenticationRequestParameterFromSerializerTest : FreeSpec({
         ).forEachIndexed { i, vec ->
             "Testvector ${i + 1}" - {
                 val expected = rdcJsonSerializer.decodeFromString<JsonObject>(vec)
-                val actual = rdcJsonSerializer.decodeFromString(CscSignatureRequestParameters.serializer(), vec)
+                val actual = rdcJsonSerializer.decodeFromString(QtspSignatureRequest.serializer(), vec)
                 val sanitycheck =
-                    rdcJsonSerializer.decodeFromJsonElement(CscSignatureRequestParameters.serializer(), expected)
+                    rdcJsonSerializer.decodeFromJsonElement(QtspSignatureRequest.serializer(), expected)
                 "sanitycheck" {
                     actual shouldBe sanitycheck
                 }

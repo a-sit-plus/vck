@@ -1,16 +1,19 @@
 package at.asitplus.wallet.lib.csc
 
-import at.asitplus.rqes.CscCredentialListRequest
-import at.asitplus.rqes.CscCredentialListResponse
-import at.asitplus.rqes.collection_entries.CscAuthParameter
-import at.asitplus.rqes.collection_entries.CscCertificateParameters
-import at.asitplus.rqes.collection_entries.CscKeyParameters
+import at.asitplus.rqes.CredentialInfoRequest
+import at.asitplus.rqes.CredentialListRequest
+import at.asitplus.rqes.CredentialListResponse
+import at.asitplus.rqes.collection_entries.AuthParameter
+import at.asitplus.rqes.collection_entries.CertificateParameters
+import at.asitplus.rqes.collection_entries.KeyParameters
 import at.asitplus.rqes.enums.CertificateOptions
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.string.shouldNotContain
 
 class CredentialInfoParsingTests : FreeSpec({
 
@@ -117,23 +120,50 @@ class CredentialInfoParsingTests : FreeSpec({
 
 
     "credential/list request can be parsed" {
-        val decoded = vckJsonSerializer.decodeFromString<CscCredentialListRequest>(credentialListRequestJson)
+        val decoded = vckJsonSerializer.decodeFromString<CredentialListRequest>(credentialListRequestJson)
         decoded.credentialInfo shouldBe true
         decoded.certificates shouldBe CertificateOptions.CHAIN
 
     }
     "credential/list response can be parsed" {
-        val decoded = vckJsonSerializer.decodeFromString<CscCredentialListResponse>(credentialListResponseJson)
+        val decoded = vckJsonSerializer.decodeFromString<CredentialListResponse>(credentialListResponseJson)
 
         decoded.credentialIDs.size shouldBe 1
         decoded.credentialInfos shouldNotBe null
         decoded.credentialInfos?.size shouldBe 1
         with(decoded.credentialInfos?.first().shouldNotBeNull()) {
             this.credentialID shouldBe decoded.credentialIDs.first()
-            this.keyParameters.status shouldBe CscKeyParameters.KeyStatusOptions.ENABLED
-            this.certParameters?.status shouldBe CscCertificateParameters.CertStatus.VALID
-            this.authParameters?.mode shouldBe CscAuthParameter.AuthMode.EXPLICIT
+            this.keyParameters.status shouldBe KeyParameters.KeyStatusOptions.ENABLED
+            this.certParameters?.status shouldBe CertificateParameters.CertStatus.VALID
+            this.authParameters?.mode shouldBe AuthParameter.AuthMode.EXPLICIT
         }
+    }
 
+    "CredentialInfoRequest default values are correctly encoded/decoded" {
+        val request = CredentialInfoRequest(
+            credentialID = uuid4().toString(),
+        )
+        val encoded = vckJsonSerializer.encodeToString(CredentialInfoRequest.serializer(), request)
+        encoded.shouldNotContain("certificates")
+        encoded.shouldNotContain("certInfo")
+        encoded.shouldNotContain("authInfo")
+
+        val decoded = vckJsonSerializer.decodeFromString<CredentialInfoRequest>(encoded)
+        decoded.certificates shouldBe CertificateOptions.SINGLE
+        decoded.authInfo shouldBe false
+        decoded.certInfo shouldBe false
+    }
+
+    "CredentialListRequest default values are correctly encoded/decoded" {
+        val request = CredentialListRequest()
+        val encoded = vckJsonSerializer.encodeToString(CredentialListRequest.serializer(), request)
+        encoded.shouldNotContain("certificates")
+        encoded.shouldNotContain("certInfo")
+        encoded.shouldNotContain("authInfo")
+
+        val decoded = vckJsonSerializer.decodeFromString<CredentialListRequest>(encoded)
+        decoded.certificates shouldBe CertificateOptions.SINGLE
+        decoded.authInfo shouldBe false
+        decoded.certInfo shouldBe false
     }
 })

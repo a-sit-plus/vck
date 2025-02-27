@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
 @Serializable
-data class CscAuthParameter(
+data class AuthParameter(
     /**
      * REQUIRED.
      * Specifies one of the authorization modes.
