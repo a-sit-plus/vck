@@ -78,8 +78,8 @@ data class RqesDocumentDigestEntry private constructor(
      * If this property is present,
      * the [dtbsrHashAlgorithmOid] MUST
      * be present.
-     * One of the parameters “hash” and “DTBS/R” MUST be
-     * present. Both parameters “hash” and “DTBS/R” MAY be
+     * One of the parameters [hash] and [dataToBeSignedRepresentation] MUST be
+     * present. Both parameters [hash] and [dataToBeSignedRepresentation] MAY be
      * present.
      */
     @SerialName("DTBS/R")
@@ -92,10 +92,10 @@ data class RqesDocumentDigestEntry private constructor(
      * OID of the hash algorithm used
      * to generate the hash listed in
      * [dataToBeSignedRepresentation]
-     * If [DTBS/R] property is not
+     * If [dataToBeSignedRepresentation] property is not
      * present, this parameter MUST NOT be present.
      * NOTE: Usually this request does not contain enough
-     * information to recreate the [DTBS/R]. It should be considered
+     * information to recreate the [dataToBeSignedRepresentation]. It should be considered
      * opaque for the Wallet.
      */
     @SerialName("DTBS/RHashAlgorithmOID")
@@ -114,11 +114,10 @@ data class RqesDocumentDigestEntry private constructor(
      * - [hash] or [dtbsr]
      */
     init {
-        require(hash != null || dataToBeSignedRepresentation != null)
-        require(hashAlgorithmOid?.toString() iff hash?.toString())
-        require(dtbsrHashAlgorithmOid?.toString() iff dataToBeSignedRepresentation?.toString())
-        require(documentLocationUri iff hash?.toString())
-        require(documentLocationMethod?.toString() iff documentLocationUri)
+        require(hashAlgorithmOid iff hash)
+        require(dtbsrHashAlgorithmOid iff dataToBeSignedRepresentation)
+        require(documentLocationMethod iff documentLocationUri)
+        require(hash or dataToBeSignedRepresentation)
     }
 
     override fun equals(other: Any?): Boolean {
@@ -220,7 +219,13 @@ data class RqesDocumentDigestEntry private constructor(
 }
 
 /**
- * Checks that either both strings are present or null
+ * Checks if either both strings are present or null
  */
-internal infix fun String?.iff(other: String?): Boolean =
+internal infix fun Any?.iff(other: Any?): Boolean =
     (this != null && other != null) or (this == null && other == null)
+
+/**
+ * Checks if at least one Element is present
+ */
+internal infix fun Any?.or(other: Any?): Boolean =
+    (this != null || other != null)

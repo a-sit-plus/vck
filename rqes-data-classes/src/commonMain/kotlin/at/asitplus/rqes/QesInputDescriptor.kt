@@ -22,7 +22,6 @@ data class QesInputDescriptor(
     override val format: FormatHolder? = null,
     @SerialName("constraints")
     override val constraints: Constraint? = null,
-
     @Deprecated("Obsoleted by OpenID4VP draft 23. Remove after UC5 piloting")
     @SerialName("transaction_data")
     val transactionData: List<@Serializable(Base64URLTransactionDataSerializer::class) TransactionData>? = null,

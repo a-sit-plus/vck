@@ -109,12 +109,7 @@ sealed class TransactionData {
          * Validation according to D3.1: UC Specification WP3
          */
         init {
-            if (credentialID == null) {
-                require(signatureQualifier != null)
-            }
-            if (signatureQualifier == null) {
-                require(credentialID != null)
-            }
+            require(credentialID or signatureQualifier)
         }
 
         companion object {
