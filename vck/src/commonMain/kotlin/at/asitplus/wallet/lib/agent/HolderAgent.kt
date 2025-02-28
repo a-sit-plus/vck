@@ -304,7 +304,9 @@ class HolderAgent(
                 pathAuthorizationValidator = {
                     pathAuthorizationValidator?.invoke(credential, it) ?: true
                 },
-            ).getOrNull()?.let {
+            ).onFailure {
+                Napier.d("findInputDescriptorMatches failed for credential with schemaUri ${credential.schemaUri}", it)
+            }.getOrNull()?.let {
                 credential to it
             }
         }.toMap()

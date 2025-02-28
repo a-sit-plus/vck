@@ -2,6 +2,7 @@ package at.asitplus.dif
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Data class for
@@ -14,7 +15,7 @@ data class ConstraintFilter(
     @SerialName("format")
     val format: String? = null,
     @SerialName("const")
-    val const: String? = null,
+    val const: JsonPrimitive? = null,
     @SerialName("pattern")
     val pattern: String? = null,
     @SerialName("exclusiveMinimum")
