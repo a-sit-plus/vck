@@ -1,6 +1,5 @@
 package at.asitplus.openid
 
-import at.asitplus.openid.OpenIdConstants
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -19,12 +18,4 @@ data class CredentialRequestProof(
     @SerialName("jwt")
     val jwt: String? = null,
 
-    /**
-     * OID4VCI: A CWT (RFC8392) is used as proof of possession. When [proofType] is `cwt`, a proof object MUST include
-     * a `cwt` claim containing a CWT defined in Section 7.2.1.3.
-     *
-     * Removed in OID4VCI Draft 14, kept here for a bit of backwards-compatibility
-     */
-    @SerialName("cwt")
-    val cwt: String? = null,
-)
+    )

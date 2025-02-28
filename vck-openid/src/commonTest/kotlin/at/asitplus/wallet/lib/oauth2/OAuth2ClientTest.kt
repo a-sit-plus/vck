@@ -1,12 +1,11 @@
 package at.asitplus.wallet.lib.oauth2
 
+import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.AuthorizationDetails
 import at.asitplus.openid.OidcUserInfo
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
-import at.asitplus.wallet.lib.openid.DummyOAuth2DataProvider
-import at.asitplus.wallet.lib.oidvci.CredentialAuthorizationServiceStrategy
-import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -17,40 +16,52 @@ import kotlinx.serialization.json.JsonObject
 
 class OAuth2ClientTest : FunSpec({
 
-    lateinit var server: SimpleAuthorizationService
+    lateinit var scope: String
     lateinit var client: OAuth2Client
+    lateinit var user: OidcUserInfoExtended
+    lateinit var server: SimpleAuthorizationService
 
     beforeEach {
+        scope = randomString()
         client = OAuth2Client()
+        user = OidcUserInfoExtended(OidcUserInfo(randomString()), JsonObject(mapOf()))
         server = SimpleAuthorizationService(
-            strategy = CredentialAuthorizationServiceStrategy(
-                DummyOAuth2DataProvider,
-                setOf(ConstantIndex.AtomicAttribute2023, MobileDrivingLicenceScheme)
-            ),
+            strategy = object : AuthorizationServiceStrategy {
+                override suspend fun loadUserInfo(
+                    request: AuthenticationRequestParameters,
+                    code: String,
+                ): OidcUserInfoExtended? = user
+
+                override fun filterAuthorizationDetails(authorizationDetails: Set<AuthorizationDetails>): Set<AuthorizationDetails> =
+                    setOf()
+
+                override fun filterScope(scope: String): String? = scope
+
+            },
         )
     }
 
     test("process with pre-authorized code") {
-        val user = OidcUserInfoExtended(OidcUserInfo("sub"), JsonObject(mapOf()))
         val preAuth = server.providePreAuthorizedCode(user)
             .shouldNotBeNull()
         val state = uuid4().toString()
         val tokenRequest = client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth),
+            scope = scope
         )
         val token = server.token(tokenRequest).getOrThrow()
         token.authorizationDetails.shouldBeNull()
     }
 
     test("process with pre-authorized code, can't use it twice") {
-        val user = OidcUserInfoExtended(OidcUserInfo("sub"), JsonObject(mapOf()))
         val preAuth = server.providePreAuthorizedCode(user)
             .shouldNotBeNull()
         val state = uuid4().toString()
         val tokenRequest = client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.PreAuthCode(preAuth),
+            scope = scope
         )
         server.token(tokenRequest).isSuccess shouldBe true
         server.token(tokenRequest).isFailure shouldBe true
@@ -69,6 +80,7 @@ class OAuth2ClientTest : FunSpec({
         val tokenRequest = client.createTokenRequestParameters(
             state = state,
             authorization = OAuth2Client.AuthorizationForToken.Code(code),
+            scope = scope
         )
         val token = server.token(tokenRequest).getOrThrow()
         token.authorizationDetails.shouldBeNull()

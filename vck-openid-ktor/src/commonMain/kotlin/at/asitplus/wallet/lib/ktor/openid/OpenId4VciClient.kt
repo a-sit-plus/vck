@@ -3,7 +3,6 @@ package at.asitplus.wallet.lib.ktor.openid
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.jsonpath.core.NormalizedJsonPath
-import at.asitplus.jsonpath.core.NormalizedJsonPathSegment
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT
@@ -11,7 +10,7 @@ import at.asitplus.openid.OpenIdConstants.PARAMETER_PROMPT_LOGIN
 import at.asitplus.openid.OpenIdConstants.TOKEN_TYPE_DPOP
 import at.asitplus.signum.indispensable.josef.JsonWebAlgorithm
 import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.Holder
+import at.asitplus.wallet.lib.agent.Holder.StoreCredentialInput.*
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -20,7 +19,6 @@ import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oauth2.OAuth2Client.AuthorizationForToken
 import at.asitplus.wallet.lib.oidvci.*
-import at.asitplus.wallet.lib.oidvci.WalletService.CredentialRequestInput
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -44,7 +42,9 @@ import kotlin.time.Duration.Companion.minutes
 
 
 /**
- * Implements the client side of [OpenID for Verifiable Credential Issuance - draft 14](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html).
+ * Implements the client side of
+ * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
+ *  * , Draft 15, 2024-12-19.
  *
  * Supported features:
  *  * Pre-authorized grants
@@ -127,22 +127,36 @@ class OpenId4VciClient(
         supported.mapNotNull {
             CredentialIdentifierInfo(
                 credentialIdentifier = it.key,
-                attributes = it.value.resolveAttributes()
-                    ?: listOf(),
+                attributes = it.value.resolveAttributes() ?: listOf(),
                 supportedCredentialFormat = it.value
             )
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun SupportedCredentialFormat.resolveAttributes(): Collection<String>? =
-        (credentialDefinition?.credentialSubject?.keys
+        credentialDefinition?.credentialSubject?.keys
             ?: sdJwtClaims?.keys
-            ?: isoClaims?.flatMap { it.value.keys })
+            ?: isoClaims?.flatMap { it.value.keys }
+            ?: claimDescription?.let { it.map { it.path.filter { it != scope }.joinToString(".") } }
 
     private fun SupportedCredentialFormat.resolveCredentialScheme(): ConstantIndex.CredentialScheme? =
         (credentialDefinition?.types?.firstNotNullOfOrNull { AttributeIndex.resolveAttributeType(it) }
             ?: sdJwtVcType?.let { AttributeIndex.resolveSdJwtAttributeType(it) }
             ?: docType?.let { AttributeIndex.resolveIsoDoctype(it) })
+
+    @Deprecated(
+        "Removed in OID4VCI draft 15",
+        ReplaceWith("startProvisioningWithAuthRequest(credentialIssuer, credentialIdentifierInfo)")
+    )
+    suspend fun startProvisioningWithAuthRequest(
+        credentialIssuer: String,
+        credentialIdentifierInfo: CredentialIdentifierInfo,
+        requestedAttributes: Set<NormalizedJsonPath>?,
+    ) = startProvisioningWithAuthRequest(
+        credentialIssuer = credentialIssuer,
+        credentialIdentifierInfo = credentialIdentifierInfo
+    )
 
     /**
      * Starts the issuing process at [credentialIssuer]
@@ -150,7 +164,6 @@ class OpenId4VciClient(
     suspend fun startProvisioningWithAuthRequest(
         credentialIssuer: String,
         credentialIdentifierInfo: CredentialIdentifierInfo,
-        requestedAttributes: Set<NormalizedJsonPath>?,
     ): KmmResult<Unit> = catching {
         Napier.i("startProvisioningWithAuthRequest: $credentialIssuer with $credentialIdentifierInfo")
         // Load certificate, might trigger biometric prompt?
@@ -165,15 +178,9 @@ class OpenId4VciClient(
             .body<OAuth2AuthorizationServerMetadata>()
 
         val state = uuid4().toString()
-        // for now the attribute name is encoded at the first part
-        val requestedAttributeStrings = requestedAttributes
-            ?.map { (it.segments.first() as NormalizedJsonPathSegment.NameSegment).memberName }
-            ?.toSet()
-
         ProvisioningContext(
             state = state,
             credential = credentialIdentifierInfo,
-            requestedAttributes = requestedAttributeStrings,
             oauthMetadata = oauthMetadata,
             issuerMetadata = issuerMetadata
         ).let {
@@ -229,30 +236,15 @@ class OpenId4VciClient(
 
         val credentialScheme = context.credential.supportedCredentialFormat.resolveCredentialScheme()
             ?: throw Exception("Unknown credential scheme in ${context.credential}")
+
         postCredentialRequestAndStore(
             credentialEndpointUrl = context.issuerMetadata.credentialEndpointUrl,
-            input = tokenResponse.extractCredentialRequestInput(
-                credentialIdentifier = context.credential.credentialIdentifier,
-                requestedAttributes = context.requestedAttributes,
-                supportedCredentialFormat = context.credential.supportedCredentialFormat
-            ),
             tokenResponse = tokenResponse,
             credentialScheme = credentialScheme,
-            credentialIssuer = context.issuerMetadata.credentialIssuer
+            issuerMetadata = context.issuerMetadata,
+            credentialRepresentation = context.credential.supportedCredentialFormat.format.toRepresentation()
         )
     }
-
-    private fun TokenResponseParameters.extractCredentialRequestInput(
-        credentialIdentifier: String,
-        requestedAttributes: Set<String>?,
-        supportedCredentialFormat: SupportedCredentialFormat,
-    ): CredentialRequestInput =
-        authorizationDetails?.filterIsInstance<OpenIdAuthorizationDetails>()?.firstOrNull()?.let {
-            if (it.credentialConfigurationId != null)
-                CredentialRequestInput.CredentialIdentifier(credentialIdentifier) // TODO What about requested attributes?
-            else
-                CredentialRequestInput.Format(supportedCredentialFormat, requestedAttributes)
-        } ?: CredentialRequestInput.Format(supportedCredentialFormat, requestedAttributes)
 
     @Throws(Exception::class)
     private suspend fun postToken(
@@ -295,37 +287,59 @@ class OpenId4VciClient(
     @Throws(Exception::class)
     private suspend fun postCredentialRequestAndStore(
         credentialEndpointUrl: String,
-        input: CredentialRequestInput,
         tokenResponse: TokenResponseParameters,
         credentialScheme: ConstantIndex.CredentialScheme,
-        credentialIssuer: String,
+        issuerMetadata: IssuerMetadata,
+        credentialRepresentation: ConstantIndex.CredentialRepresentation,
     ) {
-        Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl with $input")
-        val credentialRequest = oid4vciService.createCredentialRequest(
-            input = input,
-            clientNonce = tokenResponse.clientNonce,
-            credentialIssuer = credentialIssuer,
+        Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl with $tokenResponse")
+        val credentialRequests = oid4vciService.createCredentialRequest(
+            tokenResponse = tokenResponse,
+            metadata = issuerMetadata,
         ).getOrThrow()
 
         val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))
             jwsService.buildDPoPHeader(url = credentialEndpointUrl, accessToken = tokenResponse.accessToken)
         else null
 
-        val credentialResponse: CredentialResponseParameters = client.post(credentialEndpointUrl) {
-            contentType(ContentType.Application.Json)
-            setBody(credentialRequest)
-            headers {
-                append(HttpHeaders.Authorization, "${tokenResponse.tokenType} ${tokenResponse.accessToken}")
-                dpopHeader?.let { append(HttpHeaders.DPoP, it) }
-            }
-        }.body()
+        credentialRequests.forEach { credentialRequest ->
+            val credentialResponse: CredentialResponseParameters = client.post(credentialEndpointUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(credentialRequest)
+                headers {
+                    append(HttpHeaders.Authorization, "${tokenResponse.tokenType} ${tokenResponse.accessToken}")
+                    dpopHeader?.let { append(HttpHeaders.DPoP, it) }
+                }
+            }.body()
 
-        val storeCredentialInput = credentialResponse.credential
-            ?.toStoreCredentialInput(credentialResponse.format, credentialScheme)
-            ?: throw Exception("No credential was received")
-
-        holderAgent.storeCredential(storeCredentialInput).getOrThrow()
+            // TODO do we know the format? Because that parameter is removed in draft 15
+            credentialResponse.extractCredentials()
+                .ifEmpty { throw Exception("No credential was received") }
+                .forEach {
+                    val storeCredentialInput = it.toStoreCredentialInput(credentialRepresentation, credentialScheme)
+                    holderAgent.storeCredential(storeCredentialInput).getOrThrow()
+                }
+        }
     }
+
+    @Suppress("DEPRECATION")
+    private fun CredentialResponseParameters.extractCredentials(): List<String> =
+        credentials?.let { it.mapNotNull { it.credentialString } } ?: listOfNotNull(credential)
+
+    @Deprecated(
+        "Removed in OID4VCI draft 15",
+        ReplaceWith("loadCredentialWithOffer(credentialOffer, credentialIdentifierInfo, transactionCode)")
+    )
+    suspend fun loadCredentialWithOffer(
+        credentialOffer: CredentialOffer,
+        credentialIdentifierInfo: CredentialIdentifierInfo,
+        transactionCode: String? = null,
+        requestedAttributes: Set<NormalizedJsonPath>?,
+    ) = loadCredentialWithOffer(
+        credentialOffer = credentialOffer,
+        credentialIdentifierInfo = credentialIdentifierInfo,
+        transactionCode = transactionCode
+    )
 
     /**
      * Loads a user-selected credential with pre-authorized code from the OID4VCI credential issuer
@@ -339,7 +353,6 @@ class OpenId4VciClient(
         credentialOffer: CredentialOffer,
         credentialIdentifierInfo: CredentialIdentifierInfo,
         transactionCode: String? = null,
-        requestedAttributes: Set<NormalizedJsonPath>?,
     ): KmmResult<Unit> = catching {
         Napier.i("loadCredentialWithOffer: $credentialOffer")
         val credentialIssuer = credentialOffer.credentialIssuer
@@ -353,10 +366,6 @@ class OpenId4VciClient(
         val tokenEndpointUrl = oauthMetadata.tokenEndpoint
             ?: throw Exception("no tokenEndpoint in $oauthMetadata")
         val state = uuid4().toString()
-        // for now the attribute name is encoded at the first part
-        val requestedAttributeStrings = requestedAttributes
-            ?.map { (it.segments.first() as NormalizedJsonPathSegment.NameSegment).memberName }
-            ?.toSet()
 
         credentialOffer.grants?.preAuthorizedCode?.let {
             val credentialScheme = credentialIdentifierInfo.supportedCredentialFormat.resolveCredentialScheme()
@@ -366,7 +375,6 @@ class OpenId4VciClient(
                 credentialIdentifierInfo.credentialIdentifier,
                 issuerMetadata.authorizationServers
             )
-
             val tokenResponse = postToken(
                 tokenEndpointUrl = tokenEndpointUrl,
                 credentialIssuer = issuerMetadata.credentialIssuer,
@@ -382,20 +390,15 @@ class OpenId4VciClient(
 
             postCredentialRequestAndStore(
                 credentialEndpointUrl = issuerMetadata.credentialEndpointUrl,
-                input = tokenResponse.extractCredentialRequestInput(
-                    credentialIdentifier = credentialIdentifierInfo.credentialIdentifier,
-                    requestedAttributes = requestedAttributeStrings,
-                    supportedCredentialFormat = credentialIdentifierInfo.supportedCredentialFormat
-                ),
                 tokenResponse = tokenResponse,
                 credentialScheme = credentialScheme,
-                credentialIssuer = issuerMetadata.credentialIssuer
+                issuerMetadata = issuerMetadata,
+                credentialRepresentation = credentialIdentifierInfo.supportedCredentialFormat.format.toRepresentation()
             )
         } ?: credentialOffer.grants?.authorizationCode?.let {
             ProvisioningContext(
                 state = state,
                 credential = credentialIdentifierInfo,
-                requestedAttributes = requestedAttributeStrings,
                 oauthMetadata = oauthMetadata,
                 issuerMetadata = issuerMetadata
             ).let {
@@ -425,28 +428,15 @@ class OpenId4VciClient(
     @Suppress("DEPRECATION")
     @Throws(Exception::class)
     private fun String.toStoreCredentialInput(
-        format: CredentialFormatEnum?,
+        credentialRepresentation: ConstantIndex.CredentialRepresentation,
         credentialScheme: ConstantIndex.CredentialScheme,
-    ) = when (format) {
-        CredentialFormatEnum.JWT_VC -> Holder.StoreCredentialInput.Vc(this, credentialScheme)
-
-        CredentialFormatEnum.VC_SD_JWT,
-        CredentialFormatEnum.DC_SD_JWT,
-            -> Holder.StoreCredentialInput.SdJwt(this, credentialScheme)
-
-        CredentialFormatEnum.MSO_MDOC -> kotlin.runCatching { decodeToByteArray(Base64()) }.getOrNull()
+    ) = when (credentialRepresentation) {
+        ConstantIndex.CredentialRepresentation.PLAIN_JWT -> Vc(this, credentialScheme)
+        ConstantIndex.CredentialRepresentation.SD_JWT -> SdJwt(this, credentialScheme)
+        ConstantIndex.CredentialRepresentation.ISO_MDOC -> runCatching { decodeToByteArray(Base64()) }.getOrNull()
             ?.let { IssuerSigned.deserialize(it) }?.getOrNull()
-            ?.let { Holder.StoreCredentialInput.Iso(it, credentialScheme) }
+            ?.let { Iso(it, credentialScheme) }
             ?: throw Exception("Invalid credential format: $this")
-
-        else -> {
-            if (contains("~")) {
-                Holder.StoreCredentialInput.SdJwt(this, credentialScheme)
-            } else runCatching { decodeToByteArray(Base64()) }.getOrNull()
-                ?.let { IssuerSigned.deserialize(it) }?.getOrNull()
-                ?.let { Holder.StoreCredentialInput.Iso(it, credentialScheme) }
-                ?: Holder.StoreCredentialInput.Vc(this, credentialScheme)
-        }
     }
 
     @Throws(Exception::class)
@@ -540,7 +530,6 @@ class OpenId4VciClient(
 data class ProvisioningContext(
     val state: String,
     val credential: CredentialIdentifierInfo,
-    val requestedAttributes: Set<String>?,
     val oauthMetadata: OAuth2AuthorizationServerMetadata,
     val issuerMetadata: IssuerMetadata,
 )

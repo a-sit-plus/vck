@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MDOC
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidvci.*
 import io.github.aakira.napier.Napier
@@ -47,7 +48,6 @@ class OpenId4VciClientTest : FunSpec() {
             cryptoService = DefaultCryptoService(keyMaterial)
         }
 
-
         test("loadEuPidCredentialSdJwt") {
             runTest {
                 val (client, credentialIssuer) = setup(
@@ -67,7 +67,6 @@ class OpenId4VciClientTest : FunSpec() {
                 client.startProvisioningWithAuthRequest(
                     credentialIssuer = "http://localhost",
                     credentialIdentifierInfo = selectedCredential,
-                    requestedAttributes = null,
                 ).apply {
                     this.isSuccess shouldBe true
                 }
@@ -93,7 +92,7 @@ class OpenId4VciClientTest : FunSpec() {
                     .first { it.supportedCredentialFormat.format == CredentialFormatEnum.MSO_MDOC }
 
                 val offer = credentialIssuer.credentialOfferWithPreAuthnForUser(dummyUser())
-                client.loadCredentialWithOffer(offer, selectedCredential, null, null).apply {
+                client.loadCredentialWithOffer(offer, selectedCredential, null).apply {
                     this.isSuccess shouldBe true
                 }
                 assertCorrectCredentialIssued()
@@ -169,7 +168,14 @@ class OpenId4VciClientTest : FunSpec() {
         }
 
         override suspend fun storeCredential(issuerSigned: IssuerSigned, scheme: ConstantIndex.CredentialScheme) =
-            SubjectCredentialStore.StoreEntry.Iso(issuerSigned, scheme.schemaUri)
+            SubjectCredentialStore.StoreEntry.Iso(issuerSigned, scheme.schemaUri).also {
+                if (expectedAttributes.all { attribute ->
+                        issuerSigned.namespaces?.values?.flatMap { it.entries }?.map { it.value }
+                            ?.any { it.elementIdentifier == attribute.key && it.elementValue == attribute.value } == true
+                    } && scheme == expectedScheme) {
+                    countdownLatch.unlock()
+                }
+            }
 
         override suspend fun getCredentials(credentialSchemes: Collection<ConstantIndex.CredentialScheme>?): KmmResult<List<SubjectCredentialStore.StoreEntry>> =
             KmmResult.success(listOf())
@@ -197,12 +203,23 @@ class OpenId4VciClientTest : FunSpec() {
             ): KmmResult<CredentialToBeIssued> = catching {
                 require(credentialScheme == scheme)
                 require(representation == representationToIssue)
-                CredentialToBeIssued.VcSd(
-                    attributesToIssue.map { ClaimToBeIssued(it.key, it.value) },
-                    Clock.System.now(),
-                    credentialScheme,
-                    subjectPublicKey
-                )
+                var digestId = 0u
+                when (representation) {
+                    ConstantIndex.CredentialRepresentation.PLAIN_JWT -> TODO()
+                    ConstantIndex.CredentialRepresentation.SD_JWT -> CredentialToBeIssued.VcSd(
+                        attributesToIssue.map { ClaimToBeIssued(it.key, it.value) },
+                        Clock.System.now(),
+                        credentialScheme,
+                        subjectPublicKey
+                    )
+                    ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
+                        attributesToIssue.map { IssuerSignedItem(digestId++, Random.nextBytes(32), it.key, it.value) },
+                        Clock.System.now(),
+                        credentialScheme,
+                        subjectPublicKey
+                    )
+                }
+
             }
         }
         val credentialSchemes = setOf(EuPidScheme)
@@ -221,7 +238,7 @@ class OpenId4VciClientTest : FunSpec() {
         )
         val credentialIssuer = CredentialIssuer(
             authorizationService = authorizationService,
-            issuer = IssuerAgent(),
+            issuer = IssuerAgent(EphemeralKeyWithSelfSignedCert()),
             credentialSchemes = credentialSchemes,
             credentialProvider = credentialProvider,
             publicContext = publicContext,

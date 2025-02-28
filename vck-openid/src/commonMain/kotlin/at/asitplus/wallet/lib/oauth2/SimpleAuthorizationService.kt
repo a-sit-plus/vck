@@ -20,7 +20,7 @@ import kotlin.time.Duration.Companion.seconds
  *
  * Implemented from
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- * , Draft 14, 2024-08-21.
+ * , Draft 15, 2024-12-19.
  */
 class SimpleAuthorizationService(
     /**
@@ -79,6 +79,7 @@ class SimpleAuthorizationService(
      * code from [codeService].
      */
     suspend fun authorize(request: AuthenticationRequestParameters) = catching {
+        Napier.i("authorize called with $request")
         // TODO Need to store the `scope` or `authorization_details`, i.e. may respond with `invalid_scope` here!
         if (request.redirectUrl == null)
             throw OAuth2Exception(Errors.INVALID_REQUEST, "redirect_uri not set")
@@ -113,6 +114,8 @@ class SimpleAuthorizationService(
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun token(params: TokenRequestParameters) = catching {
+        Napier.i("token called with $params")
+
         val userInfo: OidcUserInfoExtended = params.loadUserInfo()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "could not load user info for $params")
                 .also { Napier.w("token: could not load user info for $params}") }
@@ -123,20 +126,37 @@ class SimpleAuthorizationService(
             }
         }
 
-        val filteredAuthorizationDetails = params.authorizationDetails
-            ?.let { strategy.filterAuthorizationDetails(it) }
-
-        TokenResponseParameters(
+        val response = TokenResponseParameters(
             accessToken = tokenService.provideNonce().also {
                 // TODO Also store the scope values or authorization details associated with that access token,
                 // so it can be verified when issuing a credential
+                // e.g. OID4VCI 8.2.
+                // The corresponding object in the credential_configurations_supported map MUST contain one of the
+                // value(s) used in the scope parameter in the Authorization Request.
                 accessTokenToUserInfoStore.put(it, userInfo)
             },
             tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
             expires = 3600.seconds,
             clientNonce = clientNonceService.provideNonce(),
-            authorizationDetails = filteredAuthorizationDetails
-        ).also { Napier.i("token returns $it") }
+        )
+
+        if (params.authorizationDetails != null) {
+            val filtered = strategy.filterAuthorizationDetails(params.authorizationDetails!!)
+            if (filtered.isEmpty())
+                throw OAuth2Exception(Errors.INVALID_REQUEST, "No matching authorization details")
+            response
+                .copy(authorizationDetails = filtered)
+                .also { Napier.i("token returns $it") }
+        } else if (params.scope != null) {
+            val scope = strategy.filterScope(params.scope!!)
+                ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "No matching scope")
+            response
+                .copy(scope = scope)
+                .also { Napier.i("token returns $it") }
+        } else {
+            Napier.w("token: request can not be parsed: $params")
+            throw OAuth2Exception(Errors.INVALID_REQUEST, "neither authorizationdetails nor scope in request")
+        }
     }
 
     private suspend fun validateCodeChallenge(code: String, codeVerifier: String) {
@@ -165,7 +185,7 @@ class SimpleAuthorizationService(
         }
 
         else -> throw OAuth2Exception(Errors.INVALID_REQUEST, "grant_type invalid")
-            .also { Napier.w("token: client did not provide valid grant_type: ${grantType}") }
+            .also { Napier.w("token: client did not provide valid grant_type: $grantType") }
     }
 
     override suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String =

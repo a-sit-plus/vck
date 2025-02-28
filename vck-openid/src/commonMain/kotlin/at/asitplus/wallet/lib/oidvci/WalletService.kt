@@ -18,7 +18,6 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsIso
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsSdJwt
 import at.asitplus.wallet.lib.data.ConstantIndex.supportsVcJwt
-import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -39,7 +38,7 @@ import kotlin.time.Duration.Companion.minutes
  *
  * Implemented from
  * [OpenID for Verifiable Credential Issuance](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
- * , Draft 14, 2024-08-21.
+ * , Draft 15, 2024-12-19.
  */
 class WalletService(
     /**
@@ -99,6 +98,7 @@ class WalletService(
          * List of attributes that shall be requested explicitly (selective disclosure),
          * or `null` to make no restrictions
          */
+        @Deprecated("Removed in OID4VCI draft 15")
         val requestedAttributes: Set<String>? = null,
         /**
          * Opaque value which will be returned by the OpenId Provider and also in [AuthnResponseResult]
@@ -107,6 +107,7 @@ class WalletService(
         /**
          * Modify clock for testing specific scenarios
          */
+        @Deprecated("Not used in production code")
         val clock: Clock = Clock.System,
     )
 
@@ -158,9 +159,6 @@ class WalletService(
         OpenIdAuthorizationDetails(
             credentialConfigurationId = it,
             locations = authorizationServers,
-            // Not supporting different credential datasets for one credential configuration at the moment,
-            // so we'll just use the `credentialConfigurationId`, see OID4VCI 6.2
-            credentialIdentifiers = setOf(it)
         )
     }.toSet()
 
@@ -169,7 +167,7 @@ class WalletService(
      */
     fun buildScope(
         requestOptions: RequestOptions,
-        metadata: IssuerMetadata
+        metadata: IssuerMetadata,
     ) = metadata.supportedCredentialConfigurations?.values?.filter {
         it.format.toRepresentation() == requestOptions.representation
     }?.firstOrNull {
@@ -180,16 +178,24 @@ class WalletService(
         }
     }?.scope
 
+    @Suppress("DEPRECATION")
+    @Deprecated("Removed in OID4VCI draft 15, use createCredentialRequest with token response")
     sealed class CredentialRequestInput {
         /**
          * @param id from the token response, see [TokenResponseParameters.authorizationDetails]
          * and [OpenIdcredentialConfigurationId]
          */
+        @Deprecated("Removed in OID4VCI draft 15, use createCredentialRequest with token response")
         data class CredentialIdentifier(val id: String) : CredentialRequestInput()
+
+        @Deprecated("Removed in OID4VCI draft 15, use createCredentialRequest with token response")
         data class RequestOptions(val requestOptions: WalletService.RequestOptions) : CredentialRequestInput()
+
+        @Deprecated("Removed in OID4VCI draft 15, use createCredentialRequest with token response")
         data class Format(
             val supportedCredentialFormat: SupportedCredentialFormat,
-            val requestedAttributes: Set<String>? = null
+            @Deprecated("Removed in OID4VCI draft 15")
+            val requestedAttributes: Set<String>? = null,
         ) : CredentialRequestInput()
     }
 
@@ -198,7 +204,7 @@ class WalletService(
      * [IssuerMetadata.credentialEndpointUrl]).
      *
      * Also send along the [TokenResponseParameters.accessToken] from the token response in HTTP header `Authorization`
-     * as value `Bearer accessTokenValue` (depending on the [TokenResponseParameters.tokenType]).
+     * see [TokenResponseParameters.toHttpHeaderValue].
      *
      * Be sure to include a DPoP header if [TokenResponseParameters.tokenType] is `DPoP`,
      * see [JwsService.buildDPoPHeader].
@@ -207,40 +213,67 @@ class WalletService(
      *
      * Sample ktor code:
      * ```
-     * val token = ...
+     * val tokenResponse = ...
      * val credentialRequest = client.createCredentialRequest(
-     *     requestOptions = requestOptions,
-     *     clientNonce = token.clientNonce,
+     *     tokenResponse = tokenResponse,
      *     credentialIssuer = issuerMetadata.credentialIssuer
      * ).getOrThrow()
      *
      * val credentialResponse = httpClient.post(issuerMetadata.credentialEndpointUrl) {
      *     setBody(credentialRequest)
      *     headers {
-     *         append(HttpHeaders.Authorization, "Bearer ${token.accessToken}")
+     *         append(HttpHeaders.Authorization, tokenResponse.toHttpHeaderValue())
      *     }
      * }
      * ```
      *
-     * @param input which credential to request, see subclasses of [CredentialRequestInput]
-     * @param clientNonce `c_nonce` from the token response, optional string, see [TokenResponseParameters.clientNonce]
-     * @param credentialIssuer `credential_issuer` from the metadata, see [IssuerMetadata.credentialIssuer]
+     * @param tokenResponse from the authorization server token endpoint
+     * @param metadata the issuer's metadata, see [IssuerMetadata]
      */
+    suspend fun createCredentialRequest(
+        tokenResponse: TokenResponseParameters,
+        metadata: IssuerMetadata,
+        clock: Clock = Clock.System,
+    ): KmmResult<Collection<CredentialRequestParameters>> = catching {
+        val requests = tokenResponse.authorizationDetails?.let {
+            it.filterIsInstance<OpenIdAuthorizationDetails>().flatMap {
+                require(it.credentialIdentifiers != null) { "credential_identifiers are null" }
+                it.credentialIdentifiers!!.map {
+                    CredentialRequestParameters(credentialIdentifier = it)
+                }
+            }
+        } ?: tokenResponse.scope?.let { scopes ->
+            scopes.trim().split(" ").map { scope ->
+                val ccId = metadata.supportedCredentialConfigurations
+                    ?.entries?.firstOrNull { it.value.scope == scope }?.key
+                    ?: throw IllegalArgumentException("Can't find scope '$scope' from supported credential configurations")
+                CredentialRequestParameters(credentialConfigurationId = ccId)
+            }.toSet()
+        } ?: throw IllegalArgumentException("Can't parse tokenResponse: $tokenResponse")
+        requests.map {
+            it.copy(proof = createCredentialRequestProof(tokenResponse.clientNonce, metadata.credentialIssuer, clock))
+        }.also {
+            Napier.i("createCredentialRequest returns $it")
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    @Deprecated("Removed in OID4VCI draft 15", ReplaceWith("createCredentialRequest(tokenResponse, credentialIssuer)"))
     suspend fun createCredentialRequest(
         input: CredentialRequestInput,
         clientNonce: String?,
         credentialIssuer: String?,
+        clock: Clock = Clock.System,
     ): KmmResult<CredentialRequestParameters> = catching {
-        val clock = (input as? CredentialRequestInput.RequestOptions)?.requestOptions?.clock ?: Clock.System
         when (input) {
             is CredentialRequestInput.CredentialIdentifier ->
                 CredentialRequestParameters(credentialIdentifier = input.id)
 
             is CredentialRequestInput.Format ->
-                input.supportedCredentialFormat.toCredentialRequestParameters(input.requestedAttributes)
+                input.supportedCredentialFormat.toCredentialRequestParameters()
 
             is CredentialRequestInput.RequestOptions -> with(input.requestOptions) {
-                credentialScheme.toCredentialRequestParameters(representation, requestedAttributes)
+                credentialScheme.toCredentialRequestParameters(representation)
             }
         }.copy(
             proof = createCredentialRequestProof(clientNonce, credentialIssuer, clock)
@@ -272,74 +305,30 @@ class WalletService(
         ).getOrThrow().serialize()
     )
 
-    @Suppress("DEPRECATION")
     private fun ConstantIndex.CredentialScheme.toCredentialRequestParameters(
         credentialRepresentation: CredentialRepresentation,
-        requestedAttributes: Set<String>?,
     ) = when {
         credentialRepresentation == PLAIN_JWT && supportsVcJwt -> CredentialRequestParameters(
-            format = CredentialFormatEnum.JWT_VC,
-            credentialDefinition = SupportedCredentialFormatDefinition(
-                types = setOf(VERIFIABLE_CREDENTIAL, vcType!!),
-            ),
+            credentialConfigurationId = toCredentialIdentifier(credentialRepresentation)
         )
 
-        // TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
         credentialRepresentation == SD_JWT && supportsSdJwt -> CredentialRequestParameters(
-            format = CredentialFormatEnum.VC_SD_JWT,
-            sdJwtVcType = sdJwtType!!,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtType!!),
+            credentialConfigurationId = toCredentialIdentifier(credentialRepresentation)
         )
 
         credentialRepresentation == ISO_MDOC && supportsIso -> CredentialRequestParameters(
-            format = CredentialFormatEnum.MSO_MDOC,
-            docType = isoDocType,
-            claims = requestedAttributes?.toRequestedClaimsIso(isoNamespace!!),
+            credentialConfigurationId = toCredentialIdentifier(credentialRepresentation)
         )
 
         else -> throw IllegalArgumentException("format $credentialRepresentation not applicable to $this")
     }
 
-    @Suppress("DEPRECATION")
-    private fun SupportedCredentialFormat.toCredentialRequestParameters(
-        requestedAttributes: Set<String>?,
-    ) = when (format) {
-        CredentialFormatEnum.JWT_VC -> CredentialRequestParameters(
-            format = format,
-            credentialDefinition = credentialDefinition,
+    private fun SupportedCredentialFormat.toCredentialRequestParameters() =
+        CredentialRequestParameters(
+            credentialConfigurationId = scope
         )
-
-        CredentialFormatEnum.DC_SD_JWT,
-        CredentialFormatEnum.VC_SD_JWT -> CredentialRequestParameters(
-            format = format,
-            sdJwtVcType = sdJwtVcType,
-            claims = requestedAttributes?.toRequestedClaimsSdJwt(sdJwtVcType!!),
-        )
-
-        CredentialFormatEnum.MSO_MDOC -> CredentialRequestParameters(
-            format = format,
-            docType = docType,
-            claims = requestedAttributes?.toRequestedClaimsIso(isoClaims?.keys?.firstOrNull() ?: docType!!),
-        )
-
-        else -> throw IllegalArgumentException("format $format not applicable to create credential request")
-    }
 }
 
-private fun Collection<String>.toRequestedClaimsSdJwt(sdJwtType: String) =
-    mapOf(sdJwtType to this.associateWith { RequestedCredentialClaimSpecification() })
-
-private fun Collection<String>.toRequestedClaimsIso(isoNamespace: String) =
-    mapOf(isoNamespace to this.associateWith { RequestedCredentialClaimSpecification() })
-
-
-// TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
-@Suppress("DEPRECATION")
-private fun CredentialRepresentation.toFormat() = when (this) {
-    PLAIN_JWT -> CredentialFormatEnum.JWT_VC
-    SD_JWT -> CredentialFormatEnum.VC_SD_JWT
-    ISO_MDOC -> CredentialFormatEnum.MSO_MDOC
-}
 
 /**
  * To be set as header `DPoP` in making request to [url],
@@ -348,7 +337,7 @@ private fun CredentialRepresentation.toFormat() = when (this) {
 suspend fun JwsService.buildDPoPHeader(
     url: String,
     httpMethod: String = "POST",
-    accessToken: String? = null
+    accessToken: String? = null,
 ) = createSignedJwsAddingParams(
     header = JwsHeader(
         algorithm = algorithm,
@@ -428,7 +417,7 @@ suspend fun JwsService.buildClientAttestationPoPJwt(
     audience: String,
     nonce: String? = null,
     lifetime: Duration = 10.minutes,
-    clockSkew: Duration = 5.minutes
+    clockSkew: Duration = 5.minutes,
 ) = createSignedJwsAddingParams(
     header = JwsHeader(
         algorithm = algorithm,
