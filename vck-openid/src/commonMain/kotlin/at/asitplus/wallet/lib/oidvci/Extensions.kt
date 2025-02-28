@@ -108,7 +108,7 @@ fun CredentialScheme.toCredentialIdentifier(rep: CredentialRepresentation) = whe
  * `AtomicAttribute2023#jwt_vc_json`
  */
 private fun encodeToCredentialIdentifier(type: String, format: CredentialFormatEnum) =
-    "$type#${format.text}"
+    "${type.replace(" ", "_")}#${format.text}"
 
 /**
  * Reverse functionality of [encodeToCredentialIdentifier], which can also handle ISO namespaces,
@@ -121,6 +121,8 @@ fun decodeFromCredentialIdentifier(input: String): Pair<CredentialScheme, Creden
         val vcTypeOrSdJwtType = input.substringBeforeLast("#")
         val credentialScheme = AttributeIndex.resolveSdJwtAttributeType(vcTypeOrSdJwtType)
             ?: AttributeIndex.resolveAttributeType(vcTypeOrSdJwtType)
+            ?: AttributeIndex.resolveSdJwtAttributeType(vcTypeOrSdJwtType.replace("_", " "))
+            ?: AttributeIndex.resolveAttributeType(vcTypeOrSdJwtType.replace("_", " "))
             ?: return null
         val format = CredentialFormatEnum.parse(input.substringAfterLast("#"))
             ?: return null

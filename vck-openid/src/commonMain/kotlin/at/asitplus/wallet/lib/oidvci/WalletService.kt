@@ -243,10 +243,10 @@ class WalletService(
                 }
             }
         } ?: tokenResponse.scope?.let { scopes ->
-            scopes.split(" ").map { scope ->
+            scopes.trim().split(" ").map { scope ->
                 val ccId = metadata.supportedCredentialConfigurations
                     ?.entries?.firstOrNull { it.value.scope == scope }?.key
-                    ?: throw IllegalArgumentException("Can't find scope $scope from supported credential configurations")
+                    ?: throw IllegalArgumentException("Can't find scope '$scope' from supported credential configurations")
                 CredentialRequestParameters(credentialConfigurationId = ccId)
             }.toSet()
         } ?: throw IllegalArgumentException("Can't parse tokenResponse: $tokenResponse")

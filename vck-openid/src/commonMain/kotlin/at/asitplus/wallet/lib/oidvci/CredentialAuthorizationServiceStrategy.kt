@@ -27,7 +27,7 @@ class CredentialAuthorizationServiceStrategy(
     override suspend fun loadUserInfo(request: AuthenticationRequestParameters, code: String) =
         dataProvider.loadUserInfo(request, code)
 
-    override fun filterScope(scope: String): String? = scope.split(" ")
+    override fun filterScope(scope: String): String? = scope.trim().split(" ")
         .mapNotNull { scope ->
             if (supportedCredentialSchemes.values.find { it.scope == scope } != null) scope
             else null

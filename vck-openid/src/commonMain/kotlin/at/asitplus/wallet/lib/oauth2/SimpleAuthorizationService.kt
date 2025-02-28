@@ -79,6 +79,7 @@ class SimpleAuthorizationService(
      * code from [codeService].
      */
     suspend fun authorize(request: AuthenticationRequestParameters) = catching {
+        Napier.i("authorize called with $request")
         // TODO Need to store the `scope` or `authorization_details`, i.e. may respond with `invalid_scope` here!
         if (request.redirectUrl == null)
             throw OAuth2Exception(Errors.INVALID_REQUEST, "redirect_uri not set")
@@ -113,6 +114,8 @@ class SimpleAuthorizationService(
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
     suspend fun token(params: TokenRequestParameters) = catching {
+        Napier.i("token called with $params")
+
         val userInfo: OidcUserInfoExtended = params.loadUserInfo()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "could not load user info for $params")
                 .also { Napier.w("token: could not load user info for $params}") }
