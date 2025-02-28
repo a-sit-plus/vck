@@ -2,11 +2,7 @@ package at.asitplus.wallet.lib.openid
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.RequestObjectParameters
-import at.asitplus.openid.RequestParameters
-import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.*
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
 import at.asitplus.wallet.lib.RemoteResourceRetrieverInput
@@ -59,6 +55,8 @@ class RequestParser(
             ?: catching {  // maybe it is already a JSON string
                 val params = vckJsonSerializer.decodeFromString(PolymorphicSerializer(RequestParameters::class), input)
                 matchRequestParameterCases(input, params)
+            }.onFailure {
+                Napier.d("parseRequestParameters: Failed for $input", it)
             }.getOrNull()
             ?: throw OAuth2Exception(OpenIdConstants.Errors.INVALID_REQUEST, "parse error")
                 .also { Napier.w("Could not parse authentication request: $input") }

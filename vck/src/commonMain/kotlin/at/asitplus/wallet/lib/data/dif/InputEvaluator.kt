@@ -77,7 +77,7 @@ internal fun JsonElement.satisfiesConstraintFilter(filter: ConstraintFilter): Bo
 
     filter.const?.let {
         val isMatch = runCatching {
-            it == (this as JsonPrimitive).content
+            it == this
         }.getOrDefault(false)
         if (!isMatch) {
             return false
