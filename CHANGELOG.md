@@ -23,6 +23,8 @@ Release 5.5.0:
    - In `IssuerMetadata`, set `scope` for `SupportedCredentialFormat` to a unique string (the credential configuration id)
    - Iron out details for filtering scope and authorization details in `SimpleAuthorizationService`
    - Remove proof type `cwt`, which has been removed from draft 14
+ - Update dependencies:
+   - Update `signum` to 3.14.0, supporting X.509 certificates in v1, v2 too
 
 Release 5.4.3:
  - Fix property names for serialized RQES data classes
