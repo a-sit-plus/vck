@@ -221,7 +221,8 @@ class OidvciCodeFlowTest : FreeSpec({
         val token = getToken(authorizationDetails)
 
         val credential = issuer.credential(
-            token.accessToken, client.createCredentialRequest(
+            token.accessToken,
+            client.createCredentialRequest(
                 tokenResponse = token,
                 metadata = issuer.metadata
             ).getOrThrow().first()
@@ -232,12 +233,58 @@ class OidvciCodeFlowTest : FreeSpec({
         val sdJwt = JwsSigned.deserialize<VerifiableCredentialSdJwt>(
             VerifiableCredentialSdJwt.serializer(),
             serializedCredential.substringBefore("~")
-        )
-            .getOrThrow().payload
+        ).getOrThrow().payload
 
         sdJwt.disclosureDigests
             .shouldNotBeNull()
             .size shouldBeGreaterThan 1
+    }
+
+    "request credential in SD-JWT, using scope in token, but authorization details in credential request" {
+        val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
+        val requestOptions = RequestOptions(AtomicAttribute2023, SD_JWT)
+        val scope = client.buildScope(requestOptions, issuer.metadata).shouldNotBeNull()
+        val token = getToken(scope)
+
+        shouldThrow<OAuth2Exception> {
+            issuer.credential(
+                token.accessToken,
+                client.createCredentialRequest(
+                    tokenResponse = token,
+                    metadata = issuer.metadata
+                ).getOrThrow().first().copy(
+                    // enforces error on client, setting credential_identifier, although access token was for scope
+                    // (which should be credential_configuration_id in credential request)
+                    credentialIdentifier = credentialIdToRequest,
+                    credentialConfigurationId = null,
+                )
+            ).getOrThrow()
+        }
+    }
+
+    "request credential in SD-JWT, using authorization details in token, but scope in credential request" {
+        val scope = client.buildScope(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata).shouldNotBeNull()
+        val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
+        val authorizationDetails = client.buildAuthorizationDetails(
+            credentialConfigurationId = credentialIdToRequest,
+            authorizationServers = issuer.metadata.authorizationServers
+        )
+        val token = getToken(authorizationDetails)
+
+        shouldThrow<OAuth2Exception> {
+            issuer.credential(
+                token.accessToken,
+                client.createCredentialRequest(
+                    tokenResponse = token,
+                    metadata = issuer.metadata
+                ).getOrThrow().first().copy(
+                    // enforces error on client, setting credential_configuration_id, although access token was for
+                    // authorization details (which should be credential_identifier in credential request)
+                    credentialConfigurationId = scope,
+                    credentialIdentifier = null
+                )
+            ).getOrThrow()
+        }
     }
 
     "request credential in ISO MDOC, using scope" {

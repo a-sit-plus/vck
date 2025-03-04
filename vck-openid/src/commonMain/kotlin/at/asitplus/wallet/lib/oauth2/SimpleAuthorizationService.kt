@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.Errors.INVALID_TOKEN
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
 import at.asitplus.wallet.lib.oidvci.*
@@ -55,7 +56,7 @@ class SimpleAuthorizationService(
     private val tokenEndpointPath: String = "/token",
     private val codeToCodeChallengeStore: MapStore<String, String> = DefaultMapStore(),
     private val codeToUserInfoStore: MapStore<String, OidcUserInfoExtended> = DefaultMapStore(),
-    private val accessTokenToUserInfoStore: MapStore<String, OidcUserInfoExtended> = DefaultMapStore(),
+    private val accessTokenToUserInfoStore: MapStore<String, IssuedAccessToken> = DefaultMapStore(),
 ) : OAuth2AuthorizationServerAdapter {
 
     override val supportsClientNonce: Boolean = true
@@ -127,14 +128,7 @@ class SimpleAuthorizationService(
         }
 
         val response = TokenResponseParameters(
-            accessToken = tokenService.provideNonce().also {
-                // TODO Also store the scope values or authorization details associated with that access token,
-                // so it can be verified when issuing a credential
-                // e.g. OID4VCI 8.2.
-                // The corresponding object in the credential_configurations_supported map MUST contain one of the
-                // value(s) used in the scope parameter in the Authorization Request.
-                accessTokenToUserInfoStore.put(it, userInfo)
-            },
+            accessToken = tokenService.provideNonce(),
             tokenType = OpenIdConstants.TOKEN_TYPE_BEARER,
             expires = 3600.seconds,
             clientNonce = clientNonceService.provideNonce(),
@@ -146,16 +140,28 @@ class SimpleAuthorizationService(
                 throw OAuth2Exception(Errors.INVALID_REQUEST, "No matching authorization details")
             response
                 .copy(authorizationDetails = filtered)
-                .also { Napier.i("token returns $it") }
+                .also {
+                    accessTokenToUserInfoStore.put(
+                        response.accessToken,
+                        IssuedAccessToken(response.accessToken, userInfo, filtered)
+                    )
+                    Napier.i("token returns $it")
+                }
         } else if (params.scope != null) {
             val scope = strategy.filterScope(params.scope!!)
                 ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "No matching scope")
             response
                 .copy(scope = scope)
-                .also { Napier.i("token returns $it") }
+                .also {
+                    accessTokenToUserInfoStore.put(
+                        response.accessToken,
+                        IssuedAccessToken(response.accessToken, userInfo, scope)
+                    )
+                    Napier.i("token returns $it")
+                }
         } else {
             Napier.w("token: request can not be parsed: $params")
-            throw OAuth2Exception(Errors.INVALID_REQUEST, "neither authorizationdetails nor scope in request")
+            throw OAuth2Exception(Errors.INVALID_REQUEST, "neither authorization details nor scope in request")
         }
     }
 
@@ -196,16 +202,49 @@ class SimpleAuthorizationService(
     override suspend fun verifyClientNonce(nonce: String): Boolean =
         clientNonceService.verifyNonce(nonce)
 
-    override suspend fun getUserInfo(accessToken: String): KmmResult<OidcUserInfoExtended> = catching {
-        if (!tokenService.verifyNonce(accessToken)) {
-            throw OAuth2Exception(Errors.INVALID_TOKEN, "access token not valid: $accessToken")
-                .also { Napier.w("getUserInfo: client did not provide correct token: $accessToken") }
-        }
-        val result = accessTokenToUserInfoStore.get(accessToken)
-            ?: throw OAuth2Exception(Errors.INVALID_TOKEN, "could not load user info for access token $accessToken")
-                .also { Napier.w("getUserInfo: could not load user info for $accessToken") }
+    /**
+     * Get the [OidcUserInfoExtended] (holding [at.asitplus.openid.OidcUserInfo]) associated with the [accessToken],
+     * that was created before at the Authorization Server.
+     *
+     * Also validates that the client has really requested a credential (either identified by [credentialIdentifier]
+     * or [credentialConfigurationId]) that has been allowed by this access token issued in [token].
+     */
+    override suspend fun getUserInfo(
+        accessToken: String,
+        credentialIdentifier: String?,
+        credentialConfigurationId: String?,
+    ): KmmResult<OidcUserInfoExtended> = catching {
+        if (!tokenService.verifyNonce(accessToken))
+            throw OAuth2Exception(INVALID_TOKEN, "access token not valid: $accessToken")
 
-        result
+        val result = accessTokenToUserInfoStore.get(accessToken)
+            ?: throw OAuth2Exception(INVALID_TOKEN, "could not load user info for access token $accessToken")
+        if (credentialIdentifier != null) {
+            if (result.authorizationDetails == null)
+                throw OAuth2Exception(
+                    INVALID_TOKEN,
+                    "no authorization details stored for access token $accessToken"
+                )
+            val validCredentialIdentifiers = result.authorizationDetails.flatMap { it.credentialIdentifiers ?: setOf() }
+            if (!validCredentialIdentifiers.contains(credentialIdentifier))
+                throw OAuth2Exception(
+                    INVALID_TOKEN,
+                    "credential_identifier expected to be in ${validCredentialIdentifiers}, but got $credentialIdentifier"
+                )
+        } else if (credentialConfigurationId != null) {
+            if (result.scope == null)
+                throw OAuth2Exception(INVALID_TOKEN, "no scope stored for access token $accessToken")
+            if (!result.scope.contains(credentialConfigurationId))
+                throw OAuth2Exception(
+                    INVALID_TOKEN,
+                    "credential_configuration_id expected to be ${result.scope}, but got $credentialConfigurationId"
+                )
+
+        } else {
+            throw OAuth2Exception(INVALID_TOKEN, "neither credential_identifier nor credential_configuration_id set")
+        }
+
+        result.userInfoExtended
             .also { Napier.v("getUserInfo returns $it") }
     }
 

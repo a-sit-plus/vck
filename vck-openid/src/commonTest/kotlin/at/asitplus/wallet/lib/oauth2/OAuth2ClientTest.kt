@@ -1,9 +1,6 @@
 package at.asitplus.wallet.lib.oauth2
 
-import at.asitplus.openid.AuthenticationRequestParameters
-import at.asitplus.openid.AuthorizationDetails
-import at.asitplus.openid.OidcUserInfo
-import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.*
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import com.benasher44.uuid.uuid4
@@ -32,7 +29,7 @@ class OAuth2ClientTest : FunSpec({
                     code: String,
                 ): OidcUserInfoExtended? = user
 
-                override fun filterAuthorizationDetails(authorizationDetails: Set<AuthorizationDetails>): Set<AuthorizationDetails> =
+                override fun filterAuthorizationDetails(authorizationDetails: Set<AuthorizationDetails>): Set<OpenIdAuthorizationDetails> =
                     setOf()
 
                 override fun filterScope(scope: String): String? = scope

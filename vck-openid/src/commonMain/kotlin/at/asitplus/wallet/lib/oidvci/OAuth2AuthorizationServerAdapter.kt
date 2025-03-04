@@ -26,7 +26,7 @@ interface OAuth2AuthorizationServerAdapter {
      * Get the [OidcUserInfoExtended] (holding [at.asitplus.openid.OidcUserInfo]) associated with the [accessToken],
      * that was created before at the Authorization Server.
      */
-    suspend fun getUserInfo(accessToken: String): KmmResult<OidcUserInfoExtended>
+    suspend fun getUserInfo(accessToken: String, credentialIdentifier: String?, credentialConfigurationId: String?): KmmResult<OidcUserInfoExtended>
 
     /**
      * Whether this authorization server includes [at.asitplus.openid.TokenResponseParameters.clientNonce] it its

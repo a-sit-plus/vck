@@ -107,7 +107,7 @@ class CredentialIssuer(
      * Offer all [credentialSchemes] to clients.
      *
      * Callers need to encode this in [CredentialOfferUrlParameters], and offer the resulting URL to clients,
-     * i.e. by displaying a QR Code that can be scanned with wallet appps.
+     * i.e. by displaying a QR Code that can be scanned with wallet apps.
      *
      * @param user used to create the credential when the wallet app requests the credential
      */
@@ -142,9 +142,14 @@ class CredentialIssuer(
     ): KmmResult<CredentialResponseParameters> = catching {
         val subjectPublicKey = validateProofExtractSubjectPublicKey(params)
 
-        val userInfo = authorizationService.getUserInfo(accessToken).getOrNull()
-            ?: throw OAuth2Exception(Errors.INVALID_TOKEN, "access token invalid: $accessToken")
-                .also { Napier.w("credential: client did not provide correct token: $accessToken") }
+        val userInfo = authorizationService.getUserInfo(
+            accessToken,
+            params.credentialIdentifier,
+            params.credentialConfigurationId
+        ).getOrElse {
+            Napier.w("credential: access token not valid", it)
+            throw it
+        }
 
         val (credentialScheme, representation) = params.format?.let { params.extractCredentialScheme(it) }
             ?: params.credentialIdentifier?.let { decodeFromCredentialIdentifier(it) }
