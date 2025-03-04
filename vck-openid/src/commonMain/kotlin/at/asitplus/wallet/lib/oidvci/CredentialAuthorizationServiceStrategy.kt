@@ -24,6 +24,13 @@ class CredentialAuthorizationServiceStrategy(
         .flatMap { it.toSupportedCredentialFormat().entries }
         .associate { it.key to it.value }
 
+    override fun validScopes(): String = supportedCredentialSchemes.map { it.value.scope }.joinToString(" ")
+
+    override fun validAuthorizationDetails(): Collection<OpenIdAuthorizationDetails> =
+        supportedCredentialSchemes.entries.map {
+            OpenIdAuthorizationDetails(credentialConfigurationId = it.key)
+        }
+
     override suspend fun loadUserInfo(request: AuthenticationRequestParameters, code: String) =
         dataProvider.loadUserInfo(request, code)
 
@@ -62,4 +69,19 @@ class CredentialAuthorizationServiceStrategy(
         } else {
             null
         }
+}
+
+/**
+ * Returns `true` if the [other] authorization detail is semantically the same,
+ * i.e. it has either the same [OpenIdAuthorizationDetails.credentialConfigurationId]
+ * or the same [OpenIdAuthorizationDetails.format] plus format-specific properties.
+ */
+fun OpenIdAuthorizationDetails.matches(other: OpenIdAuthorizationDetails): Boolean = when {
+    credentialConfigurationId != null -> other.credentialConfigurationId == credentialConfigurationId
+    format != null -> other.format == format
+            && other.docType == docType
+            && other.sdJwtVcType == sdJwtVcType
+            && other.credentialDefinition == credentialDefinition
+
+    else -> false
 }

@@ -1,9 +1,11 @@
 package at.asitplus.wallet.lib.oauth2
 
 import at.asitplus.openid.*
+import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.randomString
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import com.benasher44.uuid.uuid4
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -28,6 +30,10 @@ class OAuth2ClientTest : FunSpec({
                     request: AuthenticationRequestParameters,
                     code: String,
                 ): OidcUserInfoExtended? = user
+
+                override fun validScopes(): String = scope
+
+                override fun validAuthorizationDetails(): Collection<OpenIdAuthorizationDetails> = listOf()
 
                 override fun filterAuthorizationDetails(authorizationDetails: Set<AuthorizationDetails>): Set<OpenIdAuthorizationDetails> =
                     setOf()
@@ -68,6 +74,7 @@ class OAuth2ClientTest : FunSpec({
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,
+            scope = scope,
         )
         val authnResponse = server.authorize(authnRequest).getOrThrow()
             .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
@@ -81,6 +88,27 @@ class OAuth2ClientTest : FunSpec({
         )
         val token = server.token(tokenRequest).getOrThrow()
         token.authorizationDetails.shouldBeNull()
+    }
+
+    test("process with authorization code flow, authn request must contain scope from token request") {
+        val state = uuid4().toString()
+        val authnRequest = client.createAuthRequest(
+            state = state,
+            scope = scope,
+        )
+        val authnResponse = server.authorize(authnRequest).getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+        val code = authnResponse.params.code
+            .shouldNotBeNull()
+
+        val tokenRequest = client.createTokenRequestParameters(
+            state = state,
+            authorization = OAuth2Client.AuthorizationForToken.Code(code),
+            scope = scope.reversed() // invalid, not in authn request
+        )
+        shouldThrow<OAuth2Exception> {
+            server.token(tokenRequest).getOrThrow()
+        }
     }
 
 })

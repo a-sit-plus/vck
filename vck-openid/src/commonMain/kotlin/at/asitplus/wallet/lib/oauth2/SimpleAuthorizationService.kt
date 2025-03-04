@@ -54,8 +54,7 @@ class SimpleAuthorizationService(
      * to that URI (which starts with [publicContext]) to [token].
      */
     private val tokenEndpointPath: String = "/token",
-    private val codeToCodeChallengeStore: MapStore<String, String> = DefaultMapStore(),
-    private val codeToUserInfoStore: MapStore<String, OidcUserInfoExtended> = DefaultMapStore(),
+    private val codeToUserInfoStore: MapStore<String, IssuedCode> = DefaultMapStore(),
     private val accessTokenToUserInfoStore: MapStore<String, IssuedAccessToken> = DefaultMapStore(),
 ) : OAuth2AuthorizationServerAdapter {
 
@@ -81,30 +80,50 @@ class SimpleAuthorizationService(
      */
     suspend fun authorize(request: AuthenticationRequestParameters) = catching {
         Napier.i("authorize called with $request")
-        // TODO Need to store the `scope` or `authorization_details`, i.e. may respond with `invalid_scope` here!
+
         if (request.redirectUrl == null)
             throw OAuth2Exception(Errors.INVALID_REQUEST, "redirect_uri not set")
                 .also { Napier.w("authorize: client did not set redirect_uri in $request") }
+
+        if (request.scope != null) {
+            strategy.filterScope(request.scope!!)
+                ?: throw OAuth2Exception(Errors.INVALID_SCOPE, "No matching scope in ${request.scope}")
+                    .also { Napier.w("authorize: scope ${request.scope} does not contain a valid credential id") }
+        }
+
+        if (request.authorizationDetails != null) {
+            val filtered = strategy.filterAuthorizationDetails(request.authorizationDetails!!)
+            if (filtered.isEmpty()) {
+                throw OAuth2Exception(Errors.INVALID_REQUEST, "No matching authorization details")
+                Napier.w("authorize: authorization details not valid: ${request.authorizationDetails}")
+            }
+        }
 
         val code = codeService.provideCode().also { code ->
             val userInfo = strategy.loadUserInfo(request, code)
                 ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "Could not load user info for code=$code")
                     .also { Napier.w("authorize: could not load user info from $request") }
-            codeToUserInfoStore.put(code, userInfo)
+            codeToUserInfoStore.put(
+                code,
+                IssuedCode(
+                    code = code,
+                    userInfoExtended = userInfo,
+                    scope = request.scope,
+                    authorizationDetails = request.authorizationDetails,
+                    codeChallenge = request.codeChallenge
+                )
+            )
         }
-        val responseParams = AuthenticationResponseParameters(
+        val response = AuthenticationResponseParameters(
             code = code,
             state = request.state,
         )
-        request.codeChallenge?.let {
-            codeToCodeChallengeStore.put(code, it)
-        }
         // TODO Also implement POST?
         val url = URLBuilder(request.redirectUrl!!)
-            .apply { responseParams.encodeToParameters().forEach { this.parameters.append(it.key, it.value) } }
+            .apply { response.encodeToParameters().forEach { this.parameters.append(it.key, it.value) } }
             .buildString()
 
-        AuthenticationResponseResult.Redirect(url, responseParams)
+        AuthenticationResponseResult.Redirect(url, response)
             .also { Napier.i("authorize returns $it") }
     }
 
@@ -117,14 +136,12 @@ class SimpleAuthorizationService(
     suspend fun token(params: TokenRequestParameters) = catching {
         Napier.i("token called with $params")
 
-        val userInfo: OidcUserInfoExtended = params.loadUserInfo()
+        val issuedCode: IssuedCode = params.loadIssuedCode()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "could not load user info for $params")
                 .also { Napier.w("token: could not load user info for $params}") }
 
-        params.codeVerifier?.let { codeVerifier ->
-            params.code?.let { code ->
-                validateCodeChallenge(code, codeVerifier)
-            }
+        params.code?.let { code ->
+            validateCodeChallenge(code, params.codeVerifier)
         }
 
         val response = TokenResponseParameters(
@@ -135,28 +152,45 @@ class SimpleAuthorizationService(
         )
 
         if (params.authorizationDetails != null) {
+            if (issuedCode.authorizationDetails == null)
+                throw OAuth2Exception(
+                    Errors.INVALID_REQUEST,
+                    "Authorization details not from auth code: ${params.authorizationDetails}, was ${issuedCode.authorizationDetails}"
+                )
+
             val filtered = strategy.filterAuthorizationDetails(params.authorizationDetails!!)
             if (filtered.isEmpty())
                 throw OAuth2Exception(Errors.INVALID_REQUEST, "No matching authorization details")
+
+            filtered.forEach { filter ->
+                if (!filter.requestedFromCode(issuedCode))
+                    throw OAuth2Exception(Errors.INVALID_REQUEST, "Authorization details not from auth code: $filter")
+            }
             response
                 .copy(authorizationDetails = filtered)
                 .also {
-                    accessTokenToUserInfoStore.put(
-                        response.accessToken,
-                        IssuedAccessToken(response.accessToken, userInfo, filtered)
-                    )
+                    response.accessToken.store(issuedCode, filtered)
                     Napier.i("token returns $it")
                 }
         } else if (params.scope != null) {
+            if (issuedCode.scope == null)
+                throw OAuth2Exception(
+                    Errors.INVALID_REQUEST,
+                    "Scope not from auth code: ${params.scope}, was ${issuedCode.scope}"
+                )
+
             val scope = strategy.filterScope(params.scope!!)
-                ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "No matching scope")
+                ?: throw OAuth2Exception(Errors.INVALID_SCOPE, "No matching scope in ${params.scope}")
+
+            scope.split(" ").forEach { singleScope ->
+                if (!issuedCode.scope.contains(singleScope))
+                    throw OAuth2Exception(Errors.INVALID_REQUEST, "Scope not from auth code: $singleScope")
+            }
+
             response
                 .copy(scope = scope)
                 .also {
-                    accessTokenToUserInfoStore.put(
-                        response.accessToken,
-                        IssuedAccessToken(response.accessToken, userInfo, scope)
-                    )
+                    response.accessToken.store(issuedCode, scope)
                     Napier.i("token returns $it")
                 }
         } else {
@@ -165,8 +199,23 @@ class SimpleAuthorizationService(
         }
     }
 
-    private suspend fun validateCodeChallenge(code: String, codeVerifier: String) {
-        codeToCodeChallengeStore.remove(code)?.let { codeChallenge ->
+    private fun OpenIdAuthorizationDetails.requestedFromCode(issuedCode: IssuedCode): Boolean =
+        issuedCode.authorizationDetails!!.filterIsInstance<OpenIdAuthorizationDetails>().any { matches(it) }
+
+    private suspend fun String.store(issuedCode: IssuedCode, filtered: Set<OpenIdAuthorizationDetails>) {
+        accessTokenToUserInfoStore.put(this, IssuedAccessToken(this, issuedCode.userInfoExtended, filtered))
+    }
+
+    private suspend fun String.store(issuedCode: IssuedCode, scope: String) {
+        accessTokenToUserInfoStore.put(this, IssuedAccessToken(this, issuedCode.userInfoExtended, scope))
+    }
+
+    private suspend fun validateCodeChallenge(code: String, codeVerifier: String?) {
+        codeToUserInfoStore.get(code)?.codeChallenge?.let { codeChallenge ->
+            if (codeVerifier == null) {
+                Napier.w("token: client did not provide any code verifier: $codeVerifier for $code")
+                throw OAuth2Exception(Errors.INVALID_GRANT, "code verifier invalid: $codeVerifier for $code")
+            }
             val codeChallengeCalculated = codeVerifier.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
             if (codeChallenge != codeChallengeCalculated) {
                 Napier.w("token: client did not provide correct code verifier: $codeVerifier for $code")
@@ -175,7 +224,7 @@ class SimpleAuthorizationService(
         }
     }
 
-    private suspend fun TokenRequestParameters.loadUserInfo(): OidcUserInfoExtended? = when (grantType) {
+    private suspend fun TokenRequestParameters.loadIssuedCode(): IssuedCode? = when (grantType) {
         OpenIdConstants.GRANT_TYPE_AUTHORIZATION_CODE -> {
             if (code == null || !codeService.verifyAndRemove(code!!))
                 throw OAuth2Exception(Errors.INVALID_CODE, "code not valid: $code")
@@ -196,7 +245,7 @@ class SimpleAuthorizationService(
 
     override suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String =
         codeService.provideCode().also {
-            codeToUserInfoStore.put(it, user)
+            codeToUserInfoStore.put(it, IssuedCode(it, user, strategy.validScopes(), strategy.validAuthorizationDetails()))
         }
 
     override suspend fun verifyClientNonce(nonce: String): Boolean =

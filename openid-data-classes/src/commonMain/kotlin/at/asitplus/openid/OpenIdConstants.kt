@@ -336,6 +336,11 @@ object OpenIdConstants {
         const val INVALID_REQUEST = "invalid_request"
 
         /**
+         * The requested scope is invalid, unknown, or malformed: `invalid_scope`
+         */
+        const val INVALID_SCOPE = "invalid_scope"
+
+        /**
          * Invalid grant: `invalid_grant`
          */
         const val INVALID_GRANT = "invalid_grant"

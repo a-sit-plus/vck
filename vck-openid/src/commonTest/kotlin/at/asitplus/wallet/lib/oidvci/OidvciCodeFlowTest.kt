@@ -10,6 +10,7 @@ import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.IssuerSigned
+import at.asitplus.wallet.lib.oauth2.IssuedCode
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidvci.WalletService.RequestOptions
@@ -88,10 +89,10 @@ class OidvciCodeFlowTest : FreeSpec({
         return authorizationService.token(tokenRequest).getOrThrow()
     }
 
-    fun defectMapStore() = object : MapStore<String, OidcUserInfoExtended> {
-        override suspend fun put(key: String, value: OidcUserInfoExtended) = Unit
-        override suspend fun get(key: String): OidcUserInfoExtended? = null
-        override suspend fun remove(key: String): OidcUserInfoExtended? = null
+    fun defectMapStore() = object : MapStore<String, IssuedCode> {
+        override suspend fun put(key: String, value: IssuedCode) = Unit
+        override suspend fun get(key: String): IssuedCode? = null
+        override suspend fun remove(key: String): IssuedCode? = null
     }
 
     "request one credential, using scope" {
@@ -127,7 +128,8 @@ class OidvciCodeFlowTest : FreeSpec({
 
         requestOptions.forEach {
             issuer.credential(
-                token.accessToken, client.createCredentialRequest(
+                token.accessToken,
+                client.createCredentialRequest(
                     tokenResponse = token,
                     metadata = issuer.metadata
                 ).getOrThrow().first()
@@ -212,6 +214,29 @@ class OidvciCodeFlowTest : FreeSpec({
             .size shouldBeGreaterThan 1
     }
 
+    "request credential in SD-JWT, using scope in access token different to auth code" {
+        val authCodeScope = client.buildScope(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata).shouldNotBeNull()
+        val tokenScope = client.buildScope(RequestOptions(AtomicAttribute2023, ISO_MDOC), issuer.metadata).shouldNotBeNull()
+        val authnRequest = client.oauth2Client.createAuthRequest(
+            state = state,
+            scope = authCodeScope,
+            resource = issuer.metadata.credentialIssuer
+        )
+        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+        val code = authnResponse.params.code
+            .shouldNotBeNull()
+        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
+            state = state,
+            authorization = OAuth2Client.AuthorizationForToken.Code(code),
+            scope = tokenScope, // this is wrong, should be the same as in authn request
+            resource = issuer.metadata.credentialIssuer
+        )
+        shouldThrow<OAuth2Exception> {
+            authorizationService.token(tokenRequest).getOrThrow()
+        }
+    }
+
     "request credential in SD-JWT, using authorization details" {
         val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
         val authorizationDetails = client.buildAuthorizationDetails(
@@ -238,6 +263,33 @@ class OidvciCodeFlowTest : FreeSpec({
         sdJwt.disclosureDigests
             .shouldNotBeNull()
             .size shouldBeGreaterThan 1
+    }
+
+    "request credential in SD-JWT, using authorization details is access token different to auth code" {
+        val authCodeAuthnDetails = client.buildAuthorizationDetails(
+            credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
+            authorizationServers = issuer.metadata.authorizationServers
+        )
+        val tokenAuthnDetails = client.buildAuthorizationDetails(
+            credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(ISO_MDOC),
+            authorizationServers = issuer.metadata.authorizationServers
+        )
+        val authnRequest = client.oauth2Client.createAuthRequest(
+            state = state,
+            authorizationDetails = authCodeAuthnDetails
+        )
+        val authnResponse = authorizationService.authorize(authnRequest).getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+        val code = authnResponse.params.code
+            .shouldNotBeNull()
+        val tokenRequest = client.oauth2Client.createTokenRequestParameters(
+            state = state,
+            authorization = OAuth2Client.AuthorizationForToken.Code(code),
+            authorizationDetails = tokenAuthnDetails // this is wrong, should be same as in authn request
+        )
+        shouldThrow<OAuth2Exception> {
+            authorizationService.token(tokenRequest).getOrThrow()
+        }
     }
 
     "request credential in SD-JWT, using scope in token, but authorization details in credential request" {

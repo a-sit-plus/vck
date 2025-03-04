@@ -227,7 +227,10 @@ class OpenId4VciClient(
             tokenRequest = oid4vciService.oauth2Client.createTokenRequestParameters(
                 state = context.state,
                 authorization = AuthorizationForToken.Code(code),
-                scope = context.credential.supportedCredentialFormat.scope,
+                authorizationDetails = oid4vciService.buildAuthorizationDetails(
+                    context.credential.credentialIdentifier,
+                    context.issuerMetadata.authorizationServers
+                )
             ),
             dpopSigningAlgValuesSupported = context.oauthMetadata.dpopSigningAlgValuesSupported,
             tokenAuthMethods = context.oauthMetadata.tokenEndPointAuthMethodsSupported,
