@@ -2,8 +2,14 @@ package at.asitplus.wallet.lib.agent
 
 import at.asitplus.KmmResult
 import at.asitplus.catching
-import at.asitplus.dif.*
+import at.asitplus.dif.ClaimFormat
+import at.asitplus.dif.FormatHolder
+import at.asitplus.dif.InputDescriptor
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.dif.PresentationSubmission
+import at.asitplus.dif.PresentationSubmissionDescriptor
 import at.asitplus.jsonpath.core.NormalizedJsonPath
+import at.asitplus.openid.CredentialFormatEnum
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.openid.dcql.DCQLQueryResult
 import at.asitplus.signum.indispensable.cosef.CoseKey
@@ -14,7 +20,7 @@ import at.asitplus.wallet.lib.cbor.DefaultCoseService
 import at.asitplus.wallet.lib.data.CredentialPresentation
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter
-import at.asitplus.wallet.lib.data.dif.InputEvaluator
+import at.asitplus.wallet.lib.data.dif.PresentationExchangeInputEvaluator
 import at.asitplus.wallet.lib.data.dif.PresentationSubmissionValidator
 import at.asitplus.wallet.lib.data.third_party.at.asitplus.oidc.dcql.toDefaultSubmission
 import at.asitplus.wallet.lib.jws.DefaultJwsService
@@ -37,7 +43,7 @@ class HolderAgent(
     override val keyPair: KeyMaterial,
     private val verifiablePresentationFactory: VerifiablePresentationFactory =
         VerifiablePresentationFactory(jwsService, coseService, keyPair.identifier),
-    private val difInputEvaluator: InputEvaluator = InputEvaluator(),
+    private val difInputEvaluator: PresentationExchangeInputEvaluator = PresentationExchangeInputEvaluator,
 ) : Holder {
 
     constructor(
@@ -319,23 +325,24 @@ class HolderAgent(
         credential: SubjectCredentialStore.StoreEntry,
         fallbackFormatHolder: FormatHolder?,
         pathAuthorizationValidator: (NormalizedJsonPath) -> Boolean,
-    ) = catching {
-        listOf(credential).filter {
-            it.isFormatSupported(inputDescriptor.format ?: fallbackFormatHolder)
-        }.filter {
-            // iso credentials now have their doctype encoded into the id
-            when (it) {
-                is SubjectCredentialStore.StoreEntry.Iso -> it.scheme?.isoDocType == inputDescriptor.id
-                else -> true
-            }
-        }.firstNotNullOf {
-            difInputEvaluator.evaluateConstraintFieldMatches(
-                inputDescriptor = inputDescriptor,
-                credential = CredentialToJsonConverter.toJsonElement(it),
-                pathAuthorizationValidator = pathAuthorizationValidator,
-            ).getOrThrow()
-        }
-    }
+    ) = difInputEvaluator.evaluateInputDescriptorAgainstCredential(
+        inputDescriptor = inputDescriptor,
+        fallbackFormatHolder = fallbackFormatHolder,
+        credentialClaimStructure = CredentialToJsonConverter.toJsonElement(credential),
+        credentialFormat = when (credential) {
+            is SubjectCredentialStore.StoreEntry.Vc -> CredentialFormatEnum.JWT_VC
+            // TODO In 5.4.0, use SD_JWT instead of JWT_SD
+            is SubjectCredentialStore.StoreEntry.SdJwt -> CredentialFormatEnum.DC_SD_JWT
+            is SubjectCredentialStore.StoreEntry.Iso -> CredentialFormatEnum.MSO_MDOC
+        },
+        credentialScheme = when (credential) {
+            is SubjectCredentialStore.StoreEntry.Vc -> credential.scheme?.vcType
+            // TODO In 5.4.0, use SD_JWT instead of JWT_SD
+            is SubjectCredentialStore.StoreEntry.SdJwt -> credential.scheme?.sdJwtType
+            is SubjectCredentialStore.StoreEntry.Iso -> credential.scheme?.isoDocType
+        },
+        pathAuthorizationValidator = pathAuthorizationValidator,
+    )
 
     override suspend fun matchDCQLQueryAgainstCredentialStore(dcqlQuery: DCQLQuery): KmmResult<DCQLQueryResult<SubjectCredentialStore.StoreEntry>> {
         return DCQLQueryAdapter(dcqlQuery).select(

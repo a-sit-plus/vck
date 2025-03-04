@@ -7,7 +7,6 @@ import at.asitplus.signum.indispensable.asn1.ObjectIdentifier
 import at.asitplus.signum.indispensable.io.ByteArrayBase64UrlSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.io.InstantLongSerializer
-import io.github.aakira.napier.Napier
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -180,7 +179,9 @@ data class AuthenticationRequestParameters(
      * OID4VP: dcql_query: A string containing a JSON-encoded DCQL query as defined in Section 6.
      */
     @SerialName("dcql_query")
-    val dcqlQueryString: String? = null,
+    @Serializable(with = DCQLQueryStringTransformingSerializer::class)
+    val dcqlQuery: DCQLQuery? = null,
+
 
     /**
      * RFC9396: The request parameter `authorization_details` contains, in JSON notation, an array of objects.
@@ -367,17 +368,6 @@ data class AuthenticationRequestParameters(
     @SerialName("transaction_data")
     override val transactionData: Set<String>? = null,
 ) : RequestParameters {
-
-    val dcqlQuery: DCQLQuery? by lazy {
-        dcqlQueryString?.let {
-            runCatching { odcJsonSerializer.decodeFromString<DCQLQuery>(it) }
-                .getOrElse {
-                    Napier.w("dcqlQuery failed to parse from $dcqlQueryString", it)
-                    null
-                }
-        }
-    }
-
     fun serialize() = odcJsonSerializer.encodeToString(this)
 
     override fun equals(other: Any?): Boolean {
@@ -403,7 +393,7 @@ data class AuthenticationRequestParameters(
         if (idTokenType != other.idTokenType) return false
         if (presentationDefinition != other.presentationDefinition) return false
         if (presentationDefinitionUrl != other.presentationDefinitionUrl) return false
-        if (dcqlQueryString != other.dcqlQueryString) return false
+        if (dcqlQuery != other.dcqlQuery) return false
         if (authorizationDetails != other.authorizationDetails) return false
         if (walletIssuer != other.walletIssuer) return false
         if (userHint != other.userHint) return false
@@ -451,7 +441,7 @@ data class AuthenticationRequestParameters(
         result = 31 * result + (idTokenType?.hashCode() ?: 0)
         result = 31 * result + (presentationDefinition?.hashCode() ?: 0)
         result = 31 * result + (presentationDefinitionUrl?.hashCode() ?: 0)
-        result = 31 * result + (dcqlQueryString?.hashCode() ?: 0)
+        result = 31 * result + (dcqlQuery?.hashCode() ?: 0)
         result = 31 * result + (authorizationDetails?.hashCode() ?: 0)
         result = 31 * result + (walletIssuer?.hashCode() ?: 0)
         result = 31 * result + (userHint?.hashCode() ?: 0)

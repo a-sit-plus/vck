@@ -17,7 +17,7 @@ private const val SD_JWT_VC_TYPE = "vct"
 object CredentialToJsonConverter {
 
     /**
-     * The result is used in [at.asitplus.wallet.lib.data.dif.InputEvaluator.evaluateConstraintFieldMatches]
+     * The result is used in [at.asitplus.wallet.lib.data.dif.PresentationExchangeConstraintFieldMatcher.evaluateConstraintFieldMatches]
      */
     fun toJsonElement(credential: SubjectCredentialStore.StoreEntry): JsonElement = when (credential) {
         is SubjectCredentialStore.StoreEntry.Vc -> buildJsonObject {
