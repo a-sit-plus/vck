@@ -13,7 +13,7 @@ interface AuthorizationServiceStrategy {
     suspend fun loadUserInfo(request: AuthenticationRequestParameters, code: String): OidcUserInfoExtended?
 
     /** Filter requested authorization details in token requests to ones valued for credential issuance */
-    fun filterAuthorizationDetails(authorizationDetails: Set<AuthorizationDetails>): Set<OpenIdAuthorizationDetails>
+    fun filterAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<OpenIdAuthorizationDetails>
 
     /** Filter the requested scope in the access token request to ones valid for credential issuance */
     fun filterScope(scope: String): String?

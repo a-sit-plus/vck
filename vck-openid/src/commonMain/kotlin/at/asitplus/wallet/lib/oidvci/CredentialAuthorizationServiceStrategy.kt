@@ -41,7 +41,7 @@ class CredentialAuthorizationServiceStrategy(
         }
         .joinToString(" ")
 
-    override fun filterAuthorizationDetails(authorizationDetails: Set<AuthorizationDetails>) =
+    override fun filterAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>) =
         authorizationDetails
             .filterIsInstance<OpenIdAuthorizationDetails>()
             .mapNotNull {

@@ -160,7 +160,10 @@ class SimpleAuthorizationService(
 
             val filtered = strategy.filterAuthorizationDetails(params.authorizationDetails!!)
             if (filtered.isEmpty())
-                throw OAuth2Exception(Errors.INVALID_REQUEST, "No matching authorization details")
+                throw OAuth2Exception(
+                    Errors.INVALID_REQUEST,
+                    "No valid authorization details in ${params.authorizationDetails}"
+                )
 
             filtered.forEach { filter ->
                 if (!filter.requestedFromCode(issuedCode))
@@ -180,12 +183,37 @@ class SimpleAuthorizationService(
                 )
 
             val scope = strategy.filterScope(params.scope!!)
-                ?: throw OAuth2Exception(Errors.INVALID_SCOPE, "No matching scope in ${params.scope}")
+                ?: throw OAuth2Exception(Errors.INVALID_SCOPE, "No valid scope in ${params.scope}")
 
             scope.split(" ").forEach { singleScope ->
                 if (!issuedCode.scope.contains(singleScope))
                     throw OAuth2Exception(Errors.INVALID_REQUEST, "Scope not from auth code: $singleScope")
             }
+
+            response
+                .copy(scope = scope)
+                .also {
+                    response.accessToken.store(issuedCode, scope)
+                    Napier.i("token returns $it")
+                }
+        } else if (issuedCode.authorizationDetails != null) {
+            val filtered =
+                strategy.filterAuthorizationDetails(issuedCode.authorizationDetails.filterIsInstance<OpenIdAuthorizationDetails>())
+            if (filtered.isEmpty())
+                throw OAuth2Exception(
+                    Errors.INVALID_REQUEST,
+                    "No valid authorization details in ${issuedCode.authorizationDetails}"
+                )
+
+            response
+                .copy(authorizationDetails = filtered)
+                .also {
+                    response.accessToken.store(issuedCode, filtered)
+                    Napier.i("token returns $it")
+                }
+        } else if (issuedCode.scope != null) {
+            val scope = strategy.filterScope(issuedCode.scope)
+                ?: throw OAuth2Exception(Errors.INVALID_SCOPE, "No valid scope in ${issuedCode.scope}")
 
             response
                 .copy(scope = scope)
@@ -245,7 +273,10 @@ class SimpleAuthorizationService(
 
     override suspend fun providePreAuthorizedCode(user: OidcUserInfoExtended): String =
         codeService.provideCode().also {
-            codeToUserInfoStore.put(it, IssuedCode(it, user, strategy.validScopes(), strategy.validAuthorizationDetails()))
+            codeToUserInfoStore.put(
+                it,
+                IssuedCode(it, user, strategy.validScopes(), strategy.validAuthorizationDetails())
+            )
         }
 
     override suspend fun verifyClientNonce(nonce: String): Boolean =

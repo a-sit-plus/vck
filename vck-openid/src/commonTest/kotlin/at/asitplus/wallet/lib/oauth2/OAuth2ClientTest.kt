@@ -35,7 +35,7 @@ class OAuth2ClientTest : FunSpec({
 
                 override fun validAuthorizationDetails(): Collection<OpenIdAuthorizationDetails> = listOf()
 
-                override fun filterAuthorizationDetails(authorizationDetails: Set<AuthorizationDetails>): Set<OpenIdAuthorizationDetails> =
+                override fun filterAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<OpenIdAuthorizationDetails> =
                     setOf()
 
                 override fun filterScope(scope: String): String? = scope
@@ -109,6 +109,27 @@ class OAuth2ClientTest : FunSpec({
         shouldThrow<OAuth2Exception> {
             server.token(tokenRequest).getOrThrow()
         }
+    }
+
+    test("process with authorization code flow, no scope in token request") {
+        val state = uuid4().toString()
+        val authnRequest = client.createAuthRequest(
+            state = state,
+            scope = scope,
+        )
+        val authnResponse = server.authorize(authnRequest).getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+        val code = authnResponse.params.code
+            .shouldNotBeNull()
+
+        val tokenRequest = client.createTokenRequestParameters(
+            state = state,
+            authorization = OAuth2Client.AuthorizationForToken.Code(code),
+            scope = null // already specified in authnrequest
+        )
+        val token = server.token(tokenRequest).getOrThrow()
+        token.authorizationDetails.shouldBeNull()
+        token.scope.shouldBe(scope)
     }
 
 })
