@@ -5,7 +5,6 @@ import at.asitplus.openid.OpenIdConstants.CODE_CHALLENGE_METHOD_SHA256
 import at.asitplus.openid.OpenIdConstants.GRANT_TYPE_CODE
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.lib.iso.sha256
-import at.asitplus.wallet.lib.jws.JwsService
 import at.asitplus.wallet.lib.oidvci.DefaultMapStore
 import at.asitplus.wallet.lib.oidvci.MapStore
 import at.asitplus.wallet.lib.oidvci.WalletService
@@ -152,7 +151,7 @@ class OAuth2Client(
      * ```
      *
      * Be sure to include a DPoP header if [OAuth2AuthorizationServerMetadata.dpopSigningAlgValuesSupported] is set,
-     * see [JwsService.buildDPoPHeader].
+     * see [buildDPoPHeader].
      *
      * @param state to keep internal state in further requests
      * @param authorization for the token endpoint
