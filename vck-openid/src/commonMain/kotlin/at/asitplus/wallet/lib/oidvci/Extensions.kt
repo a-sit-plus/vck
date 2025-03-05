@@ -198,6 +198,7 @@ fun Issuer.IssuedCredential.toCredentialResponseSingleCredential(): CredentialRe
     }
 
 class OAuth2Exception : Throwable {
+    constructor(error: String, errorDescription: String, cause: Throwable) : super("$error: $errorDescription", cause)
     constructor(error: String, errorDescription: String) : super("$error: $errorDescription")
     constructor(error: String, cause: Throwable) : super(error, cause)
 }

@@ -11,6 +11,7 @@ import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.ISO_MD
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.SD_JWT
 import at.asitplus.wallet.lib.iso.IssuerSigned
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.oidvci.*
 import io.github.aakira.napier.Napier
@@ -110,13 +111,14 @@ class OpenId4VciClientTest : FunSpec() {
         val (mockEngine, credentialIssuer) = setupIssuingService(scheme, representation, attributes)
         val subjectCredentialStore = assertAttributeStore(scheme, attributes)
         val holderAgent = HolderAgent(keyMaterial, subjectCredentialStore)
-        val client = setupClient(mockEngine, holderAgent)
+        val client = setupClient(mockEngine, holderAgent, keyMaterial)
         return client to credentialIssuer
     }
 
     private fun setupClient(
         mockEngine: HttpClientEngine,
         holderAgent: HolderAgent,
+        keyMaterial: KeyMaterial,
     ): OpenId4VciClient {
         // This construction is needed to continue with client in the openUrlExternally callback
         var client: OpenId4VciClient? = null
@@ -129,16 +131,20 @@ class OpenId4VciClientTest : FunSpec() {
             }
         }
         var provisioningContextStore: ProvisioningContext? = null
+        val clientId = "some client id"
         client = OpenId4VciClient(
             openUrlExternally = { clientBrowser.openUrlExternally(it) },
             engine = mockEngine,
             storeProvisioningContext = { provisioningContextStore = it },
             loadProvisioningContext = { provisioningContextStore },
-            loadClientAttestationJwt = { "" },
+            loadClientAttestationJwt = {
+                DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert()))
+                    .buildClientAttestationJwt(clientId, "issuer", keyMaterial.jsonWebKey).serialize()
+            },
             cryptoService = cryptoService,
             holderAgent = holderAgent,
             redirectUrl = "http://localhost/mock/",
-            clientId = "some client id"
+            clientId = clientId
         )
         return client
     }
@@ -212,6 +218,7 @@ class OpenId4VciClientTest : FunSpec() {
                         credentialScheme,
                         subjectPublicKey
                     )
+
                     ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
                         attributesToIssue.map { IssuerSignedItem(digestId++, Random.nextBytes(32), it.key, it.value) },
                         Clock.System.now(),
@@ -262,7 +269,11 @@ class OpenId4VciClientTest : FunSpec() {
                 request.url.fullPath.startsWith(parEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val authnRequest: AuthenticationRequestParameters = requestBody.decodeFromPostBody()
-                    val result = authorizationService.par(authnRequest).getOrThrow()
+                    val result = authorizationService.par(
+                        authnRequest,
+                        request.headers["OAuth-Client-Attestation"],
+                        request.headers["OAuth-Client-Attestation-PoP"]
+                    ).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString(result),
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -283,7 +294,11 @@ class OpenId4VciClientTest : FunSpec() {
                 request.url.fullPath.startsWith(tokenEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()
                     val params: TokenRequestParameters = requestBody.decodeFromPostBody()
-                    val result = authorizationService.token(params).getOrThrow()
+                    val result = authorizationService.token(
+                        params,
+                        request.headers["OAuth-Client-Attestation"],
+                        request.headers["OAuth-Client-Attestation-PoP"]
+                    ).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString(result),
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())

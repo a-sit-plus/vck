@@ -27,7 +27,9 @@ Release 5.5.0:
    - Remove proof type `cwt`, which has been removed from draft 14
    - The `CredentialIssuer` issues more the same credential to different keys, if more than one proof is contained in the credential request
    - Add rudimentary implementation of key attestation proofs in `WalletService` and `CredentialIssuer`
+ - Update implementation of authorization service for [OpenID4VC High Assurance Interoperability Profile](https://openid.net/specs/openid4vc-high-assurance-interoperability-profile-1_0.html) draft 03:
    - `SimpleAuthorizationService` implements pushed authorization requests as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html)
+   - `SimpleAuthorizationService` implements attestation-based client authentication as defined in [OAuth 2.0 Attestation-Based Client Authentication](https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-05.html)
  - Update dependencies:
    - Update `signum` to 3.14.0, supporting X.509 certificates in v1, v2 too
 

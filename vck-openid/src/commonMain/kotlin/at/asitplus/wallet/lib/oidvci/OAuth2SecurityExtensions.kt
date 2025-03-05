@@ -53,7 +53,6 @@ suspend fun JwsService.buildDPoPHeader(
  * @param lifetime validity period of the assertion (minus the [clockSkew])
  * @param clockSkew duration to subtract from [Clock.System.now] when setting the creation timestamp
  */
-// TODO Use this in an test, also HAIP requires the credential issuer to require client attestation!
 suspend fun JwsService.buildClientAttestationJwt(
     clientId: String,
     issuer: String,
@@ -80,8 +79,8 @@ suspend fun JwsService.buildClientAttestationJwt(
     ),
     serializer = JsonWebToken.Companion.serializer(),
     addKeyId = false,
-    addJsonWebKey = false,
-    addX5c = false,
+    addJsonWebKey = true,
+    addX5c = true,
 ).getOrThrow()
 
 /**

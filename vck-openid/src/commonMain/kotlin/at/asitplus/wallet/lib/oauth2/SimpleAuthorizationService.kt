@@ -3,10 +3,16 @@ package at.asitplus.wallet.lib.oauth2
 import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
+import at.asitplus.openid.OpenIdConstants.AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH
 import at.asitplus.openid.OpenIdConstants.Errors
 import at.asitplus.openid.OpenIdConstants.Errors.INVALID_TOKEN
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.sha256
+import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifierJwsService
 import at.asitplus.wallet.lib.oidvci.*
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import io.github.aakira.napier.Napier
@@ -67,6 +73,14 @@ class SimpleAuthorizationService(
     private val codeToUserInfoStore: MapStore<String, IssuedCode> = DefaultMapStore(),
     private val accessTokenToUserInfoStore: MapStore<String, IssuedAccessToken> = DefaultMapStore(),
     private val requestUriToPushedAuthorizationRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
+    /**
+     * Enforce client authentication as defined in OpenID4VC HAIP, i.e. with wallet attestations
+     */
+    private val enforceClientAuthentication: Boolean = false,
+    /**
+     * Used to verify client authentication JWTs
+     */
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
 ) : OAuth2AuthorizationServerAdapter {
 
     override val supportsClientNonce: Boolean = true
@@ -83,7 +97,7 @@ class SimpleAuthorizationService(
             tokenEndpoint = "$publicContext$tokenEndpointPath",
             pushedAuthorizationRequestEndpoint = "$publicContext$pushedAuthorizationRequestEndpointPath",
             requirePushedAuthorizationRequests = true, // per OID4VC HAIP
-            //TODO RFC RFC6749 tokenEndPointAuthMethodsSupported = TODO(), for PAR and token
+            tokenEndPointAuthMethodsSupported = setOf(AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH), // per OID4VC HAIP
         )
     }
 
@@ -92,16 +106,24 @@ class SimpleAuthorizationService(
      * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
      *
      * Responses have to be sent with HTTP status code `201`.
+     *
+     * @param request as sent from the client as `POST`
+     * @param clientAttestation value of the header `OAuth-Client-Attestation`
+     * @param clientAttestationPop value of the header `OAuth-Client-Attestation-PoP`
      */
-    suspend fun par(request: AuthenticationRequestParameters) = catching {
+    suspend fun par(
+        request: AuthenticationRequestParameters,
+        clientAttestation: String? = null,
+        clientAttestationPop: String? = null,
+    ) = catching {
         Napier.i("pushedAuthorization called with $request")
 
         if (request.requestUri != null) {
             Napier.w("par: client set request_uri: ${request.requestUri}")
             throw OAuth2Exception(Errors.INVALID_REQUEST, "request_uri must not be set")
         }
-        // TODO Client authentication
-        // TODO Also enable JWT-Secured Authorization Request (JAR) RFC9101
+
+        authenticateClient(clientAttestation, clientAttestationPop)
         validateAuthnRequest(request)
 
         val requestUri = "urn:ietf:params:oauth:request_uri:${requestUriService.provideNonce()}".also {
@@ -164,6 +186,7 @@ class SimpleAuthorizationService(
             .also { Napier.i("authorize returns $it") }
     }
 
+    // TODO Also enable JWT-Secured Authorization Request (JAR) RFC9101
     private fun validateAuthnRequest(request: AuthenticationRequestParameters) {
         if (request.redirectUrl == null)
             throw OAuth2Exception(Errors.INVALID_REQUEST, "redirect_uri not set")
@@ -187,19 +210,29 @@ class SimpleAuthorizationService(
     /**
      * Verifies the authorization code sent by the client and issues an access token.
      * Send this value JSON-serialized back to the client.
+
+     * @param request as sent from the client as `POST`
+     * @param clientAttestation value of the header `OAuth-Client-Attestation`
+     * @param clientAttestationPop value of the header `OAuth-Client-Attestation-PoP`
      *
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
-    suspend fun token(params: TokenRequestParameters) = catching {
-        Napier.i("token called with $params")
-        // TODO Client authentication
-        val issuedCode: IssuedCode = params.loadIssuedCode()
-            ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "could not load user info for $params")
-                .also { Napier.w("token: could not load user info for $params}") }
+    suspend fun token(
+        request: TokenRequestParameters,
+        clientAttestation: String? = null,
+        clientAttestationPop: String? = null,
+    ) = catching {
+        Napier.i("token called with $request")
 
-        params.code?.let { code ->
-            validateCodeChallenge(code, params.codeVerifier)
+        val issuedCode: IssuedCode = request.loadIssuedCode()
+            ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "could not load user info for $request")
+                .also { Napier.w("token: could not load user info for $request}") }
+
+        request.code?.let { code ->
+            validateCodeChallenge(code, request.codeVerifier)
         }
+
+        authenticateClient(clientAttestation, clientAttestationPop)
 
         val response = TokenResponseParameters(
             accessToken = tokenService.provideNonce(),
@@ -208,18 +241,18 @@ class SimpleAuthorizationService(
             clientNonce = clientNonceService.provideNonce(),
         )
 
-        if (params.authorizationDetails != null) {
+        if (request.authorizationDetails != null) {
             if (issuedCode.authorizationDetails == null)
                 throw OAuth2Exception(
                     Errors.INVALID_REQUEST,
-                    "Authorization details not from auth code: ${params.authorizationDetails}, was ${issuedCode.authorizationDetails}"
+                    "Authorization details not from auth code: ${request.authorizationDetails}, was ${issuedCode.authorizationDetails}"
                 )
 
-            val filtered = strategy.filterAuthorizationDetails(params.authorizationDetails!!)
+            val filtered = strategy.filterAuthorizationDetails(request.authorizationDetails!!)
             if (filtered.isEmpty())
                 throw OAuth2Exception(
                     Errors.INVALID_REQUEST,
-                    "No valid authorization details in ${params.authorizationDetails}"
+                    "No valid authorization details in ${request.authorizationDetails}"
                 )
 
             filtered.forEach { filter ->
@@ -232,15 +265,15 @@ class SimpleAuthorizationService(
                     response.accessToken.store(issuedCode, filtered)
                     Napier.i("token returns $it")
                 }
-        } else if (params.scope != null) {
+        } else if (request.scope != null) {
             if (issuedCode.scope == null)
                 throw OAuth2Exception(
                     Errors.INVALID_REQUEST,
-                    "Scope not from auth code: ${params.scope}, was ${issuedCode.scope}"
+                    "Scope not from auth code: ${request.scope}, was ${issuedCode.scope}"
                 )
 
-            val scope = strategy.filterScope(params.scope!!)
-                ?: throw OAuth2Exception(Errors.INVALID_SCOPE, "No valid scope in ${params.scope}")
+            val scope = strategy.filterScope(request.scope!!)
+                ?: throw OAuth2Exception(Errors.INVALID_SCOPE, "No valid scope in ${request.scope}")
 
             scope.split(" ").forEach { singleScope ->
                 if (!issuedCode.scope.contains(singleScope))
@@ -279,8 +312,45 @@ class SimpleAuthorizationService(
                     Napier.i("token returns $it")
                 }
         } else {
-            Napier.w("token: request can not be parsed: $params")
+            Napier.w("token: request can not be parsed: $request")
             throw OAuth2Exception(Errors.INVALID_REQUEST, "neither authorization details nor scope in request")
+        }
+    }
+
+    private fun authenticateClient(clientAttestation: String?, clientAttestationPop: String?) {
+        // Enforce client authentication once all clients implement it
+        if (enforceClientAuthentication) {
+            if (clientAttestation == null || clientAttestationPop == null) {
+                Napier.w("par: client not sent client attestation")
+                throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation headers missing")
+            }
+        }
+        if (clientAttestation != null && clientAttestationPop != null) {
+            val clientAttestationJwt = JwsSigned
+                .deserialize<JsonWebToken>(JsonWebToken.serializer(), clientAttestation, vckJsonSerializer)
+                .getOrElse {
+                    Napier.w("par: could not parse client attestation JWT", it)
+                    throw OAuth2Exception(Errors.INVALID_CLIENT, "could not parse client attestation", it)
+                }
+            if (!verifierJwsService.verifyJwsObject(clientAttestationJwt)) {
+                Napier.w("par: client attestation JWT not verified")
+                throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation JWT not verified")
+            }
+
+            // TODO add callback to verify attestation root of trust
+
+            val clientAttestationPopJwt = JwsSigned
+                .deserialize<JsonWebToken>(JsonWebToken.serializer(), clientAttestationPop, vckJsonSerializer)
+                .getOrElse {
+                    Napier.w("par: could not parse client attestation PoP JWT", it)
+                    throw OAuth2Exception(Errors.INVALID_CLIENT, "could not parse client attestation PoP", it)
+                }
+            val cnf = clientAttestationJwt.payload.confirmationClaim
+                ?: throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation has no cnf")
+            if (!verifierJwsService.verifyJws(clientAttestationPopJwt, cnf)) {
+                Napier.w("par: client attestation PoP JWT not verified")
+                throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation PoP JWT not verified")
+            }
         }
     }
 

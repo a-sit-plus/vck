@@ -345,6 +345,11 @@ object OpenIdConstants {
         const val INVALID_REQUEST = "invalid_request"
 
         /**
+         * Invalid client, e.g. missing client authentication: `invalid_client`
+         */
+        const val INVALID_CLIENT = "invalid_client"
+
+        /**
          * The requested scope is invalid, unknown, or malformed: `invalid_scope`
          */
         const val INVALID_SCOPE = "invalid_scope"
