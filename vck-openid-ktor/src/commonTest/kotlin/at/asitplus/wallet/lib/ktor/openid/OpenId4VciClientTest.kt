@@ -226,6 +226,7 @@ class OpenId4VciClientTest : FunSpec() {
         val authorizationEndpointPath = "/authorize"
         val tokenEndpointPath = "/token"
         val credentialEndpointPath = "/credential"
+        val parEndpointPath = "/par"
         val publicContext = "http://issuer.example.com"
         val authorizationService = SimpleAuthorizationService(
             strategy = CredentialAuthorizationServiceStrategy(
@@ -235,6 +236,7 @@ class OpenId4VciClientTest : FunSpec() {
             publicContext = publicContext,
             authorizationEndpointPath = authorizationEndpointPath,
             tokenEndpointPath = tokenEndpointPath,
+            pushedAuthorizationRequestEndpointPath = parEndpointPath,
         )
         val credentialIssuer = CredentialIssuer(
             authorizationService = authorizationService,
@@ -256,6 +258,16 @@ class OpenId4VciClientTest : FunSpec() {
                     vckJsonSerializer.encodeToString(authorizationService.metadata),
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
+
+                request.url.fullPath.startsWith(parEndpointPath) -> {
+                    val requestBody = request.body.toByteArray().decodeToString()
+                    val authnRequest: AuthenticationRequestParameters = requestBody.decodeFromPostBody()
+                    val result = authorizationService.par(authnRequest).getOrThrow()
+                    respond(
+                        vckJsonSerializer.encodeToString(result),
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
 
                 request.url.fullPath.startsWith(authorizationEndpointPath) -> {
                     val requestBody = request.body.toByteArray().decodeToString()

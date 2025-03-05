@@ -35,6 +35,12 @@ interface OAuth2AuthorizationServerAdapter {
     val supportsClientNonce: Boolean
 
     /**
+     * Whether this authorization server implements pushed authorization requests as defined in
+     * [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
+     */
+    val supportsPushedAuthorizationRequests: Boolean
+
+    /**
      * Called by [CredentialIssuer] to verify that nonces contained in proof-of-possession statements from clients
      * are indeed valid.
      */

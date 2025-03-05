@@ -76,6 +76,21 @@ class OAuth2Client(
         codeChallengeMethod = CODE_CHALLENGE_METHOD_SHA256
     )
 
+    /**
+     * Send the result as parameters (either POST or GET) to the server at `/authorize` (or more specific
+     * [OAuth2AuthorizationServerMetadata.authorizationEndpoint]).
+     * Use this method if the previous authn request was sent as a pushed authorization request (RFC 9126),
+     * and the server has answered with [PushedAuthenticationResponseParameters].
+     *
+     * @param parResponse response from the AS to the PAR request
+     */
+    suspend fun createAuthRequestAfterPar(
+        parResponse: PushedAuthenticationResponseParameters,
+    ) = AuthenticationRequestParameters(
+        clientId = clientId,
+        requestUri = parResponse.requestUri,
+    )
+
     @OptIn(ExperimentalStdlibApi::class)
     suspend fun generateCodeVerifier(state: String): String {
         val codeVerifier = Random.nextBytes(32).toHexString(HexFormat.Default)

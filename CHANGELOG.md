@@ -27,6 +27,7 @@ Release 5.5.0:
    - Remove proof type `cwt`, which has been removed from draft 14
    - The `CredentialIssuer` issues more the same credential to different keys, if more than one proof is contained in the credential request
    - Add rudimentary implementation of key attestation proofs in `WalletService` and `CredentialIssuer`
+   - `SimpleAuthorizationService` implements pushed authorization requests as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html)
  - Update dependencies:
    - Update `signum` to 3.14.0, supporting X.509 certificates in v1, v2 too
 

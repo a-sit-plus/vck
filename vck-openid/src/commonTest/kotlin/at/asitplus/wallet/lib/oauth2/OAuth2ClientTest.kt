@@ -70,6 +70,28 @@ class OAuth2ClientTest : FunSpec({
         server.token(tokenRequest).isFailure shouldBe true
     }
 
+    test("process with pushed authorization request") {
+        val state = uuid4().toString()
+        val authnRequest = client.createAuthRequest(
+            state = state,
+            scope = scope,
+        )
+        val parResponse = server.par(authnRequest).getOrThrow()
+            .shouldBeInstanceOf<PushedAuthenticationResponseParameters>()
+        val authnResponse = server.authorize(client.createAuthRequestAfterPar(parResponse)).getOrThrow()
+            .shouldBeInstanceOf<AuthenticationResponseResult.Redirect>()
+        val code = authnResponse.params.code
+            .shouldNotBeNull()
+
+        val tokenRequest = client.createTokenRequestParameters(
+            state = state,
+            authorization = OAuth2Client.AuthorizationForToken.Code(code),
+            scope = scope
+        )
+        val token = server.token(tokenRequest).getOrThrow()
+        token.authorizationDetails.shouldBeNull()
+    }
+
     test("process with authorization code flow") {
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(

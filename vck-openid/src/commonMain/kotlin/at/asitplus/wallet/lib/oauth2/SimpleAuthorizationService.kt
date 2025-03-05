@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -41,6 +42,10 @@ class SimpleAuthorizationService(
      */
     private val clientNonceService: NonceService = DefaultNonceService(),
     /**
+     * Used to generate request uris on pushed authorization requests in [par]
+     */
+    private val requestUriService: NonceService = DefaultNonceService(),
+    /**
      * Used in several fields in [OAuth2AuthorizationServerMetadata], to provide endpoint URLs to clients.
      */
     override val publicContext: String = "https://wallet.a-sit.at/authorization-server",
@@ -54,11 +59,18 @@ class SimpleAuthorizationService(
      * to that URI (which starts with [publicContext]) to [token].
      */
     private val tokenEndpointPath: String = "/token",
+    /**
+     * Used to build [OAuth2AuthorizationServerMetadata.pushedAuthorizationRequestEndpoint], i.e. implementers need to
+     * forward POST requests to that URI (which starts with [publicContext]) to [par].
+     */
+    private val pushedAuthorizationRequestEndpointPath: String = "/par",
     private val codeToUserInfoStore: MapStore<String, IssuedCode> = DefaultMapStore(),
     private val accessTokenToUserInfoStore: MapStore<String, IssuedAccessToken> = DefaultMapStore(),
+    private val requestUriToPushedAuthorizationRequestStore: MapStore<String, AuthenticationRequestParameters> = DefaultMapStore(),
 ) : OAuth2AuthorizationServerAdapter {
 
     override val supportsClientNonce: Boolean = true
+    override val supportsPushedAuthorizationRequests: Boolean = true
 
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-configuration`,
@@ -69,6 +81,35 @@ class SimpleAuthorizationService(
             issuer = publicContext,
             authorizationEndpoint = "$publicContext$authorizationEndpointPath",
             tokenEndpoint = "$publicContext$tokenEndpointPath",
+            pushedAuthorizationRequestEndpoint = "$publicContext$pushedAuthorizationRequestEndpointPath",
+            requirePushedAuthorizationRequests = true, // per OID4VC HAIP
+            //TODO RFC RFC6749 tokenEndPointAuthMethodsSupported = TODO(), for PAR and token
+        )
+    }
+
+    /**
+     * Pushed authorization request endpoint as defined in [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
+     * Clients send their authorization request as HTTP `POST` with `application/x-www-form-urlencoded` to the AS.
+     *
+     * Responses have to be sent with HTTP status code `201`.
+     */
+    suspend fun par(request: AuthenticationRequestParameters) = catching {
+        Napier.i("pushedAuthorization called with $request")
+
+        if (request.requestUri != null) {
+            Napier.w("par: client set request_uri: ${request.requestUri}")
+            throw OAuth2Exception(Errors.INVALID_REQUEST, "request_uri must not be set")
+        }
+        // TODO Client authentication
+        // TODO Also enable JWT-Secured Authorization Request (JAR) RFC9101
+        validateAuthnRequest(request)
+
+        val requestUri = "urn:ietf:params:oauth:request_uri:${requestUriService.provideNonce()}".also {
+            requestUriToPushedAuthorizationRequestStore.put(it, request)
+        }
+        PushedAuthenticationResponseParameters(
+            requestUri = requestUri,
+            expires = 5.minutes,
         )
     }
 
@@ -78,26 +119,22 @@ class SimpleAuthorizationService(
      * @return URL build from client's `redirect_uri` with a `code` query parameter containing a fresh authorization
      * code from [codeService].
      */
-    suspend fun authorize(request: AuthenticationRequestParameters) = catching {
-        Napier.i("authorize called with $request")
+    suspend fun authorize(input: AuthenticationRequestParameters) = catching {
+        Napier.i("authorize called with $input")
 
-        if (request.redirectUrl == null)
-            throw OAuth2Exception(Errors.INVALID_REQUEST, "redirect_uri not set")
-                .also { Napier.w("authorize: client did not set redirect_uri in $request") }
-
-        if (request.scope != null) {
-            strategy.filterScope(request.scope!!)
-                ?: throw OAuth2Exception(Errors.INVALID_SCOPE, "No matching scope in ${request.scope}")
-                    .also { Napier.w("authorize: scope ${request.scope} does not contain a valid credential id") }
-        }
-
-        if (request.authorizationDetails != null) {
-            val filtered = strategy.filterAuthorizationDetails(request.authorizationDetails!!)
-            if (filtered.isEmpty()) {
-                throw OAuth2Exception(Errors.INVALID_REQUEST, "No matching authorization details")
-                Napier.w("authorize: authorization details not valid: ${request.authorizationDetails}")
+        val request = if (input.requestUri != null) {
+            val par = requestUriToPushedAuthorizationRequestStore.remove(input.requestUri!!)
+                ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "request_uri set, but not found")
+                    .also { Napier.w("authorize: client sent invalid request_uri: ${input.requestUri}") }
+            if (par.clientId != input.clientId) {
+                throw OAuth2Exception(Errors.INVALID_REQUEST, "client_id not matching from par")
+                    .also { Napier.w("authorize: invalid client_id: ${input.clientId} vs par ${par.clientId}") }
             }
+            par
+        } else {
+            input
         }
+        validateAuthnRequest(request)
 
         val code = codeService.provideCode().also { code ->
             val userInfo = strategy.loadUserInfo(request, code)
@@ -118,13 +155,33 @@ class SimpleAuthorizationService(
             code = code,
             state = request.state,
         )
-        // TODO Also implement POST?
+
         val url = URLBuilder(request.redirectUrl!!)
             .apply { response.encodeToParameters().forEach { this.parameters.append(it.key, it.value) } }
             .buildString()
 
         AuthenticationResponseResult.Redirect(url, response)
             .also { Napier.i("authorize returns $it") }
+    }
+
+    private fun validateAuthnRequest(request: AuthenticationRequestParameters) {
+        if (request.redirectUrl == null)
+            throw OAuth2Exception(Errors.INVALID_REQUEST, "redirect_uri not set")
+                .also { Napier.w("authorize: client did not set redirect_uri in $request") }
+
+        if (request.scope != null) {
+            strategy.filterScope(request.scope!!)
+                ?: throw OAuth2Exception(Errors.INVALID_SCOPE, "No matching scope in ${request.scope}")
+                    .also { Napier.w("authorize: scope ${request.scope} does not contain a valid credential id") }
+        }
+
+        if (request.authorizationDetails != null) {
+            val filtered = strategy.filterAuthorizationDetails(request.authorizationDetails!!)
+            if (filtered.isEmpty()) {
+                throw OAuth2Exception(Errors.INVALID_REQUEST, "No matching authorization details")
+                Napier.w("authorize: authorization details not valid: ${request.authorizationDetails}")
+            }
+        }
     }
 
     /**
@@ -135,7 +192,7 @@ class SimpleAuthorizationService(
      */
     suspend fun token(params: TokenRequestParameters) = catching {
         Napier.i("token called with $params")
-
+        // TODO Client authentication
         val issuedCode: IssuedCode = params.loadIssuedCode()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "could not load user info for $params")
                 .also { Napier.w("token: could not load user info for $params}") }

@@ -32,8 +32,8 @@ class ResponseParser(
     suspend fun parseAuthnResponse(input: String): ResponseParametersFrom {
         val paramsFrom = runCatching {
             val url = Url(input)
-            if (url.fragment.isNotEmpty()) {
-                url.fragment.decodeFromPostBody<AuthenticationResponseParameters>().let {
+            if (url.encodedFragment.isNotEmpty()) {
+                url.encodedFragment.decodeFromUrlQuery<AuthenticationResponseParameters>().let {
                     ResponseParametersFrom.Uri(url, it)
                 }
             } else {
