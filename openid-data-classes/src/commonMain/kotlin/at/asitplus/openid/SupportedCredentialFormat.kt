@@ -132,6 +132,9 @@ data class SupportedCredentialFormat private constructor(
             }.getOrNull()
         }
 
+    fun withSupportedProofTypes(supportedProofTypes: Map<String, CredentialRequestProofSupported>) =
+        copy(supportedProofTypes = supportedProofTypes)
+
     companion object {
 
         fun forIsoMdoc(

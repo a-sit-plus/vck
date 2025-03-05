@@ -152,7 +152,7 @@ class OpenId4VciClient(
     suspend fun startProvisioningWithAuthRequest(
         credentialIssuer: String,
         credentialIdentifierInfo: CredentialIdentifierInfo,
-        requestedAttributes: Set<NormalizedJsonPath>?,
+        @Suppress("unused") requestedAttributes: Set<NormalizedJsonPath>?,
     ) = startProvisioningWithAuthRequest(
         credentialIssuer = credentialIssuer,
         credentialIdentifierInfo = credentialIdentifierInfo
@@ -245,7 +245,7 @@ class OpenId4VciClient(
             tokenResponse = tokenResponse,
             credentialScheme = credentialScheme,
             issuerMetadata = context.issuerMetadata,
-            credentialRepresentation = context.credential.supportedCredentialFormat.format.toRepresentation()
+            credentialFormat = context.credential.supportedCredentialFormat
         )
     }
 
@@ -293,12 +293,13 @@ class OpenId4VciClient(
         tokenResponse: TokenResponseParameters,
         credentialScheme: ConstantIndex.CredentialScheme,
         issuerMetadata: IssuerMetadata,
-        credentialRepresentation: ConstantIndex.CredentialRepresentation,
+        credentialFormat: SupportedCredentialFormat,
     ) {
         Napier.i("postCredentialRequestAndStore: $credentialEndpointUrl with $tokenResponse")
         val credentialRequests = oid4vciService.createCredentialRequest(
             tokenResponse = tokenResponse,
             metadata = issuerMetadata,
+            credentialFormat = credentialFormat,
         ).getOrThrow()
 
         val dpopHeader = if (tokenResponse.tokenType.equals(TOKEN_TYPE_DPOP, true))
@@ -319,7 +320,7 @@ class OpenId4VciClient(
             credentialResponse.extractCredentials()
                 .ifEmpty { throw Exception("No credential was received") }
                 .forEach {
-                    val storeCredentialInput = it.toStoreCredentialInput(credentialRepresentation, credentialScheme)
+                    val storeCredentialInput = it.toStoreCredentialInput(credentialFormat.format.toRepresentation(), credentialScheme)
                     holderAgent.storeCredential(storeCredentialInput).getOrThrow()
                 }
         }
@@ -337,7 +338,7 @@ class OpenId4VciClient(
         credentialOffer: CredentialOffer,
         credentialIdentifierInfo: CredentialIdentifierInfo,
         transactionCode: String? = null,
-        requestedAttributes: Set<NormalizedJsonPath>?,
+        @Suppress("unused") requestedAttributes: Set<NormalizedJsonPath>?,
     ) = loadCredentialWithOffer(
         credentialOffer = credentialOffer,
         credentialIdentifierInfo = credentialIdentifierInfo,
@@ -396,7 +397,7 @@ class OpenId4VciClient(
                 tokenResponse = tokenResponse,
                 credentialScheme = credentialScheme,
                 issuerMetadata = issuerMetadata,
-                credentialRepresentation = credentialIdentifierInfo.supportedCredentialFormat.format.toRepresentation()
+                credentialFormat = credentialIdentifierInfo.supportedCredentialFormat
             )
         } ?: credentialOffer.grants?.authorizationCode?.let {
             ProvisioningContext(

@@ -18,8 +18,14 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
+import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifierJwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Clock.System
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Server implementation to issue credentials using OID4VCI.
@@ -54,10 +60,47 @@ class CredentialIssuer(
      * Used during issuance, when issuing credentials (using [issuer]) with data from [OidcUserInfoExtended]
      */
     private val credentialProvider: CredentialIssuerDataProvider,
+    /**
+     * Used to verify signature of proof elements in credential requests
+     */
+    private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    /**
+     * Clock used to verify timestamps in proof elements in credential requests
+     */
+    private val clock: Clock = System,
+    /**
+     * Time leeway for verification of timestamps in proof elements in credential requests
+     */
+    private val timeLeeway: Duration = 5.minutes,
+    /**
+     * Callback to verify a received [KeyAttestationJwt] proof in credential requests
+     */
+    private val verifyAttestationProof: (JwsSigned<KeyAttestationJwt>) -> Boolean = { true },
+    /**
+     * Turn on to require key attestation support in the [metadata]
+     */
+    private val requireKeyAttestation: Boolean = false,
 ) {
     private val supportedCredentialConfigurations = credentialSchemes
         .flatMap { it.toSupportedCredentialFormat(issuer.cryptoAlgorithms).entries }
-        .associate { it.key to it.value }
+        .associate {
+            it.key to if (requireKeyAttestation) {
+                it.value.withSupportedProofTypes(
+                    supportedProofTypes = mapOf(
+                        ProofType.JWT.stringRepresentation to CredentialRequestProofSupported(
+                            supportedSigningAlgorithms = verifierJwsService.supportedAlgorithms.map { it.identifier },
+                            keyAttestationRequired = KeyAttestationRequired()
+                        ),
+                        ProofType.ATTESTATION.stringRepresentation to CredentialRequestProofSupported(
+                            supportedSigningAlgorithms = verifierJwsService.supportedAlgorithms.map { it.identifier },
+                            keyAttestationRequired = KeyAttestationRequired()
+                        )
+                    )
+                )
+            } else {
+                it.value
+            }
+        }
 
     /**
      * Serve this result JSON-serialized under `/.well-known/openid-credential-issuer`
@@ -179,8 +222,8 @@ class CredentialIssuer(
             .also { Napier.i("credential returns $it") }
     }
 
-    private suspend fun validateProofExtractSubjectPublicKeys(params: CredentialRequestParameters): Set<CryptoPublicKey> =
-        params.proof?.validateProof()?.let { setOf(it) }
+    private suspend fun validateProofExtractSubjectPublicKeys(params: CredentialRequestParameters): Collection<CryptoPublicKey> =
+        params.proof?.validateProof()
             ?: params.proofs?.validateProof()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "invalid proof")
                 .also { Napier.w("credential: client did not provide proof of possession in $params") }
@@ -192,44 +235,77 @@ class CredentialIssuer(
     }
 
     private suspend fun CredentialRequestProofContainer.validateProof() = when (proofType) {
-        ProofType.JWT -> jwtParsed?.map { it.validateJwtProof() }?.toSet()
-        ProofType.ATTESTATION -> attestationParsed?.map { it.validateAttestationProof() }?.toSet()
+        ProofType.JWT -> jwtParsed?.flatMap { it.validateJwtProof() }
+        ProofType.ATTESTATION -> attestationParsed?.flatMap { it.validateAttestationProof() }
         else -> null
     }
 
-    private suspend fun JwsSigned<JsonWebToken>.validateJwtProof(): CryptoPublicKey {
-        if (header.type != PROOF_JWT_TYPE)
+    private suspend fun JwsSigned<JsonWebToken>.validateJwtProof(): Collection<CryptoPublicKey> {
+        if (header.type != PROOF_JWT_TYPE) {
+            Napier.w("validateJwtProof: invalid typ: $header")
             throw OAuth2Exception(Errors.INVALID_PROOF, "invalid typ: ${header.type}")
-                .also { Napier.w("client did provide invalid header type in JWT in proof: $header") }
-        if (authorizationService.supportsClientNonce) {
-            if (payload.nonce == null || !authorizationService.verifyClientNonce(payload.nonce!!))
-                throw OAuth2Exception(Errors.INVALID_PROOF, "invalid nonce: ${payload.nonce}")
-                    .also { Napier.w("client did provide invalid nonce in JWT in proof: ${payload.nonce}") }
         }
-        if (payload.audience == null || payload.audience != publicContext)
+        if (authorizationService.supportsClientNonce) {
+            if (payload.nonce == null || !authorizationService.verifyClientNonce(payload.nonce!!)) {
+                Napier.w("validateJwtProof: invalid nonce: ${payload.nonce}")
+                throw OAuth2Exception(Errors.INVALID_PROOF, "invalid nonce: ${payload.nonce}")
+            }
+        }
+        if (payload.audience == null || payload.audience != publicContext) {
+            Napier.w("validateJwtProof: invalid audience: ${payload.audience}")
             throw OAuth2Exception(Errors.INVALID_PROOF, "invalid audience: ${payload.audience}")
-                .also { Napier.w("client did provide invalid audience in JWT in proof: ${payload.audience}") }
-        return header.publicKey
-            ?: throw OAuth2Exception(Errors.INVALID_PROOF, "could not extract public key")
-                .also { Napier.w("client did provide no valid key in header in JWT in proof: $header") }
+        }
+
+        if (!verifierJwsService.verifyJwsObject(this)) {
+            Napier.w("validateJwtProof: invalid signature: $this")
+            throw OAuth2Exception(Errors.INVALID_PROOF, "invalid signature: $this")
+        }
+        // OID4VCI 8.2.1.1: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
+        // in the attested_keys claim within the key_attestation parameter.
+        val additionalKeys = header.keyAttestationParsed?.validateAttestationProof() ?: listOf()
+
+        val headerPublicKey = header.publicKey ?: run {
+            Napier.w("validateJwtProof: No valid key in header: $header")
+            throw OAuth2Exception(Errors.INVALID_PROOF, "could not extract public key")
+        }
+
+        return additionalKeys + headerPublicKey
     }
 
-    private suspend fun JwsSigned<KeyAttestationJwt>.validateAttestationProof(): CryptoPublicKey {
-        if (header.type != KEY_ATTESTATION_JWT_TYPE)
+    /**
+     * OID4VCI 8.2.1.3: The Credential Issuer SHOULD issue a Credential for each cryptographic public key specified
+     * in the `attested_keys` claim.
+     */
+    private suspend fun JwsSigned<KeyAttestationJwt>.validateAttestationProof(): Collection<CryptoPublicKey> {
+        if (header.type != KEY_ATTESTATION_JWT_TYPE) {
+            Napier.w("validateAttestationProof: invalid typ: $header")
             throw OAuth2Exception(Errors.INVALID_PROOF, "invalid typ: ${header.type}")
-                .also { Napier.w("client did provide invalid header type in JWT in proof: $header") }
-        if (authorizationService.supportsClientNonce) {
-            if (payload.nonce == null || !authorizationService.verifyClientNonce(payload.nonce!!))
-                throw OAuth2Exception(Errors.INVALID_PROOF, "invalid nonce: ${payload.nonce}")
-                    .also { Napier.w("client did provide invalid nonce in JWT in proof: ${payload.nonce}") }
         }
-        if (payload.audience == null || payload.audience != publicContext)
-            throw OAuth2Exception(Errors.INVALID_PROOF, "invalid audience: ${payload.audience}")
-                .also { Napier.w("client did provide invalid audience in JWT in proof: ${payload.audience}") }
-        // TODO Extend validation
-        return header.publicKey
-            ?: throw OAuth2Exception(Errors.INVALID_PROOF, "could not extract public key")
-                .also { Napier.w("client did provide no valid key in header in JWT in proof: $header") }
+        if (authorizationService.supportsClientNonce) {
+            if (payload.nonce == null || !authorizationService.verifyClientNonce(payload.nonce!!)) {
+                Napier.w("validateAttestationProof: invalid nonce: ${payload.nonce}")
+                throw OAuth2Exception(Errors.INVALID_PROOF, "invalid nonce: ${payload.nonce}")
+            }
+        }
+        if (payload.issuedAt > (clock.now() + timeLeeway)) {
+            Napier.w("validateAttestationProof: issuedAt in future: ${payload.issuedAt}")
+            throw OAuth2Exception(Errors.INVALID_PROOF, "issuedAt in future: ${payload.issuedAt}")
+        }
+
+        if (payload.expiration != null && payload.expiration!! < (clock.now() - timeLeeway)) {
+            Napier.w("validateAttestationProof: expiration in past: ${payload.expiration}")
+            throw OAuth2Exception(Errors.INVALID_PROOF, "expiration in past: ${payload.expiration}")
+        }
+
+        if (!verifyAttestationProof.invoke(this)) {
+            Napier.w("validateAttestationProof: Key attestation not verified by callback: $this")
+            throw OAuth2Exception(Errors.INVALID_PROOF, "key attestation not verified: $this")
+        }
+        return payload.attestedKeys.mapNotNull {
+            it.toCryptoPublicKey()
+                .onFailure { Napier.w("validateAttestationProof: Could not convert to public key", it) }
+                .getOrNull()
+        }
     }
 
     private fun extractFromCredentialConfigurationId(credentialConfigurationId: String): Pair<CredentialScheme, CredentialFormatEnum>? =

@@ -62,6 +62,7 @@ class OidvciPreAuthTest : FreeSpec({
     "process with pre-authorized code, credential offer, and authorization details for one credential" {
         val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
         val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(PLAIN_JWT)
+        val credentialFormat = issuer.metadata.supportedCredentialConfigurations!![credentialIdToRequest].shouldNotBeNull()
 
         val token = getToken(credentialOffer, setOf(credentialIdToRequest))
         token.authorizationDetails.shouldNotBeNull()
@@ -69,7 +70,8 @@ class OidvciPreAuthTest : FreeSpec({
 
         val credentialRequest = client.createCredentialRequest(
             tokenResponse = token,
-            metadata = issuer.metadata
+            metadata = issuer.metadata,
+            credentialFormat = credentialFormat,
         ).getOrThrow()
 
         val credential = issuer.credential(token.accessToken, credentialRequest.first())
@@ -90,9 +92,11 @@ class OidvciPreAuthTest : FreeSpec({
 
         authnDetails.forEach {
             it.shouldBeInstanceOf<OpenIdAuthorizationDetails>()
+            val credentialFormat = issuer.metadata.supportedCredentialConfigurations!![it.credentialIdentifiers!!.first()].shouldNotBeNull()
             val credentialRequest = client.createCredentialRequest(
                 tokenResponse = token,
-                metadata = issuer.metadata
+                metadata = issuer.metadata,
+                credentialFormat = credentialFormat,
             ).getOrThrow()
 
             issuer.credential(token.accessToken, credentialRequest.first())
@@ -123,7 +127,8 @@ class OidvciPreAuthTest : FreeSpec({
 
         val credentialRequest = client.createCredentialRequest(
             tokenResponse = token,
-            metadata = issuer.metadata
+            metadata = issuer.metadata,
+            credentialFormat = supportedCredentialFormat,
         ).getOrThrow()
 
         issuer.credential(token.accessToken, credentialRequest.first())
@@ -141,11 +146,11 @@ class OidvciPreAuthTest : FreeSpec({
             .filterIsInstance<OpenIdAuthorizationDetails>()
             .first().credentialIdentifiers.shouldNotBeNull().first()
 
-        val proof = client.createCredentialRequestProof(
+        val proof = client.createCredentialRequestProofJwt(
             clientNonce = token.clientNonce,
-            credentialIssuer = issuer.metadata.credentialIssuer
+            credentialIssuer = issuer.metadata.credentialIssuer,
         )
-        val differentProof = WalletService().createCredentialRequestProof(
+        val differentProof = WalletService().createCredentialRequestProofJwt(
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,
         )

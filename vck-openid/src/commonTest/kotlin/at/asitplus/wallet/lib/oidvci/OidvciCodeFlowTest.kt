@@ -22,7 +22,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
-import io.kotest.matchers.collections.shouldNotBeUnique
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -101,13 +100,15 @@ class OidvciCodeFlowTest : FreeSpec({
 
     "request one credential, using scope" {
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-        val scope = client.buildScope(requestOptions, issuer.metadata).shouldNotBeNull()
+        val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
+        val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
         val credential = issuer.credential(
             token.accessToken,
             client.createCredentialRequest(
                 tokenResponse = token,
-                metadata = issuer.metadata
+                metadata = issuer.metadata,
+                credentialFormat = credentialFormat,
             ).getOrThrow().first()
         ).getOrThrow()
         credential.format shouldBe CredentialFormatEnum.JWT_VC
@@ -126,9 +127,9 @@ class OidvciCodeFlowTest : FreeSpec({
             RequestOptions(AtomicAttribute2023, SD_JWT),
             RequestOptions(AtomicAttribute2023, ISO_MDOC),
         ).associateBy {
-            client.buildScope(it, issuer.metadata)!!
+            client.selectSupportedCredentialFormat(it, issuer.metadata)!!
         }
-        val scope = requestOptions.keys.joinToString(" ")
+        val scope = requestOptions.keys.joinToString(" ") { it.scope.shouldNotBeNull() }
         val token = getToken(scope)
 
         requestOptions.forEach {
@@ -136,7 +137,8 @@ class OidvciCodeFlowTest : FreeSpec({
                 token.accessToken,
                 client.createCredentialRequest(
                     tokenResponse = token,
-                    metadata = issuer.metadata
+                    metadata = issuer.metadata,
+                    credentialFormat = it.key,
                 ).getOrThrow().first()
             ).getOrThrow().credentials.shouldNotBeEmpty().first().credentialString.shouldNotBeNull()
         }
@@ -144,13 +146,13 @@ class OidvciCodeFlowTest : FreeSpec({
 
     "proof over different keys leads to different credentials" {
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-        val scope = client.buildScope(requestOptions, issuer.metadata).shouldNotBeNull()
+        val scope = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata)?.scope.shouldNotBeNull()
         val token = getToken(scope)
-        val proof = client.createCredentialRequestProof(
+        val proof = client.createCredentialRequestProofJwt(
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,
         )
-        val differentProof = WalletService().createCredentialRequestProof(
+        val differentProof = WalletService().createCredentialRequestProofJwt(
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,
         )
@@ -162,9 +164,10 @@ class OidvciCodeFlowTest : FreeSpec({
             )
         )
 
-        val credentials: Collection<CredentialResponseSingleCredential> = issuer.credential(token.accessToken, credentialRequest)
-            .getOrThrow()
-            .credentials.shouldNotBeEmpty().shouldHaveSize(2)
+        val credentials: Collection<CredentialResponseSingleCredential> =
+            issuer.credential(token.accessToken, credentialRequest)
+                .getOrThrow()
+                .credentials.shouldNotBeEmpty().shouldHaveSize(2)
         // subject identifies the key of the client, here the keys of different proofs, so they should be unique
         credentials.map {
             JwsSigned.deserialize<VerifiableCredentialJws>(
@@ -190,7 +193,7 @@ class OidvciCodeFlowTest : FreeSpec({
             credentialProvider = DummyOAuth2IssuerCredentialDataProvider
         )
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
-        val scope = client.buildScope(requestOptions, issuer.metadata).shouldNotBeNull()
+        val scope = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata)?.scope.shouldNotBeNull()
 
         shouldThrow<OAuth2Exception> {
             getToken(scope)
@@ -199,14 +202,16 @@ class OidvciCodeFlowTest : FreeSpec({
 
     "request credential in SD-JWT, using scope" {
         val requestOptions = RequestOptions(AtomicAttribute2023, SD_JWT)
-        val scope = client.buildScope(requestOptions, issuer.metadata).shouldNotBeNull()
+        val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
+        val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope)
 
         val credential = issuer.credential(
             token.accessToken,
             client.createCredentialRequest(
                 tokenResponse = token,
-                metadata = issuer.metadata
+                metadata = issuer.metadata,
+                credentialFormat = credentialFormat,
             ).getOrThrow().first()
         ).getOrThrow()
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
@@ -217,14 +222,16 @@ class OidvciCodeFlowTest : FreeSpec({
 
     "request credential in SD-JWT, using scope only in authn request" {
         val requestOptions = RequestOptions(AtomicAttribute2023, SD_JWT)
-        val scope = client.buildScope(requestOptions, issuer.metadata).shouldNotBeNull()
+        val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
+        val scope = credentialFormat.scope.shouldNotBeNull()
         val token = getToken(scope, false) // do not set scope in token request, only in authn request
 
         val credential = issuer.credential(
             token.accessToken,
             client.createCredentialRequest(
                 tokenResponse = token,
-                metadata = issuer.metadata
+                metadata = issuer.metadata,
+                credentialFormat = credentialFormat,
             ).getOrThrow().first()
         ).getOrThrow()
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
@@ -234,10 +241,12 @@ class OidvciCodeFlowTest : FreeSpec({
     }
 
     "request credential in SD-JWT, using scope in access token different to auth code" {
-        val authCodeScope = client.buildScope(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata)
-            .shouldNotBeNull()
-        val tokenScope = client.buildScope(RequestOptions(AtomicAttribute2023, ISO_MDOC), issuer.metadata)
-            .shouldNotBeNull()
+        val authCodeScope =
+            client.selectSupportedCredentialFormat(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata)
+                ?.scope.shouldNotBeNull()
+        val tokenScope =
+            client.selectSupportedCredentialFormat(RequestOptions(AtomicAttribute2023, ISO_MDOC), issuer.metadata)
+                ?.scope.shouldNotBeNull()
         val authnRequest = client.oauth2Client.createAuthRequest(
             state = state,
             scope = authCodeScope,
@@ -259,17 +268,22 @@ class OidvciCodeFlowTest : FreeSpec({
     }
 
     "request credential in SD-JWT, using authorization details" {
+        val credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
         val authorizationDetails = client.buildAuthorizationDetails(
-            credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
+            credentialConfigurationId = credentialConfigurationId,
             authorizationServers = issuer.metadata.authorizationServers
         )
+        val credentialFormat = issuer.metadata.supportedCredentialConfigurations
+            .shouldNotBeNull()[credentialConfigurationId]
+            .shouldNotBeNull()
         val token = getToken(authorizationDetails)
 
         val credential = issuer.credential(
             token.accessToken,
             client.createCredentialRequest(
                 tokenResponse = token,
-                metadata = issuer.metadata
+                metadata = issuer.metadata,
+                credentialFormat = credentialFormat,
             ).getOrThrow().first()
         ).getOrThrow()
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
@@ -279,17 +293,22 @@ class OidvciCodeFlowTest : FreeSpec({
     }
 
     "request credential in SD-JWT, using authorization details only in authnrequest" {
+        val credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT)
         val authorizationDetails = client.buildAuthorizationDetails(
-            credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
+            credentialConfigurationId = credentialConfigurationId,
             authorizationServers = issuer.metadata.authorizationServers
         )
+        val credentialFormat = issuer.metadata.supportedCredentialConfigurations
+            .shouldNotBeNull()[credentialConfigurationId]
+            .shouldNotBeNull()
         val token = getToken(authorizationDetails, false) // do not set authn details in token request
 
         val credential = issuer.credential(
             token.accessToken,
             client.createCredentialRequest(
                 tokenResponse = token,
-                metadata = issuer.metadata
+                metadata = issuer.metadata,
+                credentialFormat = credentialFormat,
             ).getOrThrow().first()
         ).getOrThrow()
         credential.format shouldBe CredentialFormatEnum.VC_SD_JWT
@@ -326,8 +345,10 @@ class OidvciCodeFlowTest : FreeSpec({
     }
 
     "request credential in SD-JWT, using scope in token, but authorization details in credential request" {
-        val scope = client.buildScope(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata)
-            .shouldNotBeNull()
+        val credentialFormat =
+            client.selectSupportedCredentialFormat(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata)
+        val scope = credentialFormat
+            ?.scope.shouldNotBeNull()
         val token = getToken(scope)
 
         shouldThrow<OAuth2Exception> {
@@ -335,7 +356,8 @@ class OidvciCodeFlowTest : FreeSpec({
                 token.accessToken,
                 client.createCredentialRequest(
                     tokenResponse = token,
-                    metadata = issuer.metadata
+                    metadata = issuer.metadata,
+                    credentialFormat = credentialFormat,
                 ).getOrThrow().first().copy(
                     // enforces error on client, setting credential_identifier, although access token was for scope
                     // (which should be credential_configuration_id in credential request)
@@ -347,7 +369,9 @@ class OidvciCodeFlowTest : FreeSpec({
     }
 
     "request credential in SD-JWT, using authorization details in token, but scope in credential request" {
-        val scope = client.buildScope(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata).shouldNotBeNull()
+        val credentialFormat =
+            client.selectSupportedCredentialFormat(RequestOptions(AtomicAttribute2023, SD_JWT), issuer.metadata).shouldNotBeNull()
+        val scope = credentialFormat.scope.shouldNotBeNull()
         val authorizationDetails = client.buildAuthorizationDetails(
             credentialConfigurationId = AtomicAttribute2023.toCredentialIdentifier(SD_JWT),
             authorizationServers = issuer.metadata.authorizationServers
@@ -359,7 +383,8 @@ class OidvciCodeFlowTest : FreeSpec({
                 token.accessToken,
                 client.createCredentialRequest(
                     tokenResponse = token,
-                    metadata = issuer.metadata
+                    metadata = issuer.metadata,
+                    credentialFormat = credentialFormat,
                 ).getOrThrow().first().copy(
                     // enforces error on client, setting credential_configuration_id, although access token was for
                     // authorization details (which should be credential_identifier in credential request)
@@ -372,13 +397,15 @@ class OidvciCodeFlowTest : FreeSpec({
 
     "request credential in ISO MDOC, using scope" {
         val requestOptions = RequestOptions(MobileDrivingLicenceScheme, ISO_MDOC)
-        val scope = client.buildScope(requestOptions, issuer.metadata).shouldNotBeNull()
+        val credentialFormat = client.selectSupportedCredentialFormat(requestOptions, issuer.metadata).shouldNotBeNull()
+        val scope = credentialFormat?.scope.shouldNotBeNull()
         val token = getToken(scope)
 
         val credential = issuer.credential(
             token.accessToken, client.createCredentialRequest(
                 tokenResponse = token,
-                metadata = issuer.metadata
+                metadata = issuer.metadata,
+                credentialFormat = credentialFormat,
             ).getOrThrow().first()
         ).getOrThrow()
         credential.format shouldBe CredentialFormatEnum.MSO_MDOC

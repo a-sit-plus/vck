@@ -4,6 +4,7 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.ProofType
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.*
 import at.asitplus.wallet.lib.RemoteResourceRetrieverFunction
@@ -66,8 +67,15 @@ class WalletService(
      * or the HTTP header `Location`, i.e. if the server sends the request object as a redirect.
      */
     private val remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-    private val stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
+    /**
+     * Load key attestation to create [CredentialRequestProof], if required by the credential issuer.
+     * Once the definition of this format becomes clear in OpenID for Verifiable Credential Issuance,
+     * this should probably be moved to [at.asitplus.wallet.lib.agent.CryptoService].
+     */
+    private val loadKeyAttestation: (suspend (KeyAttestationInput) -> KmmResult<JwsSigned<KeyAttestationJwt>>)? = null,
 ) {
+
+    data class KeyAttestationInput(val clientNonce: String?, val supportedAlgorithms: Collection<String>?)
 
     val oauth2Client: OAuth2Client = OAuth2Client(clientId, redirectUrl)
 
@@ -76,13 +84,11 @@ class WalletService(
         redirectUrl: String = "$clientId/callback",
         keyMaterial: KeyMaterial,
         remoteResourceRetriever: RemoteResourceRetrieverFunction = { null },
-        stateToCodeStore: MapStore<String, String> = DefaultMapStore(),
     ) : this(
         clientId = clientId,
         redirectUrl = redirectUrl,
         cryptoService = DefaultCryptoService(keyMaterial),
         remoteResourceRetriever = remoteResourceRetriever,
-        stateToCodeStore = stateToCodeStore
     )
 
     data class RequestOptions(
@@ -165,6 +171,26 @@ class WalletService(
     /**
      * Build `scope` value for use in [OAuth2Client.createAuthRequest] and [OAuth2Client.createTokenRequestParameters].
      */
+    fun selectSupportedCredentialFormat(
+        requestOptions: RequestOptions,
+        metadata: IssuerMetadata,
+    ) = metadata.supportedCredentialConfigurations?.values?.filter {
+        it.format.toRepresentation() == requestOptions.representation
+    }?.firstOrNull {
+        when (requestOptions.representation) {
+            PLAIN_JWT -> it.credentialDefinition?.types?.contains(requestOptions.credentialScheme.vcType!!) == true
+            SD_JWT -> it.sdJwtVcType == requestOptions.credentialScheme.sdJwtType!!
+            ISO_MDOC -> it.docType == requestOptions.credentialScheme.isoDocType!!
+        }
+    }
+
+    /**
+     * Build `scope` value for use in [OAuth2Client.createAuthRequest] and [OAuth2Client.createTokenRequestParameters].
+     */
+    @Deprecated(
+        "Extract supported credential format, take scope from there",
+        ReplaceWith("selectSupportedCredentialFormat(requestOptions, metadata)?.scope")
+    )
     fun buildScope(
         requestOptions: RequestOptions,
         metadata: IssuerMetadata,
@@ -229,10 +255,12 @@ class WalletService(
      *
      * @param tokenResponse from the authorization server token endpoint
      * @param metadata the issuer's metadata, see [IssuerMetadata]
+     * @param credentialFormat which credential to request (needed to build the correct proof)
      */
     suspend fun createCredentialRequest(
         tokenResponse: TokenResponseParameters,
         metadata: IssuerMetadata,
+        credentialFormat: SupportedCredentialFormat,
         clock: Clock = Clock.System,
     ): KmmResult<Collection<CredentialRequestParameters>> = catching {
         val requests = tokenResponse.authorizationDetails?.let {
@@ -251,7 +279,7 @@ class WalletService(
             }.toSet()
         } ?: throw IllegalArgumentException("Can't parse tokenResponse: $tokenResponse")
         requests.map {
-            it.copy(proof = createCredentialRequestProof(tokenResponse.clientNonce, metadata.credentialIssuer, clock))
+            it.copy(proof = createCredentialRequestProof(metadata, credentialFormat, tokenResponse.clientNonce, clock))
         }.also {
             Napier.i("createCredentialRequest returns $it")
         }
@@ -276,34 +304,70 @@ class WalletService(
                 credentialScheme.toCredentialRequestParameters(representation)
             }
         }.copy(
-            proof = createCredentialRequestProof(clientNonce, credentialIssuer, clock)
+            proof = createCredentialRequestProofJwt(clientNonce, credentialIssuer, clock)
         ).also { Napier.i("createCredentialRequest returns $it") }
     }
 
 
     internal suspend fun createCredentialRequestProof(
+        metadata: IssuerMetadata,
+        credentialFormat: SupportedCredentialFormat,
+        clientNonce: String?,
+        clock: Clock = Clock.System,
+    ): CredentialRequestProof =
+        credentialFormat.supportedProofTypes?.get(ProofType.JWT.stringRepresentation)?.let { jwtProof ->
+            val keyAttestationRequired = jwtProof.keyAttestationRequired != null
+            createCredentialRequestProofJwt(clientNonce, metadata.credentialIssuer, clock, keyAttestationRequired)
+        } ?: credentialFormat.supportedProofTypes?.get(ProofType.ATTESTATION.stringRepresentation)?.let {
+            createCredentialRequestProofAttestation(clientNonce, it.supportedSigningAlgorithms)
+        } ?: createCredentialRequestProofJwt(clientNonce, metadata.credentialIssuer, clock)
+
+    internal suspend fun createCredentialRequestProofAttestation(
+        clientNonce: String?,
+        supportedSigningAlgorithms: Collection<String>,
+    ): CredentialRequestProof = CredentialRequestProof(
+        proofType = ProofType.ATTESTATION,
+        attestation = this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, supportedSigningAlgorithms))
+            ?.getOrThrow()?.serialize()
+            ?: throw IllegalArgumentException("Key attestation required, none provided")
+    )
+
+    internal suspend fun createCredentialRequestProofJwt(
         clientNonce: String?,
         credentialIssuer: String?,
         clock: Clock = Clock.System,
+        addKeyAttestation: Boolean = false,
     ): CredentialRequestProof = CredentialRequestProof(
-        proofType = OpenIdConstants.ProofType.JWT,
-        jwt = jwsService.createSignedJwsAddingParams(
-            header = JwsHeader(
-                algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
-                type = OpenIdConstants.PROOF_JWT_TYPE
-            ),
-            payload = JsonWebToken(
-                issuer = clientId, // omit when token was pre-authn?
-                audience = credentialIssuer,
-                issuedAt = clock.now(),
-                nonce = clientNonce,
-            ),
-            serializer = JsonWebToken.serializer(),
-            addKeyId = false,
-            addJsonWebKey = true,
-            addX5c = false,
-        ).getOrThrow().serialize()
+        proofType = ProofType.JWT,
+        jwt = buildJwtProof(addKeyAttestation, clientNonce, credentialIssuer, clock)
     )
+
+    private suspend fun buildJwtProof(
+        addKeyAttestation: Boolean,
+        clientNonce: String?,
+        credentialIssuer: String?,
+        clock: Clock,
+    ): String = jwsService.createSignedJwsAddingParams(
+        header = JwsHeader(
+            algorithm = cryptoService.keyMaterial.signatureAlgorithm.toJwsAlgorithm().getOrThrow(),
+            type = OpenIdConstants.PROOF_JWT_TYPE,
+            keyAttestation = if (addKeyAttestation)
+                this.loadKeyAttestation?.invoke(KeyAttestationInput(clientNonce, null))?.getOrThrow()?.serialize()
+                    ?: throw IllegalArgumentException("Key attestation required, none provided")
+            else null
+        ),
+        payload = JsonWebToken(
+            issuer = clientId, // omit when token was pre-authn?
+            audience = credentialIssuer,
+            issuedAt = clock.now(),
+            nonce = clientNonce,
+        ),
+        serializer = JsonWebToken.serializer(),
+        addKeyId = false,
+        addJsonWebKey = true,
+        addX5c = false,
+    ).getOrThrow().serialize()
+
 
     private fun ConstantIndex.CredentialScheme.toCredentialRequestParameters(
         credentialRepresentation: CredentialRepresentation,
@@ -364,18 +428,18 @@ suspend fun JwsService.buildDPoPHeader(
  * @param clientId OAuth 2.0 client ID of the wallet
  * @param issuer a unique identifier for the entity that issued the JWT
  * @param clientKey key to be attested, i.e. included in a [ConfirmationClaim]
- * @param keyType optional key type acc. to OID4VC HAIP with SD-JWT VC to include in the [ConfirmationClaim]
- * @param userAuthentication optional user authentication acc. to OID4VC HAIP with SD-JWT VC to include in the [ConfirmationClaim]
+ * @param walletName human-readable name of the Wallet
+ * @param walletLink URL for further information about the Wallet Provider
  * @param lifetime validity period of the assertion (minus the [clockSkew])
  * @param clockSkew duration to subtract from [Clock.System.now] when setting the creation timestamp
  */
+// TODO Use this in an test, also HAIP requires the credential issuer to require client attestation!
 suspend fun JwsService.buildClientAttestationJwt(
     clientId: String,
     issuer: String,
     clientKey: JsonWebKey,
-    keyType: WalletAttestationKeyType? = null,
-    userAuthentication: WalletAttestationUserAuthentication? = null,
-    authenticationLevel: String? = null,
+    walletName: String? = null,
+    walletLink: String? = null,
     lifetime: Duration = 60.minutes,
     clockSkew: Duration = 5.minutes,
 ) = createSignedJwsAddingParams(
@@ -388,11 +452,10 @@ suspend fun JwsService.buildClientAttestationJwt(
         subject = clientId,
         issuedAt = Clock.System.now() - clockSkew,
         expiration = Clock.System.now() - clockSkew + lifetime,
-        authenticationLevel = authenticationLevel,
+        walletName = walletName,
+        walletLink = walletLink,
         confirmationClaim = ConfirmationClaim(
             jsonWebKey = clientKey,
-            keyType = keyType,
-            userAuthentication = userAuthentication,
         )
     ),
     serializer = JsonWebToken.serializer(),

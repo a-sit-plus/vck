@@ -19,8 +19,10 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.json.JsonPrimitive
 
 @Suppress("DEPRECATION")
-fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<SignatureAlgorithm>? = null)
-        : Map<String, SupportedCredentialFormat> {
+fun CredentialScheme.toSupportedCredentialFormat(
+    cryptoAlgorithms: Set<SignatureAlgorithm>? = null,
+    supportedProofTypes: Map<String, CredentialRequestProofSupported>? = null,
+): Map<String, SupportedCredentialFormat> {
     val supportedSigningAlgorithms = cryptoAlgorithms
         ?.mapNotNull { it.toJwsAlgorithm().getOrNull()?.identifier }
         ?.toSet()
@@ -31,6 +33,7 @@ fun CredentialScheme.toSupportedCredentialFormat(cryptoAlgorithms: Set<Signature
             docType = isoDocType!!,
             supportedBindingMethods = setOf(BINDING_METHOD_JWK, BINDING_METHOD_COSE_KEY),
             supportedSigningAlgorithms = supportedSigningAlgorithms,
+            supportedProofTypes = supportedProofTypes,
             isoClaims = claimNames.map {
                 ClaimDescription(path = listOf(isoNamespace!!) + it.split("."))
             }.toSet()
