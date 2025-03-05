@@ -51,6 +51,8 @@ object OpenIdConstants {
 
     const val PROOF_JWT_TYPE = "openid4vci-proof+jwt"
 
+    const val KEY_ATTESTATION_JWT_TYPE = "key-attestation+jwt"
+
     const val AUTH_METHOD_ATTEST_JWT_CLIENT_AUTH = "attest_jwt_client_auth"
 
     const val PARAMETER_PROMPT = "prompt"
@@ -74,12 +76,18 @@ object OpenIdConstants {
 
         companion object {
             private const val STRING_JWT = "jwt"
+            private const val STRING_ATTESTATION = "attestation"
         }
 
         /**
-         * Proof type in [at.asitplus.openid.CredentialRequestProof]
+         * Proof type `jwt` in [at.asitplus.openid.CredentialRequestProof]
          */
         object JWT : ProofType(STRING_JWT)
+
+        /**
+         * Proof type `attestation` in [at.asitplus.openid.CredentialRequestProof]
+         */
+        object ATTESTATION : ProofType(STRING_ATTESTATION)
 
         /**
          * Any proof type not natively supported by this library
@@ -92,6 +100,7 @@ object OpenIdConstants {
 
             override fun deserialize(decoder: Decoder): ProofType = when (val str = decoder.decodeString()) {
                 STRING_JWT -> JWT
+                STRING_ATTESTATION -> ATTESTATION
                 else -> Other(str)
             }
 

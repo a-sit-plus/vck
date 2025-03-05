@@ -1,11 +1,12 @@
 package at.asitplus.wallet.lib.oidvci
 
-import at.asitplus.openid.CredentialOffer
-import at.asitplus.openid.OpenIdAuthorizationDetails
-import at.asitplus.openid.TokenResponseParameters
+import at.asitplus.openid.*
+import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.PLAIN_JWT
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.oauth2.OAuth2Client
 import at.asitplus.wallet.lib.oauth2.SimpleAuthorizationService
 import at.asitplus.wallet.lib.openid.DummyOAuth2DataProvider
@@ -129,6 +130,46 @@ class OidvciPreAuthTest : FreeSpec({
             .getOrThrow()
             .credentials.shouldNotBeEmpty().first()
             .credentialString.shouldNotBeNull()
+    }
+
+    "two proofs over different keys lead to two credentials" {
+        val credentialOffer = issuer.credentialOfferWithPreAuthnForUser(DummyOAuth2DataProvider.user)
+        val credentialIdToRequest = AtomicAttribute2023.toCredentialIdentifier(PLAIN_JWT)
+
+        val token = getToken(credentialOffer, setOf(credentialIdToRequest))
+        val credentialIdentifier = token.authorizationDetails.shouldNotBeNull()
+            .filterIsInstance<OpenIdAuthorizationDetails>()
+            .first().credentialIdentifiers.shouldNotBeNull().first()
+
+        val proof = client.createCredentialRequestProof(
+            clientNonce = token.clientNonce,
+            credentialIssuer = issuer.metadata.credentialIssuer
+        )
+        val differentProof = WalletService().createCredentialRequestProof(
+            clientNonce = token.clientNonce,
+            credentialIssuer = issuer.metadata.credentialIssuer,
+        )
+
+        val credentialRequest = CredentialRequestParameters(
+            credentialIdentifier = credentialIdentifier,
+            proofs = CredentialRequestProofContainer(
+                proofType = OpenIdConstants.ProofType.JWT,
+                jwt = setOf(proof.jwt!!, differentProof.jwt!!)
+            )
+        )
+
+        val credentials = issuer.credential(token.accessToken, credentialRequest)
+            .getOrThrow()
+            .credentials.shouldNotBeEmpty()
+            .shouldHaveSize(2)
+        // subject identifies the key of the client, here the keys of different proofs, so they should be unique
+        credentials.map {
+            JwsSigned.deserialize<VerifiableCredentialJws>(
+                VerifiableCredentialJws.serializer(),
+                it.credentialString.shouldNotBeNull(),
+                vckJsonSerializer
+            ).getOrThrow().payload.subject
+        }.toSet().shouldHaveSize(2)
     }
 
 })

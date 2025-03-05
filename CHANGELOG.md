@@ -25,6 +25,7 @@ Release 5.5.0:
    - `SimpleAuthorizationService` correctly validates requested credentials in credential request and issued access tokens
    - `SimpleAuthorizationService` correctly validates requested credentials in authn request and token request
    - Remove proof type `cwt`, which has been removed from draft 14
+   - The `CredentialIssuer` issues more the same credential to different keys, if more than one proof is contained in the credential request
  - Update dependencies:
    - Update `signum` to 3.14.0, supporting X.509 certificates in v1, v2 too
 

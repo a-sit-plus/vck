@@ -5,7 +5,6 @@ import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation.*
-import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiableCredentialSdJwt
 import at.asitplus.wallet.lib.data.vckJsonSerializer
@@ -21,7 +20,9 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceScheme
 import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FreeSpec
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.collections.shouldNotBeUnique
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -103,7 +104,8 @@ class OidvciCodeFlowTest : FreeSpec({
         val scope = client.buildScope(requestOptions, issuer.metadata).shouldNotBeNull()
         val token = getToken(scope)
         val credential = issuer.credential(
-            token.accessToken, client.createCredentialRequest(
+            token.accessToken,
+            client.createCredentialRequest(
                 tokenResponse = token,
                 metadata = issuer.metadata
             ).getOrThrow().first()
@@ -140,33 +142,37 @@ class OidvciCodeFlowTest : FreeSpec({
         }
     }
 
-    "proof over different keys leads to an error" {
+    "proof over different keys leads to different credentials" {
         val requestOptions = RequestOptions(AtomicAttribute2023, PLAIN_JWT)
         val scope = client.buildScope(requestOptions, issuer.metadata).shouldNotBeNull()
         val token = getToken(scope)
         val proof = client.createCredentialRequestProof(
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,
-            clock = requestOptions.clock
         )
         val differentProof = WalletService().createCredentialRequestProof(
             clientNonce = token.clientNonce,
             credentialIssuer = issuer.metadata.credentialIssuer,
-            clock = requestOptions.clock
         )
         val credentialRequest = CredentialRequestParameters(
-            format = CredentialFormatEnum.JWT_VC,
-            credentialDefinition = SupportedCredentialFormatDefinition(
-                types = setOf(VERIFIABLE_CREDENTIAL, AtomicAttribute2023.vcType),
-            ),
+            credentialConfigurationId = scope,
             proofs = CredentialRequestProofContainer(
                 proofType = OpenIdConstants.ProofType.JWT,
                 jwt = setOf(proof.jwt!!, differentProof.jwt!!)
             )
         )
 
-        issuer.credential(token.accessToken, credentialRequest)
-            .exceptionOrNull().shouldBeInstanceOf<OAuth2Exception>()
+        val credentials: Collection<CredentialResponseSingleCredential> = issuer.credential(token.accessToken, credentialRequest)
+            .getOrThrow()
+            .credentials.shouldNotBeEmpty().shouldHaveSize(2)
+        // subject identifies the key of the client, here the keys of different proofs, so they should be unique
+        credentials.map {
+            JwsSigned.deserialize<VerifiableCredentialJws>(
+                VerifiableCredentialJws.serializer(),
+                it.credentialString.shouldNotBeNull(),
+                vckJsonSerializer
+            ).getOrThrow().payload.subject
+        }.toSet().shouldHaveSize(2)
     }
 
     "authorizationService with defect mapstore leads to an error" {

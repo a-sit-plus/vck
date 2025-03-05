@@ -172,6 +172,28 @@ fun Issuer.IssuedCredential.toCredentialResponseParameters() = when (this) {
     )
 }
 
+@Suppress("DEPRECATION")
+// TODO In 5.4.0, use DC_SD_JWT instead of VC_SD_JWT
+// TODO After 5.5.0, drop "credential", use only "credentials"
+fun Collection<Issuer.IssuedCredential>.toCredentialResponseParameters() =
+    if (this.size == 1) {
+        this.first().toCredentialResponseParameters()
+    } else {
+        CredentialResponseParameters(
+            credentials = this.map { it.toCredentialResponseSingleCredential() }.toSet()
+        )
+    }
+
+fun Issuer.IssuedCredential.toCredentialResponseSingleCredential(): CredentialResponseSingleCredential =
+    when (this) {
+        is Issuer.IssuedCredential.Iso -> CredentialResponseSingleCredential(
+            JsonPrimitive(issuerSigned.serialize().encodeToString(Base64UrlStrict))
+        )
+
+        is Issuer.IssuedCredential.VcJwt -> CredentialResponseSingleCredential(JsonPrimitive(vcJws))
+        is Issuer.IssuedCredential.VcSdJwt -> CredentialResponseSingleCredential(JsonPrimitive(vcSdJwt))
+    }
+
 class OAuth2Exception : Throwable {
     constructor(error: String, errorDescription: String) : super("$error: $errorDescription")
     constructor(error: String, cause: Throwable) : super(error, cause)

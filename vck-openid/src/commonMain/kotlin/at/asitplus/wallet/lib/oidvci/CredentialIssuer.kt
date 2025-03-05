@@ -4,19 +4,20 @@ import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.openid.*
 import at.asitplus.openid.OpenIdConstants.Errors
+import at.asitplus.openid.OpenIdConstants.KEY_ATTESTATION_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.PROOF_JWT_TYPE
 import at.asitplus.openid.OpenIdConstants.ProofType
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.KeyAttestationJwt
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.Issuer
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 
@@ -140,8 +141,6 @@ class CredentialIssuer(
         accessToken: String,
         params: CredentialRequestParameters,
     ): KmmResult<CredentialResponseParameters> = catching {
-        val subjectPublicKey = validateProofExtractSubjectPublicKey(params)
-
         val userInfo = authorizationService.getUserInfo(
             accessToken,
             params.credentialIdentifier,
@@ -157,65 +156,80 @@ class CredentialIssuer(
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "credential scheme not known")
                 .also { Napier.w("credential: client did not provide correct credential scheme: $params") }
 
-        val credentialToBeIssued = credentialProvider.getCredential(
-            userInfo = userInfo,
-            subjectPublicKey = subjectPublicKey,
-            credentialScheme = credentialScheme,
-            representation = representation.toRepresentation(),
-            claimNames = null // OID4VCI: Always issue all claims that are available
-        ).getOrElse {
-            throw OAuth2Exception(Errors.INVALID_REQUEST, it)
-                .also { Napier.w("credential: did not get any credential from provideUserInfo", it) }
-        }
-
-        val issuedCredential = issuer.issueCredential(
-            credential = credentialToBeIssued
-        ).getOrElse {
-            throw OAuth2Exception(Errors.INVALID_REQUEST, it)
-                .also { Napier.w("credential: issuer did not issue credential", it) }
+        val issuedCredentials = validateProofExtractSubjectPublicKeys(params).map { subjectPublicKey ->
+            val credentialToBeIssued = credentialProvider.getCredential(
+                userInfo = userInfo,
+                subjectPublicKey = subjectPublicKey,
+                credentialScheme = credentialScheme,
+                representation = representation.toRepresentation(),
+                claimNames = null // OID4VCI: Always issue all claims that are available
+            ).getOrElse {
+                throw OAuth2Exception(Errors.INVALID_REQUEST, it)
+                    .also { Napier.w("credential: did not get any credential from provideUserInfo", it) }
+            }
+            issuer.issueCredential(
+                credential = credentialToBeIssued
+            ).getOrElse {
+                throw OAuth2Exception(Errors.INVALID_REQUEST, it)
+                    .also { Napier.w("credential: issuer did not issue credential", it) }
+            }
         }
         // TODO Encrypt optionally
-        issuedCredential.toCredentialResponseParameters()
+        issuedCredentials.toCredentialResponseParameters()
             .also { Napier.i("credential returns $it") }
     }
 
-    private suspend fun validateProofExtractSubjectPublicKey(params: CredentialRequestParameters): CryptoPublicKey =
-        params.proof?.validateProof()
+    private suspend fun validateProofExtractSubjectPublicKeys(params: CredentialRequestParameters): Set<CryptoPublicKey> =
+        params.proof?.validateProof()?.let { setOf(it) }
             ?: params.proofs?.validateProof()
             ?: throw OAuth2Exception(Errors.INVALID_REQUEST, "invalid proof")
-                .also { Napier.w("credential: client did not provide proof of possession") }
+                .also { Napier.w("credential: client did not provide proof of possession in $params") }
 
     private suspend fun CredentialRequestProof.validateProof() = when (proofType) {
-        ProofType.JWT -> jwt?.validateJwtProof()
+        ProofType.JWT -> jwtParsed?.validateJwtProof()
+        ProofType.ATTESTATION -> attestationParsed?.validateAttestationProof()
         else -> null
     }
 
     private suspend fun CredentialRequestProofContainer.validateProof() = when (proofType) {
-        ProofType.JWT -> jwt?.map { it.validateJwtProof() }?.toSet()?.singleOrNull()
+        ProofType.JWT -> jwtParsed?.map { it.validateJwtProof() }?.toSet()
+        ProofType.ATTESTATION -> attestationParsed?.map { it.validateAttestationProof() }?.toSet()
         else -> null
     }
 
-    private suspend fun String.validateJwtProof(): CryptoPublicKey {
-        val jwsSigned =
-            JwsSigned.deserialize<JsonWebToken>(JsonWebToken.serializer(), this, vckJsonSerializer).getOrElse {
-                Napier.w("client did provide invalid proof: $this", it)
-                throw OAuth2Exception(Errors.INVALID_PROOF, it)
-            }
-        val jwt = jwsSigned.payload
-        if (jwsSigned.header.type != PROOF_JWT_TYPE)
-            throw OAuth2Exception(Errors.INVALID_PROOF, "invalid typ: ${jwsSigned.header.type}")
-                .also { Napier.w("client did provide invalid header type in JWT in proof: ${jwsSigned.header}") }
+    private suspend fun JwsSigned<JsonWebToken>.validateJwtProof(): CryptoPublicKey {
+        if (header.type != PROOF_JWT_TYPE)
+            throw OAuth2Exception(Errors.INVALID_PROOF, "invalid typ: ${header.type}")
+                .also { Napier.w("client did provide invalid header type in JWT in proof: $header") }
         if (authorizationService.supportsClientNonce) {
-            if (jwt.nonce == null || !authorizationService.verifyClientNonce(jwt.nonce!!))
-                throw OAuth2Exception(Errors.INVALID_PROOF, "invalid nonce: ${jwt.nonce}")
-                    .also { Napier.w("client did provide invalid nonce in JWT in proof: ${jwt.nonce}") }
+            if (payload.nonce == null || !authorizationService.verifyClientNonce(payload.nonce!!))
+                throw OAuth2Exception(Errors.INVALID_PROOF, "invalid nonce: ${payload.nonce}")
+                    .also { Napier.w("client did provide invalid nonce in JWT in proof: ${payload.nonce}") }
         }
-        if (jwt.audience == null || jwt.audience != publicContext)
-            throw OAuth2Exception(Errors.INVALID_PROOF, "invalid audience: ${jwt.audience}")
-                .also { Napier.w("client did provide invalid audience in JWT in proof: ${jwt.audience}") }
-        return jwsSigned.header.publicKey
+        if (payload.audience == null || payload.audience != publicContext)
+            throw OAuth2Exception(Errors.INVALID_PROOF, "invalid audience: ${payload.audience}")
+                .also { Napier.w("client did provide invalid audience in JWT in proof: ${payload.audience}") }
+        return header.publicKey
             ?: throw OAuth2Exception(Errors.INVALID_PROOF, "could not extract public key")
-                .also { Napier.w("client did provide no valid key in header in JWT in proof: ${jwsSigned.header}") }
+                .also { Napier.w("client did provide no valid key in header in JWT in proof: $header") }
+    }
+
+    private suspend fun JwsSigned<KeyAttestationJwt>.validateAttestationProof(): CryptoPublicKey {
+        if (header.type != KEY_ATTESTATION_JWT_TYPE)
+            throw OAuth2Exception(Errors.INVALID_PROOF, "invalid typ: ${header.type}")
+                .also { Napier.w("client did provide invalid header type in JWT in proof: $header") }
+        if (authorizationService.supportsClientNonce) {
+            if (payload.nonce == null || !authorizationService.verifyClientNonce(payload.nonce!!))
+                throw OAuth2Exception(Errors.INVALID_PROOF, "invalid nonce: ${payload.nonce}")
+                    .also { Napier.w("client did provide invalid nonce in JWT in proof: ${payload.nonce}") }
+        }
+        if (payload.audience == null || payload.audience != publicContext)
+            throw OAuth2Exception(Errors.INVALID_PROOF, "invalid audience: ${payload.audience}")
+                .also { Napier.w("client did provide invalid audience in JWT in proof: ${payload.audience}") }
+        // TODO Extend validation
+        return header.publicKey
+            ?: throw OAuth2Exception(Errors.INVALID_PROOF, "could not extract public key")
+                .also { Napier.w("client did provide no valid key in header in JWT in proof: $header") }
     }
 
     private fun extractFromCredentialConfigurationId(credentialConfigurationId: String): Pair<CredentialScheme, CredentialFormatEnum>? =
