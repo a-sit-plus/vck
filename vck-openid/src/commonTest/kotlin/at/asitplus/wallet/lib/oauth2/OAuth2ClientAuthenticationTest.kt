@@ -5,6 +5,7 @@ import at.asitplus.signum.indispensable.josef.JsonWebToken
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.jws.DefaultJwsService
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
 import at.asitplus.wallet.lib.oidvci.buildClientAttestationJwt
@@ -16,7 +17,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonObject
 
@@ -25,43 +25,55 @@ class OAuth2ClientAuthenticationTest : FunSpec({
     lateinit var scope: String
     lateinit var client: OAuth2Client
     lateinit var user: OidcUserInfoExtended
+    lateinit var authorizationServiceStrategy: AuthorizationServiceStrategy
     lateinit var server: SimpleAuthorizationService
     lateinit var clientAttestation: JwsSigned<JsonWebToken>
     lateinit var clientAttestationPop: JwsSigned<JsonWebToken>
+    lateinit var clientKey: KeyMaterial
 
     beforeEach {
         scope = randomString()
         client = OAuth2Client()
         user = OidcUserInfoExtended(OidcUserInfo(randomString()), JsonObject(mapOf()))
+        authorizationServiceStrategy = object : AuthorizationServiceStrategy {
+            override suspend fun loadUserInfo(
+                request: AuthenticationRequestParameters,
+                code: String,
+            ): OidcUserInfoExtended? = user
+
+            override fun validScopes(): String = scope
+
+            override fun validAuthorizationDetails(): Collection<OpenIdAuthorizationDetails> = listOf()
+
+            override fun filterAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<OpenIdAuthorizationDetails> =
+                setOf()
+
+            override fun filterScope(scope: String): String? = scope
+
+        }
         server = SimpleAuthorizationService(
-            strategy = object : AuthorizationServiceStrategy {
-                override suspend fun loadUserInfo(
-                    request: AuthenticationRequestParameters,
-                    code: String,
-                ): OidcUserInfoExtended? = user
-
-                override fun validScopes(): String = scope
-
-                override fun validAuthorizationDetails(): Collection<OpenIdAuthorizationDetails> = listOf()
-
-                override fun filterAuthorizationDetails(authorizationDetails: Collection<AuthorizationDetails>): Set<OpenIdAuthorizationDetails> =
-                    setOf()
-
-                override fun filterScope(scope: String): String? = scope
-
-            },
+            strategy = authorizationServiceStrategy,
             enforceClientAuthentication = true
         )
         val attesterBackend = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert()))
-        val clientKey = EphemeralKeyWithSelfSignedCert()
+        clientKey = EphemeralKeyWithSelfSignedCert()
+        clientAttestation = attesterBackend
+            .buildClientAttestationJwt(client.clientId, "someissuer", clientKey.jsonWebKey)
         val jwsService = DefaultJwsService(DefaultCryptoService(clientKey))
-        clientAttestation =
-            attesterBackend.buildClientAttestationJwt(client.clientId, "someissuer", clientKey.jsonWebKey)
         clientAttestationPop = jwsService.buildClientAttestationPoPJwt(client.clientId, "some server")
     }
 
+    suspend fun getToken(state: String, code: String): TokenResponseParameters = server.token(
+        client.createTokenRequestParameters(
+            state = state,
+            authorization = OAuth2Client.AuthorizationForToken.Code(code),
+            scope = scope
+        ),
+        clientAttestation.serialize(),
+        clientAttestationPop.serialize()
+    ).getOrThrow()
 
-    test("process with pushed authorization request") {
+    test("pushed authorization request") {
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,
@@ -78,20 +90,50 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         val code = authnResponse.params.code
             .shouldNotBeNull()
 
-        val tokenRequest = client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            scope = scope
-        )
-        val token = server.token(
-            tokenRequest,
-            clientAttestation.serialize(),
-            clientAttestationPop.serialize()
-        ).getOrThrow()
-        token.authorizationDetails.shouldBeNull()
+        getToken(state, code)
+            .authorizationDetails.shouldBeNull()
     }
 
-    test("process with pushed authorization request without client authentication") {
+    test("pushed authorization request with wrong client attestation JWT") {
+        val state = uuid4().toString()
+        val authnRequest = client.createAuthRequest(
+            state = state,
+            scope = scope,
+        )
+        clientAttestation = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithSelfSignedCert()))
+            .buildClientAttestationJwt("wrong client id", "someissuer", clientKey.jsonWebKey)
+
+        shouldThrow<OAuth2Exception> {
+            server.par(
+                authnRequest,
+                clientAttestation.serialize(),
+                clientAttestationPop.serialize()
+            ).getOrThrow()
+        }
+    }
+
+    test("pushed authorization request with client attestation JWT not trusted") {
+        val state = uuid4().toString()
+        val authnRequest = client.createAuthRequest(
+            state = state,
+            scope = scope,
+        )
+        server = SimpleAuthorizationService(
+            strategy = authorizationServiceStrategy,
+            enforceClientAuthentication = true,
+            verifyClientAttestationJwt = { false }
+        )
+
+        shouldThrow<OAuth2Exception> {
+            server.par(
+                authnRequest,
+                clientAttestation.serialize(),
+                clientAttestationPop.serialize()
+            ).getOrThrow()
+        }
+    }
+
+    test("pushed authorization request without client authentication") {
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,
@@ -102,7 +144,7 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         }
     }
 
-    test("process with authorization code flow and client authentication") {
+    test("authorization code flow and client authentication") {
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,
@@ -113,20 +155,11 @@ class OAuth2ClientAuthenticationTest : FunSpec({
         val code = authnResponse.params.code
             .shouldNotBeNull()
 
-        val tokenRequest = client.createTokenRequestParameters(
-            state = state,
-            authorization = OAuth2Client.AuthorizationForToken.Code(code),
-            scope = scope
-        )
-        val token = server.token(
-            tokenRequest,
-            clientAttestation.serialize(),
-            clientAttestationPop.serialize()
-        ).getOrThrow()
-        token.authorizationDetails.shouldBeNull()
+        getToken(state, code)
+            .authorizationDetails.shouldBeNull()
     }
 
-    test("process with authorization code flow without client authentication") {
+    test("authorization code flow without client authentication") {
         val state = uuid4().toString()
         val authnRequest = client.createAuthRequest(
             state = state,

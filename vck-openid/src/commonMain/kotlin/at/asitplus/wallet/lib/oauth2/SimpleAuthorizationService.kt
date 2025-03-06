@@ -77,10 +77,10 @@ class SimpleAuthorizationService(
      * Enforce client authentication as defined in OpenID4VC HAIP, i.e. with wallet attestations
      */
     private val enforceClientAuthentication: Boolean = false,
-    /**
-     * Used to verify client authentication JWTs
-     */
+    /** Used to verify client attestation JWTs */
     private val verifierJwsService: VerifierJwsService = DefaultVerifierJwsService(),
+    /** Callback to verify the client attestation JWT against a set of trusted roots */
+    private val verifyClientAttestationJwt: (suspend (JwsSigned<JsonWebToken>) -> Boolean) = { true },
 ) : OAuth2AuthorizationServerAdapter {
 
     override val supportsClientNonce: Boolean = true
@@ -123,7 +123,7 @@ class SimpleAuthorizationService(
             throw OAuth2Exception(Errors.INVALID_REQUEST, "request_uri must not be set")
         }
 
-        authenticateClient(clientAttestation, clientAttestationPop)
+        authenticateClient(clientAttestation, clientAttestationPop, request.clientId)
         validateAuthnRequest(request)
 
         val requestUri = "urn:ietf:params:oauth:request_uri:${requestUriService.provideNonce()}".also {
@@ -232,7 +232,7 @@ class SimpleAuthorizationService(
             validateCodeChallenge(code, request.codeVerifier)
         }
 
-        authenticateClient(clientAttestation, clientAttestationPop)
+        authenticateClient(clientAttestation, clientAttestationPop, request.clientId)
 
         val response = TokenResponseParameters(
             accessToken = tokenService.provideNonce(),
@@ -287,8 +287,9 @@ class SimpleAuthorizationService(
                     Napier.i("token returns $it")
                 }
         } else if (issuedCode.authorizationDetails != null) {
-            val filtered =
-                strategy.filterAuthorizationDetails(issuedCode.authorizationDetails.filterIsInstance<OpenIdAuthorizationDetails>())
+            val filtered = strategy.filterAuthorizationDetails(
+                issuedCode.authorizationDetails.filterIsInstance<OpenIdAuthorizationDetails>()
+            )
             if (filtered.isEmpty())
                 throw OAuth2Exception(
                     Errors.INVALID_REQUEST,
@@ -317,11 +318,18 @@ class SimpleAuthorizationService(
         }
     }
 
-    private fun authenticateClient(clientAttestation: String?, clientAttestationPop: String?) {
+    /**
+     * Authenticates the client as defined in OpenID4VC HAIP, i.e. with client attestation JWT
+     */
+    private suspend fun authenticateClient(
+        clientAttestation: String?,
+        clientAttestationPop: String?,
+        clientId: String?,
+    ) {
         // Enforce client authentication once all clients implement it
         if (enforceClientAuthentication) {
             if (clientAttestation == null || clientAttestationPop == null) {
-                Napier.w("par: client not sent client attestation")
+                Napier.w("auth: client not sent client attestation")
                 throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation headers missing")
             }
         }
@@ -329,26 +337,33 @@ class SimpleAuthorizationService(
             val clientAttestationJwt = JwsSigned
                 .deserialize<JsonWebToken>(JsonWebToken.serializer(), clientAttestation, vckJsonSerializer)
                 .getOrElse {
-                    Napier.w("par: could not parse client attestation JWT", it)
+                    Napier.w("auth: could not parse client attestation JWT", it)
                     throw OAuth2Exception(Errors.INVALID_CLIENT, "could not parse client attestation", it)
                 }
             if (!verifierJwsService.verifyJwsObject(clientAttestationJwt)) {
-                Napier.w("par: client attestation JWT not verified")
+                Napier.w("auth: client attestation JWT not verified")
                 throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation JWT not verified")
             }
+            if (clientAttestationJwt.payload.subject != clientId) {
+                Napier.w("auth: subject ${clientAttestationJwt.payload.subject} not matching client_id $clientId")
+                throw OAuth2Exception(Errors.INVALID_CLIENT, "subject not equal to client_id")
+            }
 
-            // TODO add callback to verify attestation root of trust
+            if (!verifyClientAttestationJwt.invoke(clientAttestationJwt)) {
+                Napier.w("auth: client attestation not verified by callback: $clientAttestationJwt")
+                throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation not verified")
+            }
 
             val clientAttestationPopJwt = JwsSigned
                 .deserialize<JsonWebToken>(JsonWebToken.serializer(), clientAttestationPop, vckJsonSerializer)
                 .getOrElse {
-                    Napier.w("par: could not parse client attestation PoP JWT", it)
+                    Napier.w("auth: could not parse client attestation PoP JWT", it)
                     throw OAuth2Exception(Errors.INVALID_CLIENT, "could not parse client attestation PoP", it)
                 }
             val cnf = clientAttestationJwt.payload.confirmationClaim
                 ?: throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation has no cnf")
             if (!verifierJwsService.verifyJws(clientAttestationPopJwt, cnf)) {
-                Napier.w("par: client attestation PoP JWT not verified")
+                Napier.w("auth: client attestation PoP JWT not verified")
                 throw OAuth2Exception(Errors.INVALID_CLIENT, "client attestation PoP JWT not verified")
             }
         }
