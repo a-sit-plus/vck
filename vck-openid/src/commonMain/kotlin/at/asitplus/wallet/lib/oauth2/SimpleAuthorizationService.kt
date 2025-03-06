@@ -24,6 +24,7 @@ import io.github.aakira.napier.Napier
 import io.ktor.http.*
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.Clock
+import kotlin.String
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -232,6 +233,8 @@ class SimpleAuthorizationService(
      * @param clientAttestation value of the header `OAuth-Client-Attestation`
      * @param clientAttestationPop value of the header `OAuth-Client-Attestation-PoP`
      * @param dpop value of the header `DPoP` (RFC 9449)
+     * @param requestUrl public-facing URL that the client has used (to validate `DPoP`)
+     * @param requestUrl HTTP method that the client has used (to validate `DPoP`)
      *
      * @return [KmmResult] may contain a [OAuth2Exception]
      */
@@ -240,6 +243,8 @@ class SimpleAuthorizationService(
         clientAttestation: String? = null,
         clientAttestationPop: String? = null,
         dpop: String? = null,
+        requestUrl: String? = null,
+        requestMethod: HttpMethod? = null,
     ) = catching {
         Napier.i("token called with $request")
 
@@ -252,7 +257,7 @@ class SimpleAuthorizationService(
         }
 
         authenticateClient(clientAttestation, clientAttestationPop, request.clientId)
-        val response = buildToken(dpop).copy(
+        val response = buildToken(dpop, requestUrl, requestMethod).copy(
             expires = 3600.seconds,
             clientNonce = clientNonceService.provideNonce(),
         )
@@ -333,9 +338,13 @@ class SimpleAuthorizationService(
         }
     }
 
-    private suspend fun buildToken(dpop: String? = null): TokenResponseParameters =
+    private suspend fun buildToken(
+        dpop: String?,
+        requestUrl: String?,
+        requestMethod: HttpMethod?,
+    ): TokenResponseParameters =
         if (dpop != null) {
-            val clientKey = validateDpopJwtForToken(dpop)
+            val clientKey = validateDpopJwtForToken(dpop, requestUrl, requestMethod)
             TokenResponseParameters(
                 tokenType = TOKEN_TYPE_DPOP,
                 accessToken = jwsService.createSignedJwsAddingParams(
@@ -482,14 +491,18 @@ class SimpleAuthorizationService(
      *
      * @param authorizationHeader value of the HTTP header `Authorization`
      * @param dpopHeader value of the HTTP header `DPoP`
+     * @param requestUrl public-facing URL that the client has used (to validate `DPoP`)
+     * @param requestUrl HTTP method that the client has used (to validate `DPoP`)
      */
     override suspend fun getUserInfo(
         authorizationHeader: String,
         dpopHeader: String?,
         credentialIdentifier: String?,
         credentialConfigurationId: String?,
+        requestUrl: String?,
+        requestMethod: HttpMethod?,
     ): KmmResult<OidcUserInfoExtended> = catching {
-        val accessToken = validateToken(authorizationHeader, dpopHeader)
+        val accessToken = validateToken(authorizationHeader, dpopHeader, requestUrl, requestMethod)
 
         val result = accessTokenToUserInfoStore.get(accessToken)
             ?: throw OAuth2Exception(INVALID_TOKEN, "could not load user info for access token $accessToken")
@@ -525,6 +538,8 @@ class SimpleAuthorizationService(
     private suspend fun validateToken(
         authorizationHeader: String,
         dpopHeader: String?,
+        requestUrl: String?,
+        requestMethod: HttpMethod?,
     ): String = if (authorizationHeader.startsWith(TOKEN_TYPE_BEARER, ignoreCase = true)) {
         val bearerToken = authorizationHeader.removePrefix(TOKEN_PREFIX_BEARER).split(" ").last()
         if (!tokenService.verifyNonce(bearerToken)) { // when to remove them?
@@ -535,19 +550,31 @@ class SimpleAuthorizationService(
     } else if (authorizationHeader.startsWith(TOKEN_TYPE_DPOP, ignoreCase = true)) {
         val dpopToken = authorizationHeader.removePrefix(TOKEN_PREFIX_DPOP).split(" ").last()
         val dpopTokenJwt = validateDpopToken(dpopToken)
-        validateDpopJwt(dpopHeader, dpopToken, dpopTokenJwt)
+        validateDpopJwt(dpopHeader, dpopToken, dpopTokenJwt, requestUrl, requestMethod)
         dpopToken
     } else {
         throw OAuth2Exception(INVALID_TOKEN, "authorization header not valid: $authorizationHeader")
     }
 
-    private fun validateDpopJwtForToken(dpop: String): JsonWebKey {
+    private fun validateDpopJwtForToken(
+        dpop: String,
+        requestUrl: String? = null,
+        requestMethod: HttpMethod? = null,
+    ): JsonWebKey {
         val dpopJwt = parseAndValidate(dpop)
         if (dpopJwt.header.type != JwsContentTypeConstants.DPOP_JWT) {
             Napier.w("validateDpopJwtForToken: invalid header type ${dpopJwt.header.type} ")
             throw OAuth2Exception(INVALID_DPOP_PROOF, "invalid type")
         }
-        // TODO verify htm, htu, nonce
+        // Verify nonce, but where to get it?
+        if (dpopJwt.payload.httpTargetUrl != requestUrl) {
+            Napier.w("validateDpopJwt: htu ${dpopJwt.payload.httpTargetUrl} not matching requestUrl $requestUrl")
+            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT htu incorrect")
+        }
+        if (dpopJwt.payload.httpMethod != requestMethod?.value?.uppercase()) {
+            Napier.w("validateDpopJwt: htm ${dpopJwt.payload.httpMethod} not matching requestMethod $requestMethod")
+            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT htm incorrect")
+        }
         val clientKey = dpopJwt.header.jsonWebKey ?: run {
             Napier.w("validateDpopJwtForToken: no client key in $dpopJwt")
             throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT contains no public key")
@@ -559,6 +586,8 @@ class SimpleAuthorizationService(
         dpopHeader: String?,
         dpopToken: String,
         dpopTokenJwt: JwsSigned<JsonWebToken>,
+        requestUrl: String?,
+        requestMethod: HttpMethod?,
     ) {
         val ath = dpopToken.encodeToByteArray().sha256().encodeToString(Base64UrlStrict)
         if (dpopHeader.isNullOrEmpty()) {
@@ -573,7 +602,15 @@ class SimpleAuthorizationService(
             Napier.w("validateDpopJwt: jwk not matching cnf.jkt")
             throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT JWK not matching cnf.jkt")
         }
-        // TODO verify htm, htu, nonce
+        // Verify nonce, but where to get it?
+        if (dpopJwt.payload.httpTargetUrl != requestUrl) {
+            Napier.w("validateDpopJwt: htu ${dpopJwt.payload.httpTargetUrl} not matching requestUrl $requestUrl")
+            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT htu incorrect")
+        }
+        if (dpopJwt.payload.httpMethod != requestMethod?.value?.uppercase()) {
+            Napier.w("validateDpopJwt: htm ${dpopJwt.payload.httpMethod} not matching requestMethod $requestMethod")
+            throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT htm incorrect")
+        }
         if (!dpopJwt.payload.accessTokenHash.equals(ath)) {
             Napier.w("validateDpopJwt: ath expected $ath, was ${dpopJwt.payload.accessTokenHash}")
             throw OAuth2Exception(INVALID_DPOP_PROOF, "DPoP JWT ath not correct")

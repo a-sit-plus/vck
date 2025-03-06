@@ -19,6 +19,7 @@ import kotlinx.serialization.json.JsonObject
 import io.kotest.matchers.shouldBe
 import io.kotest.assertions.throwables.shouldThrow
 import at.asitplus.wallet.lib.oidvci.OAuth2Exception
+import io.ktor.http.HttpMethod
 
 class OAuth2ClientDPoPTest : FunSpec({
 
@@ -29,6 +30,8 @@ class OAuth2ClientDPoPTest : FunSpec({
     lateinit var server: SimpleAuthorizationService
     lateinit var clientKey: KeyMaterial
     lateinit var jwsService: JwsService
+    val tokenUrl = "https://example.com/token"
+    val resourceUrl = "https://example.com/resource"
 
     beforeEach {
         scope = randomString()
@@ -80,19 +83,59 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            dpop = jwsService.buildDPoPHeader("url")
+            dpop = jwsService.buildDPoPHeader(tokenUrl),
+            requestUrl = tokenUrl,
+            requestMethod = HttpMethod.Post,
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
         }
 
-        val dpopForResource = jwsService.buildDPoPHeader("url", accessToken = token.accessToken)
+        val dpopForResource = jwsService.buildDPoPHeader(
+            resourceUrl,
+            accessToken = token.accessToken
+        )
         // this is our protected resource
         server.getUserInfo(
             token.toHttpHeaderValue(),
             dpopHeader = dpopForResource,
             credentialIdentifier = null,
-            credentialConfigurationId = scope
+            credentialConfigurationId = scope,
+            requestUrl = resourceUrl,
+            requestMethod = HttpMethod.Post,
         ).getOrThrow()
+    }
+
+    test("authorization code flow with DPoP and wrong URL") {
+        val state = uuid4().toString()
+        val code = getCode(state)
+
+        shouldThrow<OAuth2Exception> {
+            server.token(
+                client.createTokenRequestParameters(
+                    state = state,
+                    authorization = OAuth2Client.AuthorizationForToken.Code(code),
+                    scope = scope
+                ),
+                dpop = jwsService.buildDPoPHeader("https://example.com/somethingelse"),
+                requestUrl = tokenUrl,
+                requestMethod = HttpMethod.Post,
+            ).getOrThrow()
+        }
+    }
+
+    test("authorization code flow without DPoP for token") {
+        val state = uuid4().toString()
+        val code = getCode(state)
+
+        shouldThrow<OAuth2Exception> {
+            server.token(
+                client.createTokenRequestParameters(
+                    state = state,
+                    authorization = OAuth2Client.AuthorizationForToken.Code(code),
+                    scope = scope
+                )
+            ).getOrThrow()
+        }
     }
 
     test("authorization code flow without DPoP for resource") {
@@ -105,7 +148,9 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            dpop = jwsService.buildDPoPHeader("url")
+            dpop = jwsService.buildDPoPHeader(tokenUrl),
+            requestUrl = tokenUrl,
+            requestMethod = HttpMethod.Post,
         ).getOrThrow().also {
             it.tokenType shouldBe TOKEN_TYPE_DPOP
         }
@@ -131,12 +176,16 @@ class OAuth2ClientDPoPTest : FunSpec({
                 authorization = OAuth2Client.AuthorizationForToken.Code(code),
                 scope = scope
             ),
-            dpop = jwsService.buildDPoPHeader("url")
+            dpop = jwsService.buildDPoPHeader(tokenUrl),
+            requestUrl = tokenUrl,
+            requestMethod = HttpMethod.Post,
         ).getOrThrow()
 
         val wrongJwsService = DefaultJwsService(DefaultCryptoService(EphemeralKeyWithoutCert()))
-        // TODO Test and assert URL
-        val dpopForResource = wrongJwsService.buildDPoPHeader("url", accessToken = token.accessToken)
+        val dpopForResource = wrongJwsService.buildDPoPHeader(
+            resourceUrl,
+            accessToken = token.accessToken
+        )
 
         // this is our protected resource
         shouldThrow<OAuth2Exception> {
@@ -144,7 +193,9 @@ class OAuth2ClientDPoPTest : FunSpec({
                 token.toHttpHeaderValue(),
                 dpopHeader = dpopForResource,
                 credentialIdentifier = null,
-                credentialConfigurationId = scope
+                credentialConfigurationId = scope,
+                requestUrl = resourceUrl,
+                requestMethod = HttpMethod.Post,
             ).getOrThrow()
         }
     }

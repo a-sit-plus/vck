@@ -3,6 +3,7 @@ package at.asitplus.wallet.lib.oidvci
 import at.asitplus.KmmResult
 import at.asitplus.openid.OAuth2AuthorizationServerMetadata
 import at.asitplus.openid.OidcUserInfoExtended
+import io.ktor.http.HttpMethod
 
 /**
  * Used in OID4VCI by [CredentialIssuer] to obtain user data when issuing credentials using OID4VCI.
@@ -28,12 +29,16 @@ interface OAuth2AuthorizationServerAdapter {
      *
      * @param authorizationHeader value of the HTTP header `Authorization`
      * @param dpopHeader value of the HTTP header `DPoP`
+     * @param requestUrl public-facing URL that the client has used (to validate `DPoP`)
+     * @param requestUrl HTTP method that the client has used (to validate `DPoP`)
      */
     suspend fun getUserInfo(
         authorizationHeader: String,
         dpopHeader: String?,
         credentialIdentifier: String?,
         credentialConfigurationId: String?,
+        requestUrl: String? = null,
+        requestMethod: HttpMethod? = null,
     ): KmmResult<OidcUserInfoExtended>
 
     /**

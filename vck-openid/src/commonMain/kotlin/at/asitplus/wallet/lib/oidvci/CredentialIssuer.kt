@@ -22,6 +22,7 @@ import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.jws.VerifierJwsService
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.ktor.http.HttpMethod
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Clock.System
 import kotlin.time.Duration
@@ -179,17 +180,23 @@ class CredentialIssuer(
      * @param authorizationHeader value of HTTP header `Authorization` sent by the client, with all prefixes
      * @param params Parameters the client sent JSON-serialized in the HTTP body
      * @param dpopHeader value of HTTP header `DPoP` sent by the client
+     * @param requestUrl public-facing URL that the client has used (to validate `DPoP`)
+     * @param requestUrl HTTP method that the client has used (to validate `DPoP`)
      */
     suspend fun credential(
         authorizationHeader: String,
         params: CredentialRequestParameters,
         dpopHeader: String? = null,
+        requestUrl: String? = null,
+        requestMethod: HttpMethod? = null,
     ): KmmResult<CredentialResponseParameters> = catching {
         val userInfo = authorizationService.getUserInfo(
             authorizationHeader,
             dpopHeader,
             params.credentialIdentifier,
-            params.credentialConfigurationId
+            params.credentialConfigurationId,
+            requestUrl,
+            requestMethod,
         ).getOrElse {
             Napier.w("credential: access token not valid", it)
             throw it

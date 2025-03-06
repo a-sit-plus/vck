@@ -301,6 +301,8 @@ class OpenId4VciClientTest : FunSpec() {
                         request.headers["OAuth-Client-Attestation"],
                         request.headers["OAuth-Client-Attestation-PoP"],
                         request.headers["DPoP"],
+                        request.url.toString(),
+                        request.method,
                     ).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString(result),
@@ -315,7 +317,9 @@ class OpenId4VciClientTest : FunSpec() {
                     val result = credentialIssuer.credential(
                         authorizationHeader,
                         params,
-                        request.headers["DPoP"]
+                        request.headers["DPoP"],
+                        request.url.toString(),
+                        request.method,
                     ).getOrThrow()
                     respond(
                         vckJsonSerializer.encodeToString(result),
